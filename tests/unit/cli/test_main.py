@@ -296,6 +296,59 @@ async def test_init_agent_runtime_returns_none_without_config(tmp_path):
     assert result is None
 
 
+@pytest.mark.asyncio
+async def test_init_runtime_does_not_set_env_vars(tmp_path):
+    import asyncio as _asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from cabinet.cli.config import CabinetConfig, save_config
+    from cabinet.models.primitives import Organization, Project
+
+    data_dir = str(tmp_path / "data")
+    os.makedirs(os.path.join(data_dir, "db"), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, "skills"), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, "vectors"), exist_ok=True)
+    org = Organization(name="test", captain_id="cap1")
+    project = Project(organization_id=org.id, name="default", description="test")
+    org.projects.append(project.id)
+    config = CabinetConfig(
+        organization=org,
+        default_project=project.id,
+        api_keys={"openai": "sk-test-key-12345678"},
+    )
+    save_config(config, os.path.join(data_dir, "cabinet.json"))
+
+    with open(os.path.join(data_dir, "employees.json"), "w") as f:
+        f.write("[]")
+
+    mock_gateway = MagicMock()
+    mock_skill_store = AsyncMock()
+    mock_skill_store.initialize = AsyncMock()
+
+    original_openai = os.environ.get("OPENAI_API_KEY")
+    if "OPENAI_API_KEY" in os.environ:
+        del os.environ["OPENAI_API_KEY"]
+
+    try:
+        with patch("cabinet.core.gateway.litellm_adapter.LiteLLMRouterGateway", return_value=mock_gateway), \
+             patch("cabinet.core.tools.skill_store.SkillStore", return_value=mock_skill_store), \
+             patch("cabinet.agents.employee_store.JsonEmployeeStore") as MockEmployeeStore, \
+             patch("cabinet.agents.llm_factory.LLMAgentFactory") as MockAgentFactory, \
+             patch("cabinet.core.knowledge.local_kb.ChromaDBKnowledgeBase"):
+            MockEmployeeStore.return_value = AsyncMock()
+            MockEmployeeStore.return_value.initialize = AsyncMock()
+            MockAgentFactory.return_value = MagicMock()
+
+            from cabinet.cli.main import _init_runtime
+            runtime, cfg = await _init_runtime(data_dir)
+            assert runtime is not None
+            assert "OPENAI_API_KEY" not in os.environ
+            await runtime.stop()
+    finally:
+        if original_openai is not None:
+            os.environ["OPENAI_API_KEY"] = original_openai
+
+
 def test_init_shows_setup_provider_hint():
     with tempfile.TemporaryDirectory() as tmpdir:
         result = runner.invoke(app, ["init", "TestOrg", "--data-dir", tmpdir])
