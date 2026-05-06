@@ -35,6 +35,7 @@ class AuditStore:
             self._db = self._conn_manager.connection
         else:
             self._db = await aiosqlite.connect(self._db_path)
+        self._db.row_factory = aiosqlite.Row
         await self._db.execute("""
             CREATE TABLE IF NOT EXISTS audit_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -146,13 +147,13 @@ class AuditStore:
 
     def _row_to_event(self, row) -> AuditEvent:
         return AuditEvent(
-            timestamp=datetime.fromisoformat(row[0]),
-            action=row[1],
-            actor=row[2],
-            role=row[3] if len(row) > 8 else "",
-            resource_type=row[4] if len(row) > 8 else row[3],
-            resource_id=row[5] if len(row) > 8 else row[4],
-            detail=(row[6] or "") if len(row) > 8 else (row[5] or ""),
-            ip_address=(row[7] or "") if len(row) > 8 else (row[6] or ""),
-            trace_id=(row[8] or "") if len(row) > 8 else (row[7] or ""),
+            timestamp=datetime.fromisoformat(row["timestamp"]),
+            action=row["action"],
+            actor=row["actor"],
+            role=row["role"],
+            resource_type=row["resource_type"],
+            resource_id=row["resource_id"],
+            detail=row["detail"] or "",
+            ip_address=row["ip_address"] or "",
+            trace_id=row["trace_id"] or "",
         )

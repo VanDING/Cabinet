@@ -168,3 +168,16 @@ def test_filter_result_urgency_override():
         reason="Anomaly escalated to critical",
     )
     assert result.urgency_override == "red"
+
+
+def test_greeting_has_fallback_field():
+    g = Greeting(captain_id="cap1", message="Hello", auto_processed_summary="", today_highlights=[])
+    assert g.fallback is False
+
+    g_fb = Greeting(captain_id="cap1", message="Welcome back", auto_processed_summary="", today_highlights=[], fallback=True)
+    assert g_fb.fallback is True
+
+
+def test_secretary_response_has_fallback_field():
+    r = SecretaryResponse(message="Hi", level=SecretaryLevel.L1)
+    assert r.fallback is False

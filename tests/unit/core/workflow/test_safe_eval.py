@@ -53,3 +53,23 @@ def test_safe_eval_blocks_dunder_subclasses():
 def test_safe_eval_blocks_underscore_attribute():
     result = safe_eval("obj._private", {"obj": {"_private": "secret"}})
     assert result is None
+
+
+def test_safe_eval_blocks_class_subclasses_chain():
+    result = safe_eval("context.__class__.__subclasses__()", {"context": {"x": 1}})
+    assert result is None
+
+
+def test_safe_eval_blocks_private_attr_on_object():
+    class Obj:
+        _secret = "hidden"
+        name = "visible"
+    result = safe_eval("obj._secret", {"obj": Obj()})
+    assert result is None
+
+
+def test_safe_eval_allows_normal_attr():
+    class Obj:
+        name = "visible"
+    result = safe_eval("obj.name", {"obj": Obj()})
+    assert result == "visible"
