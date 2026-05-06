@@ -13,6 +13,7 @@ from cabinet.cli.tui_components import (
     render_decision_panel,
     render_office_panel,
     render_input_prompt,
+    render_thinking_block,
 )
 
 
@@ -130,6 +131,43 @@ def test_render_office_panel_active():
         console.print(result.renderable)
     rendered = capture.get()
     assert "数据迁移" in rendered or "65" in rendered
+
+
+def test_render_secretary_bar_long_message_is_truncated():
+    long_msg = "这是一条非常长的消息" * 23  # 9*23=207 chars, exceeds 200
+    result = render_secretary_bar(long_msg, urgent=False)
+    assert isinstance(result, Text)
+    plain = result.plain
+    assert "秘书" in plain
+    assert "…" in plain
+    assert len(plain) < 260  # truncated + prefix + ellipsis
+
+
+def test_render_secretary_bar_short_message_not_truncated():
+    result = render_secretary_bar("简短消息", urgent=False)
+    plain = result.plain
+    assert "…" not in plain
+
+
+def test_render_thinking_block_empty():
+    result = render_thinking_block([], expanded=False)
+    plain = result.plain if hasattr(result, 'plain') else str(result)
+    assert plain == "" or plain.strip() == ""
+
+
+def test_render_thinking_block_collapsed():
+    result = render_thinking_block(["步骤1", "步骤2", "步骤3"], expanded=False)
+    assert isinstance(result, Panel)
+    plain = result.renderable.plain if hasattr(result.renderable, 'plain') else str(result.renderable)
+    assert "3" in plain
+    assert "Ctrl+T" in plain
+
+
+def test_render_thinking_block_expanded():
+    result = render_thinking_block(["分析数据", "验证结果"], expanded=True)
+    plain = result.renderable.plain if hasattr(result.renderable, 'plain') else str(result.renderable)
+    assert "分析数据" in plain
+    assert "验证结果" in plain
 
 
 def test_render_input_prompt():
