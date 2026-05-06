@@ -3,7 +3,27 @@
     "allow": [
       "Bash(git commit -m ' *)",
       "Bash(ruff check *)",
-      "Bash(python -m pytest tests/unit/core/test_backup.py tests/unit/api/test_chat.py tests/unit/core/workflow/test_safe_eval.py tests/unit/cli/test_main.py -v --tb=short)"
+      "Bash(python -m pytest tests/unit/core/test_backup.py tests/unit/api/test_chat.py tests/unit/core/workflow/test_safe_eval.py tests/unit/cli/test_main.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/api/test_deps.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py::test_init_runtime_does_not_set_env_vars -v --tb=long)",
+      "Bash(python -m pytest tests/unit/api/test_app.py::test_generic_error_hides_detail_in_production tests/unit/api/test_app.py::test_generic_error_shows_detail_in_development tests/unit/core/test_security.py tests/unit/api/test_models.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/api/test_models.py::test_knowledge_query_request_top_k_upper_bound -v --tb=long)",
+      "Bash(python -m pytest tests/unit/api/test_app.py::test_generic_error_hides_detail_in_production tests/unit/api/test_app.py::test_generic_error_shows_detail_in_development -v --tb=short)",
+      "Bash(python -m pytest tests/unit/api/test_models.py::test_knowledge_query_request_top_k_upper_bound -v --tb=short)",
+      "Bash(python -m pytest tests/unit/core/memory/test_vector_store.py::test_store_uses_to_thread tests/unit/core/test_observability.py::test_cli_request_id_contextvar_isolation -v --tb=short)",
+      "Bash(python -m pytest tests/unit/core/memory/test_vector_store.py tests/unit/core/test_observability.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/core/events/test_migration_loader.py tests/unit/core/events/test_migration_runner.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py::test_load_and_decrypt_keys_returns_dict -v --tb=short)",
+      "Bash(python -m pytest tests/unit/core/test_audit.py tests/unit/core/events/test_sqlite_event_store.py tests/unit/rooms/secretary/ tests/unit/api/test_models.py tests/unit/api/test_rooms.py -v --tb=short)",
+      "Bash(python -m pytest tests/integration/test_event_flow.py tests/integration/test_websocket_chat.py tests/integration/test_backup_restore.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/core/test_security.py tests/unit/core/workflow/test_safe_eval.py tests/unit/rooms/secretary/test_models.py -v --tb=short)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py -v --tb=short -x)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py -x -q --tb=line)",
+      "Bash(grep -v \"^[A-Z].*\\\\.py$\")",
+      "Bash(python -m pytest tests/ -q --tb=line --ignore=tests/load -x)",
+      "Bash(python -m pytest tests/unit/cli/test_tui.py::test_handle_slash_command_mode_switch -v --tb=short)",
+      "Bash(python -m pytest tests/ -q --tb=line --ignore=tests/load --ignore=tests/unit/cli/test_tui.py)",
+      "Bash(python -c \"from cabinet.cli.main import app; print\\('CLI imports OK'\\)\")"
     ]
   }
 }
