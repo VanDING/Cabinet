@@ -968,44 +968,14 @@ def db_migrate(
 
 async def _db_migrate_async(data_dir: str, dry_run: bool = False) -> None:
     from cabinet.core.events.migrations import MigrationRunner
-    from cabinet.core.events.migrations.v001_initial_schema import V001InitialSchema
+    from cabinet.core.events.migrations.loader import load_all_migrations
 
     db_path = os.path.join(data_dir, "db", "cabinet.db")
     if not os.path.exists(db_path):
         console.print("[red]Error:[/red] Database not found. Run 'cabinet init' first.")
         raise typer.Exit(code=1)
 
-    _migrations = [V001InitialSchema()]
-    try:
-        from cabinet.core.events.migrations.v002_add_indexes import V002AddIndexes
-        _migrations.append(V002AddIndexes())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v003_memory_fts import V003MemoryFts
-        _migrations.append(V003MemoryFts())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v004_workflow_executions import V004WorkflowExecutions
-        _migrations.append(V004WorkflowExecutions())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v005_workflow_versions import V005WorkflowVersions
-        _migrations.append(V005WorkflowVersions())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v006_agent_orchestration import V006AgentOrchestration
-        _migrations.append(V006AgentOrchestration())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v007_audit_role import V007AuditRole
-        _migrations.append(V007AuditRole())
-    except ImportError:
-        pass
+    _migrations = load_all_migrations()
 
     runner = MigrationRunner(db_path, _migrations)
     await runner.initialize()
@@ -1074,44 +1044,14 @@ def db_rollback(
 
 async def _db_rollback_async(target_version: int, data_dir: str) -> None:
     from cabinet.core.events.migrations import MigrationRunner
-    from cabinet.core.events.migrations.v001_initial_schema import V001InitialSchema
+    from cabinet.core.events.migrations.loader import load_all_migrations
 
     db_path = os.path.join(data_dir, "db", "cabinet.db")
     if not os.path.exists(db_path):
         console.print("[red]Error:[/red] Database not found. Run 'cabinet init' first.")
         raise typer.Exit(code=1)
 
-    _migrations = [V001InitialSchema()]
-    try:
-        from cabinet.core.events.migrations.v002_add_indexes import V002AddIndexes
-        _migrations.append(V002AddIndexes())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v003_memory_fts import V003MemoryFts
-        _migrations.append(V003MemoryFts())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v004_workflow_executions import V004WorkflowExecutions
-        _migrations.append(V004WorkflowExecutions())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v005_workflow_versions import V005WorkflowVersions
-        _migrations.append(V005WorkflowVersions())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v006_agent_orchestration import V006AgentOrchestration
-        _migrations.append(V006AgentOrchestration())
-    except ImportError:
-        pass
-    try:
-        from cabinet.core.events.migrations.v007_audit_role import V007AuditRole
-        _migrations.append(V007AuditRole())
-    except ImportError:
-        pass
+    _migrations = load_all_migrations()
 
     runner = MigrationRunner(db_path, _migrations)
     await runner.initialize()
