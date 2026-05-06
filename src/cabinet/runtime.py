@@ -188,39 +188,9 @@ class CabinetRuntime:
         if self._db_path:
             import os as _os
             from cabinet.core.events.migrations import MigrationRunner
-            from cabinet.core.events.migrations.v001_initial_schema import V001InitialSchema
+            from cabinet.core.events.migrations.loader import load_all_migrations
 
-            _migrations = [V001InitialSchema()]
-            try:
-                from cabinet.core.events.migrations.v002_add_indexes import V002AddIndexes
-                _migrations.append(V002AddIndexes())
-            except ImportError:
-                pass
-            try:
-                from cabinet.core.events.migrations.v003_memory_fts import V003MemoryFts
-                _migrations.append(V003MemoryFts())
-            except ImportError:
-                pass
-            try:
-                from cabinet.core.events.migrations.v004_workflow_executions import V004WorkflowExecutions
-                _migrations.append(V004WorkflowExecutions())
-            except ImportError:
-                pass
-            try:
-                from cabinet.core.events.migrations.v005_workflow_versions import V005WorkflowVersions
-                _migrations.append(V005WorkflowVersions())
-            except ImportError:
-                pass
-            try:
-                from cabinet.core.events.migrations.v006_agent_orchestration import V006AgentOrchestration
-                _migrations.append(V006AgentOrchestration())
-            except ImportError:
-                pass
-            try:
-                from cabinet.core.events.migrations.v007_audit_role import V007AuditRole
-                _migrations.append(V007AuditRole())
-            except ImportError:
-                pass
+            _migrations = load_all_migrations()
 
             runner = MigrationRunner(self._db_path, _migrations)
             await runner.initialize()
