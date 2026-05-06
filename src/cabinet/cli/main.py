@@ -474,6 +474,7 @@ async def _init_runtime(data_dir: str):
 
     from cabinet.cli.providers import PROVIDER_REGISTRY
 
+    decrypted_keys: dict[str, str] = {}
     migrated = False
     for provider_id, key in config.api_keys.items():
         if key.startswith("vault:"):
@@ -483,15 +484,13 @@ async def _init_runtime(data_dir: str):
             encrypted = vault.encrypt(key)
             config.api_keys[provider_id] = f"vault:{encrypted}"
             migrated = True
-        preset = PROVIDER_REGISTRY.get(provider_id)
-        env_name = preset.api_key_env if preset else f"{provider_id.upper()}_API_KEY"
-        os.environ.setdefault(env_name, decrypted)
+        decrypted_keys[provider_id] = decrypted
     if migrated:
         save_config(config, os.path.join(data_dir, "cabinet.json"))
         _migration_logger.info("migrated plaintext API key(s) to vault encryption")
 
     model_list = _load_model_list(data_dir, config)
-    gateway = LiteLLMRouterGateway(model_list=model_list, api_keys=config.api_keys)
+    gateway = LiteLLMRouterGateway(model_list=model_list, api_keys=decrypted_keys)
 
     if config.memory_type == "sqlite":
         from cabinet.core.memory.sqlite_store import SQLiteMemoryStore
