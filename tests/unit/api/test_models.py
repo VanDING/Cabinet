@@ -1,3 +1,5 @@
+import pytest
+
 from cabinet.api.models import (
     ChatRequest,
     ChatResponse,
@@ -69,3 +71,17 @@ def test_review_request_defaults():
 def test_error_response():
     resp = ErrorResponse(error="Not found", detail="missing")
     assert resp.error == "Not found"
+
+
+def test_knowledge_query_request_top_k_upper_bound():
+    from cabinet.api.models import KnowledgeQueryRequest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        KnowledgeQueryRequest(question="test", top_k=100)
+
+    valid = KnowledgeQueryRequest(question="test", top_k=50)
+    assert valid.top_k == 50
+
+    valid_min = KnowledgeQueryRequest(question="test", top_k=1)
+    assert valid_min.top_k == 1
