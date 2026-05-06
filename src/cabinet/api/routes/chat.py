@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+import hashlib
 import hmac
 import logging
 
@@ -43,15 +44,35 @@ async def chat(
     return ChatResponse(response=result.message, captain_id=req.captain_id)
 
 
+def _verify_ws_token(token: str | None, config) -> tuple[str | None, str | None]:
+    if token is None:
+        return None, None
+    if config.api_token:
+        stored = config.api_token
+        if stored.startswith("sha256:"):
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            if hmac.compare_digest(f"sha256:{token_hash}", stored):
+                return "admin", "legacy"
+        else:
+            if hmac.compare_digest(token, stored):
+                return "admin", "legacy"
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    for entry in config.api_tokens:
+        if hmac.compare_digest(token_hash, entry.token_hash):
+            return entry.role.value, entry.label
+    return None, None
+
+
 @router.websocket("/ws")
 async def chat_ws(websocket: WebSocket):
     await websocket.accept()
     runtime = websocket.app.state.runtime
     config = websocket.app.state.config
 
-    if config.api_token:
+    if config.api_token or config.api_tokens:
         token = websocket.query_params.get("token")
-        if not hmac.compare_digest(token or "", config.api_token):
+        role, label = _verify_ws_token(token, config)
+        if role is None:
             await websocket.close(code=4001, reason="Unauthorized")
             return
 
