@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from rich.align import Align
+from rich.console import RenderableType
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.text import Text
@@ -14,6 +15,7 @@ from cabinet.cli.tui_themes import (
     STYLE_BLUE_BOLD,
     STYLE_DEFAULT,
     STYLE_DIM,
+    STYLE_SUCCESS,
 )
 
 
@@ -70,11 +72,13 @@ def render_secretary_bar(
     message: str,
     urgent: bool = False,
 ) -> Text:
-    display = message if message else "Captain，一切正常"
+    if message:
+        display = message if len(message) <= 200 else message[:200] + "…"
+    else:
+        display = "Captain，一切正常"
     style = STYLE_BLUE_BOLD if urgent else STYLE_DEFAULT
-    prefix = "📋 秘书："
     result = Text()
-    result.append(prefix, style=STYLE_DEFAULT)
+    result.append("📋 秘书：", style=STYLE_DEFAULT)
     result.append(display, style=style)
     return result
 
@@ -172,3 +176,26 @@ def render_input_prompt(mode: str) -> Text:
     result = Text()
     result.append(f"{mode} >", style=STYLE_BLUE_BOLD)
     return result
+
+
+def render_thinking_block(thoughts: list[str], expanded: bool = False) -> RenderableType:
+    if not thoughts:
+        return Text("")
+
+    if expanded:
+        body = Text()
+        for i, thought in enumerate(thoughts, 1):
+            body.append(f"{i}. {thought}\n", style=STYLE_DIM)
+        return Panel(
+            body,
+            title=f"[bold {CABINET_YELLOW}]思考链[/]",
+            border_style=CABINET_YELLOW,
+            padding=(0, 1),
+        )
+
+    return Panel(
+        Text(f"💭 思考中... (共{len(thoughts)}步，Ctrl+T 展开)", style=STYLE_DIM),
+        title=f"[bold {CABINET_YELLOW}]思考链[/]",
+        border_style=CABINET_YELLOW,
+        padding=(0, 1),
+    )

@@ -23,6 +23,7 @@ from cabinet.cli.tui_components import (
     render_meeting_panel,
     render_office_panel,
     render_secretary_bar,
+    render_thinking_block,
     render_top_bar,
 )
 from cabinet.cli.tui_themes import CABINET_BLUE, CABINET_LOGO, CABINET_RED, STYLE_DIM, STYLE_DEFAULT
@@ -48,6 +49,8 @@ class CockpitState:
     office_current_node: str = ""
     left_content: RenderableType | None = None
     _ctrl_c_count: int = 0
+    thinking_steps: list[str] = field(default_factory=list)
+    thinking_expanded: bool = False
 
 
 def _build_welcome_renderable(runtime) -> RenderableType:
@@ -128,7 +131,7 @@ def _build_cockpit_layout(state: CockpitState) -> Layout:
 
     layout.split(
         Layout(name="top_bar", size=1),
-        Layout(name="secretary_bar", size=1),
+        Layout(name="secretary_bar", size=3),
         Layout(name="main", ratio=1),
     )
 
@@ -158,8 +161,18 @@ def _build_cockpit_layout(state: CockpitState) -> Layout:
         Layout(name="input", size=1),
     )
 
+    # Composite thinking block (if any) with main content
+    composite_content = state.left_content
+    if state.thinking_steps:
+        from rich.console import Group
+        thinking_panel = render_thinking_block(state.thinking_steps, state.thinking_expanded)
+        if composite_content is not None:
+            composite_content = Group(thinking_panel, Text(), composite_content)
+        else:
+            composite_content = thinking_panel
+
     layout["main"]["left"]["content"].update(
-        render_left_panel(mode=state.mode, content=state.left_content)
+        render_left_panel(mode=state.mode, content=composite_content)
     )
 
     layout["main"]["left"]["input"].update(
