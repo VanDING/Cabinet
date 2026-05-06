@@ -1377,10 +1377,7 @@ async def _init_agent_runtime(data_dir: str):
         console.print("[red]Error:[/red] Cabinet not initialized. Run 'cabinet init' first.")
         return None
     try:
-        from cabinet.cli.config import load_config
-        config = load_config(config_path)
-        runtime = _init_runtime(config, data_dir)
-        await runtime.start()
+        runtime, _ = await _init_runtime(data_dir)
         return runtime
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")

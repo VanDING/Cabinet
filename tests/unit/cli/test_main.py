@@ -289,6 +289,13 @@ def test_set_api_key_command():
         assert config.api_keys["openai"].startswith("vault:")
 
 
+@pytest.mark.asyncio
+async def test_init_agent_runtime_returns_none_without_config(tmp_path):
+    from cabinet.cli.main import _init_agent_runtime
+    result = await _init_agent_runtime(str(tmp_path))
+    assert result is None
+
+
 def test_init_shows_setup_provider_hint():
     with tempfile.TemporaryDirectory() as tmpdir:
         result = runner.invoke(app, ["init", "TestOrg", "--data-dir", tmpdir])
