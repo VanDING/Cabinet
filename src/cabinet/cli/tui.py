@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -398,16 +399,65 @@ async def _handle_chat(
         )
 
         chunks: list[str] = []
+        thinking_buffer: list[str] = []
+        in_thinking = False
+        thinking_tag_open = "<thinking>"
+        thinking_tag_close = "</thinking>"
+
+        last_flush = time.monotonic()
+
         async for chunk in response.stream:
-            chunks.append(chunk)
-            state.left_content = Markdown("".join(chunks))
-            live.update(_build_cockpit_layout(state))
+            # Parse thinking tags
+            remaining = chunk
+            while remaining:
+                if not in_thinking:
+                    idx = remaining.find(thinking_tag_open)
+                    if idx == -1:
+                        chunks.append(remaining)
+                        remaining = ""
+                    else:
+                        chunks.append(remaining[:idx])
+                        remaining = remaining[idx + len(thinking_tag_open):]
+                        in_thinking = True
+                else:
+                    idx = remaining.find(thinking_tag_close)
+                    if idx == -1:
+                        thinking_buffer.append(remaining)
+                        remaining = ""
+                    else:
+                        thinking_buffer.append(remaining[:idx])
+                        state.thinking_steps = _split_thinking_steps("".join(thinking_buffer))
+                        thinking_buffer = []
+                        remaining = remaining[idx + len(thinking_tag_close):]
+                        in_thinking = False
+
+            # Throttle: flush every 100ms or on sentence-ending punctuation
+            now = time.monotonic()
+            text = "".join(chunks)
+            if now - last_flush > 0.1 or (text and text.rstrip()[-1] in (".", "。", "\n")):
+                state.left_content = Markdown(text)
+                live.update(_build_cockpit_layout(state))
+                last_flush = now
+
+        # Handle unclosed thinking tag
+        if in_thinking and thinking_buffer:
+            state.thinking_steps = _split_thinking_steps("".join(thinking_buffer))
+
+        # Final flush — guaranteed complete content
+        final_text = "".join(chunks)
+        state.left_content = Markdown(final_text)
+        live.update(_build_cockpit_layout(state))
 
         await response.finalize()
-        if hasattr(response, 'usage') and response.usage:
+        if hasattr(response, "usage") and response.usage:
             state.token_count += response.usage.get("total_tokens", 0)
     except Exception as e:
         state.left_content = Text(f"对话错误: {e}", style=f"bold {CABINET_RED}")
+
+
+def _split_thinking_steps(raw: str) -> list[str]:
+    """Split raw thinking content into steps by newlines, filter empty lines."""
+    return [line.strip() for line in raw.strip().split("\n") if line.strip()]
 
 
 async def _periodic_refresh(

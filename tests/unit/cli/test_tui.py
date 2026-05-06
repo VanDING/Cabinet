@@ -245,6 +245,61 @@ def test_handle_chat_updates_content():
     mock_live.update.assert_called()
 
 
+def test_cockpit_state_thinking_fields():
+    state = CockpitState()
+    assert state.thinking_steps == []
+    assert state.thinking_expanded is False
+
+
+def test_cockpit_state_thinking_custom():
+    state = CockpitState(thinking_steps=["step1", "step2"], thinking_expanded=True)
+    assert len(state.thinking_steps) == 2
+    assert state.thinking_expanded is True
+
+
+def test_split_thinking_steps():
+    from cabinet.cli.tui import _split_thinking_steps
+    result = _split_thinking_steps("第一步\n第二步\n\n第三步")
+    assert result == ["第一步", "第二步", "第三步"]
+
+
+def test_split_thinking_steps_empty():
+    from cabinet.cli.tui import _split_thinking_steps
+    result = _split_thinking_steps("")
+    assert result == []
+
+
+def test_handle_chat_thinking_tag_parsing():
+    """Thinking content inside <thinking> tags should populate thinking_steps."""
+    from cabinet.cli.tui import _handle_chat, _build_cockpit_layout
+    from unittest.mock import patch
+    state = CockpitState(captain_id="cap-1")
+    runtime = MagicMock()
+    runtime.secretary = MagicMock()
+
+    stream_response = MagicMock()
+
+    async def mock_stream():
+        yield "<thinking>第一步分析\n第二步推理</thinking>"
+        yield "最终回答"
+
+    stream_response.stream = mock_stream()
+    stream_response.finalize = AsyncMock()
+    stream_response.usage = None
+
+    runtime.secretary.process_input_stream = AsyncMock(return_value=stream_response)
+
+    mock_live = MagicMock()
+
+    mock_interaction_context = MagicMock()
+    with patch.dict("sys.modules", {"cabinet.rooms.secretary.models": MagicMock(InteractionContext=mock_interaction_context)}):
+        asyncio.get_event_loop().run_until_complete(
+            _handle_chat("测试", state, runtime, mock_live)
+        )
+    assert len(state.thinking_steps) > 0
+    assert "第一步分析" in state.thinking_steps[0]
+
+
 async def _periodic_refresh_once(state, runtime, live, build_layout):
     await asyncio.sleep(0.01)
     live.update(build_layout(state))
