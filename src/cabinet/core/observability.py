@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import uuid as _uuid
@@ -101,21 +102,21 @@ class TraceInjectingFilter(logging.Filter):
         record.trace_id = format(ctx.trace_id, "032x") if ctx.is_valid else ""
         record.span_id = format(ctx.span_id, "016x") if ctx.is_valid else ""
         if not hasattr(record, "request_id"):
-            record.request_id = _cli_request_id
+            record.request_id = _cli_request_id.get()
         return True
 
 
-_cli_request_id: str = ""
+_cli_request_id: contextvars.ContextVar[str] = contextvars.ContextVar("cli_request_id", default="")
 
 
 def set_cli_request_id() -> str:
-    global _cli_request_id
-    _cli_request_id = str(_uuid.uuid4())[:8]
-    return _cli_request_id
+    rid = str(_uuid.uuid4())[:8]
+    _cli_request_id.set(rid)
+    return rid
 
 
 def get_cli_request_id() -> str:
-    return _cli_request_id
+    return _cli_request_id.get()
 
 
 class JsonFormatter(logging.Formatter):

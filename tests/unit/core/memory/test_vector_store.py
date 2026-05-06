@@ -116,3 +116,22 @@ async def test_close_no_system_attribute():
     store = ChromaDBMemoryStore.__new__(ChromaDBMemoryStore)
     store._client = MagicMock(spec=[])
     await store.close()
+
+
+@pytest.mark.asyncio
+async def test_store_uses_to_thread():
+    import asyncio
+    from unittest.mock import patch, MagicMock
+
+    store = ChromaDBMemoryStore.__new__(ChromaDBMemoryStore)
+    store._collection = MagicMock()
+    store._collection.upsert = MagicMock()
+
+    item = MemoryItem(
+        owner_id=uuid.uuid4(),
+        scope=MemoryScope.LONG_TERM,
+        content="test content",
+    )
+    with patch("asyncio.to_thread", wraps=asyncio.to_thread) as mock_to_thread:
+        await store.store("thread-test", item, MemoryScope.LONG_TERM)
+        mock_to_thread.assert_called()

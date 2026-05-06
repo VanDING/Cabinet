@@ -142,3 +142,29 @@ def test_setup_observability_disabled():
 
     config = ObservabilityConfig(enabled=False)
     setup_observability(config)
+
+
+def test_cli_request_id_contextvar_isolation():
+    import asyncio
+
+    from cabinet.core.observability import set_cli_request_id, get_cli_request_id
+
+    async def task_a():
+        set_cli_request_id()
+        id_a = get_cli_request_id()
+        await asyncio.sleep(0.05)
+        assert get_cli_request_id() == id_a
+        return id_a
+
+    async def task_b():
+        set_cli_request_id()
+        id_b = get_cli_request_id()
+        await asyncio.sleep(0.05)
+        assert get_cli_request_id() == id_b
+        return id_b
+
+    async def main():
+        id_a, id_b = await asyncio.gather(task_a(), task_b())
+        assert id_a != id_b
+
+    asyncio.run(main())
