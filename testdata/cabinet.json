@@ -1,0 +1,38 @@
+{
+  "organization": {
+    "id": "8ed602a1-a838-42a8-803e-416b2725df90",
+    "name": "MyOrg",
+    "captain_id": "captain",
+    "created_at": "2026-05-06T01:01:29.458434Z",
+    "projects": [
+      "e7c5f2a3-2cb6-478f-8860-93c8220e15fd"
+    ]
+  },
+  "default_project": "e7c5f2a3-2cb6-478f-8860-93c8220e15fd",
+  "model_config_path": "data/models.json",
+  "mcp_servers": [],
+  "api_keys": {
+    "deepseek": "vault:vault:bVvoyi7KOLXcHeKGg67WWQ==$gAAAAABp-pMick9Usbzaxehgte2l7Ngy_jsBdkKXuE-uFtuQTqzFJBKVV4-oksbcNDVTKYyT0BXhkKCumFTNHJs3MuIR4KM2vtjfCt_UMVN1iwA-WslNnloiKGrnfHT0XeuHhJCgZCQ3"
+  },
+  "api_token": "",
+  "api_tokens": [],
+  "auth_required": false,
+  "cors_origins": [
+    "http://localhost:3000",
+    "http://localhost:8000"
+  ],
+  "memory_type": "chromadb",
+  "employees_path": "data/employees.json",
+  "skills_dir": "data/skills",
+  "knowledge_dir": "data/knowledge",
+  "created_at": "2026-05-06T01:01:29.458499Z",
+  "observability": {
+    "enabled": true,
+    "service_name": "cabinet",
+    "log_level": "INFO",
+    "log_format": "json",
+    "otlp_endpoint": null,
+    "prometheus_port": 9090
+  },
+  "vault_enabled": false
+}

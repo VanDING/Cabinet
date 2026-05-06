@@ -1,0 +1,14 @@
+﻿........................................................................ [ 12%]
+....................................................................F... [ 25%]
+........................................................................ [ 37%]
+........................................................................ [ 50%]
+........................................................................ [ 63%]
+........................................................................ [ 75%]
+........................................................................ [ 88%]
+..................................................................       [100%]
+================================== FAILURES ===================================
+E   ImportError: cannot import name '_serve_async' from 'cabinet.cli.main' (C:\Users\dotty\Documents\trae_projects\Cabinet\src\cabinet\cli\main.py)
+C:\Users\dotty\Documents\trae_projects\Cabinet\tests\unit\cli\test_main.py:68: ImportError: cannot import name '_serve_async' from 'cabinet.cli.main' (C:\Users\dotty\Documents\trae_projects\Cabinet\src\cabinet\cli\main.py)
+=========================== short test summary info ===========================
+FAILED tests/unit/cli/test_main.py::test_serve_creates_memory_store - ImportE...
+1 failed, 569 passed in 10.98s

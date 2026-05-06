@@ -1,0 +1,33 @@
+services:
+  cabinet:
+    build: .
+    ports:
+      - "8000:8000"
+      - "9090:9090"
+    volumes:
+      - cabinet-data:/data
+    environment:
+      - CABINET_DATA_DIR=/data
+      - CABINET_LOG_LEVEL=${CABINET_LOG_LEVEL:-INFO}
+      - CABINET_OBSERVABILITY_ENABLED=${CABINET_OBSERVABILITY_ENABLED:-true}
+      - CABINET_OTLP_ENDPOINT=${OTLP_ENDPOINT:-}
+      - LITELLM_API_KEYS_OPENAI=${OPENAI_API_KEY:-}
+      - LITELLM_API_KEYS_ANTHROPIC=${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+
+volumes:
+  cabinet-data:

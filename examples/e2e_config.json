@@ -1,0 +1,25 @@
+{
+  "organization": {
+    "name": "E2E Test Organization",
+    "captain_id": "captain"
+  },
+  "default_project": "00000000-0000-0000-0000-000000000001",
+  "model_config_path": "data/models.json",
+  "mcp_servers": [],
+  "api_keys": {},
+  "api_token": "",
+  "cors_origins": ["http://localhost:3000", "http://localhost:8000"],
+  "memory_type": "sqlite",
+  "employees_path": "data/employees.json",
+  "skills_dir": "data/skills",
+  "knowledge_dir": "data/knowledge",
+  "observability": {
+    "enabled": false,
+    "service_name": "cabinet-e2e",
+    "log_level": "WARNING",
+    "log_format": "json",
+    "otlp_endpoint": null,
+    "prometheus_port": 9090
+  },
+  "vault_enabled": false
+}

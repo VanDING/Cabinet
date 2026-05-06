@@ -1,0 +1,36 @@
+{
+  "organization": {
+    "id": "97e53c2c-f20c-434a-80fd-4b0bd7cceff1",
+    "name": "TestOrg",
+    "captain_id": "captain",
+    "created_at": "2026-05-05T12:49:38.449655Z",
+    "projects": [
+      "0628972d-aa32-4a27-963a-a0429072bbb6"
+    ]
+  },
+  "default_project": "0628972d-aa32-4a27-963a-a0429072bbb6",
+  "model_config_path": "data/models.json",
+  "mcp_servers": [],
+  "api_keys": {},
+  "api_token": "",
+  "api_tokens": [],
+  "auth_required": false,
+  "cors_origins": [
+    "http://localhost:3000",
+    "http://localhost:8000"
+  ],
+  "memory_type": "chromadb",
+  "employees_path": "data/employees.json",
+  "skills_dir": "data/skills",
+  "knowledge_dir": "data/knowledge",
+  "created_at": "2026-05-05T12:49:38.449655Z",
+  "observability": {
+    "enabled": true,
+    "service_name": "cabinet",
+    "log_level": "INFO",
+    "log_format": "json",
+    "otlp_endpoint": null,
+    "prometheus_port": 9090
+  },
+  "vault_enabled": false
+}
