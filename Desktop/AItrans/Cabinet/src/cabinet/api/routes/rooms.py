@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from cabinet.api.deps import get_config, get_current_user, get_runtime
+from cabinet.api.deps import get_config, get_current_user, get_runtime, require_permission
 from cabinet.api.models import (
     DecisionRequest,
     MeetingRequest,
@@ -29,6 +29,7 @@ async def create_meeting(
     req: MeetingRequest,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     from cabinet.rooms.meeting.models import MeetingLevel
 
@@ -61,6 +62,7 @@ async def create_decision(
     req: DecisionRequest,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     from cabinet.models.events import DecisionRequest as DecisionReq
     from cabinet.models.decisions import DecisionType
@@ -88,6 +90,7 @@ async def create_task(
     req: TaskRequest,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     from cabinet.models.events import TaskOrder
 
@@ -110,6 +113,7 @@ async def decode_strategy(
     req: StrategyRequest,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     from cabinet.rooms.meeting.models import ConvergenceResult, DeliberationOutput, DeliberationResult
     from cabinet.rooms.strategy.models import DecodeContext
@@ -145,6 +149,7 @@ async def start_review(
     runtime: "CabinetRuntime" = Depends(get_runtime),
     config: "CabinetConfig" = Depends(get_config),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     from cabinet.rooms.summary.models import ReviewType
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from cabinet.api.deps import get_current_user, get_runtime
+from cabinet.api.deps import get_current_user, get_runtime, require_permission
 from cabinet.api.models import EmployeeCreate, EmployeeResponse
 from cabinet.models.primitives import Employee
 
@@ -45,6 +45,7 @@ async def create_employee(
     req: EmployeeCreate,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     if runtime.employee_store is None:
         raise HTTPException(status_code=503, detail="Employee store not configured")
@@ -98,6 +99,7 @@ async def mount_skill(
     skill_id: str,
     runtime: "CabinetRuntime" = Depends(get_runtime),
     _user: dict = Depends(get_current_user),
+    _perm: dict = Depends(require_permission("write")),
 ):
     if runtime.employee_store is None:
         raise HTTPException(status_code=503, detail="Employee store not configured")
