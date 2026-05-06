@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/unit/core/workflow/test_safe_eval.py -v --tb=short)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py::test_init_agent_runtime_returns_none_without_config -v --tb=short)",
+      "Bash(python -m pytest tests/unit/cli/test_main.py -v --tb=short)"
+    ]
+  }
+}
