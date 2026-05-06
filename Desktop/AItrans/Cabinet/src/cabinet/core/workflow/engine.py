@@ -155,15 +155,20 @@ class WorkflowEngine:
                 return GraphResult(completed=True, output=results)
 
             if isinstance(node, HumanApprovalNode):
-                results["__paused__"] = {
+                import time as _time
+                pause_info = {
                     "node_id": str(node.id),
                     "decision_type": node.decision_type,
                     "message_template": node.message_template,
                     "context_data": context_data,
+                    "paused_at": _time.monotonic(),
+                    "timeout": node.timeout,
+                    "timeout_strategy": node.timeout_strategy,
                 }
+                results["__paused__"] = pause_info
                 return GraphResult(
                     paused=True,
-                    pause_info=results["__paused__"],
+                    pause_info=pause_info,
                     output=results,
                 )
 

@@ -154,6 +154,12 @@ class DecisionRoomService(EventSourcedRoom):
                 conditions=event.conditions,
             )
         elif isinstance(event, DecisionCascaded):
+            # Update parent decision status to reflect cascading
+            if event.parent_decision_id in self._decisions:
+                self._decisions[event.parent_decision_id] = self._decisions[
+                    event.parent_decision_id
+                ].model_copy(update={"status": DecisionStatus.DELEGATED})
+
             for child_id in event.child_decision_ids:
                 if child_id not in self._decisions:
                     self._decisions[child_id] = Decision(
@@ -383,7 +389,6 @@ class DecisionRoomService(EventSourcedRoom):
         child_titles = self._parse_cascade_output(output.content)
         child_ids = [uuid4() for _ in child_titles]
         parent_id = decision.id
-        self._decisions[parent_id] = decision
         event = DecisionCascaded(
             parent_decision_id=parent_id,
             child_decision_ids=child_ids,

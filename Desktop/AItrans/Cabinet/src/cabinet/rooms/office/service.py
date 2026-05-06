@@ -298,6 +298,7 @@ class OfficeSchedulerService(EventSourcedRoom):
                     reason=paused.get("message_template") or "Human approval required",
                 )
                 await self._publish_and_apply(pause_event)
+                self._pause_info = paused  # Store for timeout check
                 return self._executions[execution_id]
 
             complete_event = WorkflowCompleted(
@@ -360,6 +361,25 @@ class OfficeSchedulerService(EventSourcedRoom):
         execution = self._executions[execution_id]
         if execution.status != "paused":
             raise ValueError(f"execution {execution_id} is not paused")
+
+        # Check for approval timeout
+        import time as _time
+        pause_info = getattr(self, '_pause_info', {})
+        if pause_info.get("timeout") and pause_info.get("paused_at"):
+            elapsed = _time.monotonic() - pause_info["paused_at"]
+            if elapsed > pause_info["timeout"]:
+                strategy = pause_info.get("timeout_strategy", "escalate")
+                if strategy == "escalate":
+                    complete_event = WorkflowCompleted(
+                        execution_id=execution_id,
+                        results={"escalated": True, "reason": "approval_timeout"},
+                    )
+                    await self._publish_and_apply(complete_event)
+                    self._pause_info = {}
+                    return self._executions[execution_id]
+                elif strategy == "skip":
+                    pass  # Fall through to normal resume logic below
+                # "default" strategy also falls through
 
         node_event = WorkflowNodeCompleted(
             execution_id=execution_id,
