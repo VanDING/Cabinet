@@ -472,8 +472,6 @@ async def _init_runtime(data_dir: str):
     master_key_path = os.path.join(data_dir, ".master_key")
     vault = KeyVault(key_file=master_key_path)
 
-    from cabinet.cli.providers import PROVIDER_REGISTRY
-
     decrypted_keys: dict[str, str] = {}
     migrated = False
     for provider_id, key in config.api_keys.items():
