@@ -38,3 +38,18 @@ def test_safe_eval_invalid_syntax():
 
 def test_safe_eval_in_operator():
     assert safe_eval("x in items", {"x": 1, "items": [1, 2, 3]}) is True
+
+
+def test_safe_eval_blocks_dunder_class():
+    result = safe_eval("context.__class__", {"context": {"x": 1}})
+    assert result is None
+
+
+def test_safe_eval_blocks_dunder_subclasses():
+    result = safe_eval("context.__class__.__subclasses__", {"context": {"x": 1}})
+    assert result is None
+
+
+def test_safe_eval_blocks_underscore_attribute():
+    result = safe_eval("obj._private", {"obj": {"_private": "secret"}})
+    assert result is None

@@ -42,6 +42,8 @@ def _eval_node(node, context_data):
         return context_data.get(node.id)
     if isinstance(node, ast.Attribute):
         value = _eval_node(node.value, context_data)
+        if node.attr.startswith('_'):
+            return None
         if isinstance(value, dict):
             return value.get(node.attr)
         return getattr(value, node.attr, None)
