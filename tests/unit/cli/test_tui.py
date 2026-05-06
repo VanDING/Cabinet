@@ -269,6 +269,12 @@ def test_split_thinking_steps_empty():
     assert result == []
 
 
+def test_split_thinking_steps_whitespace_only():
+    from cabinet.cli.tui import _split_thinking_steps
+    result = _split_thinking_steps("   \n  \n  ")
+    assert result == []
+
+
 def test_handle_chat_thinking_tag_parsing():
     """Thinking content inside <thinking> tags should populate thinking_steps."""
     from cabinet.cli.tui import _handle_chat, _build_cockpit_layout
