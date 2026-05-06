@@ -298,7 +298,6 @@ async def test_init_agent_runtime_returns_none_without_config(tmp_path):
 
 @pytest.mark.asyncio
 async def test_init_runtime_does_not_set_env_vars(tmp_path):
-    import asyncio as _asyncio
     from unittest.mock import AsyncMock, MagicMock, patch
 
     from cabinet.cli.config import CabinetConfig, save_config

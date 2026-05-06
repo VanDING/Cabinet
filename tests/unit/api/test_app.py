@@ -113,7 +113,6 @@ async def test_generic_error_hides_detail_in_production(mock_runtime, mock_confi
     os.environ["CABINET_ENV"] = "production"
     try:
         from fastapi import Request
-        from fastapi.responses import JSONResponse
         from unittest.mock import MagicMock
 
         from cabinet.api.app import create_app
@@ -126,8 +125,6 @@ async def test_generic_error_hides_detail_in_production(mock_runtime, mock_confi
         response = await handler(mock_request, exc)
 
         assert response.status_code == 500
-        data = response.body if hasattr(response, 'body') else response
-        content = JSONResponse(status_code=500, content={"error": "test"}).body
         assert "secret" not in str(response.body)
         assert b"Internal server error" in response.body
     finally:
