@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+import hmac
 import logging
 
 from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
@@ -50,7 +51,7 @@ async def chat_ws(websocket: WebSocket):
 
     if config.api_token:
         token = websocket.query_params.get("token")
-        if token != config.api_token:
+        if not hmac.compare_digest(token or "", config.api_token):
             await websocket.close(code=4001, reason="Unauthorized")
             return
 
