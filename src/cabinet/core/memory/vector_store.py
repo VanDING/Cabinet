@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from uuid import UUID
@@ -38,7 +39,8 @@ class ChromaDBMemoryStore:
 
     async def store(self, key: str, value: MemoryItem, scope: MemoryScope) -> None:
         start = time.monotonic()
-        self._collection.upsert(
+        await asyncio.to_thread(
+            self._collection.upsert,
             ids=[key],
             documents=[value.content],
             metadatas=[{"scope": scope.value, "owner_id": str(value.owner_id), "key": key}],
@@ -47,7 +49,9 @@ class ChromaDBMemoryStore:
             VECTOR_OPERATION_LATENCY.labels(operation="store").observe(time.monotonic() - start)
 
     async def retrieve(self, key: str, scope: MemoryScope) -> MemoryItem | None:
-        results = self._collection.get(ids=[key], where={"scope": scope.value})
+        results = await asyncio.to_thread(
+            self._collection.get, ids=[key], where={"scope": scope.value}
+        )
         if not results["documents"]:
             return None
         metadata = results["metadatas"][0]
@@ -59,10 +63,11 @@ class ChromaDBMemoryStore:
 
     async def search(self, query: str, scope: MemoryScope, limit: int = 5) -> list[MemoryItem]:
         start = time.monotonic()
-        count = self._collection.count()
+        count = await asyncio.to_thread(self._collection.count)
         if count == 0:
             return []
-        results = self._collection.query(
+        results = await asyncio.to_thread(
+            self._collection.query,
             query_texts=[query],
             n_results=min(limit, count),
             where={"scope": scope.value},
@@ -82,7 +87,9 @@ class ChromaDBMemoryStore:
         return items
 
     async def delete(self, key: str, scope: MemoryScope) -> None:
-        self._collection.delete(ids=[key], where={"scope": scope.value})
+        await asyncio.to_thread(
+            self._collection.delete, ids=[key], where={"scope": scope.value}
+        )
 
     async def initialize(self) -> None:
         pass
