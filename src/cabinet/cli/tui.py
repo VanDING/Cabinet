@@ -434,7 +434,7 @@ async def _handle_chat(
             # Throttle: flush every 100ms or on sentence-ending punctuation
             now = time.monotonic()
             text = "".join(chunks)
-            if now - last_flush > 0.1 or (text and text.rstrip()[-1] in (".", "。", "\n")):
+            if now - last_flush > 0.1 or (text and text.rstrip() and text.rstrip()[-1] in (".", "。", "\n")):
                 state.left_content = Markdown(text)
                 live.update(_build_cockpit_layout(state))
                 last_flush = now
