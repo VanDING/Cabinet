@@ -374,9 +374,11 @@ def config(
         if key is None:
             console.print("[red]Error:[/red] Usage: cabinet config set-token <token>")
             raise typer.Exit(code=1)
-        cfg.api_token = key
+        import hashlib as _hashlib
+        token_hash = _hashlib.sha256(key.encode()).hexdigest()
+        cfg.api_token = f"sha256:{token_hash}"
         save_config(cfg, config_path)
-        console.print("[green]API token saved.[/green]")
+        console.print("[green]API token saved (hashed).[/green]")
 
     elif action == "get-token":
         if not cfg.api_token:

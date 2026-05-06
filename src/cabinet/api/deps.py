@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 from typing import TYPE_CHECKING
 
@@ -37,9 +38,18 @@ async def get_current_user(
 
     token = credentials.credentials
 
-    if config.api_token and token == config.api_token:
-        user = {"role": "admin", "token_label": "legacy"}
-    else:
+    user = None
+    if config.api_token:
+        stored = config.api_token
+        if stored.startswith("sha256:"):
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            if hmac.compare_digest(f"sha256:{token_hash}", stored):
+                user = {"role": "admin", "token_label": "legacy"}
+        else:
+            if hmac.compare_digest(token, stored):
+                user = {"role": "admin", "token_label": "legacy"}
+
+    if user is None:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         matched = None
         for entry in config.api_tokens:
