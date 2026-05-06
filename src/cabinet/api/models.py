@@ -43,7 +43,7 @@ class KnowledgeIndexRequest(BaseModel):
 
 class KnowledgeQueryRequest(BaseModel):
     question: str
-    top_k: int = 3
+    top_k: int = Field(3, ge=1, le=50)
 
 
 class KnowledgeQueryResponse(BaseModel):

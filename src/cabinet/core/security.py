@@ -97,6 +97,11 @@ class KeyVault:
 
 
 _SCRIPT_PATTERN = re.compile(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", re.IGNORECASE | re.DOTALL)
+_DANGEROUS_TAGS = re.compile(
+    r"<\s*/?(script|iframe|embed|object|applet|form|input|textarea|select|button)[^>]*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_DANGEROUS_PROTOCOLS = re.compile(r"(javascript|data|vbscript)\s*:", re.IGNORECASE)
 _EVENT_PATTERN = re.compile(r"on\w+\s*=", re.IGNORECASE)
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -104,6 +109,8 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 def sanitize_input(text: str, max_length: int = 10000) -> str:
     text = _CONTROL_CHARS.sub("", text)
     text = _SCRIPT_PATTERN.sub("", text)
+    text = _DANGEROUS_TAGS.sub("", text)
+    text = _DANGEROUS_PROTOCOLS.sub("", text)
     text = _EVENT_PATTERN.sub("", text)
     if len(text) > max_length:
         text = text[:max_length]

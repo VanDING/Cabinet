@@ -103,3 +103,63 @@ async def test_cors_allows_configured_origin(mock_runtime, mock_config):
             },
         )
         assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+
+@pytest.mark.asyncio
+async def test_generic_error_hides_detail_in_production(mock_runtime, mock_config):
+    import os
+
+    original_env = os.environ.get("CABINET_ENV")
+    os.environ["CABINET_ENV"] = "production"
+    try:
+        from fastapi import Request
+        from fastapi.responses import JSONResponse
+        from unittest.mock import MagicMock
+
+        from cabinet.api.app import create_app
+        app = create_app(mock_runtime, mock_config)
+
+        mock_request = MagicMock(spec=Request)
+        exc = RuntimeError("db:///secret/path")
+
+        handler = app.exception_handlers[Exception]
+        response = await handler(mock_request, exc)
+
+        assert response.status_code == 500
+        data = response.body if hasattr(response, 'body') else response
+        content = JSONResponse(status_code=500, content={"error": "test"}).body
+        assert "secret" not in str(response.body)
+        assert b"Internal server error" in response.body
+    finally:
+        if original_env is None:
+            os.environ.pop("CABINET_ENV", None)
+        else:
+            os.environ["CABINET_ENV"] = original_env
+
+
+@pytest.mark.asyncio
+async def test_generic_error_shows_detail_in_development(mock_runtime, mock_config):
+    import os
+
+    original_env = os.environ.get("CABINET_ENV")
+    os.environ["CABINET_ENV"] = "development"
+    try:
+        from fastapi import Request
+        from unittest.mock import MagicMock
+
+        from cabinet.api.app import create_app
+        app = create_app(mock_runtime, mock_config)
+
+        mock_request = MagicMock(spec=Request)
+        exc = RuntimeError("db:///secret/path")
+
+        handler = app.exception_handlers[Exception]
+        response = await handler(mock_request, exc)
+
+        assert response.status_code == 500
+        assert b"secret" in response.body
+    finally:
+        if original_env is None:
+            os.environ.pop("CABINET_ENV", None)
+        else:
+            os.environ["CABINET_ENV"] = original_env

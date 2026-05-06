@@ -127,6 +127,12 @@ def create_app(runtime: CabinetRuntime, config: CabinetConfig) -> FastAPI:
 
     @app.exception_handler(Exception)
     async def generic_error_handler(request, exc):
-        return JSONResponse(status_code=500, content={"error": "Internal error", "detail": str(exc)})
+        import os as _os
+        logger.exception("Unhandled exception")
+        if _os.environ.get("CABINET_ENV") == "development":
+            detail = str(exc)
+        else:
+            detail = "Internal server error"
+        return JSONResponse(status_code=500, content={"error": "Internal error", "detail": detail})
 
     return app

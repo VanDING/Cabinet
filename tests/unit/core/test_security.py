@@ -116,3 +116,29 @@ def test_sanitize_input_strips_control_chars():
     assert "\x01" not in result
     assert "hello" in result
 
+
+def test_sanitize_input_removes_iframe_tags():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<iframe src="evil.com"></iframe>Hello')
+    assert "<iframe" not in result
+    assert "Hello" in result
+
+
+def test_sanitize_input_removes_javascript_protocol():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<a href="javascript:alert(1)">click</a>')
+    assert "javascript:" not in result
+
+
+def test_sanitize_input_removes_data_protocol():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<a href="data:text/html,<script>alert(1)</script>">click</a>')
+    assert "data:" not in result
+
+
+def test_sanitize_input_removes_embed_tags():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<embed src="evil.swf">Hello')
+    assert "<embed" not in result
+    assert "Hello" in result
+
