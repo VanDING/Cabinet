@@ -122,6 +122,47 @@ class SecretaryAgentService(EventSourcedRoom):
                 self._filtered_decisions[event.decision_id] = event.filter_result
         return cross_room
 
+    async def _build_context_prompt(self, captain_id: str, input_text: str) -> str:
+        knowledge_context = ""
+        if self._knowledge_base is not None:
+            chunks = await self._knowledge_base.query(input_text, top_k=3)
+            knowledge_context = "\n".join(c.content for c in chunks)
+
+        memory_context = ""
+        if self._memory_store is not None:
+            from cabinet.models.primitives import MemoryScope
+
+            items = await self._memory_store.search(
+                captain_id,
+                MemoryScope.LONG_TERM,
+                limit=3,
+            )
+            memory_context = "\n".join(item.content for item in items)
+
+        conversation_history = ""
+        if self._conversation_store is not None:
+            history = await self._conversation_store.get_history(captain_id)
+            if history:
+                lines = []
+                for msg in history:
+                    role = msg["role"].capitalize()
+                    lines.append(f"{role}: {msg['content']}")
+                conversation_history = "\n".join(lines)
+
+        prompt = f"Captain says: {input_text}\n\n"
+        if conversation_history:
+            prompt += f"Recent conversation:\n{conversation_history}\n\n"
+        if knowledge_context:
+            prompt += f"Relevant knowledge:\n{knowledge_context}\n\n"
+        if memory_context:
+            prompt += f"Captain's preferences and history:\n{memory_context}\n\n"
+        prompt += (
+            "Parse this instruction and respond appropriately. "
+            "If it's a question, answer it. If it's a task, acknowledge and plan. "
+            "If it's ambiguous, ask for clarification."
+        )
+        return prompt
+
     async def greet(self, captain_id: str) -> Greeting:
         if _OBSERVABILITY_ENABLED:
             ROOM_OPERATION.labels(room="secretary", operation="greet").inc()
@@ -156,6 +197,7 @@ class SecretaryAgentService(EventSourcedRoom):
             message=greeting_text,
             auto_processed_summary="",
             today_highlights=[],
+            fallback="Welcome back" in greeting_text,
         )
 
     async def process_input(
@@ -165,52 +207,17 @@ class SecretaryAgentService(EventSourcedRoom):
     ) -> SecretaryResponse:
         if _OBSERVABILITY_ENABLED:
             ROOM_OPERATION.labels(room="secretary", operation="process_input").inc()
-        knowledge_context = ""
-        if self._knowledge_base is not None:
-            chunks = await self._knowledge_base.query(captain_input, top_k=3)
-            knowledge_context = "\n".join(c.content for c in chunks)
-
-        memory_context = ""
-        if self._memory_store is not None:
-            from cabinet.models.primitives import MemoryScope
-
-            items = await self._memory_store.search(
-                context.captain_id,
-                MemoryScope.LONG_TERM,
-                limit=3,
-            )
-            memory_context = "\n".join(item.content for item in items)
-
-        conversation_history = ""
-        if self._conversation_store is not None:
-            history = await self._conversation_store.get_history(context.captain_id)
-            if history:
-                lines = []
-                for msg in history:
-                    role = msg["role"].capitalize()
-                    lines.append(f"{role}: {msg['content']}")
-                conversation_history = "\n".join(lines)
-
+        fallback = False
         try:
             agent = await self._agent_factory.create_agent(uuid4(), "secretary")
             agent_context = AgentContext(model="default", temperature=0.7)
-            prompt = f"Captain says: {captain_input}\n\n"
-            if conversation_history:
-                prompt += f"Recent conversation:\n{conversation_history}\n\n"
-            if knowledge_context:
-                prompt += f"Relevant knowledge:\n{knowledge_context}\n\n"
-            if memory_context:
-                prompt += f"Captain's preferences and history:\n{memory_context}\n\n"
-            prompt += (
-                "Parse this instruction and respond appropriately. "
-                "If it's a question, answer it. If it's a task, acknowledge and plan. "
-                "If it's ambiguous, ask for clarification."
-            )
+            prompt = await self._build_context_prompt(context.captain_id, captain_input)
             output = await agent.execute(prompt, agent_context)
             response_text = output.content
         except Exception as exc:
             logger.exception("LLM call failed in secretary process_input: %s", exc)
             response_text = "I encountered an error processing your request. Please try again."
+            fallback = True
         event = InputProcessed(
             captain_id=context.captain_id,
             input_text=captain_input,
@@ -239,53 +246,16 @@ class SecretaryAgentService(EventSourcedRoom):
                 context.captain_id, captain_input, response_text
             )
 
-        return SecretaryResponse(message=response_text, level=SecretaryLevel.L1)
+        return SecretaryResponse(message=response_text, level=SecretaryLevel.L1, fallback=fallback)
 
     async def process_input_stream(
         self,
         captain_input: str,
         context: InteractionContext,
     ) -> StreamingSecretaryResponse:
-        knowledge_context = ""
-        if self._knowledge_base is not None:
-            chunks = await self._knowledge_base.query(captain_input, top_k=3)
-            knowledge_context = "\n".join(c.content for c in chunks)
-
-        memory_context = ""
-        if self._memory_store is not None:
-            from cabinet.models.primitives import MemoryScope
-
-            items = await self._memory_store.search(
-                context.captain_id,
-                MemoryScope.LONG_TERM,
-                limit=3,
-            )
-            memory_context = "\n".join(item.content for item in items)
-
-        conversation_history = ""
-        if self._conversation_store is not None:
-            history = await self._conversation_store.get_history(context.captain_id)
-            if history:
-                lines = []
-                for msg in history:
-                    role = msg["role"].capitalize()
-                    lines.append(f"{role}: {msg['content']}")
-                conversation_history = "\n".join(lines)
-
         agent = await self._agent_factory.create_agent(uuid4(), "secretary")
         agent_context = AgentContext(model="default", temperature=0.7)
-        prompt = f"Captain says: {captain_input}\n\n"
-        if conversation_history:
-            prompt += f"Recent conversation:\n{conversation_history}\n\n"
-        if knowledge_context:
-            prompt += f"Relevant knowledge:\n{knowledge_context}\n\n"
-        if memory_context:
-            prompt += f"Captain's preferences and history:\n{memory_context}\n\n"
-        prompt += (
-            "Parse this instruction and respond appropriately. "
-            "If it's a question, answer it. If it's a task, acknowledge and plan. "
-            "If it's ambiguous, ask for clarification."
-        )
+        prompt = await self._build_context_prompt(context.captain_id, captain_input)
 
         collected_chunks: list[str] = []
 

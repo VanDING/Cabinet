@@ -8,10 +8,15 @@ from slowapi.util import get_remote_address
 from cabinet.api.deps import get_config, get_current_user, get_runtime
 from cabinet.api.models import (
     DecisionRequest,
+    DecisionResponse,
     MeetingRequest,
+    MeetingResponse,
     ReviewRequest,
+    ReviewResponse,
     StrategyRequest,
+    StrategyResponse,
     TaskRequest,
+    TaskResponse,
 )
 
 if TYPE_CHECKING:
@@ -22,7 +27,7 @@ router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 
-@router.post("/meeting")
+@router.post("/meeting", response_model=MeetingResponse)
 @limiter.limit("30/minute")
 async def create_meeting(
     request: Request,
@@ -54,7 +59,7 @@ async def create_meeting(
     }
 
 
-@router.post("/decision")
+@router.post("/decision", response_model=DecisionResponse)
 @limiter.limit("30/minute")
 async def create_decision(
     request: Request,
@@ -81,7 +86,7 @@ async def create_decision(
     }
 
 
-@router.post("/task")
+@router.post("/task", response_model=TaskResponse)
 @limiter.limit("30/minute")
 async def create_task(
     request: Request,
@@ -103,7 +108,7 @@ async def create_task(
     }
 
 
-@router.post("/strategy")
+@router.post("/strategy", response_model=StrategyResponse)
 @limiter.limit("30/minute")
 async def decode_strategy(
     request: Request,
@@ -137,7 +142,7 @@ async def decode_strategy(
     }
 
 
-@router.post("/review")
+@router.post("/review", response_model=ReviewResponse)
 @limiter.limit("30/minute")
 async def start_review(
     request: Request,

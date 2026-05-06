@@ -142,3 +142,15 @@ def test_sanitize_input_removes_embed_tags():
     assert "<embed" not in result
     assert "Hello" in result
 
+
+def test_sanitize_input_removes_object_tags():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<object data="evil.swf">Hello')
+    assert "<object" not in result
+
+
+def test_sanitize_input_removes_vbscript_protocol():
+    from cabinet.core.security import sanitize_input
+    result = sanitize_input('<a href="vbscript:msgbox">click</a>')
+    assert "vbscript:" not in result
+

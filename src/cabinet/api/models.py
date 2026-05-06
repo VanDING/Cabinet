@@ -92,3 +92,31 @@ class HealthResponse(BaseModel):
     version: str
     components: list[ComponentHealth]
     uptime_seconds: float
+
+
+class MeetingResponse(BaseModel):
+    session_id: str
+    topic: str
+    proposal: str
+    confidence: float
+
+
+class DecisionResponse(BaseModel):
+    decision_id: str
+    title: str
+    status: str
+
+
+class TaskResponse(BaseModel):
+    task_id: str
+    status: str
+
+
+class StrategyResponse(BaseModel):
+    blueprint_id: str
+    domains: list[str]
+
+
+class ReviewResponse(BaseModel):
+    session_id: str
+    insights: list[str]

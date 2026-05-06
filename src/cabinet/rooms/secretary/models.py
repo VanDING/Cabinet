@@ -21,6 +21,7 @@ class Greeting(BaseModel):
     message: str
     auto_processed_summary: str
     today_highlights: list[str]
+    fallback: bool = False
 
 
 class InteractionContext(BaseModel):
@@ -38,6 +39,7 @@ class SecretaryResponse(BaseModel):
     decision_cards: list[DecisionCard] = []
     actions_taken: list[str] = []
     requires_captain: bool = False
+    fallback: bool = False
 
 
 class PendingSummary(BaseModel):
