@@ -353,3 +353,14 @@ def test_init_shows_setup_provider_hint():
         result = runner.invoke(app, ["init", "TestOrg", "--data-dir", tmpdir])
         assert result.exit_code == 0
         assert "setup-provider" in result.output
+
+
+def test_load_and_decrypt_keys_returns_dict():
+    from cabinet.cli.main import _load_and_decrypt_keys
+    from cabinet.core.security import KeyVault
+
+    vault = KeyVault()
+    config_api_keys = {"openai": vault.encrypt("sk-test")}
+    result = _load_and_decrypt_keys(config_api_keys, vault)
+    assert isinstance(result, dict)
+    assert result["openai"] == "sk-test"

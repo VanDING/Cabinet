@@ -453,11 +453,43 @@ def _update_models_json(models_path: str, new_entry: dict, model_alias: str = "d
         _json.dump(model_list, f, indent=2)
 
 
+def _load_and_decrypt_keys(api_keys: dict, vault) -> dict[str, str]:
+    decrypted_keys: dict[str, str] = {}
+    for provider_id, key in api_keys.items():
+        if key.startswith("vault:"):
+            decrypted_keys[provider_id] = vault.decrypt(key)
+        else:
+            decrypted_keys[provider_id] = key
+    return decrypted_keys
+
+
+def _create_gateway(model_list: list, api_keys: dict):
+    from cabinet.core.gateway.litellm_adapter import LiteLLMRouterGateway
+    return LiteLLMRouterGateway(model_list=model_list, api_keys=api_keys)
+
+
+def _create_memory_store(config, data_dir: str, db_path: str):
+    if config.memory_type == "sqlite":
+        from cabinet.core.memory.sqlite_store import SQLiteMemoryStore
+        return SQLiteMemoryStore(db_path=db_path)
+    from cabinet.core.memory.vector_store import ChromaDBMemoryStore
+    return ChromaDBMemoryStore(persist_dir=os.path.join(data_dir, "vectors"))
+
+
+async def _create_mcp_connector(mcp_servers: list):
+    if not mcp_servers:
+        return None
+    from cabinet.core.tools.mcp_connector import MCPConnector
+    connector = MCPConnector()
+    for server_config in mcp_servers:
+        await connector.connect_server(**server_config.model_dump())
+    return connector
+
+
 async def _init_runtime(data_dir: str):
     from cabinet.agents.employee_store import JsonEmployeeStore
     from cabinet.agents.llm_factory import LLMAgentFactory
     from cabinet.cli.config import load_config, save_config
-    from cabinet.core.gateway.litellm_adapter import LiteLLMRouterGateway
     from cabinet.core.knowledge.local_kb import ChromaDBKnowledgeBase
     from cabinet.core.tools.skill_store import SkillStore
     from cabinet.runtime import CabinetRuntime
@@ -472,34 +504,21 @@ async def _init_runtime(data_dir: str):
     master_key_path = os.path.join(data_dir, ".master_key")
     vault = KeyVault(key_file=master_key_path)
 
-    decrypted_keys: dict[str, str] = {}
+    decrypted_keys = _load_and_decrypt_keys(config.api_keys, vault)
+
     migrated = False
     for provider_id, key in config.api_keys.items():
-        if key.startswith("vault:"):
-            decrypted = vault.decrypt(key[6:])
-        else:
-            decrypted = key
+        if not key.startswith("vault:"):
             encrypted = vault.encrypt(key)
             config.api_keys[provider_id] = f"vault:{encrypted}"
             migrated = True
-        decrypted_keys[provider_id] = decrypted
     if migrated:
         save_config(config, os.path.join(data_dir, "cabinet.json"))
         _migration_logger.info("migrated plaintext API key(s) to vault encryption")
 
     model_list = _load_model_list(data_dir, config)
-    gateway = LiteLLMRouterGateway(model_list=model_list, api_keys=decrypted_keys)
-
-    if config.memory_type == "sqlite":
-        from cabinet.core.memory.sqlite_store import SQLiteMemoryStore
-
-        memory_store = SQLiteMemoryStore(db_path=db_path)
-    else:
-        from cabinet.core.memory.vector_store import ChromaDBMemoryStore
-
-        memory_store = ChromaDBMemoryStore(
-            persist_dir=os.path.join(data_dir, "vectors"),
-        )
+    gateway = _create_gateway(model_list, decrypted_keys)
+    memory_store = _create_memory_store(config, data_dir, db_path)
 
     employee_store = JsonEmployeeStore(
         path=os.path.join(data_dir, config.employees_path)
@@ -522,12 +541,8 @@ async def _init_runtime(data_dir: str):
         "knowledge_base": knowledge_base,
         "employee_store": employee_store,
     }
-    if config.mcp_servers:
-        from cabinet.core.tools.mcp_connector import MCPConnector
-
-        mcp_connector = MCPConnector()
-        for server_config in config.mcp_servers:
-            await mcp_connector.connect_server(**server_config.model_dump())
+    mcp_connector = await _create_mcp_connector(config.mcp_servers)
+    if mcp_connector:
         kwargs["mcp_connector"] = mcp_connector
 
     runtime = CabinetRuntime(**kwargs)
