@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel
 
 from cabinet.agents.context import AgentContext
+from cabinet.core.auth import AccessControlList
 from cabinet.core.events.event_sourced import EventSourcedRoom, RoomEventStore
 from cabinet.core.events.wiring import RoomEventPublisher
 from cabinet.core.parsing import AuthorizationCheckResult, CascadeOutput, parse_llm_json
@@ -45,11 +46,13 @@ class DecisionRoomService(EventSourcedRoom):
         agent_factory: object,
         escalation_protocol: object | None = None,
         handoff_manager: object | None = None,
+        acl: AccessControlList | None = None,
     ):
         super().__init__(store, publisher)
         self._agent_factory = agent_factory
         self._escalation_protocol = escalation_protocol
         self._handoff_manager = handoff_manager
+        self._acl = acl
         self._decisions: dict[UUID, Decision] = {}
         self._rules: dict[UUID, AuthorizationRule] = {}
         self._dashboard_cache: DecisionDashboard | None = None

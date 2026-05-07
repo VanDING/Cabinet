@@ -27,6 +27,14 @@ def has_permission(role: Role, permission: Permission) -> bool:
     return permission in ROLE_PERMISSIONS.get(role, set())
 
 
+class ConfirmationRequired(Exception):
+    """Raised when an ACL rule requires user confirmation (Decision.ASK)."""
+
+    def __init__(self, message: str, rule: object = None):
+        super().__init__(message)
+        self.rule = rule
+
+
 # ── deterministic ACL ──────────────────────────────────────
 
 
