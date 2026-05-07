@@ -55,10 +55,10 @@ def test_loop_node():
     body_id = uuid.uuid4()
     node = LoopNode(
         iterator_expr="items",
-        body_node_ids=[body_id],
+        body_entry_id=body_id,
     )
     assert node.kind == "loop"
-    assert len(node.body_node_ids) == 1
+    assert node.body_entry_id == body_id
 
 
 def test_human_approval_node():
@@ -188,7 +188,7 @@ def test_all_node_types_have_id():
         TriggerNode(trigger_type="manual", condition="start"),
         SkillNode(skill_id=uuid.uuid4(), employee_id=uuid.uuid4()),
         ConditionNode(expression="x > 0", true_next=uuid.uuid4(), false_next=uuid.uuid4()),
-        LoopNode(iterator_expr="items", body_node_ids=[uuid.uuid4()]),
+        LoopNode(iterator_expr="items", body_node_ids=[uuid.uuid4()], body_entry_id=uuid.uuid4()),
         HumanApprovalNode(decision_type="execution", message_template="Approve?"),
         HumanNode(employee_id=uuid.uuid4()),
         ParallelNode(branch_node_ids=[uuid.uuid4()], aggregation_strategy="wait_all"),
