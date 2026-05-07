@@ -39,6 +39,11 @@ def _filter_completions(text: str) -> list[str]:
 class InputArea(Vertical):
     """Input area with command completion overlay."""
 
+    BINDINGS = [
+        ("up", "history_prev", "Previous command"),
+        ("down", "history_next", "Next command"),
+    ]
+
     def __init__(self, data_dir: str = "", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._data_dir = data_dir
@@ -92,3 +97,24 @@ class InputArea(Vertical):
                     self._history = [line.rstrip("\n") for line in f if line.strip()]
         except Exception:
             self._history = []
+
+    def action_history_prev(self) -> None:
+        """Navigate to previous command in history."""
+        if not self._history:
+            return
+        if self._history_index < len(self._history) - 1:
+            self._history_index += 1
+        idx = len(self._history) - 1 - self._history_index
+        inp = self.query_one("#prompt-input", Input)
+        inp.value = self._history[idx]
+        inp.cursor_position = len(inp.value)
+
+    def action_history_next(self) -> None:
+        """Navigate to next command in history."""
+        if self._history_index <= 0:
+            self._history_index = -1
+            self.query_one("#prompt-input", Input).value = ""
+            return
+        self._history_index -= 1
+        idx = len(self._history) - 1 - self._history_index
+        self.query_one("#prompt-input", Input).value = self._history[idx]
