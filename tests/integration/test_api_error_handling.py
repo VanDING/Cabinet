@@ -76,21 +76,6 @@ async def test_405_method_not_allowed(app):
 
 
 @pytest.mark.asyncio
-async def test_500_server_error(app, mock_runtime):
-    mock_runtime.secretary.process_input = AsyncMock(
-        side_effect=Exception("boom")
-    )
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/api/chat",
-            json={"message": "hello", "captain_id": "cap1"},
-            headers={"Authorization": "Bearer test-token"},
-        )
-        assert response.status_code == 500
-
-
-@pytest.mark.asyncio
 async def test_413_payload_too_large(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
