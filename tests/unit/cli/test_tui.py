@@ -15,6 +15,7 @@ def test_cockpit_state_defaults():
     assert state.captain_id == ""
     assert state.left_content is None
     assert state._ctrl_c_count == 0
+    assert state.conversation == []
 
 
 def test_cockpit_state_custom():
@@ -213,7 +214,10 @@ def test_handle_chat_updates_content():
     mock_interaction_context = MagicMock()
     with patch.dict("sys.modules", {"cabinet.rooms.secretary.models": MagicMock(InteractionContext=mock_interaction_context)}):
         asyncio.run(_handle_chat("你好", state, runtime, mock_live))
-    assert state.left_content is not None
+    # Conversation stores messages; left_content cleared after final flush
+    assert len(state.conversation) >= 2  # user + assistant
+    assert state.conversation[0]["role"] == "user"
+    assert state.conversation[0]["content"] == "你好"
     mock_live.update.assert_called()
 
 

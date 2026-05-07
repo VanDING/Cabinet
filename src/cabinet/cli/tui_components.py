@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from rich.align import Align
-from rich.console import RenderableType
+from rich.console import Group, RenderableType
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.text import Text
@@ -198,3 +198,30 @@ def render_thinking_block(thoughts: list[str], expanded: bool = False) -> Render
         border_style=CABINET_YELLOW,
         padding=(0, 1),
     )
+
+
+def render_conversation(conversation: list[dict],
+                        streaming_content: RenderableType | None = None) -> RenderableType:
+    """Render conversation history with user messages and AI responses."""
+    from rich.markdown import Markdown
+
+    elements: list[RenderableType] = []
+
+    for msg in conversation:
+        if msg["role"] == "user":
+            user_text = Text()
+            user_text.append("💬 ", style=STYLE_DIM)
+            user_text.append(msg["content"], style=STYLE_DIM)
+            elements.append(user_text)
+            elements.append(Text())
+        else:
+            elements.append(Markdown(msg["content"]))
+            elements.append(Text())
+
+    if streaming_content is not None:
+        elements.append(streaming_content)
+
+    if not elements:
+        return Align.center(Text("开始对话吧...", style=STYLE_DIM), vertical="middle")
+
+    return Group(*elements)
