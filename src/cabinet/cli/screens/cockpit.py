@@ -9,6 +9,7 @@ from textual.widgets import Input, Static
 from cabinet.cli.intent import detect_intent, execute_intent
 from cabinet.cli.widgets.conversation import ConversationView
 from cabinet.cli.widgets.header import Header
+from cabinet.cli.widgets.input_area import InputArea
 from cabinet.cli.widgets.side_panels import DecisionPanel, MeetingPanel, OfficePanel
 from cabinet.cli.widgets.thinking import ThinkingPanel
 
@@ -68,7 +69,7 @@ class CockpitScreen(Screen):
                 yield MeetingPanel(id="meeting-panel")
                 yield DecisionPanel(id="decision-panel")
                 yield OfficePanel(id="office-panel")
-        yield Input(placeholder="decision > ", id="prompt-input")
+        yield InputArea(data_dir=self.data_dir, id="input-area")
 
     def on_mount(self) -> None:
         self.set_interval(1, self._tick)
