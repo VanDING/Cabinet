@@ -72,3 +72,31 @@ def test_mode_labels_exist():
     assert "meeting" in Header.MODE_LABELS
     assert "office" in Header.MODE_LABELS
     assert "summary" in Header.MODE_LABELS
+
+
+def test_slash_commands_list_complete():
+    """All 13 slash commands should be in the recognized set."""
+    expected = {
+        "/decision", "/meeting", "/office", "/summary",
+        "/decide", "/task", "/strategy", "/review",
+        "/skills", "/employees", "/status", "/help", "/quit",
+    }
+    from cabinet.cli.widgets.input_area import SLASH_COMMANDS_LIST
+    assert set(SLASH_COMMANDS_LIST) == expected
+
+
+def test_thinking_tag_regex():
+    """THINKING_RE extracts thinking content and removes from text."""
+    import re
+    THINKING_RE = re.compile(r"<thinking>(.*?)</thinking>", re.DOTALL)
+
+    text = "Hello<thinking>step1\nstep2</thinking>World"
+    m = THINKING_RE.search(text)
+    assert m is not None
+    assert m.group(1) == "step1\nstep2"
+
+    result = THINKING_RE.sub("", text).strip()
+    assert result == "HelloWorld"
+
+    # No thinking tag
+    assert THINKING_RE.search("No thinking here") is None
