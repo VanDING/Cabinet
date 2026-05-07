@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from cabinet import __version__
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -68,7 +69,11 @@ def create_app(runtime: CabinetRuntime, config: CabinetConfig) -> FastAPI:
     @app.middleware("http")
     async def prometheus_middleware(request: Request, call_next):
         start = time.monotonic()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception("Unhandled exception")
+            response = JSONResponse(status_code=500, content={"error": "Internal error", "detail": "Internal server error"})
         duration = time.monotonic() - start
         endpoint = request.url.path
         REQUEST_COUNT.labels(
@@ -125,14 +130,8 @@ def create_app(runtime: CabinetRuntime, config: CabinetConfig) -> FastAPI:
     async def value_error_handler(request, exc):
         return JSONResponse(status_code=400, content={"error": "Bad request", "detail": str(exc)})
 
-    @app.exception_handler(Exception)
-    async def generic_error_handler(request, exc):
-        import os as _os
-        logger.exception("Unhandled exception")
-        if _os.environ.get("CABINET_ENV") == "development":
-            detail = str(exc)
-        else:
-            detail = "Internal server error"
-        return JSONResponse(status_code=500, content={"error": "Internal error", "detail": detail})
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request, exc):
+        return JSONResponse(status_code=400, content={"error": "Bad request", "detail": str(exc)})
 
     return app
