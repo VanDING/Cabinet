@@ -9,6 +9,7 @@ from uuid import uuid4
 from cabinet.agents.context import AgentContext, AgentOutput, TeamContext, TeamOutput
 from cabinet.agents.structured import StructuredOutputConfig, StructuredOutputParser
 from cabinet.agents.tools import ToolDefinition
+from cabinet.core.compact import TokenBudget
 from cabinet.core.gateway.protocol import ModelGateway
 from cabinet.models.primitives import Employee, Team
 
@@ -27,6 +28,7 @@ class LiteLLMAgent:
         system_prompt: str = "",
         memory_store: MemoryStore | None = None,
         max_history: int = 20,
+        max_context_tokens: int | None = None,
         tools: list[ToolDefinition] | None = None,
         tool_registry: object | None = None,
     ):
@@ -42,13 +44,16 @@ class LiteLLMAgent:
         self._tool_registry = tool_registry
         self._tool_schemas = self._build_tool_schemas()
         self._output_parser = StructuredOutputParser()
+        self._token_budget = TokenBudget(
+            model_max_tokens=max_context_tokens or 200_000
+        )
 
     @property
     def employee(self) -> Employee:
         return self._employee
 
     async def _build_messages(self, task: str) -> list[dict]:
-        messages = [{"role": "system", "content": self._system_prompt}]
+        system_msgs = [{"role": "system", "content": self._system_prompt}]
         if self._memory_store is not None:
             from cabinet.models.primitives import MemoryScope
 
@@ -59,14 +64,13 @@ class LiteLLMAgent:
             )
             if items:
                 memory_text = "\n".join(item.content for item in items)
-                messages.append({"role": "system", "content": f"Relevant memory:\n{memory_text}"})
-        messages.extend(self._history)
-        messages.append({"role": "user", "content": task})
-        return messages
+                system_msgs.append({"role": "system", "content": f"Relevant memory:\n{memory_text}"})
+        new_msg = {"role": "user", "content": task}
+        return self._token_budget.fit_messages(system_msgs, self._history, new_msg)
 
     def _trim_history(self) -> None:
-        if len(self._history) > self._max_history * 2:
-            self._history = self._history[-(self._max_history * 2):]
+        result = self._token_budget.fit_messages([], self._history, {"role": "user", "content": ""})
+        self._history = result[:-1]
 
     def _build_tool_schemas(self) -> list[dict]:
         return [t.to_openai_schema() for t in self._tools]
@@ -135,9 +139,9 @@ class LiteLLMAgent:
 
     async def reflect(self, output: AgentOutput) -> AgentOutput:
         reflection_prompt = f"Review and improve your previous response:\n\n{output.content}"
-        messages = [{"role": "system", "content": self._system_prompt}]
-        messages.extend(self._history)
-        messages.append({"role": "user", "content": reflection_prompt})
+        system_msgs = [{"role": "system", "content": self._system_prompt}]
+        new_msg = {"role": "user", "content": reflection_prompt}
+        messages = self._token_budget.fit_messages(system_msgs, self._history, new_msg)
         response = await self._gateway.complete(messages=messages, model="default", temperature=0.5)
         return AgentOutput(content=response.content, employee_id=self._employee.id)
 
