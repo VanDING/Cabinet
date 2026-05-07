@@ -57,6 +57,52 @@ def save_config(config: CabinetConfig, path: str = "data/cabinet.json") -> None:
         f.write(config.model_dump_json(indent=2))
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    result = dict(base)
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _default_config_dict() -> dict:
+    return {
+        "organization": {"name": "Default Org", "captain_id": ""},
+        "default_project": None,
+        "memory_type": "sqlite",
+        "auth_required": False,
+        "model_config_path": "data/models.json",
+        "employees_path": "data/employees.json",
+        "skills_dir": "data/skills",
+        "mcp_servers": [],
+        "api_keys": {},
+        "api_tokens": [],
+        "cors_origins": ["*"],
+        "observability": {"enabled": True, "log_level": "INFO", "log_format": "text"},
+    }
+
+
+def load_config_hierarchical(data_dir: str) -> CabinetConfig:
+    config_dict: dict = _default_config_dict()
+
+    user_config = Path.home() / ".cabinet" / "config.json"
+    if user_config.exists():
+        config_dict = _deep_merge(config_dict, json.loads(user_config.read_text()))
+
+    project_config = Path(data_dir) / "cabinet.json"
+    if project_config.exists():
+        config_dict = _deep_merge(config_dict, json.loads(project_config.read_text()))
+
+    local_config = Path(data_dir) / "cabinet.local.json"
+    if local_config.exists():
+        config_dict = _deep_merge(config_dict, json.loads(local_config.read_text()))
+
+    config_dict = {k: v for k, v in config_dict.items() if v is not None}
+    return CabinetConfig.model_validate(config_dict)
+
+
 def load_config(path: str = "data/cabinet.json") -> CabinetConfig:
     if not Path(path).exists():
         raise FileNotFoundError(
