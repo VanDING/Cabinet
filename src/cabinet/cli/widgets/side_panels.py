@@ -44,21 +44,18 @@ class DecisionPanel(Vertical):
 class OfficePanel(Vertical):
     """Office room status panel."""
 
-    def __init__(self):
-        super().__init__()
-        self._progress = ProgressBar(total=100)
-
     def compose(self) -> ComposeResult:
         yield Static("办公室", classes="panel-title")
-        yield self._progress
+        yield ProgressBar(total=100, id="office-progress")
         yield Static("Idle", id="office-content")
 
     def update_state(self, state: CockpitState) -> None:
+        progress = self.query_one("#office-progress", ProgressBar)
         if state.office_workflow:
-            self._progress.update(progress=int(state.office_progress * 100))
+            progress.update(progress=int(state.office_progress * 100))
             self.query_one("#office-content").update(
                 f"{state.office_workflow}\n当前: {state.office_current_node}"
             )
         else:
-            self._progress.update(progress=0)
+            progress.update(progress=0)
             self.query_one("#office-content").update("Idle")
