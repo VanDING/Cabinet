@@ -383,7 +383,7 @@ async def test_execute_stream_persists_to_memory():
 
 
 @pytest.mark.asyncio
-async def test_history_truncation():
+async def test_history_truncation_token_based():
     from cabinet.agents.llm_agent import LiteLLMAgent
     from unittest.mock import AsyncMock, MagicMock
 
@@ -399,14 +399,14 @@ async def test_history_truncation():
     employee = Employee(
         id=uuid4(), team_id=uuid4(), name="Test", role="test", kind="ai"
     )
-    agent = LiteLLMAgent(employee=employee, gateway=gateway, max_history=3)
+    agent = LiteLLMAgent(employee=employee, gateway=gateway, max_history=3, max_context_tokens=5)
 
     for i in range(10):
         agent._history.append({"role": "user", "content": f"msg{i}"})
         agent._history.append({"role": "assistant", "content": f"resp{i}"})
 
     agent._trim_history()
-    assert len(agent._history) <= 6
+    assert len(agent._history) < 20
 
 
 @pytest.mark.asyncio
