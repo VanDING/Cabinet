@@ -109,9 +109,7 @@ from unittest.mock import AsyncMock, MagicMock
 def test_handle_slash_command_mode_switch():
     from cabinet.cli.tui import _handle_slash_command
     state = CockpitState()
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/meeting", state, MagicMock())
-    )
+    asyncio.run(_handle_slash_command("/meeting", state, MagicMock()))
     assert state.mode == "meeting"
     assert state.left_content is None
 
@@ -119,18 +117,14 @@ def test_handle_slash_command_mode_switch():
 def test_handle_slash_command_decision():
     from cabinet.cli.tui import _handle_slash_command
     state = CockpitState()
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/decision", state, MagicMock())
-    )
+    asyncio.run(_handle_slash_command("/decision", state, MagicMock()))
     assert state.mode == "decision"
 
 
 def test_handle_slash_command_help():
     from cabinet.cli.tui import _handle_slash_command
     state = CockpitState()
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/help", state, MagicMock())
-    )
+    asyncio.run(_handle_slash_command("/help", state, MagicMock()))
     assert state.left_content is not None
 
 
@@ -142,9 +136,7 @@ def test_handle_slash_command_status():
     runtime.secretary.summarize_pending = AsyncMock(
         return_value=MagicMock(digest="2 项紧急", urgent_count=2)
     )
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/status", state, runtime)
-    )
+    asyncio.run(_handle_slash_command("/status", state, runtime))
     assert state.secretary_message == "2 项紧急"
     assert state.secretary_urgent is True
 
@@ -160,9 +152,7 @@ def test_handle_slash_command_meeting_with_topic():
     )
     mock_meeting_level = MagicMock()
     with patch.dict("sys.modules", {"cabinet.rooms.meeting.models": MagicMock(MeetingLevel=mock_meeting_level)}):
-        asyncio.get_event_loop().run_until_complete(
-            _handle_slash_command("/meeting Q3预算", state, runtime)
-        )
+        asyncio.run(_handle_slash_command("/meeting Q3预算", state, runtime))
     assert state.mode == "meeting"
     assert state.meeting_topic == "Q3预算"
 
@@ -175,9 +165,7 @@ def test_handle_slash_command_decide_with_title():
     runtime.decision.submit = AsyncMock(
         return_value=MagicMock(id="dec-1")
     )
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/decide 合同续签", state, runtime)
-    )
+    asyncio.run(_handle_slash_command("/decide 合同续签", state, runtime))
     assert state.mode == "decision"
 
 
@@ -189,9 +177,7 @@ def test_handle_slash_command_task_with_desc():
     runtime.office.submit_task = AsyncMock(
         return_value=MagicMock(id="task-1")
     )
-    asyncio.get_event_loop().run_until_complete(
-        _handle_slash_command("/task 数据迁移", state, runtime)
-    )
+    asyncio.run(_handle_slash_command("/task 数据迁移", state, runtime))
     assert state.mode == "office"
 
 
@@ -226,9 +212,7 @@ def test_handle_chat_updates_content():
 
     mock_interaction_context = MagicMock()
     with patch.dict("sys.modules", {"cabinet.rooms.secretary.models": MagicMock(InteractionContext=mock_interaction_context)}):
-        asyncio.get_event_loop().run_until_complete(
-            _handle_chat("你好", state, runtime, mock_live)
-        )
+        asyncio.run(_handle_chat("你好", state, runtime, mock_live))
     assert state.left_content is not None
     mock_live.update.assert_called()
 
@@ -287,9 +271,7 @@ def test_handle_chat_thinking_tag_parsing():
 
     mock_interaction_context = MagicMock()
     with patch.dict("sys.modules", {"cabinet.rooms.secretary.models": MagicMock(InteractionContext=mock_interaction_context)}):
-        asyncio.get_event_loop().run_until_complete(
-            _handle_chat("测试", state, runtime, mock_live)
-        )
+        asyncio.run(_handle_chat("测试", state, runtime, mock_live))
     assert len(state.thinking_steps) > 0
     assert "第一步分析" in state.thinking_steps[0]
 
