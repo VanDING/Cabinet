@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from prompt_toolkit.styles import Style as PromptStyle
 from rich.style import Style
 
 CABINET_BLUE = "#3B82F6"  # was #081D60 — too dark on black terminals
@@ -14,11 +13,6 @@ STYLE_YELLOW_BOLD = Style(color=CABINET_YELLOW, bold=True)
 STYLE_DIM = Style(color="#64748B", dim=True)  # was grey62 — slate-500
 STYLE_BLUE = Style(color=CABINET_BLUE)
 STYLE_SUCCESS = Style(color="#22C55E")  # new — green for success messages
-
-INPUT_STYLE = PromptStyle.from_dict({
-    "": "#ffffff",           # user input text — bright white, always visible
-    "prompt": "#3B82F6 bold", # prompt text (e.g. "decision >")
-})
 
 CABINET_LOGO = """
 [bold #CB220C]██████████████[/]    [bold #EDB61B]██████████████[/]    [bold #3B82F6]████████████████████████████[/]
