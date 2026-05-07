@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import logging
+import re
 import tempfile
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
+
+import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,3 +89,133 @@ def compact_tool_result(
         f"{preview}\n\n...[truncated: {len(content)} chars total, full content at {filepath}]",
         str(filepath),
     )
+
+
+# ── context compaction ──────────────────────────────────────
+
+
+@dataclass
+class SessionMemory:
+    summary: str
+    key_decisions: list[str] = field(default_factory=list)
+    pending_tasks: list[str] = field(default_factory=list)
+    updated_at: float = field(default_factory=time.monotonic)
+    token_count: int = 0
+
+    STALE_THRESHOLD: float = 300.0
+
+    @property
+    def is_fresh(self) -> bool:
+        return (time.monotonic() - self.updated_at) < self.STALE_THRESHOLD
+
+    @classmethod
+    def load(cls, path: Path) -> SessionMemory | None:
+        if not path.exists():
+            return None
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not data:
+            return None
+        return cls(**data)
+
+    def save(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            yaml.dump(
+                {
+                    "summary": self.summary,
+                    "key_decisions": self.key_decisions,
+                    "pending_tasks": self.pending_tasks,
+                    "updated_at": self.updated_at,
+                    "token_count": self.token_count,
+                },
+                allow_unicode=True,
+            ),
+            encoding="utf-8",
+        )
+
+
+def format_history(history: list[dict], max_chars_per_msg: int = 500) -> str:
+    lines = []
+    for msg in history:
+        role = msg.get("role", "unknown")
+        content = msg.get("content", "")[:max_chars_per_msg]
+        lines.append(f"[{role}]: {content}")
+    return "\n".join(lines)
+
+
+async def summarize_with_llm(
+    history: list[dict],
+    gateway,
+    model: str = "default",
+) -> str:
+    prompt = (
+        "<analysis>\n"
+        "Analyze the conversation history below. Identify:\n"
+        "1. Key decisions made (with rationale)\n"
+        "2. Pending tasks / unresolved items\n"
+        "3. Important constraints or context that must be preserved\n"
+        "4. Files/entities mentioned that may need to be referenced again\n"
+        "</analysis>\n\n"
+        "<summary>\n"
+        "Condense the essential context from the conversation into a compact summary.\n"
+        "Focus on WHAT was decided, WHAT is pending, and WHY.\n"
+        "Omit conversational filler, greetings, and redundant explanations.\n"
+        "</summary>\n\n"
+        "## Conversation History\n"
+        f"{format_history(history)}"
+    )
+    response = await gateway.complete(
+        messages=[{"role": "user", "content": prompt}],
+        model=model,
+        temperature=0.3,
+    )
+    m = re.search(r"<summary>(.*?)</summary>", response.content, re.DOTALL)
+    return m.group(1).strip() if m else response.content[:2000]
+
+
+class ContextCompactor:
+    def __init__(
+        self,
+        gateway,
+        session_memory_path: Path | None = None,
+        model: str = "default",
+        max_failures: int = 3,
+    ):
+        self._gateway = gateway
+        self._session_path = session_memory_path
+        self._model = model
+        self._failure_count = 0
+        self._max_failures = max_failures
+
+    async def compact(
+        self,
+        history: list[dict],
+        budget: TokenBudget,
+    ) -> tuple[str, SessionMemory | None]:
+        if self._failure_count >= self._max_failures:
+            return "[Compaction suspended — circuit breaker open]", None
+
+        if self._session_path:
+            mem = SessionMemory.load(self._session_path)
+            if mem and mem.is_fresh:
+                return mem.summary, mem
+
+        try:
+            summary = await summarize_with_llm(history, self._gateway, self._model)
+            mem = SessionMemory(
+                summary=summary,
+                token_count=budget.estimate_tokens(summary),
+            )
+            if self._session_path:
+                mem.save(self._session_path)
+            self._failure_count = 0
+            return summary, mem
+        except Exception as e:
+            self._failure_count += 1
+            logger.error(
+                "Compaction failed (%d/%d): %s",
+                self._failure_count,
+                self._max_failures,
+                e,
+            )
+            return f"[Compaction failed: {e}]", None
