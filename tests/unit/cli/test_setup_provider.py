@@ -2,8 +2,6 @@ import json
 import os
 import tempfile
 
-import pytest
-
 from cabinet.cli.config import CabinetConfig, load_config, save_config
 from cabinet.cli.providers import PROVIDER_REGISTRY, build_model_entry
 from cabinet.models.primitives import Organization
