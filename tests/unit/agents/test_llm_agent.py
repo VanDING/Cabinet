@@ -461,3 +461,62 @@ async def test_llm_agent_execute_structured():
     )
     assert output.structured_data is not None
     assert output.structured_data.get("analysis") == "positive"
+
+
+@pytest.mark.asyncio
+async def test_llm_agent_has_circuit_breakers():
+    from cabinet.agents.llm_agent import LiteLLMAgent
+
+    gateway = MockGateway()
+    employee = Employee(id=uuid4(), team_id=uuid4(), name="test", role="advisor", kind="ai")
+    agent = LiteLLMAgent(employee, gateway)
+    assert hasattr(agent, "_tool_breaker")
+    assert hasattr(agent, "_api_breaker")
+
+
+@pytest.mark.asyncio
+async def test_llm_agent_circuit_breaker_handles_tool_errors():
+    """Tool result error when circuit breaker catches failures."""
+    from cabinet.agents.llm_agent import LiteLLMAgent
+    from cabinet.agents.tools import ToolDefinition
+    from unittest.mock import MagicMock
+
+    class ToolCallGateway:
+        def __init__(self):
+            self.call_count = 0
+
+        async def complete(self, messages, model, temperature=0.7, **kwargs):
+            from cabinet.core.gateway.protocol import ModelResponse
+            self.call_count += 1
+            if self.call_count <= 2:
+                tc = MagicMock(id=f"tc_{self.call_count}")
+                tc.function.name = "failing_tool"
+                tc.function.arguments = '{}'
+                return ModelResponse(content="", model=model, tool_calls=[tc])
+            return ModelResponse(content="Task complete despite tool errors", model=model)
+
+        async def stream(self, messages, model, temperature=0.7, **kwargs):
+            from cabinet.core.gateway.protocol import ModelChunk
+            yield ModelChunk(content="result", model=model)
+
+        def list_models(self):
+            return []
+
+    class FailingExecutor:
+        def execute_tool(self, name, args):
+            raise RuntimeError("tool execution failed")
+
+    from cabinet.agents.tools import ToolRegistryAdapter
+    tool_reg = ToolRegistryAdapter(FailingExecutor())
+
+    gateway = ToolCallGateway()
+    employee = Employee(id=uuid4(), team_id=uuid4(), name="test", role="advisor", kind="ai")
+    tools = [ToolDefinition(
+        name="failing_tool", description="Always fails",
+        input_schema={"type": "object", "properties": {}},
+    )]
+    agent = LiteLLMAgent(employee, gateway, tools=tools, tool_registry=tool_reg)
+    agent._tool_breaker.max_failures = 1
+
+    output = await agent.execute("test", AgentContext())
+    assert output.content == "Task complete despite tool errors"

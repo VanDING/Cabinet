@@ -11,6 +11,11 @@ from cabinet.agents.structured import StructuredOutputConfig, StructuredOutputPa
 from cabinet.agents.tools import ToolDefinition
 from cabinet.core.compact import TokenBudget
 from cabinet.core.gateway.protocol import ModelGateway
+from cabinet.core.resilience import (
+    CircuitBreaker,
+    CircuitBreakerOpenError,
+    retry_with_backoff,
+)
 from cabinet.models.primitives import Employee, Team
 
 if TYPE_CHECKING:
@@ -47,6 +52,8 @@ class LiteLLMAgent:
         self._token_budget = TokenBudget(
             model_max_tokens=max_context_tokens or 200_000
         )
+        self._tool_breaker = CircuitBreaker(max_failures=3)
+        self._api_breaker = CircuitBreaker(max_failures=5, reset_timeout=30.0)
 
     @property
     def employee(self) -> Employee:
@@ -159,7 +166,21 @@ class LiteLLMAgent:
                 kwargs["tools"] = self._tool_schemas
                 kwargs["tool_choice"] = "auto"
 
-            response = await self._gateway.complete(**kwargs)
+            try:
+                response = await self._api_breaker.call(
+                    lambda: retry_with_backoff(
+                        lambda: self._gateway.complete(**kwargs)
+                    )
+                )
+            except CircuitBreakerOpenError:
+                elapsed = (time.monotonic() - start) * 1000
+                return AgentOutput(
+                    content="Service temporarily unavailable (circuit breaker open)",
+                    employee_id=self._employee.id,
+                    status="error",
+                    duration_ms=elapsed,
+                )
+
             tool_calls = getattr(response, "tool_calls", None)
 
             if not tool_calls:
@@ -180,7 +201,12 @@ class LiteLLMAgent:
             messages.append(assistant_msg)
 
             for tool_call in tool_calls:
-                result = await self._execute_tool_call(tool_call)
+                try:
+                    result = await self._tool_breaker.call(
+                        lambda tc=tool_call: self._execute_tool_call(tc)
+                    )
+                except CircuitBreakerOpenError:
+                    result = {"error": "Tool execution suspended", "status": "error"}
                 messages.append({
                     "role": "tool", "tool_call_id": tool_call.id,
                     "content": json.dumps(result),
