@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -8,7 +9,7 @@ from uuid import uuid4
 
 from cabinet.agents.context import AgentContext, AgentOutput, TeamContext, TeamOutput
 from cabinet.agents.structured import StructuredOutputConfig, StructuredOutputParser
-from cabinet.agents.tools import ToolDefinition
+from cabinet.agents.tools import ToolDefinition, partition_tool_calls
 from cabinet.core.compact import TokenBudget, compact_tool_result
 from cabinet.core.gateway.protocol import ModelGateway
 from cabinet.core.resilience import (
@@ -200,17 +201,35 @@ class LiteLLMAgent:
             ]
             messages.append(assistant_msg)
 
-            for tool_call in tool_calls:
-                try:
-                    result = await self._tool_breaker.call(
-                        lambda tc=tool_call: self._execute_tool_call(tc)
-                    )
-                except CircuitBreakerOpenError:
-                    result = {"error": "Tool execution suspended", "status": "error"}
-                messages.append({
-                    "role": "tool", "tool_call_id": tool_call.id,
-                    "content": json.dumps(result),
-                })
+            partitions = partition_tool_calls(tool_calls)
+            for batch in partitions:
+                if len(batch) == 1:
+                    tc = batch[0]
+                    try:
+                        result = await self._tool_breaker.call(
+                            lambda tc=tc: self._execute_tool_call(tc)
+                        )
+                    except CircuitBreakerOpenError:
+                        result = {"error": "Tool execution suspended", "status": "error"}
+                    messages.append({
+                        "role": "tool", "tool_call_id": tc.id,
+                        "content": json.dumps(result),
+                    })
+                else:
+                    batch_results = await asyncio.gather(*[
+                        self._tool_breaker.call(
+                            lambda tc=tc: self._execute_tool_call(tc)
+                        ) for tc in batch
+                    ], return_exceptions=True)
+                    for tc, result in zip(batch, batch_results):
+                        if isinstance(result, CircuitBreakerOpenError):
+                            result = {"error": "Tool execution suspended", "status": "error"}
+                        elif isinstance(result, Exception):
+                            result = {"error": str(result), "status": "error"}
+                        messages.append({
+                            "role": "tool", "tool_call_id": tc.id,
+                            "content": json.dumps(result),
+                        })
 
         elapsed = (time.monotonic() - start) * 1000
         self._history.append({"role": "assistant", "content": "Max tool calls reached"})
