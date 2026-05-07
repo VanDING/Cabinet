@@ -51,3 +51,50 @@ class ToolRegistryAdapter:
 
     async def execute_tool(self, name: str, arguments: dict) -> Any:
         return await self._registry.execute(name, arguments)
+
+
+# ── tool concurrency partitioning ───────────────────────────
+
+CONCURRENT_SAFE_TOOLS: set[str] = {
+    "Read", "Grep", "Glob", "WebSearch", "WebFetch",
+    "TodoRead", "TodoWrite",
+}
+
+EXCLUSIVE_TOOLS: set[str] = {
+    "Bash", "Write", "Edit", "NotebookEdit",
+}
+
+
+def is_concurrency_safe(tool_name: str) -> bool:
+    return tool_name in CONCURRENT_SAFE_TOOLS
+
+
+def _get_tool_name(tc) -> str:
+    if hasattr(tc, "function") and hasattr(tc.function, "name"):
+        return tc.function.name
+    if isinstance(tc, dict):
+        return tc.get("function", {}).get("name", "")
+    return ""
+
+
+def partition_tool_calls(tool_calls: list) -> list[list]:
+    if not tool_calls:
+        return []
+
+    partitions: list[list] = []
+    current_batch: list = []
+
+    for tc in tool_calls:
+        name = _get_tool_name(tc)
+        if name in EXCLUSIVE_TOOLS:
+            if current_batch:
+                partitions.append(current_batch)
+                current_batch = []
+            partitions.append([tc])
+        else:
+            current_batch.append(tc)
+
+    if current_batch:
+        partitions.append(current_batch)
+
+    return partitions
