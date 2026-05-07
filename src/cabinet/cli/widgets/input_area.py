@@ -39,8 +39,8 @@ def _filter_completions(text: str) -> list[str]:
 class InputArea(Vertical):
     """Input area with command completion overlay."""
 
-    def __init__(self, data_dir: str):
-        super().__init__()
+    def __init__(self, data_dir: str = "", *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._data_dir = data_dir
         self._history: list[str] = []
         self._history_index: int = -1
