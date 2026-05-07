@@ -300,3 +300,58 @@ def test_build_cockpit_secretary_bar_sizing():
     state = CockpitState()
     layout = _build_cockpit_layout(state)
     assert layout["secretary_bar"] is not None
+
+
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.document import Document
+from pathlib import Path
+
+
+def test_slash_completer_contains_all_commands():
+    from cabinet.cli.tui import SLASH_COMPLETER
+    assert isinstance(SLASH_COMPLETER, WordCompleter)
+    words = SLASH_COMPLETER.words
+    assert "/decision" in words
+    assert "/meeting" in words
+    assert "/office" in words
+    assert "/summary" in words
+    assert "/decide" in words
+    assert "/task" in words
+    assert "/strategy" in words
+    assert "/review" in words
+    assert "/skills" in words
+    assert "/employees" in words
+    assert "/status" in words
+    assert "/help" in words
+    assert "/quit" in words
+
+
+def test_slash_completer_completes_partial_input():
+    from cabinet.cli.tui import SLASH_COMPLETER
+    completions = list(SLASH_COMPLETER.get_completions(Document("/dec"), None))
+    completion_texts = [c.text for c in completions]
+    assert "/decision" in completion_texts
+    assert "/decide" in completion_texts
+
+
+def test_slash_completer_case_insensitive():
+    from cabinet.cli.tui import SLASH_COMPLETER
+    completions = list(SLASH_COMPLETER.get_completions(Document("/DEC"), None))
+    completion_texts = [c.text for c in completions]
+    assert "/decision" in completion_texts
+
+
+def test_slash_completer_not_triggered_on_plain_text():
+    from cabinet.cli.tui import SLASH_COMPLETER
+    completions = list(SLASH_COMPLETER.get_completions(Document("hello"), None))
+    assert len(completions) == 0
+
+
+def test_history_path_construction():
+    from cabinet.cli.tui import _get_history_path
+    import tempfile
+    import os
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _get_history_path(tmpdir)
+        assert path.name == ".chat_history"
+        assert str(path.parent) == tmpdir

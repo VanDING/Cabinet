@@ -190,7 +190,7 @@ async def _chat_async(data_dir: str) -> None:
     runtime, config = await _init_runtime(data_dir)
     try:
         await run_welcome_screen(console, runtime)
-        await run_cockpit(console, runtime, config)
+        await run_cockpit(console, runtime, config, data_dir)
     finally:
         await runtime.stop()
 
