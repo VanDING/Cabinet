@@ -26,12 +26,14 @@ class BackupMetadata:
         created_at: str,
         file_size: int,
         schema_version: int = 0,
+        event_count: int = 0,
     ):
         self.backup_path = backup_path
         self.original_path = original_path
         self.created_at = created_at
         self.file_size = file_size
         self.schema_version = schema_version
+        self.event_count = event_count
 
     def to_dict(self) -> dict:
         return {
@@ -40,6 +42,7 @@ class BackupMetadata:
             "created_at": self.created_at,
             "file_size": self.file_size,
             "schema_version": self.schema_version,
+            "event_count": self.event_count,
         }
 
     @classmethod
@@ -72,6 +75,7 @@ class BackupManager:
 
         schema_version = await self._get_schema_version(str(backup_path))
         file_size = backup_path.stat().st_size
+        event_count = await self._count_events(str(db_path))
 
         metadata = BackupMetadata(
             backup_path=str(backup_path),
@@ -79,6 +83,7 @@ class BackupManager:
             created_at=datetime.now(timezone.utc).isoformat(),
             file_size=file_size,
             schema_version=schema_version,
+            event_count=event_count,
         )
         self._save_metadata(metadata)
         logger.info("Backup created: %s (%d bytes, schema v%d)", backup_path, file_size, schema_version)
@@ -88,6 +93,13 @@ class BackupManager:
         db_path = self._data_dir / "db" / "cabinet.db"
         if not Path(backup_path).exists():
             raise FileNotFoundError(f"Backup not found: {backup_path}")
+
+        # Validate backup file integrity before restoring
+        async with aiosqlite.connect(backup_path) as db:
+            cursor = await db.execute("PRAGMA quick_check")
+            row = await cursor.fetchone()
+            if row and row[0] != "ok":
+                raise ValueError(f"Backup file is corrupted: {row[0]}")
 
         db_path.parent.mkdir(parents=True, exist_ok=True)
         if db_path.exists():
@@ -133,6 +145,15 @@ class BackupManager:
         try:
             async with aiosqlite.connect(db_path) as db:
                 cursor = await db.execute("SELECT MAX(version) FROM schema_version")
+                row = await cursor.fetchone()
+                return row[0] if row[0] is not None else 0
+        except Exception:
+            return 0
+
+    async def _count_events(self, db_path: str) -> int:
+        try:
+            async with aiosqlite.connect(db_path) as db:
+                cursor = await db.execute("SELECT COUNT(*) FROM event_store")
                 row = await cursor.fetchone()
                 return row[0] if row[0] is not None else 0
         except Exception:
