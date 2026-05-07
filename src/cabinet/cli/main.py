@@ -185,12 +185,12 @@ async def _init_runtime(data_dir: str):
 
 
 async def _chat_async(data_dir: str) -> None:
-    from cabinet.cli.tui import run_cockpit, run_welcome_screen
+    from cabinet.cli.app import CabinetApp
 
     runtime, config = await _init_runtime(data_dir)
     try:
-        await run_welcome_screen(console, runtime)
-        await run_cockpit(console, runtime, config, data_dir)
+        app = CabinetApp(runtime, config, data_dir)
+        await app.run_async()
     finally:
         await runtime.stop()
 
