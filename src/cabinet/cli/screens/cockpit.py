@@ -96,7 +96,7 @@ class CockpitScreen(Screen):
         input_area = self.query_one("#input-area")
         if input_area is not None:
             input_area.set_placeholder(new)
-        self._sync_panels()
+        self.run_worker(self._refresh_room_state())
 
     def watch_token_count(self, old: int, new: int) -> None:
         self.query_one("#header", Header).update_info(
@@ -157,8 +157,9 @@ class CockpitScreen(Screen):
             self.app.exit()
             return
 
-        # Add to conversation and clear input
+        # Add to conversation (UI + state) and clear input
         self.query_one("#conversation-view", ConversationView).add_user_message(value)
+        self.conversation.append({"role": "user", "content": value})
         event.input.clear()
 
         if value.startswith("/"):
@@ -177,14 +178,15 @@ class CockpitScreen(Screen):
             self.query_one("#conversation-view", ConversationView).add_assistant_message(
                 f"📋 {feedback}"
             )
+            await self._refresh_room_state()
 
     async def _stream_chat(self, user_input: str) -> None:
         from cabinet.rooms.secretary.models import InteractionContext
 
         conversation = self.query_one("#conversation-view", ConversationView)
-        recent = self.conversation[-10:]
+        recent = self.conversation[-20:]
         recent_interactions = [
-            f"[{m['role']}]: {m['content'][:200]}" for m in recent[:-1]
+            f"[{m['role']}]: {m['content'][:200]}" for m in recent
         ]
 
         context = InteractionContext(
@@ -277,6 +279,7 @@ class CockpitScreen(Screen):
             self.query_one("#conversation-view", ConversationView).add_assistant_message(
                 f"\U0001f4cb {feedback}"
             )
+            await self._refresh_room_state()
 
     async def _show_skills(self) -> None:
         """List registered skills in conversation view."""
@@ -329,6 +332,34 @@ class CockpitScreen(Screen):
             current_node=self.office_current_node,
         )
 
+    async def _refresh_room_state(self) -> None:
+        """Pull live data from room services into panel reactive attributes."""
+        project_id = self.config.default_project
+
+        # Decision room: count cards by type
+        try:
+            dashboard = await self.runtime.decision.get_dashboard(project_id)
+            self.decision_red = len(dashboard.red_cards)
+            self.decision_yellow = len(dashboard.yellow_cards)
+            self.decision_blue = len(dashboard.blue_cards)
+        except Exception:
+            pass  # Keep defaults if service unavailable
+
+        # Office: show first active task
+        try:
+            tasks = await self.runtime.office.list_active_tasks(project_id)
+            if tasks:
+                task = tasks[0]
+                self.office_workflow = getattr(task, "description", str(task.id))
+                self.office_current_node = getattr(task, "status", "")
+            else:
+                self.office_workflow = ""
+                self.office_current_node = ""
+        except Exception:
+            pass
+
+        self._sync_panels()
+
     async def _handle_status(self) -> None:
         try:
             result = await self.runtime.secretary.summarize_pending(
@@ -336,6 +367,7 @@ class CockpitScreen(Screen):
             )
             self.secretary_message = result.digest
             self.secretary_urgent = result.urgent_count > 0
+            await self._refresh_room_state()
         except Exception as e:
             self.secretary_message = f"获取状态失败: {e}"
 
