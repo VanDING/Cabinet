@@ -23,6 +23,7 @@ from rich.table import Table
 from rich.text import Text
 
 from cabinet.cli.tui_components import (
+    render_conversation,
     render_decision_panel,
     render_input_prompt,
     render_left_panel,
@@ -57,6 +58,7 @@ class CockpitState:
     _ctrl_c_count: int = 0
     thinking_steps: list[str] = field(default_factory=list)
     thinking_expanded: bool = False
+    conversation: list[dict] = field(default_factory=list)
 
 
 def _build_welcome_renderable(runtime) -> RenderableType:
@@ -186,8 +188,8 @@ def _build_cockpit_layout(state: CockpitState) -> Layout:
     )
 
     layout["main"].split_row(
-        Layout(name="left", ratio=65),
-        Layout(name="right", ratio=35),
+        Layout(name="left", ratio=80),
+        Layout(name="right", ratio=20),
     )
 
     layout["main"]["left"].split(
@@ -195,14 +197,12 @@ def _build_cockpit_layout(state: CockpitState) -> Layout:
         Layout(name="input", size=1),
     )
 
-    # Composite thinking block (if any) with main content
-    composite_content = state.left_content
+    # Composite conversation + thinking block + streaming content
+    conversation_view = render_conversation(state.conversation, state.left_content)
+    composite_content = conversation_view
     if state.thinking_steps:
         thinking_panel = render_thinking_block(state.thinking_steps, state.thinking_expanded)
-        if composite_content is not None:
-            composite_content = Group(thinking_panel, Text(), composite_content)
-        else:
-            composite_content = thinking_panel
+        composite_content = Group(thinking_panel, Text(), conversation_view)
 
     layout["main"]["left"]["content"].update(
         render_left_panel(mode=state.mode, content=composite_content)
@@ -420,6 +420,9 @@ async def _handle_chat(
 ) -> None:
     from cabinet.rooms.secretary.models import InteractionContext
 
+    # Add user message to conversation history
+    state.conversation.append({"role": "user", "content": user_input})
+
     try:
         context = InteractionContext(
             captain_id=state.captain_id,
@@ -477,19 +480,60 @@ async def _handle_chat(
 
         # Final flush — guaranteed complete content
         final_text = "".join(chunks)
-        state.left_content = Markdown(final_text)
+        state.conversation.append({"role": "assistant", "content": final_text})
+        state.left_content = None  # conversation handles display, clear streaming
         live.update(_build_cockpit_layout(state))
 
         await response.finalize()
         if hasattr(response, "usage") and response.usage:
             state.token_count += response.usage.get("total_tokens", 0)
+
+        # Sync room state to update right-side panels
+        await _sync_room_state(state, runtime)
+        live.update(_build_cockpit_layout(state))
     except Exception as e:
-        state.left_content = Text(f"对话错误: {e}", style=f"bold {CABINET_RED}")
+        state.conversation.append({"role": "assistant", "content": f"对话错误: {e}"})
+        state.left_content = None
 
 
 def _split_thinking_steps(raw: str) -> list[str]:
     """Split raw thinking content into steps by newlines, filter empty lines."""
     return [line.strip() for line in raw.strip().split("\n") if line.strip()]
+
+
+async def _sync_room_state(state: CockpitState, runtime) -> None:
+    """Sync room panel data from runtime after each interaction."""
+    try:
+        # Decision counts
+        decisions = getattr(runtime.decision, "_decisions", {})
+        if decisions:
+            state.decision_red = sum(1 for d in decisions.values()
+                                     if getattr(d, "decision_type", None) == "strategic")
+            state.decision_yellow = sum(1 for d in decisions.values()
+                                        if getattr(d, "decision_type", None) == "tactical")
+            state.decision_blue = sum(1 for d in decisions.values()
+                                       if getattr(d, "decision_type", None) == "operational")
+
+        # Meeting state
+        sessions = getattr(runtime.meeting, "_sessions", {})
+        if sessions:
+            active_session = list(sessions.values())[0]
+            state.meeting_topic = getattr(active_session, "topic", "")
+            state.meeting_advisors = len(getattr(active_session, "perspectives", []))
+            state.meeting_round = getattr(active_session, "rounds", 0)
+
+        # Office tasks
+        tasks = getattr(runtime.office, "_tasks", {})
+        if tasks:
+            active_tasks = [t for t in tasks.values()
+                            if getattr(t, "status", None) in ("pending", "running")]
+            state.office_workflow = f"{len(active_tasks)} active" if active_tasks else ""
+            state.office_progress = len([t for t in tasks.values()
+                                         if getattr(t, "status", None) == "completed"]) / max(len(tasks), 1)
+            if active_tasks:
+                state.office_current_node = getattr(active_tasks[0], "skill_id", "")
+    except Exception:
+        pass  # Room state sync is best-effort; don't crash on failure
 
 
 async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
@@ -518,7 +562,7 @@ async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
     def _(event):
         state.thinking_expanded = not state.thinking_expanded
 
-    with Live(layout, console=console, screen=True, refresh_per_second=10) as live:
+    with Live(layout, console=console, screen=True) as live:
         while True:
             try:
                 user_input = await session.prompt_async(
