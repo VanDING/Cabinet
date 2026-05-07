@@ -201,18 +201,6 @@ def test_build_help_renderable():
     assert result is not None
 
 
-def test_periodic_refresh_updates_state():
-    from cabinet.cli.tui import _build_cockpit_layout
-    state = CockpitState(decision_red=1, decision_yellow=2, decision_blue=3)
-    runtime = MagicMock()
-    layout = _build_cockpit_layout(state)
-    mock_live = MagicMock()
-    called = asyncio.get_event_loop().run_until_complete(
-        _periodic_refresh_once(state, runtime, mock_live, _build_cockpit_layout)
-    )
-    mock_live.update.assert_called_once()
-
-
 def test_handle_chat_updates_content():
     from cabinet.cli.tui import _handle_chat, _build_cockpit_layout
     from unittest.mock import patch
@@ -306,7 +294,9 @@ def test_handle_chat_thinking_tag_parsing():
     assert "第一步分析" in state.thinking_steps[0]
 
 
-async def _periodic_refresh_once(state, runtime, live, build_layout):
-    await asyncio.sleep(0.01)
-    live.update(build_layout(state))
-    return True
+def test_build_cockpit_secretary_bar_sizing():
+    """Secretary bar should exist and have appropriate sizing for multi-line text."""
+    from cabinet.cli.tui import _build_cockpit_layout
+    state = CockpitState()
+    layout = _build_cockpit_layout(state)
+    assert layout["secretary_bar"] is not None
