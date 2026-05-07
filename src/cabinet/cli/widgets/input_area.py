@@ -41,10 +41,22 @@ class InputArea(Vertical):
 
     _completion_visible: bool = False
 
+    PLACEHOLDERS = {
+        "decision": "decision > ",
+        "meeting": "meeting > ",
+        "office": "office > ",
+        "summary": "summary > ",
+    }
+
     BINDINGS = [
         ("up", "history_prev", "Previous command"),
         ("down", "history_next", "Next command"),
     ]
+
+    def set_placeholder(self, mode: str) -> None:
+        """Update input placeholder based on current room mode."""
+        placeholder = self.PLACEHOLDERS.get(mode, f"{mode} > ")
+        self.query_one("#prompt-input", Input).placeholder = placeholder
 
     def __init__(self, data_dir: str = "", *args, **kwargs):
         super().__init__(*args, **kwargs)
