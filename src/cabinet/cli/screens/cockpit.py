@@ -13,6 +13,11 @@ from cabinet.cli.widgets.side_panels import DecisionPanel, MeetingPanel, OfficeP
 from cabinet.cli.widgets.thinking import ThinkingPanel
 
 
+def _split_thinking_steps(raw: str) -> list[str]:
+    """Split raw thinking content into steps by newlines, filter empty lines."""
+    return [line.strip() for line in raw.strip().split("\n") if line.strip()]
+
+
 class CockpitScreen(Screen):
     """Main cockpit TUI screen."""
 
@@ -77,20 +82,62 @@ class CockpitScreen(Screen):
         m, s = divmod(rem, 60)
         return f"{h}:{m:02d}:{s:02d}"
 
+    # ── watch methods (auto-triggered on reactive change) ──
+
+    def watch_mode(self, old: str, new: str) -> None:
+        header = self.query_one("#header", Header)
+        header.update_info(self.token_count, self._format_elapsed(), new)
+        self._sync_panels()
+
+    def watch_token_count(self, old: int, new: int) -> None:
+        self.query_one("#header", Header).update_info(
+            new, self._format_elapsed(), self.mode
+        )
+
+    def watch_elapsed_seconds(self, old: int, new: int) -> None:
+        self.query_one("#header", Header).update_info(
+            self.token_count, self._format_elapsed(), self.mode
+        )
+
+    def watch_secretary_message(self, old: str, new: str) -> None:
+        bar = self.query_one("#secretary-bar", Static)
+        bar.update(f"\U0001f4cb 秘书：{new}" if new else "\U0001f4cb 秘书：Captain，一切正常")
+
+    def watch_secretary_urgent(self, old: bool, new: bool) -> None:
+        bar = self.query_one("#secretary-bar", Static)
+        if new:
+            bar.add_class("urgent")
+        else:
+            bar.remove_class("urgent")
+
+    def watch_thinking_steps(self, old, new) -> None:
+        self.query_one("#thinking-panel", ThinkingPanel).update_state(
+            new, self.thinking_expanded
+        )
+
+    def watch_thinking_expanded(self, old, new) -> None:
+        self.query_one("#thinking-panel", ThinkingPanel).update_state(
+            self.thinking_steps, new
+        )
+
+    def watch_meeting_topic(self, old, new) -> None:
+        self._sync_panels()
+
+    def watch_decision_red(self, old, new) -> None:
+        self._sync_panels()
+
+    def watch_office_workflow(self, old, new) -> None:
+        self._sync_panels()
+
     async def _greet(self) -> None:
         try:
             greeting = await self.runtime.secretary.greet(
                 captain_id=self.config.organization.captain_id
             )
-            self.secretary_message = greeting.message
             self.captain_id = self.config.organization.captain_id
-            self.query_one("#secretary-bar").update(
-                f"📋 秘书：{greeting.message}"
-            )
+            self.secretary_message = greeting.message  # watch_secretary_message auto-updates UI
         except Exception:
-            self.query_one("#secretary-bar").update(
-                "📋 秘书：秘书服务连接失败"
-            )
+            self.secretary_message = "秘书服务连接失败"
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle user input: intent detection or chat."""
@@ -117,8 +164,7 @@ class CockpitScreen(Screen):
     async def _execute_and_respond(self, intent: dict, user_input: str) -> None:
         feedback = await execute_intent(intent, self, self.runtime)
         if feedback:
-            self.secretary_message = feedback
-            self.query_one("#secretary-bar").update(f"📋 秘书：{feedback}")
+            self.secretary_message = feedback  # watch auto-updates
             self.query_one("#conversation-view", ConversationView).add_assistant_message(
                 f"📋 {feedback}"
             )
@@ -165,24 +211,18 @@ class CockpitScreen(Screen):
         """Handle slash commands (mode switches, status, help)."""
         cmd = text.split()[0]
         if cmd in ("/decision", "/meeting", "/office", "/summary"):
-            self.mode = cmd.lstrip("/")
+            self.mode = cmd.lstrip("/")  # watch_mode auto-updates Header + panels
             mode_names = {
                 "decision": "决策室", "meeting": "会议室",
                 "office": "办公室", "summary": "总结室",
             }
-            name = mode_names.get(self.mode, self.mode)
-            self.query_one("#header", Header).update_info(
-                self.token_count, self._format_elapsed(), self.mode
-            )
-            self.query_one("#secretary-bar").update(f"📋 秘书：已切换至{name}")
+            self.secretary_message = f"已切换至{mode_names[self.mode]}"
         elif cmd == "/status":
             self.run_worker(self._handle_status())
         elif cmd == "/help":
             self._show_help()
         else:
-            self.query_one("#secretary-bar").update(
-                f"📋 秘书：未知命令: {cmd}，输入 /help 查看帮助"
-            )
+            self.secretary_message = f"未知命令: {cmd}，输入 /help 查看帮助"
 
     def _sync_panels(self) -> None:
         self.query_one("#meeting-panel", MeetingPanel).update_state(self)
@@ -196,11 +236,8 @@ class CockpitScreen(Screen):
             )
             self.secretary_message = result.digest
             self.secretary_urgent = result.urgent_count > 0
-            self.query_one("#secretary-bar").update(
-                f"📋 秘书：{result.digest}"
-            )
         except Exception as e:
-            self.query_one("#secretary-bar").update(f"📋 秘书：获取状态失败: {e}")
+            self.secretary_message = f"获取状态失败: {e}"
 
     def _show_help(self) -> None:
         conversation = self.query_one("#conversation-view", ConversationView)

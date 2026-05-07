@@ -25,3 +25,50 @@ def test_cockpit_screen_panel_defaults():
     assert CockpitScreen.decision_red._default == 0
     assert CockpitScreen.office_workflow._default == ""
     assert CockpitScreen.office_progress._default == 0.0
+
+
+def test_format_elapsed():
+    """Test _format_elapsed formatting."""
+    from cabinet.cli.screens.cockpit import CockpitScreen
+
+    class FakeScreen:
+        elapsed_seconds = 0
+
+    screen = FakeScreen()
+    screen.elapsed_seconds = 0
+    result = CockpitScreen._format_elapsed(screen)
+    assert result == "0:00:00"
+
+    screen.elapsed_seconds = 65
+    result = CockpitScreen._format_elapsed(screen)
+    assert result == "0:01:05"
+
+    screen.elapsed_seconds = 3661
+    result = CockpitScreen._format_elapsed(screen)
+    assert result == "1:01:01"
+
+
+def test_split_thinking_steps():
+    """_split_thinking_steps splits by newlines and filters empty."""
+    from cabinet.cli.screens.cockpit import _split_thinking_steps
+    result = _split_thinking_steps("第一步\n第二步\n\n第三步")
+    assert result == ["第一步", "第二步", "第三步"]
+
+
+def test_split_thinking_steps_empty():
+    from cabinet.cli.screens.cockpit import _split_thinking_steps
+    assert _split_thinking_steps("") == []
+
+
+def test_split_thinking_steps_whitespace_only():
+    from cabinet.cli.screens.cockpit import _split_thinking_steps
+    assert _split_thinking_steps("   \n  \n  ") == []
+
+
+def test_mode_labels_exist():
+    """Verify MODE_LABELS in Header covers all modes."""
+    from cabinet.cli.widgets.header import Header
+    assert "decision" in Header.MODE_LABELS
+    assert "meeting" in Header.MODE_LABELS
+    assert "office" in Header.MODE_LABELS
+    assert "summary" in Header.MODE_LABELS
