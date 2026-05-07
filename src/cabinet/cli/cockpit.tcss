@@ -1,0 +1,58 @@
+Screen {
+    background: #0c0c0c;
+}
+
+#header {
+    height: 1;
+    background: #1a1a2e;
+    color: #3B82F6;
+    text-style: bold;
+}
+
+#secretary-bar {
+    height: 2;
+    color: #E2E8F0;
+}
+
+#secretary-bar.urgent {
+    color: #CB220C;
+    text-style: bold;
+}
+
+#main-area {
+    layout: horizontal;
+}
+
+#left-content {
+    width: 80%;
+}
+
+#right-panel {
+    width: 20%;
+    layout: vertical;
+}
+
+#conversation-view {
+    height: 1fr;
+}
+
+#thinking-panel {
+    border: solid #EDB61B;
+    height: auto;
+    max-height: 12;
+}
+
+#meeting-panel, #decision-panel, #office-panel {
+    border: solid #3B82F6;
+    height: 1fr;
+    padding: 0 1;
+}
+
+#input-area {
+    height: 3;
+}
+
+#input-area Input {
+    border: solid #3B82F6;
+    color: #ffffff;
+}
