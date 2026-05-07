@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel
 
 from cabinet.agents.context import AgentContext
+from cabinet.core.auth import AccessControlList, ConfirmationRequired, Decision
 from cabinet.core.events.event_sourced import EventSourcedRoom, RoomEventStore
 from cabinet.core.events.wiring import RoomEventPublisher
 from cabinet.core.parsing import PermissionCheckResult, parse_llm_json
@@ -49,11 +50,13 @@ class OfficeSchedulerService(EventSourcedRoom):
         agent_factory: object,
         verification_gate: object | None = None,
         workflow_engine: object | None = None,
+        acl: AccessControlList | None = None,
     ):
         super().__init__(store, publisher)
         self._agent_factory = agent_factory
         self._verification_gate = verification_gate
         self._workflow_engine = workflow_engine
+        self._acl = acl
         self._tasks: dict[UUID, Task] = {}
         self._executions: dict[UUID, WorkflowExecution] = {}
 
@@ -434,9 +437,46 @@ class OfficeSchedulerService(EventSourcedRoom):
         await self._publish_and_apply(cancel_event)
         return self._executions[execution_id]
 
-    async def check_permission(self, employee_id: UUID, action: str) -> PermissionVerdict:
+    async def check_permission(
+        self, employee_id: UUID, action: str, role: str = "", resource: str = "",
+    ) -> PermissionVerdict:
         if _OBSERVABILITY_ENABLED:
             ROOM_OPERATION.labels(room="office", operation="check_permission").inc()
+
+        if self._acl is not None and role and resource:
+            rule = self._acl.check(role, resource, action)
+            if rule is not None:
+                if rule.decision == Decision.ALLOW:
+                    return PermissionVerdict(
+                        allowed=True,
+                        level=PermissionLevel.L0,
+                        reason=f"ACL: {rule.reason}",
+                    )
+                if rule.decision == Decision.DENY:
+                    logger.info(
+                        "ACL denied: role=%s resource=%s action=%s reason=%s",
+                        role, resource, action, rule.reason,
+                    )
+                    return PermissionVerdict(
+                        allowed=False,
+                        level=PermissionLevel.L0,
+                        reason=f"ACL: {rule.reason}",
+                    )
+                if rule.decision == Decision.ASK:
+                    raise ConfirmationRequired(
+                        f"{rule.reason}\nAllow '{role}' to '{action}' on '{resource}'?",
+                        rule=rule,
+                    )
+            logger.info(
+                "ACL no match: role=%s resource=%s action=%s — escalating to LLM",
+                role, resource, action,
+            )
+
+        return await self._check_permission_llm(employee_id, action)
+
+    async def _check_permission_llm(
+        self, employee_id: UUID, action: str,
+    ) -> PermissionVerdict:
         agent = await self._agent_factory.create_agent(uuid4(), "evaluator")
         context = AgentContext(model="default", temperature=0.2)
         output = await agent.execute(
