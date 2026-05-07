@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import Markdown, Static
 

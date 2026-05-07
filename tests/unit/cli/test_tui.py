@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.document import Document
 
 from cabinet.cli.tui import CockpitState
 
@@ -78,9 +79,6 @@ def test_split_thinking_steps_whitespace_only():
     result = _split_thinking_steps("   \n  \n  ")
     assert result == []
 
-
-from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.document import Document
 
 
 def test_slash_completer_contains_all_commands():

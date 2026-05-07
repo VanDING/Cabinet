@@ -56,7 +56,7 @@ async def execute_intent(intent: dict, state, runtime) -> str | None:
 
     try:
         if intent["type"] == "meeting":
-            result = await runtime.meeting.start_session(
+            await runtime.meeting.start_session(
                 topic=intent["topic"],
                 level=MeetingLevel.MULTI_PARTY,
                 participants=[uuid4()],

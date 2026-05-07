@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Input, ListView, ListItem
+from textual.widgets import Input
 
 
 SLASH_COMMANDS_LIST = [
