@@ -88,6 +88,9 @@ class CockpitScreen(Screen):
     def watch_mode(self, old: str, new: str) -> None:
         header = self.query_one("#header", Header)
         header.update_info(self.token_count, self._format_elapsed(), new)
+        input_area = self.query_one("#input-area")
+        if input_area is not None:
+            input_area.set_placeholder(new)
         self._sync_panels()
 
     def watch_token_count(self, old: int, new: int) -> None:
