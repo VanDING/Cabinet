@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -17,6 +19,9 @@ from cabinet.cli.widgets.thinking import ThinkingPanel
 def _split_thinking_steps(raw: str) -> list[str]:
     """Split raw thinking content into steps by newlines, filter empty lines."""
     return [line.strip() for line in raw.strip().split("\n") if line.strip()]
+
+
+_THINKING_RE = re.compile(r"<thinking>(.*?)</thinking>", re.DOTALL)
 
 
 class CockpitScreen(Screen):
@@ -198,6 +203,14 @@ class CockpitScreen(Screen):
                 chunks.append(chunk)
 
             final_text = "".join(chunks)
+
+            # Extract thinking chain from response
+            m = _THINKING_RE.search(final_text)
+            if m:
+                steps = _split_thinking_steps(m.group(1))
+                self.thinking_steps = steps  # watch_thinking_steps auto-updates panel
+                final_text = _THINKING_RE.sub("", final_text).strip()
+
             self.conversation.append({"role": "assistant", "content": final_text})
             conversation.add_assistant_message(final_text)
 
@@ -212,21 +225,92 @@ class CockpitScreen(Screen):
             conversation.add_assistant_message(f"对话错误: {e}")
 
     def _handle_slash_command(self, text: str) -> None:
-        """Handle slash commands (mode switches, status, help)."""
-        cmd = text.split()[0]
+        """Handle slash commands (mode switches, actions, info)."""
+        parts = text.split(maxsplit=1)
+        cmd = parts[0]
+        arg = parts[1] if len(parts) > 1 else ""
+
+        mode_names = {
+            "decision": "决策室", "meeting": "会议室",
+            "office": "办公室", "summary": "总结室",
+        }
+
         if cmd in ("/decision", "/meeting", "/office", "/summary"):
-            self.mode = cmd.lstrip("/")  # watch_mode auto-updates Header + panels
-            mode_names = {
-                "decision": "决策室", "meeting": "会议室",
-                "office": "办公室", "summary": "总结室",
-            }
+            self.mode = cmd.lstrip("/")
             self.secretary_message = f"已切换至{mode_names[self.mode]}"
+        elif cmd == "/decide" and arg:
+            self.run_worker(self._execute_slash_intent("decision", arg))
+        elif cmd == "/task" and arg:
+            self.run_worker(self._execute_slash_intent("office", arg))
+        elif cmd == "/strategy" and arg:
+            self.run_worker(self._execute_slash_intent("decision", arg))
+        elif cmd == "/review":
+            self.mode = "summary"
+            self.run_worker(self._stream_chat("请启动项目复盘"))
+        elif cmd == "/skills":
+            self.run_worker(self._show_skills())
+        elif cmd == "/employees":
+            self.run_worker(self._show_employees())
         elif cmd == "/status":
             self.run_worker(self._handle_status())
         elif cmd == "/help":
             self._show_help()
+        elif cmd == "/quit":
+            self.app.exit()
         else:
             self.secretary_message = f"未知命令: {cmd}，输入 /help 查看帮助"
+
+    async def _execute_slash_intent(self, intent_type: str, arg: str) -> None:
+        """Execute intent from slash command with argument."""
+        from cabinet.cli.intent import execute_intent
+
+        intent_map = {
+            "decision": {"type": "decision", "title": arg,
+                         "action_text": f"已提交决策「{arg}」"},
+            "office": {"type": "office", "description": arg,
+                       "action_text": f"已添加待办「{arg}」"},
+        }
+        intent = intent_map[intent_type]
+        feedback = await execute_intent(intent, self, self.runtime)
+        if feedback:
+            self.secretary_message = feedback
+            self.query_one("#conversation-view", ConversationView).add_assistant_message(
+                f"\U0001f4cb {feedback}"
+            )
+
+    async def _show_skills(self) -> None:
+        """List registered skills in conversation view."""
+        conversation = self.query_one("#conversation-view", ConversationView)
+        try:
+            skills = getattr(self.runtime.tool_registry, "_skills", {})
+            if skills:
+                lines = ["**已注册技能:**"]
+                for s in list(skills.values())[:20]:
+                    lines.append(f"- **{s.name}**: {s.description or '无描述'}")
+                conversation.add_assistant_message("\n".join(lines))
+            else:
+                conversation.add_assistant_message("暂无注册技能")
+        except Exception as e:
+            conversation.add_assistant_message(f"获取技能列表失败: {e}")
+
+    async def _show_employees(self) -> None:
+        """List registered employees in conversation view."""
+        conversation = self.query_one("#conversation-view", ConversationView)
+        try:
+            employees = getattr(self.runtime, "employee_store", None)
+            if employees and hasattr(employees, "list_all"):
+                emp_list = employees.list_all()
+                if emp_list:
+                    lines = ["**注册员工:**"]
+                    for e in emp_list:
+                        lines.append(f"- **{e.name}** ({e.role}): {e.personality or ''}")
+                    conversation.add_assistant_message("\n".join(lines))
+                else:
+                    conversation.add_assistant_message("暂无注册员工")
+            else:
+                conversation.add_assistant_message("暂无注册员工")
+        except Exception as e:
+            conversation.add_assistant_message(f"获取员工列表失败: {e}")
 
     def _sync_panels(self) -> None:
         self.query_one("#meeting-panel", MeetingPanel).update_state(
