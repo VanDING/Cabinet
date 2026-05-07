@@ -1,5 +1,4 @@
 import tempfile
-import os
 
 from cabinet.cli.widgets.input_area import InputArea, _filter_completions, SLASH_COMMANDS_LIST, SLASH_COMMAND_DESCRIPTIONS
 
