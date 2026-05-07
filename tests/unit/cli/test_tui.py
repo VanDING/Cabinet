@@ -341,3 +341,47 @@ def test_history_path_construction():
         path = _get_history_path(tmpdir)
         assert path.name == ".chat_history"
         assert str(path.parent) == tmpdir
+
+
+def test_detect_intent_meeting():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("开个会讨论一下Q3预算")
+    assert result is not None
+    assert result["type"] == "meeting"
+    assert "Q3预算" in result["topic"]
+
+
+def test_detect_intent_meeting_variant():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("聊聊新产品规划")
+    assert result is not None
+    assert result["type"] == "meeting"
+    assert "新产品规划" in result["topic"]
+
+
+def test_detect_intent_task():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("提醒我下午3点review代码")
+    assert result is not None
+    assert result["type"] == "office"
+    assert "review代码" in result["description"]
+
+
+def test_detect_intent_task_variant():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("别忘了提交周报")
+    assert result is not None
+    assert result["type"] == "office"
+
+
+def test_detect_intent_decision():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("是否应该延长项目周期")
+    assert result is not None
+    assert result["type"] == "decision"
+
+
+def test_detect_intent_no_match():
+    from cabinet.cli.tui import _detect_intent
+    result = _detect_intent("帮我分析这个数据")
+    assert result is None

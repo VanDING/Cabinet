@@ -412,6 +412,105 @@ async def _handle_slash_command(raw: str, state: CockpitState, runtime) -> None:
         state.left_content = _build_help_renderable()
 
 
+def _detect_intent(user_input: str) -> dict | None:
+    """Detect user intent from natural language input.
+
+    Returns intent dict with action type and params, or None for normal chat.
+    """
+    import re
+
+    text = user_input.strip()
+
+    # Meeting intent: "开个会讨论*", "聊聊*", "讨论一下*"
+    # Order matters: specific patterns first
+    meeting_patterns = [
+        r"^开个?会?(讨论|聊聊|商量|研讨)一下(.+)",
+        r"^开个?会?(讨论|聊聊|商量|研讨)(.+)",
+        r"^(讨论|聊聊|商量|研讨)一下(.+)",
+        r"^(讨论|聊聊|商量|研讨)(.+)",
+        r"^开个?会\s*(.+)",
+    ]
+    for pattern in meeting_patterns:
+        m = re.match(pattern, text)
+        if m:
+            # Extract topic: last group is always the topic
+            topic = m.group(m.lastindex or 1).strip()
+            return {"type": "meeting", "topic": topic,
+                    "action_text": f"已为您在会议室创建审议「{topic}」"}
+
+    # Office/task intent: "提醒我*", "别忘了*", "待办*"
+    task_patterns = [
+        r"^(提醒我|别忘了|待办|帮我记一下)\s*(.+)",
+    ]
+    for pattern in task_patterns:
+        m = re.match(pattern, text)
+        if m:
+            desc = m.group(2).strip()
+            return {"type": "office", "description": desc,
+                    "action_text": f"已为您添加待办「{desc}」"}
+
+    # Decision intent: "决策*", "决定*", "是否应该*"
+    decision_patterns = [
+        r"^(决策|决定|是否应该|要不要|该不该)\s*(.+)",
+    ]
+    for pattern in decision_patterns:
+        m = re.match(pattern, text)
+        if m:
+            title = m.group(2).strip()
+            return {"type": "decision", "title": title,
+                    "action_text": f"已为您提交决策请求「{title}」"}
+
+    return None
+
+
+async def _execute_intent(intent: dict, state: CockpitState, runtime) -> str | None:
+    """Execute detected intent against real room services. Returns feedback message."""
+    from uuid import uuid4
+    from cabinet.rooms.meeting.models import MeetingLevel
+    from cabinet.models.events import DecisionRequest
+    from cabinet.models.decisions import DecisionType
+    from cabinet.models.events import TaskOrder
+
+    try:
+        if intent["type"] == "meeting":
+            result = await runtime.meeting.start_session(
+                topic=intent["topic"],
+                level=MeetingLevel.MULTI_PARTY,
+                participants=[uuid4()],
+                project_id=None,
+            )
+            state.mode = "meeting"
+            state.meeting_topic = intent["topic"]
+            return intent["action_text"]
+
+        elif intent["type"] == "office":
+            from uuid import uuid4
+            order = TaskOrder(
+                employee_id=uuid4(),
+                skill_id=uuid4(),
+                inputs={"description": intent["description"]},
+            )
+            result = await runtime.office.submit_task(order)
+            state.mode = "office"
+            state.office_workflow = intent["description"]
+            return intent["action_text"]
+
+        elif intent["type"] == "decision":
+            request = DecisionRequest(
+                decision_id=uuid4(),
+                decision_type=DecisionType.STRATEGIC.value,
+                title=intent["title"],
+                options=[{"label": "Approve"}, {"label": "Reject"}],
+            )
+            await runtime.decision.submit(request)
+            state.mode = "decision"
+            return intent["action_text"]
+    except Exception as e:
+        return f"操作执行失败: {e}"
+
+    return None
+
+
 async def _handle_chat(
     user_input: str,
     state: CockpitState,
@@ -422,6 +521,18 @@ async def _handle_chat(
 
     # Add user message to conversation history
     state.conversation.append({"role": "user", "content": user_input})
+
+    # Check for natural language intent
+    intent = _detect_intent(user_input)
+    if intent:
+        feedback = await _execute_intent(intent, state, runtime)
+        if feedback:
+            state.secretary_message = feedback
+        state.conversation.append({"role": "assistant",
+                                    "content": f"📋 {feedback}"})
+        await _sync_room_state(state, runtime)
+        live.update(_build_cockpit_layout(state), refresh=True)
+        return
 
     try:
         # Build conversation context from recent history for AI continuity
