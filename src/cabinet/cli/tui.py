@@ -424,9 +424,16 @@ async def _handle_chat(
     state.conversation.append({"role": "user", "content": user_input})
 
     try:
+        # Build conversation context from recent history for AI continuity
+        recent = state.conversation[-10:]  # last 10 messages
+        recent_interactions = [
+            f"[{m['role']}]: {m['content'][:200]}" for m in recent[:-1]  # exclude current
+        ]
+
         context = InteractionContext(
             captain_id=state.captain_id,
             channel="terminal",
+            recent_interactions=recent_interactions,
         )
         response = await runtime.secretary.process_input_stream(
             captain_input=user_input,
@@ -471,7 +478,7 @@ async def _handle_chat(
             text = "".join(chunks)
             if now - last_flush > 0.1 or (text and text.rstrip() and text.rstrip()[-1] in (".", "。", "\n")):
                 state.left_content = Markdown(text)
-                live.update(_build_cockpit_layout(state))
+                live.update(_build_cockpit_layout(state), refresh=True)
                 last_flush = now
 
         # Handle unclosed thinking tag
@@ -482,7 +489,7 @@ async def _handle_chat(
         final_text = "".join(chunks)
         state.conversation.append({"role": "assistant", "content": final_text})
         state.left_content = None  # conversation handles display, clear streaming
-        live.update(_build_cockpit_layout(state))
+        live.update(_build_cockpit_layout(state), refresh=True)
 
         await response.finalize()
         if hasattr(response, "usage") and response.usage:
@@ -490,7 +497,7 @@ async def _handle_chat(
 
         # Sync room state to update right-side panels
         await _sync_room_state(state, runtime)
-        live.update(_build_cockpit_layout(state))
+        live.update(_build_cockpit_layout(state), refresh=True)
     except Exception as e:
         state.conversation.append({"role": "assistant", "content": f"对话错误: {e}"})
         state.left_content = None
@@ -562,7 +569,7 @@ async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
     def _(event):
         state.thinking_expanded = not state.thinking_expanded
 
-    with Live(layout, console=console, screen=True) as live:
+    with Live(layout, console=console, screen=True, auto_refresh=False) as live:
         while True:
             try:
                 user_input = await session.prompt_async(
@@ -575,7 +582,7 @@ async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
                     state.secretary_message = "再次按 Ctrl+C 确认退出，或继续操作取消"
                     state.secretary_urgent = True
                     state._ctrl_c_count += 1
-                    live.update(_build_cockpit_layout(state))
+                    live.update(_build_cockpit_layout(state), refresh=True)
                     continue
                 else:
                     break
@@ -596,4 +603,4 @@ async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
             else:
                 await _handle_chat(stripped, state, runtime, live)
 
-            live.update(_build_cockpit_layout(state))
+            live.update(_build_cockpit_layout(state), refresh=True)
