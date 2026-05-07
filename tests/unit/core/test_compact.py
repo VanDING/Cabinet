@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from cabinet.core.compact import MODEL_TOKEN_LIMITS, TokenBudget
+from cabinet.core.compact import (
+    MODEL_TOKEN_LIMITS,
+    TOOL_PREVIEW_CHARS,
+    TOOL_RESULT_MAX_CHARS,
+    TokenBudget,
+    compact_tool_result,
+)
 
 
 def test_token_budget_estimation_cjk():
@@ -114,3 +120,55 @@ def test_model_token_limits_has_anthropic():
 
 def test_model_token_limits_has_ollama():
     assert "ollama/llama3" in MODEL_TOKEN_LIMITS
+
+
+# ── compact_tool_result ────────────────────────────────────
+
+def test_compact_small_result_returns_as_is():
+    content = "short result"
+    result, path = compact_tool_result(content, "Bash")
+    assert result == content
+    assert path is None
+
+
+def test_compact_large_result_writes_file_and_returns_preview(tmp_path):
+    content = "X" * 60_000
+    result, path = compact_tool_result(content, "Read", str(tmp_path))
+
+    assert path is not None
+    assert result.startswith("X" * TOOL_PREVIEW_CHARS)
+    assert "truncated" in result.lower()
+    assert str(path) in result
+
+    import os
+    assert os.path.exists(path)
+    with open(path, encoding="utf-8") as f:
+        assert f.read() == content
+
+
+def test_compact_write_tool_returns_summary_only(tmp_path):
+    content = "X" * 60_000
+    result, path = compact_tool_result(content, "Write", str(tmp_path))
+    assert "Write result" in result
+    assert str(len(content)) in result
+    assert path is None
+
+
+def test_compact_edit_tool_returns_summary_only(tmp_path):
+    content = "X" * 60_000
+    result, path = compact_tool_result(content, "Edit", str(tmp_path))
+    assert path is None
+    assert str(len(content)) in result
+
+
+def test_compact_notebook_edit_tool_returns_summary_only(tmp_path):
+    content = "X" * 60_000
+    result, path = compact_tool_result(content, "NotebookEdit", str(tmp_path))
+    assert path is None
+
+
+def test_compact_at_threshold_returns_as_is():
+    content = "Y" * TOOL_RESULT_MAX_CHARS
+    result, path = compact_tool_result(content, "Bash")
+    assert result == content
+    assert path is None

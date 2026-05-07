@@ -9,7 +9,7 @@ from uuid import uuid4
 from cabinet.agents.context import AgentContext, AgentOutput, TeamContext, TeamOutput
 from cabinet.agents.structured import StructuredOutputConfig, StructuredOutputParser
 from cabinet.agents.tools import ToolDefinition
-from cabinet.core.compact import TokenBudget
+from cabinet.core.compact import TokenBudget, compact_tool_result
 from cabinet.core.gateway.protocol import ModelGateway
 from cabinet.core.resilience import (
     CircuitBreaker,
@@ -232,11 +232,15 @@ class LiteLLMAgent:
                 from cabinet.agents.tools import ToolRegistryAdapter
                 if isinstance(self._tool_registry, ToolRegistryAdapter):
                     result = await self._tool_registry.execute_tool(tool_name, tool_args)
-                    return {"result": str(result), "status": "success"}
+                    result_str = str(result)
+                    compacted, filepath = compact_tool_result(result_str, tool_name)
+                    truncated = filepath is not None or result_str != compacted
+                    return {"result": compacted, "status": "success", "truncated": truncated}
             except Exception as e:
                 return {"error": str(e), "status": "error"}
 
-        return {"result": f"Tool {tool_name} executed with {tool_args}", "status": "simulated"}
+        simulated = f"Tool {tool_name} executed with {tool_args}"
+        return {"result": simulated, "status": "simulated"}
 
     async def execute_structured(
         self, task: str, context: AgentContext, output_schema: dict,

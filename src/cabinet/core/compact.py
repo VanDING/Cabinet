@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
+from uuid import uuid4
 
 
 @dataclass
@@ -48,3 +51,34 @@ MODEL_TOKEN_LIMITS: dict[str, int] = {
     "anthropic/claude-opus-4-7": 200_000,
     "ollama/llama3": 8_192,
 }
+
+# ── tool result compaction ──────────────────────────────────
+
+TOOL_RESULT_MAX_CHARS = 50_000
+TOOL_PREVIEW_CHARS = 2_000
+
+_WRITE_TOOLS = {"Write", "Edit", "NotebookEdit"}
+
+
+def compact_tool_result(
+    content: str,
+    tool_name: str,
+    cache_dir: str | None = None,
+) -> tuple[str, str | None]:
+    if len(content) <= TOOL_RESULT_MAX_CHARS:
+        return content, None
+
+    if tool_name in _WRITE_TOOLS:
+        return f"[Write result: {len(content)} chars, content written to target]", None
+
+    cache_path = Path(cache_dir or tempfile.gettempdir()) / "cabinet" / "tool_results"
+    cache_path.mkdir(parents=True, exist_ok=True)
+
+    filepath = cache_path / f"tool_{tool_name}_{uuid4().hex}.txt"
+    filepath.write_text(content, encoding="utf-8")
+
+    preview = content[:TOOL_PREVIEW_CHARS]
+    return (
+        f"{preview}\n\n...[truncated: {len(content)} chars total, full content at {filepath}]",
+        str(filepath),
+    )
