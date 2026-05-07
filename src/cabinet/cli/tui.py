@@ -521,15 +521,11 @@ async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
     with Live(layout, console=console, screen=True, refresh_per_second=10) as live:
         while True:
             try:
-                live.stop()
-                try:
-                    user_input = await session.prompt_async(
-                        HTML(f"<b fg='#3B82F6'>{state.mode} &gt;</b> "),
-                        style=INPUT_STYLE,
-                        key_bindings=kb,
-                    )
-                finally:
-                    live.start()
+                user_input = await session.prompt_async(
+                    HTML(f"<b fg='#3B82F6'>{state.mode} &gt;</b> "),
+                    style=INPUT_STYLE,
+                    key_bindings=kb,
+                )
             except KeyboardInterrupt:
                 if state._ctrl_c_count == 0:
                     state.secretary_message = "再次按 Ctrl+C 确认退出，或继续操作取消"
