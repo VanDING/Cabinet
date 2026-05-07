@@ -15,7 +15,6 @@ from cabinet.cli.tui_themes import (
     STYLE_BLUE_BOLD,
     STYLE_DEFAULT,
     STYLE_DIM,
-    STYLE_SUCCESS,
 )
 
 
