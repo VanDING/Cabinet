@@ -1,7 +1,7 @@
 import tempfile
 import os
 
-from cabinet.cli.widgets.input_area import InputArea, _filter_completions, SLASH_COMMANDS_LIST
+from cabinet.cli.widgets.input_area import InputArea, _filter_completions, SLASH_COMMANDS_LIST, SLASH_COMMAND_DESCRIPTIONS
 
 
 def test_input_area_history_add():
@@ -47,3 +47,34 @@ def test_filter_completions_slash():
 def test_filter_completions_plain_text():
     result = _filter_completions("hello")
     assert len(result) == 0
+
+
+def test_filter_completions_partial_slash():
+    result = _filter_completions("/dec")
+    assert "/decision" in result
+    assert "/decide" in result
+
+
+def test_filter_completions_exact():
+    result = _filter_completions("/decision")
+    assert result == ["/decision"]
+
+
+def test_filter_completions_no_match():
+    result = _filter_completions("/xyz")
+    assert result == []
+
+
+def test_filter_completions_plain_text_extra():
+    result = _filter_completions("hello")
+    assert result == []
+
+
+def test_filter_completions_empty():
+    result = _filter_completions("")
+    assert result == []
+
+
+def test_slash_command_descriptions():
+    assert SLASH_COMMAND_DESCRIPTIONS["/decision"] == "切换决策室"
+    assert SLASH_COMMAND_DESCRIPTIONS["/help"] == "显示帮助"
