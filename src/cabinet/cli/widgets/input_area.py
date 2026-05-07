@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
-from textual.widgets import Input
+from textual.widgets import Input, ListView, ListItem, Static
 
 
 SLASH_COMMANDS_LIST = [
@@ -39,6 +39,8 @@ def _filter_completions(text: str) -> list[str]:
 class InputArea(Vertical):
     """Input area with command completion overlay."""
 
+    _completion_visible: bool = False
+
     BINDINGS = [
         ("up", "history_prev", "Previous command"),
         ("down", "history_next", "Next command"),
@@ -52,6 +54,7 @@ class InputArea(Vertical):
         self._load_history()
 
     def compose(self) -> ComposeResult:
+        yield ListView(id="completion-list", classes="completion-overlay")
         yield Input(placeholder="decision > ", id="prompt-input")
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -68,10 +71,28 @@ class InputArea(Vertical):
             self._add_to_history(event.value.strip())
 
     def _show_completions(self, matches: list[str]) -> None:
-        pass  # Phase 2+ enhancement: popup completion list
+        lv = self.query_one("#completion-list", ListView)
+        lv.clear()
+        for m in matches:
+            desc = SLASH_COMMAND_DESCRIPTIONS.get(m, "")
+            item_text = f"{m}  {desc}" if desc else m
+            lv.append(ListItem(Static(item_text)))
+        lv.display = True
+        self._completion_visible = True
 
     def _hide_completions(self) -> None:
-        pass
+        self.query_one("#completion-list", ListView).display = False
+        self._completion_visible = False
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """When user selects a completion item, fill the input."""
+        static_widget = event.item.query_one(Static)
+        text = str(static_widget.renderable)
+        cmd = text.split()[0]  # Extract "/decision" from "/decision  切换决策室"
+        inp = self.query_one("#prompt-input", Input)
+        inp.value = cmd + " "
+        inp.cursor_position = len(inp.value)
+        self._hide_completions()
 
     def _add_to_history(self, text: str) -> None:
         if not self._history or self._history[-1] != text:
