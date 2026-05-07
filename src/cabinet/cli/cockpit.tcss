@@ -56,3 +56,50 @@ Screen {
     border: solid #3B82F6;
     color: #ffffff;
 }
+
+/* Completion popup overlay */
+#completion-list {
+    display: none;
+    height: auto;
+    max-height: 12;
+    border: solid #3B82F6;
+    background: #1a1a2e;
+}
+
+.completion-overlay {
+    overlay: screen;
+    dock: bottom;
+}
+
+/* Chat messages */
+.user-message {
+    color: #64748B;
+    text-align: right;
+    padding: 0 2;
+}
+
+.assistant-message {
+    color: #E2E8F0;
+    padding: 0 2;
+}
+
+/* Secretary bar urgent state */
+#secretary-bar.urgent {
+    color: #CB220C;
+    text-style: bold;
+}
+
+/* Input area */
+#input-area {
+    height: auto;
+    min-height: 3;
+}
+
+#input-area Input {
+    border: solid #3B82F6;
+    color: #ffffff;
+}
+
+#input-area Input:focus {
+    border: solid #3B82F6;
+}
