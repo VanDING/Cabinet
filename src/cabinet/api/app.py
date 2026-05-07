@@ -69,11 +69,7 @@ def create_app(runtime: CabinetRuntime, config: CabinetConfig) -> FastAPI:
     @app.middleware("http")
     async def prometheus_middleware(request: Request, call_next):
         start = time.monotonic()
-        try:
-            response = await call_next(request)
-        except Exception:
-            logger.exception("Unhandled exception")
-            response = JSONResponse(status_code=500, content={"error": "Internal error", "detail": "Internal server error"})
+        response = await call_next(request)
         duration = time.monotonic() - start
         endpoint = request.url.path
         REQUEST_COUNT.labels(
@@ -133,5 +129,11 @@ def create_app(runtime: CabinetRuntime, config: CabinetConfig) -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request, exc):
         return JSONResponse(status_code=400, content={"error": "Bad request", "detail": str(exc)})
+
+    @app.exception_handler(Exception)
+    async def generic_error_handler(request, exc):
+        env = os.environ.get("CABINET_ENV", "production")
+        detail = str(exc) if env == "development" else "Internal server error"
+        return JSONResponse(status_code=500, content={"error": "Internal error", "detail": detail})
 
     return app
