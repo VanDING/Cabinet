@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.key_binding import KeyBindings
 from rich.align import Align
 from rich.console import Console, Group, RenderableType
 from rich.layout import Layout
@@ -27,7 +28,7 @@ from cabinet.cli.tui_components import (
     render_thinking_block,
     render_top_bar,
 )
-from cabinet.cli.tui_themes import CABINET_BLUE, CABINET_LOGO, CABINET_RED, STYLE_DIM, STYLE_DEFAULT
+from cabinet.cli.tui_themes import CABINET_BLUE, CABINET_LOGO, CABINET_RED, STYLE_DIM, STYLE_DEFAULT, INPUT_STYLE
 
 
 @dataclass
@@ -165,7 +166,6 @@ def _build_cockpit_layout(state: CockpitState) -> Layout:
     # Composite thinking block (if any) with main content
     composite_content = state.left_content
     if state.thinking_steps:
-        from rich.console import Group
         thinking_panel = render_thinking_block(state.thinking_steps, state.thinking_expanded)
         if composite_content is not None:
             composite_content = Group(thinking_panel, Text(), composite_content)
@@ -460,19 +460,6 @@ def _split_thinking_steps(raw: str) -> list[str]:
     return [line.strip() for line in raw.strip().split("\n") if line.strip()]
 
 
-async def _periodic_refresh(
-    state: CockpitState,
-    runtime,
-    live: Live,
-) -> None:
-    while True:
-        await asyncio.sleep(3)
-        try:
-            live.update(_build_cockpit_layout(state))
-        except Exception:
-            pass
-
-
 async def run_cockpit(console: Console, runtime, config) -> None:
     state = CockpitState()
     session = PromptSession()
@@ -487,15 +474,26 @@ async def run_cockpit(console: Console, runtime, config) -> None:
 
     layout = _build_cockpit_layout(state)
 
-    with Live(layout, console=console, refresh_per_second=1, vertical_overflow="visible") as live:
-        refresh_task = asyncio.create_task(_periodic_refresh(state, runtime, live))
+    # Ctrl+T keybinding to toggle thinking panel preference
+    kb = KeyBindings()
 
+    @kb.add("c-t")
+    def _(event):
+        state.thinking_expanded = not state.thinking_expanded
+
+    with Live(layout, console=console, screen=True, refresh_per_second=10) as live:
         try:
             while True:
                 try:
-                    user_input = await session.prompt_async(
-                        HTML(f"<style fg='#081D60' bold='true'>{state.mode} ></style> ")
-                    )
+                    live.stop()
+                    try:
+                        user_input = await session.prompt_async(
+                            HTML(f"<b fg='#3B82F6'>{state.mode} &gt;</b> "),
+                            style=INPUT_STYLE,
+                            key_bindings=kb,
+                        )
+                    finally:
+                        live.start()
                 except KeyboardInterrupt:
                     if state._ctrl_c_count == 0:
                         state.secretary_message = "再次按 Ctrl+C 确认退出，或继续操作取消"
@@ -524,8 +522,4 @@ async def run_cockpit(console: Console, runtime, config) -> None:
 
                 live.update(_build_cockpit_layout(state))
         finally:
-            refresh_task.cancel()
-            try:
-                await refresh_task
-            except asyncio.CancelledError:
-                pass
+            pass  # Live(screen=True) auto-restores terminal
