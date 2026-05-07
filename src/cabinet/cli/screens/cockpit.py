@@ -225,9 +225,21 @@ class CockpitScreen(Screen):
             self.secretary_message = f"未知命令: {cmd}，输入 /help 查看帮助"
 
     def _sync_panels(self) -> None:
-        self.query_one("#meeting-panel", MeetingPanel).update_state(self)
-        self.query_one("#decision-panel", DecisionPanel).update_state(self)
-        self.query_one("#office-panel", OfficePanel).update_state(self)
+        self.query_one("#meeting-panel", MeetingPanel).update_state(
+            topic=self.meeting_topic,
+            advisors=self.meeting_advisors,
+            round_num=self.meeting_round,
+        )
+        self.query_one("#decision-panel", DecisionPanel).update_state(
+            red=self.decision_red,
+            yellow=self.decision_yellow,
+            blue=self.decision_blue,
+        )
+        self.query_one("#office-panel", OfficePanel).update_state(
+            workflow=self.office_workflow,
+            progress=self.office_progress,
+            current_node=self.office_current_node,
+        )
 
     async def _handle_status(self) -> None:
         try:
