@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import Markdown, Static
 
@@ -14,6 +15,9 @@ class ConversationView(VerticalScroll):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._messages: list[dict] = []
+
+    def compose(self) -> ComposeResult:
+        yield Static("开始对话吧...", id="placeholder")
 
     def clear(self) -> None:
         self._messages = []
@@ -35,9 +39,10 @@ class ConversationView(VerticalScroll):
         pass  # handled by CockpitScreen worker
 
     def _remove_placeholder(self) -> None:
-        placeholder = self.query_one("#placeholder")
-        if placeholder:
-            placeholder.remove()
+        try:
+            self.query_one("#placeholder").remove()
+        except Exception:
+            pass
 
     @property
     def messages(self) -> list[dict]:
