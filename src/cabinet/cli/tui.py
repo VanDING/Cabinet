@@ -9,7 +9,11 @@ from uuid import uuid4
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.key_binding import KeyBindings
+from pathlib import Path
 from rich.align import Align
 from rich.console import Console, Group, RenderableType
 from rich.layout import Layout
@@ -126,6 +130,34 @@ SLASH_COMMANDS: dict[str, str] = {
     "/status": "__status__",
     "/help": "__help__",
 }
+
+SLASH_COMPLETER = WordCompleter(
+    ["/decision", "/meeting", "/office", "/summary",
+     "/decide", "/task", "/strategy", "/review",
+     "/skills", "/employees", "/status", "/help", "/quit"],
+    ignore_case=True,
+    sentence=True,
+    meta_dict={
+        "/decision":  "切换决策室",
+        "/meeting":   "切换会议室 / 启动审议",
+        "/office":    "切换办公室",
+        "/summary":   "切换总结室",
+        "/decide":    "提交决策请求",
+        "/task":      "提交执行任务",
+        "/strategy":  "解码战略提案",
+        "/review":    "启动复盘",
+        "/skills":    "列出可用技能",
+        "/employees": "列出注册员工",
+        "/status":    "显示待处理摘要",
+        "/help":      "显示帮助",
+        "/quit":      "退出",
+    },
+)
+
+
+def _get_history_path(data_dir: str) -> Path:
+    """Return path for chat history file."""
+    return Path(data_dir) / ".chat_history"
 
 
 def _build_cockpit_layout(state: CockpitState) -> Layout:
@@ -460,9 +492,14 @@ def _split_thinking_steps(raw: str) -> list[str]:
     return [line.strip() for line in raw.strip().split("\n") if line.strip()]
 
 
-async def run_cockpit(console: Console, runtime, config) -> None:
+async def run_cockpit(console: Console, runtime, config, data_dir: str) -> None:
     state = CockpitState()
-    session = PromptSession()
+    history_path = _get_history_path(data_dir)
+    session = PromptSession(
+        history=FileHistory(str(history_path)),
+        auto_suggest=AutoSuggestFromHistory(),
+        completer=SLASH_COMPLETER,
+    )
 
     try:
         greeting = await runtime.secretary.greet(captain_id=config.organization.captain_id)
