@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Input, Static
 
 from cabinet.cli.intent import detect_intent, execute_intent
 from cabinet.cli.state import CockpitState
 from cabinet.cli.widgets.conversation import ConversationView
+from cabinet.cli.widgets.header import Header
+from cabinet.cli.widgets.side_panels import DecisionPanel, MeetingPanel, OfficePanel
+from cabinet.cli.widgets.thinking import ThinkingPanel
 
 
 class CockpitScreen(Screen):
@@ -26,15 +29,16 @@ class CockpitScreen(Screen):
         self.state = CockpitState()
 
     def compose(self) -> ComposeResult:
-        yield Static("Token: 0 │ Session: 0:00:00 │ 🧭 决策室", id="header")
+        yield Header(id="header")
         yield Static("📋 秘书：Captain，一切正常", id="secretary-bar")
         with Horizontal(id="main-area"):
             with Vertical(id="left-content"):
+                yield ThinkingPanel(id="thinking-panel")
                 yield ConversationView(id="conversation-view")
             with Vertical(id="right-panel"):
-                yield Static("会议室\nIdle", id="meeting-panel")
-                yield Static("决策室\n暂无决策", id="decision-panel")
-                yield Static("办公室\nIdle", id="office-panel")
+                yield MeetingPanel(id="meeting-panel")
+                yield DecisionPanel(id="decision-panel")
+                yield OfficePanel(id="office-panel")
         yield Input(placeholder="decision > ", id="prompt-input")
 
     def on_mount(self) -> None:
@@ -134,8 +138,8 @@ class CockpitScreen(Screen):
                 "office": "办公室", "summary": "总结室",
             }
             name = mode_names.get(self.state.mode, self.state.mode)
-            self.query_one("#header").update(
-                f"Token: {self.state.token_count} │ 🧭 {name}"
+            self.query_one("#header", Header).update_info(
+                self.state.token_count, "0:00", self.state.mode
             )
             self.query_one("#secretary-bar").update(f"📋 秘书：已切换至{name}")
         elif cmd == "/status":
@@ -146,6 +150,11 @@ class CockpitScreen(Screen):
             self.query_one("#secretary-bar").update(
                 f"📋 秘书：未知命令: {cmd}，输入 /help 查看帮助"
             )
+
+    def _sync_panels(self) -> None:
+        self.query_one("#meeting-panel", MeetingPanel).update_state(self.state)
+        self.query_one("#decision-panel", DecisionPanel).update_state(self.state)
+        self.query_one("#office-panel", OfficePanel).update_state(self.state)
 
     async def _handle_status(self) -> None:
         try:
