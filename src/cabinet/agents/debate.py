@@ -28,11 +28,13 @@ class DebateConfig(BaseModel):
 
 
 class DebateResult(BaseModel):
-    topic: str
-    positions: list[Position]
-    consensus_reached: bool
+    topic: str = ""
+    positions: list[Position] = []
+    consensus_reached: bool = False
     final_verdict: str | None = None
-    total_rounds: int
+    total_rounds: int = 0
+    statements: list[dict] = []
+    consensus: bool = False
 
 
 class DebateProtocol:
@@ -99,3 +101,98 @@ class DebateProtocol:
                 pos.confidence = max(pos.confidence, 0.7)
         avg_confidence = sum(p.confidence for p in recent) / len(recent)
         return avg_confidence >= threshold
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class DebatePosition:
+    agent: object  # BaseAgent
+    stance: str    # "pro", "con", "neutral_critic", "synthesizer"
+
+
+class NPartyDebate:
+    """Multi-position debate: all positions open in parallel, then sequential rebuttal rounds."""
+
+    def __init__(self, positions: list[DebatePosition], moderator_gateway,
+                 max_rounds: int = 3):
+        if len(positions) < 2:
+            raise ValueError(f"Need at least 2 positions, got {len(positions)}")
+        self._positions = positions
+        self._gateway = moderator_gateway
+        self._max_rounds = max_rounds
+
+    async def run(self, topic: str) -> DebateResult:
+        from cabinet.agents.parallel import ParallelExecutor, AgentTask
+
+        # Phase 1: All positions open in parallel
+        opening_tasks = [
+            AgentTask(
+                agent=p.agent,
+                task=f"State your {p.stance} position on: {topic}",
+                role_label=p.stance,
+            )
+            for p in self._positions
+        ]
+        executor = ParallelExecutor(self._gateway)
+        openings = await executor.execute_parallel(opening_tasks)
+        all_statements = list(openings.individual_results)
+
+        # Phase 2: Sequential rebuttal rounds
+        for round_num in range(self._max_rounds):
+            for pos in self._positions:
+                others = [
+                    s for s in all_statements
+                    if s.get("role") != pos.stance
+                ]
+                others_text = "\n".join(
+                    f"[{s.get('role')}]: {s.get('content', '')[:300]}"
+                    for s in others[-6:]
+                )
+                critique_task = (
+                    f"Topic: {topic}\n"
+                    f"Your stance: {pos.stance}\n"
+                    f"Other positions:\n{others_text}\n\n"
+                    f"Provide your rebuttal or refinement."
+                )
+                try:
+                    output = await pos.agent.execute(critique_task, None)
+                    all_statements.append({
+                        "role": pos.stance,
+                        "content": output.content if hasattr(output, 'content') else str(output),
+                        "round": round_num + 1,
+                    })
+                except Exception as e:
+                    all_statements.append({
+                        "role": pos.stance,
+                        "content": str(e),
+                        "round": round_num + 1,
+                    })
+
+        # Phase 3: Moderator synthesis
+        joined = "\n".join(
+            f"[{s.get('role')}]: {s.get('content', '')[:300]}"
+            for s in all_statements[-12:]
+        )
+        response = await self._gateway.complete(
+            messages=[{
+                "role": "system",
+                "content": "You are a debate moderator. Summarize the debate, identify consensus and disagreements, and provide a final recommendation.",
+            }, {
+                "role": "user",
+                "content": f"Topic: {topic}\n\nDebate:\n{joined}",
+            }],
+            model="default",
+            temperature=0.3,
+        )
+
+        final_text = response.content if hasattr(response, 'content') else str(response)
+        has_consensus = any(word in final_text.lower() for word in
+                           ["consensus", "agreement", "agree", "共识", "一致"])
+
+        return DebateResult(
+            statements=all_statements,
+            consensus=has_consensus,
+            final_verdict=final_text,
+        )
