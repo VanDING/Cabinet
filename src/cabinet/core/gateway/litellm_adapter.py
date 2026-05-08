@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 from litellm import Router
 
+from cabinet.core.cost_tracker import CostTracker
 from cabinet.core.gateway.protocol import ModelChunk, ModelInfo, ModelResponse
 
 
@@ -36,6 +37,7 @@ class LiteLLMRouterGateway:
         api_keys: dict[str, str] | None = None,
         enable_cache: bool = False,
         cache_ttl: int = 300,
+        cost_tracker: "CostTracker | None" = None,
     ):
         self._api_keys = api_keys or {}
         self._fallbacks = fallbacks or []
@@ -66,6 +68,7 @@ class LiteLLMRouterGateway:
         self._enable_cache = enable_cache
         self._cache_ttl = cache_ttl
         self._cache: dict[str, tuple[float, str]] = {}
+        self._cost_tracker = cost_tracker
 
     async def complete(
         self, messages: list[dict], model: str, temperature: float = 0.7, **kwargs
@@ -93,6 +96,14 @@ class LiteLLMRouterGateway:
                     "prompt_tokens": response.usage.prompt_tokens,
                     "completion_tokens": response.usage.completion_tokens,
                 }
+            if self._cost_tracker and response.usage:
+                self._cost_tracker.record_usage(
+                    model=model,
+                    prompt_tokens=response.usage.prompt_tokens or 0,
+                    completion_tokens=response.usage.completion_tokens or 0,
+                    cache_read_tokens=getattr(response.usage, "cache_read_input_tokens", 0) or 0,
+                    cache_creation_tokens=getattr(response.usage, "cache_creation_input_tokens", 0) or 0,
+                )
             logger.debug("LLM complete: model=%s tokens=%s", model, usage)
             if _OBSERVABILITY_ENABLED:
                 duration = time.monotonic() - start
@@ -259,3 +270,7 @@ class LiteLLMRouterGateway:
     @property
     def total_cost(self) -> float:
         return self._total_cost
+
+    @property
+    def cost_tracker(self):
+        return self._cost_tracker
