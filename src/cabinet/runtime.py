@@ -47,6 +47,10 @@ from cabinet.rooms.strategy.service import StrategyDecoderService
 from cabinet.rooms.summary.event_handler import SummaryEventHandler
 from cabinet.rooms.summary.service import SummaryRoomService
 
+from cabinet.core.user.profile_manager import UserProfileManager
+from cabinet.core.user.profile_injector import UserProfileInjector
+from cabinet.core.user.model_learner import UserModelLearner
+
 if TYPE_CHECKING:
     from cabinet.core.knowledge.protocol import KnowledgeBase
     from cabinet.core.memory.protocol import MemoryStore
@@ -79,6 +83,7 @@ class CabinetRuntime:
         gateway_platforms: list[str] | None = None,
         enable_cron: bool = False,
         cron_persistence_path: str | None = None,
+        user_data_dir: str | None = None,
     ):
         self._agent_factory = agent_factory or StubAgentFactory()
         self._db_path = db_path
@@ -212,6 +217,11 @@ class CabinetRuntime:
             self._summary_store,
             self._secretary_store,
         ]
+        user_dir = user_data_dir or "data/user"
+        self._user_profile_manager = UserProfileManager(data_dir=user_dir)
+        self._user_profile_injector = UserProfileInjector(self._user_profile_manager)
+        self._user_model_learner = UserModelLearner(self._user_profile_manager)
+
         self._start_time = _time.monotonic()
         self._audit_store: AuditStore | None = None
         self._backup_task: asyncio.Task | None = None
@@ -648,6 +658,18 @@ class CabinetRuntime:
     @property
     def tool_registry_adapter(self) -> ToolRegistryAdapter:
         return self._tool_registry_adapter
+
+    @property
+    def user_profile(self) -> UserProfileManager:
+        return self._user_profile_manager
+
+    @property
+    def user_context(self) -> UserProfileInjector:
+        return self._user_profile_injector
+
+    @property
+    def user_learner(self) -> UserModelLearner:
+        return self._user_model_learner
 
     def _create_default_employee_store(self):
         from cabinet.agents.employee_store import JsonEmployeeStore
