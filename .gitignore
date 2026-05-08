@@ -32,3 +32,13 @@ data/knowledge/*
 .env
 .worktrees/
 .superpowers/
+
+# User profile data (generated at runtime)
+data/user/
+data/.chat_history
+data/data/
+data/cabinet.local.json
+
+# Test artifacts
+testdata/vectors/*/
+testdata/vectors/chroma.sqlite3
