@@ -390,3 +390,26 @@ async def test_health_check_gateway_degraded_when_none():
     gateway_comp = [c for c in result["components"] if c["name"] == "llm_gateway"]
     assert len(gateway_comp) == 0
     await runtime.stop()
+
+
+@pytest.mark.asyncio
+async def test_runtime_wires_phase1_security_and_efficiency_components():
+    from cabinet.core.harness.permissions import PermissionContext, PermissionMode
+
+    runtime = CabinetRuntime()
+    await runtime.start()
+
+    assert runtime.permission_engine is not None
+    assert runtime.sandbox is not None
+    assert runtime.prompt_cache is not None
+    assert runtime.cost_tracker is not None
+
+    result = runtime.permission_engine.check(
+        PermissionContext(
+            tool_name="Read",
+            mode=PermissionMode.AUTO,
+        )
+    )
+    assert result.allowed
+
+    await runtime.stop()
