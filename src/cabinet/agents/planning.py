@@ -25,7 +25,10 @@ class Plan:
     replan_count: int = 0
 
 
+import asyncio
 import json
+from collections.abc import Callable, Awaitable
+from unittest.mock import MagicMock
 
 
 PLANNER_SYSTEM_PROMPT = """You are a task planner. Decompose the user's goal into ordered, actionable steps.
@@ -136,3 +139,94 @@ Output ONLY valid JSON array of replacement step objects (same format as plannin
             pass  # Keep existing plan on parse failure
 
         return plan
+
+
+def _ready_steps(steps: list[PlanStep]) -> list[PlanStep]:
+    """Return steps whose dependencies are all done."""
+    done_ids = {s.id for s in steps if s.status == "done"}
+    return [s for s in steps if s.status == "pending"
+            and all(d in done_ids for d in s.depends_on)]
+
+
+def _block_dependents(steps: list[PlanStep], failed_ids: set[str]) -> list[PlanStep]:
+    """Mark steps that depend on any failed step as blocked."""
+    for s in steps:
+        if s.status == "pending" and any(d in failed_ids for d in s.depends_on):
+            s.status = "blocked"
+    return steps
+
+
+class Executor:
+    """Execute PlanSteps respecting dependency DAG. Independent steps run concurrently."""
+
+    def __init__(self, tool_executor: Callable[..., Awaitable[dict]]):
+        self._execute_tool = tool_executor
+
+    async def execute(self, steps: list[PlanStep]) -> list[PlanStep]:
+        """Execute all steps, respecting dependencies."""
+        if not steps:
+            return steps
+
+        # Reset statuses
+        for s in steps:
+            if s.status != "failed":
+                s.status = "pending"
+
+        processed: set[str] = set()
+
+        while len(processed) < len(steps):
+            ready = _ready_steps(steps)
+            if not ready:
+                break  # No more steps can run (all remaining are blocked)
+
+            # Independent steps (no deps on each other within this batch)
+            independent = [s for s in ready if not any(
+                other.id in s.depends_on for other in ready if other.id != s.id
+            )]
+
+            if len(independent) > 1:
+                async def _run_step(step: PlanStep) -> PlanStep:
+                    step.status = "running"
+                    try:
+                        tc = MagicMock()
+                        tc.function.name = step.tool_name or "unknown"
+                        result = await self._execute_tool(tc)
+                        step.result = str(result)
+                        step.status = "done"
+                    except Exception as e:
+                        step.result = str(e)
+                        step.status = "failed"
+                    return step
+
+                results = await asyncio.gather(
+                    *[_run_step(s) for s in independent], return_exceptions=True
+                )
+                for i, r in enumerate(results):
+                    if isinstance(r, Exception):
+                        independent[i].status = "failed"
+                        independent[i].result = str(r)
+                    processed.add(independent[i].id)
+            else:
+                for step in ready:
+                    step.status = "running"
+                    try:
+                        tc = MagicMock()
+                        tc.function.name = step.tool_name or "unknown"
+                        result = await self._execute_tool(tc)
+                        step.result = str(result)
+                        step.status = "done"
+                    except Exception as e:
+                        step.result = str(e)
+                        step.status = "failed"
+                    processed.add(step.id)
+
+            # Block dependents of newly failed
+            new_failures = {s.id for s in steps if s.status == "failed" and s.id in processed}
+            _block_dependents(steps, new_failures)
+
+            # Mark blocked as processed
+            for s in steps:
+                if s.status == "blocked" and s.id not in processed:
+                    processed.add(s.id)
+
+        return steps
