@@ -32,7 +32,7 @@ def main():
     print(f"Port: {port}\n")
 
     proc = subprocess.Popen(
-        ["cabinet", "serve", "--data-dir", data_dir, "--port", port],
+        [sys.executable, "-m", "cabinet.cli.main", "serve", "--data-dir", data_dir, "--port", port],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
