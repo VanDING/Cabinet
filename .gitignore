@@ -32,7 +32,7 @@ data/knowledge/*
 .env
 .worktrees/
 .superpowers/
-docs/superpowers/
+docs/
 
 # User profile data (generated at runtime)
 data/user/
