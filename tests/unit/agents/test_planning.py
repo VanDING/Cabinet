@@ -93,3 +93,62 @@ def test_planner_includes_available_tools_in_prompt():
     assert "Read" in prompt_text
     assert "Bash" in prompt_text
     assert "Glob" in prompt_text
+
+
+from cabinet.agents.planning import Executor
+
+
+def make_step(desc: str, expected: str, tool: str = "Read",
+              depends_on: list[str] | None = None) -> PlanStep:
+    return PlanStep(description=desc, expected_outcome=expected,
+                    tool_name=tool, depends_on=depends_on or [])
+
+
+def test_executor_respects_dependencies():
+    """Steps with dependencies wait for prerequisites before executing."""
+    s1 = make_step("Step 1", "Done")
+    s2 = make_step("Step 2", "Done", depends_on=[s1.id])
+    s3 = make_step("Step 3", "Done", depends_on=[s2.id])
+
+    async def fake_execute(tc):
+        return {"result": f"Ran {tc.function.name}", "status": "success"}
+
+    executor = Executor(fake_execute)
+
+    async def run():
+        steps = await executor.execute([s1, s2, s3])
+        assert all(s.status == "done" for s in steps)
+
+    asyncio.run(run())
+
+
+def test_executor_blocks_on_failure():
+    """When a step fails, steps depending on it are marked blocked."""
+    s1 = make_step("Failing step", "Done")
+    s2 = make_step("Dependent step", "Done", depends_on=[s1.id])
+
+    async def fake_failing_execute(tc):
+        raise RuntimeError("Boom")
+
+    executor = Executor(fake_failing_execute)
+
+    async def run():
+        steps = await executor.execute([s1, s2])
+        assert s1.status == "failed"
+        assert s2.status == "blocked"
+
+    asyncio.run(run())
+
+
+def test_executor_handles_empty():
+    """Empty step list returns empty."""
+    async def fake_execute(tc):
+        return {"result": "ok", "status": "success"}
+
+    executor = Executor(fake_execute)
+
+    async def run():
+        steps = await executor.execute([])
+        assert steps == []
+
+    asyncio.run(run())
