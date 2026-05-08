@@ -230,3 +230,68 @@ class Executor:
                     processed.add(s.id)
 
         return steps
+
+
+@dataclass
+class EvaluationVerdict:
+    """Result of plan evaluation."""
+    success: bool
+    summary: str
+    failure_reason: str | None = None
+
+
+class Evaluator:
+    """Evaluate whether plan steps achieved their expected outcomes via LLM."""
+
+    def __init__(self, gateway, model: str = "default"):
+        self._gateway = gateway
+        self._model = model
+
+    async def evaluate(self, goal: str, steps: list[PlanStep]) -> EvaluationVerdict:
+        """Evaluate each done step against expected_outcome."""
+        done_steps = [s for s in steps if s.status == "done"]
+        if not done_steps:
+            return EvaluationVerdict(
+                success=False,
+                summary="No steps completed",
+                failure_reason="All steps are pending or blocked",
+            )
+
+        results = []
+        failure_reason = None
+
+        for step in done_steps:
+            prompt = f"""Compare the expected outcome with the actual result.
+Answer ONLY 'MATCH' or 'MISMATCH: <brief reason>'.
+
+Expected: {step.expected_outcome}
+Actual: {step.result}"""
+
+            response = await self._gateway.complete(
+                messages=[
+                    {"role": "system", "content": "You are an outcome evaluator. Compare expected vs actual results. Answer ONLY 'MATCH' or 'MISMATCH: <reason>'."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self._model,
+                temperature=0.1,
+            )
+
+            content = response.content.strip()
+            if content.startswith("MATCH"):
+                results.append(True)
+            else:
+                results.append(False)
+                if failure_reason is None:
+                    failure_reason = content.replace("MISMATCH: ", "").strip()
+
+        all_match = all(results)
+        done_desc = "\n".join(
+            f"- {s.description}: {'PASS' if r else 'FAIL'}"
+            for s, r in zip(done_steps, results)
+        )
+
+        return EvaluationVerdict(
+            success=all_match,
+            summary=f"Goal: {goal}\nResults:\n{done_desc}",
+            failure_reason=failure_reason if not all_match else None,
+        )

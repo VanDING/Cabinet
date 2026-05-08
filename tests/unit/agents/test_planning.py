@@ -152,3 +152,71 @@ def test_executor_handles_empty():
         assert steps == []
 
     asyncio.run(run())
+
+
+from cabinet.agents.planning import Evaluator, EvaluationVerdict
+
+
+def test_evaluation_verdict_success():
+    v = EvaluationVerdict(success=True, summary="All steps passed")
+    assert v.success is True
+    assert v.summary == "All steps passed"
+    assert v.failure_reason is None
+
+
+def test_evaluation_verdict_failure():
+    v = EvaluationVerdict(
+        success=False,
+        summary="Step 2 failed",
+        failure_reason="Expected 'tests pass' but got '2 failures'",
+    )
+    assert v.success is False
+    assert v.failure_reason == "Expected 'tests pass' but got '2 failures'"
+
+
+def test_evaluator_all_steps_match():
+    """Evaluator returns success when all steps match expected outcomes."""
+    mock_gateway = MagicMock()
+    mock_response = MagicMock()
+    mock_response.content = "MATCH"
+    mock_gateway.complete = AsyncMock(return_value=mock_response)
+
+    steps = [
+        PlanStep(description="Edit config", expected_outcome="Log level changed",
+                 tool_name="Edit", result="File updated: log level = DEBUG"),
+        PlanStep(description="Run tests", expected_outcome="Tests pass",
+                 tool_name="Bash", result="1087 passed"),
+    ]
+    for s in steps:
+        s.status = "done"
+
+    evaluator = Evaluator(mock_gateway)
+
+    async def run():
+        verdict = await evaluator.evaluate("Change log to DEBUG and verify", steps)
+        assert verdict.success is True
+
+    asyncio.run(run())
+
+
+def test_evaluator_detects_mismatch():
+    """Evaluator returns failure when a step doesn't match."""
+    mock_gateway = MagicMock()
+    mismatch_response = MagicMock()
+    mismatch_response.content = "MISMATCH: Expected 'Tests pass' but got '2 failures'"
+    mock_gateway.complete = AsyncMock(return_value=mismatch_response)
+
+    steps = [
+        PlanStep(description="Run tests", expected_outcome="Tests pass",
+                 tool_name="Bash", result="2 tests failed"),
+    ]
+    steps[0].status = "done"
+
+    evaluator = Evaluator(mock_gateway)
+
+    async def run():
+        verdict = await evaluator.evaluate("Verify tests", steps)
+        assert verdict.success is False
+        assert verdict.failure_reason is not None
+
+    asyncio.run(run())
