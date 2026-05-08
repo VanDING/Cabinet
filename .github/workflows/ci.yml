@@ -50,6 +50,11 @@ jobs:
           CABINET_LOG_FORMAT: json
           CABINET_OTLP_ENDPOINT: ""
         run: pytest tests/unit/core/test_observability.py -v
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
 
   security:
     runs-on: ubuntu-latest
