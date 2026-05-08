@@ -9,6 +9,7 @@ from cabinet.models.primitives import SkillDefinition
 if TYPE_CHECKING:
     from cabinet.agents.skill_executor import SkillExecutor
     from cabinet.core.tools.mcp_connector import MCPConnector
+    from cabinet.core.tools.toolsets import ToolsetRegistry
 
 
 class LocalToolRegistry:
@@ -18,12 +19,16 @@ class LocalToolRegistry:
         self._executor: SkillExecutor | None = None
         self._mcp_connector: MCPConnector | None = None
         self._mcp_skill_names: set[str] = set()
+        self._toolset_registry: "ToolsetRegistry | None" = None
 
     def set_executor(self, executor: SkillExecutor) -> None:
         self._executor = executor
 
     def set_mcp_connector(self, connector: MCPConnector) -> None:
         self._mcp_connector = connector
+
+    def set_toolset_registry(self, registry: "ToolsetRegistry") -> None:
+        self._toolset_registry = registry
 
     async def register(self, skill: SkillDefinition) -> None:
         self._skills[skill.name] = skill
@@ -48,6 +53,15 @@ class LocalToolRegistry:
 
     async def list_skills(self) -> list[SkillDefinition]:
         return list(self._skills.values())
+
+    async def list_active_skills(self) -> list:
+        if self._toolset_registry is None:
+            return list(self._skills.values())
+        active_names = self._toolset_registry.active_tools()
+        return [
+            s for name, s in self._skills.items()
+            if name in active_names
+        ]
 
     async def get_skill(self, skill_id: UUID) -> SkillDefinition | None:
         return self._skills_by_id.get(skill_id)
