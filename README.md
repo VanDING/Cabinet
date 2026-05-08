@@ -2,8 +2,8 @@
 
 # Cabinet
 
-[![CI](https://github.com/user/cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/user/cabinet/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/user/cabinet/branch/master/graph/badge.svg)](https://codecov.io/gh/user/cabinet)
+[![CI](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/VanDING/Cabinet/branch/main/graph/badge.svg)](https://codecov.io/gh/VanDING/Cabinet)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

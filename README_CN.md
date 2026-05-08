@@ -2,7 +2,7 @@
 
 # Cabinet
 
-[![CI](https://github.com/user/cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/user/cabinet/actions/workflows/ci.yml)
+[![CI](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
