@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Continuous soak test: run cabinet serve for 30 minutes, monitor memory."""
+"""Continuous soak test: run cabinet serve for 60 minutes, monitor memory."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ import subprocess
 import time
 import sys
 import os
+import gc
 
-DURATION_SECONDS = 1800  # 30 minutes
+DURATION_SECONDS = 3600  # 60 minutes
 CHECK_INTERVAL = 30
 HEALTH_URL = "http://localhost:8000/health"
 
@@ -62,11 +63,29 @@ def main():
                 health = f"DOWN ({e})"
                 errors += 1
 
+            # Concurrent load: send a chat request every 10s
+            if int(elapsed) % 10 == 0:
+                try:
+                    chat_r = httpx.post(
+                        f"http://localhost:{port}/api/chat",
+                        json={"message": "ping", "captain_id": "soak-captain"},
+                        timeout=10,
+                    )
+                    if chat_r.status_code != 200:
+                        print(f"    chat returned {chat_r.status_code}")
+                except Exception as chat_e:
+                    print(f"    chat error: {chat_e}")
+
             mem = get_memory_mb(pid)
             mem_str = f"{mem:.1f}MB" if mem >= 0 else "N/A"
             samples.append(mem)
 
-            print(f"  [{elapsed / 60:5.1f}min] health={health}  mem={mem_str}  errors={errors}")
+            gc_stats = gc.get_stats()
+            gc_collections = sum(s["collections"] for s in gc_stats)
+            gc_collected = sum(s["collected"] for s in gc_stats)
+
+            print(f"  [{elapsed / 60:5.1f}min] health={health}  mem={mem_str}  "
+                  f"gc={gc_collections}  errors={errors}")
 
             if errors > 5:
                 print("\nFAILED: Too many errors")
