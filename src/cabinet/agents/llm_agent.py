@@ -37,6 +37,7 @@ class LiteLLMAgent:
         max_context_tokens: int | None = None,
         tools: list[ToolDefinition] | None = None,
         tool_registry: object | None = None,
+        enable_planning: bool = True,
     ):
         self._employee = employee
         self._gateway = gateway
@@ -55,6 +56,14 @@ class LiteLLMAgent:
         )
         self._tool_breaker = CircuitBreaker(max_failures=3)
         self._api_breaker = CircuitBreaker(max_failures=5, reset_timeout=30.0)
+
+        # Planning support (opt-in via enable_planning=True)
+        self._enable_planning = enable_planning
+        if self._enable_planning:
+            from cabinet.agents.planning import Planner, Executor, Evaluator
+            self._planner = Planner(self._gateway)
+            self._executor = Executor(self._execute_tool_call)
+            self._evaluator = Evaluator(self._gateway)
 
     @property
     def employee(self) -> Employee:
@@ -93,7 +102,41 @@ class LiteLLMAgent:
     def _build_tool_schemas(self) -> list[dict]:
         return [t.to_openai_schema() for t in self._tools]
 
+    def _should_plan(self, task: str) -> bool:
+        """Heuristic: plan when task has multi-step complexity indicators."""
+        if not self._enable_planning:
+            return False
+        indicators = [
+            " and ", " then ", " first ", " next ", " finally ",
+            " also ", "同时", "然后", "之后", "并且", "最后",
+        ]
+        task_lower = task.lower()
+        return any(ind in task_lower for ind in indicators)
+
+    async def _execute_with_plan(self, task: str) -> AgentOutput:
+        """Execute a complex task using Plan-Execute-Evaluate loop."""
+        tools = getattr(self._tool_registry, 'list_tool_names', lambda: [])()
+        plan = await self._planner.plan(task, tools)
+
+        for _ in range(plan.max_replans):
+            plan.steps = await self._executor.execute(plan.steps)
+            verdict = await self._evaluator.evaluate(plan.goal, plan.steps)
+
+            if verdict.success:
+                return AgentOutput(content=verdict.summary, status="success")
+
+            plan = await self._planner.replan(plan, plan.steps, verdict.failure_reason)
+            plan.replan_count += 1
+
+        return AgentOutput(
+            content=f"Task partially completed after {plan.replan_count} replans.\n{verdict.summary}",
+            status="partial",
+        )
+
     async def execute(self, task: str, context: AgentContext) -> AgentOutput:
+        if self._should_plan(task):
+            return await self._execute_with_plan(task)
+
         messages = await self._build_messages(task)
         start = time.monotonic()
 
