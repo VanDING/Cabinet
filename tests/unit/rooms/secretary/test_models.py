@@ -181,3 +181,86 @@ def test_greeting_has_fallback_field():
 def test_secretary_response_has_fallback_field():
     r = SecretaryResponse(message="Hi", level=SecretaryLevel.L1)
     assert r.fallback is False
+
+
+from cabinet.rooms.secretary.models import (
+    ConflictAlert,
+    DailyBrief,
+    PipeCalibration,
+    PipeTemplate,
+)
+
+
+def test_pipe_template_creation():
+    tmpl = PipeTemplate(
+        pipe_id=uuid.uuid4(),
+        name="代码审查管道",
+        description="自动审查代码质量",
+        relevance_score=0.85,
+        reason="与用户描述的代码质量需求高度匹配",
+    )
+    assert tmpl.relevance_score == 0.85
+
+
+def test_daily_brief_creation():
+    brief = DailyBrief(
+        captain_id="captain-1",
+        date="2026-05-08",
+        active_projects=3,
+        pending_decisions=2,
+        key_progress=["项目 Alpha 完成工作流搭建"],
+        risk_alerts=["项目 Gamma 资源不足"],
+        suggested_actions=["审查项目 Gamma 的资源分配"],
+    )
+    assert brief.active_projects == 3
+    assert len(brief.key_progress) == 1
+
+
+def test_daily_brief_empty_fields():
+    brief = DailyBrief(
+        captain_id="c1",
+        date="2026-05-08",
+        active_projects=0,
+        pending_decisions=0,
+    )
+    assert brief.key_progress == []
+    assert brief.risk_alerts == []
+
+
+def test_conflict_alert_warning():
+    alert = ConflictAlert(
+        alert_type="resource",
+        projects_involved=[uuid.uuid4(), uuid.uuid4()],
+        description="两个项目竞争同一 GPU 资源池",
+        severity="warning",
+    )
+    assert alert.alert_type == "resource"
+    assert alert.severity == "warning"
+
+
+def test_conflict_alert_critical():
+    alert = ConflictAlert(
+        alert_type="decision",
+        projects_involved=[uuid.uuid4()],
+        description="预算决策与扩展计划冲突",
+        severity="critical",
+        suggestion="暂停项目 Beta 扩展",
+    )
+    assert alert.severity == "critical"
+    assert alert.suggestion is not None
+
+
+def test_pipe_calibration_creation():
+    from cabinet.models.pipes import ReasoningStrategy
+
+    original = ReasoningStrategy(temperature=0.3, chain_of_thought=False)
+    adjusted = ReasoningStrategy(temperature=0.2, chain_of_thought=True)
+    cal = PipeCalibration(
+        pipe_id=uuid.uuid4(),
+        original_reasoning=original,
+        adjusted_reasoning=adjusted,
+        changes=["temperature: 0.3 -> 0.2", "chain_of_thought: false -> true"],
+        confidence=0.78,
+    )
+    assert len(cal.changes) == 2
+    assert cal.confidence == 0.78

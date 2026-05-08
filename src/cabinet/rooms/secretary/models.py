@@ -70,3 +70,40 @@ class FilterResult(BaseModel):
     urgency_override: Literal["red", "yellow", "blue", "white"] | None = None
     auto_action: str | None = None
     reason: str
+
+
+from cabinet.models.pipes import ReasoningStrategy
+
+
+class PipeTemplate(BaseModel):
+    pipe_id: UUID
+    name: str
+    description: str
+    relevance_score: float
+    reason: str
+
+
+class PipeCalibration(BaseModel):
+    pipe_id: UUID
+    original_reasoning: ReasoningStrategy
+    adjusted_reasoning: ReasoningStrategy
+    changes: list[str] = []
+    confidence: float
+
+
+class DailyBrief(BaseModel):
+    captain_id: str
+    date: str
+    active_projects: int
+    pending_decisions: int
+    key_progress: list[str] = []
+    risk_alerts: list[str] = []
+    suggested_actions: list[str] = []
+
+
+class ConflictAlert(BaseModel):
+    alert_type: Literal["resource", "decision", "schedule"]
+    projects_involved: list[UUID]
+    description: str
+    severity: Literal["warning", "critical"]
+    suggestion: str | None = None
