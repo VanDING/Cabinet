@@ -220,3 +220,47 @@ def test_evaluator_detects_mismatch():
         assert verdict.failure_reason is not None
 
     asyncio.run(run())
+
+
+def test_full_plan_execute_evaluate_success():
+    """End-to-end: plan -> execute -> evaluate -> success, with replan on failure."""
+    # Mock LLM for planning: returns 2-step plan
+    plan_response = MagicMock()
+    plan_response.content = '''[
+        {"description": "Read config file", "tool_name": "Read", "expected_outcome": "File contents returned", "depends_on": []},
+        {"description": "Edit log level", "tool_name": "Edit", "expected_outcome": "Log level changed to DEBUG", "depends_on": [0]}
+    ]'''
+
+    # Mock LLM for evaluation: both steps match
+    eval_resp1 = MagicMock()
+    eval_resp1.content = "MATCH"
+    eval_resp2 = MagicMock()
+    eval_resp2.content = "MATCH"
+
+    mock_gateway = MagicMock()
+    mock_gateway.complete = AsyncMock(side_effect=[plan_response, eval_resp1, eval_resp2])
+
+    # Mock tool executor that returns success
+    async def fake_tool_executor(tc):
+        return {"result": f"Executed {tc.function.name}", "status": "success"}
+
+    from cabinet.agents.planning import Planner, Executor, Evaluator
+    planner = Planner(mock_gateway)
+    executor = Executor(fake_tool_executor)
+    evaluator = Evaluator(mock_gateway)
+
+    async def run_e2e():
+        # Phase 1: Plan
+        plan = await planner.plan("Change log level to DEBUG", ["Read", "Edit"])
+        assert len(plan.steps) == 2
+        assert plan.steps[0].tool_name == "Read"
+
+        # Phase 2: Execute
+        plan.steps = await executor.execute(plan.steps)
+        assert all(s.status == "done" for s in plan.steps)
+
+        # Phase 3: Evaluate
+        verdict = await evaluator.evaluate(plan.goal, plan.steps)
+        assert verdict.success is True
+
+    asyncio.run(run_e2e())
