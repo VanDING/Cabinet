@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -34,8 +36,9 @@ class HandoffResponse(BaseModel):
 
 
 class HandoffManager:
-    def __init__(self, mailbox_router: MailboxRouter):
+    def __init__(self, mailbox_router: MailboxRouter, hooks=None):
         self._router = mailbox_router
+        self._hooks = hooks
         self._pending: dict[UUID, HandoffRequest] = {}
         self._resolved: dict[UUID, HandoffResponse] = {}
         self._waiters: dict[UUID, asyncio.Future[HandoffResponse]] = {}
@@ -107,3 +110,64 @@ class HandoffManager:
 
     async def get_pending_handoffs(self, agent_id: UUID) -> list[HandoffRequest]:
         return [req for req in self._pending.values() if req.to_agent_id == agent_id]
+
+    async def auto_route(
+        self, task: str, from_agent_id: str,
+        capability_registry,
+        strategy: str = "least_loaded",
+    ) -> object | None:
+        """Auto-discover best target agent by capability and send handoff."""
+        try:
+            candidates = capability_registry.discover(query=task)
+        except Exception:
+            return None
+
+        if not candidates:
+            return None
+
+        best = self._select_best(candidates, strategy)
+
+        request = HandoffRequest(
+            from_agent_id=from_agent_id,
+            to_agent_id=best.get("agent_id", best.get("id", "")),
+            task_description=task,
+            context_snapshot={
+                "task": task,
+                "reason": best.get("match_reason", "auto-routed"),
+                "strategy": strategy,
+            },
+            reason="expertise",
+        )
+
+        # Fire before_handoff hook if set
+        if self._hooks and self._hooks.before_handoff:
+            await self._hooks.before_handoff(request)
+
+        return await self.request_handoff(request)
+
+    @staticmethod
+    def _select_best(candidates: list, strategy: str) -> dict:
+        """Select best candidate by routing strategy."""
+        if not candidates:
+            raise ValueError("No candidates")
+        if strategy == "least_loaded":
+            candidates = sorted(
+                candidates,
+                key=lambda c: c.get("current_load", 0) if isinstance(c, dict) else getattr(c, "load", 0),
+            )
+        elif strategy == "highest_skill_match":
+            candidates = sorted(
+                candidates,
+                key=lambda c: c.get("skill_count", 0) if isinstance(c, dict) else len(getattr(c, "skills", [])),
+                reverse=True,
+            )
+        return candidates[0]
+
+
+@dataclass
+class HandoffHooks:
+    """Lifecycle hooks for handoff operations."""
+    before_handoff: Callable[..., Awaitable[None]] | None = None
+    after_accept: Callable[..., Awaitable[None]] | None = None
+    on_reject: Callable[..., Awaitable[None]] | None = None
+    on_timeout: Callable[..., Awaitable[None]] | None = None
