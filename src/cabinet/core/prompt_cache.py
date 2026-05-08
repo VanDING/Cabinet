@@ -38,6 +38,8 @@ class PromptCacheStats:
     def reset(self) -> None:
         self.hits = 0
         self.misses = 0
+        self.last_hit_at = 0.0
+        self.last_miss_at = 0.0
 
 
 @dataclass
