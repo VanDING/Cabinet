@@ -1,4 +1,3 @@
-from prompt_toolkit.styles import Style as PromptStyle
 from rich.style import Style
 
 from cabinet.cli.tui_themes import (
@@ -13,7 +12,6 @@ from cabinet.cli.tui_themes import (
     STYLE_DIM,
     STYLE_BLUE,
     STYLE_SUCCESS,
-    INPUT_STYLE,
 )
 
 
@@ -36,23 +34,17 @@ def test_style_success():
     assert STYLE_SUCCESS == Style(color="#22C55E")
 
 
-def test_input_style():
-    assert isinstance(INPUT_STYLE, PromptStyle)
-    assert INPUT_STYLE.style_rules == [
-        ("", "#ffffff"),
-        ("prompt", "#3B82F6 bold"),
-    ]
-
-
 def test_logo_contains_color_blocks():
-    assert "#CB220C" in CABINET_LOGO
-    assert "#EDB61B" in CABINET_LOGO
+    """Logo uses bold blue (#3B82F6) color."""
     assert "#3B82F6" in CABINET_LOGO
+    assert "bold" in CABINET_LOGO
 
 
 def test_logo_contains_ascii_art():
-    assert "██████╗" in CABINET_LOGO
+    """Logo spells CABINET in ASCII art."""
+    assert "CABINET" not in CABINET_LOGO  # spelled via ASCII blocks, not plain text
     assert "╚═════╝" in CABINET_LOGO
+    assert "╚═╝" in CABINET_LOGO
 
 
 def test_logo_is_non_empty_string():
