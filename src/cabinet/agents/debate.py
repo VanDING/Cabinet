@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -102,8 +103,6 @@ class DebateProtocol:
         avg_confidence = sum(p.confidence for p in recent) / len(recent)
         return avg_confidence >= threshold
 
-
-from dataclasses import dataclass
 
 
 @dataclass

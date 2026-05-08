@@ -117,7 +117,6 @@ class FileMemoryStore:
 
     async def store(self, item) -> None:
         """Store a MemoryItem as a YAML frontmatter .md file."""
-        from uuid import uuid4 as _uuid4
         file_item = FileMemoryItem(
             name=item.id.hex if hasattr(item.id, 'hex') else str(item.id)[:8],
             description=item.metadata.get("description", "") if item.metadata else "",
@@ -128,8 +127,6 @@ class FileMemoryStore:
 
     async def search(self, query: str, scope=None, limit: int = 5) -> list:
         """Search .md files in scope directory for query substring match."""
-        from cabinet.models.primitives import MemoryItem, MemoryScope
-        from uuid import uuid4
 
         scope_str = scope.value if hasattr(scope, 'value') else str(scope) if scope else "long_term"
         scope_dir = self.base_dir / scope_str
@@ -160,8 +157,6 @@ class FileMemoryStore:
 
     async def retrieve(self, memory_id: str) -> None | object:
         """Search all scope directories for matching filename stem."""
-        from cabinet.models.primitives import MemoryItem, MemoryScope
-        from uuid import uuid4
 
         if not self.base_dir.exists():
             return None
