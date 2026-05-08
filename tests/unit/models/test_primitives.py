@@ -114,3 +114,44 @@ def test_memory_item_creation():
     )
     assert item.scope == MemoryScope.SHORT_TERM
     assert item.embedding is None
+
+
+def test_employee_with_pipe_and_persona():
+    pipe_id = uuid.uuid4()
+    persona_id = uuid.uuid4()
+    emp = Employee(
+        team_id=uuid.uuid4(),
+        name="财务小王",
+        role="财务分析师",
+        kind="ai",
+        pipe_id=pipe_id,
+        persona_id=persona_id,
+    )
+    assert emp.pipe_id == pipe_id
+    assert emp.persona_id == persona_id
+    assert emp.pipe_params == {}
+
+
+def test_employee_without_pipe_backward_compatible():
+    emp = Employee(
+        team_id=uuid.uuid4(),
+        name="Bob",
+        role="Consultant",
+        kind="human",
+    )
+    assert emp.pipe_id is None
+    assert emp.persona_id is None
+    assert emp.pipe_params == {}
+
+
+def test_employee_pipe_params_override():
+    emp = Employee(
+        team_id=uuid.uuid4(),
+        name="分析师",
+        role="Analyst",
+        kind="ai",
+        pipe_id=uuid.uuid4(),
+        pipe_params={"temperature": 0.1, "max_tokens": 1000},
+    )
+    assert emp.pipe_params["temperature"] == 0.1
+    assert emp.pipe_params["max_tokens"] == 1000

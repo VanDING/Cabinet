@@ -41,6 +41,10 @@ def test_agent_factory_is_runtime_checkable():
             pass
         async def create_team(self, agents, task):
             pass
+        async def assemble_employee(self, pipe_id, persona_id, team_id):
+            pass
+        async def create_agent_from_pipe(self, pipe_id, team_id):
+            pass
 
     assert isinstance(FakeFactory(), AgentFactory)
 

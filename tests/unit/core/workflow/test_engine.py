@@ -558,3 +558,67 @@ async def test_engine_loop_iterator_mode():
     assert str(loop_id) in results
     assert results[str(loop_id)]["completed"] is True
     assert results[str(loop_id)]["iterations"] == 3
+
+
+# ── V0.2.0 ExecutionJudge integration tests ──────────────────────────
+
+import uuid
+from cabinet.core.harness.judge import DefaultExecutionJudge
+
+
+def _make_workflow(nodes, edges=None):
+    return Workflow(
+        project_id=uuid.uuid4(),
+        name="test_flow",
+        kind="team",
+        nodes=nodes,
+        edges=edges or [],
+    )
+
+
+@pytest.mark.asyncio
+async def test_engine_accepts_execution_judge():
+    engine = WorkflowEngine(
+        agent_factory=StubAgentFactory(),
+        execution_judge=DefaultExecutionJudge(),
+    )
+    assert engine._execution_judge is not None
+
+
+@pytest.mark.asyncio
+async def test_condition_node_calls_judge_on_none_result():
+    judge = DefaultExecutionJudge()
+    engine = WorkflowEngine(
+        agent_factory=StubAgentFactory(),
+        execution_judge=judge,
+    )
+
+    true_id = uuid.uuid4()
+    false_id = uuid.uuid4()
+    end_id = uuid.uuid4()
+
+    cond_node = ConditionNode(
+        id=uuid.uuid4(),
+        name="test_cond",
+        expression="undefined_var",
+        true_next=true_id,
+        false_next=false_id,
+    )
+    trigger = TriggerNode(id=uuid.uuid4(), trigger_type="manual")
+    end = EndNode(id=end_id)
+
+    workflow = _make_workflow(
+        [trigger, cond_node, end],
+        edges=[
+            WorkflowEdge(source_node_id=trigger.id, target_node_id=cond_node.id),
+            WorkflowEdge(source_node_id=cond_node.id, target_node_id=true_id),
+            WorkflowEdge(source_node_id=true_id, target_node_id=end_id),
+        ],
+    )
+
+    result = await engine.run(workflow, inputs={})
+    # L1 judge decides choose_path → auto-continues to true_id (no pause)
+    cond_result = result.get(str(cond_node.id), {})
+    assert "judge_decision" in cond_result
+    assert cond_result["judge_decision"]["level"] == "L1"
+    assert cond_result["judge_decision"]["action"] == "choose_path"
