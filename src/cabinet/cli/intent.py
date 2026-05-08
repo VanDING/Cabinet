@@ -47,7 +47,7 @@ def detect_intent(user_input: str) -> dict | None:
     return None
 
 
-async def execute_intent(intent: dict, state, runtime) -> str | None:
+async def execute_intent(intent: dict, screen, runtime) -> str | None:
     """Execute detected intent against real room services. Returns feedback."""
     from uuid import uuid4
     from cabinet.rooms.meeting.models import MeetingLevel
@@ -62,8 +62,8 @@ async def execute_intent(intent: dict, state, runtime) -> str | None:
                 participants=[uuid4()],
                 project_id=None,
             )
-            state.mode = "meeting"
-            state.meeting_topic = intent["topic"]
+            screen.mode = "meeting"
+            screen.meeting_topic = intent["topic"]
             return intent["action_text"]
 
         elif intent["type"] == "office":
@@ -73,8 +73,8 @@ async def execute_intent(intent: dict, state, runtime) -> str | None:
                 inputs={"description": intent["description"]},
             )
             await runtime.office.submit_task(order)
-            state.mode = "office"
-            state.office_workflow = intent["description"]
+            screen.mode = "office"
+            screen.office_workflow = intent["description"]
             return intent["action_text"]
 
         elif intent["type"] == "decision":
@@ -85,7 +85,7 @@ async def execute_intent(intent: dict, state, runtime) -> str | None:
                 options=[{"label": "Approve"}, {"label": "Reject"}],
             )
             await runtime.decision.submit(request)
-            state.mode = "decision"
+            screen.mode = "decision"
             return intent["action_text"]
     except Exception as e:
         return f"操作执行失败: {e}"
