@@ -75,6 +75,10 @@ class CabinetRuntime:
         prompt_cache_manager: PromptCacheManager | None = None,
         cost_tracker: CostTracker | None = None,
         cost_budget_limit_usd: float | None = None,
+        enable_gateway: bool = False,
+        gateway_platforms: list[str] | None = None,
+        enable_cron: bool = False,
+        cron_persistence_path: str | None = None,
     ):
         self._agent_factory = agent_factory or StubAgentFactory()
         self._db_path = db_path
@@ -95,6 +99,22 @@ class CabinetRuntime:
         self._prompt_cache = prompt_cache_manager or PromptCacheManager()
         self._cost_budget = CostBudget(limit_usd=cost_budget_limit_usd or float("inf"))
         self._cost_tracker = cost_tracker or CostTracker(budget=self._cost_budget)
+
+        # Gateway
+        self._gateway_process = None
+        self._gateway_platforms: list[str] = []
+        if enable_gateway:
+            from cabinet.gateway.run import GatewayProcess
+            self._gateway_process = GatewayProcess(runtime=self)
+            self._gateway_platforms = gateway_platforms or []
+
+        # Cron
+        self._cron_scheduler = None
+        if enable_cron:
+            from cabinet.core.scheduler.scheduler import CronScheduler
+            self._cron_scheduler = CronScheduler(
+                persistence_path=cron_persistence_path or "data/cron.json"
+            )
 
         if self._mcp_connector is not None:
             self._tool_registry.set_mcp_connector(self._mcp_connector)
@@ -275,6 +295,10 @@ class CabinetRuntime:
         await self._wiring.register(self._summary_handler)
         await self._wiring.register(self._secretary_handler)
         await self._discover_mcp_tools()
+        if self._gateway_process:
+            await self._gateway_process.start(platforms=self._gateway_platforms)
+        if self._cron_scheduler:
+            await self._cron_scheduler.start()
         if self._db_path:
             self._backup_task = asyncio.create_task(self._scheduled_backup())
         logger.info("CabinetRuntime started successfully")
@@ -369,6 +393,10 @@ class CabinetRuntime:
         if self._conn_manager is not None:
             await self._conn_manager.close()
             self._conn_manager = None
+        if self._gateway_process:
+            await self._gateway_process.stop()
+        if self._cron_scheduler:
+            await self._cron_scheduler.stop()
         logger.info("CabinetRuntime stopped")
 
     async def health_check(self) -> dict:
@@ -584,6 +612,14 @@ class CabinetRuntime:
     @property
     def employee_store(self):
         return self._employee_store
+
+    @property
+    def gateway_process(self):
+        return self._gateway_process
+
+    @property
+    def cron(self):
+        return self._cron_scheduler
 
     @property
     def gateway(self):
