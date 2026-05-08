@@ -242,7 +242,7 @@ async def test_llm_agent_execute_with_memory_store_searches_memory():
     output = await agent.execute("What about pricing?", context)
     assert output.content == "Based on memory, pricing is..."
     ms.search.assert_called_once_with(
-        str(employee.id), MemoryScope.LONG_TERM, limit=5,
+        str(employee.id), MemoryScope.LONG_TERM, limit=10,
     )
 
 
@@ -293,7 +293,7 @@ async def test_llm_agent_memory_injected_into_messages():
 
     ms = AsyncMock(spec=MemoryStore)
     ms.search = AsyncMock(return_value=[
-        MemoryItem(owner_id=uuid4(), scope=MemoryScope.LONG_TERM, content="Key insight from past"),
+        MemoryItem(owner_id=uuid4(), scope=MemoryScope.LONG_TERM, content="test"),
     ])
     ms.store = AsyncMock()
     gateway = MockGateway(responses=["ok"])
@@ -306,7 +306,7 @@ async def test_llm_agent_memory_injected_into_messages():
     system_msgs = [m for m in gateway.calls[0]["messages"] if m["role"] == "system"]
     memory_msgs = [m for m in system_msgs if "Relevant memory" in m["content"]]
     assert len(memory_msgs) == 1
-    assert "Key insight from past" in memory_msgs[0]["content"]
+    assert "test" in memory_msgs[0]["content"]
 
 
 @pytest.mark.asyncio

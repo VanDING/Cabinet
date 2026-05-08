@@ -68,11 +68,21 @@ class LiteLLMAgent:
             items = await self._memory_store.search(
                 str(self._employee.id),
                 MemoryScope.LONG_TERM,
-                limit=5,
+                limit=10,
             )
             if items:
-                memory_text = "\n".join(item.content for item in items)
-                system_msgs.append({"role": "system", "content": f"Relevant memory:\n{memory_text}"})
+                from cabinet.core.memory.scoring import MemoryScorer
+                scorer = MemoryScorer()
+                scored = scorer.score(items, task)
+                relevant = [s for s in scored[:3] if s.score >= MemoryScorer.MIN_SCORE]
+                if relevant:
+                    memory_text = "\n".join(
+                        f"- [score={s.score:.2f}] {s.item.content}" for s in relevant
+                    )
+                    system_msgs.append({
+                        "role": "system",
+                        "content": f"Relevant memory:\n{memory_text}",
+                    })
         new_msg = {"role": "user", "content": task}
         return self._token_budget.fit_messages(system_msgs, self._history, new_msg)
 
