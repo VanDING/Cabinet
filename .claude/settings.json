@@ -23,7 +23,12 @@
       "Bash(python -m pytest tests/ -q --tb=line --ignore=tests/load -x)",
       "Bash(python -m pytest tests/unit/cli/test_tui.py::test_handle_slash_command_mode_switch -v --tb=short)",
       "Bash(python -m pytest tests/ -q --tb=line --ignore=tests/load --ignore=tests/unit/cli/test_tui.py)",
-      "Bash(python -c \"from cabinet.cli.main import app; print\\('CLI imports OK'\\)\")"
+      "Bash(python -c \"from cabinet.cli.main import app; print\\('CLI imports OK'\\)\")",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:claude.whaty.org)",
+      "WebSearch",
+      "Bash(gh pr *)",
+      "WebFetch(domain:www.npmjs.com)"
     ]
   }
 }
