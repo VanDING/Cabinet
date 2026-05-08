@@ -43,3 +43,53 @@ def test_plan_creates_with_steps():
     assert len(plan.steps) == 2
     assert plan.max_replans == 3
     assert plan.replan_count == 0
+
+
+from unittest.mock import AsyncMock, MagicMock
+from cabinet.agents.planning import Planner
+import asyncio
+
+
+def test_planner_decomposes_simple_task():
+    """Planner should decompose a task into PlanStep list via LLM."""
+    mock_gateway = MagicMock()
+    mock_response = MagicMock()
+    mock_response.content = '''[
+        {"description": "Read config.py", "tool_name": "Read", "expected_outcome": "File contents shown", "depends_on": []},
+        {"description": "Edit log level to DEBUG", "tool_name": "Edit", "expected_outcome": "Log level changed", "depends_on": [0]},
+        {"description": "Run tests", "tool_name": "Bash", "expected_outcome": "All tests pass", "depends_on": [1]}
+    ]'''
+    mock_gateway.complete = AsyncMock(return_value=mock_response)
+
+    planner = Planner(mock_gateway)
+
+    async def run():
+        plan = await planner.plan("Change log level to DEBUG and verify tests pass", ["Read", "Edit", "Bash"])
+        assert plan.goal == "Change log level to DEBUG and verify tests pass"
+        assert len(plan.steps) == 3
+        assert plan.steps[0].tool_name == "Read"
+        assert plan.steps[1].depends_on == ["_s0_"]
+        assert plan.steps[2].depends_on == ["_s1_"]
+
+    asyncio.run(run())
+
+
+def test_planner_includes_available_tools_in_prompt():
+    """Planner prompt includes available tool names."""
+    mock_gateway = MagicMock()
+    mock_response = MagicMock()
+    mock_response.content = '[]'
+    mock_gateway.complete = AsyncMock(return_value=mock_response)
+
+    planner = Planner(mock_gateway)
+
+    async def run():
+        await planner.plan("Do X", ["Read", "Bash", "Glob"])
+
+    asyncio.run(run())
+
+    call_args = mock_gateway.complete.call_args
+    prompt_text = str(call_args)
+    assert "Read" in prompt_text
+    assert "Bash" in prompt_text
+    assert "Glob" in prompt_text
