@@ -22,6 +22,11 @@ from cabinet.core.harness.evaluator import DefaultEvaluator
 from cabinet.core.harness.verification_gate import WorkflowVerificationGate
 from cabinet.core.tools.registry import LocalToolRegistry
 from cabinet.core.workflow.engine import WorkflowEngine
+from cabinet.core.harness.permissions import PermissionEngine
+from cabinet.core.harness.sandbox import FileSystemSandbox
+from cabinet.core.harness.denial_tracker import DenialTracker
+from cabinet.core.prompt_cache import PromptCacheManager
+from cabinet.core.cost_tracker import CostTracker, CostBudget
 
 try:
     from cabinet.core.audit import AuditEvent, AuditStore
@@ -64,6 +69,12 @@ class CabinetRuntime:
         tool_registry: ToolRegistry | None = None,
         employee_store: object | None = None,
         api_keys: dict[str, str] | None = None,
+        sandbox: FileSystemSandbox | None = None,
+        permission_engine: PermissionEngine | None = None,
+        denial_tracker_obj: DenialTracker | None = None,
+        prompt_cache_manager: PromptCacheManager | None = None,
+        cost_tracker: CostTracker | None = None,
+        cost_budget_limit_usd: float | None = None,
     ):
         self._agent_factory = agent_factory or StubAgentFactory()
         self._db_path = db_path
@@ -74,6 +85,16 @@ class CabinetRuntime:
         self._tool_registry = tool_registry or LocalToolRegistry()
         self._employee_store = employee_store
         self._api_keys = api_keys or {}
+
+        self._sandbox = sandbox or FileSystemSandbox()
+        self._denial_tracker_instance = denial_tracker_obj or DenialTracker()
+        self._permission_engine = permission_engine or PermissionEngine(
+            sandbox=self._sandbox,
+            denial_tracker=self._denial_tracker_instance,
+        )
+        self._prompt_cache = prompt_cache_manager or PromptCacheManager()
+        self._cost_budget = CostBudget(limit_usd=cost_budget_limit_usd or float("inf"))
+        self._cost_tracker = cost_tracker or CostTracker(budget=self._cost_budget)
 
         if self._mcp_connector is not None:
             self._tool_registry.set_mcp_connector(self._mcp_connector)
@@ -503,6 +524,26 @@ class CabinetRuntime:
     @property
     def escalation_protocol(self) -> DefaultEscalationProtocol:
         return self._escalation_protocol
+
+    @property
+    def sandbox(self) -> FileSystemSandbox:
+        return self._sandbox
+
+    @property
+    def permission_engine(self) -> PermissionEngine:
+        return self._permission_engine
+
+    @property
+    def prompt_cache(self) -> PromptCacheManager:
+        return self._prompt_cache
+
+    @property
+    def cost_tracker(self) -> CostTracker:
+        return self._cost_tracker
+
+    @property
+    def cost_budget(self) -> CostBudget:
+        return self._cost_budget
 
     @property
     def workflow_engine(self) -> WorkflowEngine:
