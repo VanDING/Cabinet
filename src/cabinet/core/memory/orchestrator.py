@@ -11,6 +11,7 @@ class AssembledContext:
     long_term: list[MemoryScore] = field(default_factory=list)
     project: list[MemoryScore] = field(default_factory=list)
     session_summary: str | None = None
+    user_profile: str = ""
     combined_text: str = ""
 
 
@@ -22,7 +23,9 @@ class MemoryOrchestrator:
         self._scorer = scorer or MemoryScorer()
 
     async def assemble_context(self, query: str, employee_id: str,
-                               project_id: str | None = None) -> AssembledContext:
+                               project_id: str | None = None,
+                               user_profile_injector=None,
+                               captain_id: str = "") -> AssembledContext:
         all_items = []
         for backend in self._backends:
             try:
@@ -65,8 +68,16 @@ class MemoryOrchestrator:
                     f"- {s.item.content}" for s in top
                 ))
 
+        user_profile_text = ""
+        if user_profile_injector and captain_id:
+            try:
+                user_profile_text = user_profile_injector.build_context(captain_id)
+            except Exception:
+                pass
+
         return AssembledContext(
             long_term=long_term,
             project=project,
+            user_profile=user_profile_text,
             combined_text="\n\n".join(parts),
         )

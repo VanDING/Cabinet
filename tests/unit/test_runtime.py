@@ -435,3 +435,31 @@ async def test_runtime_with_phase2_ecosystem_components(tmp_path):
 
     await runtime.stop()
     assert not runtime.cron.is_running
+
+
+async def test_runtime_wires_phase3_user_modeling():
+    import tempfile
+    from cabinet.runtime import CabinetRuntime
+    from cabinet.core.user.models import MemoryType, MemoryEntry
+
+    with tempfile.TemporaryDirectory() as tmp:
+        runtime = CabinetRuntime(
+            db_path=None,
+            user_data_dir=tmp,
+        )
+        await runtime.start()
+
+        assert runtime.user_profile is not None
+        assert runtime.user_context is not None
+        assert runtime.user_learner is not None
+
+        entry = MemoryEntry(
+            memory_type=MemoryType.USER,
+            name="Test User",
+            content="Test engineer",
+        )
+        runtime.user_profile.save(entry)
+        loaded = runtime.user_profile.load_all(MemoryType.USER)
+        assert len(loaded) == 1
+
+        await runtime.stop()
