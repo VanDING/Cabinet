@@ -1,10 +1,25 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 
 import yaml
 
 from cabinet.models.primitives import SkillDefinition
+
+
+@dataclass
+class SkillMetadata:
+    name: str = "unnamed"
+    description: str = ""
+    version: str = "0.1.0"
+    author: str = ""
+    license: str = "MIT"
+    category: str = "general"
+    platforms: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    related_skills: list[str] = field(default_factory=list)
+    config: dict = field(default_factory=dict)
 
 
 class SkillLoader:
@@ -34,8 +49,20 @@ class SkillLoader:
             requires_human_approval=requires_human_approval,
         )
 
+    def parse_metadata(self, path: str) -> SkillMetadata:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        frontmatter_match = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL | re.MULTILINE)
+        if not frontmatter_match:
+            return SkillMetadata()
+        data = yaml.safe_load(frontmatter_match.group(1)) or {}
+        return SkillMetadata(**{
+            k: v for k, v in data.items()
+            if k in SkillMetadata.__dataclass_fields__
+        })
+
     def _parse_content(self, content: str) -> SkillDefinition:
-        frontmatter_match = re.search(r"\n---\s*\n(.*?)\n---", content, re.DOTALL)
+        frontmatter_match = re.search(r"^---\s*\n(.*?)\n---", content, re.DOTALL | re.MULTILINE)
         if frontmatter_match:
             metadata = yaml.safe_load(frontmatter_match.group(1))
             body = content[frontmatter_match.end() :].strip()
