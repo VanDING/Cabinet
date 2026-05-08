@@ -127,82 +127,6 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Quick Start
 
-```bash
-# Clone the repository
-git clone https://github.com/VanDING/Cabinet.git
-cd Cabinet
-
-# Install dependencies
-pip install -e ".[dev]"
-
-# Configure your model and API keys
-cabinet set-api-key
-
-# Start a conversation
-cabinet chat
-```
-
-For more detailed guidance, see the [Documentation](#).
-
----
-
-## Roadmap: V2.0 and Beyond
-
-Cabinet 1.0 established the complete organizational framework. Its core achievement: **A Captain is now able to assemble and command an AI team.**
-
-V2.0 will take this framework from "functional" to "discerning," delivering on the promise that a Captain can do everything, but should do one thing.
-
-### Capability Restructuring: The Dual-Layer Employee Model
-- Refactor Employees from fixed-identity agents into a **"Capability Pipeline + Persona Shell"** dual-layer model
-- A single pipeline template can be instantiated multiple times with different names, personalities, and collaborative memory
-- Support for three collaboration paradigms—conversational, structured, and silent—in any combination
-- Pipelines can be independently tested, free of permissions, memory, or persona dependencies
-
-### Execution Intelligence Upgrade
-- A built-in **Execution Judgment Module** within the workflow engine that makes dynamic decisions atop preset logic
-- Introduction of a **four-tier decision boundary (L0–L3)** to precisely define the scope of AI autonomy
-- Intelligent path selection when condition branches are not fully met, automatic reconciliation of parallel contradictions, and dynamic handling of execution timeouts
-- **External AI Nodes** are scheduled as peers alongside internal pipelines in the workflow, subject to the same Harness quality assurance
-
-### Captain Role Deepening: From Manager to Arbiter
-- Workflow orchestration, pipeline parameter tuning, and project tracking are all handled autonomously by the system
-- The Secretary reports to the Captain only when necessary; the Captain's daily view reduces to a handful of decision cards in the Decision Room
-- Phase 1: manual setup by Captain → Phase 2: system observes and learns patterns → Phase 3: a single sentence from Captain triggers the entire flow autonomously
-
-### Interface Expansion
-- **Desktop**: A three-column strategic command center with multiple entry points (Decision Room chat, Meeting Room floor, Office canvas drag-and-drop)
-- **Mobile**: A tactical decision terminal carrying *only* the Captain's sole core responsibility: deciding
-- Mobile supports notification-bar quick actions for L1-level confirmations without opening the app
-
-### Intelligence Layer Enhancements
-- **Cabinet Designer**: Conversational workflow and employee design. Describe your need → system generates → Captain confirms
-- **Secretary Agent Upgrades**: Proactive template recommendations, automatic pipeline parameter calibration, cross-project conflict detection, deep personality customization
-- **Summary Room Upgrades**: Pre-mortem analysis (surface historical similar cases at decision time), proactive organizational memory retrieval, authorization audit and adjustment recommendations
-
-### Community Ecosystem Expansion
-- New: **Pipe Templates**—reusable capability bundles sitting between Skills and Team Blueprints in scope
-- New: **Harness Rule Templates**—industry-specific quality standards (legal compliance review, financial analysis checks, etc.)
-- New: **External AI Connectors**—adaptation Skills that wrap third-party AI services
-
-### Further Down the Road
-- **The Inevitable GUI**: A graphical interface allowing the Captain to survey the entire landscape at a glance
-- **Community Skill and Pipeline Marketplace**: Share and reuse capability units created by others, allowing the ecosystem to grow continuously
-- **Proactive Organizational Memory**: No longer passive retrieval; the system actively surfaces relevant historical lessons at the moment of decision
-
----
-
-**The ultimate daily routine for Cabinet is a quiet picture.**
-
-The Captain opens the system. In the Decision Room, a handful of decision cards rest quietly. Everything else—workflows running, pipelines tuning themselves, projects advancing—is handled autonomously by the system in the background. The Secretary only knocks gently when truly necessary.
-
----
-
-## Contributing
-
-Cabinet is still in its early stages. We welcome contributions of all kinds—code, documentation, ideas, or even one of your own AI employees.
-
-**Join the Cabinet. Be the Captain.**
-
 ### Installation
 
 ```bash
@@ -582,3 +506,62 @@ pip wheel . --no-deps -w dist/
 ```
 
 CI runs automatically on push/PR to `main` via GitHub Actions.
+
+---
+
+## Roadmap
+
+Cabinet 1.0 established the complete organizational framework. Its core achievement: **A Captain is now able to assemble and command an AI team.**
+
+V2.0 will take this framework from "functional" to "discerning," delivering on the promise that a Captain can do everything, but should do one thing.
+
+### Capability Restructuring: The Dual-Layer Employee Model
+- Refactor Employees from fixed-identity agents into a **"Capability Pipeline + Persona Shell"** dual-layer model
+- A single pipeline template can be instantiated multiple times with different names, personalities, and collaborative memory
+- Support for three collaboration paradigms—conversational, structured, and silent—in any combination
+- Pipelines can be independently tested, free of permissions, memory, or persona dependencies
+
+### Execution Intelligence Upgrade
+- A built-in **Execution Judgment Module** within the workflow engine that makes dynamic decisions atop preset logic
+- Introduction of a **four-tier decision boundary (L0–L3)** to precisely define the scope of AI autonomy
+- Intelligent path selection when condition branches are not fully met, automatic reconciliation of parallel contradictions, and dynamic handling of execution timeouts
+- **External AI Nodes** are scheduled as peers alongside internal pipelines in the workflow, subject to the same Harness quality assurance
+
+### Captain Role Deepening: From Manager to Arbiter
+- Workflow orchestration, pipeline parameter tuning, and project tracking are all handled autonomously by the system
+- The Secretary reports to the Captain only when necessary; the Captain's daily view reduces to a handful of decision cards in the Decision Room
+- Phase 1: manual setup by Captain → Phase 2: system observes and learns patterns → Phase 3: a single sentence from Captain triggers the entire flow autonomously
+
+### Interface Expansion
+- **Desktop**: A three-column strategic command center with multiple entry points (Decision Room chat, Meeting Room floor, Office canvas drag-and-drop)
+- **Mobile**: A tactical decision terminal carrying *only* the Captain's sole core responsibility: deciding
+- Mobile supports notification-bar quick actions for L1-level confirmations without opening the app
+
+### Intelligence Layer Enhancements
+- **Cabinet Designer**: Conversational workflow and employee design. Describe your need → system generates → Captain confirms
+- **Secretary Agent Upgrades**: Proactive template recommendations, automatic pipeline parameter calibration, cross-project conflict detection, deep personality customization
+- **Summary Room Upgrades**: Pre-mortem analysis (surface historical similar cases at decision time), proactive organizational memory retrieval, authorization audit and adjustment recommendations
+
+### Community Ecosystem Expansion
+- New: **Pipe Templates**—reusable capability bundles sitting between Skills and Team Blueprints in scope
+- New: **Harness Rule Templates**—industry-specific quality standards (legal compliance review, financial analysis checks, etc.)
+- New: **External AI Connectors**—adaptation Skills that wrap third-party AI services
+
+### Further Down the Road
+- **The Inevitable GUI**: A graphical interface allowing the Captain to survey the entire landscape at a glance
+- **Community Skill and Pipeline Marketplace**: Share and reuse capability units created by others, allowing the ecosystem to grow continuously
+- **Proactive Organizational Memory**: No longer passive retrieval; the system actively surfaces relevant historical lessons at the moment of decision
+
+---
+
+**The ultimate daily routine for Cabinet is a quiet picture.**
+
+The Captain opens the system. In the Decision Room, a handful of decision cards rest quietly. Everything else—workflows running, pipelines tuning themselves, projects advancing—is handled autonomously by the system in the background. The Secretary only knocks gently when truly necessary.
+
+---
+
+## Contributing
+
+Cabinet is still in its early stages. We welcome contributions of all kinds—code, documentation, ideas, or even one of your own AI employees.
+
+**Join the Cabinet. Be the Captain.**
