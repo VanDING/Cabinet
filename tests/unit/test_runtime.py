@@ -413,3 +413,25 @@ async def test_runtime_wires_phase1_security_and_efficiency_components():
     assert result.allowed
 
     await runtime.stop()
+
+
+@pytest.mark.asyncio
+async def test_runtime_with_phase2_ecosystem_components(tmp_path):
+    from cabinet.runtime import CabinetRuntime
+    from cabinet.core.scheduler.models import CronJob
+
+    cron_path = str(tmp_path / "cron.json")
+    runtime = CabinetRuntime(
+        enable_gateway=False, enable_cron=True, cron_persistence_path=cron_path,
+    )
+    await runtime.start()
+
+    assert runtime.cron is not None
+    assert runtime.cron.is_running
+
+    job = CronJob.from_natural("test", "1h")
+    await runtime.cron.add_job(job)
+    assert len(runtime.cron.jobs) == 1
+
+    await runtime.stop()
+    assert not runtime.cron.is_running
