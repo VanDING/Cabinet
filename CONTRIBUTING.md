@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Cabinet!
 
 ```bash
 # Clone the repository
-git clone https://github.com/user/cabinet.git
+git clone https://github.com/VanDING/Cabinet.git
 cd cabinet
 
 # Create a virtual environment
@@ -83,4 +83,4 @@ src/cabinet/
 
 ## Reporting Issues
 
-Please use [GitHub Issues](https://github.com/user/cabinet/issues) to report bugs or request features.
+Please use [GitHub Issues](https://github.com/VanDING/Cabinet/issues) to report bugs or request features.
