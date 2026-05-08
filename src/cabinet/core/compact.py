@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import yaml
 
+from cabinet.core.prompt_cache import PromptCacheManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,12 +182,18 @@ class ContextCompactor:
         session_memory_path: Path | None = None,
         model: str = "default",
         max_failures: int = 3,
+        prompt_cache_manager: PromptCacheManager | None = None,
     ):
         self._gateway = gateway
         self._session_path = session_memory_path
         self._model = model
         self._failure_count = 0
         self._max_failures = max_failures
+        self._prompt_cache = prompt_cache_manager or PromptCacheManager()
+
+    @property
+    def prompt_cache(self) -> PromptCacheManager:
+        return self._prompt_cache
 
     async def compact(
         self,
