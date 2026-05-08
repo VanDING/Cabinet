@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from cabinet.core.memory.scoring import MemoryScorer, MemoryScore
-from cabinet.core.memory.protocol import MemoryStore
 from cabinet.models.primitives import MemoryScope
 
 
