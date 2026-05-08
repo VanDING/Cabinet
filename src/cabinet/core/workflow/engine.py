@@ -55,12 +55,14 @@ class WorkflowEngine:
         knowledge_base: object | None = None,
         dead_letter_queue: object | None = None,
         tool_registry: object | None = None,
+        execution_judge: object | None = None,  # V0.2.0
     ):
         self._agent_factory = agent_factory
         self._verification_gate = verification_gate
         self._knowledge_base = knowledge_base
         self._dead_letter_queue = dead_letter_queue
         self._tool_registry = tool_registry
+        self._execution_judge = execution_judge  # V0.2.0
         self._cancel_tokens: dict[str, asyncio.Event] = {}
         self._current_execution_id: str | None = None
 
@@ -159,6 +161,15 @@ class WorkflowEngine:
 
             node_result = await self._execute_node(node, context_data, node_map, edge_map, context)
 
+            # V0.2.0: detect judge escalation pause from node result
+            if node_result.output.get("__paused__"):
+                results[str(node.id)] = node_result.output
+                return GraphResult(
+                    paused=True,
+                    pause_info=node_result.output,
+                    output=results,
+                )
+
             if on_node_completed is not None:
                 await on_node_completed(node.id, node_result.output)
 
@@ -187,7 +198,7 @@ class WorkflowEngine:
             return NodeResult(node.id, {"triggered": True, "trigger_type": node.trigger_type})
 
         if isinstance(node, SkillNode):
-            return await self._execute_skill(node, context_data)
+            return await self._execute_with_timeout(node, context_data, node_map, edge_map, context)
 
         if isinstance(node, ConditionNode):
             return await self._execute_condition(node, context_data)
@@ -199,11 +210,75 @@ class WorkflowEngine:
             return await self._execute_human(node, context_data, context)
 
         if isinstance(node, ParallelNode):
-            return await self._execute_parallel(node, context_data, node_map, edge_map, context)
+            return await self._execute_with_timeout(node, context_data, node_map, edge_map, context)
 
         return NodeResult(node.id, {"unknown_node": True})
 
+    async def _execute_with_timeout(
+        self,
+        node: WorkflowNode,
+        context_data: dict,
+        node_map: dict[UUID, WorkflowNode],
+        edge_map: dict[UUID, list[tuple[UUID, str | None]]],
+        context: EngineContext,
+        timeout: float = 300.0,
+    ) -> NodeResult:
+        import time
+        try:
+            start = time.monotonic()
+            if isinstance(node, SkillNode):
+                result = await asyncio.wait_for(
+                    self._execute_skill(node, context_data),
+                    timeout=timeout,
+                )
+            elif isinstance(node, ParallelNode):
+                result = await asyncio.wait_for(
+                    self._execute_parallel(node, context_data, node_map, edge_map, context),
+                    timeout=timeout,
+                )
+            else:
+                result = NodeResult(node.id, {"unknown_node": True})
+            return result
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - start
+            if self._execution_judge is not None:
+                judge_result = await self._execution_judge.handle_timeout(
+                    node.id, elapsed, {"known_slow_pattern": False},
+                )
+                if judge_result.level == "L0" and judge_result.action == "extend_timeout":
+                    return await self._execute_with_timeout(
+                        node, context_data, node_map, edge_map, context,
+                        timeout=timeout * 2,
+                    )
+                elif judge_result.level == "L1" and judge_result.action == "retry_once":
+                    return await self._execute_with_timeout(
+                        node, context_data, node_map, edge_map, context,
+                        timeout=timeout,
+                    )
+                else:
+                    return NodeResult(node.id, {
+                        "__paused__": True,
+                        "judge_decision": judge_result.model_dump(),
+                        "node_id": str(node.id),
+                        "elapsed": elapsed,
+                    })
+            raise
+
     async def _execute_skill(self, node: SkillNode, context_data: dict) -> NodeResult:
+        # V0.2.0: resource contention check
+        if self._execution_judge is not None:
+            active_count = len(self._cancel_tokens)
+            if active_count > 10:
+                judge_result = await self._execution_judge.handle_resource_contention(
+                    "agent_pool", [node.employee_id],
+                )
+                if judge_result.level == "L3":
+                    return NodeResult(node.id, {
+                        "__paused__": True,
+                        "judge_decision": judge_result.model_dump(),
+                        "node_id": str(node.id),
+                    })
+
         knowledge_context = ""
         if self._knowledge_base is not None and node.requires_knowledge:
             chunks = await self._knowledge_base.query(str(node.skill_id), top_k=3)
@@ -259,6 +334,24 @@ class WorkflowEngine:
     async def _execute_condition(self, node: ConditionNode, context_data: dict) -> NodeResult:
         result = safe_eval(node.expression, context_data)
         if result is None:
+            if self._execution_judge is not None:
+                judge_result = await self._execution_judge.judge_condition(
+                    node,
+                    {"scenario": "condition_eval_none", "expression": node.expression},
+                )
+                if judge_result.level in ("L0", "L1"):
+                    chosen = node.true_next if judge_result.action == "choose_path" else node.false_next
+                    return NodeResult(
+                        node.id,
+                        {"condition_result": True, "judge_decision": judge_result.model_dump()},
+                        next_node_id=chosen,
+                    )
+                else:
+                    return NodeResult(node.id, {
+                        "__paused__": True,
+                        "judge_decision": judge_result.model_dump(),
+                        "node_id": str(node.id),
+                    })
             logger.warning("Condition eval returned None for: %s, defaulting to False", node.expression)
             result = False
         is_true = bool(result)
@@ -369,10 +462,12 @@ class WorkflowEngine:
                 tasks.append(self._execute_node(branch_node, context_data, node_map, edge_map, context))
         if tasks:
             completed = await asyncio.gather(*tasks, return_exceptions=True)
+            has_error = False
             for i, result in enumerate(completed):
+                branch_id = str(node.branch_node_ids[i])
                 if isinstance(result, Exception):
-                    branch_id = str(node.branch_node_ids[i])
-                    branch_results[branch_id] = {"error": str(result)}
+                    has_error = True
+                    branch_results[branch_id] = {"error": str(result), "required_for_downstream": True}
                     if self._dead_letter_queue is not None:
                         await self._dead_letter_queue.enqueue(
                             event_type="parallel.branch_failed",
@@ -382,6 +477,20 @@ class WorkflowEngine:
                         )
                 else:
                     branch_results[str(result.node_id)] = result.output
+
+            # V0.2.0: detect errors → judge
+            if has_error and self._execution_judge is not None:
+                judge_result = await self._execution_judge.resolve_parallel_conflict(
+                    node, branch_results,
+                )
+                if judge_result.level in ("L2", "L3"):
+                    return NodeResult(node.id, {
+                        "__paused__": True,
+                        "judge_decision": judge_result.model_dump(),
+                        "node_id": str(node.id),
+                        "branch_results": branch_results,
+                    })
+
         return NodeResult(node.id, branch_results)
 
     @staticmethod

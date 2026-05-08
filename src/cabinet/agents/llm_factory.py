@@ -94,3 +94,24 @@ class LLMAgentFactory:
             employees=[a.employee.id for a in agents],
         )
         return LLMTeam(team, agents, self._gateway)
+
+    async def assemble_employee(self, pipe_id: UUID, persona_id: UUID, team_id: UUID) -> LiteLLMAgent:
+        employee = Employee(
+            team_id=team_id,
+            name=f"assembled-{str(persona_id)[:8]}",
+            role="assembled",
+            kind="ai",
+            pipe_id=pipe_id,
+            persona_id=persona_id,
+        )
+        return LiteLLMAgent(employee, self._gateway, memory_store=self._memory_store)
+
+    async def create_agent_from_pipe(self, pipe_id: UUID, team_id: UUID) -> LiteLLMAgent:
+        employee = Employee(
+            team_id=team_id,
+            name=f"pipe-{str(pipe_id)[:8]}",
+            role="pipe-agent",
+            kind="ai",
+            pipe_id=pipe_id,
+        )
+        return LiteLLMAgent(employee, self._gateway, memory_store=self._memory_store)

@@ -43,6 +43,10 @@ class StubTeam:
 
 
 class StubAgentFactory:
+    def __init__(self, pipe_registry=None, persona_registry=None):
+        self._pipe_registry = pipe_registry
+        self._persona_registry = persona_registry
+
     async def create_agent(self, agent_id: UUID, role: str) -> StubAgent:
         employee = Employee(
             id=agent_id,
@@ -61,3 +65,41 @@ class StubAgentFactory:
             employees=[a.employee.id for a in agents],
         )
         return StubTeam(team)
+
+    async def create_agent_from_pipe(self, pipe_id: UUID, team_id: UUID) -> StubAgent:
+        if self._pipe_registry is None:
+            raise ValueError("PipeRegistry not configured")
+        pipe = await self._pipe_registry.get(pipe_id)
+        if pipe is None:
+            raise ValueError(f"Pipe not found: {pipe_id}")
+        employee = Employee(
+            team_id=team_id,
+            name=pipe.name,
+            role=pipe.name,
+            kind=pipe.kind,
+            pipe_id=pipe.id,
+        )
+        return StubAgent(employee)
+
+    async def assemble_employee(self, pipe_id: UUID, persona_id: UUID, team_id: UUID) -> StubAgent:
+        if self._pipe_registry is None:
+            raise ValueError("PipeRegistry not configured")
+        if self._persona_registry is None:
+            raise ValueError("PersonaRegistry not configured")
+        pipe = await self._pipe_registry.get(pipe_id)
+        if pipe is None:
+            raise ValueError(f"Pipe not found: {pipe_id}")
+        persona = await self._persona_registry.get(persona_id)
+        if persona is None:
+            raise ValueError(f"Persona not found: {persona_id}")
+        traits_text = ", ".join(persona.expertise) if persona.expertise else str(persona.traits)
+        employee = Employee(
+            team_id=team_id,
+            name=persona.name,
+            role=pipe.name,
+            kind=pipe.kind,
+            personality=traits_text,
+            pipe_id=pipe.id,
+            persona_id=persona.id,
+        )
+        return StubAgent(employee)

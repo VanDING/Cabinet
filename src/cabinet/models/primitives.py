@@ -62,6 +62,11 @@ class Employee(BaseModel):
     permission_level: str = "L2"
     created_at: datetime = Field(default_factory=_now)
 
+    # === V0.2.0 ===
+    pipe_id: UUID | None = None
+    persona_id: UUID | None = None
+    pipe_params: dict = {}
+
 
 class SkillDefinition(BaseModel):
     id: UUID = Field(default_factory=_uuid)
