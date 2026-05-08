@@ -57,7 +57,7 @@ class FileMemoryStore:
     def __init__(self, base_dir: str):
         self.base_dir = Path(base_dir)
 
-    def store(self, item: FileMemoryItem) -> Path:
+    def store_file_item(self, item: FileMemoryItem) -> Path:
         dir_path = self.base_dir / item.type
         dir_path.mkdir(parents=True, exist_ok=True)
         filepath = dir_path / f"{item.name}.md"
@@ -91,7 +91,7 @@ class FileMemoryStore:
             return None
         return FileMemoryItem.from_file(filepath)
 
-    def delete(self, name: str, type: str) -> None:
+    def delete_file_item(self, name: str, type: str) -> None:
         filepath = self.base_dir / type / f"{name}.md"
         if filepath.exists():
             filepath.unlink()

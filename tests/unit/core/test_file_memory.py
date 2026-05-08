@@ -54,7 +54,7 @@ def test_file_store_and_retrieve(tmp_path):
         type="user",
         content="The user is a **senior engineer**.",
     )
-    filepath = store.store(item)
+    filepath = store.store_file_item(item)
     assert filepath.exists()
     assert filepath.suffix == ".md"
 
@@ -66,8 +66,8 @@ def test_file_store_and_retrieve(tmp_path):
 
 def test_file_list_headers(tmp_path):
     store = FileMemoryStore(str(tmp_path))
-    store.store(FileMemoryItem("a", "First", "user", "content A"))
-    store.store(FileMemoryItem("b", "Second", "project", "content B"))
+    store.store_file_item(FileMemoryItem("a", "First", "user", "content A"))
+    store.store_file_item(FileMemoryItem("b", "Second", "project", "content B"))
 
     headers = store.list_headers()
     assert len(headers) == 2
@@ -77,7 +77,7 @@ def test_file_list_headers(tmp_path):
 
 def test_file_list_headers_excludes_memory_index(tmp_path):
     store = FileMemoryStore(str(tmp_path))
-    store.store(FileMemoryItem("test", "desc", "user", "body"))
+    store.store_file_item(FileMemoryItem("test", "desc", "user", "body"))
     store._rebuild_index()
 
     headers = store.list_headers()
@@ -87,9 +87,9 @@ def test_file_list_headers_excludes_memory_index(tmp_path):
 
 def test_file_delete(tmp_path):
     store = FileMemoryStore(str(tmp_path))
-    store.store(FileMemoryItem("temp", "Temporary", "user", "content"))
+    store.store_file_item(FileMemoryItem("temp", "Temporary", "user", "content"))
 
-    store.delete("temp", "user")
+    store.delete_file_item("temp", "user")
     assert store.get("temp", "user") is None
 
 
@@ -100,8 +100,8 @@ def test_file_get_nonexistent(tmp_path):
 
 def test_file_rebuild_index(tmp_path):
     store = FileMemoryStore(str(tmp_path))
-    store.store(FileMemoryItem("alpha", "First item", "user", "body1"))
-    store.store(FileMemoryItem("beta", "Second item", "project", "body2"))
+    store.store_file_item(FileMemoryItem("alpha", "First item", "user", "body1"))
+    store.store_file_item(FileMemoryItem("beta", "Second item", "project", "body2"))
 
     index = store.base_dir / "MEMORY.md"
     assert index.exists()
