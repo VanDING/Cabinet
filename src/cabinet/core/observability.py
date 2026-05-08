@@ -93,6 +93,12 @@ WORKFLOW_EXECUTION = Histogram(
     "Workflow execution time",
     registry=PROMETHEUS_REGISTRY,
 )
+COST_USD = Gauge(
+    "cabinet_cost_usd_total",
+    "Total LLM API cost in USD",
+    ["model"],
+    registry=PROMETHEUS_REGISTRY,
+)
 
 
 class TraceInjectingFilter(logging.Filter):
