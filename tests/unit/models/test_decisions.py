@@ -109,3 +109,9 @@ def test_decision_urgency_colors():
         captain_id="captain-1",
     )
     assert d_blue.urgency == "blue"
+
+
+def test_decision_status_in_rehearsal():
+    from cabinet.models.decisions import DecisionStatus
+
+    assert DecisionStatus.IN_REHEARSAL.value == "in_rehearsal"

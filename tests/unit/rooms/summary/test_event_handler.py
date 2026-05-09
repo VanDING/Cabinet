@@ -126,3 +126,50 @@ async def test_summary_handler_ignores_unknown_event():
     await handler.handle(env)
     room.start_review.assert_not_awaited()
     room.generate_insights.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handles_decision_created_l3():
+    mock_room = AsyncMock()
+    handler = SummaryEventHandler(mock_room)
+    decision_id = str(uuid.uuid4())
+    envelope = MessageEnvelope(
+        sender="decision",
+        recipients=["summary"],
+        message_type="decision.created",
+        payload={
+            "decision_id": decision_id,
+            "urgency": "red",
+            "decision_type": "strategic",
+        },
+    )
+    await handler.handle(envelope)
+    mock_room.rehearse_decision.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handles_project_created():
+    mock_room = AsyncMock()
+    handler = SummaryEventHandler(mock_room)
+    envelope = MessageEnvelope(
+        sender="project",
+        recipients=["summary"],
+        message_type="project.created",
+        payload={"description": "新数据分析项目"},
+    )
+    await handler.handle(envelope)
+    mock_room.retrieve_organizational_memory.assert_called_once_with("新数据分析项目")
+
+
+@pytest.mark.asyncio
+async def test_handles_audit_request():
+    mock_room = AsyncMock()
+    handler = SummaryEventHandler(mock_room)
+    envelope = MessageEnvelope(
+        sender="secretary",
+        recipients=["summary"],
+        message_type="summary.audit_request",
+        payload={"captain_id": "captain-1", "period": "2026-Q1"},
+    )
+    await handler.handle(envelope)
+    mock_room.audit_autonomous_decisions.assert_called_once_with("captain-1", "2026-Q1")

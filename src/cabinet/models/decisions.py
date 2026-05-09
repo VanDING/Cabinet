@@ -28,6 +28,7 @@ class DecisionType(str, Enum):
 class DecisionStatus(str, Enum):
     PENDING = "pending"
     IN_REASONING = "in_reasoning"
+    IN_REHEARSAL = "in_rehearsal"
     PROPOSAL_READY = "proposal_ready"
     APPROVED = "approved"
     REJECTED = "rejected"
