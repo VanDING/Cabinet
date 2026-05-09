@@ -75,3 +75,71 @@ class AuthorizationAudit(BaseModel):
     manually_approved: int
     could_auto_process: int
     suggestion: str | None = None
+
+
+class SimilarCase(BaseModel):
+    decision_id: UUID
+    title: str
+    decision_type: str
+    chosen_option: dict | None = None
+    outcome: str
+    result_summary: str
+    similarity_score: float
+
+
+class RiskPattern(BaseModel):
+    pattern_name: str
+    description: str
+    matched_conditions: list[str] = []
+    historical_occurrence_count: int
+    severity: Literal["warning", "critical"]
+
+
+class ScenarioResult(BaseModel):
+    scenario_type: Literal["optimistic", "pessimistic", "baseline"]
+    description: str
+    key_assumptions: list[str] = []
+    expected_outcome: str
+    risks: list[str] = []
+    probability: float
+
+
+class RehearsalReport(BaseModel):
+    decision_id: UUID
+    similar_cases: list[SimilarCase] = []
+    matched_risk_patterns: list[RiskPattern] = []
+    optimistic_scenario: ScenarioResult
+    pessimistic_scenario: ScenarioResult
+    baseline_scenario: ScenarioResult
+    risk_level: Literal["low", "medium", "high", "critical"]
+    recommendations: list[str] = []
+
+
+class MemoryMatch(BaseModel):
+    memory_id: UUID
+    content: str
+    source: str
+    relevance_score: float
+    project_context: str
+
+
+class AutonomyRecommendation(BaseModel):
+    scenario: str
+    current_level: str
+    total_decisions: int
+    correct_decisions: int
+    recommended_level: str
+    reasoning: str
+
+
+class AutonomyAudit(BaseModel):
+    captain_id: str
+    period: str
+    l0_total: int = 0
+    l0_correct: int = 0
+    l0_correct_rate: float = 0.0
+    l1_total: int = 0
+    l1_correct: int = 0
+    l1_correct_rate: float = 0.0
+    expand_autonomy_to: list[AutonomyRecommendation] = []
+    restrict_autonomy_from: list[AutonomyRecommendation] = []

@@ -2,12 +2,19 @@ import uuid
 
 from cabinet.rooms.summary.models import (
     AuthorizationAudit,
+    AutonomyAudit,
+    AutonomyRecommendation,
     DecisionTree,
     DecisionTreeNode,
     ImprovementSuggestion,
     Insight,
+    MemoryMatch,
+    RehearsalReport,
     ReviewSession,
     ReviewType,
+    RiskPattern,
+    ScenarioResult,
+    SimilarCase,
 )
 
 
@@ -147,3 +154,107 @@ def test_authorization_audit_no_suggestion():
         could_auto_process=0,
     )
     assert audit.suggestion is None
+
+
+def test_similar_case_creation():
+    case = SimilarCase(
+        decision_id=uuid.uuid4(),
+        title="增加 Q4 营销预算 25%",
+        decision_type="strategic",
+        outcome="approved",
+        result_summary="ROAS 下降 15%",
+        similarity_score=0.82,
+    )
+    assert case.similarity_score == 0.82
+
+
+def test_risk_pattern_creation():
+    pattern = RiskPattern(
+        pattern_name="Q4预算增幅>20%→现金流紧张",
+        description="第四季度大幅增加预算通常导致现金流紧张",
+        matched_conditions=["预算增幅 30% > 阈值 20%", "当前为 Q4"],
+        historical_occurrence_count=3,
+        severity="critical",
+    )
+    assert pattern.historical_occurrence_count == 3
+
+
+def test_scenario_result_creation():
+    result = ScenarioResult(
+        scenario_type="pessimistic",
+        description="渠道成本上浮 20%",
+        key_assumptions=["渠道成本季节性上涨"],
+        expected_outcome="预算使用率不足 70%",
+        risks=["现金流紧张"],
+        probability=0.45,
+    )
+    assert result.scenario_type == "pessimistic"
+    assert result.probability == 0.45
+
+
+def test_rehearsal_report_creation():
+    report = RehearsalReport(
+        decision_id=uuid.uuid4(),
+        similar_cases=[
+            SimilarCase(
+                decision_id=uuid.uuid4(), title="test", decision_type="execution",
+                outcome="approved", result_summary="ok", similarity_score=0.9,
+            ),
+        ],
+        matched_risk_patterns=[],
+        optimistic_scenario=ScenarioResult(
+            scenario_type="optimistic", description="ok",
+            key_assumptions=[], expected_outcome="ok", risks=[], probability=0.3,
+        ),
+        pessimistic_scenario=ScenarioResult(
+            scenario_type="pessimistic", description="bad",
+            key_assumptions=[], expected_outcome="bad", risks=["风险1"], probability=0.4,
+        ),
+        baseline_scenario=ScenarioResult(
+            scenario_type="baseline", description="normal",
+            key_assumptions=[], expected_outcome="normal", risks=[], probability=0.3,
+        ),
+        risk_level="medium",
+        recommendations=["分阶段执行"],
+    )
+    assert report.risk_level == "medium"
+    assert len(report.similar_cases) == 1
+
+
+def test_memory_match_creation():
+    match = MemoryMatch(
+        memory_id=uuid.uuid4(),
+        content="上次招聘项目时，技术笔试环节筛掉了 60% 的候选人",
+        source="insight",
+        relevance_score=0.75,
+        project_context="招聘项目 Alpha",
+    )
+    assert match.source == "insight"
+
+
+def test_autonomy_audit_creation():
+    audit = AutonomyAudit(
+        captain_id="captain-1",
+        period="2026-Q1",
+        l0_total=100, l0_correct=98, l0_correct_rate=0.98,
+        l1_total=50, l1_correct=42, l1_correct_rate=0.84,
+        expand_autonomy_to=[
+            AutonomyRecommendation(
+                scenario="api_call_failed", current_level="L2",
+                total_decisions=20, correct_decisions=20,
+                recommended_level="L1", reasoning="准确率 100%",
+            ),
+        ],
+        restrict_autonomy_from=[],
+    )
+    assert audit.l0_correct_rate == 0.98
+    assert len(audit.expand_autonomy_to) == 1
+
+
+def test_autonomy_recommendation_restrict():
+    rec = AutonomyRecommendation(
+        scenario="parallel_contradiction", current_level="L1",
+        total_decisions=15, correct_decisions=9,
+        recommended_level="L2", reasoning="准确率仅 60%",
+    )
+    assert rec.recommended_level == "L2"
