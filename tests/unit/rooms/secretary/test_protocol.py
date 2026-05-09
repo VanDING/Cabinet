@@ -4,11 +4,15 @@ import pytest
 
 from cabinet.models.decisions import Decision, DecisionType
 from cabinet.rooms.secretary.models import (
+    ConflictAlert,
+    DailyBrief,
     FilterResult,
     Greeting,
     InteractionContext,
     NotificationResult,
     PendingSummary,
+    PipeCalibration,
+    PipeTemplate,
     SecretaryLevel,
     SecretaryResponse,
 )
@@ -47,6 +51,31 @@ def test_secretary_agent_protocol_runtime_checkable():
         async def filter_decision(self, decision):
             return FilterResult(should_present=True, reason="Requires Captain")
 
+        async def recommend_templates(self, description):
+            return []
+
+        async def calibrate_pipe(self, pipe_id, history):
+            from cabinet.models.pipes import ReasoningStrategy
+            strategy = ReasoningStrategy(temperature=0.7)
+            return PipeCalibration(
+                pipe_id=pipe_id,
+                original_reasoning=strategy,
+                adjusted_reasoning=strategy,
+                changes=[],
+                confidence=0.5,
+            )
+
+        async def generate_daily_brief(self, captain_id):
+            return DailyBrief(
+                captain_id=captain_id,
+                date="2026-05-08",
+                active_projects=0,
+                pending_decisions=0,
+            )
+
+        async def detect_cross_project_conflicts(self, captain_id):
+            return []
+
     mock = MockSecretary()
     assert isinstance(mock, SecretaryAgent)
 
@@ -73,6 +102,31 @@ async def test_secretary_greet_contract():
 
         async def filter_decision(self, decision):
             return FilterResult(should_present=True, reason="test")
+
+        async def recommend_templates(self, description):
+            return []
+
+        async def calibrate_pipe(self, pipe_id, history):
+            from cabinet.models.pipes import ReasoningStrategy
+            strategy = ReasoningStrategy(temperature=0.7)
+            return PipeCalibration(
+                pipe_id=pipe_id,
+                original_reasoning=strategy,
+                adjusted_reasoning=strategy,
+                changes=[],
+                confidence=0.5,
+            )
+
+        async def generate_daily_brief(self, captain_id):
+            return DailyBrief(
+                captain_id=captain_id,
+                date="2026-05-08",
+                active_projects=0,
+                pending_decisions=0,
+            )
+
+        async def detect_cross_project_conflicts(self, captain_id):
+            return []
 
     secretary = MockSecretary()
     greeting = await secretary.greet("captain-1")
@@ -102,6 +156,31 @@ async def test_secretary_process_input_contract():
         async def filter_decision(self, decision):
             return FilterResult(should_present=True, reason="test")
 
+        async def recommend_templates(self, description):
+            return []
+
+        async def calibrate_pipe(self, pipe_id, history):
+            from cabinet.models.pipes import ReasoningStrategy
+            strategy = ReasoningStrategy(temperature=0.7)
+            return PipeCalibration(
+                pipe_id=pipe_id,
+                original_reasoning=strategy,
+                adjusted_reasoning=strategy,
+                changes=[],
+                confidence=0.5,
+            )
+
+        async def generate_daily_brief(self, captain_id):
+            return DailyBrief(
+                captain_id=captain_id,
+                date="2026-05-08",
+                active_projects=0,
+                pending_decisions=0,
+            )
+
+        async def detect_cross_project_conflicts(self, captain_id):
+            return []
+
     secretary = MockSecretary()
     ctx = InteractionContext(captain_id="captain-1")
     response = await secretary.process_input("Should we expand?", ctx)
@@ -128,6 +207,31 @@ async def test_secretary_filter_decision_contract():
             if decision.decision_type == DecisionType.STRATEGIC:
                 return FilterResult(should_present=True, reason="Strategic requires Captain")
             return FilterResult(should_present=False, auto_action="Auto-approved", reason="Within authorization")
+
+        async def recommend_templates(self, description):
+            return []
+
+        async def calibrate_pipe(self, pipe_id, history):
+            from cabinet.models.pipes import ReasoningStrategy
+            strategy = ReasoningStrategy(temperature=0.7)
+            return PipeCalibration(
+                pipe_id=pipe_id,
+                original_reasoning=strategy,
+                adjusted_reasoning=strategy,
+                changes=[],
+                confidence=0.5,
+            )
+
+        async def generate_daily_brief(self, captain_id):
+            return DailyBrief(
+                captain_id=captain_id,
+                date="2026-05-08",
+                active_projects=0,
+                pending_decisions=0,
+            )
+
+        async def detect_cross_project_conflicts(self, captain_id):
+            return []
 
     secretary = MockSecretary()
     strategic = Decision(

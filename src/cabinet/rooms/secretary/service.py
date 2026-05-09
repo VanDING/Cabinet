@@ -19,12 +19,16 @@ from cabinet.rooms.secretary.domain_events import (
     PendingSummarized,
 )
 from cabinet.rooms.secretary.models import (
+    ConflictAlert,
+    DailyBrief,
     FilterResult,
     Greeting,
     InteractionContext,
     NotificationEvent,
     NotificationResult,
     PendingSummary,
+    PipeCalibration,
+    PipeTemplate,
     SecretaryLevel,
     SecretaryResponse,
 )
@@ -76,12 +80,16 @@ class SecretaryAgentService(EventSourcedRoom):
         knowledge_base: KnowledgeBase | None = None,
         memory_store: MemoryStore | None = None,
         conversation_store: ConversationStore | None = None,
+        pipe_registry: object | None = None,
+        template_store: object | None = None,
     ):
         super().__init__(store, publisher)
         self._agent_factory = agent_factory
         self._knowledge_base = knowledge_base
         self._memory_store = memory_store
         self._conversation_store = conversation_store
+        self._pipe_registry = pipe_registry
+        self._template_store = template_store
         self._greetings: dict[str, str] = {}
         self._notifications: list[NotificationEvent] = []
         self._inputs: dict[str, list[str]] = {}
@@ -350,3 +358,49 @@ class SecretaryAgentService(EventSourcedRoom):
         )
         await self._publish_and_apply(event)
         return event.filter_result
+
+    async def recommend_templates(self, description: str) -> list[PipeTemplate]:
+        templates = await self._template_store.search(description) if self._template_store else []
+        return [
+            PipeTemplate(
+                pipe_id=t.id,
+                name=t.name,
+                description=t.description,
+                relevance_score=1.0,
+                reason=f'与"{description[:20]}..."需求匹配',
+            )
+            for t in templates
+        ]
+
+    async def calibrate_pipe(self, pipe_id: UUID, history: list[dict]) -> PipeCalibration:
+        pipe = await self._pipe_registry.get(pipe_id) if self._pipe_registry else None
+        if pipe is None:
+            raise ValueError(f"Pipe not found: {pipe_id}")
+        from cabinet.models.pipes import ReasoningStrategy
+        original = pipe.reasoning
+        override_count = sum(1 for h in history if h.get("manual_override"))
+        new_temp = max(0.1, original.temperature - 0.05 * override_count)
+        adjusted = original.model_copy(update={"temperature": new_temp})
+        changes = [f"temperature: {original.temperature} -> {new_temp}"] if new_temp != original.temperature else []
+        return PipeCalibration(
+            pipe_id=pipe_id,
+            original_reasoning=original,
+            adjusted_reasoning=adjusted,
+            changes=changes,
+            confidence=min(0.9, 0.5 + 0.1 * override_count),
+        )
+
+    async def generate_daily_brief(self, captain_id: str) -> DailyBrief:
+        from datetime import datetime, timezone
+        return DailyBrief(
+            captain_id=captain_id,
+            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            active_projects=0,
+            pending_decisions=0,
+            key_progress=[],
+            risk_alerts=[],
+            suggested_actions=[],
+        )
+
+    async def detect_cross_project_conflicts(self, captain_id: str) -> list[ConflictAlert]:
+        return []
