@@ -77,3 +77,45 @@ async def test_secretary_handler_ignores_unknown_event():
     )
     await handler.handle(env)
     room.notify.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handles_designer_session_created():
+    mock_room = AsyncMock()
+    handler = SecretaryEventHandler(mock_room)
+    envelope = MessageEnvelope(
+        sender="designer",
+        recipients=["secretary"],
+        message_type="designer.session_created",
+        payload={"description": "搭建招聘流程"},
+    )
+    await handler.handle(envelope)
+    mock_room.recommend_templates.assert_called_once_with("搭建招聘流程")
+
+
+@pytest.mark.asyncio
+async def test_handles_authorization_audited():
+    mock_room = AsyncMock()
+    handler = SecretaryEventHandler(mock_room)
+    envelope = MessageEnvelope(
+        sender="summary",
+        recipients=["secretary"],
+        message_type="summary.authorization_audited",
+        payload={"pipe_id": str(uuid.uuid4()), "history": []},
+    )
+    await handler.handle(envelope)
+    assert mock_room.calibrate_pipe.called
+
+
+@pytest.mark.asyncio
+async def test_handles_decision_created():
+    mock_room = AsyncMock()
+    handler = SecretaryEventHandler(mock_room)
+    envelope = MessageEnvelope(
+        sender="decision",
+        recipients=["secretary"],
+        message_type="decision.created",
+        payload={"captain_id": "captain-1"},
+    )
+    await handler.handle(envelope)
+    mock_room.detect_cross_project_conflicts.assert_called_once_with("captain-1")

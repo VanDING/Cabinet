@@ -22,7 +22,9 @@ class SecretaryEventHandler:
         return EventContract(
             room_name="secretary",
             produces=["secretary.notification"],
-            consumes=["decision.response", "summary.insight"],
+            consumes=["decision.response", "summary.insight",
+                       "designer.session_created", "summary.authorization_audited",
+                       "decision.created"],
         )
 
     async def handle(self, envelope: MessageEnvelope) -> None:
@@ -47,5 +49,17 @@ class SecretaryEventHandler:
                 content=insight.content,
             )
             await self._room.notify(notification)
+        elif msg_type == "designer.session_created":
+            description = envelope.payload.get("description", "")
+            await self._room.recommend_templates(description)
+        elif msg_type == "summary.authorization_audited":
+            pipe_id = envelope.payload.get("pipe_id")
+            history = envelope.payload.get("history", [])
+            if pipe_id:
+                from uuid import UUID
+                await self._room.calibrate_pipe(UUID(pipe_id), history)
+        elif msg_type == "decision.created":
+            captain_id = envelope.payload.get("captain_id", "")
+            await self._room.detect_cross_project_conflicts(captain_id)
         else:
             logger.warning("SecretaryEventHandler received unknown event type: %s", msg_type)
