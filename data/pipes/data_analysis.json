@@ -1,0 +1,14 @@
+{
+  "format": "cabinet-pipe-v1",
+  "pipe": {
+    "name": "数据分析管道",
+    "description": "对数据集进行统计分析并生成洞察报告",
+    "kind": "atomic",
+    "system_prompt": "你是一位数据分析专家。分析数据时关注：1) 趋势和模式 2) 异常值 3) 相关性 4) 可操作的建议。用清晰的数字和可视化描述支持你的结论。",
+    "tool_ids": [],
+    "reasoning": {"temperature": 0.3, "chain_of_thought": true, "max_tokens": null, "reasoning_effort": null, "stop_sequences": []},
+    "input_schema": {"type": "object", "properties": {"data_summary": {"type": "string"}, "question": {"type": "string"}}},
+    "output_schema": {"type": "object", "properties": {"findings": {"type": "array"}, "recommendations": {"type": "array"}}},
+    "metadata": {"author": "cabinet-builtin", "tags": ["data", "analysis", "insight"], "builtin": true}
+  }
+}

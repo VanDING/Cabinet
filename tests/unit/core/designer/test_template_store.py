@@ -86,3 +86,18 @@ async def test_load_builtin_templates(store, registry):
         all_pipes = await registry.list()
         matching = [p for p in all_pipes if p.name == "内置代码审查管道"]
         assert len(matching) == 1
+
+
+@pytest.mark.asyncio
+async def test_load_builtin_from_data_pipes(registry):
+    store = TemplateStore(pipe_registry=registry)
+    builtin_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "data", "pipes"
+    )
+    if not os.path.isdir(builtin_dir):
+        pytest.skip("data/pipes/ directory not found")
+    loaded = await store.load_builtin_templates(builtin_dir)
+    assert len(loaded) >= 1
+    all_pipes = await registry.list()
+    names = [p.name for p in all_pipes]
+    assert any(n in names for n in ["代码审查管道", "内容写作管道", "数据分析管道"])

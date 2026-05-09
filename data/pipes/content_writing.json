@@ -1,0 +1,14 @@
+{
+  "format": "cabinet-pipe-v1",
+  "pipe": {
+    "name": "内容写作管道",
+    "description": "根据主题和大纲生成高质量内容",
+    "kind": "atomic",
+    "system_prompt": "你是一位专业内容创作者。根据给定主题和大纲，生成结构清晰、语言流畅的内容。注重逻辑递进和读者体验。",
+    "tool_ids": [],
+    "reasoning": {"temperature": 0.7, "chain_of_thought": false, "max_tokens": null, "reasoning_effort": null, "stop_sequences": []},
+    "input_schema": {"type": "object", "properties": {"topic": {"type": "string"}, "outline": {"type": "array"}, "tone": {"type": "string"}}},
+    "output_schema": {"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}}},
+    "metadata": {"author": "cabinet-builtin", "tags": ["writing", "content", "creative"], "builtin": true}
+  }
+}
