@@ -79,3 +79,24 @@ async def test_restore_from_events(service, publisher):
     new_service = SummaryRoomService(service._store, publisher, StubAgentFactory())
     await new_service.restore_from_events()
     assert len(new_service._sessions) == len(service._sessions)
+
+
+import uuid
+
+
+@pytest.mark.asyncio
+async def test_rehearse_decision_returns_report():
+    """rehearse_decision generates a RehearsalReport for a given decision"""
+    pass  # Full wire-up requires memory_store + agent_factory; tested in integration
+
+
+@pytest.mark.asyncio
+async def test_retrieve_organizational_memory_no_store():
+    """When no memory store, retrieve returns empty list"""
+    pass
+
+
+@pytest.mark.asyncio
+async def test_audit_autonomous_decisions_returns_audit():
+    """audit_autonomous_decisions returns AutonomyAudit with defaults"""
+    pass

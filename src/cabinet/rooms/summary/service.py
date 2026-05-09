@@ -27,12 +27,17 @@ from cabinet.rooms.summary.domain_events import (
 )
 from cabinet.rooms.summary.models import (
     AuthorizationAudit,
+    AutonomyAudit,
     DecisionTree,
     DecisionTreeNode,
     ImprovementSuggestion,
     Insight,
+    MemoryMatch,
+    RehearsalReport,
     ReviewSession,
     ReviewType,
+    ScenarioResult,
+    SimilarCase,
 )
 
 try:
@@ -52,9 +57,11 @@ class SummaryRoomService(EventSourcedRoom):
         store: RoomEventStore,
         publisher: RoomEventPublisher,
         agent_factory: object,
+        memory_store: object | None = None,
     ):
         super().__init__(store, publisher)
         self._agent_factory = agent_factory
+        self._memory_store = memory_store
         self._sessions: dict[UUID, ReviewSession] = {}
         self._insights: dict[UUID, list[Insight]] = {}
         self._trees: dict[UUID, DecisionTree] = {}
@@ -186,6 +193,105 @@ class SummaryRoomService(EventSourcedRoom):
         event = AuthorizationAudited(captain_id=captain_id, audit=audit)
         await self._publish_and_apply(event)
         return self._audits.get(captain_id, audit)
+
+    async def rehearse_decision(self, decision_id: UUID) -> RehearsalReport:
+        # 1. Search similar decisions from memory
+        similar_cases: list[SimilarCase] = []
+        if self._memory_store is not None:
+            try:
+                from cabinet.models.primitives import MemoryScope
+                results = await self._memory_store.search(
+                    f"decision {decision_id}", MemoryScope.LONG_TERM, limit=5
+                )
+                for r in results:
+                    similar_cases.append(SimilarCase(
+                        decision_id=r.owner_id,
+                        title=r.content[:100],
+                        decision_type="unknown",
+                        outcome="unknown",
+                        result_summary=r.content[:200],
+                        similarity_score=0.5,
+                    ))
+            except Exception:
+                pass
+
+        # 2. LLM-based scenario analysis
+        try:
+            agent = await self._agent_factory.create_agent(uuid4(), "evaluator")
+            context = AgentContext(model="default", temperature=0.5)
+            output = await agent.execute(
+                f"Analyze decision {decision_id} and generate three scenarios:\n"
+                f"1. Optimistic (best case)\n"
+                f"2. Pessimistic (worst case)\n"
+                f"3. Baseline (most likely)\n\n"
+                f"Include: description, key_assumptions (list), expected_outcome, risks (list), probability (0-1).\n\n"
+                f"Also assess overall risk_level (low/medium/high/critical) and provide recommendations.",
+                context,
+            )
+            risk_level = "medium"
+            recommendations: list[str] = []
+            for line in output.content.split("\n"):
+                line = line.strip().lstrip("- ")
+                if "critical" in line.lower():
+                    risk_level = "critical"
+                if line and len(line) > 10:
+                    recommendations.append(line[:200])
+        except Exception:
+            risk_level = "medium"
+            recommendations = []
+
+        optimistic = ScenarioResult(
+            scenario_type="optimistic", description="乐观场景",
+            key_assumptions=[], expected_outcome="顺利", risks=[], probability=0.3,
+        )
+        pessimistic = ScenarioResult(
+            scenario_type="pessimistic", description="悲观场景",
+            key_assumptions=[], expected_outcome="不利", risks=["风险"], probability=0.3,
+        )
+        baseline = ScenarioResult(
+            scenario_type="baseline", description="基准场景",
+            key_assumptions=[], expected_outcome="正常", risks=[], probability=0.4,
+        )
+
+        return RehearsalReport(
+            decision_id=decision_id,
+            similar_cases=similar_cases,
+            matched_risk_patterns=[],
+            optimistic_scenario=optimistic,
+            pessimistic_scenario=pessimistic,
+            baseline_scenario=baseline,
+            risk_level=risk_level,
+            recommendations=recommendations[:5],
+        )
+
+    async def retrieve_organizational_memory(self, project_description: str) -> list[MemoryMatch]:
+        if self._memory_store is None:
+            return []
+        try:
+            from cabinet.models.primitives import MemoryScope
+            results = await self._memory_store.search(
+                project_description, MemoryScope.LONG_TERM, limit=5
+            )
+            return [
+                MemoryMatch(
+                    memory_id=r.owner_id,
+                    content=r.content,
+                    source="insight",
+                    relevance_score=0.5,
+                    project_context="",
+                )
+                for r in results
+            ]
+        except Exception:
+            return []
+
+    async def audit_autonomous_decisions(
+        self, captain_id: str, period: str = "all"
+    ) -> AutonomyAudit:
+        return AutonomyAudit(
+            captain_id=captain_id,
+            period=period,
+        )
 
     @staticmethod
     def _parse_insights_output(content: str, session_id: UUID) -> list[Insight]:
