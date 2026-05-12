@@ -1,2 +1,1 @@
-// @cabinet/events - Event bus
-export {};
+export type { EventBus, MessageHandler } from './bus.js';
