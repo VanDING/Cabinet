@@ -26,13 +26,13 @@ describe('connection', () => {
 
   it('is in WAL mode', () => {
     const db = getConnection();
-    const result = db.pragma('journal_mode');
+    const result = db.pragma('journal_mode') as Array<{ journal_mode: string }>;
     expect(result[0]!.journal_mode).toBe('wal');
   });
 
   it('has foreign keys enabled', () => {
     const db = getConnection();
-    const result = db.pragma('foreign_keys');
+    const result = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
     expect(result[0]!.foreign_keys).toBe(1);
   });
 

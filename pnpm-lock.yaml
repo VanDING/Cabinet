@@ -9,6 +9,10 @@ importers:
   .: {}
 
   packages/events:
+    dependencies:
+      '@cabinet/storage':
+        specifier: workspace:*
+        version: link:../storage
     devDependencies:
       '@cabinet/types':
         specifier: workspace:*
