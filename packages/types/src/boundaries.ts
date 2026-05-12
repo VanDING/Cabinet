@@ -1,0 +1,53 @@
+/** Maximum debate rounds per meeting */
+export const MAX_DEBATE_ROUNDS = 3;
+
+/** Maximum tokens per single speech */
+export const MAX_TOKENS_PER_SPEECH = 4_096;
+
+/** Maximum retry count for transient errors (network timeout, 429 rate-limit) */
+export const MAX_RETRY_TRANSIENT = 3;
+
+/** Maximum retry count for recoverable errors (tool execution failure) */
+export const MAX_RETRY_RECOVERABLE = 2;
+
+/** LLM call timeout in milliseconds */
+export const LLM_TIMEOUT_MS = 30_000;
+
+/** Daily budget cap in USD */
+export const DAILY_BUDGET_USD = 5.00;
+
+/** Weekly budget cap in USD */
+export const WEEKLY_BUDGET_USD = 25.00;
+
+/** Monthly budget cap in USD */
+export const MONTHLY_BUDGET_USD = 100.00;
+
+/** Budget warning threshold — trigger reminder when this proportion is reached */
+export const BUDGET_WARNING_THRESHOLD = 0.80;
+
+/** Meeting cost confirmation threshold in USD — requires Captain confirmation above this */
+export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.50;
+
+/** Rumination detection semantic similarity threshold — treated as duplicate argument above this */
+export const RUMINATION_SIMILARITY_THRESHOLD = 0.85;
+
+/** Decision expiry time in hours */
+export const DECISION_EXPIRY_HOURS = 72;
+
+/** Maximum number of advisors per meeting */
+export const MAX_MEETING_ADVISORS = 5;
+
+/** Maximum quality-gate retries */
+export const MAX_QUALITY_RETRIES = 3;
+
+/** Auto-backup interval in minutes */
+export const BACKUP_INTERVAL_MINUTES = 360; // 6 hours
+
+/** Number of backup copies to retain */
+export const BACKUP_KEEP_COUNT = 7;
+
+/** PIN lockout attempt threshold */
+export const PIN_LOCKOUT_ATTEMPTS = 5;
+
+/** PIN lockout duration in minutes */
+export const PIN_LOCKOUT_MINUTES = 15;
