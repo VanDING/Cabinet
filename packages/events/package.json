@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@cabinet/storage": "workspace:*"
+  },
   "devDependencies": {
     "@cabinet/types": "workspace:*",
     "typescript": "^5.5.0",
