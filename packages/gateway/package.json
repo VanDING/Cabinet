@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
     "@cabinet/types": "workspace:*",
     "@cabinet/storage": "workspace:*",
     "ai": "^4.0.0"
