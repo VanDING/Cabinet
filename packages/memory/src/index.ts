@@ -1,0 +1,21 @@
+// ── Interfaces (type-only) ──
+export type { MemoryOrchestrator, MemoryWriteOptions, MemoryQuery } from './orchestrator.js';
+
+// ── Short-term memory ──
+export { ShortTermMemory } from './short-term.js';
+export type { ShortTermEntry } from './short-term.js';
+
+// ── Long-term memory ──
+export { LongTermMemory } from './long-term.js';
+export type { LongTermEntry } from './long-term.js';
+
+// ── Entity memory ──
+export { EntityMemory } from './entity.js';
+export type { EntityPreferences, EmployeeConfig } from './entity.js';
+
+// ── Project memory ──
+export { ProjectMemory } from './project.js';
+export type { ProjectContext } from './project.js';
+
+// ── Consolidation ──
+export { ConsolidationService } from './consolidation.js';
