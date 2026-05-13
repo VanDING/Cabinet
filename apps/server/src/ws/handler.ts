@@ -37,3 +37,10 @@ export function broadcastEvent(event: { type: string; payload: unknown }): void 
     }
   }
 }
+
+export function broadcast(type: string, payload: unknown): void {
+  const message = JSON.stringify({ type, payload, timestamp: new Date().toISOString() });
+  for (const client of clients) {
+    if (client.readyState === WebSocket.OPEN) client.send(message);
+  }
+}

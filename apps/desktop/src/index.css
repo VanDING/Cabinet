@@ -25,3 +25,14 @@ body {
   color: var(--text-primary);
   transition: background-color 0.2s, color 0.2s;
 }
+
+@media (max-width: 768px) {
+  .page-container { padding: 0.75rem; }
+  .card-grid { grid-template-columns: repeat(1, 1fr); }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { DecisionCard } from '@cabinet/ui';
 import type { Decision } from '@cabinet/types';
+import { useToast } from '../components/Toast';
 
 export function OfficePage() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetch('/api/decisions?status=pending', { headers: { 'x-cabinet-pin': '1234' } })
@@ -20,6 +22,7 @@ export function OfficePage() {
       headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
       body: JSON.stringify({ chosenOptionId: optionId }),
     });
+    addToast('success', `Decision ${id} approved`);
     setDecisions(prev => prev.filter(d => d.id !== id));
   };
 
@@ -28,6 +31,7 @@ export function OfficePage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
     });
+    addToast('info', `Decision ${id} rejected`);
     setDecisions(prev => prev.filter(d => d.id !== id));
   };
 
