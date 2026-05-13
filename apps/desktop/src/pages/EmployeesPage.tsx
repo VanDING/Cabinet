@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useProject } from '../hooks/useProject';
 
 interface EmployeeItem {
   id: string;
@@ -9,19 +10,25 @@ interface EmployeeItem {
   expertise: string[];
   permissionLevel: string;
   status: 'active' | 'idle' | 'offline';
+  projectId?: string;
+  projectName?: string;
 }
 
 const demoEmployees: EmployeeItem[] = [
-  { id: 'emp-1', name: 'Financial Advisor', role: 'advisor', kind: 'ai', model: 'claude-sonnet-4-6', expertise: ['finance', 'investment', 'budgeting'], permissionLevel: 'read', status: 'active' },
-  { id: 'emp-2', name: 'Market Analyst', role: 'analyst', kind: 'ai', model: 'claude-opus-4-7', expertise: ['market research', 'competitor analysis', 'trends'], permissionLevel: 'read', status: 'active' },
-  { id: 'emp-3', name: 'Legal Advisor', role: 'advisor', kind: 'ai', model: 'claude-sonnet-4-6', expertise: ['contract law', 'compliance', 'IP'], permissionLevel: 'read', status: 'idle' },
-  { id: 'emp-4', name: 'Captain', role: 'decision_maker', kind: 'human', expertise: ['strategy', 'product'], permissionLevel: 'admin', status: 'active' },
+  { id: 'emp-1', name: 'Financial Advisor', role: 'advisor', kind: 'ai', model: 'claude-sonnet-4-6', expertise: ['finance', 'investment', 'budgeting'], permissionLevel: 'read', status: 'active', projectId: 'proj-1', projectName: 'Product Launch Q3' },
+  { id: 'emp-2', name: 'Market Analyst', role: 'analyst', kind: 'ai', model: 'claude-opus-4-7', expertise: ['market research', 'competitor analysis', 'trends'], permissionLevel: 'read', status: 'active', projectId: 'proj-1', projectName: 'Product Launch Q3' },
+  { id: 'emp-3', name: 'Legal Advisor', role: 'advisor', kind: 'ai', model: 'claude-sonnet-4-6', expertise: ['contract law', 'compliance', 'IP'], permissionLevel: 'read', status: 'idle', projectId: 'proj-2', projectName: 'Cost Optimization' },
+  { id: 'emp-4', name: 'Captain', role: 'decision_maker', kind: 'human', expertise: ['strategy', 'product'], permissionLevel: 'admin', status: 'active', projectId: 'proj-1', projectName: 'Product Launch Q3' },
 ];
 
 export function EmployeesPage() {
   const [employees] = useState<EmployeeItem[]>(demoEmployees);
   const [selected, setSelected] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { current } = useProject();
+
+  const filtered = employees.filter(e => !e.projectId || e.projectId === current.id);
+  const showingCount = filtered.length;
 
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
@@ -40,6 +47,10 @@ export function EmployeesPage() {
           className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
           {showForm ? 'Cancel' : '+ New Employee'}
         </button>
+      </div>
+
+      <div className="mb-4 text-sm text-gray-500">
+        Showing {showingCount} of {employees.length} employees for project "{current.name}"
       </div>
 
       {showForm && (
@@ -61,7 +72,7 @@ export function EmployeesPage() {
       )}
 
       <div className="grid gap-3 md:grid-cols-2">
-        {employees.map(emp => (
+        {filtered.map(emp => (
           <div key={emp.id}
             onClick={() => setSelected(selected === emp.id ? null : emp.id)}
             className={`border rounded-lg p-4 cursor-pointer transition-all bg-white dark:bg-gray-800
@@ -70,7 +81,10 @@ export function EmployeesPage() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">{emp.name}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{emp.role} · {emp.kind === 'ai' ? `🤖 ${emp.model}` : '👤 Human'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{emp.role} · {emp.kind === 'ai' ? `${emp.model}` : 'Human'}</p>
+                <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                  <span>&#x1F4C2;</span> {emp.projectName ?? 'Unassigned'}
+                </p>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[emp.status]}`}>{emp.status}</span>
             </div>
