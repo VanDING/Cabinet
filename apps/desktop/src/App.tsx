@@ -6,6 +6,8 @@ import { CabinetPage } from './pages/CabinetPage';
 import { OfficePage } from './pages/OfficePage';
 import { FactoryPage } from './pages/FactoryPage';
 import { SkillsPage } from './pages/SkillsPage';
+import { EmployeesPage } from './pages/EmployeesPage';
+import { MemoryPage } from './pages/MemoryPage';
 import { useTheme } from './hooks/useTheme';
 
 export function App() {
@@ -29,6 +31,8 @@ export function App() {
           <Route path="/office" element={<OfficePage />} />
           <Route path="/factory" element={<FactoryPage />} />
           <Route path="/skills" element={<SkillsPage />} />
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/memory" element={<MemoryPage />} />
         </Routes>
       </main>
     </div>
