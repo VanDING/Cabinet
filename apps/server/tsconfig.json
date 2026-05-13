@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/types" },
+    { "path": "../../packages/events" },
+    { "path": "../../packages/storage" },
+    { "path": "../../packages/gateway" },
+    { "path": "../../packages/agent" },
+    { "path": "../../packages/memory" },
+    { "path": "../../packages/decision" },
+    { "path": "../../packages/secretary" },
+    { "path": "../../packages/meeting" },
+    { "path": "../../packages/workflow" },
+    { "path": "../../packages/harness" }
+  ]
+}
