@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CabinetPage } from './pages/CabinetPage';
 import { OfficePage } from './pages/OfficePage';
 import { FactoryPage } from './pages/FactoryPage';
+import { SkillsPage } from './pages/SkillsPage';
 import { useTheme } from './hooks/useTheme';
 
 export function App() {
@@ -27,6 +28,7 @@ export function App() {
           <Route path="/cabinet" element={<CabinetPage />} />
           <Route path="/office" element={<OfficePage />} />
           <Route path="/factory" element={<FactoryPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
         </Routes>
       </main>
     </div>
