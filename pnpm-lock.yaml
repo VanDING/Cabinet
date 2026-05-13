@@ -96,11 +96,61 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@25.7.0)
 
+  packages/meeting:
+    dependencies:
+      '@cabinet/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@cabinet/events':
+        specifier: workspace:*
+        version: link:../events
+      '@cabinet/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@cabinet/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@25.7.0)
+
   packages/memory:
     dependencies:
       '@cabinet/storage':
         specifier: workspace:*
         version: link:../storage
+      '@cabinet/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@25.7.0)
+
+  packages/secretary:
+    dependencies:
+      '@cabinet/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@cabinet/decision':
+        specifier: workspace:*
+        version: link:../decision
+      '@cabinet/events':
+        specifier: workspace:*
+        version: link:../events
+      '@cabinet/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@cabinet/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types
