@@ -30,9 +30,9 @@ export function FactoryPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Factory — Workflows</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Factory — Workflows</h1>
       {workflows.length === 0 ? (
-        <div className="text-center text-gray-400 py-12">
+        <div className="text-center text-gray-400 dark:text-gray-500 py-12">
           <p className="text-lg">No workflows configured</p>
           <p className="text-sm mt-1">Create workflows to automate multi-step AI processes.</p>
         </div>
