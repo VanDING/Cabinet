@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { broadcast } from '../ws/handler.js';
+
 export const decisionsRouter = new Hono();
 
 decisionsRouter.get('/', (c) => {
@@ -12,9 +14,13 @@ decisionsRouter.get('/:id', (c) => {
 
 decisionsRouter.post('/:id/approve', async (c) => {
   const body = await c.req.json();
-  return c.json({ decisionId: c.req.param('id'), status: 'approved', chosenOptionId: body.chosenOptionId });
+  const decisionId = c.req.param('id');
+  broadcast('decision_updated', { decisionId, status: 'approved', chosenOptionId: body.chosenOptionId });
+  return c.json({ decisionId, status: 'approved', chosenOptionId: body.chosenOptionId });
 });
 
 decisionsRouter.post('/:id/reject', async (c) => {
-  return c.json({ decisionId: c.req.param('id'), status: 'rejected' });
+  const decisionId = c.req.param('id');
+  broadcast('decision_updated', { decisionId, status: 'rejected' });
+  return c.json({ decisionId, status: 'rejected' });
 });

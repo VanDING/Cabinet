@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WorkflowCanvas } from '@cabinet/ui';
+import { useToast } from '../components/Toast';
 
 interface WorkflowItem {
   id: string;
@@ -11,6 +12,7 @@ interface WorkflowItem {
 
 export function FactoryPage() {
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetch('/api/factory/workflows', { headers: { 'x-cabinet-pin': '1234' } })
@@ -26,6 +28,7 @@ export function FactoryPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
     });
+    addToast('success', `Workflow ${id} started`);
   };
 
   return (

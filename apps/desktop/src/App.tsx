@@ -9,6 +9,7 @@ import { SkillsPage } from './pages/SkillsPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { MemoryPage } from './pages/MemoryPage';
 import { useTheme } from './hooks/useTheme';
+import { MobileNav } from './components/MobileNav';
 
 export function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
@@ -22,8 +23,10 @@ export function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Navigation activePage={activePage} onNavigate={handleNavigate} isDark={isDark} onToggleTheme={toggle} />
-      <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+      <div className="hidden md:block">
+        <Navigation activePage={activePage} onNavigate={handleNavigate} isDark={isDark} onToggleTheme={toggle} />
+      </div>
+      <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 pb-16 md:pb-0">
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -35,6 +38,7 @@ export function App() {
           <Route path="/memory" element={<MemoryPage />} />
         </Routes>
       </main>
+      <MobileNav activePage={activePage} onNavigate={handleNavigate} />
     </div>
   );
 }

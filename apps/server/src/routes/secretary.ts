@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { AISDKAdapter, type LLMGateway } from '@cabinet/gateway';
 import { AgentLoop, ToolExecutor, SafetyChecker, CheckpointManager } from '@cabinet/agent';
 import { SecretaryAgent, IntentParser, SessionManager } from '@cabinet/secretary';
+import { broadcast } from '../ws/handler.js';
 import { MemoryEventBus } from '@cabinet/events';
 import { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
 import Database from 'better-sqlite3';
@@ -12,18 +13,23 @@ import Database from 'better-sqlite3';
 let gateway: LLMGateway | null = null;
 let agentLoop: AgentLoop | null = null;
 let secretaryAgent: SecretaryAgent | null = null;
-let db: Database.Database | null = null;
+let db: Database.Database | null | undefined = undefined;
 const sessionManager = new SessionManager();
 const shortTerm = new ShortTermMemory();
 const entity = new EntityMemory();
 
-function getDb(): Database.Database {
-  if (!db) {
+function getDb(): Database.Database | null {
+  if (db !== undefined) return db;
+  try {
     db = new Database(':memory:');
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
+    return db;
+  } catch (e) {
+    console.warn('[secretary] better-sqlite3 not available — running without checkpoint support');
+    db = null;
+    return null;
   }
-  return db;
 }
 
 function getGateway(): LLMGateway | null {
@@ -103,9 +109,8 @@ function getSecretaryAgent(): SecretaryAgent {
     },
   };
 
-  const checkpointManager = new CheckpointManager(ckptDb);
-
-  if (gw) {
+  if (gw && ckptDb) {
+    const checkpointManager = new CheckpointManager(ckptDb);
     agentLoop = new AgentLoop({
       gateway: gw,
       toolExecutor: executor,
@@ -150,6 +155,7 @@ secretaryRouter.post('/chat', async (c) => {
     if (gw && agentLoop) {
       // Real LLM path
       const result = await agent.handleMessage(sessionId, message);
+      broadcast('secretary_message', { sessionId, mode: 'llm' });
       return c.json({
         sessionId,
         response: result.response,
@@ -166,6 +172,7 @@ secretaryRouter.post('/chat', async (c) => {
         `[No API key] Intent: ${intent.kind}. ` +
         `Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
       sessionManager.addMessage(sessionId, 'assistant', response);
+      broadcast('secretary_message', { sessionId, mode: 'fallback' });
       return c.json({ sessionId, response, intent, mode: 'fallback' });
     }
   } catch (error) {
