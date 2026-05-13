@@ -8,6 +8,61 @@ importers:
 
   .: {}
 
+  apps/server:
+    dependencies:
+      '@cabinet/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@cabinet/decision':
+        specifier: workspace:*
+        version: link:../../packages/decision
+      '@cabinet/events':
+        specifier: workspace:*
+        version: link:../../packages/events
+      '@cabinet/gateway':
+        specifier: workspace:*
+        version: link:../../packages/gateway
+      '@cabinet/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
+      '@cabinet/meeting':
+        specifier: workspace:*
+        version: link:../../packages/meeting
+      '@cabinet/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
+      '@cabinet/secretary':
+        specifier: workspace:*
+        version: link:../../packages/secretary
+      '@cabinet/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@cabinet/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@cabinet/workflow':
+        specifier: workspace:*
+        version: link:../../packages/workflow
+      better-sqlite3:
+        specifier: ^12.10.0
+        version: 12.10.0
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.18
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.0
+        version: 7.6.13
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@25.7.0)
+
   packages/agent:
     dependencies:
       '@cabinet/events':
@@ -705,6 +760,10 @@ packages:
 
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
+
+  hono@4.12.18:
+    resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
+    engines: {node: '>=16.9.0'}
 
   human-signals@5.0.0:
     resolution: {integrity: sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ==}
@@ -1433,6 +1492,8 @@ snapshots:
   get-stream@8.0.1: {}
 
   github-from-package@0.0.0: {}
+
+  hono@4.12.18: {}
 
   human-signals@5.0.0: {}
 
