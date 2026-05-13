@@ -4,6 +4,10 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test:e2e": "cd tests/e2e && vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0"
   }
 }
