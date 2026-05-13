@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SecretaryChat, type ChatMessage } from '@cabinet/ui';
 import { useToast } from '../components/Toast';
+import { useProject } from '../hooks/useProject';
 
 export function CabinetPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -8,6 +9,7 @@ export function CabinetPage() {
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { addToast } = useToast();
+  const { current } = useProject();
 
   const handleSend = async (message: string) => {
     const userMsg: ChatMessage = { id: `u_${Date.now()}`, role: 'user', content: message, timestamp: new Date() };
@@ -18,7 +20,7 @@ export function CabinetPage() {
       const res = await fetch('/api/secretary/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
-        body: JSON.stringify({ sessionId: 'default', message }),
+        body: JSON.stringify({ sessionId: 'default', message, projectId: current.id }),
       });
       const data = await res.json();
       const assistantMsg: ChatMessage = {

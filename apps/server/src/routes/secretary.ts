@@ -135,7 +135,12 @@ function getSecretaryAgent(): SecretaryAgent {
 }
 
 export const secretaryRouter = new Hono();
-const chatSchema = z.object({ sessionId: z.string(), message: z.string() });
+const chatSchema = z.object({
+  sessionId: z.string(),
+  message: z.string(),
+  captainId: z.string().optional(),
+  projectId: z.string().optional(),
+});
 
 secretaryRouter.post('/chat', async (c) => {
   const body = await c.req.json();
@@ -143,6 +148,8 @@ secretaryRouter.post('/chat', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
 
   const { sessionId, message } = parsed.data;
+  const captainId = parsed.data.captainId ?? 'captain-1';
+  const projectId = parsed.data.projectId ?? 'default';
 
   if (!sessionManager.get(sessionId)) {
     sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
@@ -155,9 +162,11 @@ secretaryRouter.post('/chat', async (c) => {
     if (gw && agentLoop) {
       // Real LLM path
       const result = await agent.handleMessage(sessionId, message);
-      broadcast('secretary_message', { sessionId, mode: 'llm' });
+      broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'llm' });
       return c.json({
         sessionId,
+        projectId,
+        captainId,
         response: result.response,
         intent: result.intent,
         mode: 'llm',
@@ -172,8 +181,8 @@ secretaryRouter.post('/chat', async (c) => {
         `[No API key] Intent: ${intent.kind}. ` +
         `Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
       sessionManager.addMessage(sessionId, 'assistant', response);
-      broadcast('secretary_message', { sessionId, mode: 'fallback' });
-      return c.json({ sessionId, response, intent, mode: 'fallback' });
+      broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'fallback' });
+      return c.json({ sessionId, projectId, captainId, response, intent, mode: 'fallback' });
     }
   } catch (error) {
     const msg = (error as Error).message;
@@ -183,6 +192,8 @@ secretaryRouter.post('/chat', async (c) => {
     return c.json(
       {
         sessionId,
+        projectId,
+        captainId,
         response: `Error: ${msg}`,
         intent: { kind: 'unknown' },
         mode: 'error',
