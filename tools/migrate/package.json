@@ -1,0 +1,18 @@
+{
+  "name": "@cabinet/migrate",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@cabinet/storage": "workspace:*",
+    "@cabinet/types": "workspace:*",
+    "better-sqlite3": "^12.10.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules
+dist
+target
+.git
+*.tsbuildinfo
+apps/desktop
+apps/desktop/src-tauri
