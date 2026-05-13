@@ -3,6 +3,8 @@ export type NavPage = 'dashboard' | 'cabinet' | 'office' | 'factory';
 export interface NavigationProps {
   activePage: NavPage;
   onNavigate: (page: NavPage) => void;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }
 
 const navItems: { id: NavPage; label: string; icon: string }[] = [
@@ -12,7 +14,7 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   { id: 'factory', label: 'Factory', icon: '⚙' },
 ];
 
-export function Navigation({ activePage, onNavigate }: NavigationProps) {
+export function Navigation({ activePage, onNavigate, isDark, onToggleTheme }: NavigationProps) {
   return (
     <nav className="w-56 bg-gray-900 text-white h-screen flex flex-col">
       <div className="px-5 py-4 border-b border-gray-700">
@@ -38,6 +40,15 @@ export function Navigation({ activePage, onNavigate }: NavigationProps) {
       <div className="px-5 py-3 border-t border-gray-700 text-xs text-gray-500">
         Cabinet v2.0
       </div>
+      {onToggleTheme && (
+        <button
+          onClick={onToggleTheme}
+          className="w-full px-5 py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-2"
+        >
+          <span>{isDark ? '☀️' : '🌙'}</span>
+          <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
+      )}
     </nav>
   );
 }
