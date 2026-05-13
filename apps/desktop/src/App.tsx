@@ -1,0 +1,32 @@
+import React, { useState } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Navigation, type NavPage } from '@cabinet/ui';
+import { DashboardPage } from './pages/DashboardPage';
+import { CabinetPage } from './pages/CabinetPage';
+import { OfficePage } from './pages/OfficePage';
+import { FactoryPage } from './pages/FactoryPage';
+
+export function App() {
+  const [activePage, setActivePage] = useState<NavPage>('dashboard');
+  const navigate = useNavigate();
+
+  const handleNavigate = (page: NavPage) => {
+    setActivePage(page);
+    navigate(`/${page === 'dashboard' ? '' : page}`);
+  };
+
+  return (
+    <div className="flex h-screen">
+      <Navigation activePage={activePage} onNavigate={handleNavigate} />
+      <main className="flex-1 overflow-auto">
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/cabinet" element={<CabinetPage />} />
+          <Route path="/office" element={<OfficePage />} />
+          <Route path="/factory" element={<FactoryPage />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
