@@ -30,10 +30,16 @@ export class SecretaryAgent {
       intent = this.intentParser.parse(message);
     }
 
-    // Run agent loop with the message
-    const result = await this.agentLoop.run(message);
-    this.sessionManager.addMessage(sessionId, 'assistant', result.content);
+    // Run agent loop with the message (or fallback if no loop)
+    let response: string;
+    if (this.agentLoop) {
+      const result = await this.agentLoop.run(message);
+      response = result.content;
+    } else {
+      response = `Intent parsed as: ${intent.kind}. Provide API keys for full LLM mode.`;
+    }
 
-    return { intent, response: result.content };
+    this.sessionManager.addMessage(sessionId, 'assistant', response);
+    return { intent, response };
   }
 }
