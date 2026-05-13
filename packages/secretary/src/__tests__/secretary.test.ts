@@ -26,6 +26,65 @@ describe('IntentParser', () => {
     const result = parser.parse('...');
     expect(result.kind).toBe('unknown');
   });
+
+  describe('LLM-powered parsing', () => {
+    const mockGateway = {
+      async generateText() {
+        return {
+          content: JSON.stringify({
+            kind: 'decision_request',
+            topic: '进入母婴市场',
+            context: '帮我分析是否该进入母婴市场',
+            suggestedDimensions: ['成本', '风险', '时间', '收益'],
+          }),
+          usage: { promptTokens: 50, completionTokens: 30 },
+          model: 'claude-haiku-4-5',
+        };
+      },
+      async *streamText() { yield { type: 'done' as const }; },
+      async listModels() { return []; },
+      async generateEmbeddings() { return { embeddings: [], model: '', usage: { tokens: 0 } }; },
+    };
+
+    it('uses LLM gateway when provided', async () => {
+      const llmParser = new IntentParser(mockGateway as any);
+      const result = await llmParser.parseWithLLM('帮我分析是否该进入母婴市场');
+      expect(result.kind).toBe('decision_request');
+      expect((result as any).topic).toBe('进入母婴市场');
+    });
+
+    it('falls back to keyword parser without gateway', async () => {
+      const keywordParser = new IntentParser();
+      const result = await keywordParser.parseWithLLM('帮我分析是否该进入母婴市场');
+      expect(result.kind).toBe('decision_request');
+    });
+
+    it('falls back to keyword parser on LLM error', async () => {
+      const failingGateway = {
+        ...mockGateway,
+        async generateText() { throw new Error('API error'); },
+      };
+      const llmParser = new IntentParser(failingGateway as any);
+      const result = await llmParser.parseWithLLM('帮我分析是否该进入母婴市场');
+      expect(result.kind).toBe('decision_request');
+    });
+
+    it('returns unknown for unparseable LLM output', async () => {
+      const badGateway = {
+        ...mockGateway,
+        async generateText() {
+          return {
+            content: 'not json at all',
+            usage: { promptTokens: 10, completionTokens: 5 },
+            model: 'test',
+          };
+        },
+      };
+      const llmParser = new IntentParser(badGateway as any);
+      const result = await llmParser.parseWithLLM('blah blah');
+      expect(result.kind).toBe('unknown');
+    });
+  });
 });
 
 describe('SessionManager', () => {
