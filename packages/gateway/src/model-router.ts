@@ -6,9 +6,9 @@ export interface RouterConfig {
 
 const DEFAULT_CONFIG: RouterConfig = {
   roles: {
-    deep_think: ['claude-opus-4-7', 'claude-sonnet-4-6'],
-    fast_execute: ['claude-haiku-4-5', 'gpt-4o-mini'],
-    default: ['claude-sonnet-4-6', 'gpt-4o'],
+    deep_think: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6'],
+    fast_execute: ['anthropic/claude-haiku-4-5', 'openai/gpt-4o-mini'],
+    default: ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'],
   },
 };
 

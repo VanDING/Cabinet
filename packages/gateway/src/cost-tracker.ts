@@ -6,8 +6,15 @@ export interface CostEntry {
   costUsd: number;
 }
 
-/** Approximate pricing per 1M tokens (USD). Expand as needed. */
+/** Approximate pricing per 1M tokens (USD). Uses provider-qualified model names. */
 const MODEL_PRICING: Record<string, { prompt: number; completion: number }> = {
+  'anthropic/claude-opus-4-7': { prompt: 15.00, completion: 75.00 },
+  'anthropic/claude-sonnet-4-6': { prompt: 3.00, completion: 15.00 },
+  'anthropic/claude-haiku-4-5': { prompt: 0.80, completion: 4.00 },
+  'openai/gpt-4o': { prompt: 2.50, completion: 10.00 },
+  'openai/gpt-4o-mini': { prompt: 0.15, completion: 0.60 },
+  'google/gemini-2.5-pro': { prompt: 1.25, completion: 5.00 },
+  // Keep short names for backward compatibility
   'claude-opus-4-7': { prompt: 15.00, completion: 75.00 },
   'claude-sonnet-4-6': { prompt: 3.00, completion: 15.00 },
   'claude-haiku-4-5': { prompt: 0.80, completion: 4.00 },

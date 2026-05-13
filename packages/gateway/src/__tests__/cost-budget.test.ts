@@ -10,8 +10,8 @@ describe('CostTracker', () => {
   });
 
   it('records cost entries', () => {
-    const entry = tracker.record('claude-sonnet-4-6', 1000, 500);
-    expect(entry.model).toBe('claude-sonnet-4-6');
+    const entry = tracker.record('anthropic/claude-sonnet-4-6', 1000, 500);
+    expect(entry.model).toBe('anthropic/claude-sonnet-4-6');
     expect(entry.promptTokens).toBe(1000);
     expect(entry.completionTokens).toBe(500);
     expect(entry.costUsd).toBeGreaterThan(0);
@@ -19,7 +19,7 @@ describe('CostTracker', () => {
   });
 
   it('calculates cost correctly for known model', () => {
-    const entry = tracker.record('claude-sonnet-4-6', 1_000_000, 1_000_000);
+    const entry = tracker.record('anthropic/claude-sonnet-4-6', 1_000_000, 1_000_000);
     // Claude Sonnet: $3/M prompt, $15/M completion = $18
     expect(entry.costUsd).toBeCloseTo(18.0, 1);
   });
@@ -30,8 +30,8 @@ describe('CostTracker', () => {
   });
 
   it('getTotalCost sums all entries', () => {
-    tracker.record('claude-haiku-4-5', 1000, 0);
-    tracker.record('claude-haiku-4-5', 2000, 0);
+    tracker.record('anthropic/claude-haiku-4-5', 1000, 0);
+    tracker.record('anthropic/claude-haiku-4-5', 2000, 0);
     expect(tracker.getTotalCost()).toBeGreaterThan(0);
   });
 });
@@ -48,7 +48,7 @@ describe('BudgetGuard', () => {
   it('returns warning when over 80%', () => {
     const tracker = new CostTracker();
     // Simulate high cost: Claude Opus $15/M prompt
-    tracker.record('claude-opus-4-7', 300_000, 0); // ~$4.50
+    tracker.record('anthropic/claude-opus-4-7', 300_000, 0); // ~$4.50
     const guard = new BudgetGuard(tracker, { daily: 5.00, weekly: 100, monthly: 500 });
     const statuses = guard.checkAll();
     const dailyStatus = statuses.find(s => s.period === 'daily');
@@ -58,7 +58,7 @@ describe('BudgetGuard', () => {
 
   it('blocks non-L3 calls when budget exceeded', () => {
     const tracker = new CostTracker();
-    tracker.record('claude-opus-4-7', 500_000, 0); // ~$7.50
+    tracker.record('anthropic/claude-opus-4-7', 500_000, 0); // ~$7.50
     const guard = new BudgetGuard(tracker, { daily: 5.00, weekly: 100, monthly: 500 });
 
     const nonL3 = guard.canProceed('L2');

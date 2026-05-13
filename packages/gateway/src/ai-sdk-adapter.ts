@@ -1,39 +1,46 @@
 import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, ToolDefinition } from './llm-gateway.js';
 
+interface ProviderConfig {
+  anthropic?: { apiKey: string };
+  openai?: { apiKey: string };
+  google?: { apiKey: string };
+}
+
 /**
- * Vercel AI SDK 适配器。
- * 封装 AI SDK 的 generateText/streamText，使其符合 LLMGateway 接口。
- *
- * 支持 Anthropic, OpenAI, Google 等所有 AI SDK 兼容的提供商。
+ * Vercel AI SDK adapter with multi-provider support.
+ * Resolves provider-qualified model names (e.g. "anthropic/claude-sonnet-4-6")
+ * to AI SDK model objects using @ai-sdk/anthropic and @ai-sdk/openai.
+ * Falls back to environment variables for API keys when not provided in config.
  */
 export class AISDKAdapter implements LLMGateway {
-  private readonly apiKey: string;
-  private readonly defaultProvider: string;
+  private readonly config: ProviderConfig;
 
-  constructor(options: { apiKey: string; defaultProvider?: string }) {
-    this.apiKey = options.apiKey;
-    this.defaultProvider = options.defaultProvider ?? 'anthropic';
+  constructor(config: ProviderConfig) {
+    this.config = config;
   }
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
-    // 使用 AI SDK v4 generateText
-    const { generateText: aiGenerateText } = await import('ai');
+    const { generateText: aiGenerateText } = await this.importAISDK();
+
+    const model = this.resolveModelObj(options.model);
+
+    const messages = options.messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    }));
 
     const result = await aiGenerateText({
-      model: this.resolveModel(options.model),
+      model,
       system: options.systemPrompt,
-      messages: options.messages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-      maxTokens: options.maxTokens,
-      temperature: options.temperature,
+      messages: messages as any,
+      maxTokens: options.maxTokens ?? 4096,
+      temperature: options.temperature ?? 0.7,
       tools: options.tools ? this.convertTools(options.tools) : undefined,
     });
 
     return {
       content: result.text ?? '',
-      toolCalls: result.toolCalls?.map(tc => ({
+      toolCalls: result.toolCalls?.map((tc: any) => ({
         id: tc.toolCallId,
         name: tc.toolName,
         arguments: tc.args as Record<string, unknown>,
@@ -47,17 +54,18 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async *streamText(options: LLMCallOptions): AsyncIterable<StreamChunk> {
-    const { streamText: aiStreamText } = await import('ai');
+    const { streamText: aiStreamText } = await this.importAISDK();
+    const model = this.resolveModelObj(options.model);
 
     const result = aiStreamText({
-      model: this.resolveModel(options.model),
+      model,
       system: options.systemPrompt,
-      messages: options.messages.map(m => ({
+      messages: options.messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
-      maxTokens: options.maxTokens,
-      temperature: options.temperature,
+      maxTokens: options.maxTokens ?? 4096,
+      temperature: options.temperature ?? 0.7,
     });
 
     for await (const chunk of result.textStream) {
@@ -68,23 +76,94 @@ export class AISDKAdapter implements LLMGateway {
 
   async listModels(): Promise<string[]> {
     return [
-      'claude-opus-4-7',
-      'claude-sonnet-4-6',
-      'claude-haiku-4-5',
-      'gpt-4o',
-      'gpt-4o-mini',
-      'gemini-2.5-pro',
+      'anthropic/claude-opus-4-7',
+      'anthropic/claude-sonnet-4-6',
+      'anthropic/claude-haiku-4-5',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
     ];
   }
 
-  private resolveModel(model: string): any {
-    // AI SDK v4 uses provider.model pattern or direct string for default provider
-    // Return model string directly — actual provider binding happens via env vars
-    return model;
+  /**
+   * Resolve a model string like "anthropic/claude-sonnet-4-6" or "claude-sonnet-4-6"
+   * to an AI SDK model object. Uses environment variables for API keys as fallback.
+   */
+  private resolveModelObj(modelName: string): any {
+    // Default to Anthropic if no provider prefix
+    const provider = modelName.includes('/')
+      ? modelName.split('/')[0]!
+      : 'anthropic';
+    const name = modelName.includes('/')
+      ? modelName.split('/').slice(1).join('/')
+      : modelName;
+
+    switch (provider) {
+      case 'anthropic': {
+        const key =
+          this.config.anthropic?.apiKey ?? process.env.ANTHROPIC_API_KEY;
+        if (!key) throw new Error('ANTHROPIC_API_KEY not configured');
+        const { anthropic } = this.loadProvider('anthropic');
+        const client = anthropic({ apiKey: key });
+        return client(name);
+      }
+      case 'openai': {
+        const key =
+          this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
+        if (!key) throw new Error('OPENAI_API_KEY not configured');
+        const { openai } = this.loadProvider('openai');
+        const client = openai({ apiKey: key });
+        return client(name);
+      }
+      case 'google': {
+        const key =
+          this.config.google?.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        if (!key) throw new Error('GOOGLE_GENERATIVE_AI_API_KEY not configured');
+        // Google uses a different SDK, return the model name string directly
+        // as the AI SDK's google provider handles model resolution internally
+        return modelName;
+      }
+      default:
+        throw new Error(`Unknown provider: ${provider}`);
+    }
+  }
+
+  /**
+   * Dynamically load a provider SDK. Falls back gracefully if not installed.
+   */
+  private loadProvider(provider: 'anthropic' | 'openai' | 'google'): any {
+    try {
+      switch (provider) {
+        case 'anthropic':
+          return require('@ai-sdk/anthropic');
+        case 'openai':
+          return require('@ai-sdk/openai');
+        case 'google':
+          try {
+            return require('@ai-sdk/google');
+          } catch {
+            throw new Error(
+              '@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google'
+            );
+          }
+        default:
+          throw new Error(`Unknown provider: ${provider}`);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not installed')) {
+        throw error;
+      }
+      throw new Error(
+        `@ai-sdk/${provider} is not installed. Install it with: pnpm add @ai-sdk/${provider}`
+      );
+    }
+  }
+
+  private async importAISDK(): Promise<any> {
+    return import('ai');
   }
 
   private convertTools(tools: ToolDefinition[]): any {
-    return tools.map(t => ({
+    return tools.map((t) => ({
       name: t.name,
       description: t.description,
       parameters: t.parameters,

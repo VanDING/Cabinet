@@ -56,13 +56,28 @@ describe('LLMGateway interface', () => {
 });
 
 describe('AISDKAdapter construction', () => {
-  it('can be constructed with apiKey', () => {
-    const adapter = new AISDKAdapter({ apiKey: 'test-key' });
+  it('can be constructed with provider config', () => {
+    const adapter = new AISDKAdapter({ anthropic: { apiKey: 'test-key' } });
+    expect(adapter).toBeInstanceOf(AISDKAdapter);
+  });
+
+  it('can be constructed with multiple providers', () => {
+    const adapter = new AISDKAdapter({
+      anthropic: { apiKey: 'anthro-key' },
+      openai: { apiKey: 'openai-key' },
+    });
     expect(adapter).toBeInstanceOf(AISDKAdapter);
   });
 
   it('satisfies LLMGateway interface', () => {
-    const adapter: LLMGateway = new AISDKAdapter({ apiKey: 'test-key' });
+    const adapter: LLMGateway = new AISDKAdapter({});
     expect(adapter).toBeDefined();
+  });
+
+  it('listModels returns provider-qualified names', async () => {
+    const adapter = new AISDKAdapter({ anthropic: { apiKey: 'test-key' } });
+    const models = await adapter.listModels();
+    expect(models).toContain('anthropic/claude-sonnet-4-6');
+    expect(models).toContain('openai/gpt-4o');
   });
 });
