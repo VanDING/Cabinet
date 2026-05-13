@@ -17,15 +17,15 @@ export function DecisionCard({ decision, onApprove, onReject, onViewDetails, var
   };
 
   return (
-    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+    <div className="border dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between mb-2">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${levelColors[decision.level] ?? 'bg-gray-100'}`}>
           {decision.level}
         </span>
-        <span className="text-xs text-gray-400">{decision.type}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">{decision.type}</span>
       </div>
-      <h3 className="font-medium text-gray-900 mb-1">{decision.title}</h3>
-      <p className="text-sm text-gray-500 line-clamp-2 mb-3">{decision.description}</p>
+      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">{decision.title}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{decision.description}</p>
 
       {variant === 'full' && (
         <div className="mb-3">
@@ -34,8 +34,8 @@ export function DecisionCard({ decision, onApprove, onReject, onViewDetails, var
               <input type="radio" name={`decision_${decision.id}`} value={opt.id}
                 className="mt-0.5" defaultChecked={opt.id === decision.chosenOptionId} />
               <div>
-                <div className="font-medium text-gray-700">{opt.label}</div>
-                <div className="text-gray-500 text-xs">{opt.impact}</div>
+                <div className="font-medium text-gray-700 dark:text-gray-300">{opt.label}</div>
+                <div className="text-gray-500 dark:text-gray-400 text-xs">{opt.impact}</div>
               </div>
             </label>
           ))}
@@ -57,7 +57,7 @@ export function DecisionCard({ decision, onApprove, onReject, onViewDetails, var
         )}
         {onViewDetails && (
           <button onClick={() => onViewDetails(decision.id)}
-            className="px-3 py-1.5 text-gray-600 text-sm border rounded hover:bg-gray-50">
+            className="px-3 py-1.5 text-gray-600 dark:text-gray-300 text-sm border dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
             Details
           </button>
         )}

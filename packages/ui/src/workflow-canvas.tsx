@@ -20,10 +20,10 @@ const nodeTypeColors: Record<string, string> = {
 
 export function WorkflowCanvas({ workflow, onRun }: WorkflowCanvasProps) {
   return (
-    <div className="border rounded-lg bg-white p-4">
+    <div className="border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-gray-900">{workflow.name}</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{workflow.name}</h3>
           <span className={`text-xs px-2 py-0.5 rounded ${
             workflow.status === 'active' ? 'bg-green-100 text-green-700' :
             workflow.status === 'failed' ? 'bg-red-100 text-red-700' :
@@ -52,10 +52,10 @@ export function WorkflowCanvas({ workflow, onRun }: WorkflowCanvasProps) {
       </div>
 
       {/* Edge list */}
-      <div className="mt-4 pt-3 border-t">
-        <div className="text-xs text-gray-400 mb-2">Edges ({workflow.edges.length})</div>
+      <div className="mt-4 pt-3 border-t dark:border-gray-700">
+        <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">Edges ({workflow.edges.length})</div>
         {workflow.edges.map((edge, i) => (
-          <div key={i} className="text-xs text-gray-500">
+          <div key={i} className="text-xs text-gray-500 dark:text-gray-400">
             {edge.from} → {edge.to} {edge.condition ? `[if: ${edge.condition}]` : ''}
           </div>
         ))}

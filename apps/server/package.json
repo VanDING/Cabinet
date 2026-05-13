@@ -8,26 +8,32 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
   },
   "dependencies": {
-    "@cabinet/types": "workspace:*",
-    "@cabinet/events": "workspace:*",
-    "@cabinet/storage": "workspace:*",
-    "@cabinet/gateway": "workspace:*",
     "@cabinet/agent": "workspace:*",
-    "@cabinet/memory": "workspace:*",
     "@cabinet/decision": "workspace:*",
-    "@cabinet/secretary": "workspace:*",
-    "@cabinet/meeting": "workspace:*",
-    "@cabinet/workflow": "workspace:*",
+    "@cabinet/events": "workspace:*",
+    "@cabinet/gateway": "workspace:*",
     "@cabinet/harness": "workspace:*",
+    "@cabinet/meeting": "workspace:*",
+    "@cabinet/memory": "workspace:*",
+    "@cabinet/secretary": "workspace:*",
+    "@cabinet/storage": "workspace:*",
+    "@cabinet/types": "workspace:*",
+    "@cabinet/workflow": "workspace:*",
     "better-sqlite3": "^12.10.0",
     "hono": "^4.6.0",
+    "ws": "^8.20.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@hono/node-server": "^1.12.0",
     "@types/better-sqlite3": "^7.6.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.0",
     "typescript": "^5.5.0",
     "vitest": "^1.6.0"
   }

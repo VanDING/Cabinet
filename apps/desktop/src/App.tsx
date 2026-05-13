@@ -5,10 +5,12 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CabinetPage } from './pages/CabinetPage';
 import { OfficePage } from './pages/OfficePage';
 import { FactoryPage } from './pages/FactoryPage';
+import { useTheme } from './hooks/useTheme';
 
 export function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
   const navigate = useNavigate();
+  const { isDark, toggle } = useTheme();
 
   const handleNavigate = (page: NavPage) => {
     setActivePage(page);
@@ -16,9 +18,9 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen">
-      <Navigation activePage={activePage} onNavigate={handleNavigate} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Navigation activePage={activePage} onNavigate={handleNavigate} isDark={isDark} onToggleTheme={toggle} />
+      <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />

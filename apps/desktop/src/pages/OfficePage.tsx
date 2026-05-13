@@ -33,9 +33,9 @@ export function OfficePage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Office — Decisions</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Office — Decisions</h1>
       {decisions.length === 0 ? (
-        <div className="text-center text-gray-400 py-12">
+        <div className="text-center text-gray-400 dark:text-gray-500 py-12">
           <p className="text-lg">No pending decisions</p>
           <p className="text-sm mt-1">New decisions will appear here when they require your attention.</p>
         </div>

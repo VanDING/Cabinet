@@ -10,7 +10,6 @@ import { settingsRouter } from './routes/settings.js';
 import { authRouter } from './routes/auth.js';
 import { skillsRouter } from './routes/skills.js';
 import { authMiddleware } from './middleware/auth.js';
-import { createSSEHandler } from './ws/handler.js';
 import { openapiRouter } from './openapi.js';
 
 export function createApp() {
@@ -28,7 +27,6 @@ export function createApp() {
   app.route('/api/settings', settingsRouter);
   app.route('/api/auth', authRouter);
   app.route('/api/skills', skillsRouter);
-  app.get('/api/events/stream', createSSEHandler());
   app.route('/api', openapiRouter());
 
   return app;
