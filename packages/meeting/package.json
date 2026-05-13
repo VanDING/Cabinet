@@ -1,0 +1,23 @@
+{
+  "name": "@cabinet/meeting",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cabinet/types": "workspace:*",
+    "@cabinet/events": "workspace:*",
+    "@cabinet/gateway": "workspace:*",
+    "@cabinet/agent": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  }
+}
