@@ -1,0 +1,20 @@
+{
+  "name": "@cabinet/verify",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:agent": "tsx agent-test.ts",
+    "test:cost": "tsx cost-test.ts",
+    "test:vector": "tsx vector-test.ts",
+    "test:all": "tsx agent-test.ts && tsx cost-test.ts && tsx vector-test.ts"
+  },
+  "dependencies": {
+    "@cabinet/agent": "workspace:*",
+    "@cabinet/gateway": "workspace:*",
+    "@cabinet/memory": "workspace:*",
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}
