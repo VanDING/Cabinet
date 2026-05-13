@@ -1,4 +1,4 @@
-export type NavPage = 'dashboard' | 'cabinet' | 'office' | 'factory';
+export type NavPage = 'dashboard' | 'cabinet' | 'office' | 'factory' | 'skills';
 
 export interface NavigationProps {
   activePage: NavPage;
@@ -12,6 +12,7 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   { id: 'cabinet', label: 'Cabinet', icon: '💬' },
   { id: 'office', label: 'Office', icon: '⚖' },
   { id: 'factory', label: 'Factory', icon: '⚙' },
+  { id: 'skills' as NavPage, label: 'Skills', icon: '🧩' },
 ];
 
 export function Navigation({ activePage, onNavigate, isDark, onToggleTheme }: NavigationProps) {
