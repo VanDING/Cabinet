@@ -1,29 +1,28 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
+import type Database from 'better-sqlite3';
 
-/**
- * Auto-archive decisions that have been pending for longer than DECISION_EXPIRY_HOURS.
- * Runs periodically in the background.
- */
-export function startAutoArchive(
-  checkIntervalMs: number = 60 * 60 * 1000, // 1 hour default
-  onArchive?: (decisionId: string) => void
-): () => void {
-  const interval = setInterval(() => {
-    const now = new Date();
-    const expiryMs = DECISION_EXPIRY_HOURS * 60 * 60 * 1000;
+export function startAutoArchive(db: Database.Database, checkIntervalMs: number = 3600000): () => void {
+  const expiryMs = DECISION_EXPIRY_HOURS * 60 * 60 * 1000;
 
-    // In production, query decisions from the store where:
-    //   status = 'pending' AND created_at < now - expiryMs
-    // and transition them to 'expired' → 'archived'
+  const check = () => {
+    try {
+      const cutoff = new Date(Date.now() - expiryMs).toISOString();
+      const expired = db.prepare(
+        "UPDATE decisions SET status = 'expired', resolved_at = datetime('now') WHERE status = 'pending' AND created_at < ?"
+      ).run(cutoff);
 
-    console.log(`[scheduler] Auto-archive check at ${now.toISOString()}`);
-    console.log(`[scheduler] Expiry threshold: ${DECISION_EXPIRY_HOURS}h`);
-
-    // Placeholder: in production this queries the database
-    if (onArchive) {
-      // Example: onArchive(decision.id);
+      if (expired.changes > 0) {
+        console.log(`[scheduler] Auto-expired ${expired.changes} decision(s)`);
+        // Archive expired decisions
+        db.prepare("UPDATE decisions SET status = 'archived' WHERE status = 'expired'").run();
+      }
+    } catch (err) {
+      console.error('[scheduler] Auto-archive error:', (err as Error).message);
     }
-  }, checkIntervalMs);
+  };
+
+  const interval = setInterval(check, checkIntervalMs);
+  console.log(`[scheduler] Auto-archive started (checking every ${checkIntervalMs / 60000} min, ${DECISION_EXPIRY_HOURS}h expiry)`);
 
   return () => clearInterval(interval);
 }

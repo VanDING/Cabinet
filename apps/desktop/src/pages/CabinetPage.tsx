@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { SecretaryChat, type ChatMessage } from '@cabinet/ui';
+import { useToast } from '../components/Toast';
 
 export function CabinetPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'welcome', role: 'assistant', content: 'Hello Captain! How can I help you today?', timestamp: new Date() },
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { addToast } = useToast();
 
   const handleSend = async (message: string) => {
     const userMsg: ChatMessage = { id: `u_${Date.now()}`, role: 'user', content: message, timestamp: new Date() };
@@ -27,6 +29,7 @@ export function CabinetPage() {
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
+      addToast('error', 'Failed to send message. Server may be offline.');
       setMessages(prev => [...prev, {
         id: `e_${Date.now()}`, role: 'assistant',
         content: 'Sorry, I could not connect to the server.',
