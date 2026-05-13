@@ -3,3 +3,4 @@ packages:
   - "apps/*"
   - "tests/*"
   - "tools/*"
+  - "docs/*"
