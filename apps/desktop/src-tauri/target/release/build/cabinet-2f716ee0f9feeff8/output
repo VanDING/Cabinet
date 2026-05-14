@@ -1,0 +1,14 @@
+cargo:rerun-if-env-changed=TAURI_CONFIG
+cargo:rustc-check-cfg=cfg(desktop)
+cargo:rustc-cfg=desktop
+cargo:rustc-check-cfg=cfg(mobile)
+cargo:rerun-if-changed=C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\tauri.conf.json
+cargo:rustc-env=TAURI_ANDROID_PACKAGE_NAME_APP_NAME=app
+cargo:rustc-env=TAURI_ANDROID_PACKAGE_NAME_PREFIX=com_cabinet
+cargo:rustc-check-cfg=cfg(dev)
+cargo:PERMISSION_FILES_PATH=C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\build\cabinet-2f716ee0f9feeff8\out\app-manifest\__app__-permission-files
+cargo:rerun-if-changed=capabilities
+cargo:rerun-if-env-changed=REMOVE_UNUSED_COMMANDS
+cargo:rustc-env=TAURI_ENV_TARGET_TRIPLE=x86_64-pc-windows-gnu
+package.metadata does not exist
+cargo:rustc-link-arg-bins=C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\build\cabinet-2f716ee0f9feeff8\out\libresource.a

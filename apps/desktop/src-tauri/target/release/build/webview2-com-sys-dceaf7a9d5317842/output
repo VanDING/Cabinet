@@ -1,0 +1,2 @@
+cargo:rustc-link-search=native=C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\build\webview2-com-sys-dceaf7a9d5317842\out\x64
+cargo:rustc-link-lib=advapi32

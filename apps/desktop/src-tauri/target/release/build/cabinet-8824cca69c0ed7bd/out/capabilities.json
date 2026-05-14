@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for Cabinet","local":true,"windows":["main"],"permissions":["core:default","opener:default","updater:default","updater:allow-check","updater:allow-download","updater:allow-install","process:default","process:allow-exit"]}}

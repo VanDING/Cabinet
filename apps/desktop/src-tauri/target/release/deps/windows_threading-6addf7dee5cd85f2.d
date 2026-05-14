@@ -1,0 +1,10 @@
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\windows_threading-6addf7dee5cd85f2.d: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libwindows_threading-6addf7dee5cd85f2.rlib: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libwindows_threading-6addf7dee5cd85f2.rmeta: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md
+
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\lib.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\bindings.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\pool.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows-threading-0.1.0\src\../readme.md:

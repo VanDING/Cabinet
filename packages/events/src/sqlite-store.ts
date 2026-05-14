@@ -1,15 +1,11 @@
 import type { MessageEnvelope, MessageType } from '@cabinet/types';
 import type { EventBus, MessageHandler } from './bus';
-import { EventLogRepository } from '@cabinet/storage/repositories/event-log';
-import type Database from 'better-sqlite3';
+import type { EventLogRepository } from '@cabinet/storage/repositories/event-log';
 
 export class SqliteEventStore implements EventBus {
-  private readonly eventLog: EventLogRepository;
   private readonly subscribers = new Map<MessageType, Set<MessageHandler>>();
 
-  constructor(db: Database.Database) {
-    this.eventLog = new EventLogRepository(db);
-  }
+  constructor(private readonly eventLog: EventLogRepository) {}
 
   async publish(envelope: MessageEnvelope): Promise<void> {
     this.eventLog.append(envelope);

@@ -1,148 +1,104 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { config } from '../config.js';
-import { AISDKAdapter, type LLMGateway } from '@cabinet/gateway';
-import { AgentLoop, ToolExecutor, SafetyChecker, CheckpointManager } from '@cabinet/agent';
-import { SecretaryAgent, IntentParser, SessionManager } from '@cabinet/secretary';
+import { getServerContext } from '../context.js';
+import { AgentLoop, ToolExecutor, SafetyChecker, CheckpointManager, registerCabinetTools } from '@cabinet/agent';
+import { SecretaryAgent, IntentParser } from '@cabinet/secretary';
 import { broadcast } from '../ws/handler.js';
-import { MemoryEventBus } from '@cabinet/events';
-import { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
-import Database from 'better-sqlite3';
 
-// Lazy initialization
-let gateway: LLMGateway | null = null;
-let agentLoop: AgentLoop | null = null;
-let secretaryAgent: SecretaryAgent | null = null;
-let db: Database.Database | null | undefined = undefined;
-const sessionManager = new SessionManager();
-const shortTerm = new ShortTermMemory();
-const entity = new EntityMemory();
+export const secretaryRouter = new Hono();
 
-function getDb(): Database.Database | null {
-  if (db !== undefined) return db;
-  try {
-    db = new Database(':memory:');
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    return db;
-  } catch (e) {
-    console.warn('[secretary] better-sqlite3 not available — running without checkpoint support');
-    db = null;
-    return null;
+// ── Lazy agent per request context ──
+let agentLoopCache: AgentLoop | null = null;
+let secretaryAgentCache: SecretaryAgent | null = null;
+let lastGatewayCheck = false;
+
+function getOrCreateAgent(sessionId: string, projectId: string, captainId: string, model?: string) {
+  const ctx = getServerContext();
+  const hasGateway = ctx.gateway !== null;
+
+  // Reset cache if gateway status changed (e.g. API keys added/removed)
+  if (hasGateway !== lastGatewayCheck) {
+    agentLoopCache = null;
+    secretaryAgentCache = null;
+    lastGatewayCheck = hasGateway;
   }
-}
 
-function getGateway(): LLMGateway | null {
-  if (gateway) return gateway;
-  if (config.anthropicApiKey || config.openaiApiKey) {
-    gateway = new AISDKAdapter({
-      anthropic: config.anthropicApiKey ? { apiKey: config.anthropicApiKey } : undefined,
-      openai: config.openaiApiKey ? { apiKey: config.openaiApiKey } : undefined,
-    });
-    console.log('[secretary] LLM Gateway initialized');
-    return gateway;
+  if (secretaryAgentCache && agentLoopCache) {
+    return { agent: secretaryAgentCache, loop: agentLoopCache };
   }
-  console.log('[secretary] No API keys configured — using fallback mode');
-  return null;
-}
 
-function getSecretaryAgent(): SecretaryAgent {
-  if (secretaryAgent) return secretaryAgent;
-
-  const gw = getGateway();
   const executor = new ToolExecutor();
-  const intentParser = new IntentParser(gw ?? undefined);
-  const ckptDb = getDb();
 
-  // Register basic tools that don't need external deps (DecisionStore, etc.)
-  executor.register({
-    name: 'get_status',
-    execute: async () => ({
-      status: 'operational',
-      mode: gw ? 'llm' : 'fallback',
-      timestamp: new Date().toISOString(),
-    }),
-  });
-  executor.register({
-    name: 'remember',
-    execute: async (args: Record<string, unknown>) => {
-      shortTerm.set(
-        (args.sessionId as string) ?? 'default',
-        (args.key as string),
-        args.value,
-        (args.ttlMs as number) ?? undefined
-      );
-      return { remembered: true };
-    },
-  });
-  executor.register({
-    name: 'recall',
-    execute: async (args: Record<string, unknown>) => {
-      const sid = (args.sessionId as string) ?? 'default';
-      const key = args.key as string | undefined;
-      if (key) {
-        const val = shortTerm.get(sid, key);
-        return val !== null ? { found: true, value: val } : { found: false };
-      }
-      return shortTerm.getAll(sid);
-    },
+  // Register all 10 cabinet tools via ToolDependencies
+  registerCabinetTools(executor, {
+    decisionStore: ctx.decisionRepo,
+    eventBus: ctx.eventBus,
+    shortTerm: ctx.shortTerm,
+    longTerm: ctx.longTerm,
+    entity: ctx.entity,
+    project: ctx.project,
   });
 
-  // Real memory provider wired to actual stores
   const memoryProvider = {
-    async getShortTerm(sessionId: string) {
-      const all = shortTerm.getAll(sessionId);
+    async getShortTerm(sid: string) {
+      const all = ctx.shortTerm.getAll(sid);
       return Object.entries(all).map(([k, v]) => ({
         role: 'user' as const,
         content: `[${k}]: ${JSON.stringify(v)}`,
       }));
     },
-    async getProjectContext(_projectId: string) {
-      return 'Cabinet v2.0 project. You are a helpful AI assistant (Secretary).';
+    async getProjectContext(_pid: string) {
+      const projCtx = ctx.project.get(_pid);
+      if (!projCtx) return `Cabinet v2.0 project. ${_pid}`;
+      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map(m => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
     },
     async getEntityPreferences(_captainId: string) {
-      const prefs = entity.getPreferences('captain-1');
+      const prefs = ctx.entity.getPreferences(_captainId);
       return prefs?.preferences ?? {};
     },
-    async searchLongTerm(_query: string, _projectId: string) {
-      return [];
+    async searchLongTerm(query: string, _pid: string) {
+      const results = await ctx.longTerm.search(query, 5);
+      return results.map(r => `[Memory] ${r.content}`);
     },
   };
 
-  if (gw && ckptDb) {
-    const checkpointManager = new CheckpointManager(ckptDb);
-    agentLoop = new AgentLoop({
-      gateway: gw,
+  if (hasGateway) {
+    const checkpointManager = new CheckpointManager(ctx.db);
+    agentLoopCache = new AgentLoop({
+      gateway: ctx.gateway!,
       toolExecutor: executor,
       safetyChecker: new SafetyChecker(),
       checkpointManager,
       memoryProvider,
-      sessionId: 'default',
-      projectId: 'default',
-      captainId: 'captain-1',
-      maxSteps: 5,
+      sessionId,
+      projectId,
+      captainId,
+      maxSteps: 10,
     });
   }
 
-  secretaryAgent = new SecretaryAgent(
-    agentLoop ?? (null as any),
+  const intentParser = new IntentParser(hasGateway ? ctx.gateway! : undefined);
+  secretaryAgentCache = new SecretaryAgent(
+    agentLoopCache ?? (null as any),
     intentParser,
-    sessionManager,
-    gw ?? undefined
+    ctx.sessionManager,
+    ctx.gateway ?? undefined,
   );
-  console.log('[secretary] Agent initialized (mode:', gw ? 'llm' : 'fallback', ')');
-  return secretaryAgent;
+
+  return { agent: secretaryAgentCache, loop: agentLoopCache };
 }
 
-export const secretaryRouter = new Hono();
+// ── POST /chat ──
 const chatSchema = z.object({
   sessionId: z.string(),
   message: z.string(),
   captainId: z.string().optional(),
   projectId: z.string().optional(),
+  model: z.string().optional(),
 });
 
 secretaryRouter.post('/chat', async (c) => {
+  const ctx = getServerContext();
   const body = await c.req.json();
   const parsed = chatSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -150,103 +106,107 @@ secretaryRouter.post('/chat', async (c) => {
   const { sessionId, message } = parsed.data;
   const captainId = parsed.data.captainId ?? 'captain-1';
   const projectId = parsed.data.projectId ?? 'default';
+  const model = parsed.data.model;
 
-  if (!sessionManager.get(sessionId)) {
-    sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
+  if (!ctx.sessionManager.get(sessionId)) {
+    ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
   }
 
   try {
-    const agent = getSecretaryAgent();
-    const gw = getGateway();
+    const { agent, loop } = getOrCreateAgent(sessionId, projectId, captainId, model);
 
-    if (gw && agentLoop) {
-      // Real LLM path
+    if (loop && ctx.gateway) {
+      // Replace agentLoop options with request-specific values
       const result = await agent.handleMessage(sessionId, message);
+
+      // Record cost if available
+      if ((result as any).usage) {
+        ctx.costTracker.record(
+          model ?? 'claude-sonnet-4-6',
+          (result as any).usage.promptTokens ?? 0,
+          (result as any).usage.completionTokens ?? 0,
+        );
+      }
+      ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+
       broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'llm' });
       return c.json({
-        sessionId,
-        projectId,
-        captainId,
+        sessionId, projectId, captainId,
         response: result.response,
         intent: result.intent,
         mode: 'llm',
-        toolCalls: (result as any).toolCalls?.length ?? 0,
+        model: model ?? 'claude-sonnet-4-6',
+        toolCalls: (result as any).toolCalls ?? 0,
       });
     } else {
-      // Fallback: keyword parser only (no API keys configured)
       const parser = new IntentParser();
       const intent = parser.parse(message);
-      sessionManager.addMessage(sessionId, 'user', message);
-      const response =
-        `[No API key] Intent: ${intent.kind}. ` +
-        `Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
-      sessionManager.addMessage(sessionId, 'assistant', response);
+      ctx.sessionManager.addMessage(sessionId, 'user', message);
+      const response = `[No API key] Intent: ${intent.kind}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
+      ctx.sessionManager.addMessage(sessionId, 'assistant', response);
       broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'fallback' });
-      return c.json({ sessionId, projectId, captainId, response, intent, mode: 'fallback' });
+      return c.json({ sessionId, projectId, captainId, response, intent, mode: 'fallback', model: 'none' });
     }
   } catch (error) {
     const msg = (error as Error).message;
     console.error('[secretary] Agent error:', msg);
-    const isAuthError =
-      msg.includes('API key') || msg.includes('not configured') || msg.includes('401');
-    return c.json(
-      {
-        sessionId,
-        projectId,
-        captainId,
-        response: `Error: ${msg}`,
-        intent: { kind: 'unknown' },
-        mode: 'error',
-      },
-      isAuthError ? 503 : 500
-    );
+    const isAuthError = msg.includes('API key') || msg.includes('not configured') || msg.includes('401');
+    return c.json({
+      sessionId, projectId, captainId,
+      response: `Error: ${msg}`, intent: { kind: 'unknown' }, mode: 'error',
+    }, isAuthError ? 503 : 500);
   }
 });
 
-// LLM connectivity check endpoint
+// ── GET /verify ──
 secretaryRouter.get('/verify', async (c) => {
-  const gw = getGateway();
-  if (!gw) {
-    return c.json({
-      status: 'no_api_key',
-      message: 'Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env to enable LLM.',
-    });
+  const { gateway, costTracker, metrics } = getServerContext();
+  if (!gateway) {
+    return c.json({ status: 'no_api_key', message: 'Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env to enable LLM.' });
   }
-
   try {
     const start = Date.now();
-    const response = await gw.generateText({
+    const response = await gateway.generateText({
       model: 'claude-haiku-4-5',
       messages: [{ role: 'user', content: 'Reply with just "OK".' }],
       maxTokens: 10,
     });
+    costTracker.record('claude-haiku-4-5', response.usage?.promptTokens ?? 0, response.usage?.completionTokens ?? 0);
+    metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'verify' });
     const latency = Date.now() - start;
-    return c.json({
-      status: 'ok',
-      latency_ms: latency,
-      model: response.model,
-      tokens: response.usage,
-    });
+    return c.json({ status: 'ok', latency_ms: latency, model: response.model, tokens: response.usage });
   } catch (error) {
-    return c.json(
-      {
-        status: 'error',
-        message: (error as Error).message,
-        hint: 'Check your API key and network connection.',
-      },
-      503
-    );
+    return c.json({ status: 'error', message: (error as Error).message, hint: 'Check your API key and network connection.' }, 503);
   }
 });
 
+// ── GET /sessions ──
 secretaryRouter.get('/sessions', (c) => {
+  const { sessionManager } = getServerContext();
   const sessions = sessionManager.list();
   return c.json({
-    sessions: sessions.map((s) => ({
-      id: s.id,
-      title: s.title,
-      messageCount: s.messages.length,
-      updatedAt: s.updatedAt,
+    sessions: sessions.map(s => ({
+      id: s.id, title: s.title, messageCount: s.messages.length, updatedAt: s.updatedAt,
     })),
+  });
+});
+
+// ── GET /context ──
+secretaryRouter.get('/context', (c) => {
+  const { sessionManager, metrics } = getServerContext();
+  const sessionId = c.req.query('sessionId') ?? 'default';
+  const session = sessionManager.get(sessionId);
+
+  const messageCount = session?.messages.length ?? 0;
+  // Rough estimate: ~4 chars per token
+  const totalChars = session?.messages.reduce((sum, m) => sum + m.content.length, 0) ?? 0;
+  const estimatedTokens = Math.ceil(totalChars / 4);
+
+  return c.json({
+    sessionId,
+    messageCount,
+    estimatedTokens,
+    maxContextTokens: 200000,
+    summary: metrics.getSummary(),
   });
 });

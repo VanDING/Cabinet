@@ -23,12 +23,18 @@ importers:
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.0
+      '@tauri-apps/plugin-dialog':
+        specifier: ^2.7.1
+        version: 2.7.1
       react:
         specifier: ^19.0.0
         version: 19.2.6
       react-dom:
         specifier: ^19.0.0
         version: 19.2.6(react@19.2.6)
+      react-grid-layout:
+        specifier: ^2.2.3
+        version: 2.2.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react-router-dom:
         specifier: ^7.0.0
         version: 7.15.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -1437,6 +1443,9 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
+  '@tauri-apps/plugin-dialog@2.7.1':
+    resolution: {integrity: sha512-OK1UBXYt+ojcmxMktzzuyonYIFta8CmAASpX+CA+DTGK24KlHjhYI6x2iOJ/TjZF4N7/ACK1oFmEOjIY9IhzOQ==}
+
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -1743,6 +1752,10 @@ packages:
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
+  clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
+    engines: {node: '>=6'}
+
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
 
@@ -1870,6 +1883,9 @@ packages:
   expand-template@2.0.3:
     resolution: {integrity: sha512-XYfuKMvj4O35f/pOXLObndIRvyQ+/+6AhODh+OKWj9S9498pHHn/IMszH+gt0fBCRWMNfk1ZSp5x3AifmnI2vg==}
     engines: {node: '>=6'}
+
+  fast-equals@4.0.3:
+    resolution: {integrity: sha512-G3BSX9cfKttjr+2o1O22tYMLq0DPluZnYtq1rXumE1SpL/F/SLIfHx08WYQoWSIpeMYf8sRbJ8++71+v6Pnxfg==}
 
   fast-glob@3.3.3:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
@@ -2043,6 +2059,10 @@ packages:
   local-pkg@0.5.1:
     resolution: {integrity: sha512-9rrA30MRRP3gBD3HTGnC6cDFpaE1kVDWxWgqWJUN0RvDNAo+Nz/9GxB+nHOH0ifbVFy0hSA1V6vFDvnx54lTEQ==}
     engines: {node: '>=14'}
+
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
 
   loupe@2.3.7:
     resolution: {integrity: sha512-zSMINGVYkdpYSOBmLi0D1Uo7JU9nVdQKrHxC8eYlV+9YKK9WePqAlL7lSlorG/U2Fw1w0hTBmaa/jrQ3UbPHtA==}
@@ -2274,6 +2294,9 @@ packages:
     resolution: {integrity: sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
+  prop-types@15.8.1:
+    resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
+
   property-information@7.1.0:
     resolution: {integrity: sha512-TwEZ+X+yCJmYfL7TPUOcvBZ4QfoT5YenQiJuX//0th53DE6w0xxLEtfK3iyryQFddXuvkIk51EEgrJQ0WJkOmQ==}
 
@@ -2292,12 +2315,33 @@ packages:
     peerDependencies:
       react: ^19.2.6
 
+  react-draggable@4.5.0:
+    resolution: {integrity: sha512-VC+HBLEZ0XJxnOxVAZsdRi8rD04Iz3SiiKOoYzamjylUcju/hP9np/aZdLHf/7WOD268WMoNJMvYfB5yAK45cw==}
+    peerDependencies:
+      react: '>= 16.3.0'
+      react-dom: '>= 16.3.0'
+
+  react-grid-layout@2.2.3:
+    resolution: {integrity: sha512-OAEJHBxmfuxQfVtZwRzmsokijGlBgzYIJ7MUlLk/VSa43SaGzu15w5D0P2RDrfX5EvP9POMbL6bFrai/huDzbQ==}
+    peerDependencies:
+      react: '>= 16.3.0'
+      react-dom: '>= 16.3.0'
+
+  react-is@16.13.1:
+    resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
+
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
     engines: {node: '>=0.10.0'}
+
+  react-resizable@3.2.0:
+    resolution: {integrity: sha512-3NKQ0SLZV7rs3LQHeXlOzDSRQfFrkX6TVet77/Qk03zqiZyee37b7N8/gwDJAA8UUjRz7PdWCCy49hcso45SMQ==}
+    peerDependencies:
+      react: '>= 16.3'
+      react-dom: '>= 16.3'
 
   react-router-dom@7.15.0:
     resolution: {integrity: sha512-VcrVg64Fo8nwBvDscajG8gRTLIuTC6N50nb22l2HOOV4PTOHgoGp8mUjy9wLiHYoYTSYI36tUnXZgasSRFZorQ==}
@@ -2339,6 +2383,9 @@ packages:
 
   regex@6.1.0:
     resolution: {integrity: sha512-6VwtthbV4o/7+OaAF9I5L5V3llLEsoPyq9P1JVXkedTP33c7MfCG0/5NOPcSJn0TzXcG9YUrR0gQSWioew3LDg==}
+
+  resize-observer-polyfill@1.5.1:
+    resolution: {integrity: sha512-LwZrotdHOo12nQuZlHEmtuXdqGoOD0OhaxopaNFxWzInpEgaLWoVuAMbTzixuosCx2nEG58ngzW3vxdWoxIgdg==}
 
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
@@ -3475,6 +3522,10 @@ snapshots:
       '@tauri-apps/cli-win32-ia32-msvc': 2.11.1
       '@tauri-apps/cli-win32-x64-msvc': 2.11.1
 
+  '@tauri-apps/plugin-dialog@2.7.1':
+    dependencies:
+      '@tauri-apps/api': 2.11.0
+
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.29.3
@@ -3838,6 +3889,8 @@ snapshots:
 
   chownr@1.1.4: {}
 
+  clsx@2.1.1: {}
+
   comma-separated-tokens@2.0.3: {}
 
   commander@4.1.1: {}
@@ -4010,6 +4063,8 @@ snapshots:
 
   expand-template@2.0.3: {}
 
+  fast-equals@4.0.3: {}
+
   fast-glob@3.3.3:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -4152,6 +4207,10 @@ snapshots:
     dependencies:
       mlly: 1.8.2
       pkg-types: 1.3.1
+
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
 
   loupe@2.3.7:
     dependencies:
@@ -4369,6 +4428,12 @@ snapshots:
       ansi-styles: 5.2.0
       react-is: 18.3.1
 
+  prop-types@15.8.1:
+    dependencies:
+      loose-envify: 1.4.0
+      object-assign: 4.1.1
+      react-is: 16.13.1
+
   property-information@7.1.0: {}
 
   pump@3.0.4:
@@ -4390,9 +4455,36 @@ snapshots:
       react: 19.2.6
       scheduler: 0.27.0
 
+  react-draggable@4.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      clsx: 2.1.1
+      prop-types: 15.8.1
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+
+  react-grid-layout@2.2.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      clsx: 2.1.1
+      fast-equals: 4.0.3
+      prop-types: 15.8.1
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      react-draggable: 4.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      react-resizable: 3.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      resize-observer-polyfill: 1.5.1
+
+  react-is@16.13.1: {}
+
   react-is@18.3.1: {}
 
   react-refresh@0.17.0: {}
+
+  react-resizable@3.2.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      prop-types: 15.8.1
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      react-draggable: 4.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
 
   react-router-dom@7.15.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:
@@ -4433,6 +4525,8 @@ snapshots:
   regex@6.1.0:
     dependencies:
       regex-utilities: 2.3.0
+
+  resize-observer-polyfill@1.5.1: {}
 
   resolve-pkg-maps@1.0.0: {}
 

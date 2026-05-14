@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SqliteEventStore } from '../sqlite-store';
+import { EventLogRepository } from '@cabinet/storage';
 import { runEventBusContractTests } from './bus.contract.test';
 import { createConnection, closeConnection, getConnection } from '@cabinet/storage';
 import { runMigration001 } from '@cabinet/storage/migrations/001_initial';
@@ -26,13 +27,13 @@ afterAll(() => {
 
 // Run the contract tests (5 tests: publish, subscribe, unsubscribe, type filtering, async)
 runEventBusContractTests(
-  () => new SqliteEventStore(getConnection()),
+  () => new SqliteEventStore(new EventLogRepository(getConnection())),
   () => {}
 );
 
 describe('SqliteEventStore specific', () => {
   it('getCausationChain traces complete causal chain via correlationId', async () => {
-    const store = new SqliteEventStore(getConnection());
+    const store = new SqliteEventStore(new EventLogRepository(getConnection()));
 
     await store.publish({
       messageId: 'root-msg',
@@ -66,7 +67,7 @@ describe('SqliteEventStore specific', () => {
   });
 
   it('events are persisted across store instances', async () => {
-    const store1 = new SqliteEventStore(getConnection());
+    const store1 = new SqliteEventStore(new EventLogRepository(getConnection()));
     await store1.publish({
       messageId: 'persist-msg',
       correlationId: 'persist-corr',
@@ -76,7 +77,7 @@ describe('SqliteEventStore specific', () => {
       payload: { text: 'persistent' },
     });
 
-    const store2 = new SqliteEventStore(getConnection());
+    const store2 = new SqliteEventStore(new EventLogRepository(getConnection()));
     const chain = await store2.getCausationChain('persist-corr');
     expect(chain).toHaveLength(1);
     expect(chain[0]!.messageId).toBe('persist-msg');

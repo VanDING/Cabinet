@@ -35,8 +35,20 @@ export interface StreamChunk {
   toolCall?: Partial<ToolCallResult>;
 }
 
+export interface EmbeddingOptions {
+  texts: string[];
+  model?: string;
+}
+
+export interface EmbeddingResult {
+  embeddings: number[][];
+  model: string;
+  usage: { tokens: number };
+}
+
 export interface LLMGateway {
   generateText(options: LLMCallOptions): Promise<LLMResponse>;
   streamText(options: LLMCallOptions): AsyncIterable<StreamChunk>;
   listModels(): Promise<string[]>;
+  generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult>;
 }

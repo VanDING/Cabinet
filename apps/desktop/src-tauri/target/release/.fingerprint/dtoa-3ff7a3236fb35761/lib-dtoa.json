@@ -1,0 +1,1 @@
+{"rustc":6313536168557467772,"features":"[]","declared_features":"[\"no-panic\"]","target":14302215980248354484,"profile":1369601567987815722,"path":17740832298060413899,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release\\.fingerprint\\dtoa-3ff7a3236fb35761\\dep-lib-dtoa","checksum":false}}],"rustflags":[],"config":13375621962327895973,"compile_kind":0}

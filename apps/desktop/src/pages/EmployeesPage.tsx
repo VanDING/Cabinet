@@ -37,11 +37,11 @@ export function EmployeesPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="h-full overflow-y-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <div>
+        <div className="flex items-baseline gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Employees</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure AI and human team members</p>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Configure AI and human team members</span>
         </div>
         <button onClick={() => setShowForm(!showForm)}
           className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">

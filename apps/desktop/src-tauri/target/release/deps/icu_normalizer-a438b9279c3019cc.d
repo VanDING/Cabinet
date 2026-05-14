@@ -1,0 +1,10 @@
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\icu_normalizer-a438b9279c3019cc.d: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libicu_normalizer-a438b9279c3019cc.rlib: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libicu_normalizer-a438b9279c3019cc.rmeta: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs:

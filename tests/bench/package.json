@@ -1,0 +1,13 @@
+{
+  "name": "@cabinet/benchmarks",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cabinet/types": "workspace:*",
+    "@cabinet/events": "workspace:*",
+    "@cabinet/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}
