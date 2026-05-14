@@ -1,0 +1,11 @@
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\siphasher-37835c57a18a9575.d: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\common.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip128.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\../README.md
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libsiphasher-37835c57a18a9575.rlib: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\common.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip128.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\../README.md
+
+C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\deps\libsiphasher-37835c57a18a9575.rmeta: C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\lib.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\common.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip128.rs C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\../README.md
+
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\lib.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\common.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\sip128.rs:
+C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\siphasher-1.0.3\src\../README.md:

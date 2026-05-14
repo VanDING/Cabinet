@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ShortTermMemory } from '../short-term.js';
 import { EntityMemory } from '../entity.js';
 import { ProjectMemory } from '../project.js';
@@ -87,8 +87,9 @@ describe('ProjectMemory', () => {
 describe('LongTermMemory', () => {
   let mem: LongTermMemory;
   beforeEach(() => { mem = new LongTermMemory(); });
+  afterEach(() => { mem.close(); });
 
-  it('stores and searches entries', async () => {
+  it('stores and searches entries by text', async () => {
     await mem.store({ content: 'The sky is blue', metadata: {}, timestamp: new Date() });
     await mem.store({ content: 'The ocean is deep and blue', metadata: {}, timestamp: new Date() });
     const results = await mem.search('blue');
@@ -104,6 +105,40 @@ describe('LongTermMemory', () => {
     const id = await mem.store({ content: 'temp', metadata: {}, timestamp: new Date() });
     expect(await mem.delete(id)).toBe(true);
     expect(await mem.delete(id)).toBe(false);
+  });
+
+  it('tracks size', async () => {
+    expect(mem.size()).toBe(0);
+    await mem.store({ content: 'one', metadata: {}, timestamp: new Date() });
+    expect(mem.size()).toBe(1);
+  });
+
+  it('searches by embedding similarity', async () => {
+    await mem.store({ content: 'Apple makes great computers', embedding: [1, 0, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({ content: 'Bananas are yellow fruits', embedding: [0, 1, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({ content: 'Microsoft makes software', embedding: [0.9, 0.1, 0], metadata: {}, timestamp: new Date() });
+
+    const results = await mem.semanticSearch([1, 0, 0], 5);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results[0]!.content).toContain('Apple');
+  });
+
+  it('returns empty for no semantic matches', async () => {
+    const results = await mem.semanticSearch([1, 1, 1], 5);
+    expect(results).toHaveLength(0);
+  });
+
+  it('stores and retrieves entries with embeddings', async () => {
+    const id = await mem.store({
+      content: 'Embedded memory',
+      embedding: [0.5, 0.5, 0.5],
+      metadata: { tag: 'test' },
+      timestamp: new Date(),
+    });
+    const results = await mem.search('Embedded');
+    expect(results).toHaveLength(1);
+    expect(results[0]!.id).toBe(id);
+    expect(results[0]!.embedding).toEqual([0.5, 0.5, 0.5]);
   });
 });
 
