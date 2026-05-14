@@ -5,9 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: true,
+    host: 'localhost',
     proxy: {
       '/api': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
     },
   },
+  clearScreen: false,
 });

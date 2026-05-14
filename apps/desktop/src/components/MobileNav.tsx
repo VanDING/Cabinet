@@ -1,11 +1,11 @@
 import React from 'react';
 import type { NavPage } from '@cabinet/ui';
 
-const items: { id: NavPage; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Home', icon: '◫' },
-  { id: 'cabinet', label: 'Chat', icon: '💬' },
-  { id: 'office', label: 'Decide', icon: '⚖' },
-  { id: 'factory', label: 'Flow', icon: '⚙' },
+const items: { id: NavPage; label: string }[] = [
+  { id: 'office', label: 'Office' },
+  { id: 'factory', label: 'Factory' },
+  { id: 'employees', label: 'Staff' },
+  { id: 'memory', label: 'Memory' },
 ];
 
 interface Props {
@@ -19,11 +19,10 @@ export function MobileNav({ activePage, onNavigate }: Props) {
       <div className="flex justify-around py-1">
         {items.map(item => (
           <button key={item.id} onClick={() => onNavigate(item.id)}
-            className={`flex flex-col items-center px-3 py-1.5 text-xs transition-colors ${
+            className={`flex flex-col items-center px-2 py-1.5 text-xs transition-colors ${
               activePage === item.id ? 'text-blue-400' : 'text-gray-400'
             }`}
           >
-            <span className="text-lg">{item.icon}</span>
             <span>{item.label}</span>
           </button>
         ))}

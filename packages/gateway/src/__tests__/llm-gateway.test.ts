@@ -21,6 +21,14 @@ class MockLLMGateway implements LLMGateway {
   async listModels(): Promise<string[]> {
     return ['test-model'];
   }
+
+  async generateEmbeddings(options: { texts: string[] }): Promise<any> {
+    return {
+      embeddings: options.texts.map(() => [0.1, 0.2, 0.3]),
+      model: 'mock-embed',
+      usage: { tokens: options.texts.length * 10 },
+    };
+  }
 }
 
 describe('LLMGateway interface', () => {
@@ -52,6 +60,13 @@ describe('LLMGateway interface', () => {
     const gateway = new MockLLMGateway();
     const models = await gateway.listModels();
     expect(models).toContain('test-model');
+  });
+
+  it('generateEmbeddings returns vectors', async () => {
+    const gateway = new MockLLMGateway();
+    const result = await gateway.generateEmbeddings({ texts: ['hello', 'world'] });
+    expect(result.embeddings).toHaveLength(2);
+    expect(result.embeddings[0]!).toHaveLength(3);
   });
 });
 

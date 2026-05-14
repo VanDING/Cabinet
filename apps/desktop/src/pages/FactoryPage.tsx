@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WorkflowCanvas } from '@cabinet/ui';
 import { useToast } from '../components/Toast';
+import { useProject } from '../hooks/useProject';
 
 interface WorkflowItem {
   id: string;
@@ -13,6 +14,7 @@ interface WorkflowItem {
 export function FactoryPage() {
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const { addToast } = useToast();
+  const { current } = useProject();
 
   useEffect(() => {
     fetch('/api/factory/workflows', { headers: { 'x-cabinet-pin': '1234' } })
@@ -32,8 +34,12 @@ export function FactoryPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Factory — Workflows</h1>
+    <div className="h-full overflow-y-auto p-6">
+      <div className="flex items-baseline gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Factory</h1>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{current.name} &mdash; Create workflows to automate multi-step AI processes.</span>
+      </div>
+
       {workflows.length === 0 ? (
         <div className="text-center text-gray-400 dark:text-gray-500 py-12">
           <p className="text-lg">No workflows configured</p>

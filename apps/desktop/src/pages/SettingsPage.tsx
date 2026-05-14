@@ -85,24 +85,60 @@ function SkillsTab() {
 }
 
 // ── API Keys Tab ──
-function ApiKeysTab() {
-  const [keys, setKeys] = useState<{id: string; provider: string; keyPreview: string}[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ provider: 'anthropic', apiKey: '' });
+interface ApiKeyItem {
+  id: string;
+  provider: string;
+  baseUrl?: string;
+  model?: string;
+  keyPreview: string;
+  encrypted: string;
+}
 
-  useEffect(() => {
+function ApiKeysTab() {
+  const [keys, setKeys] = useState<ApiKeyItem[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    provider: 'anthropic',
+    baseUrl: '',
+    apiKey: '',
+    model: 'claude-sonnet-4-6',
+  });
+
+  const fetchKeys = () => {
     fetch('/api/settings/api-keys', { headers: { 'x-cabinet-pin': '1234' } })
-      .then(r => r.json()).then(d => setKeys(d.keys ?? [])).catch(() => {});
-  }, []);
+      .then(r => r.json())
+      .then(d => setKeys(d.keys ?? []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchKeys(); }, []);
 
   const handleAdd = async () => {
     await fetch('/api/settings/api-keys', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
       body: JSON.stringify(formData),
     });
     setShowForm(false);
-    setFormData({ provider: 'anthropic', apiKey: '' });
+    setFormData({ provider: 'anthropic', baseUrl: '', apiKey: '', model: 'claude-sonnet-4-6' });
+    fetchKeys(); // Refresh list after adding
   };
+
+  const handleRemove = async (id: string) => {
+    await fetch(`/api/settings/api-keys/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-cabinet-pin': '1234' },
+    });
+    fetchKeys(); // Refresh list after removing
+  };
+
+  const providerModels: Record<string, string[]> = {
+    anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-7'],
+    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+    google: ['gemini-2.0-flash', 'gemini-2.0-pro'],
+  };
+
+  const models = providerModels[formData.provider] ?? [];
 
   return (
     <div>
@@ -117,16 +153,36 @@ function ApiKeysTab() {
       {showForm && (
         <div className="mb-4 border dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
           <div className="space-y-3">
-            <select value={formData.provider}
-              onChange={e => setFormData(p => ({ ...p, provider: e.target.value }))}
-              className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-              <option value="anthropic">Anthropic</option>
-              <option value="openai">OpenAI</option>
-              <option value="google">Google</option>
-            </select>
-            <input type="password" placeholder="API Key" value={formData.apiKey}
-              onChange={e => setFormData(p => ({ ...p, apiKey: e.target.value }))}
-              className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Provider</label>
+              <select value={formData.provider}
+                onChange={e => setFormData(p => ({ ...p, provider: e.target.value, model: providerModels[e.target.value]?.[0] ?? '' }))}
+                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <option value="anthropic">Anthropic</option>
+                <option value="openai">OpenAI</option>
+                <option value="google">Google</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Base URL (optional)</label>
+              <input type="text" placeholder="https://api.anthropic.com" value={formData.baseUrl}
+                onChange={e => setFormData(p => ({ ...p, baseUrl: e.target.value }))}
+                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">API Key</label>
+              <input type="password" placeholder="sk-ant-..." value={formData.apiKey}
+                onChange={e => setFormData(p => ({ ...p, apiKey: e.target.value }))}
+                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Model</label>
+              <select value={formData.model}
+                onChange={e => setFormData(p => ({ ...p, model: e.target.value }))}
+                className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                {models.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
             <button onClick={handleAdd} disabled={!formData.apiKey.trim()}
               className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
               Add Key (AES-256 Encrypted)
@@ -142,10 +198,13 @@ function ApiKeysTab() {
           {keys.map(k => (
             <div key={k.id} className="flex items-center justify-between border dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
               <div>
-                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{k.provider}</span>
-                <p className="text-xs text-gray-400 font-mono">{k.keyPreview}</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100 capitalize">{k.provider}</span>
+                  {k.model && <span className="text-xs text-gray-400 font-mono">{k.model}</span>}
+                </div>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{k.keyPreview}</p>
               </div>
-              <button className="text-xs text-red-500 hover:underline">Remove</button>
+              <button onClick={() => handleRemove(k.id)} className="text-xs text-red-500 hover:underline">Remove</button>
             </div>
           ))}
         </div>
@@ -228,7 +287,7 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('api-keys');
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="h-full overflow-y-auto p-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Settings</h1>
 
       {/* Tab Bar */}
@@ -240,7 +299,6 @@ export function SettingsPage() {
                 ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
             }`}>
-            <span className="mr-1.5">{tab.icon}</span>
             {tab.label}
           </button>
         ))}

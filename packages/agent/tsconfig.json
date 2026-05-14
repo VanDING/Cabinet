@@ -8,6 +8,9 @@
   "references": [
     { "path": "../types" },
     { "path": "../events" },
-    { "path": "../storage" }
+    { "path": "../storage" },
+    { "path": "../gateway" },
+    { "path": "../decision" },
+    { "path": "../memory" }
   ]
 }

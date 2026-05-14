@@ -1,4 +1,4 @@
-import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, ToolDefinition } from './llm-gateway.js';
+import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, ToolDefinition, EmbeddingOptions, EmbeddingResult } from './llm-gateway.js';
 
 interface ProviderConfig {
   anthropic?: { apiKey: string };
@@ -84,6 +84,22 @@ export class AISDKAdapter implements LLMGateway {
     ];
   }
 
+  async generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult> {
+    const { embed } = await this.importAISDK();
+    const model = this.resolveEmbeddingModel(options.model ?? 'text-embedding-3-small');
+
+    const result = await embed({
+      model,
+      values: options.texts,
+    });
+
+    return {
+      embeddings: result.embeddings.map((e: any) => Array.from(e)),
+      model: options.model ?? 'text-embedding-3-small',
+      usage: { tokens: result.usage?.tokens ?? 0 },
+    };
+  }
+
   /**
    * Resolve a model string like "anthropic/claude-sonnet-4-6" or "claude-sonnet-4-6"
    * to an AI SDK model object. Uses environment variables for API keys as fallback.
@@ -125,6 +141,18 @@ export class AISDKAdapter implements LLMGateway {
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
+  }
+
+  /**
+   * Resolve an embedding model name to an AI SDK embedding model object.
+   * Currently only OpenAI is supported for embeddings.
+   */
+  private resolveEmbeddingModel(modelName: string): any {
+    const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
+    if (!key) throw new Error('OPENAI_API_KEY not configured for embeddings');
+    const { openai } = this.loadProvider('openai');
+    const client = openai({ apiKey: key });
+    return client.embedding(modelName);
   }
 
   /**

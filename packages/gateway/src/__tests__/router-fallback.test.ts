@@ -61,6 +61,9 @@ describe('FallbackChain', () => {
       },
       async *streamText() { yield { type: 'done' }; },
       async listModels() { return []; },
+      async generateEmbeddings() {
+        return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
+      },
     };
 
     const chain = new FallbackChain({
@@ -93,6 +96,9 @@ describe('FallbackChain', () => {
       },
       async *streamText() { yield { type: 'done' }; },
       async listModels() { return []; },
+      async generateEmbeddings() {
+        return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
+      },
     };
 
     const router = new ModelRouter();
@@ -123,6 +129,9 @@ describe('FallbackChain', () => {
       },
       async *streamText() { yield { type: 'done' }; },
       async listModels() { return []; },
+      async generateEmbeddings() {
+        return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
+      },
     };
 
     const router = new ModelRouter();
