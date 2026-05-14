@@ -1,4 +1,4 @@
-export type NavPage = 'dashboard' | 'cabinet' | 'office' | 'factory' | 'skills' | 'employees' | 'memory';
+export type NavPage = 'dashboard' | 'cabinet' | 'office' | 'factory' | 'employees' | 'memory' | 'settings';
 
 export interface NavigationProps {
   activePage: NavPage;
@@ -12,7 +12,6 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   { id: 'cabinet', label: 'Cabinet', icon: '💬' },
   { id: 'office', label: 'Office', icon: '⚖' },
   { id: 'factory', label: 'Factory', icon: '⚙' },
-  { id: 'skills' as NavPage, label: 'Skills', icon: '🧩' },
   { id: 'employees', label: 'Employees', icon: '👥' },
   { id: 'memory', label: 'Memory', icon: '🧠' },
 ];
@@ -39,6 +38,22 @@ export function Navigation({ activePage, onNavigate, isDark, onToggleTheme }: Na
             <span className="text-sm font-medium">{item.label}</span>
           </button>
         ))}
+
+        {/* Separator */}
+        <div className="mx-5 my-2 border-t border-gray-700" />
+
+        {/* Settings at bottom */}
+        <button
+          onClick={() => onNavigate('settings')}
+          className={`w-full text-left px-5 py-3 flex items-center gap-3 transition-colors ${
+            activePage === 'settings'
+              ? 'bg-gray-800 text-white border-r-2 border-blue-500'
+              : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+          }`}
+        >
+          <span className="text-lg">⚙</span>
+          <span className="text-sm font-medium">Settings</span>
+        </button>
       </div>
       <div className="px-5 py-3 border-t border-gray-700 text-xs text-gray-500">
         Cabinet v2.0
