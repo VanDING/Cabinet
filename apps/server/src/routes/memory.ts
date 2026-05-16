@@ -11,7 +11,13 @@ memoryRouter.get('/', async (c) => {
   const query = c.req.query('query') ?? '';
   const limit = parseInt(c.req.query('limit') ?? '20', 10);
 
-  const entries: { id: string; layer: string; content: string; metadata: any; timestamp: string }[] = [];
+  const entries: {
+    id: string;
+    layer: string;
+    content: string;
+    metadata: any;
+    timestamp: string;
+  }[] = [];
 
   if (layer === 'all' || layer === 'short_term') {
     for (const sessionId of getAllSessionIds(shortTerm)) {
@@ -43,7 +49,9 @@ memoryRouter.get('/', async (c) => {
           timestamp: r.timestamp?.toISOString?.() ?? new Date().toISOString(),
         });
       }
-    } catch (err) { logger.warn('Long-term memory unavailable', { error: (err as Error).message }); }
+    } catch (err) {
+      logger.warn('Long-term memory unavailable', { error: (err as Error).message });
+    }
   }
 
   if (layer === 'all' || layer === 'entity') {
@@ -99,10 +107,10 @@ memoryRouter.get('/', async (c) => {
     entries: sliced,
     total: entries.length,
     layers: {
-      short_term: entries.filter(e => e.layer === 'short_term').length,
-      long_term: entries.filter(e => e.layer === 'long_term').length,
-      entity: entries.filter(e => e.layer === 'entity').length,
-      project: entries.filter(e => e.layer === 'project').length,
+      short_term: entries.filter((e) => e.layer === 'short_term').length,
+      long_term: entries.filter((e) => e.layer === 'long_term').length,
+      entity: entries.filter((e) => e.layer === 'entity').length,
+      project: entries.filter((e) => e.layer === 'project').length,
     },
   });
 });
@@ -120,11 +128,39 @@ memoryRouter.delete('/:id', (c) => {
   }
 });
 
+// POST /api/memory/consolidate — manually trigger basic consolidation
+memoryRouter.post('/consolidate', async (c) => {
+  const { shortTerm, longTerm, logger } = getServerContext();
+  let migrated = 0;
+  try {
+    for (const sessionId of getAllSessionIds(shortTerm)) {
+      const data = shortTerm.getAll(sessionId);
+      for (const [key, value] of Object.entries(data)) {
+        if (typeof value === 'string' && value.length > 50) {
+          await longTerm.store({
+            content: value,
+            metadata: { key, sessionId, source: 'manual_consolidation' },
+            timestamp: new Date(),
+          });
+          migrated++;
+        }
+      }
+      shortTerm.clear(sessionId);
+    }
+    logger.info('Manual consolidation completed', { migrated });
+    return c.json({ migrated, status: 'completed' });
+  } catch (e: any) {
+    return c.json({ error: e.message, migrated }, 500);
+  }
+});
+
 // Helper: get tracked session IDs from ShortTermMemory
 function getAllSessionIds(shortTerm: any): string[] {
   try {
     if (typeof shortTerm.getSessionIds === 'function') return shortTerm.getSessionIds();
     if (shortTerm._store instanceof Map) return [...shortTerm._store.keys()];
-  } catch {}
+  } catch {
+    /* session IDs not available */
+  }
   return ['default'];
 }

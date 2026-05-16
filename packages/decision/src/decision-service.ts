@@ -1,4 +1,9 @@
-import { DecisionStatus, type Decision, type DecisionLevel, type DecisionStore } from '@cabinet/types';
+import {
+  DecisionStatus,
+  type Decision,
+  type DecisionLevel,
+  type DecisionStore,
+} from '@cabinet/types';
 import { DecisionStateMachine } from './state-machine.js';
 import { LevelClassifier, type ClassificationInput } from './level-classifier.js';
 import { AuditLogger } from './audit-log.js';
@@ -20,6 +25,7 @@ export type DecisionResolvedCallback = (
   action: 'approved' | 'rejected',
   title: string,
   chosenOptionId?: string,
+  captainId?: string,
 ) => void;
 
 export class DecisionService {
@@ -48,8 +54,10 @@ export class DecisionService {
 
     this.store.save(decision);
     this.auditLog.log({
-      entityType: 'decision', entityId: decision.id,
-      action: 'created', actor: input.captainId ?? 'system',
+      entityType: 'decision',
+      entityId: decision.id,
+      action: 'created',
+      actor: input.captainId ?? 'system',
       changes: { level, title: input.title },
     });
 
@@ -84,13 +92,15 @@ export class DecisionService {
 
     this.store.save(updated);
     this.auditLog.log({
-      entityType: 'decision', entityId: decisionId,
-      action: 'approved', actor: captainId,
+      entityType: 'decision',
+      entityId: decisionId,
+      action: 'approved',
+      actor: captainId,
       changes: { chosenOptionId, status: newStatus },
     });
 
     // Notify preference learner
-    this.onResolved?.(decisionId, 'approved', updated.title, chosenOptionId);
+    this.onResolved?.(decisionId, 'approved', updated.title, chosenOptionId, captainId);
 
     return updated;
   }
@@ -110,13 +120,15 @@ export class DecisionService {
 
     this.store.save(updated);
     this.auditLog.log({
-      entityType: 'decision', entityId: decisionId,
-      action: 'rejected', actor: captainId,
+      entityType: 'decision',
+      entityId: decisionId,
+      action: 'rejected',
+      actor: captainId,
       changes: { status: newStatus },
     });
 
     // Notify preference learner
-    this.onResolved?.(decisionId, 'rejected', updated.title);
+    this.onResolved?.(decisionId, 'rejected', updated.title, undefined, captainId);
 
     return updated;
   }

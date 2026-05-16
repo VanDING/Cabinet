@@ -11,8 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cabinet/agent": "workspace:*",
     "@cabinet/events": "workspace:*",
     "@cabinet/gateway": "workspace:*",
+    "@cabinet/memory": "workspace:*",
     "@cabinet/types": "workspace:*"
   },
   "devDependencies": {

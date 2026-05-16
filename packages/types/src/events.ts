@@ -21,6 +21,7 @@ export const MessageType = {
   GreetingGenerated: 'greeting_generated',
   // 系统
   BudgetAlert: 'budget_alert',
+  QualityAlert: 'quality_alert',
   SystemNotification: 'system_notification',
   AuditEvent: 'audit_event',
 } as const;
