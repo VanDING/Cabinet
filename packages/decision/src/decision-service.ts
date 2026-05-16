@@ -1,4 +1,4 @@
-import { DecisionStatus, type Decision, type DecisionLevel } from '@cabinet/types';
+import { DecisionStatus, type Decision, type DecisionLevel, type DecisionStore } from '@cabinet/types';
 import { DecisionStateMachine } from './state-machine.js';
 import { LevelClassifier, type ClassificationInput } from './level-classifier.js';
 import { AuditLogger } from './audit-log.js';
@@ -15,13 +15,21 @@ export interface CreateDecisionInput {
   captainId?: string;
 }
 
+export type DecisionResolvedCallback = (
+  decisionId: string,
+  action: 'approved' | 'rejected',
+  title: string,
+  chosenOptionId?: string,
+) => void;
+
 export class DecisionService {
   constructor(
     private readonly stateMachine: DecisionStateMachine,
     private readonly classifier: LevelClassifier,
     private readonly auditLog: AuditLogger,
     private readonly escalation: EscalationService,
-    private readonly store: DecisionStore
+    private readonly store: DecisionStore,
+    private readonly onResolved?: DecisionResolvedCallback,
   ) {}
 
   create(input: CreateDecisionInput): Decision {
@@ -81,6 +89,9 @@ export class DecisionService {
       changes: { chosenOptionId, status: newStatus },
     });
 
+    // Notify preference learner
+    this.onResolved?.(decisionId, 'approved', updated.title, chosenOptionId);
+
     return updated;
   }
 
@@ -104,6 +115,9 @@ export class DecisionService {
       changes: { status: newStatus },
     });
 
+    // Notify preference learner
+    this.onResolved?.(decisionId, 'rejected', updated.title);
+
     return updated;
   }
 
@@ -112,9 +126,4 @@ export class DecisionService {
   }
 }
 
-export interface DecisionStore {
-  save(decision: Decision): void;
-  get(id: string): Decision | null;
-  listByProject(projectId: string): Decision[];
-  listPending(projectId: string): Decision[];
-}
+export type { DecisionStore } from '@cabinet/types';
