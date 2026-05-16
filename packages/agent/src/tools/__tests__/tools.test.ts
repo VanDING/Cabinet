@@ -20,15 +20,112 @@ describe('Cabinet Tools', () => {
   let executor: ToolExecutor;
   let deps: ToolDependencies;
 
+  // Mock DB for LongTermMemory (better-sqlite3 native module unavailable in test)
+  function mockDb() {
+    const rows: any[] = [];
+    return {
+      exec: () => {},
+      prepare: (sql: string) => {
+        // For INSERT
+        if (sql.startsWith('INSERT')) {
+          return {
+            run: (...args: any[]) => {
+              rows.push({
+                id: args[0], content: args[1], embedding: args[2],
+                metadata: args[3], timestamp: args[4],
+              });
+              return { changes: 1 };
+            },
+          };
+        }
+        // For SELECT (search)
+        return {
+          all: (...args: any[]) => {
+            if (args.length > 0) {
+              const pattern = String(args[0]).replace(/%/g, '');
+              return rows.filter(r =>
+                String(r.content).includes(pattern) ||
+                String(r.metadata).includes(pattern)
+              );
+            }
+            return rows;
+          },
+          get: (key: any) => rows.find(r => r.id === key || r.entity_id === key) ?? null,
+        };
+      },
+    } as any;
+  }
+
   beforeEach(() => {
     executor = new ToolExecutor();
     deps = {
       decisionStore: new MockDecisionStore(),
       eventBus: new MemoryEventBus(),
       shortTerm: new ShortTermMemory(),
-      longTerm: new LongTermMemory(),
+      longTerm: new LongTermMemory(mockDb()),
       entity: new EntityMemory(),
       project: new ProjectMemory(),
+      // ── Write callbacks (mocked) ──
+      createDecision(input) {
+        return {
+          id: `dec_test_${Date.now()}`,
+          projectId: input.projectId,
+          type: input.type as any,
+          level: 'L1' as any,
+          status: 'approved' as any,
+          title: input.title,
+          description: input.description,
+          options: input.options,
+          createdAt: new Date(),
+        };
+      },
+      approveDecision(decisionId, captainId, chosenOptionId) {
+        return {
+          id: decisionId,
+          projectId: 'default',
+          type: 'strategic' as any,
+          level: 'L1' as any,
+          status: 'approved' as any,
+          title: 'Test',
+          description: '',
+          options: [],
+          chosenOptionId,
+          captainId,
+          createdAt: new Date(),
+          resolvedAt: new Date(),
+        };
+      },
+      rejectDecision(decisionId, captainId) {
+        return {
+          id: decisionId,
+          projectId: 'default',
+          type: 'strategic' as any,
+          level: 'L1' as any,
+          status: 'rejected' as any,
+          title: 'Test',
+          description: '',
+          options: [],
+          captainId,
+          createdAt: new Date(),
+          resolvedAt: new Date(),
+        };
+      },
+      createWorkflow: () => ({ id: 'wf_test' }),
+      updateWorkflow: () => {},
+      deleteWorkflow: () => {},
+      runWorkflow: async () => ({ runId: 'run_test', status: 'completed', steps: [] }),
+      startMeeting: async (topic) => ({
+        meetingId: 'meeting_test',
+        topic,
+        synthesis: 'Test synthesis',
+        perspectives: [{ advisor: 'Test', role: 'Tester', content: 'OK' }],
+      }),
+      writeLongTermMemory: async (content) => `ltm_test_${Date.now()}`,
+      createEmployee: () => {},
+      registerAgent: (input) => ({ type: 'custom', name: input.name }),
+      listAgents: () => [
+        { type: 'secretary', name: 'Secretary', description: 'General purpose', builtIn: true },
+      ],
     };
 
     const tools = createCabinetTools(deps);
@@ -37,8 +134,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 10 tools', () => {
-    expect(executor.listTools()).toHaveLength(10);
+  it('registers 26 tools', () => {
+    expect(executor.listTools()).toHaveLength(26);
   });
 
   it('remember and recall work together', async () => {
@@ -78,5 +175,105 @@ describe('Cabinet Tools', () => {
   it('get_captain_preferences returns defaults', async () => {
     const r = await executor.execute('get_captain_preferences', 'tc8', { captainId: 'c1' });
     expect((r.output as any).preferences).toEqual({});
+  });
+
+  // ── Write tool tests ──
+
+  it('create_decision returns a decision', async () => {
+    const r = await executor.execute('create_decision', 'tc9', {
+      title: 'Test Decision',
+      description: 'Testing',
+      type: 'strategic',
+      projectId: 'default',
+    });
+    const out = r.output as any;
+    expect(out.title).toBe('Test Decision');
+    expect(out.status).toBe('approved');
+  });
+
+  it('approve_decision requires decisionId and chosenOptionId', async () => {
+    const r = await executor.execute('approve_decision', 'tc10', {
+      decisionId: 'dec_1',
+      chosenOptionId: 'opt_1',
+    });
+    const out = r.output as any;
+    expect(out.status).toBe('approved');
+  });
+
+  it('reject_decision requires decisionId', async () => {
+    const r = await executor.execute('reject_decision', 'tc11', {
+      decisionId: 'dec_1',
+    });
+    const out = r.output as any;
+    expect(out.status).toBe('rejected');
+  });
+
+  it('create_workflow returns workflow id', async () => {
+    const r = await executor.execute('create_workflow', 'tc12', {
+      name: 'Test WF',
+      projectId: 'default',
+    });
+    expect((r.output as any).workflowId).toBe('wf_test');
+  });
+
+  it('start_meeting returns synthesis', async () => {
+    const r = await executor.execute('start_meeting', 'tc13', {
+      topic: 'Should we expand?',
+    });
+    const out = r.output as any;
+    expect(out.meetingId).toBeDefined();
+    expect(out.synthesis).toBe('Test synthesis');
+  });
+
+  it('write_memory stores content', async () => {
+    const r = await executor.execute('write_memory', 'tc14', {
+      content: 'Important finding: market is bullish on Q3',
+    });
+    expect((r.output as any).stored).toBe(true);
+  });
+
+  it('add_milestone adds to project', async () => {
+    deps.project.initialize('default', ['goal1']);
+    const r = await executor.execute('add_milestone', 'tc15', {
+      projectId: 'default',
+      title: 'Launch MVP',
+    });
+    expect((r.output as any).added).toBe(true);
+
+    const ctx = deps.project.get('default');
+    expect(ctx?.milestones).toHaveLength(1);
+  });
+
+  it('update_project_summary updates project', async () => {
+    deps.project.initialize('default', ['goal1']);
+    const r = await executor.execute('update_project_summary', 'tc16', {
+      projectId: 'default',
+      summary: 'Steady progress towards MVP',
+    });
+    expect((r.output as any).updated).toBe(true);
+
+    const ctx = deps.project.get('default');
+    expect(ctx?.summary).toBe('Steady progress towards MVP');
+  });
+
+  it('set_captain_preferences stores preferences', async () => {
+    const r = await executor.execute('set_captain_preferences', 'tc17', {
+      captainId: 'captain-1',
+      name: 'Captain',
+      preferences: { theme: 'dark', language: 'zh' },
+    });
+    expect((r.output as any).updated).toBe(true);
+
+    const prefs = deps.entity.getPreferences('captain-1');
+    expect(prefs?.preferences).toEqual({ theme: 'dark', language: 'zh' });
+  });
+
+  it('create_employee creates an employee', async () => {
+    const r = await executor.execute('create_employee', 'tc18', {
+      name: 'Bot',
+      role: 'developer',
+      kind: 'ai',
+    });
+    expect((r.output as any).created).toBe(true);
   });
 });

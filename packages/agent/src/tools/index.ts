@@ -1,21 +1,69 @@
 import { ToolExecutor, type ToolDefinition } from '../tool-executor.js';
-import type { DecisionStore } from '@cabinet/decision';
 import type { EventBus } from '@cabinet/events';
 import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
-import { MessageType } from '@cabinet/types';
+import { MessageType, type DecisionStore, type Decision } from '@cabinet/types';
 
 export interface ToolDependencies {
+  // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
   shortTerm: ShortTermMemory;
   longTerm: LongTermMemory;
   entity: EntityMemory;
   project: ProjectMemory;
+
+  // ── Write callbacks (wired by server layer) ──
+  createDecision: (input: {
+    projectId: string;
+    type: string;
+    title: string;
+    description: string;
+    options: { id: string; label: string; impact: string }[];
+    classification: {
+      scopeDescription: string;
+      isCrossSession: boolean;
+      optionCount: number;
+      estimatedCostUsd: number;
+      involvesFunds: boolean;
+      involvesPermissions: boolean;
+      involvesDataDeletion: boolean;
+      involvesOrgConfig: boolean;
+    };
+    captainId?: string;
+  }) => Decision;
+  approveDecision: (decisionId: string, captainId: string, chosenOptionId: string) => Decision;
+  rejectDecision: (decisionId: string, captainId: string) => Decision;
+
+  createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => { id: string };
+  updateWorkflow: (id: string, input: { name?: string; definition?: unknown }) => void;
+  deleteWorkflow: (id: string) => void;
+  runWorkflow: (id: string) => Promise<{ runId: string; status: string; steps?: unknown[] }>;
+
+  startMeeting: (topic: string, advisorIds?: string[]) => Promise<{
+    meetingId: string; topic: string; synthesis: string; perspectives: unknown[];
+  }>;
+
+  writeLongTermMemory: (content: string, metadata?: Record<string, unknown>) => Promise<string>;
+  createEmployee: (input: { name: string; role: string; kind: string }) => void;
+
+  registerAgent: (input: {
+    name: string;
+    description: string;
+    systemPrompt: string;
+    model: string;
+    temperature: number;
+    maxResponseTokens: number;
+    allowedTools: string[];
+    contextBudget: number;
+  }) => { type: string; name: string };
+  listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
   return [
-    // ── Decision Tools ──
+    // ═══════════════════════════════════════════════════════════
+    // Decision Tools (read)
+    // ═══════════════════════════════════════════════════════════
     {
       name: 'query_decisions',
       execute: async (args: Record<string, unknown>) => {
@@ -37,7 +85,61 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       },
     },
 
-    // ── Event/Monitoring Tools ──
+    // ═══════════════════════════════════════════════════════════
+    // Decision Tools (write)
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'create_decision',
+      execute: async (args: Record<string, unknown>) => {
+        const title = args.title as string;
+        const description = (args.description as string) ?? '';
+        const type = (args.type as string) ?? 'strategic';
+        const projectId = (args.projectId as string) ?? 'default';
+        const captainId = args.captainId as string | undefined;
+        const options = (args.options as { id: string; label: string; impact: string }[]) ?? [
+          { id: 'opt_approve', label: 'Approve', impact: 'Proceed as described' },
+          { id: 'opt_reject', label: 'Reject', impact: 'Do not proceed' },
+        ];
+        const classification = {
+          scopeDescription: (args.scopeDescription as string) ?? description.slice(0, 200),
+          isCrossSession: (args.isCrossSession as boolean) ?? false,
+          optionCount: (args.optionCount as number) ?? options.length,
+          estimatedCostUsd: (args.estimatedCostUsd as number) ?? 0,
+          involvesFunds: (args.involvesFunds as boolean) ?? false,
+          involvesPermissions: (args.involvesPermissions as boolean) ?? false,
+          involvesDataDeletion: (args.involvesDataDeletion as boolean) ?? false,
+          involvesOrgConfig: (args.involvesOrgConfig as boolean) ?? false,
+        };
+        return deps.createDecision({
+          projectId, type, title, description, options, classification, captainId,
+        });
+      },
+    },
+    {
+      name: 'approve_decision',
+      execute: async (args: Record<string, unknown>) => {
+        const decisionId = args.decisionId as string;
+        const captainId = (args.captainId as string) ?? 'captain-1';
+        const chosenOptionId = (args.chosenOptionId as string) ?? (args.optionId as string);
+        if (!decisionId || !chosenOptionId) {
+          return { error: 'decisionId and chosenOptionId are required' };
+        }
+        return deps.approveDecision(decisionId, captainId, chosenOptionId);
+      },
+    },
+    {
+      name: 'reject_decision',
+      execute: async (args: Record<string, unknown>) => {
+        const decisionId = args.decisionId as string;
+        const captainId = (args.captainId as string) ?? 'captain-1';
+        if (!decisionId) return { error: 'decisionId is required' };
+        return deps.rejectDecision(decisionId, captainId);
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Event/Monitoring Tools
+    // ═══════════════════════════════════════════════════════════
     {
       name: 'get_recent_events',
       execute: async (args: Record<string, unknown>) => {
@@ -64,7 +166,9 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       },
     },
 
-    // ── Memory Tools ──
+    // ═══════════════════════════════════════════════════════════
+    // Memory Tools (read + write)
+    // ═══════════════════════════════════════════════════════════
     {
       name: 'remember',
       execute: async (args: Record<string, unknown>) => {
@@ -96,8 +200,22 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         return results.map(r => ({ content: r.content, timestamp: r.timestamp, metadata: r.metadata }));
       },
     },
+    {
+      name: 'write_memory',
+      execute: async (args: Record<string, unknown>) => {
+        const content = args.content as string;
+        const metadata = (args.metadata as Record<string, unknown>) ?? {};
+        if (!content || content.length < 10) {
+          return { error: 'Content must be at least 10 characters' };
+        }
+        const id = await deps.writeLongTermMemory(content, metadata);
+        return { stored: true, id, preview: content.slice(0, 200) };
+      },
+    },
 
-    // ── Project Tools ──
+    // ═══════════════════════════════════════════════════════════
+    // Project Tools (read + write)
+    // ═══════════════════════════════════════════════════════════
     {
       name: 'get_project_context',
       execute: async (args: Record<string, unknown>) => {
@@ -113,6 +231,26 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       },
     },
     {
+      name: 'add_milestone',
+      execute: async (args: Record<string, unknown>) => {
+        const projectId = (args.projectId as string) ?? 'default';
+        const title = args.title as string;
+        if (!title) return { error: 'title is required' };
+        deps.project.addMilestone(projectId, title);
+        return { added: true, projectId, title };
+      },
+    },
+    {
+      name: 'update_project_summary',
+      execute: async (args: Record<string, unknown>) => {
+        const projectId = (args.projectId as string) ?? 'default';
+        const summary = args.summary as string;
+        if (!summary) return { error: 'summary is required' };
+        deps.project.updateSummary(projectId, summary);
+        return { updated: true, projectId, preview: summary.slice(0, 200) };
+      },
+    },
+    {
       name: 'get_captain_preferences',
       execute: async (args: Record<string, unknown>) => {
         const captainId = args.captainId as string;
@@ -120,15 +258,141 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         return prefs ?? { captainId, preferences: {} };
       },
     },
+    {
+      name: 'set_captain_preferences',
+      execute: async (args: Record<string, unknown>) => {
+        const captainId = (args.captainId as string) ?? 'captain-1';
+        const name = (args.name as string) ?? captainId;
+        const prefs = (args.preferences as Record<string, unknown>) ?? {};
+        deps.entity.setPreferences(captainId, name, prefs);
+        return { updated: true, captainId };
+      },
+    },
 
-    // ── Status/Health Tools ──
+    // ═══════════════════════════════════════════════════════════
+    // Workflow Tools (read + write)
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'list_workflows',
+      execute: async (_args: Record<string, unknown>) => {
+        return { message: 'Use query_decisions or the workflow API for workflow listing' };
+      },
+    },
+    {
+      name: 'create_workflow',
+      execute: async (args: Record<string, unknown>) => {
+        const name = (args.name as string) ?? 'Untitled Workflow';
+        const projectId = (args.projectId as string) ?? 'default';
+        const definition = (args.definition as unknown) ?? { nodes: [], edges: [] };
+        const result = deps.createWorkflow({ name, projectId, definition });
+        return { created: true, workflowId: result.id, name, projectId };
+      },
+    },
+    {
+      name: 'update_workflow',
+      execute: async (args: Record<string, unknown>) => {
+        const workflowId = args.workflowId as string;
+        if (!workflowId) return { error: 'workflowId is required' };
+        const name = args.name as string | undefined;
+        const definition = args.definition as unknown | undefined;
+        deps.updateWorkflow(workflowId, { name, definition });
+        return { updated: true, workflowId };
+      },
+    },
+    {
+      name: 'run_workflow',
+      execute: async (args: Record<string, unknown>) => {
+        const workflowId = args.workflowId as string;
+        if (!workflowId) return { error: 'workflowId is required' };
+        const result = await deps.runWorkflow(workflowId);
+        return { executed: true, ...result };
+      },
+    },
+    {
+      name: 'delete_workflow',
+      execute: async (args: Record<string, unknown>) => {
+        const workflowId = args.workflowId as string;
+        if (!workflowId) return { error: 'workflowId is required' };
+        deps.deleteWorkflow(workflowId);
+        return { deleted: true, workflowId };
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Meeting Tools
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'start_meeting',
+      execute: async (args: Record<string, unknown>) => {
+        const topic = args.topic as string;
+        if (!topic) return { error: 'topic is required' };
+        const advisorIds = (args.advisors as string[]) ?? undefined;
+        const result = await deps.startMeeting(topic, advisorIds);
+        return {
+          meetingId: result.meetingId,
+          topic: result.topic,
+          synthesis: result.synthesis,
+          advisorCount: result.perspectives.length,
+        };
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Employee Tools
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'create_employee',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        const role = (args.role as string) ?? 'advisor';
+        const kind = (args.kind as string) ?? 'ai';
+        if (!name) return { error: 'name is required' };
+        deps.createEmployee({ name, role, kind });
+        return { created: true, name, role, kind };
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Agent Management Tools
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'list_agents',
+      execute: async (_args: Record<string, unknown>) => {
+        return deps.listAgents();
+      },
+    },
+    {
+      name: 'register_agent',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        const description = (args.description as string) ?? '';
+        const systemPrompt = (args.systemPrompt as string) ?? '';
+        const model = (args.model as string) ?? 'claude-haiku-4-5';
+        const temperature = (args.temperature as number) ?? 0.3;
+        const maxResponseTokens = (args.maxResponseTokens as number) ?? 4000;
+        const allowedTools = (args.allowedTools as string[]) ?? [];
+        const contextBudget = (args.contextBudget as number) ?? 0.3;
+
+        if (!name) return { error: 'name is required' };
+        if (!systemPrompt) return { error: 'systemPrompt is required' };
+
+        return deps.registerAgent({
+          name, description, systemPrompt, model,
+          temperature, maxResponseTokens, allowedTools, contextBudget,
+        });
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Status/Health Tools
+    // ═══════════════════════════════════════════════════════════
     {
       name: 'get_status',
       execute: async (_args: Record<string, unknown>) => {
         return {
           status: 'operational',
           timestamp: new Date().toISOString(),
-          toolsAvailable: 10,
+          toolsAvailable: 26,
         };
       },
     },
