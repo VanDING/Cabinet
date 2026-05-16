@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm exec tsc -b
       - run: pnpm typecheck
 
   test:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm exec tsc -b
       - run: pnpm test
 
   build:
