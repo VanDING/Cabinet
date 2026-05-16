@@ -8,6 +8,24 @@ import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
 
+export interface AgentSessionSummary {
+  sessionId: string;
+  projectId: string;
+  captainId: string;
+  model: string;
+  totalSteps: number;
+  totalTokens: { prompt: number; completion: number };
+  toolCalls: { total: number; succeeded: number; failed: number; blocked: number };
+  contextZones: { smart: number; warning: number; critical: number; dumb: number };
+  contextHandoffs: number;
+  errors: { transient: number; recoverable: number; fatal: number };
+  durationMs: number;
+  success: boolean;
+  startTime: string;
+}
+
+export type SessionCompleteCallback = (summary: AgentSessionSummary) => void;
+
 export interface AgentLoopOptions {
   gateway: LLMGateway;
   toolExecutor: ToolExecutor;
@@ -19,14 +37,12 @@ export interface AgentLoopOptions {
   captainId: string;
   systemPrompt?: string;
   maxSteps?: number;
-  /** Event bus for context-zone alerts. When omitted, zone monitoring is disabled. */
   eventBus?: EventBus;
-  /** Model name for context-window sizing. Defaults to 200K window. */
   model?: string;
-  /** Files currently active (for rule glob matching). */
   activeFiles?: string[];
-  /** Current task description (for semantic rule matching). */
   taskDescription?: string;
+  /** Called when the agent session completes (success or failure). */
+  onSessionComplete?: SessionCompleteCallback;
 }
 
 export interface AgentResult {
@@ -56,20 +72,35 @@ export class AgentLoop {
     this.options = options;
   }
 
+  /** Set a callback for session observability (after construction). */
+  set onSessionComplete(callback: SessionCompleteCallback | undefined) {
+    this.options.onSessionComplete = callback;
+  }
+
   /** Expose the context monitor for external querying. */
   get monitor(): ContextMonitor | null {
     return this.contextMonitor;
   }
 
-  async run(userMessage: string): Promise<AgentResult> {
+  async run(userMessage: string, resumeState?: CheckpointState | null): Promise<AgentResult> {
     const maxSteps = this.options.maxSteps ?? 10;
-    let steps = 0;
-    const toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] = [];
+    const startTime = Date.now();
 
-    // Try to restore from checkpoint
-    const state = this.checkpointManager.load(this.options.sessionId);
-    let messages: { role: 'user' | 'assistant'; content: string }[] =
-      state?.messages ?? [];
+    // Try to restore from checkpoint (unless caller already provided state)
+    const state = resumeState ?? this.checkpointManager.load(this.options.sessionId);
+    let steps = state?.step ?? 0;
+    const toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
+      state?.toolCallHistory ?? [];
+
+    let messages: { role: 'user' | 'assistant'; content: string }[] = state?.messages ?? [];
+
+    // Observability tracking
+    const zoneCounts = { smart: 0, warning: 0, critical: 0, dumb: 0 };
+    let handoffCount = 0;
+    const errorCounts = { transient: 0, recoverable: 0, fatal: 0 };
+    const toolCounts = { total: 0, succeeded: 0, failed: 0, blocked: 0 };
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
 
     // Add user message
     messages.push({ role: 'user', content: userMessage });
@@ -89,41 +120,42 @@ export class AgentLoop {
       });
 
       // Combine system context messages with conversation messages
-      const newMessages = messages.slice(ctx.messages.length);
-      const allMessages = [...ctx.messages, ...newMessages];
+      const allMessages = [...ctx.messages, ...messages];
 
       // ── Context Utilization Check (before LLM call) ──
       if (this.contextMonitor) {
         const breakdown: ContextBreakdown = {
           systemPrompt: this.contextMonitor.estimateTokens(ctx.systemPrompt),
           messages: this.contextMonitor.estimateTokens(
-            allMessages.map(m => m.content).join('\n')
+            allMessages.map((m) => m.content).join('\n'),
           ),
           toolResults: this.contextMonitor.estimateTokens(
             messages
-              .filter(m => m.role === 'user' && m.content.startsWith('Tool result'))
-              .map(m => m.content)
-              .join('\n')
+              .filter((m) => m.role === 'user' && m.content.startsWith('Tool result'))
+              .map((m) => m.content)
+              .join('\n'),
           ),
-          memory: this.contextMonitor.estimateTokens(
-            ctx.messages.map(m => m.content).join('\n')
-          ),
+          memory: this.contextMonitor.estimateTokens(ctx.messages.map((m) => m.content).join('\n')),
         };
         const snap = this.contextMonitor.snapshot(breakdown);
+
+        // Track zone distribution
+        zoneCounts[snap.zone]++;
 
         if (snap.zone === 'critical' || snap.zone === 'dumb') {
           console.warn(
             `[ContextMonitor] ${snap.zone.toUpperCase()} ZONE: ` +
-            `${snap.utilization * 100}% utilization ` +
-            `(${snap.estimatedTokens.toLocaleString()} / ${snap.maxTokens.toLocaleString()} tokens)`
+              `${snap.utilization * 100}% utilization ` +
+              `(${snap.estimatedTokens.toLocaleString()} / ${snap.maxTokens.toLocaleString()} tokens)`,
           );
 
           // Perform context handoff if we're in dangerous territory
           if (handoff.shouldHandoff(snap)) {
             const result = handoff.performHandoff(snap);
+            handoffCount++;
             console.warn(
               `[ContextHandoff] Handoff #${result.state.handoffId} performed. ` +
-              `Resetting context from ${snap.estimatedTokens.toLocaleString()} tokens.`
+                `Resetting context from ${snap.estimatedTokens.toLocaleString()} tokens.`,
             );
             // Reset messages to just the handoff message
             messages = [{ role: 'user', content: result.handoffMessage }];
@@ -144,9 +176,12 @@ export class AgentLoop {
               systemPrompt: ctx.systemPrompt,
               messages: allMessages,
             }),
-          new Error('LLM call')
+          new Error('LLM call'),
         );
       } catch (error) {
+        errorCounts.fatal++;
+        this.reportSession(startTime, steps, toolCalls, totalPromptTokens, totalCompletionTokens,
+          zoneCounts, handoffCount, errorCounts, toolCounts, false);
         return {
           content: `Agent loop failed at step ${steps}: ${(error as Error).message}`,
           steps,
@@ -154,18 +189,23 @@ export class AgentLoop {
         };
       }
 
+      // Track token usage
+      totalPromptTokens += response.usage?.promptTokens ?? 0;
+      totalCompletionTokens += response.usage?.completionTokens ?? 0;
+
       // Calibrate estimator against actual token usage from the API
       if (this.contextMonitor && response.usage?.promptTokens) {
         const snap = this.contextMonitor.current;
         if (snap) {
-          const estimationError = snap.estimatedTokens > 0
-            ? (response.usage.promptTokens - snap.estimatedTokens) / snap.estimatedTokens
-            : 0;
+          const estimationError =
+            snap.estimatedTokens > 0
+              ? (response.usage.promptTokens - snap.estimatedTokens) / snap.estimatedTokens
+              : 0;
           // Log significant estimation drift (>30% off) for debugging
           if (Math.abs(estimationError) > 0.3) {
             console.debug(
               `[ContextMonitor] Estimation drift: ${(estimationError * 100).toFixed(0)}% ` +
-              `(estimated ${snap.estimatedTokens}, actual ${response.usage.promptTokens})`
+                `(estimated ${snap.estimatedTokens}, actual ${response.usage.promptTokens})`,
             );
           }
         }
@@ -174,25 +214,45 @@ export class AgentLoop {
       // No tool calls — agent is done
       if (!response.toolCalls || response.toolCalls.length === 0) {
         messages.push({ role: 'assistant', content: response.content });
+        handoff.recordStep(`Step ${steps + 1}: Agent completed with final response (${this.contextMonitor ? this.contextMonitor.current?.zone ?? 'unknown' : 'unknown'} zone)`);
+        handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
+        this.reportSession(startTime, steps + 1, toolCalls, totalPromptTokens, totalCompletionTokens,
+          zoneCounts, handoffCount, errorCounts, toolCounts, true);
         return { content: response.content, steps: steps + 1, toolCalls };
       }
 
       // Execute tool calls
       for (const tc of response.toolCalls) {
+        toolCounts.total++;
+
         // Safety check
         const safety = this.safetyChecker.check(tc.name, tc.arguments);
         if (!safety.allowed) {
-          toolCalls.push({ name: tc.name, args: tc.arguments, result: `BLOCKED: ${safety.reason}` });
+          toolCounts.blocked++;
+          toolCalls.push({
+            name: tc.name,
+            args: tc.arguments,
+            result: `BLOCKED: ${safety.reason}`,
+          });
           continue;
         }
 
         // Execute
         const result = await this.toolExecutor.execute(tc.name, tc.id, tc.arguments);
-        toolCalls.push({ name: tc.name, args: tc.arguments, result: result.error ?? result.output });
+        if (result.error) {
+          toolCounts.failed++;
+        } else {
+          toolCounts.succeeded++;
+        }
+        toolCalls.push({
+          name: tc.name,
+          args: tc.arguments,
+          result: result.error ?? result.output,
+        });
 
         // Record for context handoff
         handoff.recordToolResult(
-          `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`
+          `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`,
         );
 
         // Add tool result as user message for feedback
@@ -204,6 +264,10 @@ export class AgentLoop {
 
       steps++;
 
+      // Record step for context handoff tracking
+      const executedCount = toolCalls.filter(t => !String(t.result).includes('BLOCKED')).length;
+      handoff.recordStep(`Step ${steps}: ${executedCount} tool calls executed in ${this.contextMonitor?.current?.zone ?? 'unknown'} zone`);
+
       // Save checkpoint
       this.checkpointManager.save({
         sessionId: this.options.sessionId,
@@ -214,11 +278,39 @@ export class AgentLoop {
       });
     }
 
+    this.reportSession(startTime, steps, toolCalls, totalPromptTokens, totalCompletionTokens,
+      zoneCounts, handoffCount, errorCounts, toolCounts, false);
     return {
       content: `Agent reached max steps (${maxSteps}) without final response.`,
       steps,
       toolCalls,
     };
+  }
+
+  private reportSession(
+    startTime: number, steps: number,
+    toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[],
+    promptTokens: number, completionTokens: number,
+    zones: { smart: number; warning: number; critical: number; dumb: number },
+    handoffs: number, errors: { transient: number; recoverable: number; fatal: number },
+    tools: { total: number; succeeded: number; failed: number; blocked: number },
+    success: boolean,
+  ): void {
+    this.options.onSessionComplete?.({
+      sessionId: this.options.sessionId,
+      projectId: this.options.projectId,
+      captainId: this.options.captainId,
+      model: this.options.model ?? 'claude-sonnet-4-6',
+      totalSteps: steps,
+      totalTokens: { prompt: promptTokens, completion: completionTokens },
+      toolCalls: tools,
+      contextZones: zones,
+      contextHandoffs: handoffs,
+      errors,
+      durationMs: Date.now() - startTime,
+      success,
+      startTime: new Date(startTime).toISOString(),
+    });
   }
 
   /** Resume from a saved checkpoint */
@@ -227,7 +319,6 @@ export class AgentLoop {
     if (!state) {
       return this.run(userMessage);
     }
-    // Continue from checkpoint — just add the new message
-    return this.run(userMessage);
+    return this.run(userMessage, state);
   }
 }

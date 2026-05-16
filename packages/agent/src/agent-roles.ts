@@ -46,7 +46,8 @@ export interface AgentRole {
 export const SECRETARY_ROLE: AgentRole = {
   type: 'secretary',
   name: 'Secretary',
-  description: 'Conversation entry point. Understands intent, routes requests to the right cabinet member, handles general questions directly.',
+  description:
+    'Conversation entry point. Understands intent, routes requests to the right cabinet member, handles general questions directly.',
   systemPrompt: [
     'You are the Secretary of Cabinet — an AI collaboration framework for super individuals.',
     '',
@@ -74,7 +75,8 @@ export const SECRETARY_ROLE: AgentRole = {
 export const DECISION_ANALYST_ROLE: AgentRole = {
   type: 'decision_analyst',
   name: 'Decision Analyst',
-  description: 'Structured decision analysis: frames problems, evaluates options across dimensions, assigns L0-L3 levels.',
+  description:
+    'Structured decision analysis: frames problems, evaluates options across dimensions, assigns L0-L3 levels.',
   systemPrompt: [
     'You are the Decision Analyst of Cabinet.',
     '',
@@ -83,7 +85,7 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
     '2. Expand options: identify alternatives the Captain may not have considered.',
     '3. Evaluate each option across key dimensions: cost, risk, time, reversibility, strategic fit.',
     '4. Assign an authorization level (L0-L3) based on scope and impact.',
-    '5. Recommend with clear reasoning, but always preserve the Captain\'s right to choose differently.',
+    "5. Recommend with clear reasoning, but always preserve the Captain's right to choose differently.",
     '',
     'Output format:',
     '- Decision framing (1 sentence)',
@@ -99,9 +101,14 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
   temperature: 0.3,
   maxResponseTokens: 4000,
   allowedTools: [
-    'query_decisions', 'get_decision', 'create_decision',
-    'search_memory', 'get_project_context', 'get_captain_preferences',
-    'remember', 'recall',
+    'query_decisions',
+    'get_decision',
+    'create_decision',
+    'search_memory',
+    'get_project_context',
+    'get_captain_preferences',
+    'remember',
+    'recall',
   ],
   contextBudget: 0.35,
 };
@@ -109,7 +116,8 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
 export const MEETING_CHAIR_ROLE: AgentRole = {
   type: 'meeting_chair',
   name: 'Meeting Chair',
-  description: 'Orchestrates multi-perspective deliberation. Calls parallel advisors, synthesizes consensus, identifies dissent.',
+  description:
+    'Orchestrates multi-perspective deliberation. Calls parallel advisors, synthesizes consensus, identifies dissent.',
   systemPrompt: [
     'You are the Meeting Chair of Cabinet.',
     '',
@@ -131,8 +139,12 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
   temperature: 0.4,
   maxResponseTokens: 4000,
   allowedTools: [
-    'start_meeting', 'search_memory', 'get_project_context',
-    'get_recent_events', 'remember', 'recall',
+    'start_meeting',
+    'search_memory',
+    'get_project_context',
+    'get_recent_events',
+    'remember',
+    'recall',
   ],
   contextBudget: 0.3,
 };
@@ -140,7 +152,8 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
 export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
   type: 'workflow_designer',
   name: 'Workflow Designer',
-  description: 'Designs and manages workflows: creates node graphs, validates flow logic, executes and monitors runs.',
+  description:
+    'Designs and manages workflows: creates node graphs, validates flow logic, executes and monitors runs.',
   systemPrompt: [
     'You are the Workflow Designer of Cabinet.',
     '',
@@ -169,8 +182,15 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
   temperature: 0.3,
   maxResponseTokens: 6000,
   allowedTools: [
-    'list_workflows', 'create_workflow', 'update_workflow', 'run_workflow', 'delete_workflow',
-    'get_project_context', 'search_memory', 'remember', 'recall',
+    'list_workflows',
+    'create_workflow',
+    'update_workflow',
+    'run_workflow',
+    'delete_workflow',
+    'get_project_context',
+    'search_memory',
+    'remember',
+    'recall',
   ],
   contextBudget: 0.4,
 };
@@ -178,9 +198,10 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
 export const CURATOR_ROLE: AgentRole = {
   type: 'curator',
   name: 'Curator',
-  description: 'Memory curator and pattern analyst. Generates summaries, consolidates learnings, extracts patterns from history.',
+  description:
+    'Memory curator and pattern analyst. Generates summaries, consolidates learnings, extracts patterns from history.',
   systemPrompt: [
-    'You are the Curator of Cabinet — responsible for the system\'s memory and self-improvement.',
+    "You are the Curator of Cabinet — responsible for the system's memory and self-improvement.",
     '',
     'Your role:',
     '1. Summarize: generate concise, structured summaries of sessions, decisions, and project progress.',
@@ -201,9 +222,16 @@ export const CURATOR_ROLE: AgentRole = {
   temperature: 0.2,
   maxResponseTokens: 4000,
   allowedTools: [
-    'search_memory', 'write_memory', 'remember', 'recall',
-    'get_project_context', 'update_project_summary', 'add_milestone',
-    'query_decisions', 'get_decision', 'get_recent_events',
+    'search_memory',
+    'write_memory',
+    'remember',
+    'recall',
+    'get_project_context',
+    'update_project_summary',
+    'add_milestone',
+    'query_decisions',
+    'get_decision',
+    'get_recent_events',
     'get_captain_preferences',
   ],
   contextBudget: 0.4,
@@ -212,7 +240,8 @@ export const CURATOR_ROLE: AgentRole = {
 export const AGENT_CREATOR_ROLE: AgentRole = {
   type: 'agent_creator',
   name: 'Agent Creator',
-  description: 'Conversationally creates new AI agents. Guides the Captain through defining a role, its tools, model, and personality.',
+  description:
+    'Conversationally creates new AI agents. Guides the Captain through defining a role, its tools, model, and personality.',
   systemPrompt: [
     'You are the Agent Creator of Cabinet.',
     '',
@@ -240,9 +269,12 @@ export const AGENT_CREATOR_ROLE: AgentRole = {
   temperature: 0.3,
   maxResponseTokens: 4000,
   allowedTools: [
-    'list_agents', 'register_agent',
-    'search_memory', 'get_captain_preferences',
-    'remember', 'recall',
+    'list_agents',
+    'register_agent',
+    'search_memory',
+    'get_captain_preferences',
+    'remember',
+    'recall',
   ],
   contextBudget: 0.3,
 };
@@ -282,10 +314,23 @@ export class AgentRoleRegistry {
     return [...this.roles.values()];
   }
 
+  /** Update mutable fields on a live role without touching the shared constant. */
+  update(type: AgentRoleType | string, updates: Partial<AgentRole>): AgentRole | undefined {
+    const existing = this.roles.get(type as AgentRoleType) ?? this.customRoles.get(type);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...updates };
+    if (existing.type === 'custom') {
+      this.customRoles.set(updated.name, updated);
+    } else {
+      this.roles.set(type as AgentRoleType, updated);
+    }
+    return updated;
+  }
+
   /** Build a prompt fragment describing all available agents (for LLM routing). */
   describeForRouting(): string {
     return this.listBuiltIn()
-      .map(r => `- ${r.type}: ${r.description}`)
+      .map((r) => `- ${r.type}: ${r.description}`)
       .join('\n');
   }
 }

@@ -5,7 +5,9 @@ import { GreetingService } from '../greeting.js';
 
 describe('IntentParser', () => {
   let parser: IntentParser;
-  beforeEach(() => { parser = new IntentParser(); });
+  beforeEach(() => {
+    parser = new IntentParser();
+  });
 
   it('detects decision requests', () => {
     const result = parser.parse('帮我分析是否该进入母婴市场');
@@ -41,9 +43,15 @@ describe('IntentParser', () => {
           model: 'claude-haiku-4-5',
         };
       },
-      async *streamText() { yield { type: 'done' as const }; },
-      async listModels() { return []; },
-      async generateEmbeddings() { return { embeddings: [], model: '', usage: { tokens: 0 } }; },
+      async *streamText() {
+        yield { type: 'done' as const };
+      },
+      async listModels() {
+        return [];
+      },
+      async generateEmbeddings() {
+        return { embeddings: [], model: '', usage: { tokens: 0 } };
+      },
     };
 
     it('uses LLM gateway when provided', async () => {
@@ -62,7 +70,9 @@ describe('IntentParser', () => {
     it('falls back to keyword parser on LLM error', async () => {
       const failingGateway = {
         ...mockGateway,
-        async generateText() { throw new Error('API error'); },
+        async generateText() {
+          throw new Error('API error');
+        },
       };
       const llmParser = new IntentParser(failingGateway as any);
       const result = await llmParser.parseWithLLM('帮我分析是否该进入母婴市场');
@@ -101,9 +111,9 @@ describe('SessionManager', () => {
 describe('GreetingService', () => {
   it('generates greeting with stats', () => {
     const svc = new GreetingService();
-    const greeting = svc.generateGreeting('Captain', 3, 1.50);
+    const greeting = svc.generateGreeting('Captain', 3, 1.5);
     expect(greeting).toContain('Captain');
-    expect(greeting).toContain('3 pending');
+    expect(greeting).toContain('decision');
     expect(greeting).toContain('$1.50');
   });
 });

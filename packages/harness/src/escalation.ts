@@ -20,10 +20,11 @@ export class HarnessEscalation {
         correlationId: outputId,
         causationId: null,
         timestamp: new Date(),
-        messageType: MessageType.SystemNotification,
+        messageType: MessageType.QualityAlert,
         payload: {
           message: `Quality alert: ${this.consecutiveLowQuality} consecutive low-quality outputs.`,
-          outputId, quality,
+          outputId,
+          quality,
         },
       });
     }

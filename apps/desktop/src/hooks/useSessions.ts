@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export interface AttachedFile {
   id: string;
@@ -76,14 +76,25 @@ export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>(loadSessions);
   const [history, setHistory] = useState<Session[]>(loadHistory);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
-    const stored = sessions.length > 0 ? sessions[0]!.id : null;
+    const stored = sessions.length > 0 ? (sessions[0]?.id ?? null) : null;
     return stored;
   });
   const [activeSessionIds, setActiveSessionIds] = useState<Set<string>>(new Set());
 
-  // Persist sessions
-  useEffect(() => { saveSessions(sessions); }, [sessions]);
-  useEffect(() => { saveHistory(history); }, [history]);
+  // Persist sessions — debounced to avoid serializing on every SSE chunk
+  const sessionsSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    clearTimeout(sessionsSaveTimer.current);
+    sessionsSaveTimer.current = setTimeout(() => saveSessions(sessions), 500);
+    return () => clearTimeout(sessionsSaveTimer.current);
+  }, [sessions]);
+
+  const historySaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    clearTimeout(historySaveTimer.current);
+    historySaveTimer.current = setTimeout(() => saveHistory(history), 500);
+    return () => clearTimeout(historySaveTimer.current);
+  }, [history]);
 
   const createSession = useCallback((): string => {
     const id = generateId();
@@ -95,70 +106,77 @@ export function useSessions() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    setSessions(prev => [session, ...prev]);
+    setSessions((prev) => [session, ...prev]);
     setActiveSessionId(id);
     return id;
   }, []);
 
-  const closeSession = useCallback((id: string) => {
-    setSessions(prev => {
-      const session = prev.find(s => s.id === id);
-      if (session && session.messages.length > 0) {
-        setHistory(hist => [session, ...hist].slice(0, 50));
-      }
-      const remaining = prev.filter(s => s.id !== id);
-      if (activeSessionId === id) {
-        setActiveSessionId(remaining.length > 0 ? remaining[0]!.id : null);
-      }
-      return remaining;
-    });
-  }, [activeSessionId]);
+  const closeSession = useCallback(
+    (id: string) => {
+      setSessions((prev) => {
+        const session = prev.find((s) => s.id === id);
+        if (session && session.messages.length > 0) {
+          setHistory((hist) => [session, ...hist].slice(0, 50));
+        }
+        const remaining = prev.filter((s) => s.id !== id);
+        if (activeSessionId === id) {
+          setActiveSessionId(remaining.length > 0 ? remaining[0]!.id : null);
+        }
+        return remaining;
+      });
+    },
+    [activeSessionId],
+  );
 
   const switchSession = useCallback((id: string) => {
     setActiveSessionId(id);
   }, []);
 
   const addMessage = useCallback((sessionId: string, msg: ChatMessage) => {
-    setSessions(prev => prev.map(s => {
-      if (s.id !== sessionId) return s;
-      const existingIndex = s.messages.findIndex(m => m.id === msg.id);
-      let newMessages: ChatMessage[];
-      if (msg.isStreaming && existingIndex >= 0) {
-        newMessages = [...s.messages];
-        newMessages[existingIndex] = msg;
-      } else if (existingIndex >= 0) {
-        newMessages = [...s.messages];
-        newMessages[existingIndex] = msg;
-      } else {
-        newMessages = [...s.messages, msg];
-      }
-      // Update title to first user message
-      const firstUserMsg = newMessages.find(m => m.role === 'user');
-      const title = firstUserMsg
-        ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '')
-        : s.title;
-      return { ...s, messages: newMessages, title, updatedAt: new Date() };
-    }));
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s;
+        const existingIndex = s.messages.findIndex((m) => m.id === msg.id);
+        let newMessages: ChatMessage[];
+        if (msg.isStreaming && existingIndex >= 0) {
+          newMessages = [...s.messages];
+          newMessages[existingIndex] = msg;
+        } else if (existingIndex >= 0) {
+          newMessages = [...s.messages];
+          newMessages[existingIndex] = msg;
+        } else {
+          newMessages = [...s.messages, msg];
+        }
+        // Update title to first user message
+        const firstUserMsg = newMessages.find((m) => m.role === 'user');
+        const title = firstUserMsg
+          ? firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? '...' : '')
+          : s.title;
+        return { ...s, messages: newMessages, title, updatedAt: new Date() };
+      }),
+    );
   }, []);
 
   const addFile = useCallback((sessionId: string, file: AttachedFile) => {
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId
-        ? { ...s, attachedFiles: [...s.attachedFiles, file] }
-        : s
-    ));
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...s, attachedFiles: [...s.attachedFiles, file] } : s,
+      ),
+    );
   }, []);
 
   const removeFile = useCallback((sessionId: string, fileId: string) => {
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId
-        ? { ...s, attachedFiles: s.attachedFiles.filter(f => f.id !== fileId) }
-        : s
-    ));
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, attachedFiles: s.attachedFiles.filter((f) => f.id !== fileId) }
+          : s,
+      ),
+    );
   }, []);
 
   const setSessionActive = useCallback((id: string, active: boolean) => {
-    setActiveSessionIds(prev => {
+    setActiveSessionIds((prev) => {
       const next = new Set(prev);
       if (active) next.add(id);
       else next.delete(id);
@@ -167,20 +185,46 @@ export function useSessions() {
   }, []);
 
   const reopenSession = useCallback((session: Session) => {
-    setHistory(prev => prev.filter(s => s.id !== session.id));
-    setSessions(prev => [session, ...prev]);
+    setHistory((prev) => prev.filter((s) => s.id !== session.id));
+    setSessions((prev) => [session, ...prev]);
     setActiveSessionId(session.id);
   }, []);
 
   const deleteHistorySession = useCallback((id: string) => {
-    setHistory(prev => prev.filter(s => s.id !== id));
+    setHistory((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  const activeSession = sessions.find(s => s.id === activeSessionId) ?? null;
-  const isSessionActive = useCallback(
-    (id: string) => activeSessionIds.has(id),
-    [activeSessionIds]
+  const editMessage = useCallback(
+    (sessionId: string, messageId: string, newContent: string) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId
+            ? {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === messageId ? { ...m, content: newContent } : m,
+                ),
+              }
+            : s,
+        ),
+      );
+    },
+    [],
   );
+
+  const deleteMessagesFrom = useCallback((sessionId: string, messageId: string) => {
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s;
+        const idx = s.messages.findIndex((m) => m.id === messageId);
+        if (idx === -1) return s;
+        return { ...s, messages: s.messages.slice(0, idx) };
+      }),
+    );
+  }, []);
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
+  const isSessionActive = useCallback((id: string) => activeSessionIds.has(id), [activeSessionIds]);
 
   return {
     sessions,
@@ -197,5 +241,7 @@ export function useSessions() {
     reopenSession,
     deleteHistorySession,
     isSessionActive,
+    editMessage,
+    deleteMessagesFrom,
   };
 }

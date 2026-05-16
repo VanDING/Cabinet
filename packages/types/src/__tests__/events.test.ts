@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { MessageType, type MessageEnvelope, type DecisionRequest } from '../events';
 
 describe('MessageType', () => {
-  it('has all 16 message types', () => {
+  it('has all 17 message types', () => {
     const types = Object.values(MessageType);
-    expect(types).toHaveLength(16);
+    expect(types).toHaveLength(17);
   });
 
   it('includes core message types', () => {
@@ -16,6 +16,7 @@ describe('MessageType', () => {
     expect(MessageType.SecretaryMessage).toBe('secretary_message');
     expect(MessageType.GreetingGenerated).toBe('greeting_generated');
     expect(MessageType.BudgetAlert).toBe('budget_alert');
+    expect(MessageType.QualityAlert).toBe('quality_alert');
   });
 });
 
