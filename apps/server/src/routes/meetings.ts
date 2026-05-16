@@ -53,7 +53,7 @@ meetingsRouter.post('/', async (c) => {
     db.prepare(
       "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))"
     ).run(meetingId, JSON.stringify({ topic, status: 'started', summary }));
-    return c.json({ meetingId, topic, status: 'started', summary });
+    return c.json({ meetingId, topic, status: 'started', estimatedCost: 0, summary });
   }
 
   // Phase 1: Run all advisors in parallel
