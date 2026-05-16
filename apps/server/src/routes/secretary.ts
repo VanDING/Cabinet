@@ -1,23 +1,24 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext, type ServerContext } from '../context.js';
-import { AgentLoop, AgentDispatcher, ToolExecutor, SafetyChecker, CheckpointManager, registerCabinetTools, AgentRoleRegistry } from '@cabinet/agent';
+import {
+  AgentLoop,
+  AgentDispatcher,
+  ToolExecutor,
+  SafetyChecker,
+  CheckpointManager,
+  registerCabinetTools,
+  AgentRoleRegistry,
+} from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
-import { SecretaryAgent, IntentParser } from '@cabinet/secretary';
+import { SecretaryAgent, IntentParser, GreetingService } from '@cabinet/secretary';
 import { ParallelReasoning, CrossValidator, type Advisor } from '@cabinet/meeting';
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
+import { DEFAULT_ADVISORS } from '../api-helpers.js';
 
 export const secretaryRouter = new Hono();
-
-// ── Meeting Advisors (shared with meetings route) ──
-const ADVISORS: Advisor[] = [
-  { id: 'financial', name: 'Financial Advisor', role: 'Finance', model: 'claude-haiku-4-5', perspective: 'Analyze financial implications, costs, ROI, and budget impact.' },
-  { id: 'market', name: 'Market Analyst', role: 'Strategy', model: 'claude-haiku-4-5', perspective: 'Analyze market trends, competitive landscape, and strategic positioning.' },
-  { id: 'legal', name: 'Legal Advisor', role: 'Compliance', model: 'claude-haiku-4-5', perspective: 'Identify legal risks, compliance requirements, and regulatory concerns.' },
-  { id: 'captain', name: 'Captain', role: 'Decision', model: 'claude-haiku-4-5', perspective: 'Weigh all perspectives and recommend a final decision with actionable next steps.' },
-];
 
 // ── Build ToolDependencies from ServerContext ──
 function buildToolDependencies(ctx: ServerContext): ToolDependencies {
@@ -54,9 +55,11 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Workflow write callbacks ──
     createWorkflow(input) {
       const id = `wf_${Date.now()}`;
-      ctx.db.prepare(
-        'INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)'
-      ).run(id, input.projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
+      ctx.db
+        .prepare(
+          'INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)',
+        )
+        .run(id, input.projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
       ctx.logger.info('Workflow created via tool', { id, name: input.name });
       return { id };
     },
@@ -65,12 +68,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         const name = input.name;
         const definition = input.definition;
         if (name !== undefined && definition !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?')
+          ctx.db
+            .prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?')
             .run(name, JSON.stringify(definition), id);
         } else if (name !== undefined) {
           ctx.db.prepare('UPDATE workflows SET name = ? WHERE id = ?').run(name, id);
         } else if (definition !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET definition = ? WHERE id = ?')
+          ctx.db
+            .prepare('UPDATE workflows SET definition = ? WHERE id = ?')
             .run(JSON.stringify(definition), id);
         }
       }
@@ -90,9 +95,20 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── Memory write callbacks ──
     async writeLongTermMemory(content, metadata) {
+      // Auto-generate embedding for semantic search
+      let embedding: number[] | undefined;
+      if (ctx.gateway) {
+        try {
+          const result = await ctx.gateway.generateEmbeddings({ texts: [content] });
+          embedding = result.embeddings[0];
+        } catch {
+          /* embedding generation failed — store without */
+        }
+      }
       return ctx.longTerm.store({
         content,
         metadata: metadata ?? {},
+        embedding,
         timestamp: new Date(),
       });
     },
@@ -100,9 +116,11 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Employee write callback ──
     createEmployee(input) {
       const id = `emp_${Date.now()}`;
-      ctx.db.prepare(
-        'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(id, 'default', input.name, input.role, input.kind, '{}', 'read');
+      ctx.db
+        .prepare(
+          'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(id, 'default', input.name, input.role, input.kind, '{}', 'read');
       ctx.logger.info('Employee created via tool', { id, name: input.name });
     },
 
@@ -124,7 +142,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       return { type: 'custom', name: input.name };
     },
     listAgents() {
-      return ctx.agentRegistry.list().map(r => ({
+      return ctx.agentRegistry.list().map((r) => ({
         type: r.type,
         name: r.name,
         description: r.description,
@@ -151,7 +169,7 @@ async function executeWorkflowById(
 
   ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('running', workflowId);
 
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const graph = new Map<string, string[]>();
   for (const n of nodes) graph.set(n.id, []);
   for (const e of edges) {
@@ -180,7 +198,10 @@ async function executeWorkflowById(
         break;
       case 'aiAgent':
       case 'llmCall':
-        if (!ctx.gateway) { output = 'No LLM available'; break; }
+        if (!ctx.gateway) {
+          output = 'No LLM available';
+          break;
+        }
         try {
           const response = await ctx.gateway.generateText({
             model: d.model ?? 'claude-haiku-4-5',
@@ -188,16 +209,23 @@ async function executeWorkflowById(
             maxTokens: 200,
           });
           output = response.content;
-          ctx.metrics.increment('llm_call', { model: d.model ?? 'claude-haiku-4-5', purpose: 'workflow_tool' });
-        } catch (e: any) { output = `Error: ${e.message}`; }
+          ctx.metrics.increment('llm_call', {
+            model: d.model ?? 'claude-haiku-4-5',
+            purpose: 'workflow_tool',
+          });
+        } catch (e: any) {
+          output = `Error: ${e.message}`;
+        }
         break;
       case 'humanApproval':
         output = `Approval pending: ${d.label ?? nodeId}`;
-        ctx.db.prepare("UPDATE workflows SET status = ? WHERE id = ?").run('awaiting_approval', workflowId);
+        ctx.db
+          .prepare('UPDATE workflows SET status = ? WHERE id = ?')
+          .run('awaiting_approval', workflowId);
         broadcast('workflow_approval_needed', { workflowId, runId, nodeId, label: d.label });
         break;
       case 'condition': {
-        const prevOutputs = results.map(r => r.output.toLowerCase()).join(' ');
+        const prevOutputs = results.map((r) => r.output.toLowerCase()).join(' ');
         const isTrue = prevOutputs.includes('approved') || prevOutputs.includes('true');
         const children = graph.get(nodeId) ?? [];
         if (children.length >= 2) {
@@ -230,7 +258,7 @@ async function executeWorkflowById(
     for (const child of children) await executeNode(child);
   }
 
-  const startNodes = nodes.filter(n => n.type === 'start');
+  const startNodes = nodes.filter((n) => n.type === 'start');
   try {
     if (startNodes.length > 0 && startNodes[0]) {
       await executeNode(startNodes[0].id);
@@ -238,13 +266,22 @@ async function executeWorkflowById(
       for (const n of nodes) await executeNode(n.id);
     }
 
-    const finalStatus = results.some(r => r.type === 'humanApproval' && r.output.includes('pending'))
-      ? 'awaiting_approval' : 'completed';
+    const finalStatus = results.some(
+      (r) => r.type === 'humanApproval' && r.output.includes('pending'),
+    )
+      ? 'awaiting_approval'
+      : 'completed';
     ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run(finalStatus, workflowId);
-    ctx.db.prepare(
-      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'run', 'system', ?, datetime('now'))"
-    ).run(workflowId, JSON.stringify({ status: finalStatus, steps: results, runId }));
-    ctx.logger.info('Workflow executed via tool', { workflowId, nodes: results.length, status: finalStatus });
+    ctx.db
+      .prepare(
+        "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'run', 'system', ?, datetime('now'))",
+      )
+      .run(workflowId, JSON.stringify({ status: finalStatus, steps: results, runId }));
+    ctx.logger.info('Workflow executed via tool', {
+      workflowId,
+      nodes: results.length,
+      status: finalStatus,
+    });
     return { runId, status: finalStatus, steps: results };
   } catch (e) {
     ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('failed', workflowId);
@@ -257,16 +294,25 @@ async function runMeeting(
   topic: string,
   advisorIds: string[] | undefined,
   ctx: ServerContext,
-): Promise<{ meetingId: string; topic: string; synthesis: string; perspectives: unknown[]; crossValidation?: unknown; decisionId?: string | null }> {
+): Promise<{
+  meetingId: string;
+  topic: string;
+  synthesis: string;
+  perspectives: unknown[];
+  crossValidation?: unknown;
+  decisionId?: string | null;
+}> {
   const meetingId = `meeting_${Date.now()}`;
-  const selected = advisorIds ?? ADVISORS.map(a => a.id);
-  const advisors = ADVISORS.filter(a => selected.includes(a.id));
+  const selected = advisorIds ?? DEFAULT_ADVISORS.map((a) => a.id);
+  const advisors = DEFAULT_ADVISORS.filter((a) => selected.includes(a.id));
 
   if (!ctx.gateway) {
     const synthesis = `[No LLM] Meeting on "${topic}" created. Configure API keys for AI-powered meetings.`;
-    ctx.db.prepare(
-      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))"
-    ).run(meetingId, JSON.stringify({ topic, status: 'started', synthesis }));
+    ctx.db
+      .prepare(
+        "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))",
+      )
+      .run(meetingId, JSON.stringify({ topic, status: 'started', synthesis }));
     return { meetingId, topic, synthesis, perspectives: [] };
   }
 
@@ -277,7 +323,7 @@ async function runMeeting(
     ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_tool' });
   }
 
-  const perspectives = reasonings.map(r => ({
+  const perspectives = reasonings.map((r) => ({
     advisor: r.advisor.name,
     role: r.advisor.role,
     content: r.content,
@@ -288,7 +334,10 @@ async function runMeeting(
   try {
     const validator = new CrossValidator(ctx.gateway);
     crossValidation = await validator.validate(topic, reasonings);
-    ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_cross_validate' });
+    ctx.metrics.increment('llm_call', {
+      model: 'claude-haiku-4-5',
+      purpose: 'meeting_cross_validate',
+    });
   } catch {
     // Cross-validation failure is non-fatal
   }
@@ -296,14 +345,22 @@ async function runMeeting(
   // Phase 3: Chair synthesis (aware of cross-validation results)
   let synthesis = '';
   try {
-    const summary = perspectives.map(p => `[${p.advisor} (${p.role})]: ${p.content}`).join('\n\n');
+    const summary = perspectives
+      .map((p) => `[${p.advisor} (${p.role})]: ${p.content}`)
+      .join('\n\n');
     let validationNote = '';
     if (crossValidation) {
       const v = crossValidation as any;
       validationNote = [
-        v.disagreements?.length ? `\nKey disagreements:\n${v.disagreements.map((d: string) => `- ${d}`).join('\n')}` : '',
-        v.gaps?.length ? `\nUnaddressed angles:\n${v.gaps.map((g: string) => `- ${g}`).join('\n')}` : '',
-      ].filter(Boolean).join('\n');
+        v.disagreements?.length
+          ? `\nKey disagreements:\n${v.disagreements.map((d: string) => `- ${d}`).join('\n')}`
+          : '',
+        v.gaps?.length
+          ? `\nUnaddressed angles:\n${v.gaps.map((g: string) => `- ${g}`).join('\n')}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
     }
 
     const chairPrompt = [
@@ -327,16 +384,25 @@ async function runMeeting(
   }
 
   // Persist
-  ctx.db.prepare(
-    "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))"
-  ).run(meetingId, JSON.stringify({ topic, status: 'completed', synthesis, perspectives, crossValidation }));
-  broadcast('meeting_created', { meetingId, topic, attendees: perspectives.map((p: any) => p.advisor) });
+  ctx.db
+    .prepare(
+      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))",
+    )
+    .run(
+      meetingId,
+      JSON.stringify({ topic, status: 'completed', synthesis, perspectives, crossValidation }),
+    );
+  broadcast('meeting_created', {
+    meetingId,
+    topic,
+    attendees: perspectives.map((p: any) => p.advisor),
+  });
 
   // Phase 4: Auto-extract decision if meeting produced actionable options
   let decisionId: string | null = null;
   if (ctx.gateway && synthesis && synthesis.length > 20) {
     try {
-      const summary = perspectives.map(p => `[${p.advisor}]: ${p.content}`).join('\n');
+      const summary = perspectives.map((p) => `[${p.advisor}]: ${p.content}`).join('\n');
       const extractionPrompt = [
         `Analyze this meeting outcome and determine if it contains a decision the Captain should make.`,
         '',
@@ -368,11 +434,15 @@ async function runMeeting(
         const extracted = JSON.parse(match[0]);
         if (extracted.hasDecision && extracted.title) {
           const decId = `dec_${Date.now()}`;
-          const options = (extracted.options ?? [
-            { label: 'Approve', impact: 'Proceed as recommended' },
-            { label: 'Reject', impact: 'Do not proceed' },
-          ]).map((o: any, i: number) => ({
-            id: `opt_${i}`, label: o.label, impact: o.impact ?? '',
+          const options = (
+            extracted.options ?? [
+              { label: 'Approve', impact: 'Proceed as recommended' },
+              { label: 'Reject', impact: 'Do not proceed' },
+            ]
+          ).map((o: any, i: number) => ({
+            id: `opt_${i}`,
+            label: o.label,
+            impact: o.impact ?? '',
           }));
 
           ctx.decisionService.create({
@@ -394,7 +464,11 @@ async function runMeeting(
             },
           });
           decisionId = decId;
-          broadcast('decision_created', { decisionId: decId, title: extracted.title, level: extracted.level ?? 'L1' });
+          broadcast('decision_created', {
+            decisionId: decId,
+            title: extracted.title,
+            level: extracted.level ?? 'L1',
+          });
           ctx.logger.info('Decision auto-extracted from meeting', { meetingId, decisionId: decId });
         }
       }
@@ -406,32 +480,60 @@ async function runMeeting(
   return { meetingId, topic, synthesis, perspectives, crossValidation, decisionId };
 }
 
-// ── Multi-agent cache ──
-const agentLoopCache = new Map<AgentRoleType, AgentLoop>();
-let secretaryAgentCache: SecretaryAgent | null = null;
+// ── Multi-agent cache (keyed by sessionId:roleType) ──
+const agentLoopCache = new Map<string, AgentLoop>();
+const MAX_CACHE_SIZE = 100;
+// Per-session secretary agents (keyed by sessionId)
+const secretaryAgentCache = new Map<string, SecretaryAgent>();
 let lastGatewayCheck = false;
 
 function buildMemoryProvider(ctx: ServerContext) {
   return {
     async getShortTerm(sid: string) {
-      const all = ctx.shortTerm.getAll(sid);
-      return Object.entries(all).map(([k, v]) => ({
-        role: 'user' as const,
-        content: `[${k}]: ${JSON.stringify(v)}`,
-      }));
+      const items: { role: 'user' | 'assistant'; content: string }[] = [];
+
+      // Include conversation history from SessionManager (last 20 messages)
+      const session = ctx.sessionManager.get(sid);
+      if (session && session.messages.length > 0) {
+        // Exclude last message if it's a user message (will be re-added by AgentLoop)
+        const last = session.messages[session.messages.length - 1]!;
+        const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
+        const start = Math.max(0, end - 20);
+        for (let i = start; i < end; i++) {
+          const m = session.messages[i]!;
+          items.push({ role: m.role, content: m.content });
+        }
+      }
+
+      // Append short-term KV data as additional context
+      const kv = ctx.shortTerm.getAll(sid);
+      for (const [k, v] of Object.entries(kv)) {
+        if (typeof v === 'string' && v.length > 0) {
+          items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
+        }
+      }
+
+      return items;
     },
     async getProjectContext(_pid: string) {
       const projCtx = ctx.project.get(_pid);
       if (!projCtx) return `Cabinet v2.0 project. ${_pid}`;
-      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map(m => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
+      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
     },
     async getEntityPreferences(_captainId: string) {
       const prefs = ctx.entity.getPreferences(_captainId);
       return prefs?.preferences ?? {};
     },
     async searchLongTerm(query: string, _pid: string) {
-      const results = await ctx.longTerm.search(query, 5);
-      return results.map(r => `[Memory] ${r.content}`);
+      let queryEmbedding: number[] | undefined;
+      if (ctx.gateway) {
+        try {
+          const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
+          queryEmbedding = er.embeddings[0];
+        } catch { /* fall back to text search */ }
+      }
+      const results = await ctx.longTerm.search(query, 5, queryEmbedding);
+      return results.map((r) => `[Memory] ${r.content}`);
     },
   };
 }
@@ -446,8 +548,9 @@ function getAgentLoopForRole(
   const ctx = getServerContext();
   if (!ctx.gateway) return null;
 
-  // Return cached if available (role + session is unique enough; cache by role type only)
-  const cached = agentLoopCache.get(roleType);
+  // Return cached if available (keyed by sessionId:roleType)
+  const cacheKey = `${sessionId}:${roleType}`;
+  const cached = agentLoopCache.get(cacheKey);
   if (cached) return cached;
 
   const registry = getServerContext().agentRegistry;
@@ -456,6 +559,11 @@ function getAgentLoopForRole(
 
   const executor = new ToolExecutor();
   registerCabinetTools(executor, buildToolDependencies(ctx));
+
+  // Wire observability: track tool calls
+  executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
+    getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
+  });
 
   // Apply role's tool restrictions
   if (role.allowedTools.length > 0) {
@@ -482,7 +590,35 @@ function getAgentLoopForRole(
     maxSteps: 10,
   });
 
-  agentLoopCache.set(roleType, loop);
+  // FIFO eviction
+  if (agentLoopCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = agentLoopCache.keys().next().value;
+    if (firstKey) agentLoopCache.delete(firstKey);
+  }
+  // Wire observability: report session completion
+  loop.onSessionComplete = (summary) => {
+    const obs = getServerContext().observability;
+    obs.recordSession({
+      sessionId: summary.sessionId,
+      projectId: summary.projectId,
+      captainId: summary.captainId,
+      role: role.type,
+      model: summary.model,
+      startTime: summary.startTime,
+      totalSteps: summary.totalSteps,
+      totalTokens: summary.totalTokens,
+      totalCost: 0,
+      toolCalls: summary.toolCalls,
+      contextZoneDistribution: summary.contextZones,
+      contextHandoffs: summary.contextHandoffs,
+      qualityChecks: { total: 0, passed: 0 },
+      errors: summary.errors,
+      durationMs: summary.durationMs,
+      success: summary.success,
+    });
+  };
+
+  agentLoopCache.set(cacheKey, loop);
   return loop;
 }
 
@@ -508,17 +644,21 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   // Reset cache if gateway status changed
   if (hasGateway !== lastGatewayCheck) {
     agentLoopCache.clear();
-    secretaryAgentCache = null;
+    secretaryAgentCache.clear();
     lastGatewayCheck = hasGateway;
   }
 
-  if (secretaryAgentCache) {
-    return { agent: secretaryAgentCache };
+  const cached = secretaryAgentCache.get(sessionId);
+  if (cached) {
+    return { agent: cached };
   }
 
   // Secretary's own executor (all tools)
   const executor = new ToolExecutor();
   registerCabinetTools(executor, buildToolDependencies(ctx));
+  executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
+    getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
+  });
 
   const memoryProvider = buildMemoryProvider(ctx);
 
@@ -536,6 +676,27 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       captainId,
       maxSteps: 10,
     });
+    secretaryLoop.onSessionComplete = (summary) => {
+      const obs = getServerContext().observability;
+      obs.recordSession({
+        sessionId: summary.sessionId,
+        projectId: summary.projectId,
+        captainId: summary.captainId,
+        role: 'secretary',
+        model: summary.model,
+        startTime: summary.startTime,
+        totalSteps: summary.totalSteps,
+        totalTokens: summary.totalTokens,
+        totalCost: 0,
+        toolCalls: summary.toolCalls,
+        contextZoneDistribution: summary.contextZones,
+        contextHandoffs: summary.contextHandoffs,
+        qualityChecks: { total: 0, passed: 0 },
+        errors: summary.errors,
+        durationMs: summary.durationMs,
+        success: summary.success,
+      });
+    };
   }
 
   const intentParser = new IntentParser(hasGateway ? ctx.gateway! : undefined);
@@ -544,7 +705,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   const registry = getServerContext().agentRegistry;
   intentParser.setAgentDescriptions(registry.describeForRouting());
 
-  secretaryAgentCache = new SecretaryAgent(
+  const agent = new SecretaryAgent(
     secretaryLoop ?? (null as any),
     intentParser,
     ctx.sessionManager,
@@ -555,14 +716,23 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     },
   );
 
-  return { agent: secretaryAgentCache };
+  // FIFO eviction for secretary cache
+  if (secretaryAgentCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = secretaryAgentCache.keys().next().value;
+    if (firstKey) secretaryAgentCache.delete(firstKey);
+  }
+  secretaryAgentCache.set(sessionId, agent);
+
+  return { agent };
 }
 
-const fileSchema = z.object({
-  name: z.string(),
-  path: z.string(),
-  type: z.string().optional(),
-}).passthrough();
+const fileSchema = z
+  .object({
+    name: z.string(),
+    path: z.string(),
+    type: z.string().optional(),
+  })
+  .passthrough();
 
 // ── POST /chat ──
 const chatSchema = z.object({
@@ -613,7 +783,9 @@ secretaryRouter.post('/chat', async (c) => {
               const content = await readFile(fullPath, 'utf-8');
               fileLines.push(`\n--- ${f.path} ---\n${content.slice(0, 8000)}\n`);
             }
-          } catch { /* file not readable, skip content */ }
+          } catch {
+            /* file not readable, skip content */
+          }
         }
       }
       augmentedMessage = `${message}\n\n[Attached files]\n${fileLines.join('\n')}`;
@@ -631,11 +803,24 @@ secretaryRouter.post('/chat', async (c) => {
           ctx.db,
           {
             async getShortTerm(sid: string) {
-              const all = ctx.shortTerm.getAll(sid);
-              return Object.entries(all).map(([k, v]) => ({
-                role: 'user' as const,
-                content: `[${k}]: ${JSON.stringify(v)}`,
-              }));
+              const items: { role: 'user' | 'assistant'; content: string }[] = [];
+              const session = ctx.sessionManager.get(sid);
+              if (session && session.messages.length > 0) {
+                const last = session.messages[session.messages.length - 1]!;
+                const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
+                const start = Math.max(0, end - 20);
+                for (let i = start; i < end; i++) {
+                  const m = session.messages[i]!;
+                  items.push({ role: m.role, content: m.content });
+                }
+              }
+              const kv = ctx.shortTerm.getAll(sid);
+              for (const [k, v] of Object.entries(kv)) {
+                if (typeof v === 'string' && v.length > 0) {
+                  items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
+                }
+              }
+              return items;
             },
             async getProjectContext(_pid: string) {
               const projCtx = ctx.project.get(_pid);
@@ -648,7 +833,7 @@ secretaryRouter.post('/chat', async (c) => {
             },
             async searchLongTerm(query: string, _pid: string) {
               const results = await ctx.longTerm.search(query, 5);
-              return results.map(r => `[Memory] ${r.content}`);
+              return results.map((r) => `[Memory] ${r.content}`);
             },
           },
           ctx.eventBus,
@@ -662,14 +847,19 @@ secretaryRouter.post('/chat', async (c) => {
           captainId,
         });
 
-        ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: dispatchMode });
+        ctx.metrics.increment('llm_call', {
+          model: model ?? 'claude-sonnet-4-6',
+          purpose: dispatchMode,
+        });
         broadcast('secretary_message', { sessionId, projectId, captainId, mode: dispatchMode });
 
         return c.json({
-          sessionId, projectId, captainId,
+          sessionId,
+          projectId,
+          captainId,
           response: result.finalOutput,
           dispatchMode,
-          steps: result.steps.map(s => ({
+          steps: result.steps.map((s) => ({
             role: s.role,
             status: s.status,
             durationMs: s.durationMs,
@@ -681,6 +871,67 @@ secretaryRouter.post('/chat', async (c) => {
       }
 
       // ── Single mode (default) ──
+      // SSE streaming path
+      if (stream) {
+        const sseStream = new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder();
+            function emit(type: string, data: Record<string, unknown>) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
+            }
+            try {
+              const result = await agent.handleMessage(sessionId, augmentedMessage);
+
+              if (result.routeResult) {
+                emit('routing', {
+                  targetAgent: result.routeResult.targetAgent,
+                  confidence: result.routeResult.confidence,
+                  reasoning: result.routeResult.reasoning,
+                });
+              }
+              if (result.intent) {
+                emit('intent', { kind: result.intent.kind, detail: result.intent });
+              }
+
+              // Stream response sentence by sentence for visual feedback
+              const sentences = result.response.split(/(?<=[。！？.!?\n])/);
+              for (const sentence of sentences) {
+                if (sentence.trim()) {
+                  emit('chunk', { content: sentence });
+                  await new Promise((r) => setTimeout(r, 10));
+                }
+              }
+
+              if ((result as any).usage) {
+                ctx.costTracker.record(
+                  model ?? 'claude-sonnet-4-6',
+                  (result as any).usage.promptTokens ?? 0,
+                  (result as any).usage.completionTokens ?? 0,
+                );
+              }
+              ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+              broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+
+              emit('done', { sessionId });
+            } catch (e: any) {
+              emit('error', { message: e.message ?? 'Unknown error' });
+            } finally {
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(sseStream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+            'X-Accel-Buffering': 'no',
+          },
+        });
+      }
+
+      // ── Non-streaming single mode ──
       const result = await agent.handleMessage(sessionId, augmentedMessage);
 
       // Record cost if available
@@ -695,15 +946,19 @@ secretaryRouter.post('/chat', async (c) => {
 
       broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
       return c.json({
-        sessionId, projectId, captainId,
+        sessionId,
+        projectId,
+        captainId,
         response: result.response,
         intent: result.intent,
-        route: result.routeResult ? {
-          targetAgent: result.routeResult.targetAgent,
-          confidence: result.routeResult.confidence,
-          reasoning: result.routeResult.reasoning,
-          suggestion: result.routeResult.suggestion,
-        } : undefined,
+        route: result.routeResult
+          ? {
+              targetAgent: result.routeResult.targetAgent,
+              confidence: result.routeResult.confidence,
+              reasoning: result.routeResult.reasoning,
+              suggestion: result.routeResult.suggestion,
+            }
+          : undefined,
         mode: 'single',
         dispatchMode: 'single',
         model: model ?? 'claude-sonnet-4-6',
@@ -716,16 +971,32 @@ secretaryRouter.post('/chat', async (c) => {
       const response = `[No API key] Intent: ${intent.kind}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
       ctx.sessionManager.addMessage(sessionId, 'assistant', response);
       broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'fallback' });
-      return c.json({ sessionId, projectId, captainId, response, intent, mode: 'fallback', model: 'none' });
+      return c.json({
+        sessionId,
+        projectId,
+        captainId,
+        response,
+        intent,
+        mode: 'fallback',
+        model: 'none',
+      });
     }
   } catch (error) {
     const msg = (error as Error).message;
     ctx.logger.error('Secretary agent error', { error: msg });
-    const isAuthError = msg.includes('API key') || msg.includes('not configured') || msg.includes('401');
-    return c.json({
-      sessionId, projectId, captainId,
-      response: `Error: ${msg}`, intent: { kind: 'unknown' }, mode: 'error',
-    }, isAuthError ? 503 : 500);
+    const isAuthError =
+      msg.includes('API key') || msg.includes('not configured') || msg.includes('401');
+    return c.json(
+      {
+        sessionId,
+        projectId,
+        captainId,
+        response: `Error: ${msg}`,
+        intent: { kind: 'unknown' },
+        mode: 'error',
+      },
+      isAuthError ? 503 : 500,
+    );
   }
 });
 
@@ -733,7 +1004,10 @@ secretaryRouter.post('/chat', async (c) => {
 secretaryRouter.get('/verify', async (c) => {
   const { gateway, costTracker, metrics } = getServerContext();
   if (!gateway) {
-    return c.json({ status: 'no_api_key', message: 'Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env to enable LLM.' });
+    return c.json({
+      status: 'no_api_key',
+      message: 'Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env to enable LLM.',
+    });
   }
   try {
     const start = Date.now();
@@ -742,12 +1016,28 @@ secretaryRouter.get('/verify', async (c) => {
       messages: [{ role: 'user', content: 'Reply with just "OK".' }],
       maxTokens: 10,
     });
-    costTracker.record('claude-haiku-4-5', response.usage?.promptTokens ?? 0, response.usage?.completionTokens ?? 0);
+    costTracker.record(
+      'claude-haiku-4-5',
+      response.usage?.promptTokens ?? 0,
+      response.usage?.completionTokens ?? 0,
+    );
     metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'verify' });
     const latency = Date.now() - start;
-    return c.json({ status: 'ok', latency_ms: latency, model: response.model, tokens: response.usage });
+    return c.json({
+      status: 'ok',
+      latency_ms: latency,
+      model: response.model,
+      tokens: response.usage,
+    });
   } catch (error) {
-    return c.json({ status: 'error', message: (error as Error).message, hint: 'Check your API key and network connection.' }, 503);
+    return c.json(
+      {
+        status: 'error',
+        message: (error as Error).message,
+        hint: 'Check your API key and network connection.',
+      },
+      503,
+    );
   }
 });
 
@@ -756,8 +1046,11 @@ secretaryRouter.get('/sessions', (c) => {
   const { sessionManager } = getServerContext();
   const sessions = sessionManager.list();
   return c.json({
-    sessions: sessions.map(s => ({
-      id: s.id, title: s.title, messageCount: s.messages.length, updatedAt: s.updatedAt,
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      title: s.title,
+      messageCount: s.messages.length,
+      updatedAt: s.updatedAt,
     })),
   });
 });
@@ -780,4 +1073,29 @@ secretaryRouter.get('/context', (c) => {
     maxContextTokens: 200000,
     summary: metrics.getSummary(),
   });
+});
+
+// ── GET /greeting ──
+secretaryRouter.get('/greeting', (c) => {
+  const { db, costTracker } = getServerContext();
+  const greeter = new GreetingService();
+
+  const pendingDecisions = (
+    db.prepare("SELECT COUNT(*) as count FROM decisions WHERE status = 'pending'").get() as any
+  ).count as number;
+  const activeWorkflows = (
+    db.prepare(
+      "SELECT COUNT(*) as count FROM workflows WHERE status IN ('running', 'awaiting_approval')",
+    ).get() as any
+  ).count as number;
+  const todayCost = costTracker.getDailyCost();
+
+  const result = greeter.generate({
+    captainName: 'Captain',
+    pendingDecisions,
+    activeWorkflows,
+    todayCost,
+  });
+
+  return c.json(result);
 });

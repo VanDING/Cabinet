@@ -1,1 +1,9 @@
-export { WorkflowEngine, type WorkflowNode, type WorkflowEdge, type WorkflowStatus, type WorkflowRun } from './engine.js';
+export {
+  WorkflowEngine,
+  type WorkflowNodeType,
+  type WorkflowNodeDef,
+  type WorkflowEdge,
+  type WorkflowStatus,
+  type WorkflowRun,
+  type WorkflowHandlers,
+} from './engine.js';

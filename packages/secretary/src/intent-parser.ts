@@ -1,11 +1,21 @@
 import type { LLMGateway } from '@cabinet/gateway';
 import type { AgentRoleType } from '@cabinet/agent';
 
+export interface ConversationContext {
+  lastIntent?: string;
+  lastRoute?: string;
+}
+
 export type ParsedIntent =
   | { kind: 'decision_request'; topic: string; context: string; suggestedDimensions: string[] }
   | { kind: 'meeting_request'; topic: string; requiredPerspectives: string[] }
-  | { kind: 'status_query'; target: 'project' | 'decision' | 'workflow'; filters: Record<string, string> }
+  | {
+      kind: 'status_query';
+      target: 'project' | 'decision' | 'workflow';
+      filters: Record<string, string>;
+    }
   | { kind: 'knowledge_query'; question: string; scope: 'short_term' | 'long_term' | 'both' }
+  | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
 
 // ── Agent Routing ─────────────────────────────────────────────
@@ -35,10 +45,33 @@ export class IntentParser {
 
   // ── Keyword Parsing (fast path, no LLM) ───────────────────
 
-  parse(message: string): ParsedIntent {
+  parse(message: string, conversationContext?: ConversationContext): ParsedIntent {
     const lower = message.toLowerCase();
+    const trimmed = lower.trim();
 
-    if (lower.includes('什么') || lower.includes('如何') || lower.includes('怎么') || lower.includes('为什么')) {
+    // Follow-up detection: short messages that reference previous conversation
+    const followUpPatterns = [
+      '继续', '然后', '接下来', '接着', '下一步', 'go on', 'continue', 'next',
+      '详细', '具体', '展开', '多说', '仔细', 'elaborate', 'explain', 'detail',
+      '好的', '可以', '行', '没问题', 'ok', 'yes', 'sure', 'okay', 'fine',
+      '明白', '了解', '懂了', 'got it', 'understood',
+    ];
+    const isShortFollowUp = trimmed.length < 15 && followUpPatterns.some((p) => lower.includes(p));
+
+    if (isShortFollowUp && conversationContext?.lastIntent) {
+      return {
+        kind: 'follow_up',
+        previousKind: conversationContext.lastIntent,
+        raw: message,
+      };
+    }
+
+    if (
+      lower.includes('什么') ||
+      lower.includes('如何') ||
+      lower.includes('怎么') ||
+      lower.includes('为什么')
+    ) {
       return {
         kind: 'knowledge_query',
         question: message,
@@ -46,7 +79,12 @@ export class IntentParser {
       };
     }
 
-    if (lower.includes('分析') || lower.includes('是否') || lower.includes('该不该') || lower.includes('决策')) {
+    if (
+      lower.includes('分析') ||
+      lower.includes('是否') ||
+      lower.includes('该不该') ||
+      lower.includes('决策')
+    ) {
       return {
         kind: 'decision_request',
         topic: message.slice(0, 100),
@@ -55,7 +93,12 @@ export class IntentParser {
       };
     }
 
-    if (lower.includes('组织') || lower.includes('讨论') || lower.includes('会议') || lower.includes('顾问')) {
+    if (
+      lower.includes('组织') ||
+      lower.includes('讨论') ||
+      lower.includes('会议') ||
+      lower.includes('顾问')
+    ) {
       return {
         kind: 'meeting_request',
         topic: message,
@@ -76,8 +119,8 @@ export class IntentParser {
 
   // ── LLM-powered Intent Classification ─────────────────────
 
-  async parseWithLLM(message: string): Promise<ParsedIntent> {
-    if (!this.gateway) return this.parse(message);
+  async parseWithLLM(message: string, conversationContext?: ConversationContext): Promise<ParsedIntent> {
+    if (!this.gateway) return this.parse(message, conversationContext);
 
     try {
       const prompt = `Classify this user message into one of these intents:
@@ -115,23 +158,25 @@ Message: "${message}"`;
 
   // ── LLM-powered Agent Routing ─────────────────────────────
 
-  async routeToAgent(message: string): Promise<AgentRouteResult> {
+  async routeToAgent(message: string, conversationContext?: ConversationContext): Promise<AgentRouteResult> {
     const intent = this.gateway
-      ? await this.parseWithLLM(message)
-      : this.parse(message);
+      ? await this.parseWithLLM(message, conversationContext)
+      : this.parse(message, conversationContext);
 
     if (!this.gateway) {
       // No LLM: route based on keyword intent
       return this.fallbackRoute(intent);
     }
 
-    const agentList = this.availableAgentsDesc || [
-      '- secretary: General conversation and intent routing',
-      '- decision_analyst: Structured decision analysis and option evaluation',
-      '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
-      '- workflow_designer: Workflow creation, modification, and execution',
-      '- curator: Memory consolidation, progress summaries, pattern extraction',
-    ].join('\n');
+    const agentList =
+      this.availableAgentsDesc ||
+      [
+        '- secretary: General conversation and intent routing',
+        '- decision_analyst: Structured decision analysis and option evaluation',
+        '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
+        '- workflow_designer: Workflow creation, modification, and execution',
+        '- curator: Memory consolidation, progress summaries, pattern extraction',
+      ].join('\n');
 
     try {
       const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
@@ -178,17 +223,18 @@ Message: "${message}"`;
 
       const parsed = JSON.parse(match[0]);
       const validAgents = new Set([
-        'secretary', 'decision_analyst', 'meeting_chair',
-        'workflow_designer', 'curator', 'agent_creator',
+        'secretary',
+        'decision_analyst',
+        'meeting_chair',
+        'workflow_designer',
+        'curator',
+        'agent_creator',
       ]);
 
       return {
-        targetAgent: validAgents.has(parsed.targetAgent)
-          ? parsed.targetAgent
-          : 'secretary',
-        confidence: typeof parsed.confidence === 'number'
-          ? Math.max(0, Math.min(1, parsed.confidence))
-          : 0.7,
+        targetAgent: validAgents.has(parsed.targetAgent) ? parsed.targetAgent : 'secretary',
+        confidence:
+          typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
         reasoning: parsed.reasoning ?? 'No reasoning provided.',
         suggestion: parsed.suggestion ?? undefined,
         intent,
@@ -199,7 +245,6 @@ Message: "${message}"`;
   }
 
   private fallbackRoute(intent: ParsedIntent): AgentRouteResult {
-    // Keyword-based routing fallback
     let targetAgent: AgentRoleType = 'secretary';
     let reasoning = 'Default routing (no LLM available).';
 
@@ -219,6 +264,11 @@ Message: "${message}"`;
       case 'knowledge_query':
         targetAgent = 'secretary';
         reasoning = 'Knowledge query handled by Secretary.';
+        break;
+      case 'follow_up':
+        // Keep previous route if available, otherwise stay with secretary
+        targetAgent = 'secretary';
+        reasoning = 'Follow-up message — continuing with Secretary.';
         break;
     }
 
