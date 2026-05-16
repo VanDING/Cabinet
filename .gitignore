@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
-src-tauri/target
+src-tauri/target/
+target/
 
 # Environment
 .env
@@ -18,3 +19,12 @@ Thumbs.db
 
 # Claude local
 .claude/*.local.*
+
+# Database (runtime)
+*.db
+*.db-shm
+*.db-wal
+backups/
+
+# Test artifacts
+test-results/

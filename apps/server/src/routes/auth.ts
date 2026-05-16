@@ -1,15 +1,19 @@
 import { Hono } from 'hono';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import type Database from 'better-sqlite3';
 import { getServerContext } from '../context.js';
 
 const SALT = 'cabinet-salt';
 const DEFAULT_HASH = createHash('sha256').update('1234' + SALT).digest('hex');
 
-function getPinHash(db: any): string {
+function getPinHash(db: Database.Database): string {
   try {
-    const row = db.prepare("SELECT value FROM metrics WHERE name = 'pin_hash' ORDER BY id DESC LIMIT 1").get() as any;
+    const row = db.prepare("SELECT value FROM metrics WHERE name = 'pin_hash' ORDER BY id DESC LIMIT 1").get() as { value: string } | undefined;
     return row?.value ?? DEFAULT_HASH;
-  } catch { return DEFAULT_HASH; }
+  } catch (err) {
+    // DB may not be ready — fall back to default hash
+    return DEFAULT_HASH;
+  }
 }
 
 export const authRouter = new Hono();

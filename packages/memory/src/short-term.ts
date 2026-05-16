@@ -30,6 +30,10 @@ export class ShortTermMemory {
     return entry.value;
   }
 
+  getAllSessionIds(): string[] {
+    return [...new Set([...this.cache.values()].map(e => e.sessionId))];
+  }
+
   getAll(sessionId: string): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [k, entry] of this.cache) {

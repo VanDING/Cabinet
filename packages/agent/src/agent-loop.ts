@@ -1,9 +1,12 @@
 import type { LLMGateway, LLMResponse } from '@cabinet/gateway';
+import type { EventBus } from '@cabinet/events';
 import { ToolExecutor } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
 import { CheckpointManager, type CheckpointState } from './checkpoint.js';
-import { ContextBuilder, type MemoryProvider } from './context-builder.js';
+import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './context-builder.js';
+import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
+import { ContextHandoff } from './context-handoff.js';
 
 export interface AgentLoopOptions {
   gateway: LLMGateway;
@@ -16,6 +19,14 @@ export interface AgentLoopOptions {
   captainId: string;
   systemPrompt?: string;
   maxSteps?: number;
+  /** Event bus for context-zone alerts. When omitted, zone monitoring is disabled. */
+  eventBus?: EventBus;
+  /** Model name for context-window sizing. Defaults to 200K window. */
+  model?: string;
+  /** Files currently active (for rule glob matching). */
+  activeFiles?: string[];
+  /** Current task description (for semantic rule matching). */
+  taskDescription?: string;
 }
 
 export interface AgentResult {
@@ -30,6 +41,7 @@ export class AgentLoop {
   private readonly safetyChecker: SafetyChecker;
   private readonly checkpointManager: CheckpointManager;
   private readonly contextBuilder: ContextBuilder;
+  private readonly contextMonitor: ContextMonitor | null;
   private readonly options: AgentLoopOptions;
 
   constructor(options: AgentLoopOptions) {
@@ -38,7 +50,15 @@ export class AgentLoop {
     this.safetyChecker = options.safetyChecker;
     this.checkpointManager = options.checkpointManager;
     this.contextBuilder = new ContextBuilder(options.memoryProvider);
+    this.contextMonitor = options.eventBus
+      ? ContextMonitor.forModel(options.model ?? 'claude-sonnet-4-6', options.eventBus)
+      : null;
     this.options = options;
+  }
+
+  /** Expose the context monitor for external querying. */
+  get monitor(): ContextMonitor | null {
+    return this.contextMonitor;
   }
 
   async run(userMessage: string): Promise<AgentResult> {
@@ -48,26 +68,71 @@ export class AgentLoop {
 
     // Try to restore from checkpoint
     const state = this.checkpointManager.load(this.options.sessionId);
-    const messages: { role: 'user' | 'assistant'; content: string }[] =
+    let messages: { role: 'user' | 'assistant'; content: string }[] =
       state?.messages ?? [];
 
     // Add user message
     messages.push({ role: 'user', content: userMessage });
 
+    // Initialize handoff tracker (for context reset on long tasks)
+    const handoff = new ContextHandoff(userMessage);
+
     while (steps < maxSteps) {
       // Build context (reload short-term memory each iteration)
-      const ctx = await this.contextBuilder.build({
+      const ctx: ContextBuildResult = await this.contextBuilder.build({
         sessionId: this.options.sessionId,
         projectId: this.options.projectId,
         captainId: this.options.captainId,
         systemPrompt: this.options.systemPrompt,
+        activeFiles: this.options.activeFiles,
+        taskDescription: this.options.taskDescription,
       });
 
       // Combine system context messages with conversation messages
-      const allMessages = [
-        ...ctx.messages,
-        ...messages.slice(ctx.messages.length), // only new messages
-      ];
+      const newMessages = messages.slice(ctx.messages.length);
+      const allMessages = [...ctx.messages, ...newMessages];
+
+      // ── Context Utilization Check (before LLM call) ──
+      if (this.contextMonitor) {
+        const breakdown: ContextBreakdown = {
+          systemPrompt: this.contextMonitor.estimateTokens(ctx.systemPrompt),
+          messages: this.contextMonitor.estimateTokens(
+            allMessages.map(m => m.content).join('\n')
+          ),
+          toolResults: this.contextMonitor.estimateTokens(
+            messages
+              .filter(m => m.role === 'user' && m.content.startsWith('Tool result'))
+              .map(m => m.content)
+              .join('\n')
+          ),
+          memory: this.contextMonitor.estimateTokens(
+            ctx.messages.map(m => m.content).join('\n')
+          ),
+        };
+        const snap = this.contextMonitor.snapshot(breakdown);
+
+        if (snap.zone === 'critical' || snap.zone === 'dumb') {
+          console.warn(
+            `[ContextMonitor] ${snap.zone.toUpperCase()} ZONE: ` +
+            `${snap.utilization * 100}% utilization ` +
+            `(${snap.estimatedTokens.toLocaleString()} / ${snap.maxTokens.toLocaleString()} tokens)`
+          );
+
+          // Perform context handoff if we're in dangerous territory
+          if (handoff.shouldHandoff(snap)) {
+            const result = handoff.performHandoff(snap);
+            console.warn(
+              `[ContextHandoff] Handoff #${result.state.handoffId} performed. ` +
+              `Resetting context from ${snap.estimatedTokens.toLocaleString()} tokens.`
+            );
+            // Reset messages to just the handoff message
+            messages = [{ role: 'user', content: result.handoffMessage }];
+            handoff.reset();
+            // Skip LLM call this iteration — restart with fresh context
+            continue;
+          }
+        }
+      }
 
       // Call LLM via gateway with retry on transient errors
       let response: LLMResponse;
@@ -89,6 +154,23 @@ export class AgentLoop {
         };
       }
 
+      // Calibrate estimator against actual token usage from the API
+      if (this.contextMonitor && response.usage?.promptTokens) {
+        const snap = this.contextMonitor.current;
+        if (snap) {
+          const estimationError = snap.estimatedTokens > 0
+            ? (response.usage.promptTokens - snap.estimatedTokens) / snap.estimatedTokens
+            : 0;
+          // Log significant estimation drift (>30% off) for debugging
+          if (Math.abs(estimationError) > 0.3) {
+            console.debug(
+              `[ContextMonitor] Estimation drift: ${(estimationError * 100).toFixed(0)}% ` +
+              `(estimated ${snap.estimatedTokens}, actual ${response.usage.promptTokens})`
+            );
+          }
+        }
+      }
+
       // No tool calls — agent is done
       if (!response.toolCalls || response.toolCalls.length === 0) {
         messages.push({ role: 'assistant', content: response.content });
@@ -107,6 +189,11 @@ export class AgentLoop {
         // Execute
         const result = await this.toolExecutor.execute(tc.name, tc.id, tc.arguments);
         toolCalls.push({ name: tc.name, args: tc.arguments, result: result.error ?? result.output });
+
+        // Record for context handoff
+        handoff.recordToolResult(
+          `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`
+        );
 
         // Add tool result as user message for feedback
         messages.push({

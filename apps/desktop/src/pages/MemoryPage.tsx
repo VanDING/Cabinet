@@ -1,21 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch, authHeaders } from '../utils/pin.js';
 
 interface MemoryEntry {
   id: string;
   layer: string;
   content: string;
-  timestamp: Date;
+  timestamp: string;
   metadata: Record<string, unknown>;
 }
-
-const demoMemories: MemoryEntry[] = [
-  { id: 'm1', layer: 'short_term', content: 'User asked about entering baby-products market', timestamp: new Date('2026-05-14T10:30:00'), metadata: { sessionId: 'sess-1' } },
-  { id: 'm2', layer: 'long_term', content: 'Q1 revenue exceeded targets by 15%. Market expansion plans approved.', timestamp: new Date('2026-05-10T09:00:00'), metadata: { projectId: 'proj-1', score: 0.89 } },
-  { id: 'm3', layer: 'entity', content: 'Captain prefers concise answers with bullet points', timestamp: new Date('2026-05-01T08:00:00'), metadata: { captainId: 'captain-1' } },
-  { id: 'm4', layer: 'project', content: 'Project Launch: Q3 target — enter maternal-infant market with 3 SKU', timestamp: new Date('2026-05-05T14:00:00'), metadata: { projectId: 'proj-1', milestone: 'MVP' } },
-  { id: 'm5', layer: 'short_term', content: 'Decision created: Should we enter the baby-products market?', timestamp: new Date('2026-05-14T10:35:00'), metadata: { sessionId: 'sess-1' } },
-  { id: 'm6', layer: 'long_term', content: 'Competitor analysis: Top 3 competitors control 60% of maternal-infant market', timestamp: new Date('2026-05-08T11:00:00'), metadata: { projectId: 'proj-1', score: 0.92 } },
-];
 
 const layerColors: Record<string, string> = {
   short_term: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
@@ -27,12 +19,41 @@ const layerColors: Record<string, string> = {
 export function MemoryPage() {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [entries, setEntries] = useState<MemoryEntry[]>([]);
+  const [layerCounts, setLayerCounts] = useState<Record<string, number>>({});
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = demoMemories.filter(m => {
-    if (filter !== 'all' && m.layer !== filter) return false;
-    if (search && !m.content.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const fetchMemories = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== 'all') params.set('layer', filter);
+      if (search) params.set('query', search);
+      params.set('limit', '50');
+
+      const res = await apiFetch(`/api/memory?${params}`, { headers: authHeaders() });
+      const data = await res.json();
+      setEntries(data.entries ?? []);
+      setLayerCounts(data.layers ?? {});
+      setTotal(data.total ?? 0);
+    } catch {
+      setEntries([]);
+      setLayerCounts({});
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, search]);
+
+  useEffect(() => { fetchMemories(); }, [fetchMemories]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await apiFetch(`/api/memory/${id}`, { method: 'DELETE', headers: authHeaders() });
+      fetchMemories();
+    } catch {}
+  };
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -56,6 +77,10 @@ export function MemoryPage() {
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search memories..."
           className="ml-auto border dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-48" />
+        <button onClick={fetchMemories}
+          className="px-3 py-1.5 text-xs rounded-lg border dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+          Refresh
+        </button>
       </div>
 
       {/* Stats */}
@@ -63,33 +88,46 @@ export function MemoryPage() {
         {['short_term', 'long_term', 'entity', 'project'].map(layer => (
           <div key={layer} className="border dark:border-gray-700 rounded-lg p-3 text-center bg-white dark:bg-gray-800">
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {demoMemories.filter(m => m.layer === layer).length}
+              {loading ? '-' : (layerCounts[layer] ?? 0)}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{layer.replace('_', ' ')}</div>
           </div>
         ))}
       </div>
 
+      <div className="text-xs text-gray-400 mb-3">{total} total entries</div>
+
       {/* Memory list */}
       <div className="space-y-2">
-        {filtered.map(m => (
-          <div key={m.id} className="border dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 hover:shadow-sm transition-shadow">
+        {entries.map(m => (
+          <div key={m.id} className="group border dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 hover:shadow-sm transition-shadow">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-xs px-2 py-0.5 rounded-full ${layerColors[m.layer]}`}>{m.layer.replace('_', ' ')}</span>
-              <span className="text-xs text-gray-400">{m.timestamp.toLocaleString()}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${layerColors[m.layer] || 'bg-gray-100 text-gray-600'}`}>{m.layer.replace('_', ' ')}</span>
+              <span className="text-xs text-gray-400">{new Date(m.timestamp).toLocaleString()}</span>
+              <button
+                onClick={() => handleDelete(m.id)}
+                className="ml-auto w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                aria-label="Delete"
+              >&times;</button>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300">{m.content}</p>
-            {Object.keys(m.metadata).length > 0 && (
-              <div className="mt-1 flex gap-2">
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-all">{m.content}</p>
+            {Object.keys(m.metadata || {}).length > 0 && (
+              <div className="mt-1 flex gap-2 flex-wrap">
                 {Object.entries(m.metadata).map(([k, v]) => (
-                  <span key={k} className="text-xs text-gray-400 font-mono">{k}: {String(v)}</span>
+                  <span key={k} className="text-xs text-gray-400 font-mono">{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
                 ))}
               </div>
             )}
           </div>
         ))}
-        {filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-8">No memories found.</p>
+        {entries.length === 0 && !loading && (
+          <div className="text-center text-gray-400 py-12">
+            <p>No memories found.</p>
+            <p className="text-xs mt-1">Chat with the secretary to create memories, or create decisions to populate the memory layers.</p>
+          </div>
+        )}
+        {loading && (
+          <div className="text-center text-gray-400 py-8">Loading memories...</div>
         )}
       </div>
     </div>

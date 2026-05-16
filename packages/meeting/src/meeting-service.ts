@@ -1,39 +1,47 @@
 import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
-import { MAX_DEBATE_ROUNDS, MAX_MEETING_ADVISORS } from '@cabinet/types';
 import type { LLMGateway } from '@cabinet/gateway';
+import { DebateProtocol, type DebateConfig, type DebateResult } from './debate-protocol.js';
+import { ParallelReasoning, type Advisor, type AdvisorReasoning } from './parallel-reasoning.js';
+import { CrossValidator } from './cross-validator.js';
+import { estimateMeetingCost } from './cost-estimator.js';
 
 export interface MeetingConfig {
   id: string;
   topic: string;
-  advisorIds: string[];
-  maxRounds?: number;
-}
-
-export interface AdvisorResult {
-  advisorId: string;
-  perspective: string;
+  advisors: Advisor[];
+  debate?: DebateConfig;
 }
 
 export interface MeetingResult {
   meetingId: string;
   consensus: string;
   minorityReport?: string;
-  advisorResults: AdvisorResult[];
+  advisorResults: AdvisorReasoning[];
   rounds: number;
   costEstimate: number;
+  crossValidation?: {
+    agreements: string[];
+    disagreements: string[];
+    contradictions: string[];
+    gaps: string[];
+    coherenceScore: number;
+  };
 }
 
 export class MeetingService {
   constructor(
     private readonly eventBus: EventBus,
-    private readonly gateway?: LLMGateway
+    private readonly gateway?: LLMGateway,
   ) {}
 
+  /** Get a pre-meeting cost estimate without running anything. */
+  estimateCost(advisorCount: number, rounds: number = 1, model: string = 'claude-haiku-4-5') {
+    return estimateMeetingCost(advisorCount, rounds, model);
+  }
+
   async startMeeting(config: MeetingConfig): Promise<MeetingResult> {
-    const maxRounds = config.maxRounds ?? MAX_DEBATE_ROUNDS;
-    const advisorCount = Math.min(config.advisorIds.length, MAX_MEETING_ADVISORS);
-    const advisors = config.advisorIds.slice(0, advisorCount);
+    const advisorCount = config.advisors.length;
 
     // Publish meeting started event
     await this.eventBus.publish({
@@ -45,30 +53,28 @@ export class MeetingService {
       payload: { meetingId: config.id, topic: config.topic, advisorCount },
     });
 
-    // Run advisors — real LLM if gateway available, otherwise simulated
-    let advisorResults: AdvisorResult[];
+    let result: MeetingResult;
+
     if (this.gateway) {
-      advisorResults = await this.runParallelAdvisors(config.topic, advisors);
+      try {
+        const debateProtocol = new DebateProtocol(this.gateway, config.debate);
+        const debateResult = await debateProtocol.debate(
+          config.topic,
+          config.advisors,
+          config.debate,
+        );
+        result = this.toMeetingResult(config.id, config.topic, debateResult);
+      } catch (e) {
+        // Fall back to simulated meeting on LLM failure
+        result = {
+          ...this.simulatedMeeting(config),
+          consensus: `Meeting failed: ${(e as Error).message}. Falling back to simulated analysis.`,
+        };
+      }
     } else {
-      advisorResults = advisors.map(id => ({
-        advisorId: id,
-        perspective: `Perspective from ${id} on: ${config.topic}`,
-      }));
+      // Simulated mode (no LLM)
+      result = this.simulatedMeeting(config);
     }
-
-    // Synthesize consensus from perspectives
-    const perspectives = advisorResults.map(r => r.perspective).join(' | ');
-    const consensus = `Consensus on "${config.topic}" from ${advisorResults.length} advisors: ${perspectives.slice(0, 500)}`;
-
-    const actualCost = this.estimateCost(advisorCount, 1);
-
-    const result: MeetingResult = {
-      meetingId: config.id,
-      consensus,
-      advisorResults,
-      rounds: 1,
-      costEstimate: actualCost,
-    };
 
     // Publish result
     await this.eventBus.publish({
@@ -81,39 +87,95 @@ export class MeetingService {
         meetingId: config.id,
         consensus: result.consensus,
         rounds: result.rounds,
-        cost: actualCost,
+        cost: result.costEstimate,
       },
     });
 
     return result;
   }
 
-  private async runParallelAdvisors(topic: string, advisorIds: string[]): Promise<AdvisorResult[]> {
-    if (!this.gateway) return [];
-
-    const results: AdvisorResult[] = [];
-    for (const id of advisorIds) {
-      try {
-        const response = await this.gateway.generateText({
-          model: 'claude-haiku-4-5',
-          messages: [{
-            role: 'user',
-            content: `You are advisor "${id}". Analyze this topic and give your perspective in 2-3 sentences:\n\n"${topic}"`,
-          }],
-          maxTokens: 300,
-          temperature: 0.7,
-        });
-        results.push({ advisorId: id, perspective: response.content });
-      } catch (error) {
-        results.push({ advisorId: id, perspective: `[Error: ${(error as Error).message}]` });
-      }
+  /** Simple single-round meeting (for backward compatibility and quick consultations). */
+  async quickMeeting(
+    topic: string,
+    advisors: Advisor[],
+  ): Promise<MeetingResult> {
+    if (!this.gateway) {
+      return this.simulatedMeeting({
+        id: `quick_${Date.now()}`,
+        topic,
+        advisors,
+      });
     }
-    return results;
+
+    const reasoning = new ParallelReasoning(this.gateway);
+    const reasonings = await reasoning.reason(advisors, topic);
+
+    // Quick chair synthesis
+    const perspectives = reasonings
+      .map(r => `[${r.advisor.name}]: ${r.content}`)
+      .join('\n');
+
+    let synthesis = '';
+    if (this.gateway) {
+      const chairResponse = await this.gateway.generateText({
+        model: 'claude-haiku-4-5',
+        messages: [{
+          role: 'user',
+          content: `Synthesize these perspectives on "${topic}" in 2-3 sentences:\n${perspectives}`,
+        }],
+        maxTokens: 300,
+      });
+      synthesis = chairResponse.content;
+    }
+
+    return {
+      meetingId: `quick_${Date.now()}`,
+      consensus: synthesis,
+      advisorResults: reasonings,
+      rounds: 1,
+      costEstimate: advisors.length * 500 / 1000 * 0.003,
+    };
   }
 
-  estimateCost(advisorCount: number, rounds: number): number {
-    const avgTokensPerCall = 500;
-    const costPer1kTokens = 0.003;
-    return advisorCount * rounds * avgTokensPerCall / 1000 * costPer1kTokens;
+  private toMeetingResult(
+    meetingId: string,
+    topic: string,
+    debate: DebateResult,
+  ): MeetingResult {
+    const lastValidation = debate.finalValidation;
+    return {
+      meetingId,
+      consensus: debate.finalSynthesis,
+      minorityReport: lastValidation?.disagreements.length
+        ? `Disagreements: ${lastValidation.disagreements.join('; ')}`
+        : undefined,
+      advisorResults: debate.rounds.flatMap(r => r.reasonings),
+      rounds: debate.rounds.length,
+      costEstimate: debate.totalEstimatedCost,
+      crossValidation: lastValidation ? {
+        agreements: lastValidation.agreements,
+        disagreements: lastValidation.disagreements,
+        contradictions: lastValidation.contradictions,
+        gaps: lastValidation.gaps,
+        coherenceScore: lastValidation.coherenceScore,
+      } : undefined,
+    };
+  }
+
+  private simulatedMeeting(config: MeetingConfig): MeetingResult {
+    const results = config.advisors.map(a => ({
+      advisor: a,
+      content: `Perspective from ${a.name} on: ${config.topic}`,
+    }));
+
+    const est = estimateMeetingCost(config.advisors.length, 1);
+
+    return {
+      meetingId: config.id,
+      consensus: `Simulated consensus on "${config.topic}" from ${config.advisors.length} advisors.`,
+      advisorResults: results,
+      rounds: 1,
+      costEstimate: est.estimatedCostUsd,
+    };
   }
 }

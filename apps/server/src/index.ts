@@ -9,13 +9,39 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { settingsRouter } from './routes/settings.js';
 import { authRouter } from './routes/auth.js';
 import { skillsRouter } from './routes/skills.js';
+import { memoryRouter } from './routes/memory.js';
+import { employeesRouter } from './routes/employees.js';
+import { filesRouter } from './routes/files.js';
+import { auditRouter } from './routes/audit.js';
+import { backupsRouter } from './routes/backups.js';
+import { gcRouter } from './routes/gc.js';
+import { verifyRouter } from './routes/verify.js';
+import { rulesRouter } from './routes/rules.js';
+import { progressRouter } from './routes/progress.js';
+import { observabilityRouter } from './routes/observability.js';
 import { authMiddleware } from './middleware/auth.js';
 import { openapiRouter } from './openapi.js';
 
 export function createApp() {
   const app = new Hono();
 
-  app.use('*', cors());
+  app.use('*', cors({
+    origin: (origin) => {
+      // Allow localhost on common dev ports and Tauri's custom protocol
+      const allowed = [
+        /^https?:\/\/localhost(:\d+)?$/,
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+        /^https?:\/\/tauri\.localhost(:\d+)?$/,
+        /^tauri:\/\/localhost$/,
+        /^https?:\/\/localhost\.tauri\.app$/,
+      ];
+      if (!origin || allowed.some(p => p.test(origin))) return origin;
+      return null;
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'x-cabinet-pin'],
+    maxAge: 86400,
+  }));
   app.use('/api/*', authMiddleware);
 
   app.route('/health', healthRouter);
@@ -27,6 +53,16 @@ export function createApp() {
   app.route('/api/settings', settingsRouter);
   app.route('/api/auth', authRouter);
   app.route('/api/skills', skillsRouter);
+  app.route('/api/memory', memoryRouter);
+  app.route('/api/employees', employeesRouter);
+  app.route('/api/files', filesRouter);
+  app.route('/api/audit', auditRouter);
+  app.route('/api/backups', backupsRouter);
+  app.route('/api/gc', gcRouter);
+  app.route('/api/verify', verifyRouter);
+  app.route('/api/rules', rulesRouter);
+  app.route('/api/progress', progressRouter);
+  app.route('/api/observability', observabilityRouter);
   app.route('/api', openapiRouter());
 
   return app;

@@ -6,6 +6,7 @@ const items: { id: NavPage; label: string }[] = [
   { id: 'factory', label: 'Factory' },
   { id: 'employees', label: 'Staff' },
   { id: 'memory', label: 'Memory' },
+  { id: 'meetings', label: 'Meet' },
 ];
 
 interface Props {

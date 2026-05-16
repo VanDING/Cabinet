@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 
 interface SkillItem {
   id: string;
@@ -30,7 +31,7 @@ export function SkillsPage() {
 
   const fetchSkills = async () => {
     try {
-      const res = await fetch('/api/skills', { headers: { 'x-cabinet-pin': '1234' } });
+      const res = await apiFetch('/api/skills', { headers: authHeaders() });
       const data = await res.json();
       setSkills(data.skills ?? []);
     } catch {}
@@ -39,9 +40,9 @@ export function SkillsPage() {
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
     try {
-      const res = await fetch('/api/skills', {
+      const res = await apiFetch('/api/skills', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
+        headers: authJsonHeaders(),
         body: JSON.stringify(formData),
       });
       const data = await res.json();
@@ -58,9 +59,9 @@ export function SkillsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch(`/api/skills/${skillId}/test`, {
+      const res = await apiFetch(`/api/skills/${skillId}/test`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
+        headers: authJsonHeaders(),
         body: JSON.stringify({ input: testInput }),
       });
       const data = await res.json();

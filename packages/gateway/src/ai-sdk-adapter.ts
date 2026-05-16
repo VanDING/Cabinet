@@ -1,10 +1,20 @@
 import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, ToolDefinition, EmbeddingOptions, EmbeddingResult } from './llm-gateway.js';
 
 interface ProviderConfig {
+  [provider: string]: { apiKey: string; baseUrl?: string } | undefined;
   anthropic?: { apiKey: string };
   openai?: { apiKey: string };
   google?: { apiKey: string };
 }
+
+// Domestic LLM provider configurations (all OpenAI-compatible)
+const DOMESTIC_PROVIDERS: Record<string, { baseURL: string }> = {
+  deepseek: { baseURL: 'https://api.deepseek.com' },
+  qwen: { baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  moonshot: { baseURL: 'https://api.moonshot.cn/v1' },
+  zhipu: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
+  baichuan: { baseURL: 'https://api.baichuan-ai.com/v1' },
+};
 
 /**
  * Vercel AI SDK adapter with multi-provider support.
@@ -22,7 +32,7 @@ export class AISDKAdapter implements LLMGateway {
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
     const { generateText: aiGenerateText } = await this.importAISDK();
 
-    const model = this.resolveModelObj(options.model);
+    const model = await this.resolveModelObj(options.model);
 
     const messages = options.messages.map((m) => ({
       role: m.role as 'user' | 'assistant' | 'system',
@@ -55,7 +65,7 @@ export class AISDKAdapter implements LLMGateway {
 
   async *streamText(options: LLMCallOptions): AsyncIterable<StreamChunk> {
     const { streamText: aiStreamText } = await this.importAISDK();
-    const model = this.resolveModelObj(options.model);
+    const model = await this.resolveModelObj(options.model);
 
     const result = aiStreamText({
       model,
@@ -81,12 +91,29 @@ export class AISDKAdapter implements LLMGateway {
       'anthropic/claude-haiku-4-5',
       'openai/gpt-4o',
       'openai/gpt-4o-mini',
+      'openai/gpt-4-turbo',
+      'google/gemini-2.0-flash',
+      'google/gemini-2.0-pro',
+      'deepseek/deepseek-chat',
+      'deepseek/deepseek-reasoner',
+      'deepseek/deepseek-v3',
+      'deepseek/deepseek-r1',
+      'qwen/qwen-turbo',
+      'qwen/qwen-plus',
+      'qwen/qwen-max',
+      'moonshot/moonshot-v1-8k',
+      'moonshot/moonshot-v1-32k',
+      'moonshot/moonshot-v1-128k',
+      'zhipu/glm-4',
+      'zhipu/glm-4-flash',
+      'baichuan/baichuan4',
+      'baichuan/baichuan3-turbo',
     ];
   }
 
   async generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult> {
     const { embed } = await this.importAISDK();
-    const model = this.resolveEmbeddingModel(options.model ?? 'text-embedding-3-small');
+    const model = await this.resolveEmbeddingModel(options.model ?? 'text-embedding-3-small');
 
     const result = await embed({
       model,
@@ -104,39 +131,67 @@ export class AISDKAdapter implements LLMGateway {
    * Resolve a model string like "anthropic/claude-sonnet-4-6" or "claude-sonnet-4-6"
    * to an AI SDK model object. Uses environment variables for API keys as fallback.
    */
-  private resolveModelObj(modelName: string): any {
-    // Default to Anthropic if no provider prefix
+  private PROVIDER_DEFAULTS: Record<string, string> = {
+    anthropic: 'claude-sonnet-4-6', openai: 'gpt-4o', google: 'gemini-2.0-flash',
+    deepseek: 'deepseek-chat', qwen: 'qwen-plus', moonshot: 'moonshot-v1-8k',
+    zhipu: 'glm-4', baichuan: 'baichuan4',
+  };
+
+  /** Find the first provider that has an API key configured */
+  private firstConfiguredProvider(): string {
+    const order = ['anthropic', 'openai', 'google', 'deepseek', 'qwen', 'moonshot', 'zhipu', 'baichuan'];
+    for (const p of order) {
+      if (this.config[p]?.apiKey ?? process.env[`${p.toUpperCase()}_API_KEY`]) return p;
+    }
+    return 'anthropic';
+  }
+
+  private async resolveModelObj(modelName: string): Promise<any> {
     const provider = modelName.includes('/')
       ? modelName.split('/')[0]!
-      : 'anthropic';
-    const name = modelName.includes('/')
+      : this.firstConfiguredProvider();
+    let name = modelName.includes('/')
       ? modelName.split('/').slice(1).join('/')
       : modelName;
 
+    // If the model name doesn't look like it belongs to this provider, use the provider's default
+    if (!modelName.includes('/') && provider !== 'anthropic' && name.startsWith('claude')) {
+      name = this.PROVIDER_DEFAULTS[provider] ?? name;
+    }
+
     switch (provider) {
       case 'anthropic': {
-        const key =
-          this.config.anthropic?.apiKey ?? process.env.ANTHROPIC_API_KEY;
+        const key = this.config.anthropic?.apiKey ?? process.env.ANTHROPIC_API_KEY;
         if (!key) throw new Error('ANTHROPIC_API_KEY not configured');
-        const { anthropic } = this.loadProvider('anthropic');
-        const client = anthropic({ apiKey: key });
-        return client(name);
+        const { createAnthropic } = await this.loadProvider('anthropic');
+        const factory = createAnthropic({ apiKey: key });
+        return factory(name);
       }
       case 'openai': {
-        const key =
-          this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
+        const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
         if (!key) throw new Error('OPENAI_API_KEY not configured');
-        const { openai } = this.loadProvider('openai');
-        const client = openai({ apiKey: key });
-        return client(name);
+        const { createOpenAI } = await this.loadProvider('openai');
+        const factory = createOpenAI({ apiKey: key });
+        return factory(name);
       }
       case 'google': {
-        const key =
-          this.config.google?.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        const key = this.config.google?.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         if (!key) throw new Error('GOOGLE_GENERATIVE_AI_API_KEY not configured');
-        // Google uses a different SDK, return the model name string directly
-        // as the AI SDK's google provider handles model resolution internally
-        return modelName;
+        const { google } = await this.loadProvider('google');
+        const factory = google({ apiKey: key });
+        return factory(name);
+      }
+      case 'deepseek':
+      case 'qwen':
+      case 'moonshot':
+      case 'zhipu':
+      case 'baichuan': {
+        const providerConfig = DOMESTIC_PROVIDERS[provider]!;
+        const key = this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
+        if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
+        const { createOpenAI } = await this.loadProvider('openai');
+        const factory = createOpenAI({ apiKey: key, baseURL: providerConfig.baseURL });
+        return factory(name);
       }
       default:
         throw new Error(`Unknown provider: ${provider}`);
@@ -147,42 +202,32 @@ export class AISDKAdapter implements LLMGateway {
    * Resolve an embedding model name to an AI SDK embedding model object.
    * Currently only OpenAI is supported for embeddings.
    */
-  private resolveEmbeddingModel(modelName: string): any {
+  private async resolveEmbeddingModel(modelName: string): Promise<any> {
     const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
     if (!key) throw new Error('OPENAI_API_KEY not configured for embeddings');
-    const { openai } = this.loadProvider('openai');
+    const { openai } = await this.loadProvider('openai');
     const client = openai({ apiKey: key });
     return client.embedding(modelName);
   }
 
   /**
-   * Dynamically load a provider SDK. Falls back gracefully if not installed.
+   * Dynamically load a provider SDK via ESM import(). Falls back gracefully if not installed.
    */
-  private loadProvider(provider: 'anthropic' | 'openai' | 'google'): any {
+  private async loadProvider(provider: 'anthropic' | 'openai' | 'google'): Promise<any> {
+    const pkgMap: Record<string, string> = {
+      anthropic: '@ai-sdk/anthropic',
+      openai: '@ai-sdk/openai',
+      google: '@ai-sdk/google',
+    };
+    const pkg = pkgMap[provider]!;
     try {
-      switch (provider) {
-        case 'anthropic':
-          return require('@ai-sdk/anthropic');
-        case 'openai':
-          return require('@ai-sdk/openai');
-        case 'google':
-          try {
-            return require('@ai-sdk/google');
-          } catch {
-            throw new Error(
-              '@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google'
-            );
-          }
-        default:
-          throw new Error(`Unknown provider: ${provider}`);
-      }
+      return await import(pkg);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('not installed')) {
-        throw error;
+      const msg = (error as Error).message;
+      if (msg.includes('Cannot find') || msg.includes('not installed') || msg.includes('not found') || msg.includes('not installed')) {
+        throw new Error(`${pkg} is not installed. Install it with: pnpm add ${pkg}`);
       }
-      throw new Error(
-        `@ai-sdk/${provider} is not installed. Install it with: pnpm add @ai-sdk/${provider}`
-      );
+      throw error;
     }
   }
 

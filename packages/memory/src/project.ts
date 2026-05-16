@@ -27,6 +27,12 @@ export class ProjectMemory {
     return this.projects.get(projectId) ?? null;
   }
 
+  getAll(): Record<string, ProjectContext> {
+    const result: Record<string, ProjectContext> = {};
+    for (const [k, v] of this.projects) result[k] = v;
+    return result;
+  }
+
   addMilestone(projectId: string, title: string): void {
     const ctx = this.projects.get(projectId);
     if (ctx) {

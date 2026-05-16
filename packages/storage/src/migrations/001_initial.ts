@@ -17,6 +17,7 @@ export function runMigration001(db: Database.Database): void {
       status TEXT NOT NULL DEFAULT 'draft',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE INDEX IF NOT EXISTS idx_projects_org ON projects(organization_id);
 
     CREATE TABLE IF NOT EXISTS employees (
       id TEXT PRIMARY KEY,
@@ -28,6 +29,7 @@ export function runMigration001(db: Database.Database): void {
       persona TEXT,
       permission_level TEXT NOT NULL DEFAULT 'read'
     );
+    CREATE INDEX IF NOT EXISTS idx_employees_project ON employees(project_id);
 
     CREATE TABLE IF NOT EXISTS decisions (
       id TEXT PRIMARY KEY,
@@ -43,6 +45,7 @@ export function runMigration001(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       resolved_at TEXT
     );
+    CREATE INDEX IF NOT EXISTS idx_decisions_project_status ON decisions(project_id, status);
 
     CREATE TABLE IF NOT EXISTS event_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +58,7 @@ export function runMigration001(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_event_log_correlation ON event_log(correlation_id);
+    CREATE INDEX IF NOT EXISTS idx_event_log_causation ON event_log(causation_id);
     CREATE INDEX IF NOT EXISTS idx_event_log_type ON event_log(type);
     CREATE INDEX IF NOT EXISTS idx_event_log_timestamp ON event_log(timestamp);
 
@@ -78,6 +82,7 @@ export function runMigration001(db: Database.Database): void {
       status TEXT NOT NULL DEFAULT 'draft',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
 
     CREATE TABLE IF NOT EXISTS api_keys (
       id TEXT PRIMARY KEY,
@@ -87,6 +92,7 @@ export function runMigration001(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       last_used_at TEXT
     );
+    CREATE INDEX IF NOT EXISTS idx_api_keys_provider ON api_keys(provider);
 
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
