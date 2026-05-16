@@ -72,3 +72,11 @@ export interface Decision {
   createdAt: Date;
   resolvedAt?: Date;
 }
+
+/** Storage interface for decisions — implemented by @cabinet/storage. */
+export interface DecisionStore {
+  save(decision: Decision): void;
+  get(id: string): Decision | null;
+  listByProject(projectId: string): Decision[];
+  listPending(projectId: string): Decision[];
+}
