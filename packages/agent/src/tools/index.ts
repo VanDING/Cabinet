@@ -70,7 +70,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const status = (args.status as string) ?? 'pending';
         const projectId = args.projectId as string | undefined;
         if (projectId) {
-          return deps.decisionStore.listByProject(projectId).filter(d => status === 'all' || d.status === status);
+          return deps.decisionStore.listByProject(projectId).filter((d: Decision) => status === 'all' || d.status === status);
         }
         return deps.decisionStore.listPending(projectId ?? 'all');
       },
