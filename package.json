@@ -5,9 +5,14 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm exec tsx tools/arch-lint.ts",
+    "lint:fix": "echo '→ Run pnpm lint and follow the FIX instructions in each error message.'",
     "test:e2e": "cd tests/e2e && vitest run"
   },
   "dependencies": {
-    "better-sqlite3": "12.10.0"
+    "better-sqlite3": "11.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
   }
 }
