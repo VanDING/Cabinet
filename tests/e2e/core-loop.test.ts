@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
 
 const PIN = '1234';
@@ -6,6 +6,52 @@ const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
 
 describe('Cabinet Core Loop (E2E)', () => {
   const app = createApp();
+  let decisionId1 = '';
+  let decisionId2 = '';
+
+  // Seed test decisions used by subsequent detail/approve/reject tests
+  beforeAll(async () => {
+    // Use 4+ options to get L2 classification (won't auto-approve on creation)
+    const r1 = await app.request('/api/decisions', {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        projectId: 'proj-1',
+        type: 'action',
+        title: 'Test Decision 1',
+        description: 'For testing detail/approve',
+        options: [
+          { id: 'opt-a', label: 'Option A', impact: 'High' },
+          { id: 'opt-b', label: 'Option B', impact: 'Medium' },
+          { id: 'opt-c', label: 'Option C', impact: 'Low' },
+          { id: 'opt-d', label: 'Option D', impact: 'None' },
+        ],
+      }),
+    });
+    if (r1.status === 201) {
+      const b1: any = await r1.json();
+      decisionId1 = b1.decision?.id ?? '';
+    }
+
+    const r2 = await app.request('/api/decisions', {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        projectId: 'proj-1',
+        type: 'action',
+        title: 'Test Decision 2',
+        description: 'For testing reject',
+        options: [
+          { id: 'opt-a', label: 'Option A', impact: 'High' },
+          { id: 'opt-b', label: 'Option B', impact: 'Medium' },
+          { id: 'opt-c', label: 'Option C', impact: 'Low' },
+          { id: 'opt-d', label: 'Option D', impact: 'None' },
+        ],
+      }),
+    });
+    if (r2.status === 201) {
+      const b2: any = await r2.json();
+      decisionId2 = b2.decision?.id ?? '';
+    }
+  });
 
   // Step 1: Dashboard summary
   it('GET /api/dashboard/summary returns initial state', async () => {
@@ -18,7 +64,7 @@ describe('Cabinet Core Loop (E2E)', () => {
   });
 
   // Step 2: Secretary chat — send message
-  let sessionId = 'e2e-session';
+  const sessionId = 'e2e-session';
   it('POST /api/secretary/chat processes message', async () => {
     const res = await app.request('/api/secretary/chat', {
       method: 'POST', headers,
@@ -39,18 +85,20 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(body).toHaveProperty('total');
   });
 
-  // Step 4: Get decision detail (even if mock, structure is correct)
+  // Step 4: Get decision detail
   it('GET /api/decisions/:id returns decision detail', async () => {
-    const res = await app.request('/api/decisions/test-decision-1', { headers });
+    const id = decisionId1 || 'test-decision-1';
+    const res = await app.request(`/api/decisions/${id}`, { headers });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty('decision');
-    expect(body.decision).toHaveProperty('id', 'test-decision-1');
+    expect(body.decision).toHaveProperty('id', id);
   });
 
   // Step 5: Approve a decision
   it('POST /api/decisions/:id/approve approves decision', async () => {
-    const res = await app.request('/api/decisions/test-decision-1/approve', {
+    const id = decisionId1 || 'test-decision-1';
+    const res = await app.request(`/api/decisions/${id}/approve`, {
       method: 'POST', headers,
       body: JSON.stringify({ chosenOptionId: 'opt-1' }),
     });
@@ -62,7 +110,8 @@ describe('Cabinet Core Loop (E2E)', () => {
 
   // Step 6: Reject a decision
   it('POST /api/decisions/:id/reject rejects decision', async () => {
-    const res = await app.request('/api/decisions/test-decision-2/reject', {
+    const id = decisionId2 || 'test-decision-2';
+    const res = await app.request(`/api/decisions/${id}/reject`, {
       method: 'POST', headers,
     });
     expect(res.status).toBe(200);
@@ -78,7 +127,7 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(body).toHaveProperty('workflows');
   });
 
-  // Step 8: Create and run a workflow
+  // Step 8: Create a workflow
   it('POST /api/factory creates workflow', async () => {
     const res = await app.request('/api/factory', {
       method: 'POST', headers,
@@ -130,9 +179,7 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(res.status).toBe(401);
   });
 
-  // Step 13: WebSocket endpoint (upgraded from SSE in B2)
-  // Note: WebSocket upgrade requires HTTP server, not Hono request()
-  // This test verifies the upgrade header is detected
+  // Step 13: WebSocket endpoint
   it('GET /ws/events requires WebSocket upgrade', async () => {
     const res = await app.request('/ws/events', { headers });
     expect([404, 426]).toContain(res.status);

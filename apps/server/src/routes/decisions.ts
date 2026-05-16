@@ -15,8 +15,10 @@ decisionsRouter.get('/', (c) => {
       ? decisionRepo.listByProject(projectId)
       : decisionRepo.listPending(projectId);
     return c.json({ decisions, status, total: decisions.length });
-  } catch {
-    return c.json({ decisions: [], status, total: 0 });
+  } catch (err) {
+    const { logger } = getServerContext();
+    logger.error('Failed to list decisions', { error: (err as Error).message, status, projectId });
+    return c.json({ decisions: [], status, total: 0, error: 'Failed to load decisions' });
   }
 });
 
@@ -83,19 +85,58 @@ decisionsRouter.post('/', async (c) => {
 decisionsRouter.post('/:id/approve', async (c) => {
   const { decisionService } = getServerContext();
   const body = await c.req.json();
-  const decision = decisionService.approve(
-    c.req.param('id'),
-    body.captainId ?? 'captain-1',
-    body.chosenOptionId ?? 'approve',
-  );
-  broadcast('decision_updated', { decisionId: decision.id, status: 'approved' });
-  return c.json({ decision });
+  try {
+    const decision = decisionService.approve(
+      c.req.param('id'),
+      body.captainId ?? 'captain-1',
+      body.chosenOptionId ?? 'approve',
+    );
+    broadcast('decision_updated', { decisionId: decision.id, status: 'approved' });
+    return c.json({ status: decision.status, chosenOptionId: decision.chosenOptionId, decision });
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.startsWith('Decision not found')) return c.json({ error: msg }, 404);
+    return c.json({ error: msg }, 500);
+  }
 });
 
 decisionsRouter.post('/:id/reject', async (c) => {
   const { decisionService } = getServerContext();
-  const body = await c.req.json();
-  const decision = decisionService.reject(c.req.param('id'), body.captainId ?? 'captain-1');
-  broadcast('decision_updated', { decisionId: decision.id, status: 'rejected' });
-  return c.json({ decision });
+  let body: Record<string, string> = {};
+  try { body = await c.req.json(); } catch { /* body is optional */ }
+  try {
+    const decision = decisionService.reject(c.req.param('id'), body.captainId ?? 'captain-1');
+    broadcast('decision_updated', { decisionId: decision.id, status: 'rejected' });
+    return c.json({ status: decision.status, decision });
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.startsWith('Decision not found')) return c.json({ error: msg }, 404);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// GET /api/decisions/:id/audit — audit trail for a decision
+decisionsRouter.get('/:id/audit', (c) => {
+  const { db } = getServerContext();
+  const id = c.req.param('id');
+  const rows = db.prepare(
+    "SELECT * FROM audit_log WHERE entity_type = 'decision' AND entity_id = ? ORDER BY timestamp ASC"
+  ).all(id) as any[];
+  const trail = rows.map((r: any) => ({
+    action: r.action,
+    actor: r.actor,
+    changes: JSON.parse(r.changes ?? '{}'),
+    timestamp: r.timestamp,
+  }));
+  // Also include the decision's own created/resolved timestamps
+  const decisionRow = db.prepare('SELECT * FROM decisions WHERE id = ?').get(id) as any;
+  return c.json({
+    decisionId: id,
+    trail,
+    decision: decisionRow ? {
+      createdAt: decisionRow.created_at,
+      resolvedAt: decisionRow.resolved_at,
+      status: decisionRow.status,
+    } : null,
+  });
 });
