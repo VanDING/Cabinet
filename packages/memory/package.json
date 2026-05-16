@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "@cabinet/storage": "workspace:*",
-    "@cabinet/types": "workspace:*",
-    "better-sqlite3": "^11.7.0"
+    "@cabinet/types": "workspace:*"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
