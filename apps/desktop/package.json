@@ -17,10 +17,12 @@
     "@cabinet/ui": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
+    "marked": "^18.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-grid-layout": "^2.2.3",
-    "react-router-dom": "^7.0.0"
+    "react-router-dom": "^7.0.0",
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.1",
