@@ -3,10 +3,21 @@ import GridLayout, { type Layout, verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import { StatCard } from '../components/office/StatCard';
 import { DecisionList } from '../components/office/DecisionList';
+import { DecisionReviewPanel } from '../components/office/DecisionReviewPanel';
 import { EventTimeline } from '../components/office/EventTimeline';
-import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidget';
 import { PlaceholderWidget } from '../components/office/PlaceholderWidget';
-import { useProject } from '../hooks/useProject';
+import { CostChart } from '../components/office/CostChart';
+import { SystemHealth } from '../components/office/SystemHealth';
+import { Deliverables } from '../components/office/Deliverables';
+import { ProjectList } from '../components/office/ProjectList';
+import { ApiSwitcher } from '../components/office/ApiSwitcher';
+import { Calendar } from '../components/office/Calendar';
+import { Clock } from '../components/office/Clock';
+import { Weather } from '../components/office/Weather';
+import { ProgressBoard } from '../components/office/ProgressBoard';
+import { ObservabilityWidget } from '../components/office/ObservabilityWidget';
+import { useToast } from '../components/Toast';
+import { apiFetch, authHeaders } from '../utils/pin.js';
 
 type WidgetType =
   | 'pending-decisions'
@@ -19,12 +30,14 @@ type WidgetType =
   | 'cost-chart'
   | 'system-health'
   | 'llm-stats'
+  | 'agent-health'
   | 'calendar'
   | 'clock'
   | 'weather'
   | 'deliverables'
   | 'project-list'
-  | 'api-switcher';
+  | 'api-switcher'
+  | 'progress-board';
 
 interface WidgetDef {
   type: WidgetType;
@@ -42,15 +55,17 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'decision-list', label: 'Decision List', w: 6, h: 3, available: true },
   { type: 'event-timeline', label: 'Event Timeline', w: 6, h: 2, available: true },
   { type: 'project-switcher', label: 'Project Switcher', w: 4, h: 2, available: true },
-  { type: 'cost-chart', label: 'Cost Trend', w: 6, h: 3, available: false },
-  { type: 'system-health', label: 'System Health', w: 4, h: 2, available: false },
-  { type: 'llm-stats', label: 'LLM Statistics', w: 4, h: 2, available: false },
-  { type: 'calendar', label: 'Calendar', w: 4, h: 3, available: false },
-  { type: 'clock', label: 'Clock', w: 2, h: 2, available: false },
-  { type: 'weather', label: 'Weather', w: 3, h: 2, available: false },
-  { type: 'deliverables', label: 'Deliverables', w: 6, h: 3, available: false },
-  { type: 'project-list', label: 'Project List', w: 4, h: 3, available: false },
-  { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: false },
+  { type: 'cost-chart', label: 'Cost Trend', w: 6, h: 3, available: true },
+  { type: 'system-health', label: 'System Health', w: 4, h: 2, available: true },
+  { type: 'llm-stats', label: 'LLM Statistics', w: 4, h: 2, available: true },
+  { type: 'agent-health', label: 'Agent Health', w: 4, h: 3, available: true },
+  { type: 'calendar', label: 'Calendar', w: 4, h: 3, available: true },
+  { type: 'clock', label: 'Clock', w: 2, h: 2, available: true },
+  { type: 'weather', label: 'Weather', w: 3, h: 2, available: true },
+  { type: 'deliverables', label: 'Deliverables', w: 6, h: 3, available: true },
+  { type: 'project-list', label: 'Project List', w: 4, h: 3, available: true },
+  { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: true },
+  { type: 'progress-board', label: 'Task Board', w: 6, h: 4, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -61,6 +76,7 @@ const DEFAULT_LAYOUT = [
   { i: 'decision-list', x: 0, y: 1, w: 6, h: 3 },
   { i: 'event-timeline', x: 6, y: 1, w: 6, h: 2 },
   { i: 'project-switcher', x: 0, y: 4, w: 4, h: 2 },
+  { i: 'progress-board', x: 4, y: 4, w: 6, h: 4 },
 ];
 
 function loadLayout(): Layout {
@@ -83,31 +99,58 @@ function getStatValue(type: WidgetType): { value: string | number; color: string
 }
 
 export function OfficePage() {
+  const { addToast } = useToast();
   const [layout, setLayout] = useState<Layout>(loadLayout);
+  const [containerWidth, setContainerWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth - 200 : 1000
+  );
   const [showPool, setShowPool] = useState(false);
+  const [reviewDecisionId, setReviewDecisionId] = useState<string | null>(null);
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
   const [costDetails, setCostDetails] = useState<{ model: string; cost: number }[]>([]);
-  const { projects, current } = useProject();
   const [stats, setStats] = useState({
     pendingDecisions: 0,
     todayCost: 0,
-    activeProjects: projects.length,
+    activeProjects: 0,
     activeWorkflows: 0,
   });
 
-  // Fetch stats
+  // Keep grid width in sync with window resize
   useEffect(() => {
-    fetch('/api/dashboard/summary', { headers: { 'x-cabinet-pin': '1234' } })
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        setContainerWidth(window.innerWidth - 200);
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const refreshStats = useCallback(() => {
+    apiFetch('/api/dashboard/summary', { headers: authHeaders() })
       .then(res => res.json())
       .then(data => {
-        setStats(prev => ({
-          ...prev,
+        setStats({
           pendingDecisions: data.pendingDecisions ?? 0,
           todayCost: data.todayCost ?? 0,
-        }));
+          activeProjects: data.activeProjects ?? 0,
+          activeWorkflows: data.activeWorkflows ?? 0,
+        });
       })
-      .catch(() => {});
-  });
+      .catch(() => { addToast('error', 'Failed to load dashboard stats'); });
+  }, [addToast]);
+
+  // Listen for WebSocket decision updates
+  useEffect(() => {
+    window.addEventListener('ws:decision_created', refreshStats);
+    window.addEventListener('ws:decision_updated', refreshStats);
+    return () => {
+      window.removeEventListener('ws:decision_created', refreshStats);
+      window.removeEventListener('ws:decision_updated', refreshStats);
+    };
+  }, [refreshStats]);
 
   const handleLayoutChange = useCallback((newLayout: Layout) => {
     setLayout(newLayout.map(item => ({ ...item })));
@@ -138,14 +181,8 @@ export function OfficePage() {
 
   const addedTypes = new Set(layout.map(item => item.i));
 
-  const navigateTo = (path: string) => {
-    window.location.href = path;
-  };
-
   const handleWidgetClick = (type: string) => {
-    if (type === 'active-workflows' || type === 'pending-decisions') {
-      navigateTo('/factory');
-    } else if (type === 'today-cost') {
+    if (type === 'today-cost') {
       // Fetch simulated cost details
       setCostDetails([
         { model: 'claude-sonnet-4-6', cost: 1.23 },
@@ -163,19 +200,51 @@ export function OfficePage() {
   const renderWidget = (type: string) => {
     switch (type) {
       case 'pending-decisions':
-        return <StatCard label="Pending Decisions" value={stats.pendingDecisions} color="text-amber-600" onClick={() => handleWidgetClick('pending-decisions')} />;
+        return <StatCard label="Pending Decisions" value={stats.pendingDecisions} color="text-amber-600" onClick={() => {
+          if (stats.pendingDecisions > 0) {
+            // Open the first pending decision
+            apiFetch('/api/decisions?status=pending', { headers: authHeaders() })
+              .then(r => r.json())
+              .then(data => {
+                if (data.decisions?.[0]) setReviewDecisionId(data.decisions[0].id);
+              })
+              .catch(() => {});
+          }
+        }} />;
       case 'today-cost':
         return <StatCard label="Today's Cost" value={`$${stats.todayCost.toFixed(2)}`} color="text-blue-600" onClick={() => handleWidgetClick('today-cost')} />;
       case 'active-projects':
         return <StatCard label="Active Projects" value={stats.activeProjects} color="text-green-600" onClick={() => handleWidgetClick('active-projects')} />;
       case 'active-workflows':
-        return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" onClick={() => handleWidgetClick('active-workflows')} />;
+        return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" />;
       case 'decision-list':
-        return <DecisionList />;
+        return <DecisionList onSelectDecision={id => setReviewDecisionId(id)} />;
       case 'event-timeline':
         return <EventTimeline />;
       case 'project-switcher':
-        return <ProjectSwitcherWidget />;
+        return <PlaceholderWidget title="Project Switcher" />;
+      case 'cost-chart':
+        return <CostChart />;
+      case 'system-health':
+        return <SystemHealth />;
+      case 'llm-stats':
+        return <SystemHealth />;
+      case 'agent-health':
+        return <ObservabilityWidget />;
+      case 'deliverables':
+        return <Deliverables />;
+      case 'project-list':
+        return <ProjectList />;
+      case 'api-switcher':
+        return <ApiSwitcher />;
+      case 'progress-board':
+        return <ProgressBoard />;
+      case 'calendar':
+        return <Calendar />;
+      case 'clock':
+        return <Clock />;
+      case 'weather':
+        return <Weather />;
       default: {
         const def = WIDGET_POOL.find(w => w.type === type);
         return <PlaceholderWidget title={def?.label ?? type} />;
@@ -250,7 +319,7 @@ export function OfficePage() {
           <GridLayout
             className="layout"
             layout={layout}
-            width={(typeof window !== 'undefined' ? window.innerWidth - 200 : 1000)}
+            width={containerWidth}
             gridConfig={{ cols: 12, rowHeight: 100, margin: [12, 12], containerPadding: null, maxRows: Infinity }}
             dragConfig={{ enabled: true, handle: '.drag-handle', bounded: false }}
             resizeConfig={{ enabled: true }}
@@ -312,24 +381,25 @@ export function OfficePage() {
 
             {expandedWidget === 'active-projects' && (
               <div className="space-y-3">
-                {projects.map(p => (
-                  <div key={p.id} className="flex items-center gap-3 border dark:border-gray-700 rounded-lg p-3">
-                    <span className={`w-2.5 h-2.5 rounded-full ${p.status === 'active' ? 'bg-green-500' : p.status === 'draft' ? 'bg-amber-500' : 'bg-gray-400'}`} />
-                    <div>
-                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{p.name}</div>
-                      <div className="text-xs text-gray-500">{p.description}</div>
-                    </div>
-                    <span className="ml-auto text-xs text-gray-400 capitalize">{p.status}</span>
-                  </div>
-                ))}
+                <p className="text-xs text-gray-500">Project list managed from sidebar.</p>
+                <p className="text-xs text-gray-400 italic mt-2">Full project management coming soon.</p>
               </div>
             )}
 
             {expandedWidget === 'decision-list' && (
-              <DecisionList />
+              <DecisionList onSelectDecision={id => { setReviewDecisionId(id); setExpandedWidget(null); }} />
             )}
           </div>
         </div>
+      )}
+
+      {/* Decision Review Panel */}
+      {reviewDecisionId && (
+        <DecisionReviewPanel
+          decisionId={reviewDecisionId}
+          onClose={() => setReviewDecisionId(null)}
+          onResolved={refreshStats}
+        />
       )}
     </div>
   );

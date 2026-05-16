@@ -59,9 +59,37 @@ skillsRouter.delete('/:id', (c) => {
 });
 
 skillsRouter.post('/:id/test', async (c) => {
+  const { gateway, db, metrics, logger } = getServerContext();
+  const id = c.req.param('id');
   const body = await c.req.json();
-  return c.json({
-    skillId: c.req.param('id'),
-    output: `Test completed for: ${(body.input as string)?.slice(0, 100) ?? '(empty)'}`,
-  });
+  const input = (body.input as string) ?? '';
+
+  const skill = db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as any;
+  if (!skill) return c.json({ error: 'Skill not found' }, 404);
+
+  if (!gateway) {
+    return c.json({ skillId: id, output: 'No LLM available. Configure API keys to test skills.', mode: 'fallback' });
+  }
+
+  try {
+    const prompt = skill.prompt_template
+      ? `${skill.prompt_template}\n\nInput: ${input}`
+      : `Execute the "${skill.name}" skill. Input: ${input}`;
+
+    const response = await gateway.generateText({
+      model: 'claude-haiku-4-5',
+      messages: [{ role: 'user', content: prompt }],
+      maxTokens: 300,
+    });
+    metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'skill_test' });
+    logger.info('Skill test completed', { id, name: skill.name });
+    return c.json({
+      skillId: id,
+      output: response.content,
+      model: response.model,
+      tokens: response.usage,
+    });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 500);
+  }
 });

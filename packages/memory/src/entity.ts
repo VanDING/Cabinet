@@ -40,4 +40,16 @@ export class EntityMemory {
   listEmployees(): EmployeeConfig[] {
     return [...this.employees.values()];
   }
+
+  getAllPreferences(): Record<string, EntityPreferences> {
+    const result: Record<string, EntityPreferences> = {};
+    for (const [k, v] of this.preferences) result[k] = v;
+    return result;
+  }
+
+  getAllEmployees(): Record<string, EmployeeConfig> {
+    const result: Record<string, EmployeeConfig> = {};
+    for (const [k, v] of this.employees) result[k] = v;
+    return result;
+  }
 }

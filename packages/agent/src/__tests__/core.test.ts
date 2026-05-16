@@ -48,28 +48,44 @@ describe('SafetyChecker', () => {
     safety = new SafetyChecker();
   });
 
-  it('allows known safe tools at cache tier', () => {
-    const result = safety.check('read_file', {});
+  it('allows read-only tools at cache tier', () => {
+    const result = safety.check('query_decisions', {});
     expect(result.allowed).toBe(true);
     expect(result.tier).toBe('cache');
   });
 
-  it('blocks dangerous tools at ai_classifier tier', () => {
-    const result = safety.check('delete_file', {});
+  it('blocks dangerous tools at delegation_block tier (T1 default)', () => {
+    const result = safety.check('delete_workflow', {});
     expect(result.allowed).toBe(false);
-    expect(result.tier).toBe('ai_classifier');
-    expect(result.reason).toContain('teach-back');
+    expect(result.tier).toBe('delegation_block');
+    expect(result.blockedByTier).toBe('T1');
   });
 
-  it('allows unknown tools at auto tier', () => {
+  it('allows uncategorized tools at auto tier', () => {
     const result = safety.check('custom_tool', {});
     expect(result.allowed).toBe(true);
     expect(result.tier).toBe('auto');
   });
 
-  it('supports custom whitelist', () => {
-    const custom = new SafetyChecker(['my_safe_tool']);
-    expect(custom.check('my_safe_tool', {}).allowed).toBe(true);
+  it('allows destructive tools at T3 (Full Autonomy)', () => {
+    const t3 = new SafetyChecker('T3');
+    expect(t3.check('approve_decision', {}).allowed).toBe(true);
+  });
+
+  it('blocks cost tools at T1 but allows at T2', () => {
+    const t1 = new SafetyChecker('T1');
+    expect(t1.check('start_meeting', {}).allowed).toBe(false);
+
+    const t2 = new SafetyChecker('T2');
+    expect(t2.check('start_meeting', {}).allowed).toBe(true);
+  });
+
+  it('blocks all writes at T0', () => {
+    const t0 = new SafetyChecker('T0');
+    expect(t0.check('write_memory', {}).allowed).toBe(false);
+    expect(t0.check('create_decision', {}).allowed).toBe(false);
+    // Read-only is always allowed
+    expect(t0.check('get_status', {}).allowed).toBe(true);
   });
 });
 

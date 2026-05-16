@@ -1,3 +1,21 @@
+// ── Delegation Tiers (permission levels) ──
+
+export const DelegationTier = {
+  /** T0: Every write operation and decision requires Captain confirmation. */
+  CaptainReview: 'T0',
+  /** T1: Low-risk auto, high-risk confirm. Default for new setups. */
+  StrategicGuard: 'T1',
+  /** T2: Most operations auto, only L3 decisions and destructive ops confirm. */
+  TrustedMode: 'T2',
+  /** T3: Everything auto. Budget cap is the only gate. */
+  FullAutonomy: 'T3',
+} as const;
+
+export type DelegationTier = (typeof DelegationTier)[keyof typeof DelegationTier];
+
+/** Default delegation tier for new setups */
+export const DEFAULT_DELEGATION_TIER: DelegationTier = DelegationTier.StrategicGuard;
+
 /** Maximum debate rounds per meeting */
 export const MAX_DEBATE_ROUNDS = 3;
 

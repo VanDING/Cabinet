@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import DatabaseConstructor from 'better-sqlite3';
 
 export interface LongTermEntry {
   id: string;
@@ -19,16 +18,9 @@ export interface SimilarityResult extends LongTermEntry {
  */
 export class LongTermMemory {
   private db: Database.Database;
-  private ownDb: boolean;
 
-  constructor(db?: Database.Database) {
-    if (db) {
-      this.db = db;
-      this.ownDb = false;
-    } else {
-      this.db = new DatabaseConstructor(':memory:');
-      this.ownDb = true;
-    }
+  constructor(db: Database.Database) {
+    this.db = db;
     this.ensureTable();
   }
 
@@ -116,11 +108,9 @@ export class LongTermMemory {
     return row.count;
   }
 
-  /** Close the database connection if we own it. */
+  /** Database is managed externally — close is a no-op. */
   close(): void {
-    if (this.ownDb) {
-      this.db.close();
-    }
+    // DB lifecycle is managed by @cabinet/storage
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {

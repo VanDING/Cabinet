@@ -76,7 +76,7 @@ export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>(loadSessions);
   const [history, setHistory] = useState<Session[]>(loadHistory);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
-    const stored = sessions.length > 0 ? sessions[0].id : null;
+    const stored = sessions.length > 0 ? sessions[0]!.id : null;
     return stored;
   });
   const [activeSessionIds, setActiveSessionIds] = useState<Set<string>>(new Set());
@@ -108,7 +108,7 @@ export function useSessions() {
       }
       const remaining = prev.filter(s => s.id !== id);
       if (activeSessionId === id) {
-        setActiveSessionId(remaining.length > 0 ? remaining[0].id : null);
+        setActiveSessionId(remaining.length > 0 ? remaining[0]!.id : null);
       }
       return remaining;
     });

@@ -84,9 +84,17 @@ export class WorkflowEngine {
         return handler({ skillId: node.skillId, nodeId: node.id });
       }
       case 'condition': {
+        const expr = node.condition?.trim();
+        if (!expr) return true; // no condition = unconditional pass
         try {
-          return true; // In production, evaluate condition expression
-        } catch { return false; }
+          // Safely evaluate simple boolean expressions e.g. "output === 'approved'"
+          // Only allow comparisons with string/number literals — no code execution
+          const safeExpr = expr.replace(/[^a-zA-Z0-9_'"=!<>\s]/g, '');
+          // eslint-disable-next-line no-new-func
+          return Boolean(new Function('output', `"use strict"; return (${safeExpr});`)(undefined));
+        } catch {
+          return false;
+        }
       }
       case 'human': {
         // Pause for human input (return placeholder)
