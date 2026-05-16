@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'settings';
+export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'meetings' | 'settings';
 
 export interface NavigationProps {
   activePage: NavPage;
@@ -22,6 +22,11 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
     id: 'office',
     label: 'Office',
     icon: 'M2 3h10a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z',
+  },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    icon: 'M1 1h12v12H1V1zm2 2v8h8V3H3zm2 2h4v1H5V5zm0 2h4v1H5V7z',
   },
   {
     id: 'factory',
@@ -59,6 +64,11 @@ function useProjects() {
     setProjects(prev => [...prev, { id, name: name.trim(), sessions: [] }]);
   };
 
+  const deleteProject = (id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setExpanded(prev => { const n = new Set(prev); n.delete(id); return n; });
+  };
+
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -67,13 +77,13 @@ function useProjects() {
     });
   };
 
-  return { projects, expanded, addProject, toggleExpand };
+  return { projects, expanded, addProject, deleteProject, toggleExpand };
 }
 
 export function Navigation({
   activePage, onNavigate, isDark, collapsed, onToggleCollapse, onNavigateToSession,
 }: NavigationProps) {
-  const { projects, expanded, addProject, toggleExpand } = useProjects();
+  const { projects, expanded, addProject, deleteProject, toggleExpand } = useProjects();
   const sidebarW = collapsed ? 'w-12' : 'w-40';
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
@@ -128,16 +138,21 @@ export function Navigation({
               </button>
             </div>
             {projects.map(p => (
-              <div key={p.id}>
+              <div key={p.id} className="group flex items-center">
                 <button
                   onClick={() => toggleExpand(p.id)}
-                  className={`w-full text-left text-xs py-1.5 flex items-center gap-1 transition-colors ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                  className={`flex-1 text-left text-xs py-1.5 flex items-center gap-1 transition-colors ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
                 >
                   <span className="transition-transform" style={{ transform: expanded.has(p.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>
                     &#9656;
                   </span>
                   <span className="truncate">{p.name}</span>
                 </button>
+                <button
+                  onClick={e => { e.stopPropagation(); if (confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }}
+                  className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                  aria-label={`Delete ${p.name}`}
+                >&times;</button>
                 {expanded.has(p.id) && (
                   <div className="ml-4 space-y-0.5 mb-1">
                     {p.sessions.length === 0 ? (
@@ -160,8 +175,10 @@ export function Navigation({
           </div>
         )}
 
-        {/* Settings — at absolute bottom of nav list */}
-        <div className={`border-t ${border} ${collapsed ? 'mx-2' : 'mx-4'}`} />
+      </div>
+
+      {/* Bottom bar: Settings + Collapse toggle */}
+      <div className={`border-t ${border}`}>
         <button
           onClick={() => onNavigate('settings')}
           title={collapsed ? 'Settings' : undefined}
@@ -178,24 +195,22 @@ export function Navigation({
             'Settings'
           )}
         </button>
-      </div>
-
-      {/* Collapse toggle */}
-      <div className={`py-2 border-t ${border}`}>
-        <button
-          onClick={onToggleCollapse}
-          className={`w-full flex items-center justify-center py-2 transition-colors ${
-            isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-          }`}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            {collapsed
-              ? <path d="M5 2l6 5-6 5" />
-              : <path d="M8 2l-5 5 5 5" />
-            }
-          </svg>
-        </button>
+        <div className={`py-1 border-t ${border}`}>
+          <button
+            onClick={onToggleCollapse}
+            className={`w-full flex items-center justify-center py-2 transition-colors ${
+              isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              {collapsed
+                ? <path d="M5 2l6 5-6 5" />
+                : <path d="M8 2l-5 5 5 5" />
+              }
+            </svg>
+          </button>
+        </div>
       </div>
     </nav>
   );

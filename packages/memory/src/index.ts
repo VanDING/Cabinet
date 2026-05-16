@@ -18,7 +18,7 @@ export { ProjectMemory } from './project.js';
 export type { ProjectContext } from './project.js';
 
 // ── Consolidation ──
-export { ConsolidationService } from './consolidation.js';
+export { ConsolidationService, type ConsolidationResult, type ConsolidationCallBack } from './consolidation.js';
 
 // ── Project isolation ──
 export { ProjectIsolatedMemory } from './project-isolation.js';

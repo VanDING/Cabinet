@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../Toast';
+import { apiFetch, authHeaders } from '../../utils/pin.js';
 
 interface Event {
   message: string;
@@ -6,18 +8,19 @@ interface Event {
 }
 
 export function EventTimeline() {
+  const { addToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
-    fetch('/api/dashboard/summary', { headers: { 'x-cabinet-pin': '1234' } })
+    apiFetch('/api/dashboard/summary', { headers: authHeaders() })
       .then(res => res.json())
       .then(data => {
         if (data.recentEvents) {
           setEvents(data.recentEvents.map((e: any) => ({ ...e, time: new Date(e.time) })));
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => { addToast('error', 'Failed to load events'); });
+  }, [addToast]);
 
   return (
     <div className="h-full bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 overflow-y-auto">

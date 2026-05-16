@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import { FileSearchPanel } from './FileSearchPanel';
 import { SessionHistoryPanel } from './SessionHistoryPanel';
+import { apiFetch, authHeaders } from '../utils/pin.js';
 
 interface Props {
   sessions: Session[];
@@ -15,7 +16,7 @@ interface Props {
   onRemoveFile: (sessionId: string, fileId: string) => void;
   onReopenSession: (session: Session) => void;
   onDeleteHistorySession: (id: string) => void;
-  onSend: (sessionId: string, message: string, files: AttachedFile[]) => void;
+  onSend: (sessionId: string, message: string, files: AttachedFile[], dispatchMode?: string) => void;
   onEnterChat: () => void;
   isProcessing: boolean;
   isDark?: boolean;
@@ -25,6 +26,11 @@ const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-7'],
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
   google: ['gemini-2.0-flash', 'gemini-2.0-pro'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v3', 'deepseek-r1'],
+  qwen: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
+  moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  zhipu: ['glm-4', 'glm-4-flash'],
+  baichuan: ['baichuan4', 'baichuan3-turbo'],
   custom: ['custom-model'],
 };
 
@@ -32,7 +38,7 @@ function useSkills(): string[] {
   const [skills, setSkills] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch('/api/skills', { headers: { 'x-cabinet-pin': '1234' } })
+    apiFetch('/api/skills', { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         if (d.skills?.length > 0) {
@@ -54,7 +60,7 @@ function useAvailableModels(): { provider: string; models: string[] }[] {
   const [available, setAvailable] = useState<{ provider: string; models: string[] }[]>([]);
 
   useEffect(() => {
-    fetch('/api/settings/api-keys', { headers: { 'x-cabinet-pin': '1234' } })
+    apiFetch('/api/settings/api-keys', { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         if (d.keys?.length > 0) {
@@ -62,7 +68,7 @@ function useAvailableModels(): { provider: string; models: string[] }[] {
           setAvailable(
             providers.map(p => ({
               provider: p,
-              models: PROVIDER_MODELS[p] ?? PROVIDER_MODELS.custom,
+              models: PROVIDER_MODELS[p] ?? PROVIDER_MODELS.custom ?? [],
             }))
           );
         } else {
@@ -80,6 +86,77 @@ function useAvailableModels(): { provider: string; models: string[] }[] {
   }, []);
 
   return available;
+}
+
+function ContextButton({ sessionId, isDark, btnBaseClass, hoverClass, dropdownBgClass }: {
+  sessionId: string; isDark?: boolean; btnBaseClass: string; hoverClass: string; dropdownBgClass: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<{ messageCount?: number; estimatedTokens?: number; maxContextTokens?: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const fetchContext = () => {
+    setOpen(!open);
+    if (!open) {
+      apiFetch(`/api/secretary/context?sessionId=${sessionId}`, { headers: authHeaders() })
+        .then(r => r.json())
+        .then(setData)
+        .catch(() => setData(null));
+    }
+  };
+
+  const tokens = data?.estimatedTokens ?? 0;
+  const max = data?.maxContextTokens ?? 200000;
+  const pct = max > 0 ? Math.round((tokens / max) * 100) : 0;
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        onClick={fetchContext}
+        className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+        title="View context usage"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+          <rect x="1.5" y="2" width="9" height="8" rx="1" />
+          <path d="M4 4.5h4M4 6.5h3M4 8.5h2" />
+        </svg>
+        Context: {data ? `${pct}%` : '--'}
+      </button>
+      {open && (
+        <div className={`absolute bottom-full right-0 mb-1 w-56 border rounded-lg shadow-xl z-50 p-3 ${dropdownBgClass} text-xs`}>
+          <div className="font-medium mb-2 text-gray-700 dark:text-gray-200">Context Usage</div>
+          {data ? (
+            <div className="space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Messages</span>
+                <span className="text-gray-700 dark:text-gray-300 font-mono">{data.messageCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Est. Tokens</span>
+                <span className="text-gray-700 dark:text-gray-300 font-mono">{tokens.toLocaleString()} / {max.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 mt-1">
+                <div className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+              </div>
+              <p className="text-gray-400 italic text-xs mt-1">Auto-compact coming soon</p>
+            </div>
+          ) : (
+            <p className="text-gray-400 italic">Loading...</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ChatPanel({
@@ -108,6 +185,11 @@ export function ChatPanel({
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('cabinet-selected-model') ?? 'claude-sonnet-4-6';
   });
+  const [dispatchMode, setDispatchMode] = useState<'single' | 'pipeline' | 'parallel'>(() => {
+    return (localStorage.getItem('cabinet-dispatch-mode') as 'single' | 'pipeline' | 'parallel') ?? 'single';
+  });
+  const [dispatchMenuOpen, setDispatchMenuOpen] = useState(false);
+  const dispatchBtnRef = useRef<HTMLButtonElement>(null);
   const [isTauri, setIsTauri] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -138,6 +220,20 @@ export function ChatPanel({
   useEffect(() => {
     localStorage.setItem('cabinet-selected-model', selectedModel);
   }, [selectedModel]);
+
+  useEffect(() => {
+    localStorage.setItem('cabinet-dispatch-mode', dispatchMode);
+  }, [dispatchMode]);
+
+  // Close dispatch menu on outside click
+  useEffect(() => {
+    if (!dispatchMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dispatchBtnRef.current && !dispatchBtnRef.current.contains(e.target as Node)) setDispatchMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [dispatchMenuOpen]);
 
   // Close menus on outside click
   useEffect(() => {
@@ -180,7 +276,7 @@ export function ChatPanel({
     const trimmed = input.trim();
     if (!trimmed || isProcessing) return;
     const sessionId = active ? active.id : onCreateSession();
-    onSend(sessionId, trimmed, attachedFiles);
+    onSend(sessionId, trimmed, attachedFiles, dispatchMode);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }, [input, isProcessing, active, attachedFiles, onSend, onCreateSession]);
@@ -263,7 +359,7 @@ export function ChatPanel({
   return (
     <div className={`border-t ${borderClass} ${bgClass} flex-shrink-0`}>
       {/* Tab bar */}
-      <div className={`flex items-center h-8 px-2 gap-1 border-b ${borderClass} ${tabBgClass} overflow-x-auto`}>
+      <div className={`flex items-center h-8 px-2 gap-1 border-b ${borderClass} ${tabBgClass}`}>
         <div className="flex items-center gap-1 flex-1 min-w-0">
           {sessions.map(session => {
             const isActive = session.id === active?.id;
@@ -428,6 +524,44 @@ export function ChatPanel({
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Dispatch mode selector */}
+        <div className="relative">
+          <button
+            ref={dispatchBtnRef}
+            onClick={() => setDispatchMenuOpen(!dispatchMenuOpen)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+            title="Agent dispatch mode"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <path d="M3 3h2v2H3zM7 3h2v2H7zM3 7h2v2H3zM7 7h2v2H7z" />
+            </svg>
+            {dispatchMode === 'single' ? 'Single' : dispatchMode === 'pipeline' ? 'Pipeline' : 'Parallel'}
+          </button>
+          {dispatchMenuOpen && (
+            <div className={`absolute bottom-full right-0 mb-1 w-44 border rounded-lg shadow-xl z-50 py-1 ${dropdownBgClass}`}>
+              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>Dispatch Mode</div>
+              {([
+                { id: 'single', label: 'Single Agent', desc: 'One agent handles everything' },
+                { id: 'pipeline', label: 'Pipeline', desc: 'Planner → Generator → Reviewer' },
+                { id: 'parallel', label: 'Parallel', desc: 'Multiple agents concurrently' },
+              ] as const).map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => { setDispatchMode(mode.id); setDispatchMenuOpen(false); }}
+                  className={`w-full text-left px-4 py-1.5 transition-colors ${
+                    dispatchMode === mode.id
+                      ? (isDark ? 'text-blue-400 bg-blue-900/30' : 'text-blue-600 bg-blue-50')
+                      : dropdownItemClass
+                  }`}
+                >
+                  <div className="text-xs font-medium">{mode.label}</div>
+                  <div className="text-[10px] text-gray-400">{mode.desc}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Model switcher */}
         <div className="relative">
           <button
@@ -467,20 +601,14 @@ export function ChatPanel({
           )}
         </div>
 
-        {/* Context status placeholder */}
-        <button
-          disabled
-          className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs cursor-not-allowed ${
-            isDark ? 'text-gray-600' : 'text-gray-400'
-          }`}
-          title="Context stats coming soon"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <rect x="1.5" y="2" width="9" height="8" rx="1" />
-            <path d="M4 4.5h4M4 6.5h3M4 8.5h2" />
-          </svg>
-          Context: --
-        </button>
+        {/* Context status */}
+        <ContextButton
+          sessionId={active?.id ?? 'default'}
+          isDark={isDark}
+          btnBaseClass={btnBaseClass}
+          hoverClass={hoverClass}
+          dropdownBgClass={dropdownBgClass}
+        />
       </div>
 
       {/* File search modal */}

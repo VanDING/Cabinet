@@ -1,6 +1,7 @@
 import type { AgentLoop } from '@cabinet/agent';
+import type { AgentRoleType } from '@cabinet/agent';
 import type { LLMGateway } from '@cabinet/gateway';
-import { IntentParser, type ParsedIntent } from './intent-parser.js';
+import { IntentParser, type ParsedIntent, type AgentRouteResult } from './intent-parser.js';
 import { SessionManager } from './session-manager.js';
 
 export class SecretaryAgent {
@@ -10,36 +11,53 @@ export class SecretaryAgent {
     private readonly agentLoop: AgentLoop,
     intentParser: IntentParser,
     private readonly sessionManager: SessionManager,
-    private readonly gateway?: LLMGateway
+    private readonly gateway?: LLMGateway,
+    /** Callback to dispatch a message to a specialist agent. */
+    private readonly dispatchToRole?: (
+      roleType: AgentRoleType,
+      message: string,
+      sessionId: string,
+    ) => Promise<string>,
   ) {
-    // If gateway was provided but not passed through IntentParser, wrap it
     this.intentParser = intentParser;
   }
 
   async handleMessage(sessionId: string, message: string): Promise<{
     intent: ParsedIntent;
     response: string;
+    routeResult?: AgentRouteResult;
   }> {
     this.sessionManager.addMessage(sessionId, 'user', message);
 
-    // Use LLM-powered parsing when gateway is available
-    let intent: ParsedIntent;
-    if (this.gateway) {
-      intent = await this.intentParser.parseWithLLM(message);
-    } else {
-      intent = this.intentParser.parse(message);
-    }
+    // Route to determine which agent should handle this
+    const routeResult = await this.intentParser.routeToAgent(message);
 
-    // Run agent loop with the message (or fallback if no loop)
     let response: string;
-    if (this.agentLoop) {
-      const result = await this.agentLoop.run(message);
-      response = result.content;
+    if (routeResult.targetAgent === 'secretary' || !this.dispatchToRole) {
+      // Secretary handles directly
+      if (this.agentLoop) {
+        const result = await this.agentLoop.run(message);
+        response = result.content;
+      } else {
+        response = [
+          `[No LLM available]`,
+          `Intent: ${routeResult.intent.kind}`,
+          `Would route to: ${routeResult.targetAgent}`,
+          routeResult.confidence < 0.5
+            ? `\nNote: low confidence (${(routeResult.confidence * 100).toFixed(0)}%). ${routeResult.suggestion ?? ''}`
+            : '',
+        ].filter(Boolean).join('\n');
+      }
     } else {
-      response = `Intent parsed as: ${intent.kind}. Provide API keys for full LLM mode.`;
+      // Dispatch to specialist cabinet member
+      response = await this.dispatchToRole(
+        routeResult.targetAgent,
+        message,
+        sessionId,
+      );
     }
 
     this.sessionManager.addMessage(sessionId, 'assistant', response);
-    return { intent, response };
+    return { intent: routeResult.intent, response, routeResult };
   }
 }

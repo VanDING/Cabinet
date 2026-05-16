@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import Database from 'better-sqlite3';
 import { ShortTermMemory } from '../short-term.js';
 import { EntityMemory } from '../entity.js';
 import { ProjectMemory } from '../project.js';
@@ -86,8 +87,9 @@ describe('ProjectMemory', () => {
 
 describe('LongTermMemory', () => {
   let mem: LongTermMemory;
-  beforeEach(() => { mem = new LongTermMemory(); });
-  afterEach(() => { mem.close(); });
+  let db: Database.Database;
+  beforeEach(() => { db = new Database(':memory:'); mem = new LongTermMemory(db); });
+  afterEach(() => { mem.close(); db.close(); });
 
   it('stores and searches entries by text', async () => {
     await mem.store({ content: 'The sky is blue', metadata: {}, timestamp: new Date() });
@@ -145,13 +147,13 @@ describe('LongTermMemory', () => {
 describe('ConsolidationService', () => {
   it('migrates long content to long-term memory', async () => {
     const short = new ShortTermMemory();
-    const long = new LongTermMemory();
+    const long = new LongTermMemory(new Database(':memory:'));
     const svc = new ConsolidationService(short, long);
 
     short.set('sess-1', 'insight', 'This is a very important insight that should be stored in long-term memory for future reference.');
     short.set('sess-1', 'brief', 'ok'); // too short, won't migrate
 
-    const count = await svc.consolidate('sess-1');
+    const count = await svc.consolidateBasic('sess-1');
     expect(count).toBe(1);
     expect(long.size()).toBe(1);
 

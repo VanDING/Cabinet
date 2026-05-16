@@ -13,18 +13,20 @@ const ctx = getServerContext();
 ctx.logger.info('Server context initialized');
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Cabinet server running at http://localhost:${info.port}`);
-  console.log(`WebSocket at ws://localhost:${info.port}/ws/events`);
-  console.log('Endpoints:');
-  console.log('  GET  /health');
-  console.log('  POST /api/auth/verify');
-  console.log('  GET  /api/dashboard/summary');
-  console.log('  POST /api/secretary/chat');
-  console.log('  GET  /api/decisions?status=pending');
-  console.log('  GET  /api/factory/workflows');
-  console.log('  POST /api/meetings');
-  console.log('  GET  /api/secretary/context');
-  console.log(`Database: ${ctx.db.name}`);
+  ctx.logger.info('Cabinet server started', {
+    port: info.port,
+    ws: `ws://localhost:${info.port}/ws/events`,
+    db: ctx.db.name,
+  });
 }) as Server;
 
-createWSServer(server);
+createWSServer(server, ctx.db);
+
+// Graceful shutdown on process exit
+const gracefulShutdown = (signal: string) => {
+  ctx.logger.info(`Received ${signal}, shutting down...`);
+  ctx.shutdown();
+  process.exit(0);
+};
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

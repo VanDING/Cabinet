@@ -1,37 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function useTauriWindow() {
-  const [appWindow, setAppWindow] = useState<any>(null);
+  const [available, setAvailable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    import('@tauri-apps/api/window')
-      .then(m => {
-        if (!cancelled) setAppWindow(m.getCurrentWindow());
-      })
-      .catch(() => {});
+    try {
+      const hasTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
+      if (!hasTauri) return;
+
+      import('@tauri-apps/api/core')
+        .then(() => {
+          if (!cancelled) setAvailable(true);
+        })
+        .catch(() => {});
+    } catch {}
     return () => { cancelled = true; };
   }, []);
 
-  return appWindow;
+  return { available };
+}
+
+async function invoke(name: string): Promise<any> {
+  const { invoke: tauriInvoke } = await import('@tauri-apps/api/core');
+  return tauriInvoke(name);
 }
 
 export function TitleBar({ isDark, onToggleTheme }: { isDark?: boolean; onToggleTheme?: () => void }) {
   const [isMaximized, setIsMaximized] = useState(false);
-  const appWindow = useTauriWindow();
+  const { available } = useTauriWindow();
 
   useEffect(() => {
-    if (!appWindow) return;
-    appWindow.isMaximized().then(setIsMaximized);
-    const unlisten = appWindow.onResized(() => {
-      appWindow.isMaximized().then(setIsMaximized);
-    });
-    return () => { unlisten.then((fn: any) => fn?.()); };
-  }, [appWindow]);
+    if (!available) return;
+    let cancelled = false;
 
-  const handleMinimize = () => appWindow?.minimize();
-  const handleMaximize = () => appWindow?.toggleMaximize();
-  const handleClose = () => appWindow?.close();
+    // Initial check
+    invoke('is_maximized').then(v => { if (!cancelled) setIsMaximized(Boolean(v)); }).catch(() => {});
+
+    // Listen for resize events to update maximize state
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      if (cancelled) return;
+      const unlisten = listen('tauri://resize', () => {
+        invoke('is_maximized').then(v => setIsMaximized(Boolean(v))).catch(() => {});
+      });
+      return () => { unlisten.then((fn: () => void) => fn()); };
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [available]);
+
+  const handleMinimize = useCallback(() => invoke('minimize').catch(() => {}), []);
+  const handleMaximize = useCallback(() => invoke('maximize').catch(() => {}), []);
+  const handleClose = useCallback(() => invoke('close').catch(() => {}), []);
 
   const btnHover = isDark
     ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
@@ -67,19 +87,23 @@ export function TitleBar({ isDark, onToggleTheme }: { isDark?: boolean; onToggle
           </button>
         )}
 
-        <button onClick={handleMinimize} className={`w-10 h-full flex items-center justify-center transition-colors ${btnHover}`} aria-label="Minimize">
-          <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor" /></svg>
-        </button>
-        <button onClick={handleMaximize} className={`w-10 h-full flex items-center justify-center transition-colors ${btnHover}`} aria-label="Maximize">
-          {isMaximized ? (
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="2.5" y="0.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1" /><rect x="0.5" y="2.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1" /></svg>
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
-          )}
-        </button>
-        <button onClick={handleClose} className={`w-10 h-full flex items-center justify-center transition-colors ${isDark ? 'text-gray-400 hover:bg-red-600 hover:text-white' : 'text-gray-500 hover:bg-red-600 hover:text-white'}`} aria-label="Close">
-          <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" /></svg>
-        </button>
+        {available && (
+          <>
+            <button onClick={handleMinimize} className={`w-10 h-full flex items-center justify-center transition-colors ${btnHover}`} aria-label="Minimize">
+              <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor" /></svg>
+            </button>
+            <button onClick={handleMaximize} className={`w-10 h-full flex items-center justify-center transition-colors ${btnHover}`} aria-label="Maximize">
+              {isMaximized ? (
+                <svg width="12" height="12" viewBox="0 0 12 12"><rect x="2.5" y="0.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1" /><rect x="0.5" y="2.5" width="8" height="8" rx="1" fill="none" stroke="currentColor" strokeWidth="1" /></svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+              )}
+            </button>
+            <button onClick={handleClose} className={`w-10 h-full flex items-center justify-center transition-colors ${isDark ? 'text-gray-400 hover:bg-red-600 hover:text-white' : 'text-gray-500 hover:bg-red-600 hover:text-white'}`} aria-label="Close">
+              <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" /></svg>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

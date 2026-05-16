@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
+import { getStorageItem, setStorageItem } from '../utils/storage.js';
 
 export function useTheme() {
   const [isDark, setIsDark] = useState(() => {
-    const stored = localStorage.getItem('cabinet-theme');
+    const stored = getStorageItem('cabinet-theme');
     if (stored) return stored === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('cabinet-theme', isDark ? 'dark' : 'light');
+    setStorageItem('cabinet-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   return { isDark, toggle: () => setIsDark(d => !d) };

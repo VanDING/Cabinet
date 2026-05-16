@@ -2,6 +2,11 @@ export { ToolExecutor, type ToolResult, type ToolDefinition } from './tool-execu
 export { SafetyChecker, type SafetyCheck, type SafetyTier } from './safety.js';
 export { classifyError, withRetry, type ErrorCategory, type RetryConfig } from './retry.js';
 export { CheckpointManager, type CheckpointState } from './checkpoint.js';
-export { ContextBuilder, type MemoryProvider, type ContextBuilderOptions } from './context-builder.js';
+export { ContextBuilder, type MemoryProvider, type ContextBuilderOptions, type ContextBuildResult } from './context-builder.js';
+export { RulesLoader, type RuleFrontmatter, type LoadedRule, type RulesContext } from './rules-loader.js';
+export { ContextMonitor, type ContextWindowConfig, type ContextSnapshot, type ContextBreakdown, type ContextZone, DEFAULT_WINDOW_CONFIG, MODEL_CONTEXT_SIZES } from './context-monitor.js';
+export { ContextHandoff, type HandoffState, type HandoffResult } from './context-handoff.js';
+export { AgentRoleRegistry, SECRETARY_ROLE, DECISION_ANALYST_ROLE, MEETING_CHAIR_ROLE, WORKFLOW_DESIGNER_ROLE, CURATOR_ROLE, AGENT_CREATOR_ROLE, type AgentRole, type AgentRoleType } from './agent-roles.js';
+export { AgentDispatcher, type DispatchMode, type DispatchOptions, type DispatchResult, type PipelineStep } from './dispatcher.js';
 export { AgentLoop, type AgentLoopOptions, type AgentResult } from './agent-loop.js';
 export { createCabinetTools, registerCabinetTools, type ToolDependencies } from './tools/index.js';
