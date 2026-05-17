@@ -7,6 +7,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
+      { text: 'Concepts', link: '/concepts/' },
       { text: 'API', link: '/api/' },
     ],
     sidebar: {
@@ -15,16 +16,24 @@ export default defineConfig({
         { text: 'Architecture', link: '/guide/architecture' },
         { text: 'Development', link: '/guide/development' },
         { text: 'Deployment', link: '/guide/deployment' },
+        { text: 'Contributing', link: '/guide/contributing' },
+      ],
+      '/concepts/': [
+        { text: 'Overview', link: '/concepts/' },
+        { text: 'Agent System', link: '/concepts/agents' },
+        { text: 'Decision L0-L3', link: '/concepts/decisions' },
+        { text: 'Memory Layers', link: '/concepts/memory-layers' },
       ],
       '/api/': [
         { text: 'Overview', link: '/api/' },
         { text: 'Secretary API', link: '/api/secretary' },
         { text: 'Decisions API', link: '/api/decisions' },
         { text: 'Workflows API', link: '/api/workflows' },
+        { text: 'Meetings API', link: '/api/meetings' },
+        { text: 'Memory API', link: '/api/memory' },
+        { text: 'Gateway API', link: '/api/gateway' },
       ],
     },
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/cabinet/cabinet' },
-    ],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/VanDING/Cabinet' }],
   },
 });

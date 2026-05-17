@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    ["@cabinet/types", "@cabinet/events", "@cabinet/storage"]
+  ],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@cabinet/desktop",
+    "@cabinet/server",
+    "@cabinet/ui",
+    "@cabinet/cli",
+    "@cabinet/e2e-browser",
+    "cabinet-e2e-tests",
+    "@cabinet/benchmarks"
+  ]
+}

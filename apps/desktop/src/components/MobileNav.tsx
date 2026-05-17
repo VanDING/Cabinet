@@ -1,13 +1,8 @@
-import React from 'react';
 import type { NavPage } from '@cabinet/ui';
+import { useTranslation } from 'react-i18next';
 
-const items: { id: NavPage; label: string }[] = [
-  { id: 'office', label: 'Office' },
-  { id: 'factory', label: 'Factory' },
-  { id: 'employees', label: 'Staff' },
-  { id: 'memory', label: 'Memory' },
-  { id: 'meetings', label: 'Meet' },
-];
+const navKeys = ['office', 'factory', 'staff', 'memory'] as const;
+const navIds: NavPage[] = ['office', 'factory', 'employees', 'memory'];
 
 interface Props {
   activePage: NavPage;
@@ -15,13 +10,27 @@ interface Props {
 }
 
 export function MobileNav({ activePage, onNavigate }: Props) {
+  const { t } = useTranslation();
+
+  const items = navIds.map((id, i) => ({
+    id,
+    label: t(`nav.${navKeys[i]}`),
+  }));
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900 text-white border-t border-gray-700 z-50">
+    <nav
+      aria-label={t('nav.mobileNavLabel')}
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white md:hidden"
+    >
       <div className="flex justify-around py-1">
-        {items.map(item => (
-          <button key={item.id} onClick={() => onNavigate(item.id)}
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            aria-label={item.label}
+            aria-current={activePage === item.id ? 'page' : undefined}
             className={`flex flex-col items-center px-2 py-1.5 text-xs transition-colors ${
-              activePage === item.id ? 'text-blue-400' : 'text-gray-400'
+              activePage === item.id ? 'text-blue-400' : 'text-gray-400 dark:text-gray-500'
             }`}
           >
             <span>{item.label}</span>

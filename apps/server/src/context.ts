@@ -143,6 +143,12 @@ export function getServerContext(): ServerContext {
     }
   }
 
+  // Seed default projects so foreign-key references resolve
+  db.exec(`
+    INSERT OR IGNORE INTO projects (id, name, description) VALUES ('proj-1', 'Default Project', 'Auto-seeded default project');
+    INSERT OR IGNORE INTO projects (id, name, description) VALUES ('default', 'Default', 'Auto-seeded fallback project');
+  `);
+
   // Repositories
   const decisionRepo = new DecisionRepository(db);
   const projectRepo = new ProjectRepository(db);
