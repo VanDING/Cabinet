@@ -49,10 +49,30 @@ export function useWebSocket(onEvent?: WSEventHandler) {
 
   useEffect(() => {
     connect();
+
+    // Coordinate with Tauri server-status events
+    let unlisten: (() => void) | undefined;
+    if (typeof window !== 'undefined' && '__TAURI__' in window) {
+      import('@tauri-apps/api/event')
+        .then(({ listen }) =>
+          listen<{ status: string }>('server-status', (event) => {
+            if (event.payload.status === 'ready') {
+              // Server is back — reconnect immediately
+              clearTimeout(reconnectTimer.current);
+              reconnecting.current = false;
+              connect();
+            }
+          }),
+        )
+        .then((fn) => { unlisten = fn; })
+        .catch(() => {});
+    }
+
     return () => {
       reconnecting.current = true;
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
+      unlisten?.();
     };
   }, [connect]);
 
