@@ -1,16 +1,26 @@
 import { join } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+} from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import {
   createConnection,
   runMigration001,
+  runMigration002,
+  runMigration003,
   DecisionRepository,
-  OrganizationRepository,
   ProjectRepository,
   EventLogRepository,
   MetricsCollector,
   BackupManager,
   getLogger,
+  CABINET_DIR,
+  ensureCabinetDir,
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import {
@@ -33,7 +43,8 @@ import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway } from '@cabinet/gateway';
 import { DelegationTier, DEFAULT_DELEGATION_TIER, MessageType } from '@cabinet/types';
-import { AgentRoleRegistry, CURATOR_ROLE } from '@cabinet/agent';
+import { AgentRoleRegistry, CURATOR_ROLE, SkillRegistry, importSkillFromMarkdown } from '@cabinet/agent';
+import { MCPManager } from './mcp/mcp-manager.js';
 import {
   ObservabilityCollector,
   PreferenceLearner,
@@ -50,7 +61,6 @@ export interface ServerContext {
   db: Database;
   // Repos
   decisionRepo: DecisionRepository;
-  orgRepo: OrganizationRepository;
   projectRepo: ProjectRepository;
   eventRepo: EventLogRepository;
   // Decision service
@@ -71,6 +81,9 @@ export interface ServerContext {
   delegationTier: DelegationTier;
   // Agent registry (shared across all requests — custom roles persist here)
   agentRegistry: AgentRoleRegistry;
+  // Skill registry (shared — loaded from DB on startup)
+  skillRegistry: import('@cabinet/agent').SkillRegistry;
+  mcpManager: import('./mcp/mcp-manager.js').MCPManager;
   // Feedback loop
   observability: ObservabilityCollector;
   modelRouter: ModelRouter;
@@ -103,25 +116,24 @@ export function getServerContext(): ServerContext {
 
   const logger = getLogger('server');
 
-  // Database — use user's AppData directory so it works without admin rights
-  const dataDir = process.env.APPDATA
-    ? join(process.env.APPDATA, 'Cabinet')
-    : join(process.cwd(), '.cabinet');
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
-  }
+  // Database — use ~/.cabinet/ (cross-platform user data directory)
+  const dataDir = ensureCabinetDir();
   const dbPath = join(dataDir, 'cabinet.db');
 
   let db: Database;
   try {
     db = createConnection(dbPath);
     runMigration001(db);
+    runMigration002(db);
+    runMigration003(db);
     logger.info('SQLite database initialized', { path: dbPath });
   } catch (e) {
     logger.error('Failed to initialize SQLite', { error: String(e) });
     try {
       db = createConnection(':memory:');
       runMigration001(db);
+      runMigration002(db);
+      runMigration003(db);
       logger.warn('Falling back to in-memory database');
     } catch (e2) {
       logger.error('SQLite completely unavailable — running without persistence', {
@@ -131,17 +143,8 @@ export function getServerContext(): ServerContext {
     }
   }
 
-  // Seed: ensure default org and project exist (foreign key prerequisite)
-  db.prepare(
-    "INSERT OR IGNORE INTO organizations (id, name, captain_id) VALUES ('org-1', 'Default Organization', 'captain-1')",
-  ).run();
-  db.prepare(
-    "INSERT OR IGNORE INTO projects (id, organization_id, name) VALUES ('proj-1', 'org-1', 'Default Project')",
-  ).run();
-
   // Repositories
   const decisionRepo = new DecisionRepository(db);
-  const orgRepo = new OrganizationRepository(db);
   const projectRepo = new ProjectRepository(db);
   const eventRepo = new EventLogRepository(db);
 
@@ -298,12 +301,12 @@ export function getServerContext(): ServerContext {
   // Metrics
   const metrics = new MetricsCollector();
 
-  // Backup (if file DB)
+  // Backup (to ~/.cabinet/backups)
   let backupManager: BackupManager | null = null;
   try {
     backupManager = new BackupManager({
-      dbPath: 'cabinet.db',
-      backupDir: './backups',
+      dbPath,
+      backupDir: join(dataDir, 'backups'),
       intervalMinutes: 60,
       keepCount: 7,
     });
@@ -514,6 +517,243 @@ export function getServerContext(): ServerContext {
 
   // Shared agent registry (custom roles persist across requests)
   const agentRegistry = new AgentRoleRegistry();
+  // Load custom agents from DB
+  try {
+    const customRows = db.prepare("SELECT * FROM agent_roles WHERE is_builtin = 0").all() as any[];
+    for (const row of customRows) {
+      agentRegistry.register({
+        type: 'custom' as const,
+        name: row.name,
+        description: row.description,
+        systemPrompt: row.system_prompt,
+        model: row.model,
+        temperature: row.temperature,
+        maxResponseTokens: row.max_response_tokens,
+        allowedTools: JSON.parse(row.allowed_tools ?? '[]'),
+        contextBudget: row.context_budget,
+      });
+    }
+    logger.info('Custom agents loaded from DB', { count: customRows.length });
+  } catch (e) {
+    logger.warn('Failed to load custom agents from DB', { error: String(e) });
+  }
+
+  // Shared skill registry — load from DB on startup
+  const skillRegistry = new SkillRegistry();
+  try {
+    const skillRows = db.prepare("SELECT * FROM skills WHERE status = 'active'").all() as any[];
+    for (const row of skillRows) {
+      skillRegistry.register({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        kind: row.kind,
+        promptTemplate: row.prompt_template,
+        inputSchema: JSON.parse(row.input_schema ?? '{}'),
+        outputSchema: JSON.parse(row.output_schema ?? '{}'),
+        version: row.version,
+        status: row.status,
+      });
+    }
+    logger.info('Skill registry loaded', { count: skillRows.length });
+  } catch (e) {
+    logger.warn('Failed to load skills from DB', { error: String(e) });
+  }
+
+  // MCP Manager — connect to configured MCP servers (non-blocking)
+  const mcpManager = new MCPManager(logger);
+  try {
+    // Load MCP configs from DB (legacy) and from ~/.cabinet/mcp/*.json
+    const mcpConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = [];
+    const mcpDir = join(dataDir, 'mcp');
+    try {
+      const mcpFiles = readdirSync(mcpDir).filter((f) => f.endsWith('.json'));
+      for (const f of mcpFiles) {
+        try {
+          const cfg = JSON.parse(readFileSync(join(mcpDir, f), 'utf-8'));
+          mcpConfigs.push({
+            name: cfg.name ?? f.replace('.json', ''),
+            transport: 'stdio',
+            command: cfg.command ?? 'npx',
+            args: cfg.args ?? [],
+            enabled: cfg.enabled ?? true,
+          });
+        } catch { /* skip malformed */ }
+      }
+    } catch { /* mcp dir empty */ }
+    // Also load from DB settings (merge, file-based take priority)
+    try {
+      const row = db.prepare("SELECT value FROM settings WHERE key = 'mcp_servers'").get() as any;
+      const dbConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = JSON.parse(row?.value ?? '[]');
+      for (const dbCfg of dbConfigs) {
+        if (!mcpConfigs.some((fc) => fc.name === dbCfg.name)) {
+          mcpConfigs.push(dbCfg);
+        }
+      }
+    } catch { /* db settings not available */ }
+    if (mcpConfigs.length > 0) {
+      void mcpManager.initialize(mcpConfigs).catch(() => {
+        logger.info('MCP initialization failed — check server configs');
+      });
+    }
+  } catch {
+    logger.info('MCP settings table not available — skipping MCP initialization');
+  }
+
+  // ── Directory Scanning: Skills ──
+  // Scan ~/.cabinet/skills/ and register any skills not already in DB
+  {
+    const skillsDir = join(dataDir, 'skills');
+    try {
+      const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory());
+      for (const entry of skillDirs) {
+        const skillPath = join(skillsDir, entry.name, 'SKILL.md');
+        if (!existsSync(skillPath)) continue;
+        try {
+          const content = readFileSync(skillPath, 'utf-8');
+          const result = importSkillFromMarkdown(content, skillRegistry);
+          if (result) {
+            // Sync to DB if not present
+            const existing = db.prepare('SELECT id FROM skills WHERE name = ?').get(result.name) as any;
+            if (!existing) {
+              const skill = skillRegistry.load(result.name);
+              if (skill) {
+                db.prepare(
+                  `INSERT OR IGNORE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status)
+                   VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active')`,
+                ).run(skill.id, skill.name, skill.description, skill.kind, skill.promptTemplate);
+              }
+            }
+          }
+        } catch { /* skip malformed skill */ }
+      }
+      logger.info('Skills scanned from directory', { dir: skillsDir });
+    } catch { /* skills dir empty */ }
+  }
+
+  // ── Directory Scanning: Agents ──
+  // Scan ~/.cabinet/agents/ and register any agents not already in DB
+  {
+    const agentsDir = join(dataDir, 'agents');
+    try {
+      const agentDirs = readdirSync(agentsDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory());
+      for (const entry of agentDirs) {
+        const agentJsonPath = join(agentsDir, entry.name, 'agent.json');
+        if (!existsSync(agentJsonPath)) continue;
+        try {
+          const agentCard = JSON.parse(readFileSync(agentJsonPath, 'utf-8'));
+          const name = agentCard.name ?? entry.name;
+          const existing = db.prepare('SELECT type FROM agent_roles WHERE name = ? AND is_builtin = 0').get(name) as any;
+          if (!existing) {
+            agentRegistry.register({
+              type: 'custom' as const,
+              name,
+              description: agentCard.description ?? '',
+              systemPrompt: agentCard.systemPrompt ?? agentCard.instructions ?? '',
+              model: agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
+              temperature: agentCard.temperature ?? 0.7,
+              maxResponseTokens: agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
+              allowedTools: agentCard.allowedTools ?? [],
+              contextBudget: agentCard.contextBudget ?? agentCard.contextWindow ?? 100000,
+            });
+            db.prepare(
+              `INSERT OR IGNORE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+            ).run(
+              'custom', name,
+              agentCard.description ?? '',
+              agentCard.systemPrompt ?? agentCard.instructions ?? '',
+              agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
+              agentCard.temperature ?? 0.7,
+              agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
+              JSON.stringify(agentCard.allowedTools ?? []),
+              agentCard.contextBudget ?? agentCard.contextWindow ?? 100000,
+            );
+          }
+        } catch { /* skip malformed agent */ }
+      }
+      logger.info('Agents scanned from directory', { dir: agentsDir });
+    } catch { /* agents dir empty */ }
+  }
+
+  // ── Directory Scanning: Projects ──
+  // Scan ~/.cabinet/projects/ and restore any projects not already in DB
+  {
+    const projectsDir = join(dataDir, 'projects');
+    try {
+      const projFiles = readdirSync(projectsDir).filter((f) => f.endsWith('.json'));
+      for (const f of projFiles) {
+        try {
+          const proj = JSON.parse(readFileSync(join(projectsDir, f), 'utf-8'));
+          const existing = db.prepare('SELECT id FROM projects WHERE id = ?').get(proj.id) as any;
+          if (!existing) {
+            db.prepare(
+              `INSERT INTO projects (id, name, description, root_path, last_activity_at)
+               VALUES (?, ?, ?, ?, ?)`,
+            ).run(proj.id, proj.name, proj.description ?? '', proj.rootPath ?? '', proj.lastActivityAt ?? new Date().toISOString());
+            db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(proj.id, '');
+          }
+        } catch { /* skip malformed project index */ }
+      }
+      logger.info('Projects scanned from directory', { dir: projectsDir });
+    } catch { /* projects dir empty */ }
+  }
+
+  // ── Settings.json loading ──
+  // Load settings from ~/.cabinet/settings.json into DB on startup
+  {
+    const settingsPath = join(dataDir, 'settings.json');
+    try {
+      if (existsSync(settingsPath)) {
+        const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+        if (settings.mcpServers) {
+          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('mcp_servers', ?)").run(
+            JSON.stringify(settings.mcpServers),
+          );
+        }
+        if (settings.delegationTier) {
+          setCurrentTier(settings.delegationTier as DelegationTier);
+        }
+        logger.info('Settings loaded from file', { path: settingsPath });
+      }
+    } catch { /* settings file not present or corrupt */ }
+  }
+
+  // ── CABINET.md template ──
+  // Create default CABINET.md in ~/.cabinet/ if it doesn't exist
+  {
+    const cabinetMdPath = join(dataDir, 'CABINET.md');
+    if (!existsSync(cabinetMdPath)) {
+      const template = [
+        '# Cabinet Configuration',
+        '',
+        'Edit this file to customize your Cabinet AI team.',
+        '',
+        '## Captain',
+        '',
+        '- **Name:** Captain',
+        '- **Role:** Decision maker',
+        '',
+        '## Preferences',
+        '',
+        'Add your preferences here to guide the AI cabinet:',
+        '- Communication style: concise / detailed',
+        '- Risk tolerance: low / medium / high',
+        '- Preferred decision style: consensus / directive / analytical',
+        '',
+        '## Custom Rules',
+        '',
+        'Add custom rules that apply to all AI interactions:',
+        '',
+      ].join('\n');
+      try {
+        writeFileSync(cabinetMdPath, template, 'utf-8');
+        logger.info('CABINET.md template created', { path: cabinetMdPath });
+      } catch { /* readonly filesystem */ }
+    }
+  }
 
   // ── Feedback Loop ──
 
@@ -646,8 +886,7 @@ export function getServerContext(): ServerContext {
   ctx = {
     db,
     decisionRepo,
-    orgRepo,
-    projectRepo,
+     projectRepo,
     eventRepo,
     decisionService,
     shortTerm,
@@ -661,6 +900,8 @@ export function getServerContext(): ServerContext {
     sessionManager,
     delegationTier: currentTier,
     agentRegistry,
+    skillRegistry,
+    mcpManager,
     observability,
     modelRouter,
     autoAdjuster,
