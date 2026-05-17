@@ -170,14 +170,16 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(body.valid).toBe(true);
   });
 
-  // Step 11: Auth flow — reject invalid PIN
-  it('POST /api/auth/verify rejects short PIN', async () => {
+  // Step 11: Auth — local app, no PIN validation needed
+  it('POST /api/auth/verify always returns valid for local access', async () => {
     const res = await app.request('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: '12' }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.valid).toBe(true);
   });
 
   // Step 12: localhost requests bypass auth (Cabinet is a local desktop application)
