@@ -1,7 +1,7 @@
 ---
-description: "Testing conventions: Vitest, test location, coverage expectations"
-globs: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/__tests__/**"]
-tags: ["testing"]
+description: 'Testing conventions: Vitest, test location, coverage expectations'
+globs: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/__tests__/**']
+tags: ['testing']
 ---
 
 # Testing Conventions

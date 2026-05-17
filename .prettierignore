@@ -1,0 +1,10 @@
+node_modules
+dist
+target
+coverage
+.claude
+pnpm-lock.yaml
+*.lock
+apps/desktop/src-tauri/target
+**/*.rs
+**/*.toml

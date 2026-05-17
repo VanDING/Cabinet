@@ -1,7 +1,7 @@
 ---
-description: "Core architecture constraints: 4-layer dependency rule, package naming, tech stack"
+description: 'Core architecture constraints: 4-layer dependency rule, package naming, tech stack'
 alwaysApply: true
-tags: ["architecture", "constraints"]
+tags: ['architecture', 'constraints']
 ---
 
 # Core Architecture Rules

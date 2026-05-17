@@ -46,4 +46,5 @@ COPY --from=builder /app/apps/server/dist /app/apps/server/dist
 EXPOSE 3000
 ENV PORT=3000
 ENV NODE_ENV=production
+USER node
 CMD ["node", "apps/server/dist/main.js"]

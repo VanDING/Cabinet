@@ -7,7 +7,7 @@
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> *O Captain! My Captain!*
+> _O Captain! My Captain!_
 
 ---
 
@@ -31,9 +31,9 @@ That one thing is the decision. The directional choice. The value judgment. The 
 
 Most AI products on the market today are built from the perspective of the individual. They offer tools for a specific role in a specific scenario—helping a developer write code, a designer generate images, a marketer draft copy. They are competent at what they do, but at their core, they are weapons meant for a lone soldier.
 
-**Cabinet takes a different view.** It is designed from the perspective of an *organization*, assembling for you a structurally complete AI team with clearly defined roles that work in concert.
+**Cabinet takes a different view.** It is designed from the perspective of an _organization_, assembling for you a structurally complete AI team with clearly defined roles that work in concert.
 
-This is not an assistant. This is a **Cabinet**. It holds a Meeting Room for structured debate, a Strategy Room for blueprinting, a Decision Room for tiered adjudication, an Office for execution, and a Summary Room for extracting lessons. When you need it, an entire organization moves under the force of your will.
+This is not an assistant. This is a **Cabinet**. It operates as a continuous pipeline: you speak to your Secretary, multi-agent deliberation produces synthesis, actionable outcomes flow into tiered decisions for your adjudication or into the workflow engine for execution, and every result feeds back into memory for continuous learning. When you need it, an entire organization moves under the force of your will.
 
 And you are the sole **Captain**.
 
@@ -57,12 +57,12 @@ Cabinet's principle here is clear: **AI operates autonomously in the execution l
 
 Built on this principle, our auxiliary systems are designed to address specific capability gaps:
 
-| Capability Gap | Solution |
-|:---|:---|
-| AI is not good at a specific task | Load a **Skill**—plug-and-play specialized capability |
-| Multi-step work lacks coordination | Establish a **Workflow**—discipline through structure |
-| External tools or data are needed | Connect via **MCP**—open a door to the outside world |
-| Another AI's capabilities are required | Connect an **External AI Node**—even the strong can call for aid |
+| Capability Gap                               | Solution                                                                                     |
+| :------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| AI is not good at a specific task            | Load a **Skill**—plug-and-play specialized capability                                        |
+| Multi-step work lacks coordination           | Establish a **Workflow**—discipline through structure                                        |
+| External tools or data are needed            | Connect via **MCP**—open a door to the outside world                                         |
+| Another AI's capabilities are required       | Connect an **External AI Node**—even the strong can call for aid                             |
 | The task itself requires a human to complete | Insert a **Human Node**—abstract a human collaborator as a configurable node in the workflow |
 
 ---
@@ -73,7 +73,7 @@ A **Human Node** is a special type of node in Cabinet's workflow. It represents 
 
 Within Cabinet's worldview, a Human Node is not a "defect marker." It is a precise declaration of a boundary. It says: **Here is where the AI pipeline ends. Here, human involvement is needed.**
 
-But the manner of this involvement is carefully designed: a Human Node is **configurable**. It defines input format, output format, expected completion time, and escalation strategy. A human collaborator works *within* this node, but the context, handoff, and quality verification of the whole workflow are still carried by the system.
+But the manner of this involvement is carefully designed: a Human Node is **configurable**. It defines input format, output format, expected completion time, and escalation strategy. A human collaborator works _within_ this node, but the context, handoff, and quality verification of the whole workflow are still carried by the system.
 
 This ensures that human intervention never becomes a black hole in the process. It is transparent, traceable, and integrated into the overall orchestration.
 
@@ -85,7 +85,7 @@ A distinction must be made here.
 
 **A Human Node is a supplement at the edge of AI's capability. The Captain is the apex of decision-making authority.**
 
-When the workflow encounters a Human Node, the system is saying, "This requires a human to complete." When a matter is escalated to the Decision Room, the system is saying, "This requires *you* to adjudicate."
+When the workflow encounters a Human Node, the system is saying, "This requires a human to complete." When a matter is escalated to the Decision Room, the system is saying, "This requires _you_ to adjudicate."
 
 Cabinet does not try to fill everything with AI. It precisely maps the boundary between AI and human capability, and then establishes an efficient collaboration protocol along that line.
 
@@ -102,29 +102,29 @@ Layer 2 (Agent Core):  gateway, agent, memory     ← AI interaction core
 Layer 1 (Infra):       types, events, storage     ← infrastructure
 ```
 
-| Layer | Package | Role |
-|:---|:---|:---|
-| 4 | `@cabinet/server` | Hono REST + WebSocket API server |
-| 4 | `@cabinet/desktop` | Tauri 2.0 desktop app (React 19) |
-| 4 | `@cabinet/ui` | Shared React component library |
-| 3 | `@cabinet/decision` | Tiered decision management (L0–L3) |
-| 3 | `@cabinet/secretary` | Natural-language entry point, session management |
-| 3 | `@cabinet/meeting` | Multi-agent debate and deliberation |
-| 3 | `@cabinet/workflow` | Workflow engine (Skill, Condition, Parallel, Human nodes) |
-| 3 | `@cabinet/harness` | Quality gates, evaluators, verification |
-| 2 | `@cabinet/gateway` | Multi-provider LLM gateway (Vercel AI SDK) |
-| 2 | `@cabinet/agent` | TAOR agent loop (Think-Act-Observe-React) |
-| 2 | `@cabinet/memory` | Four-layer memory (short-term, long-term, entity, project) |
-| 1 | `@cabinet/events` | Event bus with causation-chain tracking |
-| 1 | `@cabinet/storage` | SQLite persistence (better-sqlite3, AES-256) |
-| 1 | `@cabinet/types` | Shared TypeScript types—universal dependency |
+| Layer | Package              | Role                                                       |
+| :---- | :------------------- | :--------------------------------------------------------- |
+| 4     | `@cabinet/server`    | Hono REST + WebSocket API server                           |
+| 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                           |
+| 4     | `@cabinet/ui`        | Shared React component library                             |
+| 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                         |
+| 3     | `@cabinet/secretary` | Natural-language entry point, session management           |
+| 3     | `@cabinet/meeting`   | Multi-agent debate and deliberation                        |
+| 3     | `@cabinet/workflow`  | Workflow engine (Skill, Condition, Parallel, Human nodes)  |
+| 3     | `@cabinet/harness`   | Quality gates, evaluators, verification                    |
+| 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |
+| 2     | `@cabinet/agent`     | TAOR agent loop (Think-Act-Observe-React)                  |
+| 2     | `@cabinet/memory`    | Four-layer memory (short-term, long-term, entity, project) |
+| 1     | `@cabinet/events`    | Event bus with causation-chain tracking                    |
+| 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)               |
+| 1     | `@cabinet/types`     | Shared TypeScript types—universal dependency               |
 
 ---
 
 ## Core Capabilities
 
-- **Five-Room Model · From Strategy to Execution**
-  Meeting Room, Strategy Room, Decision Room, Office, and Summary Room—five chambers forming a complete organizational loop from deliberation to learning.
+- **Pipeline Architecture · Deliberation to Decision to Execution**
+  Secretary (unified entry) → Multi-Agent Meeting (deliberation + synthesis) → Decision (L0–L3 tiered adjudication) → Workflow (execution with Human Nodes) → Memory + Harness (learning + quality feedback). A continuous pipeline, not isolated rooms.
 
 - **Secretary Interface · Your Single Natural-Language Entry Point**
   No complex commands to learn. Simply talk to your Secretary, and it coordinates the entire Cabinet on your behalf.
@@ -233,40 +233,35 @@ curl -X POST http://localhost:3000/api/chat \
 **WebSocket:**
 
 ```javascript
-const ws = new WebSocket("ws://localhost:3000/api/chat/ws?captain_id=captain&token=<token>");
+const ws = new WebSocket('ws://localhost:3000/api/chat/ws?captain_id=captain&token=<token>');
 ws.onmessage = (e) => console.log(JSON.parse(e.data));
-ws.send("Hello");
+ws.send('Hello');
 ```
 
 Response format: `{"type": "chunk", "content": "..."}` followed by `{"type": "done"}`
 
-### Rooms
+### Core Endpoints
 
 ```bash
-# Meeting
-curl -X POST http://localhost:3000/api/rooms/meeting \
+# Secretary — chat with your AI Cabinet
+curl -X POST http://localhost:3000/api/secretary/chat \
   -H "Content-Type: application/json" \
-  -d '{"topic": "Q3 Strategy", "level": "multi_party"}'
+  -d '{"sessionId": "sess_1", "message": "Analyze whether we should expand to Europe"}'
 
-# Decision
-curl -X POST http://localhost:3000/api/rooms/decision \
+# Meetings — multi-agent deliberation (also triggerable from chat)
+curl -X POST http://localhost:3000/api/meetings \
   -H "Content-Type: application/json" \
-  -d '{"title": "Hire new analyst", "decision_type": "action"}'
+  -d '{"topic": "Q3 Strategy", "advisors": ["financial", "legal", "market"]}'
 
-# Task
-curl -X POST http://localhost:3000/api/rooms/task \
+# Decisions — tiered decision management
+curl -X POST http://localhost:3000/api/decisions \
   -H "Content-Type: application/json" \
-  -d '{"description": "Prepare quarterly report"}'
+  -d '{"title": "Hire new analyst", "type": "action"}'
 
-# Strategy
-curl -X POST http://localhost:3000/api/rooms/strategy \
+# Workflows — execute multi-step processes
+curl -X POST http://localhost:3000/api/factory \
   -H "Content-Type: application/json" \
-  -d '{"proposal": "Expand to European market"}'
-
-# Review
-curl -X POST http://localhost:3000/api/rooms/review \
-  -H "Content-Type: application/json" \
-  -d '{"review_type": "project_review"}'
+  -d '{"name": "Quarterly Report", "definition": {...}}'
 ```
 
 ### Employees, Skills, Knowledge
@@ -297,13 +292,13 @@ curl -X POST http://localhost:3000/api/knowledge/query \
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|:---|:---|:---|
-| `ANTHROPIC_API_KEY` | (empty) | Anthropic API key |
-| `OPENAI_API_KEY` | (empty) | OpenAI API key |
-| `CABINET_MASTER_PASSWORD` | `change-me` | Master encryption password for the database |
-| `PORT` | `3000` | Server port |
-| `NODE_ENV` | `development` | Runtime environment |
+| Variable                  | Default       | Description                                 |
+| :------------------------ | :------------ | :------------------------------------------ |
+| `ANTHROPIC_API_KEY`       | (empty)       | Anthropic API key                           |
+| `OPENAI_API_KEY`          | (empty)       | OpenAI API key                              |
+| `CABINET_MASTER_PASSWORD` | `change-me`   | Master encryption password for the database |
+| `PORT`                    | `3000`        | Server port                                 |
+| `NODE_ENV`                | `development` | Runtime environment                         |
 
 ### Model Configuration
 
