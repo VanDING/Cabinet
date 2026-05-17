@@ -1,7 +1,0 @@
-cargo:rerun-if-changed=permissions
-cargo:PERMISSION_FILES_PATH=C:\Users\dotty\Desktop\AItrans\CabinetV2.0\apps\desktop\src-tauri\target\release\build\tauri-plugin-process-8b3dcd5ac9cdd152\out\tauri-plugin-process-permission-files
-cargo:rerun-if-env-changed=REMOVE_UNUSED_COMMANDS
-cargo:GLOBAL_API_SCRIPT_PATH=\\?\C:\Users\dotty\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-process-2.3.1\api-iife.js
-cargo:rustc-check-cfg=cfg(mobile)
-cargo:rustc-check-cfg=cfg(desktop)
-cargo:rustc-cfg=desktop

@@ -12,7 +12,7 @@
 
 ## 架构约束（不可违反）
 
-### 4 层依赖方向:  Layer 1 → Layer 2 → Layer 3 → Layer 4
+### 4 层依赖方向: Layer 1 → Layer 2 → Layer 3 → Layer 4
 
 ```
 Layer 4 (Interface):   ui, server, desktop    ← 用户/网络边界
