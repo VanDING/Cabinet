@@ -2,10 +2,11 @@ import { Hono } from 'hono';
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { getServerContext } from '../context.js';
+import { CABINET_DIR } from '@cabinet/storage';
 
 export const rulesRouter = new Hono();
 
-const RULES_DIR = join(process.cwd(), '.cabinet', 'rules');
+const RULES_DIR = join(CABINET_DIR, 'rules');
 
 function ensureRulesDir() {
   if (!existsSync(RULES_DIR)) {
@@ -19,8 +20,8 @@ rulesRouter.get('/', (c) => {
   const { logger } = getServerContext();
 
   try {
-    const files = readdirSync(RULES_DIR).filter(f => f.endsWith('.md'));
-    const rules = files.map(filename => {
+    const files = readdirSync(RULES_DIR).filter((f) => f.endsWith('.md'));
+    const rules = files.map((filename) => {
       const fullPath = join(RULES_DIR, filename);
       const raw = readFileSync(fullPath, 'utf-8');
 
@@ -41,27 +42,48 @@ rulesRouter.get('/', (c) => {
           const key = kv[1]!;
           const val = kv[2]!.trim().replace(/^['"]|['"]$/g, '');
           switch (key) {
-            case 'description': description = val; break;
-            case 'alwaysApply': alwaysApply = val === 'true'; break;
-            case 'tags': tags = val.replace(/^\[|\]$/g, '').split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean); break;
-            case 'globs': globs = val.replace(/^\[|\]$/g, '').split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean); break;
+            case 'description':
+              description = val;
+              break;
+            case 'alwaysApply':
+              alwaysApply = val === 'true';
+              break;
+            case 'tags':
+              tags = val
+                .replace(/^\[|\]$/g, '')
+                .split(',')
+                .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+                .filter(Boolean);
+              break;
+            case 'globs':
+              globs = val
+                .replace(/^\[|\]$/g, '')
+                .split(',')
+                .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+                .filter(Boolean);
+              break;
           }
         }
       }
 
       return {
         filename,
-        path: relative(process.cwd(), fullPath),
+        path: relative(RULES_DIR, fullPath),
         description,
         globs,
         alwaysApply,
         tags,
         content: body.trim(),
-        mode: alwaysApply || (!globs.length && !description) ? 'always' : globs.length > 0 ? 'auto' : 'on-demand',
+        mode:
+          alwaysApply || (!globs.length && !description)
+            ? 'always'
+            : globs.length > 0
+              ? 'auto'
+              : 'on-demand',
       };
     });
 
-    return c.json({ rules, directory: relative(process.cwd(), RULES_DIR) });
+    return c.json({ rules, directory: RULES_DIR });
   } catch (e) {
     logger.error('Failed to list rules', { error: String(e) });
     return c.json({ rules: [], error: (e as Error).message });

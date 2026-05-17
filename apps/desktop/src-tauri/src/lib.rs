@@ -1,6 +1,8 @@
 use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::path::PathBuf;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -38,16 +40,16 @@ fn is_maximized(window: tauri::Window) -> bool {
     window.is_maximized().unwrap_or(false)
 }
 
-fn kill_port_3000() {
-    // Kill any orphaned server process from a previous run
-    let output = std::process::Command::new("cmd")
-        .args(["/c", "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do @taskkill //PID %a //F 2>nul"])
-        .output();
-    match &output {
-        Ok(o) if o.status.success() => log("Killed orphan processes on port 3000"),
-        Ok(_) => log("No orphan processes on port 3000 (or kill failed)"),
-        Err(_) => log("Failed to check for orphan processes"),
+#[tauri::command]
+fn open_devtools(app: tauri::AppHandle) {
+    if let Some(webview) = app.get_webview_window("main") {
+        webview.open_devtools();
     }
+}
+
+fn is_port_3000_alive() -> bool {
+    // If a server is already running on port 3000, reuse it — no need to kill
+    std::net::TcpStream::connect("127.0.0.1:3000").is_ok()
 }
 
 fn find_node() -> Option<String> {
@@ -112,9 +114,39 @@ fn find_server_script(exe_dir: &std::path::Path) -> Option<PathBuf> {
     None
 }
 
+fn ensure_cabinet_dir() {
+    let home = match dirs_next::home_dir() {
+        Some(h) => h,
+        None => {
+            log("WARNING: Could not determine home directory, skipping .cabinet creation");
+            return;
+        }
+    };
+    let cabinet = home.join(".cabinet");
+    if !cabinet.exists() {
+        log(&format!("Creating ~/.cabinet at {}", cabinet.display()));
+        let _ = std::fs::create_dir_all(&cabinet);
+    }
+    let subdirs = ["agents", "skills", "mcp", "projects", "plugins", "sessions", "plans", "backups", "logs", "rules"];
+    for sub in &subdirs {
+        let dir = cabinet.join(sub);
+        if !dir.exists() {
+            let _ = std::fs::create_dir_all(&dir);
+        }
+    }
+}
+
 fn start_server() -> Option<Child> {
     log("start_server() called");
-    kill_port_3000();
+
+    // Ensure ~/.cabinet/ exists before starting the server
+    ensure_cabinet_dir();
+
+    // If a server is already running, reuse it
+    if is_port_3000_alive() {
+        log("Port 3000 already alive — reusing existing server");
+        return None;
+    }
 
     let exe_dir = match std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
         Some(d) => { log(&format!("exe_dir: {}", d.display())); d }
@@ -134,10 +166,13 @@ fn start_server() -> Option<Child> {
     let server_dir = server_script.parent().unwrap_or(&exe_dir);
     log(&format!("Spawning: {} {} (cwd: {})", node, server_script.display(), server_dir.display()));
 
-    match Command::new(&node)
-        .arg(&server_script)
-        .current_dir(server_dir)
-        .spawn()
+    let mut cmd = Command::new(&node);
+    cmd.arg(&server_script).current_dir(server_dir);
+    #[cfg(windows)]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    match cmd.spawn()
     {
         Ok(child) => {
             log(&format!("Server started (pid: {})", child.id()));
@@ -176,9 +211,11 @@ pub fn run() {
                 }
             }
 
-            // Open devtools on startup for debugging
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
+            // Open devtools only when TAURI_DEVTOOLS=1 is set
+            if std::env::var("TAURI_DEVTOOLS").ok().as_deref() == Some("1") {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                }
             }
 
             let show_item = MenuItem::with_id(app, "show", "Show Cabinet", true, None::<&str>)?;
@@ -239,7 +276,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, minimize, maximize, close, is_maximized])
+        .invoke_handler(tauri::generate_handler![greet, minimize, maximize, close, is_maximized, open_devtools])
         .run(tauri::generate_context!())
         .expect("error while running Cabinet");
 }
