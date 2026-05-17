@@ -7,6 +7,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
+    "bundle": "node esbuild.config.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsx watch src/main.ts",

@@ -4,6 +4,7 @@ import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ServerLoading } from './components/ServerLoading';
 import { useTheme } from './hooks/useTheme';
 import { useSessions, type ChatMessage, type AttachedFile } from './hooks/useSessions';
 import { useToast } from './components/Toast';
@@ -337,6 +338,7 @@ export function App() {
   );
 
   return (
+    <ServerLoading>
     <div className={`flex h-screen flex-col overflow-hidden ${isDark ? 'dark' : ''}`}>
       {/* Custom Title Bar */}
       <TitleBar isDark={isDark} onToggleTheme={toggle} />
@@ -453,5 +455,6 @@ export function App() {
       {/* Mobile bottom nav */}
       <MobileNav activePage={activePage} onNavigate={handleNavigate} />
     </div>
+    </ServerLoading>
   );
 }

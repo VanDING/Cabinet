@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm --filter @cabinet/server build && pnpm build"
+    "beforeBuildCommand": "pnpm --filter @cabinet/server bundle && node scripts/copy-server.mjs && pnpm build"
   },
   "app": {
     "windows": [
