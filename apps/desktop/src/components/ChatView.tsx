@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { marked } from 'marked';
+import { useTranslation } from 'react-i18next';
 import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
+import { MeetingCard } from './MeetingCard';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -20,7 +22,9 @@ function escapeHtml(text: string): string {
 const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   const html = useMemo(() => {
     const codeBlocks: string[] = [];
-    const processed = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    // Strip HTML tags LLM sometimes outputs alongside markdown
+    const cleaned = content.replace(/<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/gi, '');
+    const processed = cleaned.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
       const langClass = ['bash', 'sh', 'shell'].includes(lang?.toLowerCase()) ? 'bash' : lang || '';
       codeBlocks.push(
         `<pre class="code-block ${langClass}"><code>${escapeHtml(code.trim())}</code></pre>`,
@@ -47,6 +51,7 @@ export const ChatView = memo(function ChatView({
   onEditMessage,
   onRegenerate,
 }: Props) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,7 +70,7 @@ export const ChatView = memo(function ChatView({
 
       {attachedFiles.length > 0 && (
         <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-5 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-          <span className="text-xs text-gray-500">Attached:</span>
+          <span className="text-xs text-gray-500">{t('chat.attached')}</span>
           {attachedFiles.map((f) => (
             <span
               key={f.id}
@@ -81,17 +86,15 @@ export const ChatView = memo(function ChatView({
         {messages.length === 0 && !isProcessing && (
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <div className="text-center text-gray-400 dark:text-gray-500">
-              <p className="text-base">Start a conversation</p>
-              <p className="mt-1 text-xs">
-                Ask a question, analyze a decision, or design a workflow.
-              </p>
+              <p className="text-base">{t('chat.startConversation')}</p>
+              <p className="mt-1 text-xs">{t('chat.startHint')}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {[
-                'Help me analyze a decision',
-                'Design a workflow for me',
-                'Check project status',
-                'What can you help me with?',
+                t('chat.suggestions.analyzeDecision'),
+                t('chat.suggestions.designWorkflow'),
+                t('chat.suggestions.checkStatus'),
+                t('chat.suggestions.whatCanYouDo'),
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -126,7 +129,7 @@ export const ChatView = memo(function ChatView({
               A
             </div>
             <div className="flex-1">
-              <span className="text-sm italic text-gray-400 dark:text-gray-500">Thinking...</span>
+              <span className="text-sm italic text-gray-400 dark:text-gray-500">{t('chat.thinking')}</span>
             </div>
           </div>
         )}
@@ -146,6 +149,7 @@ const MessageRow = memo(function MessageRow({
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
 
@@ -158,12 +162,12 @@ const MessageRow = memo(function MessageRow({
             : 'bg-gray-700 text-white dark:bg-gray-600'
         }`}
       >
-        {msg.role === 'user' ? 'Y' : 'A'}
+        {t(msg.role === 'user' ? 'chat.you' : 'chat.secretary').charAt(0)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            {msg.role === 'user' ? 'You' : 'Assistant'}
+            {msg.role === 'user' ? t('chat.you') : (msg.agentName ?? t('chat.secretary'))}
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500">
             {msg.timestamp.toLocaleTimeString()}
@@ -175,7 +179,7 @@ const MessageRow = memo(function MessageRow({
                   onClick={() => { setEditText(msg.content); setEditing(true); }}
                   className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
                 >
-                  Edit
+                  {t('chat.edit')}
                 </button>
               )}
               {msg.role === 'assistant' && onRegenerate && (
@@ -183,7 +187,7 @@ const MessageRow = memo(function MessageRow({
                   onClick={() => onRegenerate(msg.id)}
                   className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
                 >
-                  Regenerate
+                  {t('chat.regenerate')}
                 </button>
               )}
             </div>
@@ -209,19 +213,20 @@ const MessageRow = memo(function MessageRow({
                   }}
                   className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
                 >
-                  Save & Resend
+                  {t('chat.saveAndResend')}
                 </button>
                 <button
                   onClick={() => { setEditText(msg.content); setEditing(false); }}
                   className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
                 >
-                  Cancel
+                  {t('chat.cancel')}
                 </button>
               </div>
             </div>
           ) : (
             <>
               <MarkdownContent content={msg.content} />
+              {msg.meeting && <MeetingCard data={msg.meeting} />}
               {msg.isStreaming && (
                 <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-blue-500 align-middle" />
               )}

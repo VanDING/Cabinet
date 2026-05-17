@@ -13,7 +13,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   beforeAll(async () => {
     // Use 4+ options to get L2 classification (won't auto-approve on creation)
     const r1 = await app.request('/api/decisions', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({
         projectId: 'proj-1',
         type: 'action',
@@ -33,7 +34,8 @@ describe('Cabinet Core Loop (E2E)', () => {
     }
 
     const r2 = await app.request('/api/decisions', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({
         projectId: 'proj-1',
         type: 'action',
@@ -67,7 +69,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   const sessionId = 'e2e-session';
   it('POST /api/secretary/chat processes message', async () => {
     const res = await app.request('/api/secretary/chat', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({ sessionId, message: '分析是否该进入母婴市场' }),
     });
     expect(res.status).toBe(200);
@@ -99,7 +102,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   it('POST /api/decisions/:id/approve approves decision', async () => {
     const id = decisionId1 || 'test-decision-1';
     const res = await app.request(`/api/decisions/${id}/approve`, {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({ chosenOptionId: 'opt-1' }),
     });
     expect(res.status).toBe(200);
@@ -112,7 +116,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   it('POST /api/decisions/:id/reject rejects decision', async () => {
     const id = decisionId2 || 'test-decision-2';
     const res = await app.request(`/api/decisions/${id}/reject`, {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -130,7 +135,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   // Step 8: Create a workflow
   it('POST /api/factory creates workflow', async () => {
     const res = await app.request('/api/factory', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({ name: 'Test Workflow', nodes: [], edges: [] }),
     });
     expect(res.status).toBe(200);
@@ -142,7 +148,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   // Step 9: Create a meeting
   it('POST /api/meetings creates meeting with cost estimate', async () => {
     const res = await app.request('/api/meetings', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({ topic: 'Q3 Strategy', advisorIds: ['a1', 'a2'] }),
     });
     expect(res.status).toBe(200);
@@ -173,10 +180,10 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(res.status).toBe(400);
   });
 
-  // Step 12: 401 on protected routes without auth
-  it('returns 401 on protected routes without PIN', async () => {
+  // Step 12: localhost requests bypass auth (Cabinet is a local desktop application)
+  it('allows localhost requests to protected routes without PIN', async () => {
     const res = await app.request('/api/decisions');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
   });
 
   // Step 13: WebSocket endpoint
@@ -197,7 +204,8 @@ describe('Cabinet Core Loop (E2E)', () => {
   // Step 15: Settings API — manage API keys
   it('POST /api/settings/api-keys adds an encrypted key', async () => {
     const res = await app.request('/api/settings/api-keys', {
-      method: 'POST', headers,
+      method: 'POST',
+      headers,
       body: JSON.stringify({ provider: 'anthropic', apiKey: 'sk-ant-test-key' }),
     });
     expect(res.status).toBe(200);
