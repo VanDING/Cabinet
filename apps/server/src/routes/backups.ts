@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
+import { join, resolve, normalize } from 'node:path';
 import { getServerContext } from '../context.js';
+import { CABINET_DIR } from '@cabinet/storage';
+
+const BACKUP_DIR = join(CABINET_DIR, 'backups');
 
 export const backupsRouter = new Hono();
 
@@ -37,11 +41,14 @@ backupsRouter.post('/restore', async (c) => {
   if (!path) return c.json({ error: 'path required' }, 400);
 
   // Validate path is within the backup directory to prevent path traversal
-  const { join, resolve, normalize } = await import('node:path');
-  const backupDir = resolve(join(process.cwd(), 'backups'));
+  const backupDir = resolve(BACKUP_DIR);
   const resolvedPath = resolve(normalize(path));
   if (!resolvedPath.startsWith(backupDir)) {
-    logger.warn('Backup restore blocked: path outside backup directory', { path, backupDir, resolvedPath });
+    logger.warn('Backup restore blocked: path outside backup directory', {
+      path,
+      backupDir,
+      resolvedPath,
+    });
     return c.json({ error: 'Invalid backup path' }, 403);
   }
 
