@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
+import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
+import { ParallelReasoning, CrossValidator, estimateMeetingCost } from '@cabinet/meeting';
 
 export const meetingsRouter = new Hono();
 
@@ -8,9 +10,11 @@ export const meetingsRouter = new Hono();
 meetingsRouter.get('/', (c) => {
   const { db } = getServerContext();
   try {
-    const rows = db.prepare(
-      "SELECT * FROM audit_log WHERE entity_type = 'meeting' ORDER BY timestamp DESC LIMIT 50"
-    ).all() as any[];
+    const rows = db
+      .prepare(
+        "SELECT * FROM audit_log WHERE entity_type = 'meeting' ORDER BY timestamp DESC LIMIT 50",
+      )
+      .all() as any[];
     const meetings = rows.map((r: any) => {
       const data = JSON.parse(r.changes ?? '{}');
       return {
@@ -20,6 +24,8 @@ meetingsRouter.get('/', (c) => {
         estimatedCost: data.estimatedCost ?? 0,
         summary: data.summary ?? '',
         attendees: data.attendees ?? [],
+        perspectives: data.perspectives ?? [],
+        crossValidation: data.crossValidation ?? null,
         timestamp: r.timestamp,
       };
     });
@@ -29,108 +35,137 @@ meetingsRouter.get('/', (c) => {
   }
 });
 
-// Multi-agent advisors with distinct perspectives
-const ADVISORS = [
-  { id: 'financial', name: 'Financial Advisor', role: 'Finance', model: 'claude-haiku-4-5', perspective: 'Analyze financial implications, costs, ROI, and budget impact.' },
-  { id: 'market', name: 'Market Analyst', role: 'Strategy', model: 'claude-haiku-4-5', perspective: 'Analyze market trends, competitive landscape, and strategic positioning.' },
-  { id: 'legal', name: 'Legal Advisor', role: 'Compliance', model: 'claude-haiku-4-5', perspective: 'Identify legal risks, compliance requirements, and regulatory concerns.' },
-  { id: 'captain', name: 'Captain', role: 'Decision', model: 'claude-haiku-4-5', perspective: 'Weigh all perspectives and recommend a final decision with actionable next steps.' },
-];
-
-// POST /api/meetings — multi-agent deliberation
+// POST /api/meetings — multi-agent deliberation using @cabinet/meeting package
 meetingsRouter.post('/', async (c) => {
   const { gateway, costTracker, metrics, logger, db } = getServerContext();
   const body = await c.req.json();
   const topic = body.topic ?? 'Untitled Meeting';
   const meetingId = `meeting_${Date.now()}`;
-  const selectedAdvisors = body.advisors ?? ADVISORS.map(a => a.id);
+  const selected = body.advisors ?? ANALYSIS_PERSPECTIVES.map((p) => p.id);
 
-  const advisors = ADVISORS.filter(a => selectedAdvisors.includes(a.id));
-  let totalEstimatedCost = 0;
+  const advisors = ANALYSIS_PERSPECTIVES
+    .filter((p) => selected.includes(p.id))
+    .map((p) => ({ id: p.id, name: p.name, role: p.framework, model: 'claude-haiku-4-5', perspective: p.framework }));
 
   if (!gateway) {
-    const summary = `[No LLM] Meeting on "${topic}" created. Configure API keys for AI-powered multi-agent meetings.`;
+    const synthesis = `[No LLM] Meeting on "${topic}" created. Configure API keys for AI-powered multi-agent meetings.`;
     db.prepare(
-      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))"
-    ).run(meetingId, JSON.stringify({ topic, status: 'started', summary }));
-    return c.json({ meetingId, topic, status: 'started', estimatedCost: 0, summary });
+      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))",
+    ).run(meetingId, JSON.stringify({ topic, status: 'started', synthesis }));
+    return c.json({ meetingId, topic, status: 'started', estimatedCost: 0, synthesis });
   }
 
-  // Phase 1: Run all advisors in parallel
-  const perspectives: { advisor: string; role: string; content: string; cost: number }[] = [];
+  // Pre-meeting cost estimate
+  const costEstimate = estimateMeetingCost(advisors.length, 1);
+  const model = 'claude-haiku-4-5';
+
+  // Phase 1: Parallel reasoning
+  const reasoning = new ParallelReasoning(gateway);
+  const reasonings = await reasoning.reason(advisors, topic);
+
+  for (const _ of reasonings) {
+    costTracker.record(model, 50, 150);
+    metrics.increment('llm_call', { model, purpose: 'meeting_advisor' });
+  }
+
+  const perspectives = reasonings.map((r) => ({
+    name: (r as any).advisor?.name ?? (r as any).name ?? 'Unknown',
+    framework: (r as any).advisor?.role ?? (r as any).framework ?? '',
+    content: (r as any).content ?? '',
+  }));
+
+  // Phase 2: Cross-validation
+  let crossValidation = null;
   try {
-    const results = await Promise.allSettled(
-      advisors.map(async advisor => {
-        const response = await gateway!.generateText({
-          model: advisor.model,
-          messages: [{
-            role: 'user',
-            content: `You are the ${advisor.name} (${advisor.role}). ${advisor.perspective}\n\nTopic for deliberation: "${topic}"\n\nProvide your 2-3 sentence analysis with concrete points. Be specific and data-driven.`,
-          }],
-          maxTokens: 200,
-        });
-        const promptTk = response.usage?.promptTokens ?? 0;
-        const completionTk = response.usage?.completionTokens ?? 0;
-        const cost = ((promptTk + completionTk) / 1_000_000) * 1.0;
-        return { advisor: advisor.name, role: advisor.role, content: response.content, cost };
-      })
-    );
-
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        perspectives.push(result.value);
-        totalEstimatedCost += result.value.cost;
-        costTracker.record('claude-haiku-4-5', 50, 150);
-        metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_advisor' });
-      } else {
-        perspectives.push({ advisor: 'Unknown', role: 'Error', content: 'Failed to generate perspective.', cost: 0 });
-      }
-    }
-  } catch (e) {
-    logger.warn('Multi-agent meeting failed', { error: String(e) });
+    const validator = new CrossValidator(gateway);
+    crossValidation = await validator.validate(topic, reasonings);
+    metrics.increment('llm_call', { model, purpose: 'meeting_cross_validate' });
+  } catch {
+    // Cross-validation failure is non-fatal
   }
 
-  // Phase 2: Cross-validate — chair synthesizes
+  // Phase 3: Chair synthesis
   let synthesis = '';
   let disagreements: string[] = [];
   try {
-    const perspectiveSummary = perspectives.map(p => `[${p.advisor} (${p.role})]: ${p.content}`).join('\n\n');
+    const summary = perspectives
+      .map((p: any) => `[${p.name ?? p.advisor}]: ${p.content}`)
+      .join('\n\n');
+
+    let validationNote = '';
+    if (crossValidation) {
+      const v = crossValidation as any;
+      validationNote = [
+        v.disagreements?.length
+          ? `\nKey disagreements:\n${v.disagreements.map((d: string) => `- ${d}`).join('\n')}`
+          : '',
+        v.gaps?.length
+          ? `\nUnaddressed angles:\n${v.gaps.map((g: string) => `- ${g}`).join('\n')}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    const chairPrompt = [
+      `You are the Chair. Review advisor perspectives on "${topic}" and provide:`,
+      '1. A 2-3 sentence synthesis combining the best insights',
+      '2. Key risks identified',
+      '3. Recommended next step',
+      validationNote ? `\nAdditional analysis:\n${validationNote}` : '',
+      `\nAdvisor perspectives:\n${summary}`,
+    ].join('\n');
+
     const chairResponse = await gateway.generateText({
-      model: 'claude-haiku-4-5',
-      messages: [{
-        role: 'user',
-        content: `You are the Chair. Review the following advisor perspectives on "${topic}" and provide:\n1. A 2-3 sentence synthesis combining the best insights\n2. Key disagreements or risks (as bullet points)\n3. Recommended next step\n\nAdvisor perspectives:\n${perspectiveSummary}`,
-      }],
-      maxTokens: 300,
+      model,
+      messages: [{ role: 'user', content: chairPrompt }],
+      maxTokens: 400,
     });
     synthesis = chairResponse.content;
-    const promptTk = chairResponse.usage?.promptTokens ?? 0;
-    const completionTk = chairResponse.usage?.completionTokens ?? 0;
-    totalEstimatedCost += ((promptTk + completionTk) / 1_000_000) * 1.0;
-    costTracker.record('claude-haiku-4-5', promptTk, completionTk);
-    metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_chair' });
+    costTracker.record(model, 200, 400);
+    metrics.increment('llm_call', { model, purpose: 'meeting_chair' });
 
-    // Extract disagreements from synthesis
-    const lines = synthesis.split('\n').filter(l => l.includes('- ') || l.includes('• '));
+    const lines = synthesis.split('\n').filter((l) => l.includes('- ') || l.includes('• '));
     disagreements = lines.slice(0, 5);
   } catch (e) {
     logger.warn('Meeting synthesis failed', { error: String(e) });
     synthesis = 'Synthesis unavailable.';
   }
 
-  const attendees = perspectives.map(p => p.advisor);
+  const attendees = perspectives.map((p: any) => p.name ?? p.advisor);
 
   // Persist
   db.prepare(
-    "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))"
-  ).run(meetingId, JSON.stringify({ topic, status: 'completed', estimatedCost: totalEstimatedCost, summary: synthesis, attendees, perspectives, disagreements }));
+    "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('meeting', ?, 'create', 'system', ?, datetime('now'))",
+  ).run(
+    meetingId,
+    JSON.stringify({
+      topic,
+      status: 'completed',
+      estimatedCost: costEstimate.estimatedCostUsd,
+      synthesis,
+      attendees,
+      perspectives,
+      crossValidation,
+      disagreements,
+    }),
+  );
 
-  broadcast('meeting_created', { meetingId, topic, estimatedCost: totalEstimatedCost, attendees });
+  broadcast('meeting_created', {
+    meetingId,
+    topic,
+    estimatedCost: costEstimate.estimatedCostUsd,
+    attendees,
+  });
+
   return c.json({
-    meetingId, topic, status: 'completed',
-    estimatedCost: totalEstimatedCost,
+    meetingId,
+    topic,
+    status: 'completed',
+    estimatedCost: costEstimate.estimatedCostUsd,
     perspectives,
     synthesis,
+    crossValidation,
     disagreements,
     attendees,
   });
@@ -140,9 +175,11 @@ meetingsRouter.post('/', async (c) => {
 meetingsRouter.get('/:id/status', (c) => {
   const { db, costTracker } = getServerContext();
   const id = c.req.param('id');
-  const row = db.prepare(
-    "SELECT * FROM audit_log WHERE entity_type = 'meeting' AND entity_id = ? ORDER BY timestamp DESC LIMIT 1"
-  ).get(id) as any;
+  const row = db
+    .prepare(
+      "SELECT * FROM audit_log WHERE entity_type = 'meeting' AND entity_id = ? ORDER BY timestamp DESC LIMIT 1",
+    )
+    .get(id) as any;
 
   if (row) {
     const data = JSON.parse(row.changes ?? '{}');
@@ -153,16 +190,12 @@ meetingsRouter.get('/:id/status', (c) => {
       estimatedCost: data.estimatedCost,
       actualCost: costTracker.getDailyCost(),
       attendees: data.attendees ?? [],
+      perspectives: data.perspectives ?? [],
+      crossValidation: data.crossValidation ?? null,
       summary: data.summary,
       timestamp: row.timestamp,
     });
   }
 
-  return c.json({
-    meetingId: id,
-    status: 'completed',
-    actualCost: costTracker.getDailyCost(),
-    attendees: ['Financial Advisor', 'Market Analyst'],
-    summary: 'Meeting completed.',
-  });
+  return c.json({ meetingId: id, status: 'not_found' }, 404);
 });

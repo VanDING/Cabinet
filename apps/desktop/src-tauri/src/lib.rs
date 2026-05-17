@@ -52,8 +52,16 @@ fn is_port_3000_alive() -> bool {
     std::net::TcpStream::connect("127.0.0.1:3000").is_ok()
 }
 
-fn find_node() -> Option<String> {
-    // Check multiple possible node paths on Windows
+fn find_node(exe_dir: &std::path::Path) -> Option<PathBuf> {
+    // 1) Bundled portable Node.js (production)
+    let bundled = exe_dir.join("resources").join("node-portable.exe");
+    log(&format!("Checking bundled node: {}", bundled.display()));
+    if bundled.exists() {
+        log("Bundled node found!");
+        return Some(bundled);
+    }
+
+    // 2) System Node.js (development fallback)
     let candidates = [
         "node.exe",
         "C:\\Program Files\\nodejs\\node.exe",
@@ -63,15 +71,16 @@ fn find_node() -> Option<String> {
     for c in &candidates {
         if let Ok(output) = Command::new(c).arg("--version").output() {
             if output.status.success() {
-                println!("[Cabinet] Found node at: {}", c);
-                return Some(c.to_string());
+                log(&format!("Found system node at: {}", c));
+                return Some(PathBuf::from(c));
             }
         }
     }
-    // Fallback: try the bare name
+    // Bare name fallback
     if let Ok(output) = Command::new("node").arg("--version").output() {
         if output.status.success() {
-            return Some("node".to_string());
+            log("Found system node via PATH");
+            return Some(PathBuf::from("node"));
         }
     }
     None
@@ -89,18 +98,17 @@ fn log(msg: &str) {
 }
 
 fn find_server_script(exe_dir: &std::path::Path) -> Option<PathBuf> {
-    // 1) Production: {exe_dir}/resources/server/dist/main.js
-    let resource = exe_dir.join("resources").join("server").join("dist").join("main.js");
-    log(&format!("Checking resource path: {}", resource.display()));
-    if resource.exists() {
-        log("Resource script found!");
-        return Some(resource);
+    // 1) Bundled server (production): {exe_dir}/resources/server-dist/main.js
+    let bundled = exe_dir.join("resources").join("server-dist").join("main.js");
+    log(&format!("Checking bundled server: {}", bundled.display()));
+    if bundled.exists() {
+        log("Bundled server found!");
+        return Some(bundled);
     }
 
     // 2) Development: 4 levels up from target/release to apps/, then server/dist/main.js
     let dev_dist = exe_dir.join("..").join("..").join("..").join("..").join("server").join("dist").join("main.js");
     log(&format!("Checking dev path: {}", dev_dist.display()));
-    log(&format!("  dev_dist exists: {}", dev_dist.exists()));
     if dev_dist.exists() {
         if let Ok(canon) = dev_dist.canonicalize() {
             log(&format!("Canonicalized: {}", canon.display()));
@@ -153,8 +161,8 @@ fn start_server() -> Option<Child> {
         None => { log("Failed to get exe_dir!"); return None; }
     };
 
-    let node = match find_node() {
-        Some(n) => { log(&format!("Found node: {}", n)); n }
+    let node = match find_node(&exe_dir) {
+        Some(n) => { log(&format!("Found node: {}", n.display())); n }
         None => { log("find_node() returned None!"); return None; }
     };
 
@@ -164,7 +172,7 @@ fn start_server() -> Option<Child> {
     };
 
     let server_dir = server_script.parent().unwrap_or(&exe_dir);
-    log(&format!("Spawning: {} {} (cwd: {})", node, server_script.display(), server_dir.display()));
+    log(&format!("Spawning: {} {} (cwd: {})", node.display(), server_script.display(), server_dir.display()));
 
     let mut cmd = Command::new(&node);
     cmd.arg(&server_script).current_dir(server_dir);

@@ -21,10 +21,7 @@ export interface CrossValidation {
 export class CrossValidator {
   constructor(private readonly gateway: LLMGateway) {}
 
-  async validate(
-    topic: string,
-    reasonings: AdvisorReasoning[],
-  ): Promise<CrossValidation> {
+  async validate(topic: string, reasonings: AdvisorReasoning[]): Promise<CrossValidation> {
     if (reasonings.length < 2) {
       return {
         agreements: [],
@@ -36,7 +33,7 @@ export class CrossValidator {
     }
 
     const perspectives = reasonings
-      .map(r => `[${r.advisor.name} (${r.advisor.role})]: ${r.content}`)
+      .map((r) => `[${r.advisor.name} (${r.advisor.role})]: ${r.content}`)
       .join('\n\n');
 
     const prompt = [
@@ -88,9 +85,10 @@ export class CrossValidator {
         disagreements: parsed.disagreements ?? [],
         contradictions: parsed.contradictions ?? [],
         gaps: parsed.gaps ?? [],
-        coherenceScore: typeof parsed.coherenceScore === 'number'
-          ? Math.max(0, Math.min(1, parsed.coherenceScore))
-          : 0.7,
+        coherenceScore:
+          typeof parsed.coherenceScore === 'number'
+            ? Math.max(0, Math.min(1, parsed.coherenceScore))
+            : 0.7,
       };
     } catch {
       return this.emptyResult();

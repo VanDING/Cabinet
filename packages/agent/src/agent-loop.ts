@@ -59,6 +59,8 @@ export class AgentLoop {
   private readonly contextBuilder: ContextBuilder;
   private readonly contextMonitor: ContextMonitor | null;
   private readonly options: AgentLoopOptions;
+  /** Accumulated handoff state across multiple run() calls (for segment-based workflow use). */
+  private sessionHandoff: ContextHandoff | null = null;
 
   constructor(options: AgentLoopOptions) {
     this.gateway = options.gateway;
@@ -105,8 +107,11 @@ export class AgentLoop {
     // Add user message
     messages.push({ role: 'user', content: userMessage });
 
-    // Initialize handoff tracker (for context reset on long tasks)
-    const handoff = new ContextHandoff(userMessage);
+    // Initialize or reuse handoff tracker (persists across run() calls for segment workflows)
+    if (!this.sessionHandoff) {
+      this.sessionHandoff = new ContextHandoff(userMessage);
+    }
+    const handoff = this.sessionHandoff;
 
     while (steps < maxSteps) {
       // Build context (reload short-term memory each iteration)
@@ -172,7 +177,7 @@ export class AgentLoop {
         response = await withRetry(
           () =>
             this.gateway.generateText({
-              model: 'claude-sonnet-4-6',
+              model: this.options.model ?? 'claude-sonnet-4-6',
               systemPrompt: ctx.systemPrompt,
               messages: allMessages,
             }),
@@ -311,6 +316,32 @@ export class AgentLoop {
       success,
       startTime: new Date(startTime).toISOString(),
     });
+  }
+
+  /**
+   * Generate a handoff document from accumulated session state.
+   * Called at segment boundaries to transfer context between agents.
+   */
+  generateHandoff(): string {
+    if (!this.sessionHandoff) return '';
+    const snap = this.contextMonitor?.current;
+    const result = this.sessionHandoff.performHandoff(
+      snap ?? {
+        estimatedTokens: 0,
+        maxTokens: 200_000,
+        utilization: 0,
+        zone: 'smart',
+        breakdown: { systemPrompt: 0, messages: 0, toolResults: 0, memory: 0 },
+        timestamp: new Date(),
+      },
+    );
+    this.sessionHandoff.reset();
+    return result.handoffMessage;
+  }
+
+  /** Reset the accumulated handoff state (e.g., after disposal). */
+  resetHandoff(): void {
+    this.sessionHandoff = null;
   }
 
   /** Resume from a saved checkpoint */

@@ -95,10 +95,7 @@ export class MeetingService {
   }
 
   /** Simple single-round meeting (for backward compatibility and quick consultations). */
-  async quickMeeting(
-    topic: string,
-    advisors: Advisor[],
-  ): Promise<MeetingResult> {
+  async quickMeeting(topic: string, advisors: Advisor[]): Promise<MeetingResult> {
     if (!this.gateway) {
       return this.simulatedMeeting({
         id: `quick_${Date.now()}`,
@@ -111,18 +108,18 @@ export class MeetingService {
     const reasonings = await reasoning.reason(advisors, topic);
 
     // Quick chair synthesis
-    const perspectives = reasonings
-      .map(r => `[${r.advisor.name}]: ${r.content}`)
-      .join('\n');
+    const perspectives = reasonings.map((r) => `[${r.advisor.name}]: ${r.content}`).join('\n');
 
     let synthesis = '';
     if (this.gateway) {
       const chairResponse = await this.gateway.generateText({
         model: 'claude-haiku-4-5',
-        messages: [{
-          role: 'user',
-          content: `Synthesize these perspectives on "${topic}" in 2-3 sentences:\n${perspectives}`,
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: `Synthesize these perspectives on "${topic}" in 2-3 sentences:\n${perspectives}`,
+          },
+        ],
         maxTokens: 300,
       });
       synthesis = chairResponse.content;
@@ -133,15 +130,11 @@ export class MeetingService {
       consensus: synthesis,
       advisorResults: reasonings,
       rounds: 1,
-      costEstimate: advisors.length * 500 / 1000 * 0.003,
+      costEstimate: ((advisors.length * 500) / 1000) * 0.003,
     };
   }
 
-  private toMeetingResult(
-    meetingId: string,
-    topic: string,
-    debate: DebateResult,
-  ): MeetingResult {
+  private toMeetingResult(meetingId: string, topic: string, debate: DebateResult): MeetingResult {
     const lastValidation = debate.finalValidation;
     return {
       meetingId,
@@ -149,21 +142,23 @@ export class MeetingService {
       minorityReport: lastValidation?.disagreements.length
         ? `Disagreements: ${lastValidation.disagreements.join('; ')}`
         : undefined,
-      advisorResults: debate.rounds.flatMap(r => r.reasonings),
+      advisorResults: debate.rounds.flatMap((r) => r.reasonings),
       rounds: debate.rounds.length,
       costEstimate: debate.totalEstimatedCost,
-      crossValidation: lastValidation ? {
-        agreements: lastValidation.agreements,
-        disagreements: lastValidation.disagreements,
-        contradictions: lastValidation.contradictions,
-        gaps: lastValidation.gaps,
-        coherenceScore: lastValidation.coherenceScore,
-      } : undefined,
+      crossValidation: lastValidation
+        ? {
+            agreements: lastValidation.agreements,
+            disagreements: lastValidation.disagreements,
+            contradictions: lastValidation.contradictions,
+            gaps: lastValidation.gaps,
+            coherenceScore: lastValidation.coherenceScore,
+          }
+        : undefined,
     };
   }
 
   private simulatedMeeting(config: MeetingConfig): MeetingResult {
-    const results = config.advisors.map(a => ({
+    const results = config.advisors.map((a) => ({
       advisor: a,
       content: `Perspective from ${a.name} on: ${config.topic}`,
     }));

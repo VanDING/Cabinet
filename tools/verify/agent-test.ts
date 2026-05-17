@@ -8,7 +8,14 @@
  */
 import { AgentLoop, ToolExecutor, SafetyChecker, CheckpointManager } from '@cabinet/agent';
 import type { MemoryProvider } from '@cabinet/agent';
-import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMCallOptions,
+  LLMResponse,
+  StreamChunk,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from '@cabinet/gateway';
 import Database from 'better-sqlite3';
 
 // ── Mock LLM Gateway ──────────────────────────────────────────────────────
@@ -60,7 +67,9 @@ class TestGateway implements LLMGateway {
 // ── Mock Memory Provider ──────────────────────────────────────────────────
 
 class TestMemory implements MemoryProvider {
-  async getShortTerm(_sessionId: string): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
+  async getShortTerm(
+    _sessionId: string,
+  ): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
     return [];
   }
   async getProjectContext(_projectId: string): Promise<string> {
@@ -86,7 +95,9 @@ async function main(): Promise<void> {
   executor.register({ name: 'echo', execute: async (args) => args.message });
 
   const result1 = await executor.execute('get_status', 'c1', {});
-  console.log(`   get_status: ${result1.error ? 'FAIL' : 'PASS'} — ${JSON.stringify(result1.output)}`);
+  console.log(
+    `   get_status: ${result1.error ? 'FAIL' : 'PASS'} — ${JSON.stringify(result1.output)}`,
+  );
 
   const result2 = await executor.execute('echo', 'c2', { message: 'hello' });
   console.log(`   echo: ${result2.error ? 'FAIL' : 'PASS'} — output=${result2.output}`);
@@ -99,10 +110,14 @@ async function main(): Promise<void> {
   const safety = new SafetyChecker();
 
   const safeResult = safety.check('read_file', {});
-  console.log(`   read_file: ${safeResult.allowed && safeResult.tier === 'cache' ? 'PASS' : 'FAIL'}`);
+  console.log(
+    `   read_file: ${safeResult.allowed && safeResult.tier === 'cache' ? 'PASS' : 'FAIL'}`,
+  );
 
   const dangerResult = safety.check('delete_file', { path: '/tmp/test' });
-  console.log(`   delete_file: ${!dangerResult.allowed && dangerResult.tier === 'ai_classifier' ? 'PASS' : 'FAIL'}`);
+  console.log(
+    `   delete_file: ${!dangerResult.allowed && dangerResult.tier === 'ai_classifier' ? 'PASS' : 'FAIL'}`,
+  );
 
   // 3. Agent Loop (mock gateway)
   console.log('\n3. AgentLoop with tool calls...');

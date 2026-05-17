@@ -22,8 +22,8 @@ export interface ProgressTask {
   title: string;
   description?: string;
   status: TaskStatus;
-  startedAt?: string;   // ISO timestamp
-  completedAt?: string;  // ISO timestamp
+  startedAt?: string; // ISO timestamp
+  completedAt?: string; // ISO timestamp
   blockedReason?: string;
   /** IDs of tasks that must be completed before this one. */
   dependencies?: string[];
@@ -81,25 +81,25 @@ export class ProgressTracker {
 
   /** Get tasks filtered by status. */
   tasksByStatus(status: TaskStatus): ProgressTask[] {
-    return this.snapshot.tasks.filter(t => t.status === status);
+    return this.snapshot.tasks.filter((t) => t.status === status);
   }
 
   /** Get a specific task by ID. */
   getTask(id: string): ProgressTask | undefined {
-    return this.snapshot.tasks.find(t => t.id === id);
+    return this.snapshot.tasks.find((t) => t.id === id);
   }
 
   /** Get tasks that are ready to work on (dependencies satisfied, not blocked). */
   get readyTasks(): ProgressTask[] {
     const completed = new Set(
-      this.snapshot.tasks.filter(t => t.status === 'completed').map(t => t.id)
+      this.snapshot.tasks.filter((t) => t.status === 'completed').map((t) => t.id),
     );
-    return this.snapshot.tasks.filter(t => {
+    return this.snapshot.tasks.filter((t) => {
       if (t.status === 'completed' || t.status === 'cancelled' || t.status === 'blocked') {
         return false;
       }
       if (!t.dependencies || t.dependencies.length === 0) return true;
-      return t.dependencies.every(d => completed.has(d));
+      return t.dependencies.every((d) => completed.has(d));
     });
   }
 
@@ -112,7 +112,13 @@ export class ProgressTracker {
   }
 
   /** Summary stats. */
-  get stats(): { total: number; completed: number; inProgress: number; pending: number; blocked: number } {
+  get stats(): {
+    total: number;
+    completed: number;
+    inProgress: number;
+    pending: number;
+    blocked: number;
+  } {
     const total = this.snapshot.tasks.length;
     const completed = this.tasksByStatus('completed').length;
     const inProgress = this.tasksByStatus('in_progress').length;
@@ -148,7 +154,11 @@ export class ProgressTracker {
   }
 
   /** Update task status. */
-  updateStatus(id: string, status: TaskStatus, metadata?: Record<string, unknown>): ProgressTask | null {
+  updateStatus(
+    id: string,
+    status: TaskStatus,
+    metadata?: Record<string, unknown>,
+  ): ProgressTask | null {
     const task = this.getTask(id);
     if (!task) return null;
 
@@ -199,7 +209,9 @@ export class ProgressTracker {
     writeFileSync(this.filePath, JSON.stringify(this.snapshot, null, 2), 'utf-8');
     try {
       // Clean up temp on Windows (no atomic rename in Node)
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
 
     this.dirty = false;
   }
@@ -223,10 +235,15 @@ export class ProgressTracker {
       lines.push('### Tasks', '');
       for (const task of this.snapshot.tasks) {
         const icon =
-          task.status === 'completed' ? '✅' :
-          task.status === 'in_progress' ? '🔄' :
-          task.status === 'blocked' ? '🚫' :
-          task.status === 'cancelled' ? '❌' : '⏳';
+          task.status === 'completed'
+            ? '✅'
+            : task.status === 'in_progress'
+              ? '🔄'
+              : task.status === 'blocked'
+                ? '🚫'
+                : task.status === 'cancelled'
+                  ? '❌'
+                  : '⏳';
         lines.push(`- ${icon} **${task.title}**`);
         if (task.blockedReason) lines.push(`  - Blocked: ${task.blockedReason}`);
         if (task.description) lines.push(`  - ${task.description}`);

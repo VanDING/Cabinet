@@ -13,8 +13,14 @@ auditRouter.get('/', (c) => {
   const conditions: string[] = [];
   const params: any[] = [];
 
-  if (entityType) { conditions.push('entity_type = ?'); params.push(entityType); }
-  if (entityId) { conditions.push('entity_id = ?'); params.push(entityId); }
+  if (entityType) {
+    conditions.push('entity_type = ?');
+    params.push(entityType);
+  }
+  if (entityId) {
+    conditions.push('entity_id = ?');
+    params.push(entityId);
+  }
   if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
   query += ' ORDER BY id DESC LIMIT ?';
   params.push(limit);

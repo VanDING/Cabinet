@@ -4,15 +4,29 @@ import { getServerContext } from '../context.js';
 
 export const employeesRouter = new Hono();
 
-// GET /api/employees
+// GET /api/employees — includes both employees and agent_roles
 employeesRouter.get('/', (c) => {
   const { db } = getServerContext();
-  const rows = db.prepare(
-    'SELECT * FROM employees ORDER BY name ASC'
-  ).all() as any[];
+  const empRows = db.prepare('SELECT * FROM employees ORDER BY name ASC').all() as any[];
+  const employees = empRows.map(rowToEmployee);
 
-  const employees = rows.map(rowToEmployee);
-  return c.json({ employees });
+  // Also include custom agents from agent_roles table
+  const agentRows = db
+    .prepare('SELECT type, name, description, model, allowed_tools FROM agent_roles WHERE is_builtin = 0 ORDER BY name ASC')
+    .all() as any[];
+  const agentsFromRoles = agentRows.map((r: any) => ({
+    id: `agent_${r.type}`,
+    name: r.name,
+    role: r.type,
+    kind: 'ai' as const,
+    model: r.model,
+    expertise: (() => { try { return JSON.parse(r.allowed_tools ?? '[]'); } catch { return []; } })(),
+    permissionLevel: 'read',
+    status: 'active',
+    projectId: 'default',
+  }));
+
+  return c.json({ employees: [...employees, ...agentsFromRoles] });
 });
 
 // POST /api/employees
@@ -42,8 +56,16 @@ employeesRouter.post('/', async (c) => {
   });
 
   db.prepare(
-    'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, d.projectId ?? 'default', d.name, d.role ?? 'advisor', d.kind ?? 'ai', persona, d.permissionLevel ?? 'read');
+    'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(
+    id,
+    d.projectId ?? 'default',
+    d.name,
+    d.role ?? 'advisor',
+    d.kind ?? 'ai',
+    persona,
+    d.permissionLevel ?? 'read',
+  );
 
   const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as any;
   logger.info('Employee created', { id, name: d.name });
@@ -67,7 +89,7 @@ employeesRouter.put('/:id', async (c) => {
   });
 
   db.prepare(
-    'UPDATE employees SET name = ?, role = ?, kind = ?, persona = ?, permission_level = ? WHERE id = ?'
+    'UPDATE employees SET name = ?, role = ?, kind = ?, persona = ?, permission_level = ? WHERE id = ?',
   ).run(
     body.name ?? existing.name,
     body.role ?? existing.role,
@@ -93,7 +115,13 @@ employeesRouter.delete('/:id', (c) => {
 
 // ── Helper ──
 function rowToEmployee(row: any) {
-  const persona = (() => { try { return JSON.parse(row.persona ?? '{}'); } catch { return {}; } })();
+  const persona = (() => {
+    try {
+      return JSON.parse(row.persona ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
   return {
     id: row.id,
     name: row.name,

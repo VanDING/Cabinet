@@ -1,5 +1,5 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
-import type Database from 'better-sqlite3';
+import type { Database } from '@cabinet/storage';
 
 export interface SchedulerLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
@@ -8,7 +8,7 @@ export interface SchedulerLogger {
 }
 
 export function startAutoArchive(
-  db: Database.Database,
+  db: Database,
   logger: SchedulerLogger,
   checkIntervalMs: number = 3600000,
 ): () => void {
@@ -17,9 +17,11 @@ export function startAutoArchive(
   const check = () => {
     try {
       const cutoff = new Date(Date.now() - expiryMs).toISOString();
-      const expired = db.prepare(
-        "UPDATE decisions SET status = 'expired', resolved_at = datetime('now') WHERE status = 'pending' AND created_at < ?"
-      ).run(cutoff);
+      const expired = db
+        .prepare(
+          "UPDATE decisions SET status = 'expired', resolved_at = datetime('now') WHERE status = 'pending' AND created_at < ?",
+        )
+        .run(cutoff);
 
       if (expired.changes > 0) {
         logger.info('Auto-expired decisions', { count: expired.changes });

@@ -10,12 +10,16 @@ interface ApiKey {
 
 export function ApiSwitcher() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [active, setActive] = useState<string>(() => localStorage.getItem('cabinet-active-api-key') ?? '');
+  const [active, setActive] = useState<string>(
+    () => localStorage.getItem('cabinet-active-api-key') ?? '',
+  );
 
   useEffect(() => {
     apiFetch('/api/settings/api-keys', { headers: authHeaders() })
-      .then(r => r.json())
-      .then(d => { if (d.keys) setKeys(d.keys); })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.keys) setKeys(d.keys);
+      })
       .catch(() => {});
   }, []);
 
@@ -26,24 +30,27 @@ export function ApiSwitcher() {
   };
 
   return (
-    <div className="h-full bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg p-4 flex flex-col">
-      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">API Switcher</div>
-      <div className="flex-1 overflow-y-auto space-y-1.5">
+    <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+      <div className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">API Switcher</div>
+      <div className="flex-1 space-y-1.5 overflow-y-auto">
         {keys.length === 0 ? (
-          <div className="text-xs text-gray-400 py-2">No API keys configured.</div>
+          <div className="py-2 text-xs text-gray-400">No API keys configured.</div>
         ) : (
-          keys.map(k => (
+          keys.map((k) => (
             <button
               key={k.id}
               onClick={() => handleSelect(k)}
-              className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+              className={`w-full rounded px-2 py-1.5 text-left text-xs transition-colors ${
                 active === k.id
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700'
               }`}
             >
               <div className="font-medium capitalize">{k.provider}</div>
-              <div className="text-gray-400 text-xs">{k.keyPreview}{k.model ? ` · ${k.model}` : ''}</div>
+              <div className="text-xs text-gray-400">
+                {k.keyPreview}
+                {k.model ? ` · ${k.model}` : ''}
+              </div>
             </button>
           ))
         )}

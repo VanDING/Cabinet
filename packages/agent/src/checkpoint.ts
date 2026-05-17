@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 
 export interface CheckpointState {
   sessionId: string;
@@ -24,7 +24,7 @@ export class CheckpointManager {
     this.db
       .prepare(
         `INSERT OR REPLACE INTO agent_checkpoints (session_id, state, updated_at)
-         VALUES (?, ?, datetime('now'))`
+         VALUES (?, ?, datetime('now'))`,
       )
       .run(state.sessionId, JSON.stringify(state));
   }

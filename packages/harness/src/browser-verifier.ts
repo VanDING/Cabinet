@@ -124,7 +124,7 @@ export class BrowserVerifier {
         totalChecks: checks.length,
         passedCount: 0,
         failedCount: checks.length,
-        results: checks.map(c => ({
+        results: checks.map((c) => ({
           checkName: c.name,
           passed: false,
           error: 'Browser failed to launch',
@@ -152,7 +152,7 @@ export class BrowserVerifier {
       }
     }
 
-    const passedCount = results.filter(r => r.passed).length;
+    const passedCount = results.filter((r) => r.passed).length;
     return {
       timestamp: new Date().toISOString(),
       baseUrl: this.options.baseUrl,
@@ -202,7 +202,7 @@ export class BrowserVerifier {
   async getPageText(): Promise<string> {
     if (!this.page) return '';
     try {
-      return await this.page.textContent('body') ?? '';
+      return (await this.page.textContent('body')) ?? '';
     } catch {
       return '';
     }

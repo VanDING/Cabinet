@@ -13,5 +13,5 @@ export function useTheme() {
     setStorageItem('cabinet-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  return { isDark, toggle: () => setIsDark(d => !d) };
+  return { isDark, toggle: () => setIsDark((d) => !d) };
 }

@@ -32,19 +32,19 @@ export const MAX_RETRY_RECOVERABLE = 2;
 export const LLM_TIMEOUT_MS = 30_000;
 
 /** Daily budget cap in USD */
-export const DAILY_BUDGET_USD = 5.00;
+export const DAILY_BUDGET_USD = 5.0;
 
 /** Weekly budget cap in USD */
-export const WEEKLY_BUDGET_USD = 25.00;
+export const WEEKLY_BUDGET_USD = 25.0;
 
 /** Monthly budget cap in USD */
-export const MONTHLY_BUDGET_USD = 100.00;
+export const MONTHLY_BUDGET_USD = 100.0;
 
 /** Budget warning threshold — trigger reminder when this proportion is reached */
-export const BUDGET_WARNING_THRESHOLD = 0.80;
+export const BUDGET_WARNING_THRESHOLD = 0.8;
 
 /** Meeting cost confirmation threshold in USD — requires Captain confirmation above this */
-export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.50;
+export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.5;
 
 /** Rumination detection semantic similarity threshold — treated as duplicate argument above this */
 export const RUMINATION_SIMILARITY_THRESHOLD = 0.85;
@@ -64,8 +64,3 @@ export const BACKUP_INTERVAL_MINUTES = 360; // 6 hours
 /** Number of backup copies to retain */
 export const BACKUP_KEEP_COUNT = 7;
 
-/** PIN lockout attempt threshold */
-export const PIN_LOCKOUT_ATTEMPTS = 5;
-
-/** PIN lockout duration in minutes */
-export const PIN_LOCKOUT_MINUTES = 15;

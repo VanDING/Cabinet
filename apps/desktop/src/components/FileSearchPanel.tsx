@@ -36,8 +36,10 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
       setQuery('');
       setLoading(true);
       apiFetch('/api/files', { headers: authHeaders() })
-        .then(r => r.json())
-        .then(d => { if (d.files?.length > 0) setResults(d.files); })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.files?.length > 0) setResults(d.files);
+        })
         .catch(() => setResults(FALLBACK_FILES))
         .finally(() => setLoading(false));
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -45,7 +47,11 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   }, [isOpen]);
 
   const filtered = query.trim()
-    ? results.filter(f => f.name.toLowerCase().includes(query.toLowerCase()) || f.path.toLowerCase().includes(query.toLowerCase()))
+    ? results.filter(
+        (f) =>
+          f.name.toLowerCase().includes(query.toLowerCase()) ||
+          f.path.toLowerCase().includes(query.toLowerCase()),
+      )
     : results.slice(0, 15);
 
   if (!isOpen) return null;
@@ -53,33 +59,36 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20" onClick={onClose}>
       <div
-        className="w-96 max-h-80 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
+        className="max-h-80 w-96 overflow-hidden rounded-lg border bg-white shadow-xl dark:border-gray-600 dark:bg-gray-800"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-3 border-b dark:border-gray-700">
+        <div className="border-b p-3 dark:border-gray-700">
           <input
             ref={inputRef}
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search project files..."
-            className="w-full border dark:border-gray-600 rounded px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border bg-gray-50 px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
           />
         </div>
-        <div className="overflow-y-auto max-h-60">
+        <div className="max-h-60 overflow-y-auto">
           {loading ? (
             <div className="px-4 py-6 text-center text-sm text-gray-400">Loading file tree...</div>
           ) : filtered.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-gray-400">No files found</div>
           ) : (
-            filtered.map(f => (
+            filtered.map((f) => (
               <button
                 key={f.path}
-                onClick={() => { onSelect(f); onClose(); }}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm flex items-center justify-between"
+                onClick={() => {
+                  onSelect(f);
+                  onClose();
+                }}
+                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <span className="text-gray-800 dark:text-gray-200 font-medium">{f.name}</span>
-                <span className="text-xs text-gray-400 ml-2 truncate max-w-[200px]">{f.path}</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{f.name}</span>
+                <span className="ml-2 max-w-[200px] truncate text-xs text-gray-400">{f.path}</span>
               </button>
             ))
           )}

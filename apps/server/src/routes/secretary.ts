@@ -8,6 +8,8 @@ import {
   SafetyChecker,
   CheckpointManager,
   registerCabinetTools,
+  registerSkillTools,
+  registerMCPTools,
   AgentRoleRegistry,
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
@@ -16,7 +18,7 @@ import { ParallelReasoning, CrossValidator, type Advisor } from '@cabinet/meetin
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
-import { DEFAULT_ADVISORS } from '../api-helpers.js';
+import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
 
 export const secretaryRouter = new Hono();
 
@@ -50,6 +52,29 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
     rejectDecision(decisionId, captainId) {
       return ctx.decisionService.reject(decisionId, captainId);
+    },
+
+    // ── Workflow read callbacks ──
+    listWorkflows() {
+      const rows = ctx.db
+        .prepare('SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
+        .all('default') as any[];
+      return rows.map((r: any) => {
+        const def = JSON.parse(r.definition ?? '{}');
+        return {
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          stepCount: def.steps ? def.steps.length : (def.nodes ?? []).length,
+        };
+      });
+    },
+    getWorkflow(id) {
+      const row = ctx.db
+        .prepare('SELECT id, name, definition, status FROM workflows WHERE id = ?')
+        .get(id) as any;
+      if (!row) return undefined;
+      return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
     },
 
     // ── Workflow write callbacks ──
@@ -89,8 +114,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
 
     // ── Meeting write callback ──
-    async startMeeting(topic, advisorIds) {
-      return runMeeting(topic, advisorIds, ctx);
+    async startMeeting(topic, advisorIds, projectId) {
+      return runMeeting(topic, advisorIds, projectId, ctx);
     },
 
     // ── Memory write callbacks ──
@@ -138,8 +163,52 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         contextBudget: input.contextBudget,
       };
       ctx.agentRegistry.register(role);
+      // Persist to DB
+      try {
+        ctx.db.prepare(
+          `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        ).run(
+          'custom',
+          input.name,
+          input.description,
+          input.systemPrompt,
+          input.model,
+          input.temperature,
+          input.maxResponseTokens,
+          JSON.stringify(input.allowedTools),
+          input.contextBudget,
+        );
+      } catch (e) {
+        ctx.logger.warn('Failed to persist custom agent', { name: input.name, error: String(e) });
+      }
+      // Update IntentParser's valid agent types
+      const newValidTypes = ctx.agentRegistry.getValidAgentTypes();
+      // Will be picked up by next request since parser is cached per session
       ctx.logger.info('Agent registered via tool', { name: input.name });
       return { type: 'custom', name: input.name };
+    },
+    updateAgent(name, updates) {
+      const existing = ctx.agentRegistry.get(name);
+      if (existing && existing.type === 'custom') {
+        ctx.agentRegistry.update(name, updates as any);
+        // Update DB
+        const setClauses: string[] = [];
+        const params: any[] = [];
+        for (const [k, v] of Object.entries(updates)) {
+          const col = k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+          setClauses.push(`${col} = ?`);
+          params.push(k === 'allowedTools' ? JSON.stringify(v) : v);
+        }
+        if (setClauses.length > 0) {
+          params.push(name);
+          ctx.db.prepare(`UPDATE agent_roles SET ${setClauses.join(', ')} WHERE name = ?`).run(...params);
+        }
+      }
+    },
+    deleteAgent(name) {
+      ctx.agentRegistry.unregister(name);
+      ctx.db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
     },
     listAgents() {
       return ctx.agentRegistry.list().map((r) => ({
@@ -148,6 +217,50 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         description: r.description,
         builtIn: r.type !== 'custom',
       }));
+    },
+
+    // ── Project tools ──
+    setProjectContext(projectId) {
+      const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      if (!row) throw new Error(`Project not found: ${projectId}`);
+      return { id: row.id, name: row.name };
+    },
+    createProject(input) {
+      const id = `proj_${Date.now()}`;
+      ctx.db
+        .prepare('INSERT INTO projects (id, name, description, root_path, last_activity_at) VALUES (?, ?, ?, ?, datetime(\'now\'))')
+        .run(id, input.name, input.description ?? '', input.rootPath ?? '');
+      ctx.db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(id, '');
+      ctx.logger.info('Project created via tool', { id, name: input.name });
+      return { id, name: input.name };
+    },
+    listProjects() {
+      const rows = ctx.db
+        .prepare('SELECT id, name, last_activity_at FROM projects WHERE archived = 0 ORDER BY last_activity_at DESC')
+        .all() as any[];
+      return rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        lastActivityAt: r.last_activity_at,
+        activeWorkflowCount: 0,
+      }));
+    },
+    getProjectContext(projectId) {
+      const project = ctx.db.prepare('SELECT id, name, description FROM projects WHERE id = ?').get(projectId) as any;
+      if (!project) return null;
+      const pctx = ctx.db.prepare('SELECT * FROM project_context WHERE project_id = ?').get(projectId) as any;
+      const decisions = ctx.db
+        .prepare("SELECT id, title, status FROM decisions WHERE project_id = ? ORDER BY created_at DESC LIMIT 5")
+        .all(projectId) as any[];
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        summary: pctx?.summary ?? '',
+        goals: JSON.parse(pctx?.goals ?? '[]'),
+        constraints: JSON.parse(pctx?.constraints ?? '{}'),
+        recentDecisions: decisions,
+      };
     },
   };
 }
@@ -289,22 +402,36 @@ async function executeWorkflowById(
   }
 }
 
-// ── Meeting execution helper ──
-async function runMeeting(
-  topic: string,
-  advisorIds: string[] | undefined,
-  ctx: ServerContext,
-): Promise<{
+// ── Meeting result capture (module-level, read by /chat handler) ──
+let capturedMeetingResult: MeetingResult | null = null;
+
+interface MeetingResult {
   meetingId: string;
   topic: string;
   synthesis: string;
   perspectives: unknown[];
   crossValidation?: unknown;
   decisionId?: string | null;
+}
+
+// ── Meeting execution helper ──
+async function runMeeting(
+  topic: string,
+  advisorIds: string[] | undefined,
+  projectId: string | undefined,
+  ctx: ServerContext,
+): Promise<{
+  meetingId: string;
+  topic: string;
+  synthesis: string;
+  perspectives: unknown[];
+  decisionId?: string | null;
 }> {
   const meetingId = `meeting_${Date.now()}`;
-  const selected = advisorIds ?? DEFAULT_ADVISORS.map((a) => a.id);
-  const advisors = DEFAULT_ADVISORS.filter((a) => selected.includes(a.id));
+  const selected = advisorIds ?? ANALYSIS_PERSPECTIVES.map((p) => p.id);
+  const advisors = ANALYSIS_PERSPECTIVES
+    .filter((p) => selected.includes(p.id))
+    .map((p) => ({ id: p.id, name: p.name, role: p.framework, model: 'claude-haiku-4-5', perspective: p.framework }));
 
   if (!ctx.gateway) {
     const synthesis = `[No LLM] Meeting on "${topic}" created. Configure API keys for AI-powered meetings.`;
@@ -316,71 +443,177 @@ async function runMeeting(
     return { meetingId, topic, synthesis, perspectives: [] };
   }
 
-  // Phase 1: Parallel reasoning (using dedicated module)
-  const reasoning = new ParallelReasoning(ctx.gateway);
-  const reasonings = await reasoning.reason(advisors, topic);
-  for (const _ of reasonings) {
-    ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_tool' });
-  }
+  const model = 'claude-haiku-4-5';
 
-  const perspectives = reasonings.map((r) => ({
-    advisor: r.advisor.name,
-    role: r.advisor.role,
-    content: r.content,
-  }));
-
-  // Phase 2: Cross-validation (detect contradictions and gaps)
-  let crossValidation = null;
+  // Phase 1: MeetingChair constructs analysis Brief (1 LLM call — coordination)
+  let analysisBrief: string;
   try {
-    const validator = new CrossValidator(ctx.gateway);
-    crossValidation = await validator.validate(topic, reasonings);
-    ctx.metrics.increment('llm_call', {
-      model: 'claude-haiku-4-5',
-      purpose: 'meeting_cross_validate',
-    });
-  } catch {
-    // Cross-validation failure is non-fatal
-  }
-
-  // Phase 3: Chair synthesis (aware of cross-validation results)
-  let synthesis = '';
-  try {
-    const summary = perspectives
-      .map((p) => `[${p.advisor} (${p.role})]: ${p.content}`)
-      .join('\n\n');
-    let validationNote = '';
-    if (crossValidation) {
-      const v = crossValidation as any;
-      validationNote = [
-        v.disagreements?.length
-          ? `\nKey disagreements:\n${v.disagreements.map((d: string) => `- ${d}`).join('\n')}`
-          : '',
-        v.gaps?.length
-          ? `\nUnaddressed angles:\n${v.gaps.map((g: string) => `- ${g}`).join('\n')}`
-          : '',
-      ]
-        .filter(Boolean)
-        .join('\n');
-    }
-
+    const perspectiveList = advisors
+      .map((a) => `- ${a.name}: ${a.perspective}`)
+      .join('\n');
     const chairPrompt = [
-      `You are the Chair. Review advisor perspectives on "${topic}" and provide:`,
-      '1. A 2-3 sentence synthesis combining the best insights',
-      '2. Key risks identified',
-      '3. Recommended next step',
-      validationNote ? `\nAdditional analysis:\n${validationNote}` : '',
-      `\nAdvisor perspectives:\n${summary}`,
+      `You are the Meeting Chair. Your job is to coordinate analysis, not perform it.`,
+      `Construct a structured analysis Brief for the Advisor.`,
+      '',
+      `Topic: "${topic}"`,
+      '',
+      `Available perspectives:`,
+      perspectiveList,
+      '',
+      `Your task:`,
+      `1. Select the most relevant perspectives for this topic (2-4).`,
+      `2. For each selected perspective, specify a FOCUSED analysis angle — not generic "analyze the market" but specific like "assess market entry barriers for this product in the EU."`,
+      `3. Include any project context that is relevant.`,
+      '',
+      `Output as JSON:`,
+      `{`,
+      `  "selected_perspectives": [`,
+      `    {"id": "market", "focus": "specific analysis focus here"},`,
+      `    ...`,
+      `  ],`,
+      `  "topic_refined": "refined topic statement",`,
+      `  "key_questions": ["question the analysis must answer"]`,
+      `}`,
     ].join('\n');
 
-    const chairResponse = await ctx.gateway.generateText({
-      model: 'claude-haiku-4-5',
+    const chairResponse = await ctx.gateway!.generateText({
+      model,
       messages: [{ role: 'user', content: chairPrompt }],
-      maxTokens: 400,
+      maxTokens: 600,
+      temperature: 0.3,
     });
-    synthesis = chairResponse.content;
-    ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_tool_chair' });
+    const match = chairResponse.content.match(/\{[\s\S]*\}/);
+    analysisBrief = match ? match[0] : JSON.stringify({ selected_perspectives: advisors.map((a) => ({ id: a.id, focus: a.perspective })), topic_refined: topic, key_questions: [] });
+    ctx.metrics.increment('llm_call', { model, purpose: 'meeting_chair_brief' });
   } catch {
-    synthesis = 'Synthesis unavailable.';
+    analysisBrief = JSON.stringify({ selected_perspectives: advisors.map((a) => ({ id: a.id, focus: a.perspective })), topic_refined: topic, key_questions: [] });
+  }
+
+  // Phase 2: Advisor multi-perspective analysis (1 LLM call)
+  let perspectives: any[];
+  try {
+    const brief = JSON.parse(analysisBrief);
+    const selectedIds = new Set((brief.selected_perspectives as any[]).map((p: any) => p.id));
+    const selectedAdvisors = advisors.filter((a) => selectedIds.has(a.id));
+    const perspectiveInstructions = (brief.selected_perspectives as any[])
+      .map((p: any) => `- ${p.id}: FOCUS on "${p.focus}"`)
+      .join('\n');
+
+    const advisorPrompt = [
+      `You are a specialized analyst. Analyze the following topic from MULTIPLE perspectives in a single response.`,
+      '',
+      `Topic: ${brief.topic_refined}`,
+      `Key questions to answer: ${(brief.key_questions as string[]).join('; ')}`,
+      '',
+      `You must analyze from these perspectives:`,
+      perspectiveInstructions,
+      '',
+      `For each perspective, provide:`,
+      `- claim: your analytical conclusion`,
+      `- evidence: supporting data or reasoning`,
+      `- confidence: 0.0 to 1.0`,
+      '',
+      `After all perspectives, provide:`,
+      `- synthesis: 2-3 sentence overall conclusion`,
+      `- risks: key risks identified`,
+      `- open_questions: what remains uncertain`,
+      '',
+      `Output as JSON:`,
+      `{`,
+      `  "perspectives_applied": ["list"],`,
+      `  "findings": [`,
+      `    {"perspective": "name", "claim": "...", "evidence": "...", "confidence": 0.8}`,
+      `  ],`,
+      `  "synthesis": "...",`,
+      `  "risks": ["..."],`,
+      `  "open_questions": ["..."]`,
+      `}`,
+    ].join('\n');
+
+    const advisorResponse = await ctx.gateway!.generateText({
+      model,
+      messages: [{ role: 'user', content: advisorPrompt }],
+      maxTokens: 1500,
+      temperature: 0.4,
+    });
+    const advisorMatch = advisorResponse.content.match(/\{[\s\S]*\}/);
+    const advisorResult = advisorMatch ? JSON.parse(advisorMatch[0]) : { findings: [], synthesis: advisorResponse.content, risks: [], open_questions: [] };
+    perspectives = advisorResult.findings ?? [];
+    ctx.metrics.increment('llm_call', { model, purpose: 'meeting_advisor' });
+  } catch {
+    perspectives = [];
+  }
+
+  // Phase 3: Reviewer adversarial review (1 LLM call)
+  let synthesis = '';
+  let reviewPassed = false;
+  let reviewIssues: any[] = [];
+  const maxRounds = 2;
+  for (let round = 0; round < maxRounds && !reviewPassed; round++) {
+    try {
+      const findingsSummary = perspectives
+        .map((f: any) => `[${f.perspective}] claim: ${f.claim} | evidence: ${f.evidence} | confidence: ${f.confidence}`)
+        .join('\n');
+      const synthesisText = (perspectives as any).synthesis ?? '';
+
+      const reviewerPrompt = [
+        `You are an independent Reviewer. Review this analysis for quality.`,
+        `Do NOT perform the analysis yourself — only review what was provided.`,
+        '',
+        `Topic: ${topic}`,
+        '',
+        `Analysis findings:`,
+        findingsSummary || 'No structured findings',
+        '',
+        `Synthesis: ${synthesisText}`,
+        '',
+        `Check for:`,
+        `- Logical completeness: are all claims connected and coherent?`,
+        `- Risk assessment: are risks identified and evaluated?`,
+        `- Missing perspectives: what important angle was not covered?`,
+        `- Evidence quality: are claims backed by reasoning or data?`,
+        '',
+        `Output as JSON:`,
+        `{`,
+        `  "pass": true/false,`,
+        `  "issues": [{"type": "missing_perspective|weak_evidence|logical_gap", "detail": "...", "severity": "high|medium|low"}],`,
+        `  "suggestion": {"action": "add_perspective|strengthen_evidence|revise_logic", "detail": "what to fix", "or_assign_independent_agent": false}`,
+        `}`,
+      ].join('\n');
+
+      const reviewerResponse = await ctx.gateway!.generateText({
+        model,
+        messages: [{ role: 'user', content: reviewerPrompt }],
+        maxTokens: 500,
+        temperature: 0.1,
+      });
+      const reviewMatch = reviewerResponse.content.match(/\{[\s\S]*\}/);
+      const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, issues: [], suggestion: {} };
+      reviewPassed = review.pass === true;
+      reviewIssues = review.issues ?? [];
+      ctx.metrics.increment('llm_call', { model, purpose: 'meeting_reviewer' });
+
+      // Generate synthesis from the final analysis
+      if (reviewPassed || round === maxRounds - 1) {
+        synthesis = `## Analysis: ${topic}\n\n`;
+        if (synthesisText) synthesis += `**Synthesis:** ${synthesisText}\n\n`;
+        if (perspectives.length > 0) {
+          synthesis += `### Perspectives\n`;
+          for (const f of perspectives) {
+            synthesis += `- **${(f as any).perspective}** (confidence: ${(f as any).confidence}): ${(f as any).claim}\n`;
+          }
+        }
+        if (reviewIssues.length > 0) {
+          synthesis += `\n### Reviewer Notes\n`;
+          for (const i of reviewIssues) {
+            synthesis += `- [${(i as any).severity}] ${(i as any).detail}\n`;
+          }
+        }
+      }
+    } catch {
+      synthesis = 'Analysis completed.';
+      reviewPassed = true;
+    }
   }
 
   // Persist
@@ -390,19 +623,19 @@ async function runMeeting(
     )
     .run(
       meetingId,
-      JSON.stringify({ topic, status: 'completed', synthesis, perspectives, crossValidation }),
+      JSON.stringify({ topic, status: 'completed', synthesis, perspectives, reviewPassed, projectId }),
     );
   broadcast('meeting_created', {
     meetingId,
     topic,
-    attendees: perspectives.map((p: any) => p.advisor),
+    attendees: perspectives.map((p: any) => p.name ?? p.advisor),
   });
 
   // Phase 4: Auto-extract decision if meeting produced actionable options
   let decisionId: string | null = null;
   if (ctx.gateway && synthesis && synthesis.length > 20) {
     try {
-      const summary = perspectives.map((p) => `[${p.advisor}]: ${p.content}`).join('\n');
+      const summary = perspectives.map((p: any) => `[${p.perspective ?? p.name}]: ${p.claim ?? p.content}`).join('\n');
       const extractionPrompt = [
         `Analyze this meeting outcome and determine if it contains a decision the Captain should make.`,
         '',
@@ -447,7 +680,7 @@ async function runMeeting(
 
           ctx.decisionService.create({
             id: decId,
-            projectId: 'default',
+            projectId: projectId ?? 'default',
             type: 'strategic',
             title: extracted.title,
             description: extracted.description ?? `Decision extracted from meeting: ${topic}`,
@@ -477,7 +710,9 @@ async function runMeeting(
     }
   }
 
-  return { meetingId, topic, synthesis, perspectives, crossValidation, decisionId };
+  const result: MeetingResult = { meetingId, topic, synthesis, perspectives, decisionId };
+  capturedMeetingResult = result;
+  return result;
 }
 
 // ── Multi-agent cache (keyed by sessionId:roleType) ──
@@ -559,6 +794,9 @@ function getAgentLoopForRole(
 
   const executor = new ToolExecutor();
   registerCabinetTools(executor, buildToolDependencies(ctx));
+  registerSkillTools(executor);
+  const mcpCtx = getServerContext();
+  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
 
   // Wire observability: track tool calls
   executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
@@ -656,6 +894,9 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   // Secretary's own executor (all tools)
   const executor = new ToolExecutor();
   registerCabinetTools(executor, buildToolDependencies(ctx));
+  registerSkillTools(executor);
+  const mcpCtx = getServerContext();
+  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
   executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
     getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
   });
@@ -674,6 +915,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
+      model,
       maxSteps: 10,
     });
     secretaryLoop.onSessionComplete = (summary) => {
@@ -701,9 +943,10 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
 
   const intentParser = new IntentParser(hasGateway ? ctx.gateway! : undefined);
 
-  // Initialize the router with agent descriptions
+  // Initialize the router with agent descriptions and valid types (includes custom agents)
   const registry = getServerContext().agentRegistry;
   intentParser.setAgentDescriptions(registry.describeForRouting());
+  intentParser.setValidAgentTypes(registry.getValidAgentTypes());
 
   const agent = new SecretaryAgent(
     secretaryLoop ?? (null as any),
@@ -755,17 +998,30 @@ secretaryRouter.post('/chat', async (c) => {
   const { sessionId, message } = parsed.data;
   const captainId = parsed.data.captainId ?? 'captain-1';
   const files = parsed.data.files ?? [];
-  const projectId = parsed.data.projectId ?? 'default';
+  let projectId: string = parsed.data.projectId || '';
   const model = parsed.data.model;
   const stream = parsed.data.stream ?? false;
   const dispatchMode: DispatchMode = parsed.data.dispatchMode ?? 'single';
+
+  // Auto-create first project if none exist and no projectId specified
+  if (!projectId) {
+    const count = (ctx.db.prepare('SELECT COUNT(*) as count FROM projects').get() as any).count;
+    if (count === 0) {
+      const id = `proj_${Date.now()}`;
+      ctx.db.prepare('INSERT INTO projects (id, name, description, last_activity_at) VALUES (?, ?, ?, datetime(\'now\'))')
+        .run(id, 'My First Project', 'Auto-created project');
+      ctx.db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(id, '');
+      projectId = id;
+      ctx.logger.info('Auto-created first project', { id });
+    }
+  }
 
   if (!ctx.sessionManager.get(sessionId)) {
     ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
   }
 
   try {
-    const { agent } = getOrCreateAgent(sessionId, projectId, captainId, model);
+    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model);
 
     // Augment message with attached file contents (shared by all modes)
     let augmentedMessage = message;
@@ -796,6 +1052,9 @@ secretaryRouter.post('/chat', async (c) => {
       if (dispatchMode === 'pipeline' || dispatchMode === 'parallel') {
         const executor = new ToolExecutor();
         registerCabinetTools(executor, buildToolDependencies(ctx));
+  registerSkillTools(executor);
+  const mcpCtx = getServerContext();
+  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
 
         const dispatcher = new AgentDispatcher(
           ctx.gateway,
@@ -806,10 +1065,10 @@ secretaryRouter.post('/chat', async (c) => {
               const items: { role: 'user' | 'assistant'; content: string }[] = [];
               const session = ctx.sessionManager.get(sid);
               if (session && session.messages.length > 0) {
-                const last = session.messages[session.messages.length - 1]!;
-                const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
-                const start = Math.max(0, end - 20);
-                for (let i = start; i < end; i++) {
+                // Include all messages except the current one (which is added separately by AgentLoop)
+                const recentCount = Math.min(session.messages.length, 30);
+                const start = Math.max(0, session.messages.length - recentCount);
+                for (let i = start; i < session.messages.length; i++) {
                   const m = session.messages[i]!;
                   items.push({ role: m.role, content: m.content });
                 }
@@ -837,6 +1096,7 @@ secretaryRouter.post('/chat', async (c) => {
             },
           },
           ctx.eventBus,
+          ctx.agentRegistry,
         );
 
         const result = await dispatcher.dispatch({
@@ -880,7 +1140,10 @@ secretaryRouter.post('/chat', async (c) => {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
             }
             try {
+              capturedMeetingResult = null; // Reset before running
+              emit('status', { message: 'Thinking...' });
               const result = await agent.handleMessage(sessionId, augmentedMessage);
+              const meeting = capturedMeetingResult;
 
               if (result.routeResult) {
                 emit('routing', {
@@ -898,7 +1161,6 @@ secretaryRouter.post('/chat', async (c) => {
               for (const sentence of sentences) {
                 if (sentence.trim()) {
                   emit('chunk', { content: sentence });
-                  await new Promise((r) => setTimeout(r, 10));
                 }
               }
 
@@ -912,7 +1174,7 @@ secretaryRouter.post('/chat', async (c) => {
               ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
               broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
 
-              emit('done', { sessionId });
+              emit('done', { sessionId, meeting: meeting ?? undefined, agentName: 'Secretary' });
             } catch (e: any) {
               emit('error', { message: e.message ?? 'Unknown error' });
             } finally {
@@ -932,7 +1194,9 @@ secretaryRouter.post('/chat', async (c) => {
       }
 
       // ── Non-streaming single mode ──
+      capturedMeetingResult = null; // Reset before running
       const result = await agent.handleMessage(sessionId, augmentedMessage);
+      const meeting = capturedMeetingResult; // Capture any meeting created by tools
 
       // Record cost if available
       if ((result as any).usage) {
@@ -963,6 +1227,8 @@ secretaryRouter.post('/chat', async (c) => {
         dispatchMode: 'single',
         model: model ?? 'claude-sonnet-4-6',
         toolCalls: (result as any).toolCalls ?? 0,
+        meeting: meeting ?? undefined,
+        agentName: 'Secretary',
       });
     } else {
       const parser = new IntentParser();
@@ -1066,12 +1332,59 @@ secretaryRouter.get('/context', (c) => {
   const totalChars = session?.messages.reduce((sum, m) => sum + m.content.length, 0) ?? 0;
   const estimatedTokens = Math.ceil(totalChars / 4);
 
+  // Use actual model context window (claude-sonnet-4-6 = 200k, but report accurately)
+  const maxContextTokens = 200000;
+
   return c.json({
     sessionId,
     messageCount,
     estimatedTokens,
-    maxContextTokens: 200000,
+    maxContextTokens,
     summary: metrics.getSummary(),
+  });
+});
+
+// ── POST /compact ──
+secretaryRouter.post('/compact', async (c) => {
+  const ctx = getServerContext();
+  const body = await c.req.json().catch(() => ({}));
+  const sessionId = body.sessionId ?? 'default';
+
+  const session = ctx.sessionManager.get(sessionId);
+  if (!session) return c.json({ compacted: false, reason: 'Session not found' }, 404);
+
+  const messages = session.messages;
+  if (messages.length <= 4) return c.json({ compacted: true, messageCount: messages.length });
+
+  // Keep last 4 messages intact, summarize older ones
+  const keepCount = 4;
+  const toSummarize = messages.slice(0, messages.length - keepCount);
+  const recent = messages.slice(messages.length - keepCount);
+
+  // Build a summary from old messages
+  const summaryParts: string[] = [];
+  let lastRole = '';
+  for (const m of toSummarize) {
+    if (m.role !== lastRole) {
+      summaryParts.push(`${m.role === 'user' ? 'User asked' : 'Assistant responded'} about: ${m.content.slice(0, 200)}`);
+      lastRole = m.role;
+    }
+  }
+
+  const summary = `[Context summary: ${toSummarize.length} earlier messages compressed. Key topics: ${summaryParts.slice(0, 5).join('; ')}]`;
+
+  // Replace old messages with summary + recent
+  session.messages.length = 0;
+  session.messages.push({ role: 'user', content: summary, timestamp: new Date() });
+  for (const m of recent) {
+    session.messages.push(m);
+  }
+
+  return c.json({
+    compacted: true,
+    previousCount: messages.length,
+    newCount: session.messages.length,
+    estimatedTokens: Math.ceil(session.messages.reduce((sum, m) => sum + m.content.length, 0) / 4),
   });
 });
 

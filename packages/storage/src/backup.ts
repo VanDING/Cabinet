@@ -35,6 +35,7 @@ export class BackupManager {
     // better-sqlite3 v11: backup(filename: string, options?) is async
     // better-sqlite3 v12+: backup(destDb: Database) is sync
     // We detect the API shape and use the appropriate approach.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const backupFn = (srcDb as any).backup as Function;
     const isV11 = /filename/.test(backupFn.toString());
 
@@ -58,11 +59,14 @@ export class BackupManager {
   startAutoBackup(): void {
     if (this.timer) return;
     // Offset by random amount to avoid exact-time clustering
-    this.timer = setInterval(() => {
-      this.backup().catch((error: Error) => {
-        console.error('Auto-backup failed:', error.message);
-      });
-    }, this.config.intervalMinutes * 60 * 1000);
+    this.timer = setInterval(
+      () => {
+        this.backup().catch((error: Error) => {
+          console.error('Auto-backup failed:', error.message);
+        });
+      },
+      this.config.intervalMinutes * 60 * 1000,
+    );
   }
 
   /** Stop automatic backups */
@@ -95,6 +99,7 @@ export class BackupManager {
     const srcDb = new Database(backupPath, { readonly: true });
 
     // Detect API version (same pattern as backup())
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     const backupFn = (srcDb as any).backup as Function;
     const isV11 = /filename/.test(backupFn.toString());
 

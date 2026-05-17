@@ -1,18 +1,286 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
-import { WorkflowEngine, type WorkflowNodeDef, type WorkflowEdge, type WorkflowRun } from '@cabinet/workflow';
+import { WorkflowEngine, type WorkflowNodeDef, type WorkflowEdge, type WorkflowRun, type AgentLoopHandle } from '@cabinet/workflow';
+import {
+  AgentLoop,
+  ToolExecutor,
+  SafetyChecker,
+  CheckpointManager,
+  registerCabinetTools,
+  registerSkillTools,
+  registerMCPTools,
+} from '@cabinet/agent';
+import type { ToolDependencies } from '@cabinet/agent';
 
-// Shared engine instance with handlers wired at startup
+// ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
+
+// ── AgentLoop instance cache (keyed by runId:agentId for isolation) ──
+const agentLoopCache = new Map<string, AgentLoop>();
+
+// ── Tool dependencies (focused subset for workflow agents) ──
+function buildToolDependencies(): ToolDependencies {
+  const ctx = getServerContext();
+  return {
+    decisionStore: ctx.decisionRepo,
+    eventBus: ctx.eventBus,
+    shortTerm: ctx.shortTerm,
+    longTerm: ctx.longTerm,
+    entity: ctx.entity,
+    project: ctx.project,
+    createDecision(input) {
+      const id = `dec_${Date.now()}`;
+      return ctx.decisionService.create({
+        id,
+        projectId: input.projectId,
+        type: input.type,
+        title: input.title,
+        description: input.description,
+        options: input.options,
+        classification: input.classification,
+        captainId: input.captainId,
+      }) as any;
+    },
+    approveDecision(decisionId, captainId, chosenOptionId) {
+      return ctx.decisionService.approve(decisionId, captainId, chosenOptionId);
+    },
+    rejectDecision(decisionId, captainId) {
+      return ctx.decisionService.reject(decisionId, captainId);
+    },
+    listWorkflows() {
+      const rows = ctx.db
+        .prepare('SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
+        .all('default') as any[];
+      return rows.map((r: any) => {
+        const def = JSON.parse(r.definition ?? '{}');
+        return {
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          stepCount: def.steps ? def.steps.length : (def.nodes ?? []).length,
+        };
+      });
+    },
+    getWorkflow(id) {
+      const row = ctx.db
+        .prepare('SELECT id, name, definition, status FROM workflows WHERE id = ?')
+        .get(id) as any;
+      if (!row) return undefined;
+      return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
+    },
+
+    createWorkflow(input) {
+      const id = `wf_${Date.now()}`;
+      ctx.db
+        .prepare('INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)')
+        .run(id, input.projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
+      return { id };
+    },
+    updateWorkflow(id, input) {
+      if (input.name !== undefined || input.definition !== undefined) {
+        const name = input.name;
+        const definition = input.definition;
+        if (name !== undefined && definition !== undefined) {
+          ctx.db.prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?').run(name, JSON.stringify(definition), id);
+        } else if (name !== undefined) {
+          ctx.db.prepare('UPDATE workflows SET name = ? WHERE id = ?').run(name, id);
+        } else if (definition !== undefined) {
+          ctx.db.prepare('UPDATE workflows SET definition = ? WHERE id = ?').run(JSON.stringify(definition), id);
+        }
+      }
+    },
+    deleteWorkflow(id) {
+      ctx.db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
+    },
+    async runWorkflow(_id) {
+      return { runId: '', status: 'not_implemented' };
+    },
+    async startMeeting(topic, advisorIds) {
+      const meetingId = `meeting_${Date.now()}`;
+      return { meetingId, topic, synthesis: '', perspectives: [] };
+    },
+    async writeLongTermMemory(content, metadata) {
+      return ctx.longTerm.store({ content, metadata: metadata ?? {}, timestamp: new Date() });
+    },
+    createEmployee(_input) {},
+    registerAgent(input) {
+      ctx.agentRegistry.register({
+        type: 'custom' as const,
+        name: input.name,
+        description: input.description,
+        systemPrompt: input.systemPrompt,
+        model: input.model,
+        temperature: input.temperature,
+        maxResponseTokens: input.maxResponseTokens,
+        allowedTools: input.allowedTools,
+        contextBudget: input.contextBudget,
+      });
+      return { type: 'custom', name: input.name };
+    },
+    updateAgent(name, updates) {
+      const existing = ctx.agentRegistry.get(name);
+      if (existing && existing.type === 'custom') {
+        ctx.agentRegistry.update(name, updates as any);
+      }
+    },
+    deleteAgent(name) {
+      ctx.agentRegistry.unregister(name);
+      ctx.db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
+    },
+    listAgents() {
+      return ctx.agentRegistry.list().map((r) => ({
+        type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
+      }));
+    },
+    // Project tools (stubs — workflow agents don't manage projects)
+    setProjectContext(projectId) {
+      const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      if (!row) throw new Error(`Project not found: ${projectId}`);
+      return { id: row.id, name: row.name };
+    },
+    createProject(input) {
+      const id = `proj_${Date.now()}`;
+      ctx.db.prepare('INSERT INTO projects (id, name, description, last_activity_at) VALUES (?, ?, ?, datetime(\'now\'))')
+        .run(id, input.name, input.description ?? '', input.rootPath ?? '');
+      return { id, name: input.name };
+    },
+    listProjects() {
+      const rows = ctx.db.prepare('SELECT id, name FROM projects WHERE archived = 0 ORDER BY last_activity_at DESC').all() as any[];
+      return rows.map((r: any) => ({ id: r.id, name: r.name }));
+    },
+    getProjectContext(projectId) {
+      const project = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      if (!project) return null;
+      return { id: project.id, name: project.name };
+    },
+  };
+}
+
+// ── Workflow memory provider (per-run isolation) ──
+function buildWorkflowMemoryProvider(runId: string) {
+  const ctx = getServerContext();
+  return {
+    async getShortTerm(_sid: string) {
+      return [];
+    },
+    async getProjectContext(_pid: string) {
+      const projCtx = ctx.project.get(_pid);
+      if (!projCtx) return `Cabinet v2.0 project. ${_pid}`;
+      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}`;
+    },
+    async getEntityPreferences(_captainId: string) {
+      const prefs = ctx.entity.getPreferences(_captainId);
+      return prefs?.preferences ?? {};
+    },
+    async searchLongTerm(query: string, _pid: string) {
+      let queryEmbedding: number[] | undefined;
+      if (ctx.gateway) {
+        try {
+          const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
+          queryEmbedding = er.embeddings[0];
+        } catch { /* fall back to text search */ }
+      }
+      const results = await ctx.longTerm.search(query, 5, queryEmbedding);
+      return results.map((r) => `[Memory] ${r.content}`);
+    },
+  };
+}
 
 function getEngine(): WorkflowEngine {
   if (engine) return engine;
-
   const ctx = getServerContext();
   engine = new WorkflowEngine();
 
   engine.setHandlers({
+    // ── Segment-based agent execution (new) ──
+    createAgentLoop: async (agentId, runId, options): Promise<AgentLoopHandle> => {
+      if (!ctx.gateway) throw new Error('No LLM gateway available');
+
+      const registry = ctx.agentRegistry;
+      const role = registry.get(agentId);
+      if (!role) throw new Error(`Agent not found: ${agentId}`);
+
+      const cacheKey = `${runId}:${agentId}`;
+
+      // Check cache first (persistent agents reuse their instance)
+      if (options.persistent) {
+        const cached = agentLoopCache.get(cacheKey);
+        if (cached) {
+          return {
+            async run(message: string) {
+              const result = await cached.run(message);
+              return result.content;
+            },
+            async dispose() {
+              cached.resetHandoff();
+            },
+            async handoff() {
+              return cached.generateHandoff();
+            },
+          };
+        }
+      }
+
+      const executor = new ToolExecutor();
+      registerCabinetTools(executor, buildToolDependencies());
+      registerSkillTools(executor);
+      const mcpCtx = getServerContext();
+      registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
+
+      // Restrict tools per role
+      if (role.allowedTools.length > 0) {
+        for (const toolName of executor.listTools()) {
+          if (!role.allowedTools.includes(toolName)) {
+            executor.unregister(toolName);
+          }
+        }
+      }
+
+      const checkpointManager = new CheckpointManager(ctx.db);
+      const loop = new AgentLoop({
+        gateway: ctx.gateway,
+        toolExecutor: executor,
+        safetyChecker: new SafetyChecker(ctx.delegationTier),
+        checkpointManager,
+        memoryProvider: buildWorkflowMemoryProvider(runId),
+        sessionId: cacheKey,
+        projectId: 'default',
+        captainId: 'captain-1',
+        systemPrompt: role.systemPrompt,
+        model: role.model,
+        maxSteps: options.persistent ? 20 : 10,
+      });
+
+      // Wire observability
+      executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
+        ctx.observability.recordToolCall(toolName, success, blocked, durationMs);
+      });
+
+      // Cache persistent agents
+      if (options.persistent) {
+        agentLoopCache.set(cacheKey, loop);
+      }
+
+      return {
+        async run(message: string) {
+          const result = await loop.run(message);
+          ctx.metrics.increment('llm_call', { model: role.model, purpose: 'workflow_segment' });
+          return result.content;
+        },
+        async dispose() {
+          loop.resetHandoff();
+          if (!options.persistent) {
+            agentLoopCache.delete(cacheKey);
+          }
+        },
+        async handoff() {
+          return loop.generateHandoff();
+        },
+      };
+    },
+
+    // ── Legacy aiAgent handler (fallback for nodes without agentId) ──
     aiAgent: async (node: WorkflowNodeDef, _previousOutputs: string) => {
       if (!ctx.gateway) return 'No LLM available';
       const d = node.data ?? {};
@@ -22,7 +290,7 @@ function getEngine(): WorkflowEngine {
           messages: [{ role: 'user', content: (d.prompt as string) ?? (d.label as string) ?? 'Process this step' }],
           maxTokens: (d.maxTokens as number) ?? 200,
         });
-        ctx.metrics.increment('llm_call', { model: (d.model as string) ?? 'claude-haiku-4-5', purpose: 'workflow' });
+        ctx.metrics.increment('llm_call', { model: (d.model as string) ?? 'claude-haiku-4-5', purpose: 'workflow_legacy' });
         return response.content;
       } catch (e: any) {
         return `Error: ${e.message}`;
@@ -30,7 +298,7 @@ function getEngine(): WorkflowEngine {
     },
 
     humanApproval: async (node: WorkflowNodeDef, run: WorkflowRun) => {
-      const { decisionService, db, logger } = getServerContext();
+      const { decisionService, db } = getServerContext();
       const d = node.data ?? {};
       const decisionId = `dec_${Date.now()}`;
 
@@ -69,6 +337,14 @@ function getEngine(): WorkflowEngine {
       return { decisionId, status: 'pending' as const };
     },
 
+    skill: async (skillId: string, input: unknown) => {
+      const { skillRegistry } = getServerContext();
+      const skill = skillRegistry.load(skillId);
+      if (!skill) return `Skill not found: ${skillId}`;
+      const result = await skillRegistry.executeSkill(skill, input as Record<string, unknown> ?? {});
+      return result.output;
+    },
+
     notification: async (node: WorkflowNodeDef) => {
       const d = node.data ?? {};
       broadcast('workflow_notification', {
@@ -84,8 +360,61 @@ function getEngine(): WorkflowEngine {
 
 export const workflowsRouter = new Hono();
 
-// Helper: convert UI-format definition to engine format
+// ── Helpers ──
+
+/** Convert new declarative WorkflowDefinition steps to internal node/edge format. */
+function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
+  const nodes: WorkflowNodeDef[] = [];
+  const edges: WorkflowEdge[] = [];
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const prevStep = i > 0 ? steps[i - 1] : null;
+
+    nodes.push({
+      id: step.id,
+      type: step.type ?? 'aiAgent',
+      title: step.title,
+      data: {
+        label: step.title,
+        prompt: step.prompt ?? step.description,
+        model: step.constraints?.model,
+        maxTokens: step.constraints?.maxTokens,
+      },
+      agentId: step.agent,
+      agentConfig: {
+        persistent: step.constraints?.persistent,
+      },
+    });
+
+    // Generate edges: sequential flow or condition-based
+    if (step.type === 'condition' && step.condition) {
+      if (step.condition.trueBranch) {
+        edges.push({ from: step.id, to: step.condition.trueBranch, condition: 'true' });
+      }
+      if (step.condition.falseBranch) {
+        edges.push({ from: step.id, to: step.condition.falseBranch, condition: 'false' });
+      }
+    } else if (prevStep && prevStep.type !== 'condition') {
+      // Sequential: connect previous step to current
+      edges.push({ from: prevStep.id, to: step.id });
+    } else if (prevStep && prevStep.type === 'condition') {
+      // Previous was condition — don't auto-connect; condition handles its own branches
+    } else if (i === 0) {
+      // First step — no incoming edge needed (entry point)
+    }
+  }
+
+  return { nodes, edges };
+}
+
 function normalizeDefinition(def: any): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
+  // New format: WorkflowDefinition with steps array
+  if (def.steps && Array.isArray(def.steps)) {
+    return convertStepsToNodes(def.steps);
+  }
+
+  // Legacy format: { nodes, edges }
   const rawNodes: any[] = def.nodes ?? [];
   const rawEdges: any[] = def.edges ?? [];
 
@@ -97,6 +426,8 @@ function normalizeDefinition(def: any): { nodes: WorkflowNodeDef[]; edges: Workf
     title: n.title ?? n.data?.label ?? n.data?.title,
     children: n.children ?? n.data?.children,
     data: n.data ?? {},
+    agentId: n.agentId ?? n.data?.agentId,
+    agentConfig: n.agentConfig ?? n.data?.agentConfig,
   }));
 
   const edges: WorkflowEdge[] = rawEdges.map((e: any) => ({
@@ -108,7 +439,6 @@ function normalizeDefinition(def: any): { nodes: WorkflowNodeDef[]; edges: Workf
   return { nodes, edges };
 }
 
-// Helper: find entry node (first start node, or first node)
 function findEntryNode(nodes: WorkflowNodeDef[]): string {
   const start = nodes.find((n) => n.type === 'start');
   if (start) return start.id;
@@ -125,7 +455,6 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   const def = JSON.parse(wf.definition ?? '{}');
   const { nodes, edges } = normalizeDefinition(def);
 
-  // Find the approval node that triggered this resume
   const approvalNode = nodes.find((n) => n.type === 'humanApproval');
   if (!approvalNode) {
     logger.warn('No approval node found for resume', { workflowId });
@@ -133,16 +462,13 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   }
 
   const eng = getEngine();
-  // Start a run at the approval node — engine will pause at humanApproval
   let run = await eng.startRun(workflowId, nodes, edges, approvalNode.id);
 
   if (run.status === 'awaiting_approval') {
-    // Mark as approved and continue from this node
     run.status = 'running';
     run = await eng.continueRun(run.runId, nodes, edges);
   }
 
-  // Persist results
   const finalStatus: string = run.status === 'awaiting_approval' ? 'awaiting_approval' : 'completed';
   db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run(finalStatus, workflowId);
   db.prepare(
@@ -156,7 +482,7 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
 
 workflowsRouter.get('/', (c) => {
   const { db } = getServerContext();
-  const projectId = c.req.query('projectId') ?? 'proj-1';
+  const projectId = c.req.query('projectId') ?? 'default';
   const rows = db
     .prepare('SELECT * FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
     .all(projectId) as any[];
@@ -226,12 +552,21 @@ workflowsRouter.post('/:id/run', async (c) => {
       "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'run', 'system', ?, datetime('now'))",
     ).run(id, JSON.stringify({ status: finalStatus, steps: run.steps, runId: run.runId }));
 
-    logger.info('Workflow executed', { id, nodes: run.steps.length, status: finalStatus });
+    // Collect handoff docs from segment boundaries
+    const handoffs: Record<string, unknown> = {};
+    for (const [key, value] of run.results) {
+      if (key.startsWith('_handoff:')) {
+        handoffs[key.replace('_handoff:', '')] = value;
+      }
+    }
+
+    logger.info('Workflow executed', { id, nodes: run.steps.length, status: finalStatus, segments: Object.keys(handoffs).length });
     return c.json({
       runId: run.runId,
       workflowId: id,
       status: finalStatus,
       steps: run.steps,
+      handoffs: Object.keys(handoffs).length > 0 ? handoffs : undefined,
     });
   } catch (e) {
     db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('failed', id);

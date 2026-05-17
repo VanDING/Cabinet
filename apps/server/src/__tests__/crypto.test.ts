@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  encryptApiKey,
-  decryptApiKey,
-  generateMasterPassword,
-} from '../crypto';
+import { encryptApiKey, decryptApiKey, generateMasterPassword } from '../crypto';
 
 describe('API Key Encryption', () => {
   it('encrypts and decrypts an API key', () => {

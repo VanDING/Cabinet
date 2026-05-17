@@ -15,16 +15,24 @@ export interface SafetyCheck {
 
 /** Pure read tools — always safe at any tier. */
 const READ_ONLY_TOOLS = new Set([
-  'query_decisions', 'get_decision', 'get_status',
-  'get_recent_events', 'get_project_context', 'get_captain_preferences',
-  'recall', 'search_memory',
-  'list_workflows', 'list_agents',
+  'query_decisions',
+  'get_decision',
+  'get_status',
+  'get_recent_events',
+  'get_project_context',
+  'get_captain_preferences',
+  'recall',
+  'search_memory',
+  'list_workflows',
+  'list_agents',
 ]);
 
 /** Light write tools — reversible, no cost, no destruction. */
 const LIGHT_WRITE_TOOLS = new Set([
-  'remember', 'write_memory',
-  'add_milestone', 'update_project_summary',
+  'remember',
+  'write_memory',
+  'add_milestone',
+  'update_project_summary',
   'set_captain_preferences',
   'publish_notification',
   'register_agent',
@@ -32,19 +40,23 @@ const LIGHT_WRITE_TOOLS = new Set([
 
 /** Moderate tools — create/update records, no destruction, low cost. */
 const MODERATE_TOOLS = new Set([
-  'create_decision', 'create_workflow', 'update_workflow',
+  'create_decision',
+  'create_workflow',
+  'update_workflow',
   'create_employee',
 ]);
 
 /** Heavy tools — cost money (LLM calls). */
-const COST_TOOLS = new Set([
-  'run_workflow', 'start_meeting',
-]);
+const COST_TOOLS = new Set(['run_workflow', 'start_meeting']);
 
 /** Destructive tools — irreversible changes. */
 const DESTRUCTIVE_TOOLS = new Set([
-  'delete_workflow', 'delete_file', 'execute_command', 'modify_config',
-  'approve_decision', 'reject_decision',
+  'delete_workflow',
+  'delete_file',
+  'execute_command',
+  'modify_config',
+  'approve_decision',
+  'reject_decision',
 ]);
 
 // ── Tier definitions ─────────────────────────────────────────
@@ -59,15 +71,10 @@ const T0_BLOCKED = new Set([
 ]);
 
 /** T1: Light writes and moderate tools auto; cost and destructive blocked. */
-const T1_BLOCKED = new Set([
-  ...COST_TOOLS,
-  ...DESTRUCTIVE_TOOLS,
-]);
+const T1_BLOCKED = new Set([...COST_TOOLS, ...DESTRUCTIVE_TOOLS]);
 
 /** T2: Only destructive tools blocked. */
-const T2_BLOCKED = new Set([
-  ...DESTRUCTIVE_TOOLS,
-]);
+const T2_BLOCKED = new Set([...DESTRUCTIVE_TOOLS]);
 
 /** T3: Nothing blocked. */
 const T3_BLOCKED: Set<string> = new Set();
@@ -125,11 +132,13 @@ export class SafetyChecker {
           this.tier === DelegationTier.CaptainReview
             ? 'All write operations are blocked in Captain Review mode.'
             : this.tier === DelegationTier.StrategicGuard
-            ? 'Cost-incurring and destructive operations require confirmation in Strategic Guard mode.'
-            : this.tier === DelegationTier.TrustedMode
-            ? 'Destructive operations require confirmation in Trusted Mode.'
-            : '',
-        ].filter(Boolean).join(' '),
+              ? 'Cost-incurring and destructive operations require confirmation in Strategic Guard mode.'
+              : this.tier === DelegationTier.TrustedMode
+                ? 'Destructive operations require confirmation in Trusted Mode.'
+                : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
       };
     }
 

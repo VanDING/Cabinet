@@ -21,22 +21,41 @@ function escapeHtml(text: string): string {
 
 const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   const html = useMemo(() => {
+    // 1. Strip HTML tags LLM sometimes outputs alongside markdown.
+    //    Handles: <p>, </p>, <br/>, <hr />, <li class="x">, etc.
+    const cleaned = content.replace(/<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?\s*\/?>/gi, '');
+
+    // 2. Extract and protect code blocks
     const codeBlocks: string[] = [];
-    // Strip HTML tags LLM sometimes outputs alongside markdown
-    const cleaned = content.replace(/<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/gi, '');
-    const processed = cleaned.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const withCodeBlocks = cleaned.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
       const langClass = ['bash', 'sh', 'shell'].includes(lang?.toLowerCase()) ? 'bash' : lang || '';
       codeBlocks.push(
         `<pre class="code-block ${langClass}"><code>${escapeHtml(code.trim())}</code></pre>`,
       );
-      return `%%C${codeBlocks.length - 1}%%`;
+      return `%%CB${codeBlocks.length - 1}%%`;
     });
 
-    let html = marked.parse(processed) as string;
-    codeBlocks.forEach((block, i) => {
-      html = html.replace(`%%C${i}%%`, block);
+    // 3. Protect skill tags BEFORE markdown parsing so they don't become
+    //    HTML-escaped and don't clash with closing HTML tags from step 1.
+    const skillBlocks: string[] = [];
+    const withSkillTags = withCodeBlocks.replace(/\/\w[\w-]*/g, (match) => {
+      skillBlocks.push(`<span class="skill-tag">${match}</span>`);
+      return `%%SK${skillBlocks.length - 1}%%`;
     });
-    html = html.replace(/\/\w[\w-]*/g, '<span class="skill-tag">$&</span>');
+
+    // 4. Parse markdown
+    let html = marked.parse(withSkillTags) as string;
+
+    // 5. Restore code blocks
+    codeBlocks.forEach((block, i) => {
+      html = html.replace(`%%CB${i}%%`, block);
+    });
+
+    // 6. Restore skill tags
+    skillBlocks.forEach((block, i) => {
+      html = html.replace(`%%SK${i}%%`, block);
+    });
+
     return html;
   }, [content]);
 

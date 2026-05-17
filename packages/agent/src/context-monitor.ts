@@ -22,10 +22,10 @@ export interface ContextWindowConfig {
  *   >80%    = Dumb Zone    (format confusion, worse code)
  */
 export const DEFAULT_WINDOW_CONFIG: ContextWindowConfig = {
-  maxTokens: 200_000,         // Claude Sonnet 4.6 / Opus 4.7
-  smartZoneThreshold: 0.40,   // 40%
-  warningThreshold: 0.60,     // 60%
-  criticalThreshold: 0.80,    // 80%
+  maxTokens: 200_000, // Claude Sonnet 4.6 / Opus 4.7
+  smartZoneThreshold: 0.4, // 40%
+  warningThreshold: 0.6, // 60%
+  criticalThreshold: 0.8, // 80%
 };
 
 /** Per-model context window sizes */
@@ -61,13 +61,13 @@ function estimateTokens(text: string): number {
   for (const ch of text) {
     const code = ch.codePointAt(0)!;
     if (
-      (code >= 0x4E00 && code <= 0x9FFF) || // CJK Unified
-      (code >= 0x3400 && code <= 0x4DBF) || // CJK Ext-A
-      (code >= 0x20000 && code <= 0x2A6DF) || // CJK Ext-B
-      (code >= 0xF900 && code <= 0xFAFF) || // CJK Compat
-      (code >= 0x3040 && code <= 0x309F) || // Hiragana
-      (code >= 0x30A0 && code <= 0x30FF) || // Katakana
-      (code >= 0xAC00 && code <= 0xD7AF)    // Hangul
+      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified
+      (code >= 0x3400 && code <= 0x4dbf) || // CJK Ext-A
+      (code >= 0x20000 && code <= 0x2a6df) || // CJK Ext-B
+      (code >= 0xf900 && code <= 0xfaff) || // CJK Compat
+      (code >= 0x3040 && code <= 0x309f) || // Hiragana
+      (code >= 0x30a0 && code <= 0x30ff) || // Katakana
+      (code >= 0xac00 && code <= 0xd7af) // Hangul
     ) {
       cjkChars++;
     } else {
@@ -126,10 +126,7 @@ export class ContextMonitor {
   /** Take a snapshot of current context utilization. */
   snapshot(breakdown: ContextBreakdown): ContextSnapshot {
     const estimatedTokens =
-      breakdown.systemPrompt +
-      breakdown.messages +
-      breakdown.toolResults +
-      breakdown.memory;
+      breakdown.systemPrompt + breakdown.messages + breakdown.toolResults + breakdown.memory;
 
     const utilization = estimatedTokens / this.config.maxTokens;
     const zone = this.classifyZone(utilization);
@@ -156,21 +153,25 @@ export class ContextMonitor {
 
     // Emit event when crossing into warning+ territory
     if (zone === 'warning' || zone === 'critical' || zone === 'dumb') {
-      this.eventBus.publish({
-        messageId: `ctx_zone_${zone}_${Date.now()}`,
-        correlationId: `ctx_${Date.now()}`,
-        causationId: null,
-        timestamp: new Date(),
-        messageType: MessageType.SystemNotification,
-        payload: {
-          type: 'context_zone_alert',
-          zone,
-          utilization: snap.utilization,
-          estimatedTokens: snap.estimatedTokens,
-          maxTokens: snap.maxTokens,
-          breakdown: snap.breakdown,
-        },
-      }).catch(() => { /* fire-and-forget */ });
+      this.eventBus
+        .publish({
+          messageId: `ctx_zone_${zone}_${Date.now()}`,
+          correlationId: `ctx_${Date.now()}`,
+          causationId: null,
+          timestamp: new Date(),
+          messageType: MessageType.SystemNotification,
+          payload: {
+            type: 'context_zone_alert',
+            zone,
+            utilization: snap.utilization,
+            estimatedTokens: snap.estimatedTokens,
+            maxTokens: snap.maxTokens,
+            breakdown: snap.breakdown,
+          },
+        })
+        .catch(() => {
+          /* fire-and-forget */
+        });
     }
 
     return snap;

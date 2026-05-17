@@ -49,19 +49,13 @@ export class DebateProtocol {
     config?: DebateConfig,
   ) {
     this.parallelReasoning = new ParallelReasoning(gateway);
-    this.crossValidator = config?.crossValidate !== false
-      ? new CrossValidator(gateway)
-      : null;
+    this.crossValidator = config?.crossValidate !== false ? new CrossValidator(gateway) : null;
   }
 
   /**
    * Run a full multi-round debate.
    */
-  async debate(
-    topic: string,
-    advisors: Advisor[],
-    config?: DebateConfig,
-  ): Promise<DebateResult> {
+  async debate(topic: string, advisors: Advisor[], config?: DebateConfig): Promise<DebateResult> {
     const maxRounds = config?.maxRounds ?? 2;
     const shareContext = config?.shareContext ?? true;
     const rounds: DebateRound[] = [];
@@ -105,8 +99,8 @@ export class DebateProtocol {
 
     // Final synthesis
     const fullTranscript = rounds
-      .flatMap(r => r.reasonings)
-      .map(r => `[${r.advisor.name}]: ${r.content}`)
+      .flatMap((r) => r.reasonings)
+      .map((r) => `[${r.advisor.name}]: ${r.content}`)
       .join('\n');
 
     const synthesisPrompt = [
@@ -132,7 +126,13 @@ export class DebateProtocol {
     totalLlmCalls++;
 
     const totalTokens = rounds.reduce((sum, r) => {
-      return sum + r.reasonings.reduce((s, a) => s + (a.tokensUsed?.prompt ?? 0) + (a.tokensUsed?.completion ?? 0), 0);
+      return (
+        sum +
+        r.reasonings.reduce(
+          (s, a) => s + (a.tokensUsed?.prompt ?? 0) + (a.tokensUsed?.completion ?? 0),
+          0,
+        )
+      );
     }, 0);
     const estimatedCost = (totalTokens / 1_000_000) * 1.0;
 
@@ -148,8 +148,6 @@ export class DebateProtocol {
   }
 
   private buildRoundSummary(reasonings: AdvisorReasoning[]): string {
-    return reasonings
-      .map(r => `[${r.advisor.name}] ${r.content}`)
-      .join('\n');
+    return reasonings.map((r) => `[${r.advisor.name}] ${r.content}`).join('\n');
   }
 }

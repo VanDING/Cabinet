@@ -25,7 +25,13 @@ const APPS_DIR = join(ROOT, 'apps');
 const LAYERS: Record<number, string[]> = {
   1: ['@cabinet/types', '@cabinet/events', '@cabinet/storage'],
   2: ['@cabinet/gateway', '@cabinet/agent', '@cabinet/memory'],
-  3: ['@cabinet/decision', '@cabinet/secretary', '@cabinet/meeting', '@cabinet/workflow', '@cabinet/harness'],
+  3: [
+    '@cabinet/decision',
+    '@cabinet/secretary',
+    '@cabinet/meeting',
+    '@cabinet/workflow',
+    '@cabinet/harness',
+  ],
   4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop'],
 };
 
@@ -33,11 +39,13 @@ const LAYERS: Record<number, string[]> = {
 const BANNED_IMPORTS: Record<string, { packages: string[]; reason: string }> = {
   '@cabinet/ui': {
     packages: ['better-sqlite3'],
-    reason: 'Frontend packages must not access the database directly. Use @cabinet/storage through API routes.',
+    reason:
+      'Frontend packages must not access the database directly. Use @cabinet/storage through API routes.',
   },
   '@cabinet/desktop': {
     packages: ['better-sqlite3'],
-    reason: 'Frontend packages must not access the database directly. Use @cabinet/storage through API routes.',
+    reason:
+      'Frontend packages must not access the database directly. Use @cabinet/storage through API routes.',
   },
 };
 

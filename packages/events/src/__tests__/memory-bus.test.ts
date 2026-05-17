@@ -7,7 +7,7 @@ import type { MessageEnvelope } from '@cabinet/types';
 // Run the contract tests
 runEventBusContractTests(
   () => new MemoryEventBus(),
-  () => {}
+  () => {},
 );
 
 // Memory-specific tests

@@ -115,9 +115,8 @@ export class ObservabilityCollector {
     else existing.failureCount++;
 
     // Exponential moving average for duration
-    existing.avgDurationMs = existing.avgDurationMs === 0
-      ? durationMs
-      : existing.avgDurationMs * 0.9 + durationMs * 0.1;
+    existing.avgDurationMs =
+      existing.avgDurationMs === 0 ? durationMs : existing.avgDurationMs * 0.9 + durationMs * 0.1;
 
     existing.lastUsedAt = new Date().toISOString();
     this.toolMetrics.set(toolName, existing);
@@ -125,37 +124,38 @@ export class ObservabilityCollector {
 
   /** Get tool metrics sorted by error rate (most error-prone first). */
   getToolHealth(): ToolMetric[] {
-    return [...this.toolMetrics.values()]
-      .sort((a, b) => {
-        const aErrorRate = a.failureCount / Math.max(a.totalCalls, 1);
-        const bErrorRate = b.failureCount / Math.max(b.totalCalls, 1);
-        return bErrorRate - aErrorRate;
-      });
+    return [...this.toolMetrics.values()].sort((a, b) => {
+      const aErrorRate = a.failureCount / Math.max(a.totalCalls, 1);
+      const bErrorRate = b.failureCount / Math.max(b.totalCalls, 1);
+      return bErrorRate - aErrorRate;
+    });
   }
 
   /** Generate a report for the given time period. */
   generateReport(from: Date, to: Date): ObservabilityReport {
-    const sessions = this.sessions.filter(s => {
+    const sessions = this.sessions.filter((s) => {
       const t = new Date(s.startTime).getTime();
       return t >= from.getTime() && t <= to.getTime();
     });
 
-    const succeeded = sessions.filter(s => s.success).length;
+    const succeeded = sessions.filter((s) => s.success).length;
     const failed = sessions.length - succeeded;
 
     const totalPromptTokens = sessions.reduce((sum, s) => sum + s.totalTokens.prompt, 0);
     const totalCompletionTokens = sessions.reduce((sum, s) => sum + s.totalTokens.completion, 0);
     const totalCost = sessions.reduce((sum, s) => sum + s.totalCost, 0);
 
-    const avgSteps = sessions.length > 0
-      ? sessions.reduce((sum, s) => sum + s.totalSteps, 0) / sessions.length
-      : 0;
-    const avgDuration = sessions.length > 0
-      ? sessions.reduce((sum, s) => sum + s.durationMs, 0) / sessions.length
-      : 0;
+    const avgSteps =
+      sessions.length > 0
+        ? sessions.reduce((sum, s) => sum + s.totalSteps, 0) / sessions.length
+        : 0;
+    const avgDuration =
+      sessions.length > 0
+        ? sessions.reduce((sum, s) => sum + s.durationMs, 0) / sessions.length
+        : 0;
 
     // p95 duration
-    const sortedDurations = sessions.map(s => s.durationMs).sort((a, b) => a - b);
+    const sortedDurations = sessions.map((s) => s.durationMs).sort((a, b) => a - b);
     const p95Idx = Math.floor(sortedDurations.length * 0.95);
     const p95Duration = sortedDurations[p95Idx] ?? 0;
 
@@ -170,17 +170,18 @@ export class ObservabilityCollector {
     const qualityPassRate = qualityTotal > 0 ? qualityPassed / qualityTotal : 1;
 
     // Context
-    const avgPeakUtilization = sessions.length > 0
-      ? sessions.reduce((sum, s) => {
-          const max = Math.max(
-            s.contextZoneDistribution.smart,
-            s.contextZoneDistribution.warning,
-            s.contextZoneDistribution.critical,
-            s.contextZoneDistribution.dumb,
-          );
-          return sum + max;
-        }, 0) / sessions.length
-      : 0;
+    const avgPeakUtilization =
+      sessions.length > 0
+        ? sessions.reduce((sum, s) => {
+            const max = Math.max(
+              s.contextZoneDistribution.smart,
+              s.contextZoneDistribution.warning,
+              s.contextZoneDistribution.critical,
+              s.contextZoneDistribution.dumb,
+            );
+            return sum + max;
+          }, 0) / sessions.length
+        : 0;
 
     const zoneDistribution = {
       smart: sessions.reduce((sum, s) => sum + s.contextZoneDistribution.smart, 0),
@@ -197,9 +198,15 @@ export class ObservabilityCollector {
     // Top errors
     const errorCounts = new Map<string, number>();
     for (const s of sessions) {
-      if (s.errors.transient > 0) errorCounts.set('transient', (errorCounts.get('transient') ?? 0) + s.errors.transient);
-      if (s.errors.recoverable > 0) errorCounts.set('recoverable', (errorCounts.get('recoverable') ?? 0) + s.errors.recoverable);
-      if (s.errors.fatal > 0) errorCounts.set('fatal', (errorCounts.get('fatal') ?? 0) + s.errors.fatal);
+      if (s.errors.transient > 0)
+        errorCounts.set('transient', (errorCounts.get('transient') ?? 0) + s.errors.transient);
+      if (s.errors.recoverable > 0)
+        errorCounts.set(
+          'recoverable',
+          (errorCounts.get('recoverable') ?? 0) + s.errors.recoverable,
+        );
+      if (s.errors.fatal > 0)
+        errorCounts.set('fatal', (errorCounts.get('fatal') ?? 0) + s.errors.fatal);
     }
     const topErrors = [...errorCounts.entries()]
       .map(([category, count]) => ({ category, count }))
@@ -215,9 +222,8 @@ export class ObservabilityCollector {
       },
       cost: {
         total: Math.round(totalCost * 100) / 100,
-        avgPerSession: sessions.length > 0
-          ? Math.round((totalCost / sessions.length) * 100) / 100
-          : 0,
+        avgPerSession:
+          sessions.length > 0 ? Math.round((totalCost / sessions.length) * 100) / 100 : 0,
       },
       performance: {
         avgSteps: Math.round(avgSteps * 10) / 10,
@@ -247,28 +253,22 @@ export class ObservabilityCollector {
     contextHealth: 'healthy' | 'warning' | 'critical';
   } {
     const recent = this.sessions.slice(-50);
-    const successRate = recent.length > 0
-      ? recent.filter(s => s.success).length / recent.length
-      : 1;
+    const successRate =
+      recent.length > 0 ? recent.filter((s) => s.success).length / recent.length : 1;
 
-    const avgCost = recent.length > 0
-      ? recent.reduce((sum, s) => sum + s.totalCost, 0) / recent.length
-      : 0;
+    const avgCost =
+      recent.length > 0 ? recent.reduce((sum, s) => sum + s.totalCost, 0) / recent.length : 0;
 
     const toolErrorRate = this.getToolHealth()[0]
       ? this.getToolHealth()[0]!.failureCount / Math.max(this.getToolHealth()[0]!.totalCalls, 1)
       : 0;
 
     const toolHealth: 'healthy' | 'degraded' | 'unhealthy' =
-      toolErrorRate < 0.05 ? 'healthy' :
-      toolErrorRate < 0.15 ? 'degraded' :
-      'unhealthy';
+      toolErrorRate < 0.05 ? 'healthy' : toolErrorRate < 0.15 ? 'degraded' : 'unhealthy';
 
-    const dumbZoneSessions = recent.filter(s => s.contextZoneDistribution.dumb > 0).length;
+    const dumbZoneSessions = recent.filter((s) => s.contextZoneDistribution.dumb > 0).length;
     const contextHealth: 'healthy' | 'warning' | 'critical' =
-      dumbZoneSessions === 0 ? 'healthy' :
-      dumbZoneSessions < 3 ? 'warning' :
-      'critical';
+      dumbZoneSessions === 0 ? 'healthy' : dumbZoneSessions < 3 ? 'warning' : 'critical';
 
     return {
       recentSessions: recent.length,
@@ -321,9 +321,15 @@ export class ObservabilityCollector {
 
         const errorCounts = new Map<string, number>();
         for (const s of daySessions) {
-          if (s.errors.transient > 0) errorCounts.set('transient', (errorCounts.get('transient') ?? 0) + s.errors.transient);
-          if (s.errors.recoverable > 0) errorCounts.set('recoverable', (errorCounts.get('recoverable') ?? 0) + s.errors.recoverable);
-          if (s.errors.fatal > 0) errorCounts.set('fatal', (errorCounts.get('fatal') ?? 0) + s.errors.fatal);
+          if (s.errors.transient > 0)
+            errorCounts.set('transient', (errorCounts.get('transient') ?? 0) + s.errors.transient);
+          if (s.errors.recoverable > 0)
+            errorCounts.set(
+              'recoverable',
+              (errorCounts.get('recoverable') ?? 0) + s.errors.recoverable,
+            );
+          if (s.errors.fatal > 0)
+            errorCounts.set('fatal', (errorCounts.get('fatal') ?? 0) + s.errors.fatal);
         }
 
         return {
@@ -334,10 +340,18 @@ export class ObservabilityCollector {
             completion: daySessions.reduce((sum, s) => sum + s.totalTokens.completion, 0),
           },
           totalCost: Math.round(daySessions.reduce((sum, s) => sum + s.totalCost, 0) * 100) / 100,
-          avgSteps: Math.round(daySessions.reduce((sum, s) => sum + s.totalSteps, 0) / daySessions.length * 10) / 10,
-          avgDurationMs: Math.round(daySessions.reduce((sum, s) => sum + s.durationMs, 0) / daySessions.length),
-          successRate: Math.round(daySessions.filter(s => s.success).length / daySessions.length * 1000) / 1000,
-          toolSuccessRate: toolTotal > 0 ? Math.round(toolSucceeded / toolTotal * 1000) / 1000 : 1,
+          avgSteps:
+            Math.round(
+              (daySessions.reduce((sum, s) => sum + s.totalSteps, 0) / daySessions.length) * 10,
+            ) / 10,
+          avgDurationMs: Math.round(
+            daySessions.reduce((sum, s) => sum + s.durationMs, 0) / daySessions.length,
+          ),
+          successRate:
+            Math.round((daySessions.filter((s) => s.success).length / daySessions.length) * 1000) /
+            1000,
+          toolSuccessRate:
+            toolTotal > 0 ? Math.round((toolSucceeded / toolTotal) * 1000) / 1000 : 1,
           topErrors: [...errorCounts.entries()]
             .map(([category, count]) => ({ category, count }))
             .sort((a, b) => b.count - a.count),

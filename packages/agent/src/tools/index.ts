@@ -2,6 +2,7 @@ import { ToolExecutor, type ToolDefinition } from '../tool-executor.js';
 import type { EventBus } from '@cabinet/events';
 import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
 import { MessageType, type DecisionStore, type Decision } from '@cabinet/types';
+import { getSkillRegistry } from '../skill-registry.js';
 
 export interface ToolDependencies {
   // ── Existing (read path) ──
@@ -34,13 +35,24 @@ export interface ToolDependencies {
   approveDecision: (decisionId: string, captainId: string, chosenOptionId: string) => Decision;
   rejectDecision: (decisionId: string, captainId: string) => Decision;
 
-  createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => { id: string };
+  listWorkflows: () => { id: string; name: string; status: string; stepCount: number }[];
+  getWorkflow: (id: string) => { id: string; name: string; definition: unknown; status: string } | undefined;
+  createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => {
+    id: string;
+  };
   updateWorkflow: (id: string, input: { name?: string; definition?: unknown }) => void;
   deleteWorkflow: (id: string) => void;
   runWorkflow: (id: string) => Promise<{ runId: string; status: string; steps?: unknown[] }>;
 
-  startMeeting: (topic: string, advisorIds?: string[]) => Promise<{
-    meetingId: string; topic: string; synthesis: string; perspectives: unknown[];
+  startMeeting: (
+    topic: string,
+    advisorIds?: string[],
+    projectId?: string,
+  ) => Promise<{
+    meetingId: string;
+    topic: string;
+    synthesis: string;
+    perspectives: unknown[];
   }>;
 
   writeLongTermMemory: (content: string, metadata?: Record<string, unknown>) => Promise<string>;
@@ -56,7 +68,15 @@ export interface ToolDependencies {
     allowedTools: string[];
     contextBudget: number;
   }) => { type: string; name: string };
+  updateAgent: (name: string, updates: Record<string, unknown>) => void;
+  deleteAgent: (name: string) => void;
   listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
+
+  // Project tools
+  setProjectContext: (projectId: string) => { id: string; name: string };
+  createProject: (input: { name: string; description?: string; rootPath?: string }) => { id: string; name: string };
+  listProjects: () => { id: string; name: string; lastActivityAt?: string; activeWorkflowCount?: number }[];
+  getProjectContext: (projectId: string) => Record<string, unknown> | null;
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -70,7 +90,9 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const status = (args.status as string) ?? 'pending';
         const projectId = args.projectId as string | undefined;
         if (projectId) {
-          return deps.decisionStore.listByProject(projectId).filter((d: Decision) => status === 'all' || d.status === status);
+          return deps.decisionStore
+            .listByProject(projectId)
+            .filter((d: Decision) => status === 'all' || d.status === status);
         }
         return deps.decisionStore.listPending(projectId ?? 'all');
       },
@@ -111,7 +133,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           involvesOrgConfig: (args.involvesOrgConfig as boolean) ?? false,
         };
         return deps.createDecision({
-          projectId, type, title, description, options, classification, captainId,
+          projectId,
+          type,
+          title,
+          description,
+          options,
+          classification,
+          captainId,
         });
       },
     },
@@ -197,7 +225,11 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const query = args.query as string;
         const limit = (args.limit as number) ?? 5;
         const results = await deps.longTerm.search(query, limit);
-        return results.map(r => ({ content: r.content, timestamp: r.timestamp, metadata: r.metadata }));
+        return results.map((r) => ({
+          content: r.content,
+          timestamp: r.timestamp,
+          metadata: r.metadata,
+        }));
       },
     },
     {
@@ -275,7 +307,23 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     {
       name: 'list_workflows',
       execute: async (_args: Record<string, unknown>) => {
-        return { message: 'Use query_decisions or the workflow API for workflow listing' };
+        const workflows = deps.listWorkflows();
+        return { workflows };
+      },
+    },
+    {
+      name: 'get_workflow',
+      execute: async (args: Record<string, unknown>) => {
+        const workflowId = args.workflowId as string;
+        if (!workflowId) return { error: 'workflowId is required' };
+        const wf = deps.getWorkflow(workflowId);
+        if (!wf) return { error: `Workflow not found: ${workflowId}` };
+        return {
+          id: wf.id,
+          name: wf.name,
+          status: wf.status,
+          definition: wf.definition,
+        };
       },
     },
     {
@@ -327,7 +375,8 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const topic = args.topic as string;
         if (!topic) return { error: 'topic is required' };
         const advisorIds = (args.advisors as string[]) ?? undefined;
-        const result = await deps.startMeeting(topic, advisorIds);
+        const projectId = args.projectId as string | undefined;
+const result = await deps.startMeeting(topic, advisorIds, projectId);
         return {
           meetingId: result.meetingId,
           topic: result.topic,
@@ -377,9 +426,81 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         if (!systemPrompt) return { error: 'systemPrompt is required' };
 
         return deps.registerAgent({
-          name, description, systemPrompt, model,
-          temperature, maxResponseTokens, allowedTools, contextBudget,
+          name,
+          description,
+          systemPrompt,
+          model,
+          temperature,
+          maxResponseTokens,
+          allowedTools,
+          contextBudget,
         });
+      },
+    },
+    {
+      name: 'update_agent',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        if (!name) return { error: 'name is required' };
+        const updates: Record<string, unknown> = {};
+        if (args.description !== undefined) updates.description = args.description;
+        if (args.systemPrompt !== undefined) updates.systemPrompt = args.systemPrompt;
+        if (args.model !== undefined) updates.model = args.model;
+        if (args.temperature !== undefined) updates.temperature = args.temperature;
+        if (args.maxResponseTokens !== undefined) updates.maxResponseTokens = args.maxResponseTokens;
+        if (args.allowedTools !== undefined) updates.allowedTools = args.allowedTools;
+        if (args.contextBudget !== undefined) updates.contextBudget = args.contextBudget;
+        deps.updateAgent(name, updates);
+        return { updated: true, name };
+      },
+    },
+    {
+      name: 'delete_agent',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        if (!name) return { error: 'name is required' };
+        deps.deleteAgent(name);
+        return { deleted: true, name };
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Project Tools
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'set_project_context',
+      execute: async (args: Record<string, unknown>) => {
+        const projectId = args.projectId as string;
+        if (!projectId) return { error: 'projectId is required' };
+        const result = deps.setProjectContext(projectId);
+        return { activeProject: result };
+      },
+    },
+    {
+      name: 'create_project',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        if (!name) return { error: 'name is required' };
+        const result = deps.createProject({
+          name,
+          description: args.description as string,
+          rootPath: args.rootPath as string,
+        });
+        return { project: result };
+      },
+    },
+    {
+      name: 'list_projects',
+      execute: async (_args: Record<string, unknown>) => {
+        return { projects: deps.listProjects() };
+      },
+    },
+    {
+      name: 'get_project_context',
+      execute: async (args: Record<string, unknown>) => {
+        const projectId = args.projectId as string;
+        if (!projectId) return { error: 'projectId is required' };
+        return { context: deps.getProjectContext(projectId) };
       },
     },
 
@@ -392,7 +513,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         return {
           status: 'operational',
           timestamp: new Date().toISOString(),
-          toolsAvailable: 26,
+          toolsAvailable: 32,
         };
       },
     },
@@ -404,5 +525,48 @@ export function registerCabinetTools(executor: ToolExecutor, deps: ToolDependenc
   for (const tool of tools) {
     executor.register(tool);
   }
+  return executor;
+}
+
+/** Register MCP tools from an MCP manager (must provide callTool function). */
+export function registerMCPTools(
+  executor: ToolExecutor,
+  mcpCallTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  mcpListTools: () => { serverName: string; name: string; description: string; inputSchema: Record<string, unknown> }[],
+): ToolExecutor {
+  for (const tool of mcpListTools()) {
+    const fullName = `mcp__${tool.name}`;
+    executor.register({
+      name: fullName,
+      execute: async (args: Record<string, unknown>) => {
+        const result = await mcpCallTool(fullName, args);
+        return result;
+      },
+    });
+  }
+  return executor;
+}
+
+/** Register per-skill tools (use_skill__name) from the SkillRegistry. */
+export function registerSkillTools(executor: ToolExecutor): ToolExecutor {
+  const registry = getSkillRegistry();
+  const skillTools = registry.getToolDefinitions();
+  for (const tool of skillTools) {
+    executor.register(tool);
+  }
+
+  // Also register the generic use_skill dispatcher
+  executor.register({
+    name: 'use_skill',
+    execute: async (args: Record<string, unknown>) => {
+      const skillName = args.skill as string;
+      if (!skillName) return { error: 'skill name is required' };
+      const skill = registry.load(skillName);
+      if (!skill) return { error: `Skill not found: ${skillName}` };
+      const result = await registry.executeSkill(skill, args);
+      return result;
+    },
+  });
+
   return executor;
 }

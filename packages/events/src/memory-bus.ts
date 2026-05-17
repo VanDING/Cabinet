@@ -38,8 +38,6 @@ export class MemoryEventBus implements EventBus {
 
   /** Get all published events (for testing and debugging only) */
   getAllEvents(): readonly MessageEnvelope[] {
-    return [...this.events].sort(
-      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-    );
+    return [...this.events].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 }

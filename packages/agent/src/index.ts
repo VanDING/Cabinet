@@ -32,6 +32,7 @@ export {
   WORKFLOW_DESIGNER_ROLE,
   CURATOR_ROLE,
   AGENT_CREATOR_ROLE,
+  REVIEWER_ROLE,
   type AgentRole,
   type AgentRoleType,
 } from './agent-roles.js';
@@ -43,4 +44,6 @@ export {
   type PipelineStep,
 } from './dispatcher.js';
 export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback } from './agent-loop.js';
-export { createCabinetTools, registerCabinetTools, type ToolDependencies } from './tools/index.js';
+export { createCabinetTools, registerCabinetTools, registerSkillTools, registerMCPTools, type ToolDependencies } from './tools/index.js';
+export { SkillRegistry, getSkillRegistry, setSkillRegistry, type SkillMetadata, type SkillEntry } from './skill-registry.js';
+export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown, type ParsedSkill } from './skill-loader.js';

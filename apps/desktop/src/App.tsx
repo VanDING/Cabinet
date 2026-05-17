@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense, startTransition } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
@@ -9,8 +9,19 @@ import { useSessions, type ChatMessage, type AttachedFile } from './hooks/useSes
 import { useToast } from './components/Toast';
 import { useWebSocket } from './hooks/useWebSocket';
 import { MobileNav } from './components/MobileNav';
-import { apiFetch, authJsonHeaders } from './utils/pin.js';
-import { readSSEStream, formatPipelineResponse } from './utils/streaming.js';
+import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
+import type { MeetingData } from './components/MeetingCard';
+import { readSSEStream } from './utils/streaming.js';
+import { ProjectExplorer } from './components/ProjectExplorer';
+
+interface ProjectInfo {
+  id: string;
+  name: string;
+  lastActivityAt?: string;
+  activeWorkflowCount?: number;
+  archived?: boolean;
+  rootPath?: string;
+}
 
 // Lazy-loaded pages
 const OfficePage = lazy(() =>
@@ -27,9 +38,6 @@ const EmployeesPage = lazy(() =>
 );
 const MemoryPage = lazy(() =>
   import('./pages/MemoryPage').then((m) => ({ default: m.MemoryPage })),
-);
-const MeetingsPage = lazy(() =>
-  import('./pages/MeetingsPage').then((m) => ({ default: m.MeetingsPage })),
 );
 const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ default: m.ChatView })));
 
@@ -49,17 +57,39 @@ export function App() {
   const [chatMode, setChatMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const navigate = useNavigate();
   const { isDark, toggle } = useTheme();
   const { addToast } = useToast();
+
+  // Fetch projects
+  const refreshProjects = useCallback(() => {
+    apiFetch('/api/projects?archived=false', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setProjects(d.projects ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { refreshProjects(); }, [refreshProjects]);
+
+  // Listen for project deletion from Navigation
+  useEffect(() => {
+    const handler = (e: Event) => {
+      refreshProjects();
+      if ((e as CustomEvent).detail === activeProjectId) setActiveProjectId(null);
+    };
+    window.addEventListener('project_deleted', handler);
+    return () => window.removeEventListener('project_deleted', handler);
+  }, [refreshProjects, activeProjectId]);
 
   // WebSocket for real-time events — batched as low-priority updates
   useWebSocket((type, data) => {
     window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
     startTransition(() => {
       if (type === 'secretary_message') addToast('info', 'New message received');
-      if (type === 'decision_created') addToast('info', `Decision "${data.title}" created`);
-      if (type === 'decision_updated') addToast('info', `Decision ${data.status}`);
+      if (type === 'decision_created') addToast('info', `Decision "${data.data?.title ?? 'Untitled'}" created`);
+      if (type === 'decision_updated') addToast('info', `Decision ${data.data?.status ?? 'updated'}`);
     });
   });
 
@@ -82,11 +112,85 @@ export function App() {
   const handleNavigate = useCallback(
     (page: NavPage) => {
       setActivePage(page);
+      setActiveProjectId(null);
       setChatMode(false);
       navigate(`/${page === 'office' ? '' : page}`);
     },
     [navigate],
   );
+
+  const handleNavigateToProject = useCallback(
+    (projectId: string) => {
+      setActiveProjectId(projectId);
+      setActivePage('office' as NavPage);
+      setChatMode(false);
+      navigate(`/project/${projectId}/office`);
+    },
+    [navigate],
+  );
+
+  const handleCreateProject = useCallback(async () => {
+    let name = '';
+    let rootPath = '';
+    // Try folder picker first — folder name becomes project name
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({ directory: true, title: 'Select project folder', multiple: false });
+      if (selected && typeof selected === 'string') {
+        rootPath = selected;
+        name = selected.split(/[/\\]/).pop() || selected;
+      }
+    } catch { /* Tauri dialog not available */ }
+    // Fallback to manual name entry
+    if (!name) {
+      name = prompt('Project name:') || '';
+    }
+    if (!name.trim()) return;
+    try {
+      const r = await apiFetch('/api/projects', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ name: name.trim(), rootPath }),
+      });
+      if (r.ok) {
+        refreshProjects();
+        addToast('info', `Project "${name.trim()}" created`);
+      }
+    } catch {
+      addToast('error', 'Failed to create project');
+    }
+  }, [refreshProjects, addToast]);
+
+  const handleDeleteProject = useCallback(async (projectId: string, name: string) => {
+    try {
+      const r = await apiFetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (r.ok) {
+        refreshProjects();
+        if (projectId === activeProjectId) setActiveProjectId(null);
+        addToast('info', `Project "${name}" deleted`);
+      }
+    } catch {
+      addToast('error', 'Failed to delete project');
+    }
+  }, [refreshProjects, activeProjectId, addToast]);
+
+  const handleRenameProject = useCallback(async (projectId: string, name: string) => {
+    try {
+      const r = await apiFetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) {
+        refreshProjects();
+      }
+    } catch {
+      addToast('error', 'Failed to rename project');
+    }
+  }, [refreshProjects, addToast]);
 
   const handleEnterChat = useCallback(() => {
     setChatMode(true);
@@ -121,7 +225,7 @@ export function App() {
   }, [handleCreateSession]);
 
   const handleSend = useCallback(
-    async (sessionId: string, message: string, files: AttachedFile[], dispatchMode?: string) => {
+    async (sessionId: string, message: string, files: AttachedFile[], _dispatchMode?: string, model?: string) => {
       if (!message.trim() && files.length === 0) return;
 
       setChatMode(true);
@@ -136,11 +240,7 @@ export function App() {
       addMessage(sessionId, userMsg);
       setIsProcessing(true);
 
-      const mode = dispatchMode ?? 'single';
-      // Pipeline/parallel modes don't support streaming
-      const useStream = mode === 'single';
-
-      // Try SSE streaming first (single mode only)
+      // Always use streaming for responsive chat
       const streamId = `a_${Date.now()}`;
       try {
         const res = await apiFetch('/api/secretary/chat', {
@@ -149,10 +249,10 @@ export function App() {
           body: JSON.stringify({
             sessionId,
             message,
-            stream: useStream,
-            projectId: 'default',
+            stream: true,
+            projectId: activeProjectId,
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
-            dispatchMode: mode,
+            model,
           }),
         });
 
@@ -166,7 +266,10 @@ export function App() {
             content: '',
             timestamp: new Date(),
             isStreaming: true,
+            agentName: 'Secretary',
           });
+
+          let meetingData: MeetingData | undefined;
 
           await readSSEStream(reader, {
             onContent(_, fullContent) {
@@ -176,15 +279,19 @@ export function App() {
                 content: fullContent,
                 timestamp: new Date(),
                 isStreaming: true,
+                agentName: 'Secretary',
               });
             },
-            onDone(fullContent) {
+            onDone(fullContent, event) {
+              if (event?.meeting) meetingData = event.meeting as MeetingData;
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
                 content: fullContent,
                 timestamp: new Date(),
                 isStreaming: false,
+                meeting: meetingData,
+                agentName: (event as any)?.agentName ?? 'Secretary',
               });
             },
             onError(error) {
@@ -194,22 +301,22 @@ export function App() {
                 content: `Error: ${error}`,
                 timestamp: new Date(),
                 isStreaming: false,
+                agentName: 'Secretary',
               });
             },
           });
         } else {
-          // Fallback to JSON (or pipeline/parallel response)
+          // Fallback to JSON (non-streaming)
           const data = await res.json();
-          const content =
-            data.dispatchMode === 'pipeline' || data.dispatchMode === 'parallel'
-              ? formatPipelineResponse(data)
-              : (data.response ?? 'I received your message.');
+          const content = data.response ?? 'I received your message.';
 
           addMessage(sessionId, {
             id: streamId,
             role: 'assistant',
             content,
             timestamp: new Date(),
+            meeting: data.meeting ?? undefined,
+            agentName: data.agentName ?? 'Secretary',
           });
         }
       } catch {
@@ -219,6 +326,7 @@ export function App() {
           role: 'assistant',
           content: 'Sorry, I could not connect to the server.',
           timestamp: new Date(),
+          agentName: 'Secretary',
         });
       } finally {
         setIsProcessing(false);
@@ -247,14 +355,60 @@ export function App() {
               switchSession(sessionId);
               setChatMode(true);
             }}
+            onNavigateToProject={handleNavigateToProject}
+            activeProjectId={activeProjectId}
+            projects={projects}
+            onNewProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            onRenameProject={handleRenameProject}
           />
         </div>
+
+        {/* Project Explorer */}
+        <ProjectExplorer
+          projectId={activeProjectId}
+          projectName={projects.find((p) => p.id === activeProjectId)?.name}
+          isDark={isDark}
+          onAddFile={addFile}
+          activeSessionId={activeSession?.id}
+        />
 
         {/* Main content area + ChatPanel column */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* Content: browse pages or chat view */}
           <div className="flex-1 overflow-hidden">
-            {chatMode && activeSession ? (
+            {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
+            <div className={chatMode && activeSession ? 'hidden' : 'h-full overflow-auto'}>
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<OfficePage />} />
+                    <Route path="/office" element={<OfficePage />} />
+                    <Route path="/project/:id/office" element={<OfficePage />} />
+                    <Route path="/project/:id/factory" element={
+                      <FactoryPage
+                        onCreateChatSession={(options) => createSession(options)}
+                        onSwitchSession={(id) => { switchSession(id); setChatMode(true); }}
+                        onEnterChat={handleEnterChat}
+                      />
+                    } />
+                    <Route path="/factory" element={
+                      <FactoryPage
+                        onCreateChatSession={(options) => createSession(options)}
+                        onSwitchSession={(id) => { switchSession(id); setChatMode(true); }}
+                        onEnterChat={handleEnterChat}
+                      />
+                    } />
+                    <Route path="/skills" element={<Navigate to="/settings" replace />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/employees" element={<EmployeesPage />} />
+                    <Route path="/memory" element={<MemoryPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+            {chatMode && activeSession && (
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
                   <ChatView
@@ -265,24 +419,6 @@ export function App() {
                   />
                 </Suspense>
               </ErrorBoundary>
-            ) : (
-              <div className="h-full overflow-auto">
-                <ErrorBoundary>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      <Route path="/" element={<OfficePage />} />
-                      <Route path="/office" element={<OfficePage />} />
-                      <Route path="/factory" element={<FactoryPage />} />
-                      <Route path="/skills" element={<Navigate to="/settings" replace />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/employees" element={<EmployeesPage />} />
-                      <Route path="/memory" element={<MemoryPage />} />
-                      <Route path="/meetings" element={<MeetingsPage />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </Suspense>
-                </ErrorBoundary>
-              </div>
             )}
           </div>
 
@@ -306,6 +442,10 @@ export function App() {
             onEnterChat={handleEnterChat}
             isProcessing={isProcessing}
             isDark={isDark}
+            activeProjectId={activeProjectId}
+            projects={projects}
+            onSwitchProject={(id) => setActiveProjectId(id)}
+            onNewProject={handleCreateProject}
           />
         </div>
       </div>

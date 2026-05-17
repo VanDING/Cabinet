@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'meetings' | 'settings';
+export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'settings';
+
+interface ProjectInfo {
+  id: string;
+  name: string;
+  lastActivityAt?: string;
+  activeWorkflowCount?: number;
+  rootPath?: string;
+}
 
 export interface NavigationProps {
   activePage: NavPage;
@@ -9,12 +17,12 @@ export interface NavigationProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigateToSession?: (sessionId: string) => void;
-}
-
-interface ProjectEntry {
-  id: string;
-  name: string;
-  sessions: { id: string; title: string }[];
+  onNavigateToProject?: (projectId: string) => void;
+  activeProjectId?: string | null;
+  projects?: ProjectInfo[];
+  onNewProject?: () => void;
+  onDeleteProject?: (projectId: string, name: string) => void;
+  onRenameProject?: (projectId: string, name: string) => void;
 }
 
 const navItems: { id: NavPage; label: string; icon: string }[] = [
@@ -22,11 +30,6 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
     id: 'office',
     label: 'Office',
     icon: 'M2 3h10a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z',
-  },
-  {
-    id: 'meetings',
-    label: 'Meetings',
-    icon: 'M1 1h12v12H1V1zm2 2v8h8V3H3zm2 2h4v1H5V5zm0 2h4v1H5V7z',
   },
   {
     id: 'factory',
@@ -45,54 +48,46 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   },
 ];
 
-function useProjects() {
-  const [projects, setProjects] = useState<ProjectEntry[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('cabinet-projects-sidebar') ?? '[]');
-    } catch { return []; }
-  });
+export function Navigation({
+  activePage,
+  onNavigate,
+  isDark,
+  collapsed,
+  onToggleCollapse,
+  onNavigateToSession,
+  onNavigateToProject,
+  activeProjectId,
+  projects = [],
+  onNewProject,
+  onDeleteProject,
+  onRenameProject,
+}: NavigationProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    localStorage.setItem('cabinet-projects-sidebar', JSON.stringify(projects));
-  }, [projects]);
-
-  const addProject = () => {
-    const name = prompt('Project name:');
-    if (!name?.trim()) return;
-    const id = `proj_${Date.now()}`;
-    setProjects(prev => [...prev, { id, name: name.trim(), sessions: [] }]);
-  };
-
-  const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-    setExpanded(prev => { const n = new Set(prev); n.delete(id); return n; });
-  };
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const toggleExpand = (id: string) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
-
-  return { projects, expanded, addProject, deleteProject, toggleExpand };
-}
-
-export function Navigation({
-  activePage, onNavigate, isDark, collapsed, onToggleCollapse, onNavigateToSession,
-}: NavigationProps) {
-  const { projects, expanded, addProject, deleteProject, toggleExpand } = useProjects();
   const sidebarW = collapsed ? 'w-12' : 'w-40';
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const text = isDark ? 'text-gray-400' : 'text-gray-500';
   const activeBg = isDark ? 'bg-gray-800 text-white' : 'bg-blue-50 text-blue-700';
-  const hover = isDark ? 'hover:bg-gray-800 hover:text-gray-200' : 'hover:bg-gray-100 hover:text-gray-700';
+  const hover = isDark
+    ? 'hover:bg-gray-800 hover:text-gray-200'
+    : 'hover:bg-gray-100 hover:text-gray-700';
 
   return (
-    <nav className={`h-full flex flex-col flex-shrink-0 border-r transition-all duration-200 ${sidebarW} ${bg} ${border}`}>
+    <nav
+      aria-label="Main navigation"
+      className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${bg} ${border}`}
+    >
       {/* Logo */}
       <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>
         <img
@@ -104,17 +99,27 @@ export function Navigation({
 
       {/* Nav items */}
       <div className="flex-1 overflow-y-auto py-1">
-        {navItems.map(item => (
+        {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            title={collapsed ? item.label : undefined}
-            className={`w-full flex items-center transition-colors text-sm font-medium ${
-              collapsed ? 'justify-center px-0 py-3' : 'text-left px-4 py-2.5'
+            aria-label={item.label}
+            aria-current={activePage === item.id ? 'page' : undefined}
+            className={`flex w-full items-center text-sm font-medium transition-colors ${
+              collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
             } ${activePage === item.id ? activeBg + ' border-r-2 border-blue-500' : text + ' ' + hover}`}
           >
             {collapsed ? (
-              <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d={item.icon} />
               </svg>
             ) : (
@@ -130,51 +135,91 @@ export function Navigation({
         {!collapsed && (
           <div className="px-4 py-1">
             <div className="flex items-center justify-between">
-              <span className={`text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span
+                className={`text-xs font-medium tracking-wider uppercase ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+              >
                 Projects
               </span>
-              <button onClick={addProject} className={`text-xs transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`} title="New project">
+              <button
+                onClick={onNewProject}
+                className={`text-xs transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                title="New project"
+              >
                 +
               </button>
             </div>
-            {projects.map(p => (
-              <div key={p.id} className="group flex items-center">
-                <button
-                  onClick={() => toggleExpand(p.id)}
-                  className={`flex-1 text-left text-xs py-1.5 flex items-center gap-1 transition-colors ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                >
-                  <span className="transition-transform" style={{ transform: expanded.has(p.id) ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                    &#9656;
-                  </span>
-                  <span className="truncate">{p.name}</span>
-                </button>
-                <button
-                  onClick={e => { e.stopPropagation(); if (confirm(`Delete project "${p.name}"?`)) deleteProject(p.id); }}
-                  className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                  aria-label={`Delete ${p.name}`}
-                >&times;</button>
-                {expanded.has(p.id) && (
-                  <div className="ml-4 space-y-0.5 mb-1">
-                    {p.sessions.length === 0 ? (
-                      <p className="text-xs text-gray-500 italic py-1">No sessions</p>
+            {projects.filter((p) => !(p as any).archived).length === 0 ? (
+              <p className="py-1 text-xs text-gray-500 italic">No projects</p>
+            ) : (
+              projects
+                .filter((p) => !(p as any).archived)
+                .map((p) => (
+                  <div key={p.id} className="group flex items-center">
+                    {renamingId === p.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => {
+                          if (renameValue.trim() && renameValue.trim() !== p.name) {
+                            onRenameProject?.(p.id, renameValue.trim());
+                          }
+                          setRenamingId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (renameValue.trim() && renameValue.trim() !== p.name) {
+                              onRenameProject?.(p.id, renameValue.trim());
+                            }
+                            setRenamingId(null);
+                          }
+                          if (e.key === 'Escape') setRenamingId(null);
+                        }}
+                        className="flex-1 rounded border bg-white px-1 py-0.5 text-xs text-gray-900 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100"
+                      />
                     ) : (
-                      p.sessions.map(s => (
-                        <button
-                          key={s.id}
-                          onClick={() => onNavigateToSession?.(s.id)}
-                          className={`w-full text-left text-xs py-1 px-2 rounded truncate transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          {s.title}
-                        </button>
-                      ))
+                      <button
+                        onClick={() => onNavigateToProject?.(p.id)}
+                        onDoubleClick={() => {
+                          setRenamingId(p.id);
+                          setRenameValue(p.name);
+                        }}
+                        className={`flex flex-1 items-center gap-1 py-1.5 text-left text-xs transition-colors ${
+                          activeProjectId === p.id
+                            ? isDark
+                              ? 'text-blue-400 font-medium'
+                              : 'text-blue-600 font-medium'
+                            : isDark
+                              ? 'text-gray-300 hover:text-white'
+                              : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                            (p as any).activeWorkflowCount > 0
+                              ? 'bg-green-500'
+                              : 'bg-gray-400'
+                          }`}
+                        />
+                        <span className="truncate">{p.name}</span>
+                      </button>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Delete project "${p.name}"?`)) return;
+                        onDeleteProject?.(p.id, p.name);
+                      }}
+                      className="ml-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-xs text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+                      aria-label={`Delete ${p.name}`}
+                    >
+                      &times;
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
+                ))
+            )}
           </div>
         )}
-
       </div>
 
       {/* Bottom bar: Settings + Collapse toggle */}
@@ -182,12 +227,21 @@ export function Navigation({
         <button
           onClick={() => onNavigate('settings')}
           title={collapsed ? 'Settings' : undefined}
-          className={`w-full flex items-center transition-colors text-sm font-medium ${
-            collapsed ? 'justify-center px-0 py-3' : 'text-left px-4 py-2.5'
+          className={`flex w-full items-center text-sm font-medium transition-colors ${
+            collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
           } ${activePage === 'settings' ? activeBg + ' border-r-2 border-blue-500' : text + ' ' + hover}`}
         >
           {collapsed ? (
-            <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="7" cy="7" r="3" />
               <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.8 2.8l1 .9M10.2 10.3l1 .9M2.8 11.2l1-.9M10.2 3.7l1-.9" />
             </svg>
@@ -195,19 +249,26 @@ export function Navigation({
             'Settings'
           )}
         </button>
-        <div className={`py-1 border-t ${border}`}>
+        <div className={`border-t py-1 ${border}`}>
           <button
             onClick={onToggleCollapse}
-            className={`w-full flex items-center justify-center py-2 transition-colors ${
-              isDark ? 'text-gray-500 hover:text-gray-300 hover:bg-gray-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            className={`flex w-full items-center justify-center py-2 transition-colors ${
+              isDark
+                ? 'text-gray-500 hover:bg-gray-800 hover:text-gray-300'
+                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
             }`}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              {collapsed
-                ? <path d="M5 2l6 5-6 5" />
-                : <path d="M8 2l-5 5 5 5" />
-              }
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              {collapsed ? <path d="M5 2l6 5-6 5" /> : <path d="M8 2l-5 5 5 5" />}
             </svg>
           </button>
         </div>

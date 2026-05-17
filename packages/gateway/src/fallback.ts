@@ -37,7 +37,7 @@ export class FallbackChain {
       try {
         const result = await this.withTimeout(
           this.gateway.generateText({ ...options, model }),
-          this.timeoutMs
+          this.timeoutMs,
         );
         return result;
       } catch (error) {
@@ -52,16 +52,21 @@ export class FallbackChain {
     }
 
     throw new Error(
-      `All models exhausted for role '${this.role}'. Last error: ${lastError?.message}`
+      `All models exhausted for role '${this.role}'. Last error: ${lastError?.message}`,
     );
   }
 
   private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`LLM call timed out after ${ms}ms`)), ms);
+    });
     return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`LLM call timed out after ${ms}ms`)), ms)
-      ),
+      promise.then((result) => {
+        clearTimeout(timer);
+        return result;
+      }),
+      timeoutPromise,
     ]);
   }
 }

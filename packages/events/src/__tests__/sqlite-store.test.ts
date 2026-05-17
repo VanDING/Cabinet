@@ -28,7 +28,7 @@ afterAll(() => {
 // Run the contract tests (5 tests: publish, subscribe, unsubscribe, type filtering, async)
 runEventBusContractTests(
   () => new SqliteEventStore(new EventLogRepository(getConnection())),
-  () => {}
+  () => {},
 );
 
 describe('SqliteEventStore specific', () => {

@@ -79,9 +79,7 @@ describe('validateCausation', () => {
   });
 
   it('returns invalid if causationId references nonexistent message', () => {
-    const events: MessageEnvelope[] = [
-      makeEnvelope({ messageId: 'child', causationId: 'ghost' }),
-    ];
+    const events: MessageEnvelope[] = [makeEnvelope({ messageId: 'child', causationId: 'ghost' })];
     const result = validateCausation(events);
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);

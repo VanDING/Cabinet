@@ -38,13 +38,15 @@ const updateSchema = z.object({
   sessionId: z.string().default('default'),
   projectId: z.string().default('default'),
   action: z.enum(['add', 'update', 'note']),
-  task: z.object({
-    id: z.string().optional(),
-    title: z.string().optional(),
-    description: z.string().optional(),
-    status: z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']).optional(),
-    dependencies: z.array(z.string()).optional(),
-  }).optional(),
+  task: z
+    .object({
+      id: z.string().optional(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      status: z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']).optional(),
+      dependencies: z.array(z.string()).optional(),
+    })
+    .optional(),
   note: z.string().optional(),
 });
 

@@ -16,8 +16,6 @@ import {
   MAX_QUALITY_RETRIES,
   BACKUP_INTERVAL_MINUTES,
   BACKUP_KEEP_COUNT,
-  PIN_LOCKOUT_ATTEMPTS,
-  PIN_LOCKOUT_MINUTES,
 } from '../boundaries';
 
 describe('boundaries', () => {
@@ -37,8 +35,6 @@ describe('boundaries', () => {
       MAX_QUALITY_RETRIES,
       BACKUP_INTERVAL_MINUTES,
       BACKUP_KEEP_COUNT,
-      PIN_LOCKOUT_ATTEMPTS,
-      PIN_LOCKOUT_MINUTES,
     ];
     for (const c of constants) {
       expect(c).toBeGreaterThan(0);
@@ -64,8 +60,4 @@ describe('boundaries', () => {
     expect(MAX_RETRY_RECOVERABLE).toBeLessThan(MAX_RETRY_TRANSIENT);
   });
 
-  it('PIN lockout attempts is reasonable', () => {
-    expect(PIN_LOCKOUT_ATTEMPTS).toBeGreaterThanOrEqual(3);
-    expect(PIN_LOCKOUT_ATTEMPTS).toBeLessThanOrEqual(10);
-  });
 });
