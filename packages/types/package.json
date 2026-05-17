@@ -1,20 +1,40 @@
 {
   "name": "@cabinet/types",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.1",
+  "description": "Shared TypeScript types for the Cabinet AI collaboration framework",
+  "keywords": [
+    "cabinet",
+    "ai",
+    "types",
+    "multi-agent",
+    "collaboration",
+    "decision"
+  ],
+  "author": "VanDING",
+  "license": "MIT",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cabinet/cabinet.git"
+    "url": "https://github.com/VanDING/Cabinet.git"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "build": "tsc -b",
+    "prepublishOnly": "pnpm build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

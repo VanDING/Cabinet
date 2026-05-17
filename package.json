@@ -2,17 +2,37 @@
   "name": "cabinet",
   "private": true,
   "scripts": {
+    "commitlint": "commitlint --edit",
+    "commitlint:last": "commitlint --from HEAD~1",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm exec tsx tools/arch-lint.ts",
-    "lint:fix": "echo '→ Run pnpm lint and follow the FIX instructions in each error message.'",
+    "lint": "eslint . --max-warnings 400",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint:arch": "pnpm exec tsx tools/arch-lint.ts",
     "test:e2e": "cd tests/e2e && vitest run"
+  },
+  "commitlint": {
+    "extends": ["@commitlint/config-conventional"]
   },
   "dependencies": {
     "better-sqlite3": "11.7.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.0"
+    "@changesets/cli": "^2.31.0",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "tsx": "^4.19.0",
+    "typescript-eslint": "^8.59.3"
   }
 }
