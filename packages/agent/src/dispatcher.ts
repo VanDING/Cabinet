@@ -22,7 +22,7 @@ import { AgentRoleRegistry } from './agent-roles.js';
 import { AgentLoop, type AgentLoopOptions, type AgentResult } from './agent-loop.js';
 import { SafetyChecker } from './safety.js';
 import { CheckpointManager } from './checkpoint.js';
-import type Database from 'better-sqlite3';
+import type { Database } from '@cabinet/storage';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -69,11 +69,12 @@ export class AgentDispatcher {
   constructor(
     private readonly gateway: LLMGateway,
     private readonly toolExecutor: ToolExecutor,
-    private readonly db: Database.Database,
+    private readonly db: Database,
     private readonly memoryProvider: MemoryProvider,
     private readonly eventBus?: EventBus,
+    externalRegistry?: AgentRoleRegistry,
   ) {
-    this.registry = new AgentRoleRegistry();
+    this.registry = externalRegistry ?? new AgentRoleRegistry();
     this.baseOptions = {
       gateway,
       toolExecutor,
@@ -161,16 +162,14 @@ export class AgentDispatcher {
     const startTime = Date.now();
     const roleTypes = options.roles ?? ['secretary'];
 
-    const promises = roleTypes.map(role =>
-      this.runAgentStep(role, options.request, options)
-    );
+    const promises = roleTypes.map((role) => this.runAgentStep(role, options.request, options));
 
     const steps = await Promise.all(promises);
     const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
 
     const outputs = steps
-      .filter(s => s.status === 'completed')
-      .map(s => `[${s.role}] ${s.output}`);
+      .filter((s) => s.status === 'completed')
+      .map((s) => `[${s.role}] ${s.output}`);
 
     return {
       mode: 'parallel',

@@ -1,6 +1,6 @@
 export interface SSEStreamCallbacks {
   onContent: (content: string, fullContent: string) => void;
-  onDone: (fullContent: string) => void;
+  onDone: (fullContent: string, doneEvent?: Record<string, unknown>) => void;
   onError: (error: string) => void;
 }
 
@@ -11,6 +11,7 @@ export async function readSSEStream(
   const decoder = new TextDecoder();
   let fullContent = '';
   let done = false;
+  let doneEvent: Record<string, unknown> | undefined;
 
   while (!done) {
     const { value, done: streamDone } = await reader.read();
@@ -28,6 +29,7 @@ export async function readSSEStream(
           const parsed = JSON.parse(data);
           // Support typed events: {type:"done",...} and {type:"chunk",content:"..."}
           if (parsed.type === 'done') {
+            doneEvent = parsed;
             done = true;
             break;
           }
@@ -36,6 +38,11 @@ export async function readSSEStream(
             callbacks.onError(fullContent);
             done = true;
             break;
+          }
+          if (parsed.type === 'status') {
+            // Status update — notify but don't append to content
+            callbacks.onContent('', fullContent);
+            continue;
           }
           if (parsed.content) {
             fullContent += parsed.content;
@@ -50,7 +57,7 @@ export async function readSSEStream(
     }
   }
 
-  callbacks.onDone(fullContent);
+  callbacks.onDone(fullContent, doneEvent);
 }
 
 export function formatPipelineResponse(data: {

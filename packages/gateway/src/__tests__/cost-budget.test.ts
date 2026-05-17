@@ -41,7 +41,7 @@ describe('BudgetGuard', () => {
     const tracker = new CostTracker();
     const guard = new BudgetGuard(tracker, { daily: 100 });
     const statuses = guard.checkAll();
-    const dailyStatus = statuses.find(s => s.period === 'daily');
+    const dailyStatus = statuses.find((s) => s.period === 'daily');
     expect(dailyStatus!.level).toBe('ok');
   });
 
@@ -49,17 +49,17 @@ describe('BudgetGuard', () => {
     const tracker = new CostTracker();
     // Simulate high cost: Claude Opus $15/M prompt
     tracker.record('anthropic/claude-opus-4-7', 300_000, 0); // ~$4.50
-    const guard = new BudgetGuard(tracker, { daily: 5.00, weekly: 100, monthly: 500 });
+    const guard = new BudgetGuard(tracker, { daily: 5.0, weekly: 100, monthly: 500 });
     const statuses = guard.checkAll();
-    const dailyStatus = statuses.find(s => s.period === 'daily');
+    const dailyStatus = statuses.find((s) => s.period === 'daily');
     expect(dailyStatus!.level).toBe('warning');
-    expect(dailyStatus!.percentage).toBeGreaterThanOrEqual(0.80);
+    expect(dailyStatus!.percentage).toBeGreaterThanOrEqual(0.8);
   });
 
   it('blocks non-L3 calls when budget exceeded', () => {
     const tracker = new CostTracker();
     tracker.record('anthropic/claude-opus-4-7', 500_000, 0); // ~$7.50
-    const guard = new BudgetGuard(tracker, { daily: 5.00, weekly: 100, monthly: 500 });
+    const guard = new BudgetGuard(tracker, { daily: 5.0, weekly: 100, monthly: 500 });
 
     const nonL3 = guard.canProceed('L2');
     expect(nonL3.allowed).toBe(false);

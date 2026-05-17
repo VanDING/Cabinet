@@ -32,13 +32,9 @@ export class ParallelReasoning {
    * @param topic The topic/question to analyze.
    * @param context Optional context from previous rounds (for debate).
    */
-  async reason(
-    advisors: Advisor[],
-    topic: string,
-    context?: string,
-  ): Promise<AdvisorReasoning[]> {
+  async reason(advisors: Advisor[], topic: string, context?: string): Promise<AdvisorReasoning[]> {
     const results = await Promise.allSettled(
-      advisors.map(async advisor => {
+      advisors.map(async (advisor) => {
         let prompt = `You are the ${advisor.name} (${advisor.role}).\n`;
         prompt += `${advisor.perspective}\n\n`;
         prompt += `Topic: "${topic}"\n\n`;
@@ -59,10 +55,12 @@ export class ParallelReasoning {
         return {
           advisor,
           content: response.content,
-          tokensUsed: response.usage ? {
-            prompt: response.usage.promptTokens,
-            completion: response.usage.completionTokens,
-          } : undefined,
+          tokensUsed: response.usage
+            ? {
+                prompt: response.usage.promptTokens,
+                completion: response.usage.completionTokens,
+              }
+            : undefined,
         };
       }),
     );

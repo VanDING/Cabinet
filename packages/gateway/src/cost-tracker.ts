@@ -8,26 +8,26 @@ export interface CostEntry {
 
 /** Approximate pricing per 1M tokens (USD). Uses provider-qualified model names. */
 const MODEL_PRICING: Record<string, { prompt: number; completion: number }> = {
-  'anthropic/claude-opus-4-7': { prompt: 15.00, completion: 75.00 },
-  'anthropic/claude-sonnet-4-6': { prompt: 3.00, completion: 15.00 },
-  'anthropic/claude-haiku-4-5': { prompt: 0.80, completion: 4.00 },
-  'openai/gpt-4o': { prompt: 2.50, completion: 10.00 },
-  'openai/gpt-4o-mini': { prompt: 0.15, completion: 0.60 },
-  'google/gemini-2.5-pro': { prompt: 1.25, completion: 5.00 },
+  'anthropic/claude-opus-4-7': { prompt: 15.0, completion: 75.0 },
+  'anthropic/claude-sonnet-4-6': { prompt: 3.0, completion: 15.0 },
+  'anthropic/claude-haiku-4-5': { prompt: 0.8, completion: 4.0 },
+  'openai/gpt-4o': { prompt: 2.5, completion: 10.0 },
+  'openai/gpt-4o-mini': { prompt: 0.15, completion: 0.6 },
+  'google/gemini-2.5-pro': { prompt: 1.25, completion: 5.0 },
   // Keep short names for backward compatibility
-  'claude-opus-4-7': { prompt: 15.00, completion: 75.00 },
-  'claude-sonnet-4-6': { prompt: 3.00, completion: 15.00 },
-  'claude-haiku-4-5': { prompt: 0.80, completion: 4.00 },
-  'gpt-4o': { prompt: 2.50, completion: 10.00 },
-  'gpt-4o-mini': { prompt: 0.15, completion: 0.60 },
-  'gemini-2.5-pro': { prompt: 1.25, completion: 5.00 },
+  'claude-opus-4-7': { prompt: 15.0, completion: 75.0 },
+  'claude-sonnet-4-6': { prompt: 3.0, completion: 15.0 },
+  'claude-haiku-4-5': { prompt: 0.8, completion: 4.0 },
+  'gpt-4o': { prompt: 2.5, completion: 10.0 },
+  'gpt-4o-mini': { prompt: 0.15, completion: 0.6 },
+  'gemini-2.5-pro': { prompt: 1.25, completion: 5.0 },
 };
 
 export class CostTracker {
   private entries: CostEntry[] = [];
 
   record(model: string, promptTokens: number, completionTokens: number): CostEntry {
-    const pricing = MODEL_PRICING[model] ?? { prompt: 1.00, completion: 4.00 };
+    const pricing = MODEL_PRICING[model] ?? { prompt: 1.0, completion: 4.0 };
     const costUsd =
       (promptTokens / 1_000_000) * pricing.prompt +
       (completionTokens / 1_000_000) * pricing.completion;
@@ -70,8 +70,6 @@ export class CostTracker {
   }
 
   private sumCosts(since: Date): number {
-    return this.entries
-      .filter((e) => e.timestamp >= since)
-      .reduce((sum, e) => sum + e.costUsd, 0);
+    return this.entries.filter((e) => e.timestamp >= since).reduce((sum, e) => sum + e.costUsd, 0);
   }
 }

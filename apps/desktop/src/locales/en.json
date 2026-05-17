@@ -135,7 +135,9 @@
       "backups": "Backups",
       "maintenance": "Maintenance",
       "rules": "Rules",
-      "skills": "Skills"
+      "skills": "Skills",
+      "mcp": "MCP",
+      "others": "Others"
     }
   },
   "common": {

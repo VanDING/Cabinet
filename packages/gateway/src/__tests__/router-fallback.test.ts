@@ -59,8 +59,12 @@ describe('FallbackChain', () => {
           model: options.model,
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return []; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return [];
+      },
       async generateEmbeddings() {
         return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
       },
@@ -94,8 +98,12 @@ describe('FallbackChain', () => {
           model: options.model,
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return []; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return [];
+      },
       async generateEmbeddings() {
         return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
       },
@@ -127,8 +135,12 @@ describe('FallbackChain', () => {
       async generateText(): Promise<LLMResponse> {
         throw new Error('Service unavailable');
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return []; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return [];
+      },
       async generateEmbeddings() {
         return { embeddings: [], model: 'mock', usage: { tokens: 0 } };
       },
@@ -144,7 +156,7 @@ describe('FallbackChain', () => {
     });
 
     await expect(
-      chain.generateText({ messages: [{ role: 'user', content: 'Hi' }] })
+      chain.generateText({ messages: [{ role: 'user', content: 'Hi' }] }),
     ).rejects.toThrow('All models exhausted');
   });
 });

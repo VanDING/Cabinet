@@ -36,7 +36,11 @@ export type DecisionStatus = (typeof DecisionStatus)[keyof typeof DecisionStatus
 // ── State Machine ──
 
 export const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
-  [DecisionStatus.Pending]: [DecisionStatus.Approved, DecisionStatus.Rejected, DecisionStatus.Expired],
+  [DecisionStatus.Pending]: [
+    DecisionStatus.Approved,
+    DecisionStatus.Rejected,
+    DecisionStatus.Expired,
+  ],
   [DecisionStatus.Approved]: [DecisionStatus.Archived],
   [DecisionStatus.Rejected]: [DecisionStatus.Archived],
   [DecisionStatus.Expired]: [DecisionStatus.Archived],

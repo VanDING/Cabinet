@@ -50,6 +50,7 @@ export function ApiKeysTab() {
       setShowForm(false);
       setFormData({ provider: 'anthropic', baseUrl: '', apiKey: '', model: '' });
       fetchKeys();
+      window.dispatchEvent(new CustomEvent('apikeys_changed'));
     } catch (e) {
       addToast('error', `Failed to add API key: ${(e as Error).message}`);
     }
@@ -60,7 +61,8 @@ export function ApiKeysTab() {
       method: 'DELETE',
       headers: authHeaders(),
     });
-    fetchKeys(); // Refresh list after removing
+    fetchKeys();
+    window.dispatchEvent(new CustomEvent('apikeys_changed'));
   };
 
   return (
@@ -175,6 +177,68 @@ export function ApiKeysTab() {
 
       {/* Test Connection */}
       {keys.length > 0 && <TestConnectionButton />}
+
+      {/* Budget Section */}
+      <BudgetSection />
+    </div>
+  );
+}
+
+function BudgetSection() {
+  const [budget, setBudget] = useState({ daily: 5, weekly: 25, monthly: 100 });
+  const [currentSpend, setCurrentSpend] = useState(0);
+
+  useEffect(() => {
+    apiFetch('/api/settings/budget', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => {
+        setBudget({ daily: d.daily ?? 5, weekly: d.weekly ?? 25, monthly: d.monthly ?? 100 });
+        setCurrentSpend(d.currentSpend ?? 0);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    await apiFetch('/api/settings/budget', {
+      method: 'PUT',
+      headers: authJsonHeaders(),
+      body: JSON.stringify(budget),
+    });
+  };
+
+  return (
+    <div className="mt-6 border-t pt-6 dark:border-gray-700">
+      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Budget Limits</h3>
+      <div className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-gray-500">Today's spend:</span>
+        <span className="font-medium text-blue-600">${currentSpend.toFixed(4)}</span>
+      </div>
+      <div className="max-w-md space-y-3">
+        {['daily', 'weekly', 'monthly'].map((period) => (
+          <div key={period} className="flex items-center gap-3">
+            <label className="w-20 text-sm capitalize text-gray-600 dark:text-gray-400">
+              {period}
+            </label>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-400">$</span>
+              <input
+                type="number"
+                value={(budget as any)[period]}
+                onChange={(e) =>
+                  setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
+                }
+                className="w-24 rounded border bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              />
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={handleSave}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Save Budget
+        </button>
+      </div>
     </div>
   );
 }

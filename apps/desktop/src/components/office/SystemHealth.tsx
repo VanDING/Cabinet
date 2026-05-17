@@ -6,14 +6,14 @@ export function SystemHealth() {
 
   useEffect(() => {
     apiFetch('/health/system', { headers: authHeaders() })
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(setHealth)
       .catch(() => {});
   }, []);
 
   if (!health) {
     return (
-      <div className="h-full bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg p-4 flex items-center justify-center text-xs text-gray-400">
+      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4 text-xs text-gray-400 dark:border-gray-600 dark:bg-gray-800">
         Loading...
       </div>
     );
@@ -23,8 +23,8 @@ export function SystemHealth() {
   const m = health.metrics;
 
   return (
-    <div className="h-full bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg p-4 flex flex-col">
-      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">System Health</div>
+    <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+      <div className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">System Health</div>
       <div className="flex-1 space-y-2 text-xs">
         <div className="flex justify-between">
           <span className="text-gray-500">CPU</span>
@@ -32,19 +32,23 @@ export function SystemHealth() {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Memory (process)</span>
-          <span className="text-gray-700 dark:text-gray-300 font-mono">{s.memory.processMB}</span>
+          <span className="font-mono text-gray-700 dark:text-gray-300">{s.memory.processMB}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Memory (free)</span>
-          <span className="text-gray-700 dark:text-gray-300 font-mono">{s.memory.systemFreeMB}</span>
+          <span className="font-mono text-gray-700 dark:text-gray-300">
+            {s.memory.systemFreeMB}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Database</span>
-          <span className="text-gray-700 dark:text-gray-300 font-mono">{s.database.sizeMB}</span>
+          <span className="font-mono text-gray-700 dark:text-gray-300">{s.database.sizeMB}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Uptime</span>
-          <span className="text-gray-700 dark:text-gray-300">{Math.floor(s.uptime.process / 60)}m</span>
+          <span className="text-gray-700 dark:text-gray-300">
+            {Math.floor(s.uptime.process / 60)}m
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">LLM Calls</span>

@@ -11,9 +11,10 @@ decisionsRouter.get('/', (c) => {
   const projectId = c.req.query('projectId') ?? 'proj-1';
 
   try {
-    const decisions = status === 'all'
-      ? decisionRepo.listByProject(projectId)
-      : decisionRepo.listPending(projectId);
+    const decisions =
+      status === 'all'
+        ? decisionRepo.listByProject(projectId)
+        : decisionRepo.listPending(projectId);
     return c.json({ decisions, status, total: decisions.length });
   } catch (err) {
     const { logger } = getServerContext();
@@ -35,12 +36,14 @@ const createSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   options: z.array(z.object({ id: z.string(), label: z.string(), impact: z.string() })).optional(),
-  classification: z.object({
-    scopeDescription: z.string().optional(),
-    estimatedCost: z.number().optional(),
-    permissionLevel: z.string().optional(),
-    optionCount: z.number().optional(),
-  }).optional(),
+  classification: z
+    .object({
+      scopeDescription: z.string().optional(),
+      estimatedCost: z.number().optional(),
+      permissionLevel: z.string().optional(),
+      optionCount: z.number().optional(),
+    })
+    .optional(),
   captainId: z.string().optional(),
 });
 
@@ -75,7 +78,19 @@ decisionsRouter.post('/', async (c) => {
 
   try {
     const decision = decisionService.create(input);
-    broadcast('decision_created', { decisionId: decision.id, title: decision.title, level: decision.level });
+    broadcast('decision_created', {
+      decisionId: decision.id,
+      title: decision.title,
+      level: decision.level,
+    });
+    // Audit log
+    try {
+      getServerContext().db
+        .prepare(
+          "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'create', ?, ?, datetime('now'))",
+        )
+        .run(decision.id, input.captainId ?? 'captain-1', JSON.stringify({ title: decision.title, level: decision.level }));
+    } catch { /* non-critical */ }
     return c.json({ decision }, 201);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -92,6 +107,13 @@ decisionsRouter.post('/:id/approve', async (c) => {
       body.chosenOptionId ?? 'approve',
     );
     broadcast('decision_updated', { decisionId: decision.id, status: 'approved' });
+    try {
+      getServerContext().db
+        .prepare(
+          "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'approve', ?, ?, datetime('now'))",
+        )
+        .run(decision.id, body.captainId ?? 'captain-1', JSON.stringify({ chosenOptionId: decision.chosenOptionId }));
+    } catch { /* non-critical */ }
     return c.json({ status: decision.status, chosenOptionId: decision.chosenOptionId, decision });
   } catch (e) {
     const msg = (e as Error).message;
@@ -103,10 +125,21 @@ decisionsRouter.post('/:id/approve', async (c) => {
 decisionsRouter.post('/:id/reject', async (c) => {
   const { decisionService } = getServerContext();
   let body: Record<string, string> = {};
-  try { body = await c.req.json(); } catch { /* body is optional */ }
+  try {
+    body = await c.req.json();
+  } catch {
+    /* body is optional */
+  }
   try {
     const decision = decisionService.reject(c.req.param('id'), body.captainId ?? 'captain-1');
     broadcast('decision_updated', { decisionId: decision.id, status: 'rejected' });
+    try {
+      getServerContext().db
+        .prepare(
+          "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'reject', ?, ?, datetime('now'))",
+        )
+        .run(decision.id, body.captainId ?? 'captain-1', JSON.stringify({}));
+    } catch { /* non-critical */ }
     return c.json({ status: decision.status, decision });
   } catch (e) {
     const msg = (e as Error).message;
@@ -119,9 +152,11 @@ decisionsRouter.post('/:id/reject', async (c) => {
 decisionsRouter.get('/:id/audit', (c) => {
   const { db } = getServerContext();
   const id = c.req.param('id');
-  const rows = db.prepare(
-    "SELECT * FROM audit_log WHERE entity_type = 'decision' AND entity_id = ? ORDER BY timestamp ASC"
-  ).all(id) as any[];
+  const rows = db
+    .prepare(
+      "SELECT * FROM audit_log WHERE entity_type = 'decision' AND entity_id = ? ORDER BY timestamp ASC",
+    )
+    .all(id) as any[];
   const trail = rows.map((r: any) => ({
     action: r.action,
     actor: r.actor,
@@ -133,10 +168,12 @@ decisionsRouter.get('/:id/audit', (c) => {
   return c.json({
     decisionId: id,
     trail,
-    decision: decisionRow ? {
-      createdAt: decisionRow.created_at,
-      resolvedAt: decisionRow.resolved_at,
-      status: decisionRow.status,
-    } : null,
+    decision: decisionRow
+      ? {
+          createdAt: decisionRow.created_at,
+          resolvedAt: decisionRow.resolved_at,
+          status: decisionRow.status,
+        }
+      : null,
   });
 });

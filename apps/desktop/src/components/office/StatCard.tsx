@@ -5,14 +5,21 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-export function StatCard({ label, value, color = 'text-blue-600', onClick }: StatCardProps) {
+import { memo } from 'react';
+
+export const StatCard = memo(function StatCard({
+  label,
+  value,
+  color = 'text-blue-600',
+  onClick,
+}: StatCardProps) {
   return (
     <div
       onClick={onClick}
-      className={`h-full bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-4 flex flex-col justify-center ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      className={`flex h-full flex-col justify-center rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800 ${onClick ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
     >
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</div>
+      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">{label}</div>
     </div>
   );
-}
+});

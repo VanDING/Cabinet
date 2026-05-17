@@ -19,32 +19,45 @@ import { verifyRouter } from './routes/verify.js';
 import { rulesRouter } from './routes/rules.js';
 import { progressRouter } from './routes/progress.js';
 import { observabilityRouter } from './routes/observability.js';
+import { agentsRouter } from './routes/agents.js';
+import { projectsRouter } from './routes/projects.js';
 import { authMiddleware } from './middleware/auth.js';
+import { rateLimiter } from './middleware/rate-limit.js';
 import { openapiRouter } from './openapi.js';
 
 export function createApp() {
   const app = new Hono();
 
-  app.use('*', cors({
-    origin: (origin) => {
-      // Allow localhost on common dev ports and Tauri's custom protocol
-      const allowed = [
-        /^https?:\/\/localhost(:\d+)?$/,
-        /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-        /^https?:\/\/tauri\.localhost(:\d+)?$/,
-        /^tauri:\/\/localhost$/,
-        /^https?:\/\/localhost\.tauri\.app$/,
-      ];
-      if (!origin || allowed.some(p => p.test(origin))) return origin;
-      return null;
-    },
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'x-cabinet-pin'],
-    maxAge: 86400,
-  }));
+  app.use(
+    '*',
+    cors({
+      origin: (origin) => {
+        // Allow localhost on common dev ports and Tauri's custom protocol
+        const allowed = [
+          /^https?:\/\/localhost(:\d+)?$/,
+          /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+          /^https?:\/\/tauri\.localhost(:\d+)?$/,
+          /^tauri:\/\/localhost$/,
+          /^https?:\/\/localhost\.tauri\.app$/,
+        ];
+        if (!origin || allowed.some((p) => p.test(origin))) return origin;
+        return null;
+      },
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'x-cabinet-pin'],
+      maxAge: 86400,
+    }),
+  );
+  // Global rate limit: 100 req/min per IP
+  app.use('/api/*', rateLimiter(100, 60_000));
+  // Stricter rate limit for auth endpoint: 5 req/min per IP
+  app.use('/api/auth/verify', rateLimiter(5, 60_000));
   app.use('/api/*', authMiddleware);
 
   app.route('/health', healthRouter);
+  app.route('/.well-known', agentsRouter);
+  app.route('/api/agents', agentsRouter);
+  app.route('/api/projects', projectsRouter);
   app.route('/api/secretary', secretaryRouter);
   app.route('/api/decisions', decisionsRouter);
   app.route('/api/meetings', meetingsRouter);

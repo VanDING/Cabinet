@@ -16,20 +16,23 @@ export class LevelClassifier {
     const totalCost = Math.abs(input.estimatedCostUsd);
 
     // L3: funds, permissions, data deletion, org config, or high cost
-    if (input.involvesFunds || input.involvesPermissions ||
-        input.involvesDataDeletion || input.involvesOrgConfig ||
-        totalCost > 1.00) {
+    if (
+      input.involvesFunds ||
+      input.involvesPermissions ||
+      input.involvesDataDeletion ||
+      input.involvesOrgConfig ||
+      totalCost > 1.0
+    ) {
       return DecisionLevel.L3;
     }
 
     // L2: cross-session, many options, value trade-offs, or moderate cost
-    if (input.isCrossSession || input.optionCount > 3 ||
-        totalCost > 0.10) {
+    if (input.isCrossSession || input.optionCount > 3 || totalCost > 0.1) {
       return DecisionLevel.L2;
     }
 
     // L1: within session, few options, low cost
-    if (input.optionCount <= 3 && totalCost <= 0.10) {
+    if (input.optionCount <= 3 && totalCost <= 0.1) {
       return DecisionLevel.L1;
     }
 

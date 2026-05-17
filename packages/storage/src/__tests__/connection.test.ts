@@ -14,9 +14,21 @@ describe('connection', () => {
 
   afterAll(() => {
     closeConnection();
-    try { unlinkSync(TEST_DB_PATH); } catch { /* ignore */ }
-    try { unlinkSync(TEST_DB_PATH + '-wal'); } catch { /* ignore */ }
-    try { unlinkSync(TEST_DB_PATH + '-shm'); } catch { /* ignore */ }
+    try {
+      unlinkSync(TEST_DB_PATH);
+    } catch {
+      /* ignore */
+    }
+    try {
+      unlinkSync(TEST_DB_PATH + '-wal');
+    } catch {
+      /* ignore */
+    }
+    try {
+      unlinkSync(TEST_DB_PATH + '-shm');
+    } catch {
+      /* ignore */
+    }
   });
 
   it('returns a Database instance', () => {

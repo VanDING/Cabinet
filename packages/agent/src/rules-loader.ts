@@ -76,9 +76,7 @@ export class RulesLoader {
   private cache: Map<string, LoadedRule[]> = new Map();
   private fileTimestamps: Map<string, number> = new Map();
 
-  constructor(
-    private readonly rulesDirs: string[],
-  ) {}
+  constructor(private readonly rulesDirs: string[]) {}
 
   /** Create a loader scanning the default locations. */
   static default(): RulesLoader {
@@ -117,7 +115,7 @@ export class RulesLoader {
 
   /** Load rules that should always be applied. */
   loadAlways(): LoadedRule[] {
-    return this.loadAll().filter(r => r.mode === 'always');
+    return this.loadAll().filter((r) => r.mode === 'always');
   }
 
   /** Load rules matching the given context. */
@@ -133,7 +131,8 @@ export class RulesLoader {
     const lines: string[] = ['## Available Rules', ''];
     for (const rule of all) {
       const desc = rule.frontmatter.description ?? basename(rule.path, '.md');
-      const mode = rule.mode === 'always' ? '[always]' : rule.mode === 'auto' ? '[auto]' : '[on-demand]';
+      const mode =
+        rule.mode === 'always' ? '[always]' : rule.mode === 'auto' ? '[auto]' : '[on-demand]';
       lines.push(`- ${mode} ${desc} (${rule.path})`);
     }
     return lines.join('\n');
@@ -188,11 +187,12 @@ export class RulesLoader {
 
     if (!content.trim()) return null; // empty rule
 
-    const mode = fm.alwaysApply === true || (!fm.globs && !fm.description)
-      ? 'always'
-      : fm.globs && fm.globs.length > 0
-        ? 'auto'
-        : 'on-demand';
+    const mode =
+      fm.alwaysApply === true || (!fm.globs && !fm.description)
+        ? 'always'
+        : fm.globs && fm.globs.length > 0
+          ? 'auto'
+          : 'on-demand';
 
     return { path: relPath, content, frontmatter: fm, hash, mode };
   }
@@ -223,7 +223,7 @@ export class RulesLoader {
           result.tags = value
             .replace(/^\[|\]$/g, '')
             .split(',')
-            .map(s => s.trim().replace(/^['"]|['"]$/g, ''))
+            .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
             .filter(Boolean);
           break;
         case 'globs':
@@ -232,7 +232,7 @@ export class RulesLoader {
             result.globs = value
               .replace(/^\[|\]$/g, '')
               .split(',')
-              .map(s => s.trim().replace(/^['"]|['"]$/g, ''))
+              .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
               .filter(Boolean);
           }
           break;
@@ -252,7 +252,7 @@ export class RulesLoader {
     const activeSet = new Set(ctx.activeFiles ?? []);
     const requestedSet = new Set(ctx.requestedRules ?? []);
 
-    return rules.filter(rule => {
+    return rules.filter((rule) => {
       // alwaysApply → always included
       if (rule.mode === 'always') return true;
 
@@ -261,8 +261,8 @@ export class RulesLoader {
 
       // Globs defined → check if any active file matches
       if (rule.mode === 'auto' && rule.frontmatter.globs) {
-        return rule.frontmatter.globs.some(pattern =>
-          [...activeSet].some(file => globMatch(pattern, file))
+        return rule.frontmatter.globs.some((pattern) =>
+          [...activeSet].some((file) => globMatch(pattern, file)),
         );
       }
 

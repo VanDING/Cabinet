@@ -8,7 +8,9 @@ import { ConsolidationService } from '../consolidation.js';
 
 describe('ShortTermMemory', () => {
   let mem: ShortTermMemory;
-  beforeEach(() => { mem = new ShortTermMemory(); });
+  beforeEach(() => {
+    mem = new ShortTermMemory();
+  });
 
   it('stores and retrieves values', () => {
     mem.set('sess-1', 'greeting', 'Hello');
@@ -18,7 +20,7 @@ describe('ShortTermMemory', () => {
   it('returns null for expired entries', () => {
     mem.set('sess-1', 'temp', 'data', 1); // 1ms TTL
     // Wait a tick
-    return new Promise(resolve => setTimeout(resolve, 5)).then(() => {
+    return new Promise((resolve) => setTimeout(resolve, 5)).then(() => {
       expect(mem.get('sess-1', 'temp')).toBeNull();
     });
   });
@@ -45,7 +47,9 @@ describe('ShortTermMemory', () => {
 
 describe('EntityMemory', () => {
   let mem: EntityMemory;
-  beforeEach(() => { mem = new EntityMemory(); });
+  beforeEach(() => {
+    mem = new EntityMemory();
+  });
 
   it('stores and retrieves captain preferences', () => {
     mem.setPreferences('c1', 'Captain A', { language: 'zh-CN' });
@@ -60,14 +64,22 @@ describe('EntityMemory', () => {
   });
 
   it('stores and lists employees', () => {
-    mem.setEmployee({ employeeId: 'e1', name: 'Advisor', role: 'finance', persona: {}, pipelineConfig: {} });
+    mem.setEmployee({
+      employeeId: 'e1',
+      name: 'Advisor',
+      role: 'finance',
+      persona: {},
+      pipelineConfig: {},
+    });
     expect(mem.listEmployees()).toHaveLength(1);
   });
 });
 
 describe('ProjectMemory', () => {
   let mem: ProjectMemory;
-  beforeEach(() => { mem = new ProjectMemory(); });
+  beforeEach(() => {
+    mem = new ProjectMemory();
+  });
 
   it('initializes project context', () => {
     const ctx = mem.initialize('p1', ['Launch product']);
@@ -88,8 +100,14 @@ describe('ProjectMemory', () => {
 describe('LongTermMemory', () => {
   let mem: LongTermMemory;
   let db: Database.Database;
-  beforeEach(() => { db = new Database(':memory:'); mem = new LongTermMemory(db); });
-  afterEach(() => { mem.close(); db.close(); });
+  beforeEach(() => {
+    db = new Database(':memory:');
+    mem = new LongTermMemory(db);
+  });
+  afterEach(() => {
+    mem.close();
+    db.close();
+  });
 
   it('stores and searches entries by text', async () => {
     await mem.store({ content: 'The sky is blue', metadata: {}, timestamp: new Date() });
@@ -116,9 +134,24 @@ describe('LongTermMemory', () => {
   });
 
   it('searches by embedding similarity', async () => {
-    await mem.store({ content: 'Apple makes great computers', embedding: [1, 0, 0], metadata: {}, timestamp: new Date() });
-    await mem.store({ content: 'Bananas are yellow fruits', embedding: [0, 1, 0], metadata: {}, timestamp: new Date() });
-    await mem.store({ content: 'Microsoft makes software', embedding: [0.9, 0.1, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({
+      content: 'Apple makes great computers',
+      embedding: [1, 0, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Bananas are yellow fruits',
+      embedding: [0, 1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Microsoft makes software',
+      embedding: [0.9, 0.1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
 
     const results = await mem.semanticSearch([1, 0, 0], 5);
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -150,7 +183,11 @@ describe('ConsolidationService', () => {
     const long = new LongTermMemory(new Database(':memory:'));
     const svc = new ConsolidationService(short, long);
 
-    short.set('sess-1', 'insight', 'This is a very important insight that should be stored in long-term memory for future reference.');
+    short.set(
+      'sess-1',
+      'insight',
+      'This is a very important insight that should be stored in long-term memory for future reference.',
+    );
     short.set('sess-1', 'brief', 'ok'); // too short, won't migrate
 
     const count = await svc.consolidateBasic('sess-1');

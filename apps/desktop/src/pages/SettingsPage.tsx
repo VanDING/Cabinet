@@ -3,50 +3,37 @@ import { useTranslation } from 'react-i18next';
 import {
   SkillsTab,
   ApiKeysTab,
-  BudgetTab,
-  BackupsTab,
-  MaintenanceTab,
-  DelegationTab,
-  AuditTab,
   RulesTab,
+  McpTab,
+  OthersTab,
 } from './settings/index.js';
 
-// ── Main Settings Page ──
 type SettingsTab =
-  | 'api-keys'
-  | 'budget'
-  | 'delegation'
-  | 'audit'
-  | 'backups'
-  | 'maintenance'
   | 'rules'
-  | 'skills';
+  | 'skills'
+  | 'mcp'
+  | 'api-keys'
+  | 'others';
 
 const tabKeys: Record<SettingsTab, string> = {
+  'rules': 'rules',
+  'skills': 'skills',
+  'mcp': 'mcp',
   'api-keys': 'apiKeys',
-  budget: 'budget',
-  delegation: 'delegation',
-  audit: 'audit',
-  backups: 'backups',
-  maintenance: 'maintenance',
-  rules: 'rules',
-  skills: 'skills',
+  'others': 'others',
 };
 
 const tabIcons: Record<SettingsTab, string> = {
+  'rules': '\u{1F4DC}',
+  'skills': '\u{1F9E9}',
+  'mcp': '\u{1F527}',
   'api-keys': '\u{1F511}',
-  budget: '\u{1F4B0}',
-  delegation: '\u{1F6E1}',
-  audit: '\u{1F4CB}',
-  backups: '\u{1F4BE}',
-  maintenance: '\u{1F9F9}',
-  rules: '\u{1F4DC}',
-  skills: '\u{1F9E9}',
+  'others': '\u{2699}',
 };
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('api-keys');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('rules');
 
   const tabs: { id: SettingsTab; label: string; icon: string }[] =
     Object.keys(tabKeys).map((id) => ({
@@ -77,14 +64,11 @@ export function SettingsPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'skills' && <SkillsTab />}
-      {activeTab === 'api-keys' && <ApiKeysTab />}
-      {activeTab === 'budget' && <BudgetTab />}
-      {activeTab === 'delegation' && <DelegationTab />}
-      {activeTab === 'audit' && <AuditTab />}
-      {activeTab === 'backups' && <BackupsTab />}
-      {activeTab === 'maintenance' && <MaintenanceTab />}
       {activeTab === 'rules' && <RulesTab />}
+      {activeTab === 'skills' && <SkillsTab />}
+      {activeTab === 'mcp' && <McpTab />}
+      {activeTab === 'api-keys' && <ApiKeysTab />}
+      {activeTab === 'others' && <OthersTab />}
     </div>
   );
 }

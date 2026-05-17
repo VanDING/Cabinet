@@ -1,9 +1,4 @@
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  scryptSync,
-} from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEYLEN = 32;
@@ -29,10 +24,7 @@ export function encryptApiKey(apiKey: string, masterPassword: string): string {
   const key = deriveKey(masterPassword, salt);
 
   const cipher = createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(apiKey, 'utf8'),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(apiKey, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
 
   // Pack: salt + iv + tag + ciphertext
@@ -43,10 +35,7 @@ export function encryptApiKey(apiKey: string, masterPassword: string): string {
 /**
  * Decrypt an API key that was encrypted with encryptApiKey.
  */
-export function decryptApiKey(
-  encryptedBase64: string,
-  masterPassword: string,
-): string {
+export function decryptApiKey(encryptedBase64: string, masterPassword: string): string {
   const buffer = Buffer.from(encryptedBase64, 'base64');
 
   const salt = buffer.subarray(0, 32);
@@ -59,10 +48,7 @@ export function decryptApiKey(
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
 
-  const decrypted = Buffer.concat([
-    decipher.update(ciphertext),
-    decipher.final(),
-  ]);
+  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
   return decrypted.toString('utf8');
 }
 

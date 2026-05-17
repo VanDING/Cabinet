@@ -7,7 +7,7 @@ import type { MessageEnvelope } from '@cabinet/types';
  */
 export function buildCausationChain(
   messageId: string,
-  allEvents: MessageEnvelope[]
+  allEvents: MessageEnvelope[],
 ): MessageEnvelope[] {
   const eventMap = new Map<string, MessageEnvelope>();
   for (const event of allEvents) {
@@ -60,7 +60,7 @@ export function validateCausation(events: MessageEnvelope[]): {
       const referenced = events.find((e) => e.messageId === event.causationId);
       if (!referenced) {
         errors.push(
-          `messageId=${event.messageId} references nonexistent causationId=${event.causationId}`
+          `messageId=${event.messageId} references nonexistent causationId=${event.causationId}`,
         );
       }
     }

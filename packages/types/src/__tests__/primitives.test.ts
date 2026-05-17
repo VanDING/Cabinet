@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import type {
-  Organization,
   Project,
   Employee,
   SkillDefinition,
@@ -15,33 +14,10 @@ import {
   MemoryLayer,
 } from '../primitives';
 
-describe('Organization type', () => {
-  it('accepts valid organization object at compile time', () => {
-    const org: Organization = {
-      id: 'org-1',
-      name: 'Acme Corp',
-      captainId: 'captain-1',
-      createdAt: new Date(),
-    };
-    expect(org.name).toBe('Acme Corp');
-  });
-
-  it('requires id to be a string', () => {
-    const org: Organization = {
-      id: 'org-1',
-      name: 'Acme Corp',
-      captainId: 'captain-1',
-      createdAt: new Date(),
-    };
-    expect(typeof org.id).toBe('string');
-  });
-});
-
 describe('Project type', () => {
   it('accepts valid project object', () => {
     const project: Project = {
       id: 'proj-1',
-      organizationId: 'org-1',
       name: 'Product Launch',
       description: 'Launching the new product line',
       status: ProjectStatus.Active,
@@ -120,27 +96,59 @@ describe('SkillDefinition type', () => {
 });
 
 describe('WorkflowDefinition type', () => {
-  it('accepts valid workflow definition', () => {
+  it('accepts valid declarative workflow definition', () => {
     const wf: WorkflowDefinition = {
-      id: 'wf-1',
-      projectId: 'proj-1',
       name: 'Market Entry Analysis',
-      nodes: [
-        { id: 'n1', type: 'skill', skillId: 'skill-1', position: { x: 0, y: 0 } },
-        { id: 'n2', type: 'condition', condition: '{{result.score}} > 0.7', position: { x: 100, y: 0 } },
-        { id: 'n3', type: 'human', title: 'Approve market entry', position: { x: 200, y: 0 } },
+      description: 'Analyze market entry feasibility and generate a decision recommendation',
+      version: 1,
+      config: { projectId: 'proj-1', requireApproval: true },
+      steps: [
+        {
+          id: 'data_collection',
+          title: 'Data Collection',
+          description: 'Collect market data from internal CRM and external sources',
+          type: 'aiAgent',
+          agent: 'market_analyst',
+          input: { from: 'trigger', schema: { dataSource: 'string' } },
+          output: { format: 'json', schema: { records: 'number' } },
+          prompt: 'Collect and validate market data from {{dataSource}}',
+          constraints: { maxTokens: 3000, temperature: 0.3 },
+        },
+        {
+          id: 'quality_check',
+          title: 'Quality Check',
+          description: 'Check if data quality meets threshold',
+          type: 'condition',
+          condition: { expression: 'output.confidence > 0.7', trueBranch: 'report_gen', falseBranch: 'human_review' },
+        },
+        {
+          id: 'human_review',
+          title: 'Human Review',
+          description: 'Captain reviews low-confidence analysis',
+          type: 'humanApproval',
+          approvalOptions: [
+            { label: 'Continue', action: 'continue' },
+            { label: 'Retry', action: 'retry', target: 'data_collection' },
+          ],
+        },
+        {
+          id: 'report_gen',
+          title: 'Report Generation',
+          description: 'Generate final report',
+          type: 'aiAgent',
+          agent: 'report_writer',
+          input: { from: 'data_collection' },
+          output: { format: 'markdown' },
+          prompt: 'Generate structured report from analysis results',
+        },
       ],
-      edges: [
-        { from: 'n1', to: 'n2' },
-        { from: 'n2', to: 'n3', condition: 'true' },
-      ],
-      entryNodeId: 'n1',
-      status: 'draft',
-      createdAt: new Date(),
+      flow: 'conditional',
+      onFailure: 'halt',
     };
-    expect(wf.nodes).toHaveLength(3);
-    expect(wf.edges).toHaveLength(2);
-    expect(wf.entryNodeId).toBe('n1');
+    expect(wf.steps).toHaveLength(4);
+    expect(wf.steps[0]!.agent).toBe('market_analyst');
+    expect(wf.steps[2]!.type).toBe('humanApproval');
+    expect(wf.flow).toBe('conditional');
   });
 });
 

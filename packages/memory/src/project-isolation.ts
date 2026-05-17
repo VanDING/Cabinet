@@ -15,7 +15,9 @@ export class ProjectIsolatedMemory {
     private readonly project: ProjectMemory,
   ) {}
 
-  getProjectId(): string { return this.projectId; }
+  getProjectId(): string {
+    return this.projectId;
+  }
 
   // Short-term: prefix keys with projectId
   shortTermSet(sessionId: string, key: string, value: unknown): void {
@@ -39,12 +41,22 @@ export class ProjectIsolatedMemory {
   }
 
   // Entity: always scoped to captain (not project)
-  getPreferences(captainId: string) { return this.entity.getPreferences(captainId); }
+  getPreferences(captainId: string) {
+    return this.entity.getPreferences(captainId);
+  }
 
   // Project: direct access
-  getProjectContext() { return this.project.get(this.projectId); }
+  getProjectContext() {
+    return this.project.get(this.projectId);
+  }
 
   switchProject(newProjectId: string): ProjectIsolatedMemory {
-    return new ProjectIsolatedMemory(newProjectId, this.shortTerm, this.longTerm, this.entity, this.project);
+    return new ProjectIsolatedMemory(
+      newProjectId,
+      this.shortTerm,
+      this.longTerm,
+      this.entity,
+      this.project,
+    );
   }
 }

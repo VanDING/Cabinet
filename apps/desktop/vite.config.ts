@@ -12,5 +12,19 @@ export default defineConfig({
       '/health': 'http://localhost:3000',
     },
   },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'router-vendor': ['react-router-dom'],
+          'xyflow-vendor': ['@xyflow/react'],
+          'grid-layout-vendor': ['react-grid-layout'],
+          'marked-vendor': ['marked'],
+        },
+      },
+    },
+  },
   clearScreen: false,
 });

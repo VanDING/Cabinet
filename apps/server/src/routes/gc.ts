@@ -11,8 +11,11 @@ gcRouter.post('/scan', async (c) => {
   const autoFix = body.autoFix === true;
 
   try {
+    // Navigate from server/dist/ to project root
+    const { join } = await import('node:path');
+    const projectRoot = join(process.cwd(), '..', '..', '..');
     const gc = new GarbageCollector(eventBus, {
-      rootDir: process.cwd(),
+      rootDir: projectRoot,
       autoFix,
     });
 
@@ -35,4 +38,3 @@ gcRouter.post('/scan', async (c) => {
     return c.json({ error: (e as Error).message }, 500);
   }
 });
-

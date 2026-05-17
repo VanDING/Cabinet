@@ -1,12 +1,3 @@
-// ── Organization ──
-
-export interface Organization {
-  readonly id: string;
-  name: string;
-  captainId: string;
-  createdAt: Date;
-}
-
 // ── Project ──
 
 export const ProjectStatus = {
@@ -19,11 +10,23 @@ export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 
 export interface Project {
   readonly id: string;
-  organizationId: string;
   name: string;
   description: string;
   status: ProjectStatus;
+  rootPath?: string;
+  archived?: boolean;
+  lastActivityAt?: string;
   createdAt: Date;
+}
+
+export interface ProjectContext {
+  projectId: string;
+  summary: string;
+  goals: string[];
+  constraints: Record<string, unknown>;
+  techSummary: string;
+  riskMap: unknown[];
+  keyDecisions: unknown[];
 }
 
 // ── Employee ──
@@ -97,36 +100,70 @@ export interface SkillDefinition {
   status: SkillStatus;
 }
 
-// ── Workflow ──
+// ── Workflow (Declarative, LLM-friendly) ──
 
-export interface WorkflowNode {
+export type WorkflowStepType = 'aiAgent' | 'humanApproval' | 'condition' | 'notification' | 'dataQuery' | 'wait';
+
+export type WorkflowOutputFormat = 'json' | 'markdown' | 'text';
+
+export type WorkflowFlowMode = 'sequential' | 'conditional' | 'parallel';
+
+export type WorkflowFailureMode = 'halt' | 'skip' | 'retry';
+
+export interface WorkflowStep {
   id: string;
-  type: 'skill' | 'condition' | 'parallel' | 'human';
-  skillId?: string;
-  condition?: string;
-  title?: string;
-  children?: string[];
-  position: { x: number; y: number };
+  title: string;
+  /** Human-readable description of what this step does. */
+  description: string;
+  type: WorkflowStepType;
+  /** Reference to a registered Agent role (aiAgent steps). */
+  agent?: string;
+  /** Where this step gets its input. */
+  input?: {
+    from: 'trigger' | string;
+    schema?: Record<string, unknown>;
+  };
+  /** What this step produces. */
+  output?: {
+    format: WorkflowOutputFormat;
+    schema?: Record<string, unknown>;
+  };
+  /** Step-specific instruction. Supports {{variable}} template syntax. */
+  prompt?: string;
+  constraints?: {
+    maxTokens?: number;
+    temperature?: number;
+    maxRetries?: number;
+  };
+  /** Condition branching (condition type only). */
+  condition?: {
+    expression: string;
+    trueBranch: string;
+    falseBranch: string;
+  };
+  /** Human approval options (humanApproval type only). */
+  approvalOptions?: Array<{
+    label: string;
+    action: 'continue' | 'retry' | 'halt';
+    target?: string;
+  }>;
 }
-
-export interface WorkflowEdge {
-  from: string;
-  to: string;
-  condition?: string;
-}
-
-export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
 
 export interface WorkflowDefinition {
-  readonly id: string;
-  projectId: string;
   name: string;
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  entryNodeId: string;
-  status: WorkflowStatus;
-  createdAt: Date;
+  description?: string;
+  version: number;
+  config?: {
+    projectId?: string;
+    requireApproval?: boolean;
+  };
+  steps: WorkflowStep[];
+  flow?: WorkflowFlowMode;
+  onFailure?: WorkflowFailureMode;
 }
+
+/** Legacy status values for persisted workflows. */
+export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
 
 // ── Memory ──
 

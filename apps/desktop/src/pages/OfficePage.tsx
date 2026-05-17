@@ -1,4 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import { Plus, Grip } from 'lucide-react';
 import GridLayout, { type Layout, verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import { StatCard } from '../components/office/StatCard';
@@ -79,9 +81,13 @@ const DEFAULT_LAYOUT = [
   { i: 'progress-board', x: 4, y: 4, w: 6, h: 4 },
 ];
 
-function loadLayout(): Layout {
+function getLayoutKey(projectId?: string): string {
+  return projectId ? `cabinet-project-${projectId}-layout` : 'cabinet-office-layout';
+}
+
+function loadLayout(projectId?: string): Layout {
   try {
-    const raw = localStorage.getItem('cabinet-office-layout');
+    const raw = localStorage.getItem(getLayoutKey(projectId));
     if (raw) return JSON.parse(raw);
     return DEFAULT_LAYOUT;
   } catch {
@@ -89,21 +95,22 @@ function loadLayout(): Layout {
   }
 }
 
-function saveLayout(layout: Layout) {
-  localStorage.setItem('cabinet-office-layout', JSON.stringify(layout));
-}
-
-function getStatValue(type: WidgetType): { value: string | number; color: string } | null {
-  // These will be populated via API in the actual widget render
-  return null;
+function saveLayout(layout: Layout, projectId?: string) {
+  localStorage.setItem(getLayoutKey(projectId), JSON.stringify(layout));
 }
 
 export function OfficePage() {
+  const { id: projectId } = useParams<{ id?: string }>();
   const { addToast } = useToast();
-  const [layout, setLayout] = useState<Layout>(loadLayout);
-  const [containerWidth, setContainerWidth] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth - 200 : 1000
-  );
+  const [layout, setLayout] = useState<Layout>(() => loadLayout(projectId));
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+
+  // Reload layout when navigating between Office and Project Dashboard
+  useEffect(() => {
+    setLayout(loadLayout(projectId));
+  }, [projectId]);
+
+  const [containerWidth, setContainerWidth] = useState(1000);
   const [showPool, setShowPool] = useState(false);
   const [reviewDecisionId, setReviewDecisionId] = useState<string | null>(null);
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
@@ -115,23 +122,25 @@ export function OfficePage() {
     activeWorkflows: 0,
   });
 
-  // Keep grid width in sync with window resize
+  // Keep grid width in sync with actual container element (handles sidebar collapse, mobile, etc.)
   useEffect(() => {
-    let frame = 0;
-    const onResize = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        setContainerWidth(window.innerWidth - 200);
-      });
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const el = gridContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const refreshStats = useCallback(() => {
-    apiFetch('/api/dashboard/summary', { headers: authHeaders() })
-      .then(res => res.json())
-      .then(data => {
+    const url = projectId
+      ? `/api/dashboard/summary?projectId=${projectId}`
+      : '/api/dashboard/summary';
+    apiFetch(url, { headers: authHeaders() })
+      .then((res) => res.json())
+      .then((data) => {
         setStats({
           pendingDecisions: data.pendingDecisions ?? 0,
           todayCost: data.todayCost ?? 0,
@@ -139,8 +148,15 @@ export function OfficePage() {
           activeWorkflows: data.activeWorkflows ?? 0,
         });
       })
-      .catch(() => { addToast('error', 'Failed to load dashboard stats'); });
-  }, [addToast]);
+      .catch(() => {
+        addToast('error', 'Failed to load dashboard stats');
+      });
+  }, [addToast, projectId]);
+
+  // Initial data fetch
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
 
   // Listen for WebSocket decision updates
   useEffect(() => {
@@ -152,34 +168,38 @@ export function OfficePage() {
     };
   }, [refreshStats]);
 
+  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
   const handleLayoutChange = useCallback((newLayout: Layout) => {
-    setLayout(newLayout.map(item => ({ ...item })));
-    saveLayout(newLayout.map(item => ({ ...item })));
-  }, []);
+    const cloned = newLayout.map((item) => ({ ...item }));
+    setLayout(cloned);
+    clearTimeout(layoutSaveTimer.current);
+    layoutSaveTimer.current = setTimeout(() => saveLayout(cloned, projectId), 300);
+  }, [projectId]);
 
   const handleAddWidget = (type: WidgetType) => {
-    if (layout.find(item => item.i === type)) return;
-    const def = WIDGET_POOL.find(w => w.type === type);
+    if (layout.find((item) => item.i === type)) return;
+    const def = WIDGET_POOL.find((w) => w.type === type);
     if (!def) return;
     const newItem = { i: type, x: 0, y: Infinity, w: def.w, h: def.h };
     const updated = [...layout, newItem];
     setLayout(updated);
-    saveLayout(updated);
+    saveLayout(updated, projectId);
     setShowPool(false);
   };
 
   const handleRemoveWidget = (type: string) => {
-    const updated = layout.filter(item => item.i !== type);
+    const updated = layout.filter((item) => item.i !== type);
     setLayout(updated);
-    saveLayout(updated);
+    saveLayout(updated, projectId);
   };
 
   const handleReset = () => {
     setLayout(DEFAULT_LAYOUT);
-    saveLayout(DEFAULT_LAYOUT);
+    saveLayout(DEFAULT_LAYOUT, projectId);
   };
 
-  const addedTypes = new Set(layout.map(item => item.i));
+  const addedTypes = new Set(layout.map((item) => item.i));
 
   const handleWidgetClick = (type: string) => {
     if (type === 'today-cost') {
@@ -200,25 +220,46 @@ export function OfficePage() {
   const renderWidget = (type: string) => {
     switch (type) {
       case 'pending-decisions':
-        return <StatCard label="Pending Decisions" value={stats.pendingDecisions} color="text-amber-600" onClick={() => {
-          if (stats.pendingDecisions > 0) {
-            // Open the first pending decision
-            apiFetch('/api/decisions?status=pending', { headers: authHeaders() })
-              .then(r => r.json())
-              .then(data => {
-                if (data.decisions?.[0]) setReviewDecisionId(data.decisions[0].id);
-              })
-              .catch(() => {});
-          }
-        }} />;
+        return (
+          <StatCard
+            label="Pending Decisions"
+            value={stats.pendingDecisions}
+            color="text-amber-600"
+            onClick={() => {
+              if (stats.pendingDecisions > 0) {
+                // Open the first pending decision
+                apiFetch(`/api/decisions?status=pending${projectId ? `&projectId=${projectId}` : ''}`, { headers: authHeaders() })
+                  .then((r) => r.json())
+                  .then((data) => {
+                    if (data.decisions?.[0]) setReviewDecisionId(data.decisions[0].id);
+                  })
+                  .catch(() => {});
+              }
+            }}
+          />
+        );
       case 'today-cost':
-        return <StatCard label="Today's Cost" value={`$${stats.todayCost.toFixed(2)}`} color="text-blue-600" onClick={() => handleWidgetClick('today-cost')} />;
+        return (
+          <StatCard
+            label="Today's Cost"
+            value={`$${stats.todayCost.toFixed(2)}`}
+            color="text-blue-600"
+            onClick={() => handleWidgetClick('today-cost')}
+          />
+        );
       case 'active-projects':
-        return <StatCard label="Active Projects" value={stats.activeProjects} color="text-green-600" onClick={() => handleWidgetClick('active-projects')} />;
+        return (
+          <StatCard
+            label="Active Projects"
+            value={stats.activeProjects}
+            color="text-green-600"
+            onClick={() => handleWidgetClick('active-projects')}
+          />
+        );
       case 'active-workflows':
         return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" />;
       case 'decision-list':
-        return <DecisionList onSelectDecision={id => setReviewDecisionId(id)} />;
+        return <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} />;
       case 'event-timeline':
         return <EventTimeline />;
       case 'project-switcher':
@@ -246,7 +287,7 @@ export function OfficePage() {
       case 'weather':
         return <Weather />;
       default: {
-        const def = WIDGET_POOL.find(w => w.type === type);
+        const def = WIDGET_POOL.find((w) => w.type === type);
         return <PlaceholderWidget title={def?.label ?? type} />;
       }
     }
@@ -255,24 +296,26 @@ export function OfficePage() {
   return (
     <div className="h-full overflow-y-auto">
       {/* Header */}
-      <div className="px-6 pt-4 pb-2 flex items-center justify-between">
+      <div className="flex items-center justify-between px-6 pb-2 pt-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Office</h1>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Your Decision Room</span>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {projectId ? 'Project Dashboard' : 'Office'}
+          </h1>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {projectId ? `Project #${projectId}` : 'Your Decision Room'}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPool(!showPool)}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-700"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M6 2v8M2 6h8" />
-            </svg>
+            <Plus size={12} />
             Add Widget
           </button>
           <button
             onClick={handleReset}
-            className="px-3 py-1.5 text-xs rounded-lg border dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="rounded-lg border px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
           >
             Reset
           </button>
@@ -282,23 +325,23 @@ export function OfficePage() {
       {/* Widget pool dropdown */}
       {showPool && (
         <div className="px-6 pb-2">
-          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 grid grid-cols-4 lg:grid-cols-8 gap-2">
-            {WIDGET_POOL.filter(w => !addedTypes.has(w.type)).map(w => (
+          <div className="grid grid-cols-4 gap-2 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800 lg:grid-cols-8">
+            {WIDGET_POOL.filter((w) => !addedTypes.has(w.type)).map((w) => (
               <button
                 key={w.type}
                 onClick={() => handleAddWidget(w.type)}
                 disabled={!w.available}
-                className={`px-2 py-1.5 rounded text-xs text-center transition-colors ${
+                className={`rounded px-2 py-1.5 text-center text-xs transition-colors ${
                   w.available
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                    : 'bg-gray-50 dark:bg-gray-800 text-gray-400 line-through cursor-not-allowed'
+                    ? 'bg-gray-100 text-gray-700 hover:bg-blue-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-blue-900/30'
+                    : 'cursor-not-allowed bg-gray-50 text-gray-400 line-through dark:bg-gray-800'
                 }`}
               >
                 {w.label}
               </button>
             ))}
-            {WIDGET_POOL.every(w => addedTypes.has(w.type)) && (
-              <span className="col-span-full text-xs text-gray-400 text-center py-2">
+            {WIDGET_POOL.every((w) => addedTypes.has(w.type)) && (
+              <span className="col-span-full py-2 text-center text-xs text-gray-400">
                 All widgets added.
               </span>
             )}
@@ -307,12 +350,12 @@ export function OfficePage() {
       )}
 
       {/* Grid layout */}
-      <div className="px-6 pb-6">
+      <div ref={gridContainerRef} className="px-6 pb-6">
         {layout.length === 0 ? (
           <div className="flex items-center justify-center py-24 text-center text-gray-400">
             <div>
               <p className="text-lg">No widgets yet</p>
-              <p className="text-sm mt-1">Click "Add Widget" to customize your Office.</p>
+              <p className="mt-1 text-sm">Click "Add Widget" to customize your Office.</p>
             </div>
           </div>
         ) : (
@@ -320,26 +363,28 @@ export function OfficePage() {
             className="layout"
             layout={layout}
             width={containerWidth}
-            gridConfig={{ cols: 12, rowHeight: 100, margin: [12, 12], containerPadding: null, maxRows: Infinity }}
+            gridConfig={{
+              cols: 12,
+              rowHeight: 100,
+              margin: [12, 12],
+              containerPadding: null,
+              maxRows: Infinity,
+            }}
             dragConfig={{ enabled: true, handle: '.drag-handle', bounded: false }}
             resizeConfig={{ enabled: true }}
             compactor={verticalCompactor}
             onLayoutChange={handleLayoutChange}
           >
-            {layout.map(item => (
+            {layout.map((item) => (
               <div key={item.i} className="group relative">
                 {/* Drag handle + remove button */}
-                <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="drag-handle w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-grab active:cursor-grabbing">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                      <circle cx="2" cy="2" r="1" /><circle cx="7" cy="2" r="1" />
-                      <circle cx="2" cy="5" r="1" /><circle cx="7" cy="5" r="1" />
-                      <circle cx="2" cy="8" r="1" /><circle cx="7" cy="8" r="1" />
-                    </svg>
+                <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-gray-400 hover:text-gray-600 active:cursor-grabbing dark:hover:text-gray-200">
+                    <Grip size={12} />
                   </div>
                   <button
                     onClick={() => handleRemoveWidget(item.i)}
-                    className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-red-500"
+                    className="flex h-5 w-5 items-center justify-center rounded text-gray-400 hover:text-red-500"
                   >
                     &times;
                   </button>
@@ -353,41 +398,73 @@ export function OfficePage() {
 
       {/* Expanded overlay */}
       {expandedWidget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setExpandedWidget(null)}>
-          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-2xl p-6 w-full max-w-lg m-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setExpandedWidget(null)}
+        >
+          <div
+            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {expandedWidget === 'today-cost' ? "Today's Cost Breakdown" : expandedWidget === 'active-projects' ? 'Active Projects' : 'Details'}
+                {expandedWidget === 'today-cost'
+                  ? "Today's Cost Breakdown"
+                  : expandedWidget === 'active-projects'
+                    ? 'Active Projects'
+                    : 'Details'}
               </h3>
-              <button onClick={() => setExpandedWidget(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none">&times;</button>
+              <button
+                onClick={() => setExpandedWidget(null)}
+                className="text-xl leading-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                &times;
+              </button>
             </div>
 
             {expandedWidget === 'today-cost' && (
               <div className="space-y-3">
-                <div className="text-2xl font-bold text-blue-600">${stats.todayCost.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  ${stats.todayCost.toFixed(2)}
+                </div>
                 <p className="text-xs text-gray-500">Total token consumption cost for today</p>
-                <div className="border-t dark:border-gray-700 pt-3 mt-3 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Cost by Model</h4>
-                  {costDetails.map(c => (
+                <div className="mt-3 space-y-2 border-t pt-3 dark:border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Cost by Model
+                  </h4>
+                  {costDetails.map((c) => (
                     <div key={c.model} className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">{c.model}</span>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">${c.cost.toFixed(2)}</span>
+                      <span className="font-mono text-xs text-gray-600 dark:text-gray-400">
+                        {c.model}
+                      </span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">
+                        ${c.cost.toFixed(2)}
+                      </span>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 italic mt-2">Detailed cost tracking coming soon.</p>
+                <p className="mt-2 text-xs italic text-gray-400">
+                  Detailed cost tracking coming soon.
+                </p>
               </div>
             )}
 
             {expandedWidget === 'active-projects' && (
               <div className="space-y-3">
                 <p className="text-xs text-gray-500">Project list managed from sidebar.</p>
-                <p className="text-xs text-gray-400 italic mt-2">Full project management coming soon.</p>
+                <p className="mt-2 text-xs italic text-gray-400">
+                  Full project management coming soon.
+                </p>
               </div>
             )}
 
             {expandedWidget === 'decision-list' && (
-              <DecisionList onSelectDecision={id => { setReviewDecisionId(id); setExpandedWidget(null); }} />
+              <DecisionList
+                onSelectDecision={(id) => {
+                  setReviewDecisionId(id);
+                  setExpandedWidget(null);
+                }}
+              />
             )}
           </div>
         </div>

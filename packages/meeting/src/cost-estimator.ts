@@ -16,19 +16,19 @@ export interface CostEstimate {
 }
 
 const COST_PER_1K_TOKENS: Record<string, number> = {
-  'claude-haiku-4-5': 0.001,   // $0.001/1K tokens
-  'claude-sonnet-4-6': 0.003,  // $0.003/1K tokens
+  'claude-haiku-4-5': 0.001, // $0.001/1K tokens
+  'claude-sonnet-4-6': 0.003, // $0.003/1K tokens
 };
 
 const DEFAULT_TOKEN_ESTIMATE = {
-  advisorPrompt: 150,   // system prompt + topic per advisor
+  advisorPrompt: 150, // system prompt + topic per advisor
   advisorResponse: 200, // average response length
-  chairPrompt: 600,     // includes all perspectives
-  chairResponse: 300,   // synthesis output
+  chairPrompt: 600, // includes all perspectives
+  chairResponse: 300, // synthesis output
 };
 
 /** Cost threshold above which Captain confirmation is recommended. */
-const CONFIRMATION_THRESHOLD_USD = 0.50;
+const CONFIRMATION_THRESHOLD_USD = 0.5;
 
 export function estimateMeetingCost(
   advisorCount: number,
@@ -43,7 +43,8 @@ export function estimateMeetingCost(
 
   // Each round: N advisors speak + 1 chair synthesizes
   const advisorTokens = advisorCount * rounds * perAdvisor;
-  const chairTokens = rounds * (DEFAULT_TOKEN_ESTIMATE.chairPrompt + DEFAULT_TOKEN_ESTIMATE.chairResponse);
+  const chairTokens =
+    rounds * (DEFAULT_TOKEN_ESTIMATE.chairPrompt + DEFAULT_TOKEN_ESTIMATE.chairResponse);
   const totalTokens = advisorTokens + chairTokens;
 
   const estimatedCostUsd = (totalTokens / 1000) * rate;

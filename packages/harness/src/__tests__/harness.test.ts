@@ -4,7 +4,9 @@ import { TeachBack } from '../teach-back';
 
 describe('QualityGate', () => {
   let gate: QualityGate;
-  beforeEach(() => { gate = new QualityGate(); });
+  beforeEach(() => {
+    gate = new QualityGate();
+  });
 
   it('passes output with all HEI sections', () => {
     const result = gate.checkHEI('假设：应该进入市场。证据：市场规模大。影响：可能带来高收益。');
@@ -28,7 +30,10 @@ describe('QualityGate', () => {
 describe('TeachBack', () => {
   it('verifies correct restatement', () => {
     const tb = new TeachBack();
-    const valid = tb.verify('Delete the old database', 'I understand that I should delete the old database');
+    const valid = tb.verify(
+      'Delete the old database',
+      'I understand that I should delete the old database',
+    );
     expect(valid).toBe(true);
   });
 

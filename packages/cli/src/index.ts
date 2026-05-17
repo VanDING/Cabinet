@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-import { createConnection, closeConnection, runMigration001, BackupManager, getConnection } from '@cabinet/storage';
+import {
+  createConnection,
+  closeConnection,
+  runMigration001,
+  BackupManager,
+  getConnection,
+} from '@cabinet/storage';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdirSync, existsSync } from 'node:fs';
@@ -69,7 +75,9 @@ async function main(): Promise<void> {
         console.log('No backups found.');
       } else {
         backups.forEach((b, i) => {
-          console.log(`${i + 1}. ${b.path} (${(b.size / 1024).toFixed(1)} KB) - ${b.timestamp.toLocaleString()}`);
+          console.log(
+            `${i + 1}. ${b.path} (${(b.size / 1024).toFixed(1)} KB) - ${b.timestamp.toLocaleString()}`,
+          );
         });
       }
       closeConnection();
@@ -99,8 +107,12 @@ async function main(): Promise<void> {
       console.log(`Backups: ${BACKUP_DIR}`);
       console.log('Environment variables:');
       console.log(`  PORT=${process.env.PORT ?? '3000'}`);
-      console.log(`  ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY ? '***configured***' : 'not set'}`);
-      console.log(`  OPENAI_API_KEY=${process.env.OPENAI_API_KEY ? '***configured***' : 'not set'}`);
+      console.log(
+        `  ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY ? '***configured***' : 'not set'}`,
+      );
+      console.log(
+        `  OPENAI_API_KEY=${process.env.OPENAI_API_KEY ? '***configured***' : 'not set'}`,
+      );
       break;
     }
 

@@ -28,7 +28,9 @@ describe('ToolExecutor', () => {
   it('returns error on tool execution failure', async () => {
     executor.register({
       name: 'failing',
-      execute: async () => { throw new Error('boom'); },
+      execute: async () => {
+        throw new Error('boom');
+      },
     });
     const result = await executor.execute('failing', 'call-1', {});
     expect(result.error).toBe('boom');

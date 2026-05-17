@@ -11,6 +11,10 @@ export default defineConfig({
   },
   webServer: [
     { command: 'cd ../../apps/server && pnpm dev', port: 3000, reuseExistingServer: true },
-    { command: 'cd ../../apps/desktop && npx vite --port 5173', port: 5173, reuseExistingServer: true },
+    {
+      command: 'cd ../../apps/desktop && npx vite --port 5173',
+      port: 5173,
+      reuseExistingServer: true,
+    },
   ],
 });

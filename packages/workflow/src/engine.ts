@@ -14,6 +14,22 @@ export interface WorkflowNodeDef {
   children?: string[];
   /** Arbitrary data attached to the node (prompt, model, label, duration, message, etc.). */
   data?: Record<string, unknown>;
+  /** Reference to a role in AgentRoleRegistry. Consecutive nodes with same agentId form a segment. */
+  agentId?: string;
+  /** Runtime configuration for this node's agent segment. */
+  agentConfig?: {
+    /** Keep context alive across segment boundaries (for persistent service agents). */
+    persistent?: boolean;
+    /** Explicit segment grouping key (auto-detected from consecutive agentId if omitted). */
+    segmentId?: string;
+  };
+}
+
+/** Lightweight handle for an AgentLoop instance. Keeps engine decoupled from @cabinet/agent. */
+export interface AgentLoopHandle {
+  run(message: string): Promise<string>;
+  dispose(): Promise<void>;
+  handoff(): Promise<string>;
 }
 
 export interface WorkflowEdge {
@@ -33,10 +49,19 @@ export interface WorkflowRun {
   /** Ordered steps executed so far. */
   steps: { nodeId: string; type: WorkflowNodeType; output: string }[];
   startedAt: Date;
+  /** @internal Active AgentLoop segment during execution. */
+  _agentLoop?: { agentId: string; handle: AgentLoopHandle } | null;
 }
 
 export interface WorkflowHandlers {
+  /** @deprecated Use createAgentLoop for segment-based agent execution. */
   aiAgent?: (node: WorkflowNodeDef, previousOutputs: string) => Promise<string>;
+  /** Create an AgentLoop instance from a registered agent role. Segment-based replacement for aiAgent. */
+  createAgentLoop?: (
+    agentId: string,
+    runId: string,
+    options: { persistent?: boolean; segmentId?: string },
+  ) => Promise<AgentLoopHandle>;
   humanApproval?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
   dataQuery?: (node: WorkflowNodeDef) => Promise<string>;
   notification?: (node: WorkflowNodeDef) => Promise<void>;
@@ -75,7 +100,10 @@ export class WorkflowEngine {
 
     try {
       await this.executeNode(entryNodeId, nodeMap, graph, run, new Set());
+      // Finalize any remaining AgentLoop segment
+      await this.finalizeAgentSegment(run);
     } catch (error) {
+      await this.finalizeAgentSegment(run);
       run.status = 'failed';
       return run;
     }
@@ -101,6 +129,7 @@ export class WorkflowEngine {
     }
 
     run.status = 'running';
+    run._agentLoop = null; // Clear any stale agent segment from before the pause
 
     const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -130,6 +159,95 @@ export class WorkflowEngine {
     return this.runs.get(runId) ?? null;
   }
 
+  // ── Segment Helpers ───────────────────────────────────────────
+
+  /**
+   * Group consecutive aiAgent/llmCall nodes with the same agentId into segments.
+   * Non-AI nodes act as segment boundaries.
+   */
+  groupNodesIntoSegments(
+    nodes: WorkflowNodeDef[],
+    orderedIds: string[],
+  ): WorkflowNodeDef[][] {
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    const segments: WorkflowNodeDef[][] = [];
+    let current: WorkflowNodeDef[] = [];
+    let currentAgentId: string | undefined;
+
+    for (const id of orderedIds) {
+      const node = nodeMap.get(id);
+      if (!node) continue;
+
+      if (node.type === 'aiAgent' || node.type === 'llmCall') {
+        const agentId = node.agentId ?? 'secretary';
+        if (agentId !== currentAgentId) {
+          if (current.length > 0) segments.push(current);
+          current = [node];
+          currentAgentId = agentId;
+        } else {
+          current.push(node);
+        }
+      } else {
+        // Non-AI node breaks the segment
+        if (current.length > 0) {
+          segments.push(current);
+          current = [];
+          currentAgentId = undefined;
+        }
+      }
+    }
+    if (current.length > 0) segments.push(current);
+    return segments;
+  }
+
+  /**
+   * Execute a segment of AI nodes using a shared AgentLoop instance.
+   * The same AgentLoop handles all nodes in the segment, maintaining context.
+   */
+  async executeSegment(
+    segmentNodes: WorkflowNodeDef[],
+    agentLoop: AgentLoopHandle,
+    previousOutputs: string,
+  ): Promise<{ outputs: string[]; handoffDoc?: string }> {
+    const outputs: string[] = [];
+    let accumulatedContext = previousOutputs;
+
+    for (let i = 0; i < segmentNodes.length; i++) {
+      const node = segmentNodes[i]!;
+      const d = node.data ?? {};
+      const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
+
+      // Build message with accumulated context from previous nodes in this segment
+      const message =
+        i === 0 && accumulatedContext
+          ? `${prompt}\n\n[Previous outputs]\n${accumulatedContext}`
+          : prompt;
+
+      const output = await agentLoop.run(message);
+      outputs.push(output);
+      accumulatedContext += `\n[${node.id} output]\n${output}`;
+    }
+
+    // Generate handoff at segment end
+    const handoffDoc = await agentLoop.handoff();
+    return { outputs, handoffDoc };
+  }
+
+  // ── Agent segment lifecycle ──
+
+  private async finalizeAgentSegment(run: WorkflowRun): Promise<void> {
+    if (run._agentLoop) {
+      try {
+        const handoffDoc = await run._agentLoop.handle.handoff();
+        run.results.set(`_handoff:${run._agentLoop.agentId}`, handoffDoc);
+        await run._agentLoop.handle.dispose();
+      } catch {
+        /* cleanup failure is non-fatal */
+      }
+      run._agentLoop = null;
+    }
+  }
+
   // ── Private ──
 
   private buildGraph(
@@ -157,6 +275,11 @@ export class WorkflowEngine {
     if (!node) return;
     visited.add(nodeId);
 
+    // Non-AI nodes act as segment boundaries — finalize active AgentLoop
+    if (node.type !== 'aiAgent' && node.type !== 'llmCall') {
+      await this.finalizeAgentSegment(run);
+    }
+
     const previousOutputs = run.steps
       .map((s) => s.output)
       .join('\n');
@@ -182,8 +305,50 @@ export class WorkflowEngine {
 
       case 'aiAgent':
       case 'llmCall': {
-        if (!this.handlers.aiAgent) throw new Error('No aiAgent handler registered');
-        output = await this.handlers.aiAgent(node, previousOutputs);
+        const agentId = node.agentId ?? 'secretary';
+        const children = graph.get(nodeId) ?? [];
+        const nextChildIsSameAgent = children.some((cid) => {
+          const child = nodeMap.get(cid);
+          return child && (child.type === 'aiAgent' || child.type === 'llmCall') && (child.agentId ?? 'secretary') === agentId;
+        });
+
+        // Reuse or create AgentLoop for this segment
+        if (!run._agentLoop || run._agentLoop.agentId !== agentId) {
+          // Finalize previous segment if exists
+          if (run._agentLoop) {
+            const handoffDoc = await run._agentLoop.handle.handoff();
+            await run._agentLoop.handle.dispose();
+            run.results.set(`_handoff:${run._agentLoop.agentId}`, handoffDoc);
+          }
+          // Create new segment
+          if (this.handlers.createAgentLoop) {
+            const handle = await this.handlers.createAgentLoop(agentId, run.runId, {
+              persistent: node.agentConfig?.persistent,
+              segmentId: node.agentConfig?.segmentId,
+            });
+            run._agentLoop = { agentId, handle };
+          } else if (this.handlers.aiAgent) {
+            // Fallback to legacy per-node handler
+            output = await this.handlers.aiAgent(node, previousOutputs);
+            break;
+          } else {
+            output = 'No agent handler registered';
+            break;
+          }
+        }
+
+        // Execute with shared AgentLoop
+        const d = node.data ?? {};
+        const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
+        output = await run._agentLoop.handle.run(prompt);
+
+        // If no child shares this agent, finalize the segment
+        if (!nextChildIsSameAgent) {
+          const handoffDoc = await run._agentLoop.handle.handoff();
+          await run._agentLoop.handle.dispose();
+          run.results.set(`_handoff:${agentId}`, handoffDoc);
+          run._agentLoop = null;
+        }
         break;
       }
 

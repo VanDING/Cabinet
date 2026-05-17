@@ -6,4 +6,5 @@ export {
   type WorkflowStatus,
   type WorkflowRun,
   type WorkflowHandlers,
+  type AgentLoopHandle,
 } from './engine.js';

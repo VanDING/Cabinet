@@ -4,7 +4,13 @@ import { MemoryEventBus } from '@cabinet/events';
 import type { Advisor } from '../parallel-reasoning.js';
 
 function makeAdvisor(id: string): Advisor {
-  return { id, name: id, role: 'Analyst', model: 'claude-haiku-4-5', perspective: `Analyze from ${id} angle.` };
+  return {
+    id,
+    name: id,
+    role: 'Analyst',
+    model: 'claude-haiku-4-5',
+    perspective: `Analyze from ${id} angle.`,
+  };
 }
 
 describe('MeetingService', () => {
@@ -19,7 +25,9 @@ describe('MeetingService', () => {
   it('starts and completes a meeting', async () => {
     const advisors = [makeAdvisor('a1'), makeAdvisor('a2'), makeAdvisor('a3')];
     const result = await service.startMeeting({
-      id: 'meeting-1', topic: 'Budget review', advisors,
+      id: 'meeting-1',
+      topic: 'Budget review',
+      advisors,
     });
     expect(result.consensus).toContain('Budget review');
     expect(result.rounds).toBeGreaterThan(0);
@@ -31,7 +39,9 @@ describe('MeetingService', () => {
   it('includes simulated advisor perspectives without gateway', async () => {
     const advisors = [makeAdvisor('advisor-1'), makeAdvisor('advisor-2')];
     const result = await service.startMeeting({
-      id: 'meeting-sim', topic: 'Test', advisors,
+      id: 'meeting-sim',
+      topic: 'Test',
+      advisors,
     });
     expect(result.advisorResults).toHaveLength(2);
     expect(result.advisorResults[0]!.content).toContain('advisor-1');
@@ -73,15 +83,23 @@ describe('MeetingService', () => {
           model: 'test',
         };
       },
-      async *streamText() { yield { type: 'done' as const }; },
-      async listModels() { return []; },
-      async generateEmbeddings() { return { embeddings: [], model: '', usage: { tokens: 0 } }; },
+      async *streamText() {
+        yield { type: 'done' as const };
+      },
+      async listModels() {
+        return [];
+      },
+      async generateEmbeddings() {
+        return { embeddings: [], model: '', usage: { tokens: 0 } };
+      },
     };
 
     it('uses LLM gateway when provided', async () => {
       const svc = new MeetingService(bus, mockGateway as any);
       const result = await svc.startMeeting({
-        id: 'meeting-llm', topic: 'Q3 Strategy', advisors: [makeAdvisor('advisor-1')],
+        id: 'meeting-llm',
+        topic: 'Q3 Strategy',
+        advisors: [makeAdvisor('advisor-1')],
       });
       expect(result.advisorResults).toHaveLength(1);
       expect(result.advisorResults[0]!.content).toContain('Q3 Strategy');
@@ -90,11 +108,15 @@ describe('MeetingService', () => {
     it('handles LLM errors with fallback to simulated', async () => {
       const failingGateway = {
         ...mockGateway,
-        async generateText() { throw new Error('API error'); },
+        async generateText() {
+          throw new Error('API error');
+        },
       };
       const svc = new MeetingService(bus, failingGateway as any);
       const result = await svc.startMeeting({
-        id: 'meeting-err', topic: 'Test', advisors: [makeAdvisor('advisor-1')],
+        id: 'meeting-err',
+        topic: 'Test',
+        advisors: [makeAdvisor('advisor-1')],
       });
       expect(result.advisorResults).toHaveLength(1);
       // Falls back to simulated meeting on error

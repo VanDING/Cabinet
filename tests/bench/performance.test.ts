@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
-import { createConnection, closeConnection, runMigration001, BackupManager, EventLogRepository } from '@cabinet/storage';
+import {
+  createConnection,
+  closeConnection,
+  runMigration001,
+  BackupManager,
+  EventLogRepository,
+} from '@cabinet/storage';
 import { MemoryEventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
 import type { MessageEnvelope } from '@cabinet/types';

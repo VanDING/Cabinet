@@ -8,11 +8,17 @@ import type { Decision } from '@cabinet/types';
 
 class MockDecisionStore implements DecisionStore {
   private decisions = new Map<string, Decision>();
-  save(d: Decision): void { this.decisions.set(d.id, d); }
-  get(id: string): Decision | null { return this.decisions.get(id) ?? null; }
-  listByProject(_projectId: string): Decision[] { return [...this.decisions.values()]; }
+  save(d: Decision): void {
+    this.decisions.set(d.id, d);
+  }
+  get(id: string): Decision | null {
+    return this.decisions.get(id) ?? null;
+  }
+  listByProject(_projectId: string): Decision[] {
+    return [...this.decisions.values()];
+  }
   listPending(_projectId: string): Decision[] {
-    return [...this.decisions.values()].filter(d => d.status === 'pending');
+    return [...this.decisions.values()].filter((d) => d.status === 'pending');
   }
 }
 
@@ -31,8 +37,11 @@ describe('Cabinet Tools', () => {
           return {
             run: (...args: any[]) => {
               rows.push({
-                id: args[0], content: args[1], embedding: args[2],
-                metadata: args[3], timestamp: args[4],
+                id: args[0],
+                content: args[1],
+                embedding: args[2],
+                metadata: args[3],
+                timestamp: args[4],
               });
               return { changes: 1 };
             },
@@ -43,14 +52,13 @@ describe('Cabinet Tools', () => {
           all: (...args: any[]) => {
             if (args.length > 0) {
               const pattern = String(args[0]).replace(/%/g, '');
-              return rows.filter(r =>
-                String(r.content).includes(pattern) ||
-                String(r.metadata).includes(pattern)
+              return rows.filter(
+                (r) => String(r.content).includes(pattern) || String(r.metadata).includes(pattern),
               );
             }
             return rows;
           },
-          get: (key: any) => rows.find(r => r.id === key || r.entity_id === key) ?? null,
+          get: (key: any) => rows.find((r) => r.id === key || r.entity_id === key) ?? null,
         };
       },
     } as any;
@@ -126,6 +134,10 @@ describe('Cabinet Tools', () => {
       listAgents: () => [
         { type: 'secretary', name: 'Secretary', description: 'General purpose', builtIn: true },
       ],
+      setProjectContext: (projectId) => ({ id: projectId, name: 'Test Project' }),
+      createProject: (input) => ({ id: 'proj_test', name: input.name }),
+      listProjects: () => [{ id: 'proj-1', name: 'Test Project' }],
+      getProjectContext: (projectId) => projectId === 'unknown' ? null : { id: projectId, name: 'Test' },
     };
 
     const tools = createCabinetTools(deps);
@@ -134,12 +146,16 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 26 tools', () => {
-    expect(executor.listTools()).toHaveLength(26);
+  it('registers 33 tools', () => {
+    expect(executor.listTools()).toHaveLength(32);
   });
 
   it('remember and recall work together', async () => {
-    const r1 = await executor.execute('remember', 'tc1', { sessionId: 's1', key: 'name', value: 'Captain' });
+    const r1 = await executor.execute('remember', 'tc1', {
+      sessionId: 's1',
+      key: 'name',
+      value: 'Captain',
+    });
     expect(r1.output).toEqual({ remembered: true, key: 'name' });
 
     const r2 = await executor.execute('recall', 'tc2', { sessionId: 's1', key: 'name' });
@@ -148,7 +164,7 @@ describe('Cabinet Tools', () => {
 
   it('query_decisions returns empty array initially', async () => {
     const r = await executor.execute('query_decisions', 'tc3', { status: 'pending' });
-    expect((r.output as any)).toEqual([]);
+    expect(r.output as any).toEqual([]);
   });
 
   it('get_decision returns error for unknown', async () => {
@@ -162,14 +178,18 @@ describe('Cabinet Tools', () => {
   });
 
   it('search_memory finds stored entries', async () => {
-    await deps.longTerm.store({ content: 'Q2 revenue up 15%', metadata: {}, timestamp: new Date() });
+    await deps.longTerm.store({
+      content: 'Q2 revenue up 15%',
+      metadata: {},
+      timestamp: new Date(),
+    });
     const r = await executor.execute('search_memory', 'tc6', { query: 'revenue', limit: 5 });
-    expect((r.output as any[])).toHaveLength(1);
+    expect(r.output as any[]).toHaveLength(1);
   });
 
-  it('get_project_context returns empty for uninitialized project', async () => {
+  it('get_project_context returns null for unknown project', async () => {
     const r = await executor.execute('get_project_context', 'tc7', { projectId: 'unknown' });
-    expect((r.output as any).error).toContain('not found');
+    expect((r.output as any).context).toBeNull();
   });
 
   it('get_captain_preferences returns defaults', async () => {

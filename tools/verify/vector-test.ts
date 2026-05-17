@@ -64,8 +64,7 @@ async function main(): Promise<void> {
   const deleted = await mem.delete(tempId);
   console.log(`   deleted: ${deleted ? 'PASS' : 'FAIL'}`);
 
-  const allPass =
-    mem.size() >= 3 && searchPass && textResults.length === 1 && deleted;
+  const allPass = mem.size() >= 3 && searchPass && textResults.length === 1 && deleted;
 
   db.close();
   console.log(`\n=== ${allPass ? 'ALL VECTOR CHECKS PASSED' : 'SOME CHECKS FAILED'} ===`);

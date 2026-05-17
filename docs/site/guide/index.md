@@ -18,6 +18,7 @@ cd apps/desktop && pnpm tauri:dev  # Desktop app
 ## Configuration
 
 Create `apps/server/.env`:
+
 ```env
 PORT=3000
 ANTHROPIC_API_KEY=sk-ant-api03-your-key

@@ -9,7 +9,7 @@ import type { MessageEnvelope } from '@cabinet/types';
  */
 export function runEventBusContractTests(
   createBus: () => EventBus,
-  cleanup: () => void = () => {}
+  cleanup: () => void = () => {},
 ) {
   describe('EventBus contract', () => {
     let bus: EventBus;
@@ -46,8 +46,12 @@ export function runEventBusContractTests(
       const received1: MessageEnvelope[] = [];
       const received2: MessageEnvelope[] = [];
 
-      bus.subscribe(MessageType.TaskOrder, (msg) => { received1.push(msg); });
-      bus.subscribe(MessageType.TaskOrder, (msg) => { received2.push(msg); });
+      bus.subscribe(MessageType.TaskOrder, (msg) => {
+        received1.push(msg);
+      });
+      bus.subscribe(MessageType.TaskOrder, (msg) => {
+        received2.push(msg);
+      });
 
       await bus.publish({
         messageId: 'msg-multi',
@@ -64,7 +68,9 @@ export function runEventBusContractTests(
 
     it('subscriber does not receive other message types', async () => {
       const received: MessageEnvelope[] = [];
-      bus.subscribe(MessageType.TaskOrder, (msg) => { received.push(msg); });
+      bus.subscribe(MessageType.TaskOrder, (msg) => {
+        received.push(msg);
+      });
 
       await bus.publish({
         messageId: 'msg-other',
@@ -80,7 +86,9 @@ export function runEventBusContractTests(
 
     it('unsubscribe removes the handler', async () => {
       const received: MessageEnvelope[] = [];
-      const handler = (msg: MessageEnvelope) => { received.push(msg); };
+      const handler = (msg: MessageEnvelope) => {
+        received.push(msg);
+      };
 
       bus.subscribe(MessageType.TaskOrder, handler);
       bus.unsubscribe(MessageType.TaskOrder, handler);

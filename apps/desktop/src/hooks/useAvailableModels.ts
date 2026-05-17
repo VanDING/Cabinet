@@ -28,25 +28,35 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch('/api/settings/api-keys', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        if (d.keys?.length > 0) {
-          const providers = [...new Set(d.keys.map((k: any) => k.provider))] as string[];
-          const filtered = providers.map((p) => ({
-            provider: p,
-            models: PROVIDER_MODELS[p] ?? [],
-          }));
-          setAvailable(filtered);
-          localStorage.setItem('cabinet-available-models', JSON.stringify(filtered));
-        }
-        // If no keys configured, keep showing cached providers (or empty)
-      })
-      .catch(() => {
-        // Keep cached providers on fetch failure
-      });
-    return () => { cancelled = true; };
+    function refresh() {
+      apiFetch('/api/settings/api-keys', { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled) return;
+          if (d.keys?.length > 0) {
+            const providers = [...new Set(d.keys.map((k: any) => k.provider))] as string[];
+            const filtered = providers.map((p) => ({
+              provider: p,
+              models: PROVIDER_MODELS[p] ?? [],
+            }));
+            setAvailable(filtered);
+            localStorage.setItem('cabinet-available-models', JSON.stringify(filtered));
+          } else {
+            // Clear stale cache when all keys are removed
+            setAvailable([]);
+            localStorage.removeItem('cabinet-available-models');
+          }
+        })
+        .catch(() => {
+          // Keep cached providers on fetch failure
+        });
+    }
+    refresh();
+    window.addEventListener('apikeys_changed', refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('apikeys_changed', refresh);
+    };
   }, []);
 
   return available;
