@@ -1,15 +1,15 @@
 use std::process::{Child, Command};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Manager,
 };
 
-struct ServerProcess(Mutex<Option<Child>>);
+struct ServerProcess(Arc<Mutex<Option<Child>>>);
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -98,8 +98,8 @@ fn log(msg: &str) {
 }
 
 fn find_server_script(exe_dir: &std::path::Path) -> Option<PathBuf> {
-    // 1) Bundled server (production): {exe_dir}/resources/server-dist/main.js
-    let bundled = exe_dir.join("resources").join("server-dist").join("main.js");
+    // 1) Bundled server (production): {exe_dir}/resources/server-dist/main.cjs
+    let bundled = exe_dir.join("resources").join("server-dist").join("main.cjs");
     log(&format!("Checking bundled server: {}", bundled.display()));
     if bundled.exists() {
         log("Bundled server found!");
@@ -193,6 +193,150 @@ fn start_server() -> Option<Child> {
     }
 }
 
+/// Gracefully shut down the server process.
+/// Sends a termination request, waits up to 5 seconds for clean exit,
+/// then force-kills if the process is still alive.
+fn graceful_kill(child: &mut Child) {
+    let pid = child.id();
+    log(&format!("Shutting down server (PID {})...", pid));
+
+    // Request graceful shutdown
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string()])
+            .creation_flags(0x08000000)
+            .spawn();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = Command::new("kill")
+            .args(["-s", "TERM", &pid.to_string()])
+            .spawn();
+    }
+
+    // Wait up to 5 seconds for clean exit
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                log(&format!("Server exited gracefully (status: {:?})", status.code()));
+                return;
+            }
+            Ok(None) => {
+                if start.elapsed() > std::time::Duration::from_secs(5) {
+                    log("Server did not exit within 5s — force killing");
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => {
+                log(&format!("Error waiting for server: {}", e));
+                let _ = child.kill();
+                return;
+            }
+        }
+    }
+}
+
+/// Monitor the server process. If it exits unexpectedly, restart with
+/// exponential backoff and emit status events to the frontend.
+fn monitor_server(app_handle: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let mut restart_count = 0u32;
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+
+            let state = app_handle.state::<ServerProcess>();
+            let arc = state.0.clone();
+            let mut guard = arc.lock().unwrap();
+
+            // Check if the server was intentionally shut down
+            if guard.is_none() {
+                log("Server monitor: intentional shutdown detected, stopping");
+                return;
+            }
+
+            let exited = match *guard {
+                Some(ref mut child) => child.try_wait().unwrap_or(None).is_some(),
+                None => false,
+            };
+
+            if !exited {
+                continue;
+            }
+
+            // Server process exited unexpectedly — crash detected
+            log(&format!("Server PID {} exited unexpectedly", guard.as_ref().map(|c| c.id()).unwrap_or(0)));
+            *guard = None;
+            drop(guard);
+
+            log(&format!(
+                "Server process exited unexpectedly (restart_count: {})",
+                restart_count
+            ));
+
+            app_handle.emit("server-status", serde_json::json!({
+                "status": "crashed",
+                "message": "Server process exited unexpectedly",
+                "restartCount": restart_count
+            })).ok();
+
+            restart_count += 1;
+
+            // Exponential backoff: 1s, 2s, 4s, 8s, ... max 30s
+            let delay_ms = std::cmp::min(1000u64 * 2u64.pow(restart_count.min(5)), 30_000);
+            std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+
+            app_handle.emit("server-status", serde_json::json!({
+                "status": "restarting",
+                "message": format!("Restarting server (attempt {})...", restart_count),
+                "restartCount": restart_count
+            })).ok();
+
+            // Attempt restart
+            match start_server() {
+                Some(new_child) => {
+                    // Wait for readiness
+                    let mut ready = false;
+                    for _attempt in 0..30 {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
+                            ready = true;
+                            break;
+                        }
+                    }
+
+                    if ready {
+                        app_handle.emit("server-status", serde_json::json!({
+                            "status": "ready",
+                            "port": 3000,
+                            "restartCount": restart_count
+                        })).ok();
+                        let mut guard = arc.lock().unwrap();
+                        *guard = Some(new_child);
+                    } else {
+                        app_handle.emit("server-status", serde_json::json!({
+                            "status": "fatal",
+                            "message": "Server failed to restart"
+                        })).ok();
+                        return;
+                    }
+                }
+                None => {
+                    app_handle.emit("server-status", serde_json::json!({
+                        "status": "fatal",
+                        "message": "Could not restart server — node or script not found"
+                    })).ok();
+                    return;
+                }
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -200,23 +344,52 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(ServerProcess(Mutex::new(None)))
+        .manage(ServerProcess(Arc::new(Mutex::new(None))))
         .setup(|app| {
             let child = start_server();
             let server_running = child.is_some();
             let state = app.state::<ServerProcess>();
             *state.0.lock().unwrap() = child;
 
-            // Wait for server to be ready (up to 15s)
+            // Non-blocking server readiness check — emit events to frontend
             if server_running {
-                log("Waiting for server...");
-                for attempt in 0..30 {
-                    std::thread::sleep(std::time::Duration::from_millis(500));
-                    if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
-                        log(&format!("Server ready after {}ms", (attempt + 1) * 500));
-                        break;
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    handle.emit("server-status", serde_json::json!({
+                        "status": "starting",
+                        "message": "Starting Cabinet server..."
+                    })).ok();
+
+                    for attempt in 0..30 {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        if std::net::TcpStream::connect("127.0.0.1:3000").is_ok() {
+                            log(&format!("Server ready after {}ms", (attempt + 1) * 500));
+                            handle.emit("server-status", serde_json::json!({
+                                "status": "ready",
+                                "port": 3000,
+                                "startupMs": (attempt + 1) * 500
+                            })).ok();
+                            return;
+                        }
                     }
-                }
+
+                    log("Server start timed out after 15s");
+                    handle.emit("server-status", serde_json::json!({
+                        "status": "timeout",
+                        "message": "Server failed to start within 15 seconds"
+                    })).ok();
+                });
+            } else if is_port_3000_alive() {
+                app.handle().emit("server-status", serde_json::json!({
+                    "status": "ready",
+                    "port": 3000,
+                    "reused": true
+                })).ok();
+            }
+
+            // Start crash monitor (only when we own the server process)
+            if server_running {
+                monitor_server(app.handle().clone());
             }
 
             // Open devtools only when TAURI_DEVTOOLS=1 is set
@@ -249,8 +422,8 @@ pub fn run() {
                     "quit" => {
                         let state = app.state::<ServerProcess>();
                         let mut guard = state.0.lock().unwrap();
-                        if let Some(ref mut child) = *guard {
-                            let _ = child.kill();
+                        if let Some(mut child) = guard.take() {
+                            graceful_kill(&mut child);
                         }
                         drop(guard);
                         app.exit(0);
@@ -279,8 +452,8 @@ pub fn run() {
             if let tauri::WindowEvent::Destroyed = event {
                 let state = window.state::<ServerProcess>();
                 let mut guard = state.0.lock().unwrap();
-                if let Some(ref mut child) = *guard {
-                    let _ = child.kill();
+                if let Some(mut child) = guard.take() {
+                    graceful_kill(&mut child);
                 }
             }
         })
