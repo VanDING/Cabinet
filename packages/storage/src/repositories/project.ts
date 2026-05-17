@@ -7,23 +7,30 @@ export class ProjectRepository {
   create(project: Project): void {
     this.db
       .prepare(
-        'INSERT INTO projects (id, organization_id, name, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO projects (id, name, description, status, root_path, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(project.id, project.organizationId, project.name, project.description, project.status, project.createdAt.toISOString());
+      .run(
+        project.id,
+        project.name,
+        project.description,
+        project.status,
+        project.rootPath ?? '',
+        project.createdAt.toISOString(),
+      );
   }
 
   findById(id: string): Project | null {
-    const row = this.db
-      .prepare('SELECT * FROM projects WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToProject(row);
   }
 
-  listByOrganization(organizationId: string): Project[] {
+  listAll(): Project[] {
     const rows = this.db
-      .prepare('SELECT * FROM projects WHERE organization_id = ? ORDER BY created_at DESC')
-      .all(organizationId) as Record<string, unknown>[];
+      .prepare('SELECT * FROM projects ORDER BY created_at DESC')
+      .all() as Record<string, unknown>[];
     return rows.map((r) => this.rowToProject(r));
   }
 
@@ -31,9 +38,18 @@ export class ProjectRepository {
     const sets: string[] = [];
     const values: unknown[] = [];
 
-    if (changes.name !== undefined) { sets.push('name = ?'); values.push(changes.name); }
-    if (changes.description !== undefined) { sets.push('description = ?'); values.push(changes.description); }
-    if (changes.status !== undefined) { sets.push('status = ?'); values.push(changes.status); }
+    if (changes.name !== undefined) {
+      sets.push('name = ?');
+      values.push(changes.name);
+    }
+    if (changes.description !== undefined) {
+      sets.push('description = ?');
+      values.push(changes.description);
+    }
+    if (changes.status !== undefined) {
+      sets.push('status = ?');
+      values.push(changes.status);
+    }
 
     if (sets.length > 0) {
       values.push(id);
@@ -44,10 +60,12 @@ export class ProjectRepository {
   private rowToProject(row: Record<string, unknown>): Project {
     return {
       id: row.id as string,
-      organizationId: row.organization_id as string,
       name: row.name as string,
       description: row.description as string,
       status: row.status as ProjectStatus,
+      rootPath: row.root_path as string,
+      archived: (row.archived as number) === 1,
+      lastActivityAt: row.last_activity_at as string,
       createdAt: new Date(row.created_at as string),
     };
   }

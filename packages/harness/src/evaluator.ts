@@ -7,10 +7,12 @@ export class Evaluator {
     try {
       const response = await this.gateway.generateText({
         model: 'claude-haiku-4-5',
-        messages: [{
-          role: 'user',
-          content: `Rate this output quality (0-10) and give brief feedback:\n\n${output}`,
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: `Rate this output quality (0-10) and give brief feedback:\n\n${output}`,
+          },
+        ],
       });
       const qualityMatch = response.content.match(/(\d+)/);
       return {

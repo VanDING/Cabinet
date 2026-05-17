@@ -1,7 +1,9 @@
 import { DecisionStatus, isValidTransition } from '@cabinet/types';
 
 export class DecisionStateMachine {
-  getInitialStatus(): string { return DecisionStatus.Pending; }
+  getInitialStatus(): string {
+    return DecisionStatus.Pending;
+  }
 
   canTransition(from: string, to: string): boolean {
     return isValidTransition(from as any, to as any);

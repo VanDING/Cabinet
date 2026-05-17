@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Clock, Plus, CheckCircle, LayoutGrid, Terminal } from 'lucide-react';
+import { Clock, Plus, CheckCircle, Shield, Terminal } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import { FileSearchPanel } from './FileSearchPanel';
 import { SessionHistoryPanel } from './SessionHistoryPanel';
@@ -7,6 +7,14 @@ import { useSkills } from '../hooks/useSkills';
 import { useAvailableModels } from '../hooks/useAvailableModels';
 import { useOutsideClick } from '../hooks/useOutsideClick';
 import { ContextButton } from './ContextButton';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+
+interface ProjectInfo {
+  id: string;
+  name: string;
+  lastActivityAt?: string;
+  archived?: boolean;
+}
 
 interface Props {
   sessions: Session[];
@@ -25,10 +33,15 @@ interface Props {
     message: string,
     files: AttachedFile[],
     dispatchMode?: string,
+    model?: string,
   ) => void;
   onEnterChat: () => void;
   isProcessing: boolean;
   isDark?: boolean;
+  activeProjectId?: string | null;
+  projects?: ProjectInfo[];
+  onSwitchProject?: (projectId: string | null) => void;
+  onNewProject?: () => void;
 }
 
 export function ChatPanel({
@@ -47,6 +60,10 @@ export function ChatPanel({
   onEnterChat,
   isProcessing,
   isDark,
+  activeProjectId,
+  projects = [],
+  onSwitchProject,
+  onNewProject,
 }: Props) {
   const [input, setInput] = useState('');
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -57,15 +74,26 @@ export function ChatPanel({
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('cabinet-selected-model') ?? 'claude-sonnet-4-6';
   });
-  const [dispatchMode, setDispatchMode] = useState<'single' | 'pipeline' | 'parallel'>(() => {
-    return (
-      (localStorage.getItem('cabinet-dispatch-mode') as 'single' | 'pipeline' | 'parallel') ??
-      'single'
-    );
-  });
-  const [dispatchMenuOpen, setDispatchMenuOpen] = useState(false);
-  const dispatchBtnRef = useRef<HTMLButtonElement>(null);
+  const [delegationTier, setDelegationTier] = useState<string>('T2');
+  const [tierMenuOpen, setTierMenuOpen] = useState(false);
+  const tierBtnRef = useRef<HTMLButtonElement>(null);
+
+  const TIERS = [
+    { id: 'T0', label: 'Captain Review', desc: 'All writes blocked' },
+    { id: 'T1', label: 'Strategic Guard', desc: 'Cost & destructive blocked' },
+    { id: 'T2', label: 'Trusted Mode', desc: 'Most operations allowed' },
+    { id: 'T3', label: 'Full Autonomy', desc: 'Budget cap only' },
+  ] as const;
+
+  useEffect(() => {
+    apiFetch('/api/settings/delegation-tier', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => { if (d.tier) setDelegationTier(d.tier); })
+      .catch(() => {});
+  }, []);
   const [isTauri, setIsTauri] = useState(false);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const projectBtnRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const skillBtnRef = useRef<HTMLButtonElement>(null);
@@ -100,15 +128,12 @@ export function ChatPanel({
     localStorage.setItem('cabinet-selected-model', selectedModel);
   }, [selectedModel]);
 
-  useEffect(() => {
-    localStorage.setItem('cabinet-dispatch-mode', dispatchMode);
-  }, [dispatchMode]);
-
   // Close menus on outside click
-  useOutsideClick(dispatchBtnRef, () => setDispatchMenuOpen(false), dispatchMenuOpen);
+  useOutsideClick(tierBtnRef, () => setTierMenuOpen(false), tierMenuOpen);
   useOutsideClick(addBtnRef, () => setAddMenuOpen(false), addMenuOpen);
   useOutsideClick(skillBtnRef, () => setSkillMenuOpen(false), skillMenuOpen);
   useOutsideClick(modelBtnRef, () => setModelMenuOpen(false), modelMenuOpen);
+  useOutsideClick(projectBtnRef, () => setProjectMenuOpen(false), projectMenuOpen);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -136,7 +161,7 @@ export function ChatPanel({
     const trimmed = input.trim();
     if (!trimmed || isProcessing) return;
     const sessionId = active ? active.id : onCreateSession();
-    onSend(sessionId, trimmed, attachedFiles, dispatchMode);
+    onSend(sessionId, trimmed, attachedFiles, undefined, selectedModel);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }, [input, isProcessing, active, attachedFiles, onSend, onCreateSession]);
@@ -239,6 +264,71 @@ export function ChatPanel({
     <div className={`border-t ${borderClass} ${bgClass} flex-shrink-0`}>
       {/* Tab bar */}
       <div className={`flex h-8 items-center gap-1 border-b px-2 ${borderClass} ${tabBgClass}`}>
+        {/* Fixed @agent label */}
+        <span
+          className={`flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
+            isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'
+          }`}
+          title="Current agent"
+        >
+          @secretary
+        </span>
+        {/* Project selector */}
+        <div className="relative flex-shrink-0">
+          <button
+            ref={projectBtnRef}
+            onClick={() => setProjectMenuOpen(!projectMenuOpen)}
+            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
+              activeProjectId
+                ? isDark
+                  ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                : isDark
+                  ? 'text-gray-400 hover:bg-gray-700'
+                  : 'text-gray-500 hover:bg-gray-200'
+            }`}
+            title="Select project"
+          >
+            @{activeProjectId ? (projects.find((p) => p.id === activeProjectId)?.name ?? 'Project') : 'no project'}
+            <span className="text-[10px]">▼</span>
+          </button>
+          {projectMenuOpen && (
+            <div
+              className={`absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+            >
+              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                Switch Project
+              </div>
+              <button
+                onClick={() => { onSwitchProject?.(null); setProjectMenuOpen(false); }}
+                className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600') : dropdownItemClass}`}
+              >
+                Global (no project)
+              </button>
+              {projects.filter((p) => !p.archived).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => { onSwitchProject?.(p.id); setProjectMenuOpen(false); }}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${
+                    activeProjectId === p.id
+                      ? isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'
+                      : dropdownItemClass
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+              <div className={`border-t mt-1 pt-1 ${borderClass}`}>
+                <button
+                  onClick={() => { setProjectMenuOpen(false); onNewProject?.(); }}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
+                >
+                  + New Project
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex min-w-0 flex-1 items-center gap-1">
           {sessions.map((session) => {
             const isActive = session.id === active?.id;
@@ -404,14 +494,14 @@ export function ChatPanel({
               ) : (
                 skills.map((skill) => (
                   <button
-                    key={skill}
-                    onClick={() => handleSelectSkill(skill)}
+                    key={skill.id}
+                    onClick={() => handleSelectSkill(skill.name)}
                     className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                   >
                     <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
                       /
                     </span>
-                    {skill}
+                    {skill.name}
                   </button>
                 ))
               )}
@@ -422,51 +512,46 @@ export function ChatPanel({
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Dispatch mode selector */}
+        {/* Delegation Tier selector */}
         <div className="relative">
           <button
-            ref={dispatchBtnRef}
-            onClick={() => setDispatchMenuOpen(!dispatchMenuOpen)}
+            ref={tierBtnRef}
+            onClick={() => setTierMenuOpen(!tierMenuOpen)}
             className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
-            title="Agent dispatch mode"
+            title="Delegation tier"
           >
-            <LayoutGrid size={14} />
-            {dispatchMode === 'single'
-              ? 'Single'
-              : dispatchMode === 'pipeline'
-                ? 'Pipeline'
-                : 'Parallel'}
+            <Shield size={14} />
+            {delegationTier}
           </button>
-          {dispatchMenuOpen && (
+          {tierMenuOpen && (
             <div
               className={`absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
             >
               <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
-                Dispatch Mode
+                Delegation Tier
               </div>
-              {(
-                [
-                  { id: 'single', label: 'Single Agent', desc: 'One agent handles everything' },
-                  { id: 'pipeline', label: 'Pipeline', desc: 'Planner → Generator → Reviewer' },
-                  { id: 'parallel', label: 'Parallel', desc: 'Multiple agents concurrently' },
-                ] as const
-              ).map((mode) => (
+              {TIERS.map((t) => (
                 <button
-                  key={mode.id}
+                  key={t.id}
                   onClick={() => {
-                    setDispatchMode(mode.id);
-                    setDispatchMenuOpen(false);
+                    setDelegationTier(t.id);
+                    setTierMenuOpen(false);
+                    apiFetch('/api/settings/delegation-tier', {
+                      method: 'PUT',
+                      headers: authJsonHeaders(),
+                      body: JSON.stringify({ tier: t.id }),
+                    }).catch(() => {});
                   }}
                   className={`w-full px-4 py-1.5 text-left transition-colors ${
-                    dispatchMode === mode.id
+                    delegationTier === t.id
                       ? isDark
                         ? 'bg-blue-900/30 text-blue-400'
                         : 'bg-blue-50 text-blue-600'
                       : dropdownItemClass
                   }`}
                 >
-                  <div className="text-xs font-medium">{mode.label}</div>
-                  <div className="text-[10px] text-gray-400">{mode.desc}</div>
+                  <div className="text-xs font-medium">{t.id} — {t.label}</div>
+                  <div className="text-[10px] text-gray-400">{t.desc}</div>
                 </button>
               ))}
             </div>

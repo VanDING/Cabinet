@@ -3,8 +3,11 @@ import type { Decision, DecisionOption } from '@cabinet/types';
 
 function rowToDecision(row: any): Decision {
   const options: DecisionOption[] = (() => {
-    try { return JSON.parse(row.options ?? '[]'); }
-    catch { return []; }
+    try {
+      return JSON.parse(row.options ?? '[]');
+    } catch {
+      return [];
+    }
   })();
 
   return {
@@ -27,23 +30,27 @@ export class DecisionRepository {
   constructor(private db: Database.Database) {}
 
   save(decision: Decision): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT OR REPLACE INTO decisions (id, project_id, type, level, status, title, description, options, chosen_option_id, captain_id, created_at, resolved_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      decision.id,
-      decision.projectId,
-      decision.type,
-      decision.level,
-      decision.status,
-      decision.title,
-      decision.description,
-      JSON.stringify(decision.options),
-      decision.chosenOptionId ?? null,
-      decision.captainId ?? null,
-      decision.createdAt.toISOString(),
-      decision.resolvedAt?.toISOString() ?? null,
-    );
+    `,
+      )
+      .run(
+        decision.id,
+        decision.projectId,
+        decision.type,
+        decision.level,
+        decision.status,
+        decision.title,
+        decision.description,
+        JSON.stringify(decision.options),
+        decision.chosenOptionId ?? null,
+        decision.captainId ?? null,
+        decision.createdAt.toISOString(),
+        decision.resolvedAt?.toISOString() ?? null,
+      );
   }
 
   get(id: string): Decision | null {
@@ -52,16 +59,24 @@ export class DecisionRepository {
   }
 
   listByProject(projectId: string): Decision[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC'
-    ).all(projectId) as any[];
+    const rows = this.db
+      .prepare('SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC')
+      .all(projectId) as any[];
     return rows.map(rowToDecision);
   }
 
-  listPending(projectId: string): Decision[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM decisions WHERE project_id = ? AND status = \'pending\' ORDER BY created_at DESC'
-    ).all(projectId) as any[];
+  listPending(projectId?: string): Decision[] {
+    if (projectId) {
+      const rows = this.db
+        .prepare(
+          "SELECT * FROM decisions WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC",
+        )
+        .all(projectId) as any[];
+      return rows.map(rowToDecision);
+    }
+    const rows = this.db
+      .prepare("SELECT * FROM decisions WHERE status = 'pending' ORDER BY created_at DESC")
+      .all() as any[];
     return rows.map(rowToDecision);
   }
 }

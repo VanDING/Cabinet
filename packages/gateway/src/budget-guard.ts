@@ -24,7 +24,7 @@ export class BudgetGuard {
 
   constructor(
     private readonly costTracker: CostTracker,
-    limits?: { daily?: number; weekly?: number; monthly?: number }
+    limits?: { daily?: number; weekly?: number; monthly?: number },
   ) {
     this.dailyLimit = limits?.daily ?? DAILY_BUDGET_USD;
     this.weeklyLimit = limits?.weekly ?? WEEKLY_BUDGET_USD;
@@ -33,17 +33,13 @@ export class BudgetGuard {
 
   /** Check all budget periods. Returns the most severe status. */
   checkAll(): BudgetStatus[] {
-    return [
-      this.check('daily'),
-      this.check('weekly'),
-      this.check('monthly'),
-    ];
+    return [this.check('daily'), this.check('weekly'), this.check('monthly')];
   }
 
   /** Check if a call should be allowed based on budget. Blocks non-L3 calls when at critical. */
   canProceed(decisionLevel?: string): { allowed: boolean; reason?: string } {
     const statuses = this.checkAll();
-    const critical = statuses.find(s => s.level === 'blocked');
+    const critical = statuses.find((s) => s.level === 'blocked');
     if (critical && decisionLevel !== 'L3') {
       return {
         allowed: false,
@@ -82,17 +78,23 @@ export class BudgetGuard {
 
   private getLimit(period: BudgetPeriod): number {
     switch (period) {
-      case 'daily': return this.dailyLimit;
-      case 'weekly': return this.weeklyLimit;
-      case 'monthly': return this.monthlyLimit;
+      case 'daily':
+        return this.dailyLimit;
+      case 'weekly':
+        return this.weeklyLimit;
+      case 'monthly':
+        return this.monthlyLimit;
     }
   }
 
   private getSpend(period: BudgetPeriod): number {
     switch (period) {
-      case 'daily': return this.costTracker.getDailyCost();
-      case 'weekly': return this.costTracker.getWeeklyCost();
-      case 'monthly': return this.costTracker.getMonthlyCost();
+      case 'daily':
+        return this.costTracker.getDailyCost();
+      case 'weekly':
+        return this.costTracker.getWeeklyCost();
+      case 'monthly':
+        return this.costTracker.getMonthlyCost();
     }
   }
 }

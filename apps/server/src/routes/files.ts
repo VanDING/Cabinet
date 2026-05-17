@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { readFile } from 'node:fs/promises';
 
@@ -8,25 +8,60 @@ export const filesRouter = new Hono();
 const PROJECT_ROOT = join(process.cwd(), '..', '..', '..');
 const VALID_DIRS = ['apps', 'packages', 'tools', 'tests'];
 
-async function scanDir(dir: string, baseDir: string, depth: number): Promise<{ name: string; path: string; isDir: boolean }[]> {
+// Sensitive files and patterns that must not be readable via the API
+const SENSITIVE_PATTERNS = [
+  /\.env(\..*)?$/,
+  /\.db$/,
+  /\.db-.*$/,
+  /\.sqlite$/,
+  /\.sqlite3$/,
+  /credentials/i,
+  /secret/i,
+  /\.pem$/,
+  /\.key$/,
+  /\.pfx$/,
+  /\.p12$/,
+];
+const SENSITIVE_EXACT = new Set([
+  '.gitignore',
+  '.dockerignore',
+  '.npmrc',
+  'pnpm-lock.yaml',
+  'CABINET.md',
+]);
+
+async function scanDir(
+  dir: string,
+  baseDir: string,
+  depth: number,
+): Promise<{ name: string; path: string; isDir: boolean }[]> {
   if (depth > 4) return [];
   const results: { name: string; path: string; isDir: boolean }[] = [];
   try {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'target' || entry.name === '.git') continue;
+      if (
+        entry.name.startsWith('.') ||
+        entry.name === 'node_modules' ||
+        entry.name === 'dist' ||
+        entry.name === 'target' ||
+        entry.name === '.git'
+      )
+        continue;
       const fullPath = join(dir, entry.name);
       const relPath = relative(baseDir, fullPath).replace(/\\/g, '/');
       if (entry.isDirectory()) {
         results.push({ name: entry.name, path: relPath + '/', isDir: true });
         if (depth < 3) {
-          results.push(...await scanDir(fullPath, baseDir, depth + 1));
+          results.push(...(await scanDir(fullPath, baseDir, depth + 1)));
         }
       } else {
         results.push({ name: entry.name, path: relPath, isDir: false });
       }
     }
-  } catch {}
+  } catch {
+    /* directory read failed, return empty results */
+  }
   return results;
 }
 
@@ -37,13 +72,15 @@ filesRouter.get('/', async (c) => {
     for (const dir of VALID_DIRS) {
       const fullPath = join(PROJECT_ROOT, dir);
       allFiles.push({ name: dir, path: dir + '/', isDir: true });
-      allFiles.push(...await scanDir(fullPath, PROJECT_ROOT, 1));
+      allFiles.push(...(await scanDir(fullPath, PROJECT_ROOT, 1)));
     }
     if (query) {
-      allFiles = allFiles.filter(f => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query));
+      allFiles = allFiles.filter(
+        (f) => f.name.toLowerCase().includes(query) || f.path.toLowerCase().includes(query),
+      );
     }
-    allFiles = allFiles.filter(f => !f.isDir).slice(0, 50);
-    return c.json({ files: allFiles.map(f => ({ name: f.name, path: f.path })) });
+    allFiles = allFiles.filter((f) => !f.isDir).slice(0, 50);
+    return c.json({ files: allFiles.map((f) => ({ name: f.name, path: f.path })) });
   } catch (e) {
     return c.json({ files: [], error: (e as Error).message });
   }
@@ -58,6 +95,12 @@ filesRouter.get('/read', async (c) => {
   // Security: ensure path is within project root
   if (!fullPath.startsWith(PROJECT_ROOT)) {
     return c.json({ error: 'Invalid path' }, 403);
+  }
+
+  // Security: block sensitive files
+  const baseName = filePath.split('/').pop() || filePath;
+  if (SENSITIVE_EXACT.has(baseName) || SENSITIVE_PATTERNS.some((p) => p.test(baseName))) {
+    return c.json({ error: 'Access denied' }, 403);
   }
 
   try {

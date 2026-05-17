@@ -16,12 +16,21 @@ const DEFAULT_CONFIGS: Record<ErrorCategory, RetryConfig> = {
 
 export function classifyError(error: Error): ErrorCategory {
   const msg = error.message.toLowerCase();
-  if (msg.includes('timeout') || msg.includes('429') || msg.includes('rate limit') ||
-      msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('socket')) {
+  if (
+    msg.includes('timeout') ||
+    msg.includes('429') ||
+    msg.includes('rate limit') ||
+    msg.includes('econnrefused') ||
+    msg.includes('enotfound') ||
+    msg.includes('socket')
+  ) {
     return 'transient';
   }
-  if (msg.includes('tool execution failed') || msg.includes('temporary') ||
-      msg.includes('retryable')) {
+  if (
+    msg.includes('tool execution failed') ||
+    msg.includes('temporary') ||
+    msg.includes('retryable')
+  ) {
     return 'recoverable';
   }
   return 'fatal';
@@ -30,7 +39,7 @@ export function classifyError(error: Error): ErrorCategory {
 export async function withRetry<T>(
   fn: () => Promise<T>,
   error: Error,
-  configOverrides?: Partial<RetryConfig>
+  configOverrides?: Partial<RetryConfig>,
 ): Promise<T> {
   const category = classifyError(error);
   const config = { ...DEFAULT_CONFIGS[category], ...configOverrides };
@@ -47,9 +56,10 @@ export async function withRetry<T>(
   }
 
   for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
-    const delay = config.strategy === 'exponential'
-      ? config.baseDelayMs * Math.pow(2, attempt - 1)
-      : config.baseDelayMs;
+    const delay =
+      config.strategy === 'exponential'
+        ? config.baseDelayMs * Math.pow(2, attempt - 1)
+        : config.baseDelayMs;
 
     await sleep(delay);
 
@@ -67,5 +77,5 @@ export async function withRetry<T>(
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

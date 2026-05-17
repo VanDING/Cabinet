@@ -5,7 +5,13 @@ import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { CheckpointManager } from '../checkpoint.js';
 import type { MemoryProvider } from '../context-builder.js';
-import type { LLMGateway, LLMResponse, LLMCallOptions, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMResponse,
+  LLMCallOptions,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from '@cabinet/gateway';
 
 // In-memory SQLite for tests
 function createTestDb(): Database.Database {
@@ -16,10 +22,18 @@ function createTestDb(): Database.Database {
 }
 
 class MockMemoryProvider implements MemoryProvider {
-  async getShortTerm(_sessionId: string) { return []; }
-  async getProjectContext(_projectId: string) { return 'Test project'; }
-  async getEntityPreferences(_captainId: string) { return { name: 'Captain' }; }
-  async searchLongTerm(_query: string, _projectId: string) { return []; }
+  async getShortTerm(_sessionId: string) {
+    return [];
+  }
+  async getProjectContext(_projectId: string) {
+    return 'Test project';
+  }
+  async getEntityPreferences(_captainId: string) {
+    return { name: 'Captain' };
+  }
+  async searchLongTerm(_query: string, _projectId: string) {
+    return [];
+  }
 }
 
 describe('AgentLoop', () => {
@@ -38,8 +52,12 @@ describe('AgentLoop', () => {
           model: 'test-model',
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test-model']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
       async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
       },
@@ -82,8 +100,12 @@ describe('AgentLoop', () => {
           model: 'test-model',
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test-model']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
       async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
       },
@@ -123,8 +145,12 @@ describe('AgentLoop', () => {
           model: 'test-model',
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test-model']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
       async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
       },

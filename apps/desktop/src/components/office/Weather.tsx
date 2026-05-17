@@ -41,7 +41,7 @@ export function Weather() {
     async function fetchWeather(lat: number, lon: number) {
       try {
         const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`,
         );
         if (!res.ok) throw new Error('API error');
         const j = await res.json();
@@ -73,27 +73,31 @@ export function Weather() {
       onPosError();
     }
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
-    <div className="h-full bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg p-3 flex flex-col items-center justify-center overflow-hidden">
+    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-white p-3 dark:border-gray-600 dark:bg-gray-800">
       {data ? (
         <>
           <span className="text-2xl">{weatherEmoji(data.code)}</span>
-          <span className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-1">{data.temp}&deg;C</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{data.desc}</span>
-          <span className="text-[10px] text-gray-400 mt-0.5">Humidity {data.humidity}%</span>
-          <span className="text-[10px] text-gray-400 truncate">{data.city}</span>
+          <span className="mt-1 text-xl font-bold text-gray-800 dark:text-gray-100">
+            {data.temp}&deg;C
+          </span>
+          <span className="truncate text-xs text-gray-500 dark:text-gray-400">{data.desc}</span>
+          <span className="mt-0.5 text-[10px] text-gray-400">Humidity {data.humidity}%</span>
+          <span className="truncate text-[10px] text-gray-400">{data.city}</span>
         </>
       ) : error ? (
-        <div className="text-xs text-gray-400 text-center">
+        <div className="text-center text-xs text-gray-400">
           <span className="text-xl">{'☀️'}</span>
           <div>{error}</div>
         </div>
       ) : (
-        <div className="text-xs text-gray-400 text-center">
-          <span className="text-xl animate-pulse">{'\u{1F321}️'}</span>
+        <div className="text-center text-xs text-gray-400">
+          <span className="animate-pulse text-xl">{'\u{1F321}️'}</span>
           <div>Loading...</div>
         </div>
       )}

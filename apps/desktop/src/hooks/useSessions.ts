@@ -7,12 +7,16 @@ export interface AttachedFile {
   type: 'local' | 'project';
 }
 
+import type { MeetingData } from '../components/MeetingCard';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  meeting?: MeetingData;
+  agentName?: string;
 }
 
 export interface Session {
@@ -96,20 +100,25 @@ export function useSessions() {
     return () => clearTimeout(historySaveTimer.current);
   }, [history]);
 
-  const createSession = useCallback((): string => {
-    const id = generateId();
-    const session: Session = {
-      id,
-      title: `Session-${shortId(id)}`,
-      messages: [],
-      attachedFiles: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setSessions((prev) => [session, ...prev]);
-    setActiveSessionId(id);
-    return id;
-  }, []);
+  const createSession = useCallback(
+    (options?: { title?: string; initialContext?: string; attachedFiles?: AttachedFile[] }): string => {
+      const id = generateId();
+      const session: Session = {
+        id,
+        title: options?.title ?? `Session-${shortId(id)}`,
+        messages: options?.initialContext
+          ? [{ id: `sys_${Date.now()}`, role: 'user' as const, content: options.initialContext, timestamp: new Date() }]
+          : [],
+        attachedFiles: options?.attachedFiles ?? [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(id);
+      return id;
+    },
+    [],
+  );
 
   const closeSession = useCallback(
     (id: string) => {

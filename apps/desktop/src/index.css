@@ -27,7 +27,9 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
   overflow: hidden;
 }
 
@@ -65,8 +67,13 @@ body {
 
 /* Pulse animation for active session indicator */
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 .animate-pulse-dot {
   animation: pulse-dot 1.5s ease-in-out infinite;
@@ -74,10 +81,18 @@ body {
 
 /* Toast slide-in */
 @keyframes slide-in {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
-.animate-slide-in { animation: slide-in 0.3s ease-out; }
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
 
 /* react-grid-layout overrides */
 .react-grid-item.react-grid-placeholder {
@@ -87,20 +102,69 @@ body {
 }
 
 /* Markdown content */
-.markdown-body h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.5rem; }
-.markdown-body h2 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-body h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-body p { margin: 0.25rem 0; }
-.markdown-body ul, .markdown-body ol { padding-left: 1.25rem; margin: 0.25rem 0; }
-.markdown-body li { margin: 0.125rem 0; }
-.markdown-body a { color: #3b82f6; text-decoration: underline; }
-.markdown-body blockquote { border-left: 3px solid #d1d5db; padding-left: 0.75rem; margin: 0.25rem 0; color: #6b7280; }
-.markdown-body table { border-collapse: collapse; width: 100%; margin: 0.25rem 0; }
-.markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.25rem 0.5rem; text-align: left; font-size: 0.75rem; }
-.markdown-body th { background: #f3f4f6; font-weight: 600; }
-.dark .markdown-body th { background: #374151; border-color: #4b5563; }
-.dark .markdown-body td { border-color: #4b5563; }
-.dark .markdown-body blockquote { border-left-color: #4b5563; color: #9ca3af; }
+.markdown-body h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+}
+.markdown-body h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.markdown-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.markdown-body p {
+  margin: 0.25rem 0;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.markdown-body li {
+  margin: 0.125rem 0;
+}
+.markdown-body a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+.markdown-body blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 0.75rem;
+  margin: 0.25rem 0;
+  color: #6b7280;
+}
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.25rem 0;
+}
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid #d1d5db;
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+}
+.markdown-body th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+.dark .markdown-body th {
+  background: #374151;
+  border-color: #4b5563;
+}
+.dark .markdown-body td {
+  border-color: #4b5563;
+}
+.dark .markdown-body blockquote {
+  border-left-color: #4b5563;
+  color: #9ca3af;
+}
 
 /* Code blocks */
 .markdown-body .code-block {
@@ -135,18 +199,22 @@ body {
   display: inline-block;
   padding: 0 4px;
   border-radius: 3px;
-  background: rgba(59,130,246,0.12);
+  background: rgba(59, 130, 246, 0.12);
   color: #2563eb;
   font-weight: 500;
   font-size: 0.75rem;
 }
 .dark .skill-tag {
-  background: rgba(59,130,246,0.25);
+  background: rgba(59, 130, 246, 0.25);
   color: #93c5fd;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .page-container { padding: 0.75rem; }
-  .card-grid { grid-template-columns: repeat(1, 1fr); }
+  .page-container {
+    padding: 0.75rem;
+  }
+  .card-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }

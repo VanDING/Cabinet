@@ -16,9 +16,13 @@ healthRouter.get('/system', (c) => {
 
   let dbSize = 0;
   try {
-    const row = db.prepare("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()").get() as any;
+    const row = db
+      .prepare('SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()')
+      .get() as any;
     dbSize = row?.size ?? 0;
-  } catch {}
+  } catch {
+    /* db size query failed */
+  }
 
   const summary = metrics.getSummary();
   const uptime = process.uptime();

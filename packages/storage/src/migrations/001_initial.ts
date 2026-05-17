@@ -2,22 +2,13 @@ import type Database from 'better-sqlite3';
 
 export function runMigration001(db: Database.Database): void {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS organizations (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      captain_id TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL REFERENCES organizations(id),
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'draft',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE INDEX IF NOT EXISTS idx_projects_org ON projects(organization_id);
 
     CREATE TABLE IF NOT EXISTS employees (
       id TEXT PRIMARY KEY,
@@ -72,6 +63,25 @@ export function runMigration001(db: Database.Database): void {
       prompt_template TEXT NOT NULL DEFAULT '',
       version INTEGER NOT NULL DEFAULT 1,
       status TEXT NOT NULL DEFAULT 'draft'
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_roles (
+      type TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      system_prompt TEXT NOT NULL DEFAULT '',
+      model TEXT NOT NULL DEFAULT 'claude-haiku-4-5',
+      temperature REAL NOT NULL DEFAULT 0.3,
+      max_response_tokens INTEGER NOT NULL DEFAULT 4000,
+      allowed_tools TEXT NOT NULL DEFAULT '[]',
+      context_budget REAL NOT NULL DEFAULT 0.4,
+      is_builtin INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS workflows (

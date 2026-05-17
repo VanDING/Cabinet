@@ -1,23 +1,37 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
+import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
 
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const { decisionRepo, costTracker, budgetGuard, projectRepo, eventRepo, metrics, logger } = getServerContext();
-  const projectId = c.req.query('projectId') ?? 'proj-1';
+  const { decisionRepo, costTracker, budgetGuard, projectRepo, eventRepo, metrics, logger } =
+    getServerContext();
+  const projectId = c.req.query('projectId');
 
-  let pendingDecisions = 0, activeProjects = 1, activeWorkflows = 0;
+  let pendingDecisions = 0,
+    activeProjects = 1;
+  const activeWorkflows = 0;
   const recentEvents: { message: string; time: Date }[] = [];
 
-  try { pendingDecisions = decisionRepo.listPending(projectId).length; } catch (err) { logger.warn('Failed to load pending decisions', { error: (err as Error).message }); }
-  try { activeProjects = projectRepo.listByOrganization('org-1').length; } catch (err) { logger.warn('Failed to load projects', { error: (err as Error).message }); }
+  try {
+    pendingDecisions = decisionRepo.listPending(projectId).length;
+  } catch (err) {
+    logger.warn('Failed to load pending decisions', { error: (err as Error).message });
+  }
+  try {
+    activeProjects = projectRepo.listAll().filter((p) => !p.archived).length;
+  } catch (err) {
+    logger.warn('Failed to load projects', { error: (err as Error).message });
+  }
   try {
     const events = eventRepo.findAll().slice(-10);
     for (const e of events) {
       recentEvents.push({ message: e.messageType, time: e.timestamp });
     }
-  } catch (err) { logger.warn('Failed to load events', { error: (err as Error).message }); }
+  } catch (err) {
+    logger.warn('Failed to load events', { error: (err as Error).message });
+  }
 
   return c.json({
     pendingDecisions,
@@ -33,7 +47,8 @@ dashboardRouter.get('/summary', (c) => {
 dashboardRouter.get('/cost-history', (c) => {
   const { costTracker, db } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
-  const history: { date: string; cost: number; calls: number; byModel: Record<string, number> }[] = [];
+  const history: { date: string; cost: number; calls: number; byModel: Record<string, number> }[] =
+    [];
   let totalCalls = 0;
 
   for (let i = days - 1; i >= 0; i--) {
@@ -44,9 +59,11 @@ dashboardRouter.get('/cost-history', (c) => {
     // Per-model cost breakdown
     const byModel: Record<string, number> = {};
     try {
-      const rows = db.prepare(
-        "SELECT tags, SUM(value) as cost FROM metrics WHERE name = 'llm_cost' AND tags LIKE ? GROUP BY tags"
-      ).all(`%${dateStr}%`) as any[];
+      const rows = db
+        .prepare(
+          "SELECT tags, SUM(value) as cost FROM metrics WHERE name = 'llm_cost' AND tags LIKE ? GROUP BY tags",
+        )
+        .all(`%${dateStr}%`) as any[];
 
       for (const row of rows) {
         // Extract model from tags JSON: {"model":"claude-sonnet-4-6",...}
@@ -60,11 +77,13 @@ dashboardRouter.get('/cost-history', (c) => {
       }
 
       // Also get call count
-      const callRow = db.prepare(
-        "SELECT SUM(value) as count FROM metrics WHERE name = 'llm_call' AND tags LIKE ?"
-      ).get(`%${dateStr}%`) as any;
+      const callRow = db
+        .prepare("SELECT SUM(value) as count FROM metrics WHERE name = 'llm_call' AND tags LIKE ?")
+        .get(`%${dateStr}%`) as any;
       totalCalls += callRow?.count ?? 0;
-    } catch {}
+    } catch {
+      /* metrics aggregation error for this date */
+    }
 
     const totalCost = Object.values(byModel).reduce((sum, c) => sum + c, 0);
 
@@ -78,13 +97,17 @@ dashboardRouter.get('/cost-history', (c) => {
 
   // Budget status for trend comparison
   const budgetStatus = costTracker
-    ? { daily: costTracker.getDailyCost(), weekly: costTracker.getWeeklyCost?.() ?? 0, monthly: costTracker.getMonthlyCost?.() ?? 0 }
+    ? {
+        daily: costTracker.getDailyCost(),
+        weekly: costTracker.getWeeklyCost?.() ?? 0,
+        monthly: costTracker.getMonthlyCost?.() ?? 0,
+      }
     : { daily: 0, weekly: 0, monthly: 0 };
 
   return c.json({
     history,
     dailyCost: costTracker.getDailyCost(),
     budgetStatus,
-    limits: { daily: 5, weekly: 25, monthly: 100 },
+    limits: { daily: DAILY_BUDGET_USD, weekly: WEEKLY_BUDGET_USD, monthly: MONTHLY_BUDGET_USD },
   });
 });

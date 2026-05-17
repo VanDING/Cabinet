@@ -5,7 +5,9 @@ import { LevelClassifier } from '../level-classifier.js';
 
 describe('DecisionStateMachine', () => {
   let sm: DecisionStateMachine;
-  beforeEach(() => { sm = new DecisionStateMachine(); });
+  beforeEach(() => {
+    sm = new DecisionStateMachine();
+  });
 
   it('initial status is pending', () => {
     expect(sm.getInitialStatus()).toBe('pending');
@@ -35,12 +37,19 @@ describe('DecisionStateMachine', () => {
 
 describe('LevelClassifier', () => {
   let classifier: LevelClassifier;
-  beforeEach(() => { classifier = new LevelClassifier(); });
+  beforeEach(() => {
+    classifier = new LevelClassifier();
+  });
 
   const baseInput = {
-    scopeDescription: 'test', isCrossSession: false, optionCount: 1,
-    estimatedCostUsd: 0, involvesFunds: false, involvesPermissions: false,
-    involvesDataDeletion: false, involvesOrgConfig: false,
+    scopeDescription: 'test',
+    isCrossSession: false,
+    optionCount: 1,
+    estimatedCostUsd: 0,
+    involvesFunds: false,
+    involvesPermissions: false,
+    involvesDataDeletion: false,
+    involvesOrgConfig: false,
   };
 
   it('classifies L3 for org config changes', () => {
@@ -48,7 +57,7 @@ describe('LevelClassifier', () => {
   });
 
   it('classifies L3 for high cost', () => {
-    expect(classifier.classify({ ...baseInput, estimatedCostUsd: 2.00 })).toBe('L3');
+    expect(classifier.classify({ ...baseInput, estimatedCostUsd: 2.0 })).toBe('L3');
   });
 
   it('classifies L2 for cross-session', () => {
@@ -56,7 +65,9 @@ describe('LevelClassifier', () => {
   });
 
   it('classifies L1 for low-risk within session', () => {
-    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCostUsd: 0.05 })).toBe('L1');
+    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCostUsd: 0.05 })).toBe(
+      'L1',
+    );
   });
 
   it('escalates on uncertainty', () => {

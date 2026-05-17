@@ -9,6 +9,15 @@ interface MemoryEntry {
   metadata: Record<string, unknown>;
 }
 
+function formatMemoryContent(content: string): { isJson: boolean; display: string } {
+  try {
+    const parsed = JSON.parse(content);
+    return { isJson: true, display: JSON.stringify(parsed, null, 2) };
+  } catch {
+    return { isJson: false, display: content };
+  }
+}
+
 const layerColors: Record<string, string> = {
   short_term: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   long_term: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
@@ -141,7 +150,14 @@ export function MemoryPage() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={`block text-sm ${isExpanded ? '' : 'line-clamp-2'} text-gray-700 dark:text-gray-300`}>
-                    {m.content}
+                    {(() => {
+                      const { isJson, display } = formatMemoryContent(m.content);
+                      return isJson ? (
+                        <pre className="whitespace-pre-wrap font-mono text-xs">{display}</pre>
+                      ) : (
+                        display
+                      );
+                    })()}
                   </span>
                   {!isExpanded && m.content.length > 150 && (
                     <span className="text-xs text-gray-400">Click to expand</span>

@@ -51,8 +51,8 @@ export class ContextBuilder {
     const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
     const rulesSummary = this.rulesLoader?.summarize() ?? '';
 
-    const systemPrompt = options.systemPrompt
-      ?? this.buildDefaultSystemPrompt(projectContext, preferences, rules);
+    const systemPrompt =
+      options.systemPrompt ?? this.buildDefaultSystemPrompt(projectContext, preferences, rules);
 
     return {
       systemPrompt,

@@ -27,7 +27,13 @@ import { MessageType } from '@cabinet/types';
 // ── Types ──────────────────────────────────────────────────────
 
 export type GCIssueSeverity = 'info' | 'warning' | 'error';
-export type GCIssueCategory = 'stale_reference' | 'dead_code' | 'doc_drift' | 'duplicate' | 'expired_data' | 'orphan_file';
+export type GCIssueCategory =
+  | 'stale_reference'
+  | 'dead_code'
+  | 'doc_drift'
+  | 'duplicate'
+  | 'expired_data'
+  | 'orphan_file';
 
 export interface GCIssue {
   category: GCIssueCategory;
@@ -79,7 +85,14 @@ export class GarbageCollector {
   ) {
     this.options = {
       rootDir: options.rootDir,
-      excludeDirs: options.excludeDirs ?? ['node_modules', 'dist', '.git', 'target', '.claude', '.cabinet'],
+      excludeDirs: options.excludeDirs ?? [
+        'node_modules',
+        'dist',
+        '.git',
+        'target',
+        '.claude',
+        '.cabinet',
+      ],
       excludePatterns: options.excludePatterns ?? [/\.tsbuildinfo$/, /\.snap$/, /\.lock$/],
       autoFix: options.autoFix ?? false,
       maxFiles: options.maxFiles ?? 5000,
@@ -119,9 +132,9 @@ export class GarbageCollector {
       bySeverity,
       summary: {
         total: issues.length,
-        errors: issues.filter(i => i.severity === 'error').length,
-        warnings: issues.filter(i => i.severity === 'warning').length,
-        infos: issues.filter(i => i.severity === 'info').length,
+        errors: issues.filter((i) => i.severity === 'error').length,
+        warnings: issues.filter((i) => i.severity === 'warning').length,
+        infos: issues.filter((i) => i.severity === 'info').length,
       },
     };
 
@@ -135,7 +148,7 @@ export class GarbageCollector {
       payload: {
         type: 'garbage_collection',
         summary: report.summary,
-        topIssues: issues.slice(0, 10).map(i => ({
+        topIssues: issues.slice(0, 10).map((i) => ({
           category: i.category,
           severity: i.severity,
           description: i.description,
@@ -146,7 +159,7 @@ export class GarbageCollector {
 
     // Auto-fix if enabled
     if (this.options.autoFix) {
-      await this.autoFix(issues.filter(i => i.autoFixable));
+      await this.autoFix(issues.filter((i) => i.autoFixable));
     }
 
     return report;
@@ -197,7 +210,7 @@ export class GarbageCollector {
           if (this.options.excludeDirs.includes(entry.name)) continue;
           files.push(...this.collectFiles(fullPath));
         } else if (entry.isFile()) {
-          if (this.options.excludePatterns.some(p => p.test(entry.name))) continue;
+          if (this.options.excludePatterns.some((p) => p.test(entry.name))) continue;
           if (files.length >= this.options.maxFiles) break;
           files.push(fullPath);
         }
@@ -211,7 +224,7 @@ export class GarbageCollector {
 
   private checkOrphanFiles(files: string[]): GCIssue[] {
     const issues: GCIssue[] = [];
-    const relFiles = files.map(f => relative(this.options.rootDir, f));
+    const relFiles = files.map((f) => relative(this.options.rootDir, f));
 
     // Check for orphaned test files (test file exists but source file doesn't)
     for (const file of relFiles) {
@@ -227,7 +240,8 @@ export class GarbageCollector {
 
         if (!existsSync(sourceAbsPath)) {
           const age = this.fileAge(testAbsPath);
-          if (age > 30) { // older than 30 days
+          if (age > 30) {
+            // older than 30 days
             issues.push({
               category: 'orphan_file',
               severity: 'warning',
@@ -251,15 +265,17 @@ export class GarbageCollector {
     for (const file of files) {
       try {
         const content = readFileSync(file, 'utf-8');
-        const lines = content.split('\n').filter(l => {
+        const lines = content.split('\n').filter((l) => {
           const trimmed = l.trim();
-          return trimmed && !trimmed.startsWith('//') && !trimmed.startsWith('/*') && trimmed !== '*/';
+          return (
+            trimmed && !trimmed.startsWith('//') && !trimmed.startsWith('/*') && trimmed !== '*/'
+          );
         });
 
         // Files that only export (re-export barrels with no implementation)
-        if (lines.length > 0 && lines.every(l => l.startsWith('export'))) {
+        if (lines.length > 0 && lines.every((l) => l.startsWith('export'))) {
           // This is a barrel file — only flag if it re-exports nothing
-          const exportCount = lines.filter(l => l.includes(' from ')).length;
+          const exportCount = lines.filter((l) => l.includes(' from ')).length;
           if (exportCount === 0 && lines.length <= 2) {
             issues.push({
               category: 'dead_code',
@@ -281,10 +297,10 @@ export class GarbageCollector {
 
   private checkDocDrift(files: string[]): GCIssue[] {
     const issues: GCIssue[] = [];
-    const relFiles = files.map(f => relative(this.options.rootDir, f));
+    const relFiles = files.map((f) => relative(this.options.rootDir, f));
 
     // Check for .cabinet/rules/ files that reference non-existent files
-    const rulesFiles = relFiles.filter(f => f.startsWith('.cabinet/rules/') && f.endsWith('.md'));
+    const rulesFiles = relFiles.filter((f) => f.startsWith('.cabinet/rules/') && f.endsWith('.md'));
     for (const rulesFile of rulesFiles) {
       try {
         const content = readFileSync(join(this.options.rootDir, rulesFile), 'utf-8');
@@ -335,7 +351,9 @@ export class GarbageCollector {
             });
           }
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
 
     return issues;

@@ -119,10 +119,7 @@ export class ContextHandoff {
    * Perform the handoff — generate the handoff document and reset state.
    * Call this when shouldHandoff() returns true.
    */
-  performHandoff(
-    snapshot: ContextSnapshot,
-    progress?: ProgressInfo,
-  ): HandoffResult {
+  performHandoff(snapshot: ContextSnapshot, progress?: ProgressInfo): HandoffResult {
     this.handoffCount++;
 
     const progressCompact = progress?.toCompact() ?? '{}';
@@ -216,7 +213,9 @@ export class ContextHandoff {
     }
 
     lines.push('## Continuation Instructions');
-    lines.push('1. Read the above context carefully — this is your state from the previous session.');
+    lines.push(
+      '1. Read the above context carefully — this is your state from the previous session.',
+    );
     lines.push('2. Pick up from where you left off. Do NOT redo completed steps.');
     lines.push('3. Answer any open questions before starting new work.');
     lines.push('4. Update the progress tracker as you complete each remaining step.');

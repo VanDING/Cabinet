@@ -6,12 +6,13 @@ import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 
 const EXPECTED_TABLES = [
-  'organizations',
   'projects',
   'employees',
   'decisions',
   'event_log',
   'skills',
+  'agent_roles',
+  'settings',
   'workflows',
   'api_keys',
   'audit_log',
@@ -35,7 +36,9 @@ describe('migration 001', () => {
     runMigration001(getConnection());
 
     const tables = getConnection()
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_test%'")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_test%'",
+      )
       .all() as { name: string }[];
 
     const tableNames = tables.map((t) => t.name).sort();

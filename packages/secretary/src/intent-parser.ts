@@ -15,6 +15,7 @@ export type ParsedIntent =
       filters: Record<string, string>;
     }
   | { kind: 'knowledge_query'; question: string; scope: 'short_term' | 'long_term' | 'both' }
+  | { kind: 'workflow_request'; topic: string; context: string; suggestedDimensions: string[] }
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
 
@@ -35,12 +36,21 @@ export interface AgentRouteResult {
 
 export class IntentParser {
   private availableAgentsDesc = '';
+  private validAgentTypes: Set<string> = new Set([
+    'secretary', 'decision_analyst', 'meeting_chair',
+    'workflow_designer', 'curator', 'agent_creator',
+  ]);
 
   constructor(private readonly gateway?: LLMGateway) {}
 
   /** Set agent descriptions for routing (called by server layer). */
   setAgentDescriptions(desc: string): void {
     this.availableAgentsDesc = desc;
+  }
+
+  /** Update valid agent types from registry (includes custom agents). */
+  setValidAgentTypes(types: Set<string>): void {
+    this.validAgentTypes = types;
   }
 
   // ── Keyword Parsing (fast path, no LLM) ───────────────────
@@ -111,6 +121,21 @@ export class IntentParser {
         kind: 'status_query',
         target: 'project',
         filters: { query: message },
+      };
+    }
+
+    if (
+      lower.includes('工作流') ||
+      lower.includes('流程') ||
+      lower.includes('workflow') ||
+      (lower.includes('创建') && (lower.includes('步骤') || lower.includes('自动'))) ||
+      lower.includes('修改') && lower.includes('workflow')
+    ) {
+      return {
+        kind: 'workflow_request',
+        topic: message.slice(0, 100),
+        context: message,
+        suggestedDimensions: [],
       };
     }
 
@@ -222,17 +247,8 @@ Message: "${message}"`;
       if (!match) return this.fallbackRoute(intent);
 
       const parsed = JSON.parse(match[0]);
-      const validAgents = new Set([
-        'secretary',
-        'decision_analyst',
-        'meeting_chair',
-        'workflow_designer',
-        'curator',
-        'agent_creator',
-      ]);
-
       return {
-        targetAgent: validAgents.has(parsed.targetAgent) ? parsed.targetAgent : 'secretary',
+        targetAgent: this.validAgentTypes.has(parsed.targetAgent) ? parsed.targetAgent : 'secretary',
         confidence:
           typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
         reasoning: parsed.reasoning ?? 'No reasoning provided.',
@@ -264,6 +280,10 @@ Message: "${message}"`;
       case 'knowledge_query':
         targetAgent = 'secretary';
         reasoning = 'Knowledge query handled by Secretary.';
+        break;
+      case 'workflow_request':
+        targetAgent = 'workflow_designer';
+        reasoning = 'Workflow creation/modification request routed to Workflow Designer.';
         break;
       case 'follow_up':
         // Keep previous route if available, otherwise stay with secretary

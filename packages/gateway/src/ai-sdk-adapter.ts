@@ -1,4 +1,12 @@
-import type { LLMGateway, LLMCallOptions, LLMResponse, StreamChunk, ToolDefinition, EmbeddingOptions, EmbeddingResult } from './llm-gateway.js';
+import type {
+  LLMGateway,
+  LLMCallOptions,
+  LLMResponse,
+  StreamChunk,
+  ToolDefinition,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from './llm-gateway.js';
 
 interface ProviderConfig {
   [provider: string]: { apiKey: string; baseUrl?: string } | undefined;
@@ -132,14 +140,28 @@ export class AISDKAdapter implements LLMGateway {
    * to an AI SDK model object. Uses environment variables for API keys as fallback.
    */
   private PROVIDER_DEFAULTS: Record<string, string> = {
-    anthropic: 'claude-sonnet-4-6', openai: 'gpt-4o', google: 'gemini-2.0-flash',
-    deepseek: 'deepseek-chat', qwen: 'qwen-plus', moonshot: 'moonshot-v1-8k',
-    zhipu: 'glm-4', baichuan: 'baichuan4',
+    anthropic: 'claude-sonnet-4-6',
+    openai: 'gpt-4o',
+    google: 'gemini-2.0-flash',
+    deepseek: 'deepseek-chat',
+    qwen: 'qwen-plus',
+    moonshot: 'moonshot-v1-8k',
+    zhipu: 'glm-4',
+    baichuan: 'baichuan4',
   };
 
   /** Find the first provider that has an API key configured */
   private firstConfiguredProvider(): string {
-    const order = ['anthropic', 'openai', 'google', 'deepseek', 'qwen', 'moonshot', 'zhipu', 'baichuan'];
+    const order = [
+      'anthropic',
+      'openai',
+      'google',
+      'deepseek',
+      'qwen',
+      'moonshot',
+      'zhipu',
+      'baichuan',
+    ];
     for (const p of order) {
       if (this.config[p]?.apiKey ?? process.env[`${p.toUpperCase()}_API_KEY`]) return p;
     }
@@ -150,9 +172,7 @@ export class AISDKAdapter implements LLMGateway {
     const provider = modelName.includes('/')
       ? modelName.split('/')[0]!
       : this.firstConfiguredProvider();
-    let name = modelName.includes('/')
-      ? modelName.split('/').slice(1).join('/')
-      : modelName;
+    let name = modelName.includes('/') ? modelName.split('/').slice(1).join('/') : modelName;
 
     // If the model name doesn't look like it belongs to this provider, use the provider's default
     if (!modelName.includes('/') && provider !== 'anthropic' && name.startsWith('claude')) {
@@ -187,7 +207,8 @@ export class AISDKAdapter implements LLMGateway {
       case 'zhipu':
       case 'baichuan': {
         const providerConfig = DOMESTIC_PROVIDERS[provider]!;
-        const key = this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
+        const key =
+          this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
         if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
         const { createOpenAI } = await this.loadProvider('openai');
         const factory = createOpenAI({ apiKey: key, baseURL: providerConfig.baseURL });
@@ -224,7 +245,12 @@ export class AISDKAdapter implements LLMGateway {
       return await import(pkg);
     } catch (error) {
       const msg = (error as Error).message;
-      if (msg.includes('Cannot find') || msg.includes('not installed') || msg.includes('not found') || msg.includes('not installed')) {
+      if (
+        msg.includes('Cannot find') ||
+        msg.includes('not installed') ||
+        msg.includes('not found') ||
+        msg.includes('not installed')
+      ) {
         throw new Error(`${pkg} is not installed. Install it with: pnpm add ${pkg}`);
       }
       throw error;

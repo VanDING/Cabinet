@@ -32,14 +32,14 @@ async function main(): Promise<void> {
   const statuses = guard.checkAll();
   for (const s of statuses) {
     console.log(
-      `   ${s.period}: $${s.currentSpend.toFixed(2)} / $${s.limit} (${Math.round(s.percentage * 100)}%) — ${s.level}`
+      `   ${s.period}: $${s.currentSpend.toFixed(2)} / $${s.limit} (${Math.round(s.percentage * 100)}%) — ${s.level}`,
     );
   }
 
   // Daily should be over budget now (>$5)
   const dailyStatus = statuses.find((s) => s.period === 'daily')!;
   console.log(
-    `   daily over budget: ${dailyStatus.level === 'blocked' ? 'PASS' : 'FAIL (expected blocked)'}`
+    `   daily over budget: ${dailyStatus.level === 'blocked' ? 'PASS' : 'FAIL (expected blocked)'}`,
   );
 
   // L3 calls should still be allowed
@@ -52,10 +52,7 @@ async function main(): Promise<void> {
 
   // 3. Summary
   const allPass =
-    total > 0 &&
-    dailyStatus.level === 'blocked' &&
-    l3Check.allowed &&
-    !l2Check.allowed;
+    total > 0 && dailyStatus.level === 'blocked' && l3Check.allowed && !l2Check.allowed;
 
   console.log(`\n=== ${allPass ? 'ALL COST CHECKS PASSED' : 'SOME CHECKS FAILED'} ===`);
   process.exit(allPass ? 0 : 1);

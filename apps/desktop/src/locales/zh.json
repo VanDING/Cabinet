@@ -135,7 +135,9 @@
       "backups": "备份",
       "maintenance": "维护",
       "rules": "规则",
-      "skills": "技能"
+      "skills": "技能",
+      "mcp": "MCP",
+      "others": "其他"
     }
   },
   "common": {

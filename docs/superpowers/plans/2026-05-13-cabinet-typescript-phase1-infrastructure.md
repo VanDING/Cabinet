@@ -9,6 +9,7 @@
 **Tech Stack:** TypeScript 5.x, Vitest, better-sqlite3, pnpm monorepo
 
 **关联文档:**
+
 - 产品文档：`document.md` v2.0
 - 设计文档：`docs/superpowers/specs/2026-05-13-cabinet-typescript-rewrite-design.md`
 
@@ -19,6 +20,7 @@
 ### Task 0: Monorepo 脚手架
 
 **Files:**
+
 - Create: `pnpm-workspace.yaml`
 - Create: `package.json`
 - Create: `tsconfig.base.json`
@@ -49,8 +51,8 @@ cd c:/Users/dotty/Desktop/AItrans/CabinetV2.0
 
 ```yaml
 packages:
-  - "packages/*"
-  - "apps/*"
+  - 'packages/*'
+  - 'apps/*'
 ```
 
 - [ ] **Step 3: 创建 tsconfig.base.json**
@@ -246,6 +248,7 @@ git commit -m "feat: initialize monorepo with packages scaffold"
 ### Task 1: @cabinet/types — 硬限制常量 boundaries.ts
 
 **Files:**
+
 - Create: `packages/types/src/boundaries.ts`
 - Create: `packages/types/src/__tests__/boundaries.test.ts`
 
@@ -356,19 +359,19 @@ export const MAX_RETRY_RECOVERABLE = 2;
 export const LLM_TIMEOUT_MS = 30_000;
 
 /** 日预算上限（美元） */
-export const DAILY_BUDGET_USD = 5.00;
+export const DAILY_BUDGET_USD = 5.0;
 
 /** 周预算上限（美元） */
-export const WEEKLY_BUDGET_USD = 25.00;
+export const WEEKLY_BUDGET_USD = 25.0;
 
 /** 月预算上限（美元） */
-export const MONTHLY_BUDGET_USD = 100.00;
+export const MONTHLY_BUDGET_USD = 100.0;
 
 /** 预算告警阈值（达此比例触发提醒） */
-export const BUDGET_WARNING_THRESHOLD = 0.80;
+export const BUDGET_WARNING_THRESHOLD = 0.8;
 
 /** 会议成本确认阈值（美元），超此值需 Captain 确认 */
-export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.50;
+export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.5;
 
 /** 反刍检测语义相似度阈值，超过视为重复论点 */
 export const RUMINATION_SIMILARITY_THRESHOLD = 0.85;
@@ -416,6 +419,7 @@ git commit -m "feat(types): add boundaries constants"
 ### Task 2: @cabinet/types — 核心原语 primitives.ts
 
 **Files:**
+
 - Create: `packages/types/src/primitives.ts`
 - Create: `packages/types/src/__tests__/primitives.test.ts`
 
@@ -550,7 +554,12 @@ describe('WorkflowDefinition type', () => {
       name: 'Market Entry Analysis',
       nodes: [
         { id: 'n1', type: 'skill', skillId: 'skill-1', position: { x: 0, y: 0 } },
-        { id: 'n2', type: 'condition', condition: '{{result.score}} > 0.7', position: { x: 100, y: 0 } },
+        {
+          id: 'n2',
+          type: 'condition',
+          condition: '{{result.score}} > 0.7',
+          position: { x: 100, y: 0 },
+        },
         { id: 'n3', type: 'human', title: 'Approve market entry', position: { x: 200, y: 0 } },
       ],
       edges: [
@@ -754,6 +763,7 @@ git commit -m "feat(types): add core primitives (Organization, Project, Employee
 ### Task 3: @cabinet/types — 决策类型 decisions.ts
 
 **Files:**
+
 - Create: `packages/types/src/decisions.ts`
 - Create: `packages/types/src/__tests__/decisions.test.ts`
 
@@ -885,9 +895,7 @@ describe('Decision type', () => {
       status: DecisionStatus.Approved,
       title: 'Approve budget',
       description: 'Approve Q2 budget',
-      options: [
-        { id: 'opt-1', label: 'Approve', impact: 'Budget allocated' },
-      ],
+      options: [{ id: 'opt-1', label: 'Approve', impact: 'Budget allocated' }],
       chosenOptionId: 'opt-1',
       captainId: 'captain-1',
       createdAt: new Date('2026-05-01'),
@@ -952,7 +960,11 @@ export type DecisionStatus = (typeof DecisionStatus)[keyof typeof DecisionStatus
 
 /** 允许的状态转换映射 */
 export const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
-  [DecisionStatus.Pending]: [DecisionStatus.Approved, DecisionStatus.Rejected, DecisionStatus.Expired],
+  [DecisionStatus.Pending]: [
+    DecisionStatus.Approved,
+    DecisionStatus.Rejected,
+    DecisionStatus.Expired,
+  ],
   [DecisionStatus.Approved]: [DecisionStatus.Archived],
   [DecisionStatus.Rejected]: [DecisionStatus.Archived],
   [DecisionStatus.Expired]: [DecisionStatus.Archived],
@@ -1015,6 +1027,7 @@ git commit -m "feat(types): add Decision types with state machine and L0-L3 leve
 ### Task 4: @cabinet/types — 事件类型 events.ts
 
 **Files:**
+
 - Create: `packages/types/src/events.ts`
 - Create: `packages/types/src/__tests__/events.test.ts`
 
@@ -1212,6 +1225,7 @@ git commit -m "feat(types): add event types with MessageEnvelope and 16 message 
 ### Task 5: @cabinet/types — barrel export index.ts
 
 **Files:**
+
 - Create: `packages/types/src/index.ts`
 
 - [ ] **Step 1: 写 index.ts**
@@ -1255,6 +1269,7 @@ git commit -m "feat(types): add barrel export"
 ### Task 6: @cabinet/events — EventBus 接口定义
 
 **Files:**
+
 - Create: `packages/events/src/bus.ts`
 - Create: `packages/events/src/__tests__/bus.contract.test.ts`
 
@@ -1273,7 +1288,7 @@ import type { MessageEnvelope } from '@cabinet/types';
  */
 export function runEventBusContractTests(
   createBus: () => EventBus,
-  cleanup: () => void = () => {}
+  cleanup: () => void = () => {},
 ) {
   describe('EventBus contract', () => {
     let bus: EventBus;
@@ -1438,6 +1453,7 @@ git commit -m "feat(events): add EventBus interface and contract tests"
 ### Task 7: @cabinet/events — 因果链追踪 causation.ts
 
 **Files:**
+
 - Create: `packages/events/src/causation.ts`
 - Create: `packages/events/src/__tests__/causation.test.ts`
 
@@ -1527,9 +1543,7 @@ describe('validateCausation', () => {
   });
 
   it('returns invalid if causationId references nonexistent message', () => {
-    const events: MessageEnvelope[] = [
-      makeEnvelope({ messageId: 'child', causationId: 'ghost' }),
-    ];
+    const events: MessageEnvelope[] = [makeEnvelope({ messageId: 'child', causationId: 'ghost' })];
     const result = validateCausation(events);
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
@@ -1569,7 +1583,7 @@ import type { MessageEnvelope } from '@cabinet/types';
  */
 export function buildCausationChain(
   messageId: string,
-  allEvents: MessageEnvelope[]
+  allEvents: MessageEnvelope[],
 ): MessageEnvelope[] {
   const eventMap = new Map<string, MessageEnvelope>();
   for (const event of allEvents) {
@@ -1623,7 +1637,7 @@ export function validateCausation(events: MessageEnvelope[]): {
       const referenced = events.find((e) => e.messageId === event.causationId);
       if (!referenced) {
         errors.push(
-          `messageId=${event.messageId} references nonexistent causationId=${event.causationId}`
+          `messageId=${event.messageId} references nonexistent causationId=${event.causationId}`,
         );
       }
     }
@@ -1654,6 +1668,7 @@ git commit -m "feat(events): add causation chain tracking with cycle detection"
 ### Task 8: @cabinet/events — MemoryEventBus 实现
 
 **Files:**
+
 - Create: `packages/events/src/memory-bus.ts`
 - Create: `packages/events/src/__tests__/memory-bus.test.ts`
 
@@ -1670,7 +1685,7 @@ import type { MessageEnvelope } from '@cabinet/types';
 // 运行契约测试
 runEventBusContractTests(
   () => new MemoryEventBus(),
-  () => {}
+  () => {},
 );
 
 // 内存总线特定测试
@@ -1818,6 +1833,7 @@ git commit -m "feat(events): add MemoryEventBus implementation"
 ### Task 9: @cabinet/events — barrel export index.ts
 
 **Files:**
+
 - Create: `packages/events/src/index.ts`
 
 - [ ] **Step 1: 写 index.ts**
@@ -1852,6 +1868,7 @@ git commit -m "feat(events): add barrel export"
 ### Task 10: @cabinet/storage — SQLite 连接池
 
 **Files:**
+
 - Create: `packages/storage/src/connection.ts`
 - Create: `packages/storage/src/__tests__/connection.test.ts`
 
@@ -1982,6 +1999,7 @@ git commit -m "feat(storage): add SQLite connection pool with WAL mode"
 ### Task 11: @cabinet/storage — 数据库迁移
 
 **Files:**
+
 - Create: `packages/storage/src/migrations/001_initial.ts`
 - Create: `packages/storage/src/__tests__/migrations.test.ts`
 
@@ -2019,7 +2037,9 @@ describe('migration 001', () => {
     runMigration001(getConnection());
 
     const tables = getConnection()
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_test%'")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_test%'",
+      )
       .all() as { name: string }[];
 
     const tableNames = tables.map((t) => t.name).sort();
@@ -2215,6 +2235,7 @@ git commit -m "feat(storage): add initial migration with 10 tables"
 ### Task 12: @cabinet/storage — Repository 实现
 
 **Files:**
+
 - Create: `packages/storage/src/repositories/organization.ts`
 - Create: `packages/storage/src/repositories/project.ts`
 - Create: `packages/storage/src/repositories/event-log.ts`
@@ -2304,12 +2325,20 @@ describe('ProjectRepository', () => {
 
   it('lists projects by organization', () => {
     projRepo.create({
-      id: 'proj-a', organizationId: 'org-p', name: 'A',
-      description: '', status: ProjectStatus.Draft, createdAt: new Date(),
+      id: 'proj-a',
+      organizationId: 'org-p',
+      name: 'A',
+      description: '',
+      status: ProjectStatus.Draft,
+      createdAt: new Date(),
     });
     projRepo.create({
-      id: 'proj-b', organizationId: 'org-p', name: 'B',
-      description: '', status: ProjectStatus.Active, createdAt: new Date(),
+      id: 'proj-b',
+      organizationId: 'org-p',
+      name: 'B',
+      description: '',
+      status: ProjectStatus.Active,
+      createdAt: new Date(),
     });
     const list = projRepo.listByOrganization('org-p');
     expect(list.length).toBeGreaterThanOrEqual(2);
@@ -2317,8 +2346,12 @@ describe('ProjectRepository', () => {
 
   it('updates project status', () => {
     projRepo.create({
-      id: 'proj-u', organizationId: 'org-p', name: 'Updatable',
-      description: '', status: ProjectStatus.Draft, createdAt: new Date(),
+      id: 'proj-u',
+      organizationId: 'org-p',
+      name: 'Updatable',
+      description: '',
+      status: ProjectStatus.Draft,
+      createdAt: new Date(),
     });
     projRepo.update('proj-u', { status: ProjectStatus.Archived });
     const updated = projRepo.findById('proj-u');
@@ -2354,12 +2387,20 @@ describe('EventLogRepository', () => {
 
   it('returns events sorted by timestamp', () => {
     repo.append({
-      messageId: 'msg-later', correlationId: 'corr-seq', causationId: null,
-      timestamp: new Date('2026-01-01T10:00:02Z'), messageType: MessageType.TaskOrder, payload: {},
+      messageId: 'msg-later',
+      correlationId: 'corr-seq',
+      causationId: null,
+      timestamp: new Date('2026-01-01T10:00:02Z'),
+      messageType: MessageType.TaskOrder,
+      payload: {},
     });
     repo.append({
-      messageId: 'msg-earlier', correlationId: 'corr-seq', causationId: null,
-      timestamp: new Date('2026-01-01T10:00:01Z'), messageType: MessageType.TaskCompleted, payload: {},
+      messageId: 'msg-earlier',
+      correlationId: 'corr-seq',
+      causationId: null,
+      timestamp: new Date('2026-01-01T10:00:01Z'),
+      messageType: MessageType.TaskCompleted,
+      payload: {},
     });
 
     const events = repo.findByCorrelationId('corr-seq');
@@ -2403,15 +2444,17 @@ export class OrganizationRepository {
   }
 
   findById(id: string): Organization | null {
-    const row = this.db
-      .prepare('SELECT * FROM organizations WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM organizations WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToOrg(row);
   }
 
   listAll(): Organization[] {
-    const rows = this.db.prepare('SELECT * FROM organizations ORDER BY created_at DESC').all() as Record<string, unknown>[];
+    const rows = this.db
+      .prepare('SELECT * FROM organizations ORDER BY created_at DESC')
+      .all() as Record<string, unknown>[];
     return rows.map((r) => this.rowToOrg(r));
   }
 
@@ -2438,15 +2481,22 @@ export class ProjectRepository {
   create(project: Project): void {
     this.db
       .prepare(
-        'INSERT INTO projects (id, organization_id, name, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO projects (id, organization_id, name, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(project.id, project.organizationId, project.name, project.description, project.status, project.createdAt.toISOString());
+      .run(
+        project.id,
+        project.organizationId,
+        project.name,
+        project.description,
+        project.status,
+        project.createdAt.toISOString(),
+      );
   }
 
   findById(id: string): Project | null {
-    const row = this.db
-      .prepare('SELECT * FROM projects WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToProject(row);
   }
@@ -2462,9 +2512,18 @@ export class ProjectRepository {
     const sets: string[] = [];
     const values: unknown[] = [];
 
-    if (changes.name !== undefined) { sets.push('name = ?'); values.push(changes.name); }
-    if (changes.description !== undefined) { sets.push('description = ?'); values.push(changes.description); }
-    if (changes.status !== undefined) { sets.push('status = ?'); values.push(changes.status); }
+    if (changes.name !== undefined) {
+      sets.push('name = ?');
+      values.push(changes.name);
+    }
+    if (changes.description !== undefined) {
+      sets.push('description = ?');
+      values.push(changes.description);
+    }
+    if (changes.status !== undefined) {
+      sets.push('status = ?');
+      values.push(changes.status);
+    }
 
     if (sets.length > 0) {
       values.push(id);
@@ -2498,7 +2557,7 @@ export class EventLogRepository {
     this.db
       .prepare(
         `INSERT INTO event_log (message_id, correlation_id, causation_id, type, payload, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(
         envelope.messageId,
@@ -2506,7 +2565,7 @@ export class EventLogRepository {
         envelope.causationId,
         envelope.messageType,
         JSON.stringify(envelope.payload),
-        envelope.timestamp.toISOString()
+        envelope.timestamp.toISOString(),
       );
   }
 
@@ -2518,17 +2577,18 @@ export class EventLogRepository {
   }
 
   findByMessageId(messageId: string): MessageEnvelope | null {
-    const row = this.db
-      .prepare('SELECT * FROM event_log WHERE message_id = ?')
-      .get(messageId) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM event_log WHERE message_id = ?').get(messageId) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToEnvelope(row);
   }
 
   findAll(): MessageEnvelope[] {
-    const rows = this.db
-      .prepare('SELECT * FROM event_log ORDER BY timestamp ASC')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM event_log ORDER BY timestamp ASC').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToEnvelope(r));
   }
 
@@ -2566,6 +2626,7 @@ git commit -m "feat(storage): add Organization, Project, and EventLog repositori
 ### Task 13: @cabinet/events — SqliteEventStore 实现
 
 **Files:**
+
 - Create: `packages/events/src/sqlite-store.ts`
 - Create: `packages/events/src/__tests__/sqlite-store.test.ts`
 
@@ -2608,7 +2669,7 @@ function setupDb() {
 // 运行契约测试
 runEventBusContractTests(
   () => new SqliteEventStore(getConnection()),
-  () => {}
+  () => {},
 );
 
 describe('SqliteEventStore specific', () => {
@@ -2770,6 +2831,7 @@ git commit -m "feat(events): add SqliteEventStore with persistence via EventLogR
 ### Task 14: @cabinet/storage — barrel export
 
 **Files:**
+
 - Create: `packages/storage/src/index.ts`
 
 - [ ] **Step 1: 写 index.ts**
@@ -2850,16 +2912,22 @@ describe('Phase 1 integration: SqliteEventStore + EventLog', () => {
 
     // 发布根事件
     await store.publish({
-      messageId: 'root', correlationId: 'integ-test',
-      causationId: null, timestamp: new Date(),
-      messageType: MessageType.TaskOrder, payload: { step: 1 },
+      messageId: 'root',
+      correlationId: 'integ-test',
+      causationId: null,
+      timestamp: new Date(),
+      messageType: MessageType.TaskOrder,
+      payload: { step: 1 },
     });
 
     // 发布子事件
     await store.publish({
-      messageId: 'child', correlationId: 'integ-test',
-      causationId: 'root', timestamp: new Date(),
-      messageType: MessageType.TaskCompleted, payload: { step: 2 },
+      messageId: 'child',
+      correlationId: 'integ-test',
+      causationId: 'root',
+      timestamp: new Date(),
+      messageType: MessageType.TaskCompleted,
+      payload: { step: 2 },
     });
 
     // 验证持久化 + 因果链
@@ -2882,12 +2950,12 @@ git commit -m "test: add Phase 1 integration checkpoint"
 
 ## Phase 1 总结
 
-| 包 | 文件数 | 测试数（约） |
-|:---|:---|:---|
-| @cabinet/types | 5 | 33 |
-| @cabinet/events | 5 | 20+ |
-| @cabinet/storage | 6 | 18+ |
-| **合计** | **16** | **70+** |
+| 包               | 文件数 | 测试数（约） |
+| :--------------- | :----- | :----------- |
+| @cabinet/types   | 5      | 33           |
+| @cabinet/events  | 5      | 20+          |
+| @cabinet/storage | 6      | 18+          |
+| **合计**         | **16** | **70+**      |
 
 **门禁**: pnpm typecheck 零错误 + pnpm test 全部通过 + 集成检查点验证通过。
 
@@ -2897,9 +2965,9 @@ git commit -m "test: add Phase 1 integration checkpoint"
 
 Phase 2-5 的详细实施计划将在 Phase 1 验收通过后按相同模板展开。概要如下：
 
-| 阶段 | 包 | 文件数 | 预估任务数 |
-|:---|:---|:---|:---|
-| Phase 2 | gateway, agent, memory | 18 | ~15 tasks |
-| Phase 3 | decision, secretary, meeting, workflow, harness | 26 | ~20 tasks |
-| Phase 4 | apps/server | 16 | ~12 tasks |
-| Phase 5 | 集成测试 + 性能 + 安全 | — | ~8 tasks |
+| 阶段    | 包                                              | 文件数 | 预估任务数 |
+| :------ | :---------------------------------------------- | :----- | :--------- |
+| Phase 2 | gateway, agent, memory                          | 18     | ~15 tasks  |
+| Phase 3 | decision, secretary, meeting, workflow, harness | 26     | ~20 tasks  |
+| Phase 4 | apps/server                                     | 16     | ~12 tasks  |
+| Phase 5 | 集成测试 + 性能 + 安全                          | —      | ~8 tasks   |

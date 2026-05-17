@@ -1,8 +1,12 @@
 /** Check if running inside Tauri (production or dev with tauri). */
 function isTauri(): boolean {
   try {
-    return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
-  } catch { return false; }
+    return (
+      typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Returns the API base URL. Empty string in Vite dev (proxied), absolute in Tauri production. */
@@ -21,21 +25,12 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   return fetch(input, init);
 }
 
-/** Get the current PIN for API requests. Reads from localStorage, falls back to '1234'. */
-export function getPin(): string {
-  try {
-    return localStorage.getItem('cabinet-pin') ?? '1234';
-  } catch {
-    return '1234';
-  }
+/** Returns empty headers — localhost needs no auth. */
+export function authHeaders(): Record<string, string> {
+  return {};
 }
 
-/** Shorthand: returns { 'x-cabinet-pin': getPin() } for fetch headers. */
-export function authHeaders(): { 'x-cabinet-pin': string; 'Content-Type'?: string } {
-  return { 'x-cabinet-pin': getPin() };
-}
-
-/** Returns headers object with Content-Type for JSON requests. */
-export function authJsonHeaders(): { 'x-cabinet-pin': string; 'Content-Type': string } {
-  return { 'x-cabinet-pin': getPin(), 'Content-Type': 'application/json' };
+/** Returns headers with Content-Type for JSON requests. */
+export function authJsonHeaders(): { 'Content-Type': string } {
+  return { 'Content-Type': 'application/json' };
 }
