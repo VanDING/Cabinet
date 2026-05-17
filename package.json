@@ -6,7 +6,7 @@
     "commitlint:last": "commitlint --from HEAD~1",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm build && pnpm -r typecheck",
     "lint": "eslint . --max-warnings 400",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
