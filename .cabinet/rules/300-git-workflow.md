@@ -1,6 +1,6 @@
 ---
-description: "Git workflow: branch naming, commit format, PR requirements, forbidden operations"
-tags: ["git", "workflow"]
+description: 'Git workflow: branch naming, commit format, PR requirements, forbidden operations'
+tags: ['git', 'workflow']
 ---
 
 # Git Workflow

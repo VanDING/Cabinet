@@ -1,7 +1,7 @@
 ---
-description: "TypeScript coding standards and conventions"
-globs: ["**/*.ts", "**/*.tsx"]
-tags: ["typescript", "style"]
+description: 'TypeScript coding standards and conventions'
+globs: ['**/*.ts', '**/*.tsx']
+tags: ['typescript', 'style']
 ---
 
 # TypeScript Standards
