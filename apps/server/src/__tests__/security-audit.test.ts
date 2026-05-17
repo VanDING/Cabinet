@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { encryptApiKey, decryptApiKey, generateMasterPassword } from '../crypto';
 import { SafetyChecker } from '@cabinet/agent';
-import { createConnection, closeConnection, runMigration001, EventLogRepository } from '@cabinet/storage';
+import {
+  createConnection,
+  closeConnection,
+  runMigration001,
+  EventLogRepository,
+} from '@cabinet/storage';
 import { SqliteEventStore } from '@cabinet/events';
-import { MessageType } from '@cabinet/types';
+import { MessageType, DelegationTier } from '@cabinet/types';
 import type { MessageEnvelope } from '@cabinet/types';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,21 +39,21 @@ describe('Security Audit', () => {
     expect(decryptApiKey(encrypted, pw)).toBe(original);
   });
 
-  // ---- Agent 4-Tier Safety ----
+  // ---- Agent Safety & Delegation Tiers ----
 
-  it('safety checker: whitelisted tools pass', () => {
+  it('safety checker: read-only tools always pass (cache tier)', () => {
     const safety = new SafetyChecker();
-    const result = safety.check('read_file', {});
+    const result = safety.check('query_decisions', {});
     expect(result.allowed).toBe(true);
     expect(result.tier).toBe('cache');
   });
 
-  it('safety checker: dangerous tools require AI classifier', () => {
+  it('safety checker: destructive tools blocked at StrategicGuard tier', () => {
     const safety = new SafetyChecker();
     const result = safety.check('delete_file', { path: '/etc' });
     expect(result.allowed).toBe(false);
-    expect(result.tier).toBe('ai_classifier');
-    expect(result.reason).toContain('teach-back');
+    expect(result.tier).toBe('delegation_block');
+    expect(result.blockedByTier).toBeDefined();
   });
 
   it('safety checker: unknown tools allowed at auto tier', () => {
@@ -58,17 +63,26 @@ describe('Security Audit', () => {
     expect(result.tier).toBe('auto');
   });
 
-  // ---- PIN Validation ----
+  it('safety checker: cost tools blocked at CaptainReview tier', () => {
+    const safety = new SafetyChecker(DelegationTier.CaptainReview);
+    const result = safety.check('start_meeting', {});
+    expect(result.allowed).toBe(false);
+    expect(result.tier).toBe('delegation_block');
+  });
 
-  it('PIN: validates format (4-8 digits)', async () => {
+  // ---- Local access — no PIN required ----
+
+  it('auth: local access bypasses authentication', async () => {
     const { createApp } = await import('../index');
     const app = createApp();
     const res = await app.request('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: '12' }),
+      body: JSON.stringify({}),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    const body = await res.json() as any;
+    expect(body.valid).toBe(true);
   });
 
   // ---- Backup plaintext safety ----
