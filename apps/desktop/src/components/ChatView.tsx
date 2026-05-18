@@ -144,9 +144,6 @@ export const ChatView = memo(function ChatView({
 
         {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
           <div className="flex gap-3">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-700 text-xs font-bold text-white dark:bg-gray-600">
-              A
-            </div>
             <div className="flex-1">
               <span className="text-sm italic text-gray-400 dark:text-gray-500">{t('chat.thinking')}</span>
             </div>
@@ -173,16 +170,7 @@ const MessageRow = memo(function MessageRow({
   const [editText, setEditText] = useState(msg.content);
 
   return (
-    <div className="group flex gap-3">
-      <div
-        className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-          msg.role === 'user'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-700 text-white dark:bg-gray-600'
-        }`}
-      >
-        {t(msg.role === 'user' ? 'chat.you' : 'chat.secretary').charAt(0)}
-      </div>
+    <div className="group flex flex-col">
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">

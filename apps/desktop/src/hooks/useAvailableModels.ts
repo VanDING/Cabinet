@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { apiFetch, authHeaders } from '../utils/pin.js';
 
 export const PROVIDER_MODELS: Record<string, string[]> = {
-  anthropic: ['claude-haiku-4-5', 'claude-sonnet-4-6', 'claude-opus-4-7'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-  google: ['gemini-2.0-flash', 'gemini-2.0-pro'],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v3', 'deepseek-r1'],
-  qwen: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
-  moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-  zhipu: ['glm-4', 'glm-4-flash'],
-  baichuan: ['baichuan4', 'baichuan3-turbo'],
-  custom: ['custom-model'],
+  anthropic: ['anthropic/claude-haiku-4-5', 'anthropic/claude-sonnet-4-6', 'anthropic/claude-opus-4-7'],
+  openai: ['openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/gpt-4-turbo'],
+  google: ['google/gemini-2.0-flash', 'google/gemini-2.0-pro'],
+  deepseek: ['deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'deepseek/deepseek-v3', 'deepseek/deepseek-r1'],
+  qwen: ['qwen/qwen-turbo', 'qwen/qwen-plus', 'qwen/qwen-max'],
+  moonshot: ['moonshot/moonshot-v1-8k', 'moonshot/moonshot-v1-32k', 'moonshot/moonshot-v1-128k'],
+  zhipu: ['zhipu/glm-4', 'zhipu/glm-4-flash'],
+  baichuan: ['baichuan/baichuan4', 'baichuan/baichuan3-turbo'],
+  custom: ['custom/custom-model'],
 };
 
 function loadCachedProviders(): { provider: string; models: string[] }[] | null {
@@ -34,10 +34,15 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
         .then((d) => {
           if (cancelled) return;
           if (d.keys?.length > 0) {
-            const providers = [...new Set(d.keys.map((k: any) => k.provider))] as string[];
-            const filtered = providers.map((p) => ({
-              provider: p,
-              models: PROVIDER_MODELS[p] ?? [],
+            // Use configured model from API key, fall back to hardcoded list
+            const providerModels = new Map<string, Set<string>>();
+            for (const k of d.keys) {
+              if (!providerModels.has(k.provider)) providerModels.set(k.provider, new Set());
+              if (k.model) providerModels.get(k.provider)!.add(`${k.provider}/${k.model}`);
+            }
+            const filtered = [...providerModels.entries()].map(([provider, models]) => ({
+              provider,
+              models: models.size > 0 ? [...models] : (PROVIDER_MODELS[provider] ?? []),
             }));
             setAvailable(filtered);
             localStorage.setItem('cabinet-available-models', JSON.stringify(filtered));

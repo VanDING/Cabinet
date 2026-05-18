@@ -6,13 +6,13 @@ export function OthersTab() {
   return (
     <div className="space-y-8">
       <section>
-        <AuditTab />
+        <MaintenanceTab />
       </section>
       <section className="border-t pt-6 dark:border-gray-700">
         <BackupsTab />
       </section>
       <section className="border-t pt-6 dark:border-gray-700">
-        <MaintenanceTab />
+        <AuditTab />
       </section>
     </div>
   );

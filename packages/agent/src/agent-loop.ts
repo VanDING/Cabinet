@@ -1,4 +1,4 @@
-import type { LLMGateway, LLMResponse } from '@cabinet/gateway';
+import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
 import { ToolExecutor } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
@@ -25,6 +25,15 @@ export interface AgentSessionSummary {
 }
 
 export type SessionCompleteCallback = (summary: AgentSessionSummary) => void;
+
+/** Callback for streaming LLM output chunk by chunk. */
+export interface StreamingCallback {
+  onChunk(content: string): void;
+  onToolCall?(name: string, args: Record<string, unknown>): void;
+  onToolResult?(name: string, result: unknown): void;
+  onDone(fullContent: string): void;
+  onError?(error: string): void;
+}
 
 export interface AgentLoopOptions {
   gateway: LLMGateway;
@@ -396,6 +405,101 @@ export class AgentLoop {
   /** Reset the accumulated handoff state (e.g., after disposal). */
   resetHandoff(): void {
     this.sessionHandoff = null;
+  }
+
+  /**
+   * Streaming variant of run(). Uses gateway.streamText() for real token-level
+   * streaming with tool calling via AI SDK maxSteps. Does NOT support checkpoint
+   * resumption or context monitoring (use run() for those).
+   */
+  async runStreaming(
+    userMessage: string,
+    callback: StreamingCallback,
+  ): Promise<AgentResult> {
+    const startTime = Date.now();
+    const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] = [];
+    const errorCounts = { transient: 0, recoverable: 0, fatal: 0 };
+    const toolCounts = { total: 0, succeeded: 0, failed: 0, blocked: 0 };
+
+    // Build context
+    const ctx = await this.contextBuilder.build({
+      sessionId: this.options.sessionId,
+      projectId: this.options.projectId,
+      captainId: this.options.captainId,
+      systemPrompt: this.options.systemPrompt,
+      activeFiles: this.options.activeFiles,
+      taskDescription: this.options.taskDescription,
+    });
+
+    const messages: { role: 'user' | 'assistant'; content: string }[] = [
+      ...ctx.messages.map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user' as const, content: userMessage },
+    ];
+
+    // Convert ToolExecutor tools to StreamingToolDefinition
+    const toolDescriptors = this.toolExecutor.getToolDescriptors();
+    const streamingTools: StreamingToolDefinition[] = toolDescriptors.map((td) => ({
+      name: td.name,
+      description: td.description,
+      parameters: td.parameters,
+      execute: async (args: Record<string, unknown>) => {
+        const safety = this.safetyChecker.check(td.name, args);
+        if (!safety.allowed) {
+          toolCounts.blocked++;
+          return `BLOCKED: ${safety.reason}`;
+        }
+        toolCounts.total++;
+        const start = Date.now();
+        try {
+          const result = await this.toolExecutor.execute(td.name, `stream_${Date.now()}`, args);
+          if (result.error) {
+            toolCounts.failed++;
+          } else {
+            toolCounts.succeeded++;
+          }
+          executedToolCalls.push({ name: td.name, args, result: result.error ?? result.output });
+          return result.error ?? result.output;
+        } catch (e) {
+          toolCounts.failed++;
+          throw e;
+        }
+      },
+    }));
+
+    let fullText = '';
+    try {
+      for await (const chunk of this.gateway.streamText({
+        model: this.options.model ?? 'claude-sonnet-4-6',
+        systemPrompt: ctx.systemPrompt,
+        messages,
+        tools: streamingTools,
+        maxSteps: this.options.maxSteps ?? 10,
+      })) {
+        if (chunk.type === 'text') {
+          fullText += (chunk.content ?? '');
+          callback.onChunk(chunk.content ?? '');
+        } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          callback.onToolCall?.(chunk.toolCall.name, chunk.toolCall.args);
+        } else if (chunk.type === 'tool_result' && chunk.toolResult) {
+          callback.onToolResult?.(chunk.toolResult.name, chunk.toolResult.result);
+        } else if (chunk.type === 'error') {
+          errorCounts.fatal++;
+          callback.onError?.(chunk.content ?? 'Unknown streaming error');
+        }
+      }
+    } catch (e) {
+      errorCounts.fatal++;
+      const msg = (e as Error).message;
+      callback.onError?.(msg);
+      this.reportSession(startTime, 0, executedToolCalls, 0, 0,
+        { smart: 0, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, false);
+      return { content: `Streaming error: ${msg}`, steps: 0, toolCalls: executedToolCalls };
+    }
+
+    callback.onDone(fullText);
+    this.reportSession(startTime, 1, executedToolCalls, 0, 0,
+      { smart: 1, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, true);
+    return { content: fullText, steps: 1, toolCalls: executedToolCalls };
   }
 
   /** Resume from a saved checkpoint */

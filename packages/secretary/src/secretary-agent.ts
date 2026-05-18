@@ -1,4 +1,4 @@
-import type { AgentLoop } from '@cabinet/agent';
+import type { AgentLoop, StreamingCallback } from '@cabinet/agent';
 import type { AgentRoleType } from '@cabinet/agent';
 import type { LLMGateway } from '@cabinet/gateway';
 import { IntentParser, type ParsedIntent, type AgentRouteResult } from './intent-parser.js';
@@ -69,6 +69,56 @@ export class SecretaryAgent {
       }
     } else {
       response = await this.dispatchToRole(targetAgent, message, sessionId);
+    }
+
+    this.sessionManager.addMessage(sessionId, 'assistant', response);
+    return { intent: routeResult.intent, response, routeResult };
+  }
+
+  /** Streaming variant — routes intent then streams LLM output token by token via callback. */
+  async handleMessageStreaming(
+    sessionId: string,
+    message: string,
+    callback: StreamingCallback,
+  ): Promise<{
+    intent: ParsedIntent;
+    response: string;
+    routeResult?: AgentRouteResult;
+  }> {
+    this.sessionManager.addMessage(sessionId, 'user', message);
+
+    const routeResult = await this.intentParser.routeToAgent(message, {
+      lastIntent: this.lastIntent ?? undefined,
+      lastRoute: this.lastRoute ?? undefined,
+    });
+
+    this.lastIntent = routeResult.intent.kind;
+    this.lastRoute = routeResult.targetAgent;
+
+    let targetAgent = routeResult.targetAgent;
+    if (routeResult.intent.kind === 'follow_up' && this.lastRoute) {
+      targetAgent = this.lastRoute as AgentRoleType;
+    }
+
+    let response: string;
+    if (targetAgent === 'secretary' || !this.dispatchToRole) {
+      if (this.agentLoop) {
+        const result = await this.agentLoop.runStreaming(message, callback);
+        response = result.content;
+      } else {
+        response = [
+          `[No LLM available]`,
+          `Intent: ${routeResult.intent.kind}`,
+          `Would route to: ${targetAgent}`,
+        ].filter(Boolean).join('\n');
+        callback.onChunk(response);
+        callback.onDone(response);
+      }
+    } else {
+      // Specialist agents don't support streaming yet — fall back to blocking
+      response = await this.dispatchToRole(targetAgent, message, sessionId);
+      callback.onChunk(response);
+      callback.onDone(response);
     }
 
     this.sessionManager.addMessage(sessionId, 'assistant', response);

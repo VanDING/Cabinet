@@ -47,7 +47,7 @@ dashboardRouter.get('/summary', (c) => {
 dashboardRouter.get('/cost-history', (c) => {
   const { costTracker, db } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
-  const history: { date: string; cost: number; calls: number; byModel: Record<string, number> }[] =
+  const history: { date: string; cost: number; calls: number; tokens: number; byModel: Record<string, number> }[] =
     [];
   let totalCalls = 0;
 
@@ -87,10 +87,20 @@ dashboardRouter.get('/cost-history', (c) => {
 
     const totalCost = Object.values(byModel).reduce((sum, c) => sum + c, 0);
 
+    // Tokens for this day from session_metrics
+    let tokens = 0;
+    try {
+      const tokenRow = db
+        .prepare("SELECT SUM(total_tokens) as tokens FROM session_metrics WHERE started_at LIKE ?")
+        .get(`${dateStr}%`) as any;
+      tokens = tokenRow?.tokens ?? 0;
+    } catch { /* ignore */ }
+
     history.push({
       date: dateStr,
       cost: Math.round(totalCost * 10000) / 10000,
       calls: totalCalls,
+      tokens,
       byModel,
     });
   }
