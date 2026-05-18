@@ -1,3 +1,6 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText as aiGenerateText, streamText as aiStreamText, embed } from 'ai';
 import type {
   LLMGateway,
   LLMCallOptions,
@@ -38,8 +41,6 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
-    const { generateText: aiGenerateText } = await this.importAISDK();
-
     const model = await this.resolveModelObj(options.model);
 
     const messages = options.messages.map((m) => ({
@@ -72,7 +73,6 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async *streamText(options: LLMCallOptions): AsyncIterable<StreamChunk> {
-    const { streamText: aiStreamText } = await this.importAISDK();
     const model = await this.resolveModelObj(options.model);
 
     const result = aiStreamText({
@@ -120,18 +120,18 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult> {
-    const { embed } = await this.importAISDK();
     const model = await this.resolveEmbeddingModel(options.model ?? 'text-embedding-3-small');
 
-    const result = await embed({
-      model,
-      values: options.texts,
-    });
+    const results = await Promise.all(
+      options.texts.map((text) =>
+        embed({ model, value: text }),
+      ),
+    );
 
     return {
-      embeddings: result.embeddings.map((e: any) => Array.from(e)),
+      embeddings: results.map((r) => Array.from(r.embedding as Iterable<number>)),
       model: options.model ?? 'text-embedding-3-small',
-      usage: { tokens: result.usage?.tokens ?? 0 },
+      usage: { tokens: results.reduce((sum, r) => sum + (r.usage?.tokens ?? 0), 0) },
     };
   }
 
@@ -183,14 +183,12 @@ export class AISDKAdapter implements LLMGateway {
       case 'anthropic': {
         const key = this.config.anthropic?.apiKey ?? process.env.ANTHROPIC_API_KEY;
         if (!key) throw new Error('ANTHROPIC_API_KEY not configured');
-        const { createAnthropic } = await this.loadProvider('anthropic');
         const factory = createAnthropic({ apiKey: key });
         return factory(name);
       }
       case 'openai': {
         const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
         if (!key) throw new Error('OPENAI_API_KEY not configured');
-        const { createOpenAI } = await this.loadProvider('openai');
         const factory = createOpenAI({ apiKey: key });
         return factory(name);
       }
@@ -210,7 +208,6 @@ export class AISDKAdapter implements LLMGateway {
         const key =
           this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
         if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
-        const { createOpenAI } = await this.loadProvider('openai');
         const factory = createOpenAI({ apiKey: key, baseURL: providerConfig.baseURL });
         return factory(name);
       }
@@ -226,39 +223,29 @@ export class AISDKAdapter implements LLMGateway {
   private async resolveEmbeddingModel(modelName: string): Promise<any> {
     const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
     if (!key) throw new Error('OPENAI_API_KEY not configured for embeddings');
-    const { openai } = await this.loadProvider('openai');
-    const client = openai({ apiKey: key });
+    const client = createOpenAI({ apiKey: key });
     return client.embedding(modelName);
   }
 
   /**
-   * Dynamically load a provider SDK via ESM import(). Falls back gracefully if not installed.
+   * Load a provider SDK. Anthropic and OpenAI are statically imported (bundled by esbuild).
+   * Google is loaded dynamically since it's an optional dependency.
    */
   private async loadProvider(provider: 'anthropic' | 'openai' | 'google'): Promise<any> {
-    const pkgMap: Record<string, string> = {
-      anthropic: '@ai-sdk/anthropic',
-      openai: '@ai-sdk/openai',
-      google: '@ai-sdk/google',
-    };
-    const pkg = pkgMap[provider]!;
-    try {
-      return await import(pkg);
-    } catch (error) {
-      const msg = (error as Error).message;
-      if (
-        msg.includes('Cannot find') ||
-        msg.includes('not installed') ||
-        msg.includes('not found') ||
-        msg.includes('not installed')
-      ) {
-        throw new Error(`${pkg} is not installed. Install it with: pnpm add ${pkg}`);
-      }
-      throw error;
+    switch (provider) {
+      case 'anthropic':
+        return { createAnthropic };
+      case 'openai':
+        return { createOpenAI };
+      case 'google':
+        // @ai-sdk/google is an optional dependency — load dynamically
+        try {
+          // @ts-expect-error — optional dependency, may not be installed
+          return await import('@ai-sdk/google');
+        } catch {
+          throw new Error('@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google');
+        }
     }
-  }
-
-  private async importAISDK(): Promise<any> {
-    return import('ai');
   }
 
   private convertTools(tools: ToolDefinition[]): any {
