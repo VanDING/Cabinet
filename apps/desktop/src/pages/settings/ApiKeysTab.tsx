@@ -213,10 +213,10 @@ function BudgetSection() {
         <span className="text-gray-500">Today's spend:</span>
         <span className="font-medium text-blue-600">${currentSpend.toFixed(4)}</span>
       </div>
-      <div className="max-w-md space-y-3">
+      <div className="grid grid-cols-3 gap-4 max-w-lg">
         {['daily', 'weekly', 'monthly'].map((period) => (
-          <div key={period} className="flex items-center gap-3">
-            <label className="w-20 text-sm capitalize text-gray-600 dark:text-gray-400">
+          <div key={period}>
+            <label className="block text-sm capitalize text-gray-600 dark:text-gray-400 mb-1">
               {period}
             </label>
             <div className="flex items-center gap-1">
@@ -232,13 +232,13 @@ function BudgetSection() {
             </div>
           </div>
         ))}
-        <button
-          onClick={handleSave}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-        >
-          Save Budget
-        </button>
       </div>
+      <button
+        onClick={handleSave}
+        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+      >
+        Save Budget
+      </button>
     </div>
   );
 }

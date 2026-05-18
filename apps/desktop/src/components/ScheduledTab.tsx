@@ -15,11 +15,12 @@ interface ScheduledTask {
 
 interface Props {
   isDark?: boolean;
+  showForm?: boolean;
+  onFormClose?: () => void;
 }
 
-export function ScheduledTab({ isDark }: Props) {
+export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
-  const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [cron, setCron] = useState('0 9 * * *');
   const [prompt, setPrompt] = useState('');
@@ -43,7 +44,7 @@ export function ScheduledTab({ isDark }: Props) {
         method: 'POST', headers: authJsonHeaders(),
         body: JSON.stringify({ name, cron, prompt, recurring }),
       });
-      setShowForm(false); setName(''); setCron('0 9 * * *'); setPrompt('');
+      onFormClose?.(); setName(''); setCron('0 9 * * *'); setPrompt('');
       fetchTasks();
     } catch { /* ignore */ }
     setLoading(false);
@@ -66,17 +67,13 @@ export function ScheduledTab({ isDark }: Props) {
   const sub = isDark ? 'text-gray-400' : 'text-gray-500';
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className={`text-lg font-semibold ${text}`}>Scheduled Tasks</h2>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
-          <Plus size={14} /> New Task
-        </button>
-      </div>
-
+    <div className="space-y-4">
       {/* Task list */}
       {tasks.length === 0 ? (
-        <p className={sub}>No scheduled tasks. Create one to automate recurring prompts.</p>
+        <div className="py-24 text-center text-gray-400 dark:text-gray-500">
+          <p className="text-lg">No scheduled tasks</p>
+          <p className="mt-1 text-sm">Click "+ New Task" to create one.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {tasks.map((t) => (
@@ -103,7 +100,7 @@ export function ScheduledTab({ isDark }: Props) {
 
       {/* Create form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowForm(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onFormClose}>
           <div className={`rounded-xl border ${border} ${bg} p-6 w-full max-w-md shadow-2xl`} onClick={(e) => e.stopPropagation()}>
             <h3 className={`text-lg font-semibold mb-4 ${text}`}>New Scheduled Task</h3>
             <div className="space-y-3">
@@ -125,7 +122,7 @@ export function ScheduledTab({ isDark }: Props) {
               </label>
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowForm(false)} className={`rounded px-3 py-1.5 text-sm border ${border}`}>Cancel</button>
+              <button onClick={onFormClose} className={`rounded px-3 py-1.5 text-sm border ${border}`}>Cancel</button>
               <button onClick={handleCreate} disabled={loading} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">Create</button>
             </div>
           </div>

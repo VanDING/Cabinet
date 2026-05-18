@@ -91,7 +91,7 @@ export function Navigation({
       {/* Logo */}
       <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>
         <img
-          src="/Cabinet_logo_color.png"
+          src={isDark ? "/Cabinet_logo_darkcolor.png" : "/Cabinet_logo_color.png"}
           alt="Cabinet"
           className={`object-contain transition-all duration-200 ${collapsed ? 'h-10 w-10' : 'h-20 w-20'}`}
         />

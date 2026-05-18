@@ -30,9 +30,24 @@ export interface ToolCallResult {
 }
 
 export interface StreamChunk {
-  type: 'text' | 'tool_call' | 'done';
+  type: 'text' | 'tool_call' | 'tool_result' | 'done' | 'error';
   content?: string;
-  toolCall?: Partial<ToolCallResult>;
+  toolCall?: { name: string; args: Record<string, unknown>; id: string };
+  toolResult?: { name: string; result: unknown; id: string };
+}
+
+/** Tool definition with execute function for streaming */
+export interface StreamingToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  execute: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+/** Extended options for streaming LLM calls with tool support */
+export interface LLMStreamOptions extends LLMCallOptions {
+  tools?: StreamingToolDefinition[];
+  maxSteps?: number;
 }
 
 export interface EmbeddingOptions {
@@ -48,7 +63,7 @@ export interface EmbeddingResult {
 
 export interface LLMGateway {
   generateText(options: LLMCallOptions): Promise<LLMResponse>;
-  streamText(options: LLMCallOptions): AsyncIterable<StreamChunk>;
+  streamText(options: LLMStreamOptions): AsyncIterable<StreamChunk>;
   listModels(): Promise<string[]>;
   generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult>;
 }

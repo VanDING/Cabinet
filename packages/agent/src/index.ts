@@ -1,4 +1,4 @@
-export { ToolExecutor, type ToolResult, type ToolDefinition, type ToolCallCallback } from './tool-executor.js';
+export { ToolExecutor, type ToolResult, type ToolDefinition, type ToolDescriptor, type ToolCallCallback } from './tool-executor.js';
 export { SafetyChecker, type SafetyCheck, type SafetyTier } from './safety.js';
 export { classifyError, withRetry, type ErrorCategory, type RetryConfig } from './retry.js';
 export { CheckpointManager, type CheckpointState } from './checkpoint.js';
@@ -43,7 +43,7 @@ export {
   type DispatchResult,
   type PipelineStep,
 } from './dispatcher.js';
-export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback } from './agent-loop.js';
+export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback, type StreamingCallback } from './agent-loop.js';
 export { createCabinetTools, registerCabinetTools, registerSkillTools, registerMCPTools, type ToolDependencies } from './tools/index.js';
 export { SkillRegistry, getSkillRegistry, setSkillRegistry, type SkillMetadata, type SkillEntry } from './skill-registry.js';
 export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown, type ParsedSkill } from './skill-loader.js';

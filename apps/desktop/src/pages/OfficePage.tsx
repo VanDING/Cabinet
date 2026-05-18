@@ -19,6 +19,7 @@ import { Weather } from '../components/office/Weather';
 import { ProgressBoard } from '../components/office/ProgressBoard';
 import { ObservabilityWidget } from '../components/office/ObservabilityWidget';
 import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidget';
+import { TokensWidget } from '../components/office/TokensWidget';
 import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/pin.js';
@@ -41,7 +42,8 @@ type WidgetType =
   | 'deliverables'
   | 'project-list'
   | 'api-switcher'
-  | 'progress-board';
+  | 'progress-board'
+  | 'tokens-usage';
 
 interface WidgetDef {
   type: WidgetType;
@@ -70,6 +72,7 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'project-list', label: 'Project List', w: 4, h: 3, available: true },
   { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: true },
   { type: 'progress-board', label: 'Task Board', w: 6, h: 4, available: true },
+  { type: 'tokens-usage', label: 'Tokens Usage', w: 3, h: 2, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -282,6 +285,8 @@ export function OfficePage() {
         return <ApiSwitcher />;
       case 'progress-board':
         return <ProgressBoard />;
+      case 'tokens-usage':
+        return <TokensWidget />;
       case 'calendar':
         return <Calendar />;
       case 'clock':

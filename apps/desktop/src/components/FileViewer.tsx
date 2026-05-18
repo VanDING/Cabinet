@@ -25,7 +25,7 @@ export function FileViewer({ isDark }: Props) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
-        path: string; name: string; content?: string; encoding?: string; mimeType?: string;
+        path: string; name: string; content?: string; encoding?: string; mimeType?: string; projectId?: string;
       };
       if (!detail.path) return;
 
@@ -48,15 +48,17 @@ export function FileViewer({ isDark }: Props) {
         setVisible(true);
         // Fetch content if not provided
         if (!detail.content) {
-          fetchFileContent(detail.path, newTab);
+          fetchFileContent(detail.path, newTab, detail.projectId);
         }
         return [...prev, newTab];
       });
     };
 
-    const fetchFileContent = async (filePath: string, tab: FileTab) => {
+    const fetchFileContent = async (filePath: string, tab: FileTab, projectId?: string) => {
       try {
-        const res = await apiFetch(`/api/files/read?path=${encodeURIComponent(filePath)}`);
+        let url = `/api/files/read?path=${encodeURIComponent(filePath)}`;
+        if (projectId) url += `&projectId=${encodeURIComponent(projectId)}`;
+        const res = await apiFetch(url);
         if (res.ok) {
           const data = await res.json();
           setTabs((prev) =>
@@ -65,7 +67,7 @@ export function FileViewer({ isDark }: Props) {
             ),
           );
         }
-      } catch { /* content fetch failed */ }
+      } catch (err) { console.error('FileViewer fetch failed:', filePath, err); }
     };
 
     window.addEventListener('open-file-viewer', handler);

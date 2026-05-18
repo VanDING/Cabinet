@@ -24,6 +24,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [expandedJson, setExpandedJson] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'workflows' | 'scheduled'>('workflows');
+  const [scheduledFormOpen, setScheduledFormOpen] = useState(false);
   const { addToast } = useToast();
   const { isDark } = useTheme();
 
@@ -157,14 +158,12 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
             Create and manage automated workflows via conversation.
           </span>
         </div>
-        {activeTab === 'workflows' && (
-          <button
-            onClick={handleNewWorkflow}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
-          >
-            + New Workflow
-          </button>
-        )}
+        <button
+          onClick={() => activeTab === 'workflows' ? handleNewWorkflow() : setScheduledFormOpen(true)}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
+        >
+          {activeTab === 'workflows' ? '+ New Workflow' : '+ New Task'}
+        </button>
       </div>
 
       {/* Tab bar */}
@@ -192,7 +191,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       </div>
 
       {activeTab === 'scheduled' ? (
-        <ScheduledTab isDark={isDark} />
+        <ScheduledTab isDark={isDark} showForm={scheduledFormOpen} onFormClose={() => setScheduledFormOpen(false)} />
       ) : workflows.length === 0 ? (
         <div className="py-24 text-center text-gray-400 dark:text-gray-500">
           <p className="text-lg">No workflows yet</p>

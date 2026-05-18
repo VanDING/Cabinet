@@ -7,6 +7,18 @@ export interface ToolResult {
 export interface ToolDefinition {
   name: string;
   execute(args: Record<string, unknown>): Promise<unknown>;
+  /** Human-readable description of what the tool does (used for AI SDK tool registration). */
+  description?: string;
+  /** JSON Schema for the tool's input parameters. */
+  parameters?: Record<string, unknown>;
+}
+
+/** Full metadata for a tool (for AI SDK conversion). */
+export interface ToolDescriptor {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  execute(args: Record<string, unknown>): Promise<unknown>;
 }
 
 /** Called after each tool execution with timing and result info. */
@@ -53,5 +65,15 @@ export class ToolExecutor {
 
   listTools(): string[] {
     return [...this.tools.keys()];
+  }
+
+  /** Return full tool metadata for AI SDK conversion. */
+  getToolDescriptors(): ToolDescriptor[] {
+    return [...this.tools.entries()].map(([name, def]) => ({
+      name,
+      description: def.description ?? `Execute the ${name} tool`,
+      parameters: def.parameters ?? { type: 'object', properties: {} },
+      execute: def.execute,
+    }));
   }
 }

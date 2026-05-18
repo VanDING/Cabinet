@@ -36,7 +36,7 @@ export const MODEL_CONTEXT_SIZES: Record<string, number> = {
   'gpt-4o': 128_000,
   'gpt-4o-mini': 128_000,
   'gpt-4.1': 1_000_000,
-  'deepseek-v4-pro': 128_000,
+  'deepseek-v4-pro': 1_000_000,
   'deepseek-v3': 128_000,
   'gemini-2.5-pro': 1_000_000,
   'gemini-2.5-flash': 1_000_000,
