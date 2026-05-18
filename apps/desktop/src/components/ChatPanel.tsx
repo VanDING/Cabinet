@@ -42,6 +42,8 @@ interface Props {
   projects?: ProjectInfo[];
   onSwitchProject?: (projectId: string | null) => void;
   onNewProject?: () => void;
+  activeAgent?: string;
+  onAgentChange?: (agent: string) => void;
 }
 
 export function ChatPanel({
@@ -64,6 +66,8 @@ export function ChatPanel({
   projects = [],
   onSwitchProject,
   onNewProject,
+  activeAgent = 'secretary',
+  onAgentChange,
 }: Props) {
   const [input, setInput] = useState('');
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -72,11 +76,13 @@ export function ChatPanel({
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('cabinet-selected-model') ?? 'claude-sonnet-4-6';
+    return localStorage.getItem('cabinet-selected-model') ?? 'anthropic/claude-sonnet-4-6';
   });
   const [delegationTier, setDelegationTier] = useState<string>('T2');
   const [tierMenuOpen, setTierMenuOpen] = useState(false);
+  const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const tierBtnRef = useRef<HTMLButtonElement>(null);
+  const agentBtnRef = useRef<HTMLButtonElement>(null);
 
   const TIERS = [
     { id: 'T0', label: 'Captain Review', desc: 'All writes blocked' },
@@ -130,6 +136,7 @@ export function ChatPanel({
 
   // Close menus on outside click
   useOutsideClick(tierBtnRef, () => setTierMenuOpen(false), tierMenuOpen);
+  useOutsideClick(agentBtnRef, () => setAgentMenuOpen(false), agentMenuOpen);
   useOutsideClick(addBtnRef, () => setAddMenuOpen(false), addMenuOpen);
   useOutsideClick(skillBtnRef, () => setSkillMenuOpen(false), skillMenuOpen);
   useOutsideClick(modelBtnRef, () => setModelMenuOpen(false), modelMenuOpen);
@@ -261,19 +268,48 @@ export function ChatPanel({
     : 'text-gray-500 hover:bg-gray-200';
 
   return (
-    <div className="relative flex justify-center pointer-events-none">
-      <div className={`rounded-2xl shadow-2xl border ${borderClass} ${bgClass} pointer-events-auto max-w-[720px] w-full mx-4 mb-4`}>
+    <div className="absolute bottom-4 left-4 right-4 pointer-events-none z-10 flex justify-center">
+      <div className={`rounded-2xl shadow-2xl border ${borderClass} ${bgClass} pointer-events-auto max-w-[1080px] w-full mb-4`}>
       {/* Tab bar */}
-      <div className={`flex h-8 items-center gap-1 border-b px-2 ${borderClass} ${tabBgClass}`}>
+      <div className={`flex h-8 items-center gap-1 border-b px-2 rounded-t-2xl ${borderClass} ${tabBgClass}`}>
         {/* Fixed @agent label */}
-        <span
-          className={`flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
-            isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'
-          }`}
-          title="Current agent"
-        >
-          @secretary
-        </span>
+        <div className="relative flex-shrink-0">
+          <button
+            ref={agentBtnRef}
+            onClick={() => setAgentMenuOpen(!agentMenuOpen)}
+            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
+              isDark ? 'bg-blue-900/40 text-blue-300 hover:bg-blue-900/60' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            }`}
+            title="Switch agent"
+          >
+            @{activeAgent}
+            <span className="text-[10px]">▼</span>
+          </button>
+          {agentMenuOpen && (
+            <div className={`absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className={`px-3 py-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>Switch Agent</div>
+              {[
+                { id: 'secretary', name: 'Secretary' },
+                { id: 'meeting_chair', name: 'Meeting Chair' },
+                { id: 'workflow_designer', name: 'Workflow Designer' },
+                { id: 'agent_creator', name: 'Agent Creator' },
+                { id: 'reviewer', name: 'Reviewer' },
+              ].map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => { onAgentChange?.(a.id); setAgentMenuOpen(false); }}
+                  className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
+                    activeAgent === a.id
+                      ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600')
+                      : (isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100')
+                  }`}
+                >
+                  @{a.id}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Project selector */}
         <div className="relative flex-shrink-0">
           <button

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { readdir } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { getServerContext } from '../context.js';
 
 export const filesRouter = new Hono();
 
@@ -86,14 +87,28 @@ filesRouter.get('/', async (c) => {
   }
 });
 
-// GET /api/files/read?path=... — read file content
+// GET /api/files/read?path=...&projectId=... — read file content
 filesRouter.get('/read', async (c) => {
   const filePath = c.req.query('path');
   if (!filePath) return c.json({ error: 'path required' }, 400);
 
-  const fullPath = join(PROJECT_ROOT, filePath);
-  // Security: ensure path is within project root
-  if (!fullPath.startsWith(PROJECT_ROOT)) {
+  const projectId = c.req.query('projectId');
+  let root = PROJECT_ROOT;
+
+  // If projectId provided, resolve against that project's rootPath
+  if (projectId) {
+    try {
+      const { db } = getServerContext();
+      const row = db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
+      if (row?.root_path) {
+        root = resolve(row.root_path);
+      }
+    } catch { /* fall back to default PROJECT_ROOT */ }
+  }
+
+  const fullPath = resolve(root, filePath);
+  // Security: ensure path is within resolved root
+  if (!fullPath.startsWith(root)) {
     return c.json({ error: 'Invalid path' }, 403);
   }
 
@@ -105,7 +120,15 @@ filesRouter.get('/read', async (c) => {
 
   try {
     const content = await readFile(fullPath, 'utf-8');
-    return c.json({ path: filePath, content, size: content.length });
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+    const mimeMap: Record<string, string> = {
+      'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+      'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
+      'pdf': 'application/pdf', 'json': 'application/json',
+      'md': 'text/markdown', 'html': 'text/html', 'css': 'text/css', 'js': 'text/javascript',
+      'ts': 'text/typescript', 'tsx': 'text/typescript', 'jsx': 'text/javascript',
+    };
+    return c.json({ path: filePath, content, size: content.length, encoding: 'utf-8', mimeType: mimeMap[ext] ?? 'text/plain' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 404);
   }

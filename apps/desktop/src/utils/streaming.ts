@@ -2,6 +2,7 @@ export interface SSEStreamCallbacks {
   onContent: (content: string, fullContent: string) => void;
   onDone: (fullContent: string, doneEvent?: Record<string, unknown>) => void;
   onError: (error: string) => void;
+  onRouting?: (targetAgent: string) => void;
 }
 
 export async function readSSEStream(
@@ -38,6 +39,10 @@ export async function readSSEStream(
             callbacks.onError(fullContent);
             done = true;
             break;
+          }
+          if (parsed.type === 'routing') {
+            callbacks.onRouting?.(parsed.targetAgent ?? 'secretary');
+            continue;
           }
           if (parsed.type === 'status') {
             // Status update — notify but don't append to content

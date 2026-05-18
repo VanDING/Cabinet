@@ -59,6 +59,7 @@ export function App() {
   const [chatMode, setChatMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeAgent, setActiveAgent] = useState('secretary');
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const navigate = useNavigate();
@@ -89,8 +90,6 @@ export function App() {
   useWebSocket((type, data) => {
     window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
     startTransition(() => {
-      if (type === 'secretary_message') addToast('info', 'New message received');
-      if (type === 'secretary_greeting') addToast('info', data.greeting?.greeting ?? 'Welcome back, Captain');
       if (type === 'decision_created') addToast('info', `Decision "${data.data?.title ?? 'Untitled'}" created`);
       if (type === 'decision_updated') addToast('info', `Decision ${data.data?.status ?? 'updated'}`);
     });
@@ -254,9 +253,9 @@ export function App() {
             sessionId,
             message,
             stream: true,
-            projectId: activeProjectId,
+            ...(activeProjectId ? { projectId: activeProjectId } : {}),
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
-            model,
+            ...(model ? { model } : {}),
           }),
         });
 
@@ -270,7 +269,7 @@ export function App() {
             content: '',
             timestamp: new Date(),
             isStreaming: true,
-            agentName: 'Secretary',
+            agentName: activeAgent,
           });
 
           let meetingData: MeetingData | undefined;
@@ -283,7 +282,7 @@ export function App() {
                 content: fullContent,
                 timestamp: new Date(),
                 isStreaming: true,
-                agentName: 'Secretary',
+                agentName: activeAgent,
               });
             },
             onDone(fullContent, event) {
@@ -295,7 +294,7 @@ export function App() {
                 timestamp: new Date(),
                 isStreaming: false,
                 meeting: meetingData,
-                agentName: (event as any)?.agentName ?? 'Secretary',
+                agentName: (event as any)?.agentName ?? activeAgent,
               });
             },
             onError(error) {
@@ -305,8 +304,11 @@ export function App() {
                 content: `Error: ${error}`,
                 timestamp: new Date(),
                 isStreaming: false,
-                agentName: 'Secretary',
+                agentName: activeAgent,
               });
+            },
+            onRouting(targetAgent) {
+              setActiveAgent(targetAgent);
             },
           });
         } else {
@@ -320,7 +322,7 @@ export function App() {
             content,
             timestamp: new Date(),
             meeting: data.meeting ?? undefined,
-            agentName: data.agentName ?? 'Secretary',
+            agentName: data.agentName ?? activeAgent,
           });
         }
       } catch {
@@ -330,7 +332,7 @@ export function App() {
           role: 'assistant',
           content: 'Sorry, I could not connect to the server.',
           timestamp: new Date(),
-          agentName: 'Secretary',
+          agentName: activeAgent,
         });
       } finally {
         setIsProcessing(false);
@@ -462,6 +464,8 @@ export function App() {
             projects={projects}
             onSwitchProject={(id) => setActiveProjectId(id)}
             onNewProject={handleCreateProject}
+            activeAgent={activeAgent}
+            onAgentChange={setActiveAgent}
           />
         </div>
 

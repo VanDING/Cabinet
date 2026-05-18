@@ -6,29 +6,20 @@ import {
   RulesTab,
   McpTab,
   OthersTab,
-  BudgetTab,
-  DelegationTab,
-  ThemeTab,
 } from './settings/index.js';
 
 type SettingsTab =
   | 'rules'
   | 'skills'
   | 'mcp'
-  | 'api-keys'
-  | 'budget'
-  | 'delegation'
-  | 'theme'
+  | 'api'
   | 'others';
 
 const tabKeys: Record<SettingsTab, string> = {
   'rules': 'rules',
   'skills': 'skills',
   'mcp': 'mcp',
-  'api-keys': 'apiKeys',
-  'budget': 'budget',
-  'delegation': 'delegation',
-  'theme': 'theme',
+  'api': 'apiKeys',
   'others': 'others',
 };
 
@@ -36,10 +27,7 @@ const tabIcons: Record<SettingsTab, string> = {
   'rules': '\u{1F4DC}',
   'skills': '\u{1F9E9}',
   'mcp': '\u{1F527}',
-  'api-keys': '\u{1F511}',
-  'budget': '\u{1F4B0}',
-  'delegation': '\u{1F6E1}',
-  'theme': '\u{1F3A8}',
+  'api': '\u{1F511}',
   'others': '\u{2699}',
 };
 
@@ -79,10 +67,7 @@ export function SettingsPage() {
       {activeTab === 'rules' && <RulesTab />}
       {activeTab === 'skills' && <SkillsTab />}
       {activeTab === 'mcp' && <McpTab />}
-      {activeTab === 'api-keys' && <ApiKeysTab />}
-      {activeTab === 'budget' && <BudgetTab />}
-      {activeTab === 'delegation' && <DelegationTab />}
-      {activeTab === 'theme' && <ThemeTab />}
+      {activeTab === 'api' && <ApiKeysTab />}
       {activeTab === 'others' && <OthersTab />}
     </div>
   );

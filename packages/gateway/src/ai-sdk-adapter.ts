@@ -1,11 +1,14 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText as aiGenerateText, streamText as aiStreamText, embed } from 'ai';
+import { generateText as aiGenerateText, streamText as aiStreamText, embed, tool } from 'ai';
+import { z } from 'zod';
 import type {
   LLMGateway,
   LLMCallOptions,
   LLMResponse,
+  LLMStreamOptions,
   StreamChunk,
+  StreamingToolDefinition,
   ToolDefinition,
   EmbeddingOptions,
   EmbeddingResult,
@@ -13,9 +16,9 @@ import type {
 
 interface ProviderConfig {
   [provider: string]: { apiKey: string; baseUrl?: string } | undefined;
-  anthropic?: { apiKey: string };
-  openai?: { apiKey: string };
-  google?: { apiKey: string };
+  anthropic?: { apiKey: string; baseUrl?: string };
+  openai?: { apiKey: string; baseUrl?: string };
+  google?: { apiKey: string; baseUrl?: string };
 }
 
 // Domestic LLM provider configurations (all OpenAI-compatible)
@@ -72,24 +75,75 @@ export class AISDKAdapter implements LLMGateway {
     };
   }
 
-  async *streamText(options: LLMCallOptions): AsyncIterable<StreamChunk> {
+  async *streamText(options: LLMStreamOptions): AsyncIterable<StreamChunk> {
     const model = await this.resolveModelObj(options.model);
+
+    const messages = options.messages.map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    // Build AI SDK tool definitions from StreamingToolDefinition
+    const aiTools: Record<string, any> = {};
+    if (options.tools && options.tools.length > 0) {
+      for (const td of options.tools) {
+        const zodSchema = jsonSchemaToZod(td.parameters);
+        aiTools[td.name] = tool({
+          description: td.description,
+          parameters: zodSchema,
+          execute: td.execute,
+        }) as any;
+      }
+    }
 
     const result = aiStreamText({
       model,
       system: options.systemPrompt,
-      messages: options.messages.map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      messages: messages as any,
       maxTokens: options.maxTokens ?? 4096,
       temperature: options.temperature ?? 0.7,
+      tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
+      maxSteps: options.maxSteps ?? 10,
     });
 
-    for await (const chunk of result.textStream) {
-      yield { type: 'text', content: chunk };
+    let fullText = '';
+    try {
+      for await (const part of result.fullStream) {
+        if (part.type === 'text-delta') {
+          const td = part as { textDelta: string };
+          fullText += td.textDelta;
+          yield { type: 'text', content: td.textDelta };
+        } else if (part.type === 'tool-call') {
+          const tc = part as { toolCallId: string; toolName: string; args: unknown };
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: tc.toolCallId,
+              name: tc.toolName,
+              args: tc.args as Record<string, unknown>,
+            },
+          };
+        } else if (part.type === 'step-finish') {
+          // Tool execution completed — yield tool_result for each finished step
+          const sf = part as { toolResults?: Array<{ toolCallId: string; toolName: string; result: unknown }> };
+          if (sf.toolResults) {
+            for (const tr of sf.toolResults) {
+              yield {
+                type: 'tool_result',
+                toolResult: {
+                  id: tr.toolCallId,
+                  name: tr.toolName,
+                  result: tr.result,
+                },
+              };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      yield { type: 'error', content: (e as Error).message };
     }
-    yield { type: 'done' };
+    yield { type: 'done', content: fullText };
   }
 
   async listModels(): Promise<string[]> {
@@ -189,7 +243,8 @@ export class AISDKAdapter implements LLMGateway {
       case 'openai': {
         const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
         if (!key) throw new Error('OPENAI_API_KEY not configured');
-        const factory = createOpenAI({ apiKey: key });
+        const baseURL = this.config.openai?.baseUrl;
+        const factory = baseURL ? createOpenAI({ apiKey: key, baseURL }) : createOpenAI({ apiKey: key });
         return factory(name);
       }
       case 'google': {
@@ -208,7 +263,9 @@ export class AISDKAdapter implements LLMGateway {
         const key =
           this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
         if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
-        const factory = createOpenAI({ apiKey: key, baseURL: providerConfig.baseURL });
+        // Use user-configured base_url if provided, otherwise fall back to default
+        const baseURL = this.config[provider]?.baseUrl ?? providerConfig.baseURL;
+        const factory = createOpenAI({ apiKey: key, baseURL });
         return factory(name);
       }
       default:
@@ -254,5 +311,54 @@ export class AISDKAdapter implements LLMGateway {
       description: t.description,
       parameters: t.parameters,
     }));
+  }
+}
+
+/** Convert a basic JSON Schema object to a Zod schema for AI SDK tool definitions. */
+function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodType {
+  const type = schema.type as string | undefined;
+  const description = schema.description as string | undefined;
+
+  switch (type) {
+    case 'string': {
+      if (schema.enum) {
+        const e = z.enum(schema.enum as [string, ...string[]]);
+        return description ? e.describe(description) : e;
+      }
+      const s = z.string();
+      return description ? s.describe(description) : s;
+    }
+    case 'number':
+    case 'integer': {
+      let n = z.number();
+      if (description) n = n.describe(description);
+      return n;
+    }
+    case 'boolean': {
+      let b = z.boolean();
+      if (description) b = b.describe(description);
+      return b;
+    }
+    case 'object': {
+      const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+      const required = new Set(schema.required as string[] ?? []);
+      const shape: Record<string, z.ZodType> = {};
+      for (const [key, propSchema] of Object.entries(properties)) {
+        let zodProp = jsonSchemaToZod(propSchema);
+        if (!required.has(key)) zodProp = zodProp.optional();
+        shape[key] = zodProp;
+      }
+      let obj = Object.keys(shape).length > 0 ? z.object(shape) : z.record(z.any());
+      if (description) obj = obj.describe(description);
+      return obj;
+    }
+    case 'array': {
+      const items = schema.items as Record<string, unknown> | undefined;
+      let arr = z.array(items ? jsonSchemaToZod(items) : z.any());
+      if (description) arr = arr.describe(description);
+      return arr;
+    }
+    default:
+      return z.any();
   }
 }

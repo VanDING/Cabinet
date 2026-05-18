@@ -1530,8 +1530,8 @@ const chatSchema = z.object({
   sessionId: z.string(),
   message: z.string(),
   captainId: z.string().optional(),
-  projectId: z.string().optional(),
-  model: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
   files: z.array(fileSchema).optional(),
   stream: z.boolean().optional(),
   dispatchMode: z.enum(['single', 'pipeline', 'parallel']).optional(),
@@ -1567,7 +1567,7 @@ secretaryRouter.post('/chat', async (c) => {
   const isNewSession = !ctx.sessionManager.get(sessionId);
   if (isNewSession) {
     ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
-    // Proactive greeting for new sessions
+    // Proactive greeting for new sessions — persist as first assistant message
     try {
       const greeter = new GreetingService();
       const pendingDecisions = ctx.db
@@ -1576,7 +1576,6 @@ secretaryRouter.post('/chat', async (c) => {
       const activeWorkflows = ctx.db
         .prepare("SELECT COUNT(*) as count FROM workflows WHERE status = 'active' OR status = 'running'")
         .get() as any;
-      // Read captain preferences for personalized greeting
       const prefs = ctx.entity.getPreferences(captainId);
       const captainName = prefs?.name ?? 'Captain';
       const greeting = greeter.generate({
@@ -1585,6 +1584,12 @@ secretaryRouter.post('/chat', async (c) => {
         activeWorkflows: activeWorkflows?.count ?? 0,
         todayCost: ctx.costTracker?.getDailyCost() ?? 0,
       });
+      // Persist greeting as chat message so it appears in the dialog
+      let greetingText = greeting.greeting;
+      if (greeting.suggestions && greeting.suggestions.length > 0) {
+        greetingText += '\n\n**Suggestions:**\n' + greeting.suggestions.map((s: string) => `- ${s}`).join('\n');
+      }
+      ctx.sessionManager.addMessage(sessionId, 'assistant', greetingText);
       broadcast('secretary_greeting', { sessionId, greeting });
     } catch {
       // Greeting failure is non-fatal
@@ -1592,7 +1597,7 @@ secretaryRouter.post('/chat', async (c) => {
   }
 
   try {
-    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model);
+    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model ?? undefined);
 
     // Augment message with attached file contents (shared by all modes)
     let augmentedMessage = message;
@@ -1702,7 +1707,7 @@ secretaryRouter.post('/chat', async (c) => {
       }
 
       // ── Single mode (default) ──
-      // SSE streaming path
+      // SSE streaming path — true token-level streaming via gateway.streamText()
       if (stream) {
         const sseStream = new ReadableStream({
           async start(controller) {
@@ -1711,41 +1716,42 @@ secretaryRouter.post('/chat', async (c) => {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
             }
             try {
-              capturedMeetingResult = null; // Reset before running
+              capturedMeetingResult = null;
               emit('status', { message: 'Thinking...' });
-              const result = await agent.handleMessage(sessionId, augmentedMessage);
-              const meeting = capturedMeetingResult;
 
-              if (result.routeResult) {
+              const streamResult = await agent.handleMessageStreaming(
+                sessionId,
+                augmentedMessage,
+                {
+                  onChunk(content) {
+                    emit('chunk', { content });
+                  },
+                  onToolCall(name) {
+                    emit('status', { message: `Using tool: ${name}...` });
+                  },
+                  onToolResult(name) {
+                    emit('status', { message: `Tool completed: ${name}` });
+                  },
+                  onDone(fullContent) {
+                    const meeting = capturedMeetingResult;
+                    ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+                    broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+                    emit('done', { sessionId, meeting: meeting ?? undefined, agentName: 'Secretary', content: fullContent });
+                  },
+                  onError(error) {
+                    emit('error', { message: error });
+                  },
+                },
+              );
+
+              // Emit routing info after streaming completes
+              if (streamResult.routeResult) {
                 emit('routing', {
-                  targetAgent: result.routeResult.targetAgent,
-                  confidence: result.routeResult.confidence,
-                  reasoning: result.routeResult.reasoning,
+                  targetAgent: streamResult.routeResult.targetAgent,
+                  confidence: streamResult.routeResult.confidence,
+                  reasoning: streamResult.routeResult.reasoning,
                 });
               }
-              if (result.intent) {
-                emit('intent', { kind: result.intent.kind, detail: result.intent });
-              }
-
-              // Stream response sentence by sentence for visual feedback
-              const sentences = result.response.split(/(?<=[。！？.!?\n])/);
-              for (const sentence of sentences) {
-                if (sentence.trim()) {
-                  emit('chunk', { content: sentence });
-                }
-              }
-
-              if ((result as any).usage) {
-                ctx.costTracker.record(
-                  model ?? 'claude-sonnet-4-6',
-                  (result as any).usage.promptTokens ?? 0,
-                  (result as any).usage.completionTokens ?? 0,
-                );
-              }
-              ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
-              broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
-
-              emit('done', { sessionId, meeting: meeting ?? undefined, agentName: 'Secretary' });
             } catch (e: any) {
               emit('error', { message: e.message ?? 'Unknown error' });
             } finally {
