@@ -57,6 +57,10 @@ export function ProjectExplorer({ projectId, projectName, isDark, onAddFile, act
       toggleExpand(node.path);
       return;
     }
+    // Open in FileViewer
+    window.dispatchEvent(new CustomEvent('open-file-viewer', {
+      detail: { path: node.path, name: node.name },
+    }));
     if (activeSessionId) {
       onAddFile(activeSessionId, {
         id: `f_${Date.now()}`,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../components/Toast';
+import { ScheduledTab } from '../components/ScheduledTab';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 
 interface WorkflowItem {
@@ -22,6 +23,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
   const { id: projectId } = useParams<{ id?: string }>();
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [expandedJson, setExpandedJson] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'workflows' | 'scheduled'>('workflows');
   const { addToast } = useToast();
   const { isDark } = useTheme();
 
@@ -155,15 +157,43 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
             Create and manage automated workflows via conversation.
           </span>
         </div>
+        {activeTab === 'workflows' && (
+          <button
+            onClick={handleNewWorkflow}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
+          >
+            + New Workflow
+          </button>
+        )}
+      </div>
+
+      {/* Tab bar */}
+      <div className={`flex gap-4 mb-6 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <button
-          onClick={handleNewWorkflow}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
+          onClick={() => setActiveTab('workflows')}
+          className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'workflows'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+          }`}
         >
-          + New Workflow
+          Workflows
+        </button>
+        <button
+          onClick={() => setActiveTab('scheduled')}
+          className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'scheduled'
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+              : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+          }`}
+        >
+          Scheduled
         </button>
       </div>
 
-      {workflows.length === 0 ? (
+      {activeTab === 'scheduled' ? (
+        <ScheduledTab isDark={isDark} />
+      ) : workflows.length === 0 ? (
         <div className="py-24 text-center text-gray-400 dark:text-gray-500">
           <p className="text-lg">No workflows yet</p>
           <p className="mt-1 text-sm">

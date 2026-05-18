@@ -14,6 +14,7 @@ import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
 import type { MeetingData } from './components/MeetingCard';
 import { readSSEStream } from './utils/streaming.js';
 import { ProjectExplorer } from './components/ProjectExplorer';
+import { FileViewer } from './components/FileViewer';
 
 interface ProjectInfo {
   id: string;
@@ -89,6 +90,7 @@ export function App() {
     window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
     startTransition(() => {
       if (type === 'secretary_message') addToast('info', 'New message received');
+      if (type === 'secretary_greeting') addToast('info', data.greeting?.greeting ?? 'Welcome back, Captain');
       if (type === 'decision_created') addToast('info', `Decision "${data.data?.title ?? 'Untitled'}" created`);
       if (type === 'decision_updated') addToast('info', `Decision ${data.data?.status ?? 'updated'}`);
     });
@@ -108,6 +110,7 @@ export function App() {
     setSessionActive,
     reopenSession,
     deleteHistorySession,
+    editMessage,
   } = useSessions();
 
   const handleNavigate = useCallback(
@@ -375,10 +378,10 @@ export function App() {
           activeSessionId={activeSession?.id}
         />
 
-        {/* Main content area + ChatPanel column */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Main content area (relative for floating ChatPanel) */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {/* Content: browse pages or chat view */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden pb-4">
             {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
             <div className={chatMode && activeSession ? 'hidden' : 'h-full overflow-auto'}>
               <ErrorBoundary>
@@ -418,13 +421,24 @@ export function App() {
                     isProcessing={isProcessing}
                     attachedFiles={activeSession.attachedFiles}
                     sessionTitle={activeSession.title}
+                    onEditMessage={(msgId, newContent) => {
+                      editMessage(activeSession.id, msgId, newContent);
+                      handleSend(activeSession.id, newContent, activeSession.attachedFiles);
+                    }}
+                    onRegenerate={(msgId) => {
+                      const idx = activeSession.messages.findIndex(m => m.id === msgId);
+                      if (idx > 0) {
+                        const prevUser = activeSession.messages.slice(0, idx).reverse().find(m => m.role === 'user');
+                        if (prevUser) handleSend(activeSession.id, prevUser.content, activeSession.attachedFiles);
+                      }
+                    }}
                   />
                 </Suspense>
               </ErrorBoundary>
             )}
           </div>
 
-          {/* Persistent bottom ChatPanel — only in right content area */}
+          {/* Floating ChatPanel at the bottom of main content area */}
           <ChatPanel
             sessions={sessions}
             activeSession={activeSession}
@@ -450,6 +464,9 @@ export function App() {
             onNewProject={handleCreateProject}
           />
         </div>
+
+        {/* File Viewer — third column, right side */}
+        <FileViewer isDark={isDark} />
       </div>
 
       {/* Mobile bottom nav */}

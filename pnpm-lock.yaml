@@ -100,6 +100,9 @@ importers:
         specifier: ^7.0.0
         version: 7.15.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
     devDependencies:
+      '@cabinet/server':
+        specifier: workspace:*
+        version: link:../server
       '@tauri-apps/cli':
         specifier: ^2.11.1
         version: 2.11.1
@@ -493,6 +496,9 @@ importers:
       '@cabinet/events':
         specifier: workspace:*
         version: link:../events
+      '@cabinet/storage':
+        specifier: workspace:*
+        version: link:../storage
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types

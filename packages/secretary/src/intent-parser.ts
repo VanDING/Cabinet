@@ -53,6 +53,13 @@ export class IntentParser {
     this.validAgentTypes = types;
   }
 
+  /** Inject captain preferences for personalized routing. */
+  setCaptainPreferences(prefsContext: string): void {
+    this.captainPrefsContext = prefsContext;
+  }
+
+  private captainPrefsContext = '';
+
   // ── Keyword Parsing (fast path, no LLM) ───────────────────
 
   parse(message: string, conversationContext?: ConversationContext): ParsedIntent {
@@ -204,11 +211,15 @@ Message: "${message}"`;
       ].join('\n');
 
     try {
+      const prefsLine = this.captainPrefsContext
+        ? `\nCaptain preferences (use to personalize routing):\n${this.captainPrefsContext}\n`
+        : '';
+
       const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
 
 Available agents:
 ${agentList}
-
+${prefsLine}
 Routing guidelines:
 - secretary: General questions, casual conversation, simple information retrieval
 - decision_analyst: The user is facing a choice, evaluating options, or making a decision

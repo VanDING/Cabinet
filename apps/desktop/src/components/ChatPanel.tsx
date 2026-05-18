@@ -261,7 +261,8 @@ export function ChatPanel({
     : 'text-gray-500 hover:bg-gray-200';
 
   return (
-    <div className={`border-t ${borderClass} ${bgClass} flex-shrink-0`}>
+    <div className="relative flex justify-center pointer-events-none">
+      <div className={`rounded-2xl shadow-2xl border ${borderClass} ${bgClass} pointer-events-auto max-w-[720px] w-full mx-4 mb-4`}>
       {/* Tab bar */}
       <div className={`flex h-8 items-center gap-1 border-b px-2 ${borderClass} ${tabBgClass}`}>
         {/* Fixed @agent label */}
@@ -621,6 +622,7 @@ export function ChatPanel({
         onClose={() => setFileSearchOpen(false)}
         onSelect={handleFileSelected}
       />
+      </div>
     </div>
   );
 }
