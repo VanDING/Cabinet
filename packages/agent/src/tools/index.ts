@@ -3,8 +3,14 @@ import type { EventBus } from '@cabinet/events';
 import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
 import { MessageType, type DecisionStore, type Decision } from '@cabinet/types';
 import { getSkillRegistry } from '../skill-registry.js';
+import { createFileTools, type FileToolDeps } from './file-tools.js';
+import { createWebTools, type WebToolDeps } from './web-tools.js';
+import { createShellTools, type ShellToolDeps } from './shell-tools.js';
+import { createSchedulerTools, type SchedulerToolDeps } from './scheduler-tools.js';
+import { createKnowledgeTools, type KnowledgeToolDeps } from './knowledge-tools.js';
+import { createEvaluationTools, type EvaluationToolDeps } from './evaluation-tools.js';
 
-export interface ToolDependencies {
+export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDeps, SchedulerToolDeps, KnowledgeToolDeps, EvaluationToolDeps {
   // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
@@ -513,10 +519,40 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
         return {
           status: 'operational',
           timestamp: new Date().toISOString(),
-          toolsAvailable: 32,
+          toolsAvailable: 49,
         };
       },
     },
+
+    // ═══════════════════════════════════════════════════════════
+    // File System Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createFileTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Web / HTTP Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createWebTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Shell Execution Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createShellTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Scheduler Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createSchedulerTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Knowledge / RAG Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createKnowledgeTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Evaluation Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createEvaluationTools(deps),
   ];
 }
 

@@ -18,6 +18,8 @@ import { Clock } from '../components/office/Clock';
 import { Weather } from '../components/office/Weather';
 import { ProgressBoard } from '../components/office/ProgressBoard';
 import { ObservabilityWidget } from '../components/office/ObservabilityWidget';
+import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidget';
+import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/pin.js';
 
@@ -263,7 +265,7 @@ export function OfficePage() {
       case 'event-timeline':
         return <EventTimeline />;
       case 'project-switcher':
-        return <PlaceholderWidget title="Project Switcher" />;
+        return <ProjectSwitcherWidget />;
       case 'cost-chart':
         return <CostChart />;
       case 'system-health':
