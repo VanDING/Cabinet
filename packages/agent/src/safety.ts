@@ -25,6 +25,13 @@ const READ_ONLY_TOOLS = new Set([
   'search_memory',
   'list_workflows',
   'list_agents',
+  'read_file',
+  'list_directory',
+  'glob',
+  'grep',
+  'web_fetch',
+  'list_scheduled_tasks',
+  'search_documents',
 ]);
 
 /** Light write tools — reversible, no cost, no destruction. */
@@ -44,6 +51,13 @@ const MODERATE_TOOLS = new Set([
   'create_workflow',
   'update_workflow',
   'create_employee',
+  'write_file',
+  'edit_file',
+  'http_request',
+  'schedule_task',
+  'cancel_scheduled_task',
+  'index_document',
+  'evaluate',
 ]);
 
 /** Heavy tools — cost money (LLM calls). */
@@ -57,6 +71,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   'modify_config',
   'approve_decision',
   'reject_decision',
+  'clear_index',
 ]);
 
 // ── Tier definitions ─────────────────────────────────────────
@@ -93,6 +108,27 @@ const TIER_LABELS: Record<DelegationTier, string> = {
   [DelegationTier.FullAutonomy]: 'T3 — Full Autonomy',
 };
 
+// ── Prefix-based tool classification for MCP / Skill tools ──
+
+type ToolCategory = 'read_only' | 'light_write' | 'moderate' | 'cost' | 'destructive';
+
+function resolveEffectiveCategory(toolName: string): ToolCategory {
+  if (READ_ONLY_TOOLS.has(toolName)) return 'read_only';
+  if (LIGHT_WRITE_TOOLS.has(toolName)) return 'light_write';
+  if (MODERATE_TOOLS.has(toolName)) return 'moderate';
+  if (COST_TOOLS.has(toolName)) return 'cost';
+  if (DESTRUCTIVE_TOOLS.has(toolName)) return 'destructive';
+
+  // MCP tools run external processes — treat as moderate (blocked at T0)
+  if (toolName.startsWith('mcp__')) return 'moderate';
+
+  // Skill tools can trigger arbitrary actions — treat as moderate
+  if (toolName.startsWith('use_skill__') || toolName === 'use_skill') return 'moderate';
+
+  // Unknown tools — conservative: treat as light_write (blocked at T0 only)
+  return 'light_write';
+}
+
 // ── SafetyChecker ────────────────────────────────────────────
 
 export class SafetyChecker {
@@ -120,9 +156,12 @@ export class SafetyChecker {
       return { tier: 'cache', allowed: true };
     }
 
+    // Resolve the effective category for this tool
+    const effectiveCategory = resolveEffectiveCategory(toolName);
+
     // Check if blocked by current delegation tier
     const blocked = TIER_BLOCKLISTS[this.tier];
-    if (blocked.has(toolName)) {
+    if (effectiveCategory !== 'read_only' && blocked.has(toolName)) {
       return {
         tier: 'delegation_block',
         allowed: false,
@@ -142,6 +181,27 @@ export class SafetyChecker {
       };
     }
 
+    // For MCP/Skill tools not in any explicit set, apply prefix-based gating
+    if (effectiveCategory === 'moderate') {
+      // MODERATE tools are blocked at T0 (CaptainReview)
+      if (this.tier === DelegationTier.CaptainReview) {
+        return {
+          tier: 'delegation_block',
+          allowed: false,
+          blockedByTier: this.tier,
+          reason: `Tool '${toolName}' (MCP or Skill) requires Captain confirmation at ${TIER_LABELS[this.tier]}. External tools and skills are blocked in Captain Review mode.`,
+        };
+      }
+    } else if (effectiveCategory === 'destructive') {
+      // DESTRUCTIVE tools blocked at T0, T1, T2
+      return {
+        tier: 'delegation_block',
+        allowed: false,
+        blockedByTier: this.tier,
+        reason: `Tool '${toolName}' requires Captain confirmation at ${TIER_LABELS[this.tier]}. Destructive operations are blocked.`,
+      };
+    }
+
     // Allowed at current tier
     return { tier: 'auto', allowed: true };
   }
@@ -149,6 +209,10 @@ export class SafetyChecker {
   /** Quick check: would this tool be blocked at the current tier? */
   isBlocked(toolName: string): boolean {
     if (READ_ONLY_TOOLS.has(toolName)) return false;
+    const category = resolveEffectiveCategory(toolName);
+    if (category === 'read_only') return false;
+    if (category === 'moderate' && this.tier === DelegationTier.CaptainReview) return true;
+    if (category === 'destructive') return true;
     return TIER_BLOCKLISTS[this.tier].has(toolName);
   }
 

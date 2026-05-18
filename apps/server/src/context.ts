@@ -13,6 +13,10 @@ import {
   runMigration001,
   runMigration002,
   runMigration003,
+  runMigration004,
+  runMigration005,
+  runMigration006,
+  runMigration007,
   DecisionRepository,
   ProjectRepository,
   EventLogRepository,
@@ -45,6 +49,7 @@ import type { LLMGateway } from '@cabinet/gateway';
 import { DelegationTier, DEFAULT_DELEGATION_TIER, MessageType } from '@cabinet/types';
 import { AgentRoleRegistry, CURATOR_ROLE, SkillRegistry, importSkillFromMarkdown } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
+import { TaskScheduler } from './scheduler.js';
 import {
   ObservabilityCollector,
   PreferenceLearner,
@@ -84,6 +89,8 @@ export interface ServerContext {
   // Skill registry (shared — loaded from DB on startup)
   skillRegistry: import('@cabinet/agent').SkillRegistry;
   mcpManager: import('./mcp/mcp-manager.js').MCPManager;
+  // Scheduler
+  taskScheduler: TaskScheduler;
   // Feedback loop
   observability: ObservabilityCollector;
   modelRouter: ModelRouter;
@@ -126,6 +133,10 @@ export function getServerContext(): ServerContext {
     runMigration001(db);
     runMigration002(db);
     runMigration003(db);
+    runMigration004(db);
+    runMigration005(db);
+    runMigration006(db);
+    runMigration007(db);
     logger.info('SQLite database initialized', { path: dbPath });
   } catch (e) {
     logger.error('Failed to initialize SQLite', { error: String(e) });
@@ -134,6 +145,10 @@ export function getServerContext(): ServerContext {
       runMigration001(db);
       runMigration002(db);
       runMigration003(db);
+      runMigration004(db);
+      runMigration005(db);
+      runMigration006(db);
+      runMigration007(db);
       logger.warn('Falling back to in-memory database');
     } catch (e2) {
       logger.error('SQLite completely unavailable — running without persistence', {
@@ -334,12 +349,27 @@ export function getServerContext(): ServerContext {
     pm: ProjectMemory,
     em: EntityMemory,
   ): Promise<void> {
+    // Build captain preferences context for personalized consolidation
+    let prefsContext = '';
+    try {
+      const captainPrefs = em.getPreferences('captain-1');
+      if (captainPrefs?.preferences) {
+        const p = captainPrefs.preferences;
+        const parts: string[] = [];
+        if (p.riskTolerance) parts.push(`risk tolerance: ${p.riskTolerance}`);
+        if (p.costSensitivity) parts.push(`cost sensitivity: ${p.costSensitivity}`);
+        if (p.timeUrgency) parts.push(`time urgency: ${p.timeUrgency}`);
+        if (p.preferredDecisionStyle) parts.push(`decision style: ${p.preferredDecisionStyle}`);
+        if (parts.length > 0) prefsContext = `\nCaptain preferences: ${parts.join(', ')}.\n`;
+      }
+    } catch { /* ok without prefs */ }
+
     const prompt = [
       CURATOR_ROLE.systemPrompt,
       '',
       '---',
       '',
-      'Analyze this session transcript and extract structured knowledge.',
+      `Analyze this session transcript and extract structured knowledge.${prefsContext}`,
       '',
       'Session transcript:',
       transcript.slice(0, 8000), // prevent context overflow
@@ -469,7 +499,7 @@ export function getServerContext(): ServerContext {
   consolidationTimer.unref();
   logger.info('Basic memory consolidation scheduled (30min)');
 
-  // Observability daily snapshot persistence (every 6 hours)
+  // Observability session persistence (every 30 minutes)
   const observabilityTimer = setInterval(
     () => {
       try {
@@ -481,14 +511,46 @@ export function getServerContext(): ServerContext {
           JSON.stringify(summary),
           JSON.stringify({ date: now.toISOString().slice(0, 10), type: 'daily' }),
         );
+
+        // Persist recent session metrics to DB
+        const { sessions } = observability.export();
+        const insertStmt = db.prepare(
+          `INSERT OR REPLACE INTO session_metrics
+           (session_id, project_id, role, model, total_steps, total_tokens, total_cost,
+            tool_calls_total, tool_calls_failed, tool_calls_blocked, duration_ms, success, error_type, started_at, ended_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        );
+        for (const s of sessions) {
+          const totalTokens = (s.totalTokens?.prompt ?? 0) + (s.totalTokens?.completion ?? 0);
+          const durationMs = s.startTime && s.endTime
+            ? new Date(s.endTime).getTime() - new Date(s.startTime).getTime()
+            : 0;
+          const success = s.errors
+            ? (s.errors.fatal === 0 ? 1 : 0)
+            : 1;
+          const errorType = s.errors && s.errors.fatal > 0 ? 'fatal'
+            : s.errors && s.errors.recoverable > 0 ? 'recoverable'
+            : null;
+          insertStmt.run(
+            s.sessionId, s.projectId ?? null, s.role ?? null, s.model ?? null,
+            s.totalSteps, totalTokens, s.totalCost,
+            s.toolCalls?.total ?? 0, s.toolCalls?.failed ?? 0, s.toolCalls?.blocked ?? 0,
+            durationMs, success, errorType,
+            s.startTime, s.endTime ?? now.toISOString(),
+          );
+        }
+        // Cleanup sessions older than 30 days
+        db.prepare(
+          "DELETE FROM session_metrics WHERE started_at < datetime('now', '-30 days')",
+        ).run();
       } catch (e: any) {
-        logger.warn('Observability snapshot failed', { error: e.message });
+        logger.warn('Observability persistence failed', { error: e.message });
       }
     },
-    6 * 60 * 60 * 1000,
+    30 * 60 * 1000,
   );
   observabilityTimer.unref();
-  logger.info('Observability persistence scheduled (6h)');
+  logger.info('Observability persistence scheduled (30 min)');
 
   // Curator self-nudge timer: runs every 4 hours when gateway is available
   const curatorNudgeTimer = setInterval(
@@ -864,11 +926,34 @@ export function getServerContext(): ServerContext {
       } catch (e: any) {
         logger.warn('Auto-adjustment health check failed', { error: e.message });
       }
+
+      // Budget enforcement check
+      try {
+        const budget = budgetGuard.canProceed();
+        if (!budget.allowed && eventBus) {
+          const todayCost = costTracker.getDailyCost();
+          await eventBus.publish({
+            messageId: `budget_alert_${Date.now()}`,
+            correlationId: `budget_alert_${Date.now()}`,
+            causationId: null,
+            timestamp: new Date(),
+            messageType: MessageType.BudgetAlert,
+            payload: {
+              message: budget.reason ?? 'Budget limit exceeded',
+              currentCost: todayCost,
+              reason: budget.reason ?? 'Budget exceeded',
+            },
+          });
+          logger.warn('BudgetAlert published', { todayCost, reason: budget.reason });
+        }
+      } catch (e: any) {
+        logger.warn('Budget check failed', { error: e.message });
+      }
     },
     60 * 60 * 1000,
   );
   autoAdjustTimer.unref();
-  logger.info('Auto-adjustment health check scheduled (1h)');
+  logger.info('Auto-adjustment health check + budget enforcement scheduled (1h)');
 
   const shutdown = () => {
     logger.info('Shutting down server context...');
@@ -876,6 +961,7 @@ export function getServerContext(): ServerContext {
     clearInterval(observabilityTimer);
     clearInterval(curatorNudgeTimer);
     clearInterval(autoAdjustTimer);
+    taskScheduler.stop();
     try {
       backupManager?.stopAutoBackup();
     } catch {
@@ -888,6 +974,31 @@ export function getServerContext(): ServerContext {
     }
     logger.info('Server context shut down');
   };
+
+  // Task scheduler
+  const taskScheduler = new TaskScheduler(db, logger);
+  taskScheduler.start();
+
+  // Wire TaskExecutor so scheduled tasks actually execute
+  taskScheduler.setExecutor(async (task) => {
+    if (!gateway) {
+      logger.warn('Scheduled task skipped — no LLM gateway available', { taskId: task.id, name: task.name });
+      return;
+    }
+    try {
+      logger.info('Executing scheduled task', { taskId: task.id, name: task.name });
+      const result = await gateway.generateText({
+        model: 'claude-haiku-4-5',
+        systemPrompt: 'You are a proactive Cabinet assistant executing a scheduled task. Be concise and actionable.',
+        messages: [{ role: 'user', content: task.prompt }],
+      });
+      logger.info('Scheduled task completed', { taskId: task.id, name: task.name, preview: result.content.slice(0, 200) });
+      // Store result in short-term memory for retrieval
+      shortTerm.set(`system`, `task_result:${task.id}`, { name: task.name, prompt: task.prompt, result: result.content, executedAt: new Date().toISOString() }, 86400000);
+    } catch (err) {
+      logger.error('Scheduled task failed', { taskId: task.id, name: task.name, error: (err as Error).message });
+    }
+  });
 
   ctx = {
     db,
@@ -908,6 +1019,7 @@ export function getServerContext(): ServerContext {
     agentRegistry,
     skillRegistry,
     mcpManager,
+    taskScheduler,
     observability,
     modelRouter,
     autoAdjuster,

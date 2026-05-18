@@ -13,7 +13,8 @@
   "dependencies": {
     "@cabinet/types": "workspace:*",
     "@cabinet/events": "workspace:*",
-    "@cabinet/decision": "workspace:*"
+    "@cabinet/decision": "workspace:*",
+    "@cabinet/storage": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

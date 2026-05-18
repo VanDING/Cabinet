@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { KnowledgeTab } from '../components/KnowledgeTab';
+import { EvaluationTab } from '../components/EvaluationTab';
+import { useTheme } from '../hooks/useTheme';
 
 interface MemoryEntry {
   id: string;
@@ -35,6 +38,8 @@ export function MemoryPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
   const [consolidateResult, setConsolidateResult] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation'>('memory');
+  const { isDark } = useTheme();
 
   const fetchMemories = useCallback(async () => {
     setLoading(true);
@@ -96,6 +101,26 @@ export function MemoryPage() {
         <span className="text-sm text-gray-500 dark:text-gray-400">Browse, search, and manage system memory</span>
       </div>
 
+      {/* Tab bar */}
+      <div className={`flex gap-4 mb-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        {(['memory', 'knowledge', 'evaluation'] as const).map((tab) => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`pb-2 text-sm font-medium border-b-2 transition-colors capitalize ${
+              activeTab === tab
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+            }`}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'knowledge' ? (
+        <KnowledgeTab isDark={isDark} />
+      ) : activeTab === 'evaluation' ? (
+        <EvaluationTab isDark={isDark} />
+      ) : (
+      <>
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {['all', 'short_term', 'long_term', 'entity', 'project'].map((layer) => (
@@ -200,6 +225,8 @@ export function MemoryPage() {
         )}
         {loading && <div className="py-8 text-center text-gray-400">Loading memories...</div>}
       </div>
+      </>
+      )}
     </div>
   );
 }

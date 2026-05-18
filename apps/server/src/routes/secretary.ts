@@ -19,8 +19,182 @@ import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
+import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, realpath } from 'node:fs/promises';
+import { join, relative, dirname, basename, extname, resolve } from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 export const secretaryRouter = new Hono();
+
+// ── File tool helpers ──
+
+const MIME_MAP: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4', '.webm': 'video/webm',
+  '.zip': 'application/zip', '.tar': 'application/x-tar', '.gz': 'application/gzip',
+};
+
+const TEXT_EXTENSIONS = new Set([
+  '.txt', '.md', '.mdx', '.json', '.xml', '.yml', '.yaml', '.toml', '.ini', '.cfg',
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css', '.scss', '.less',
+  '.html', '.htm', '.vue', '.svelte',
+  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp',
+  '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
+  '.sql', '.graphql', '.proto',
+  '.env', '.gitignore', '.dockerignore', '.editorconfig',
+  '.csv', '.tsv', '.log',
+  '.lock', '.toml',
+]);
+
+function isTextFile(ext: string): boolean {
+  if (TEXT_EXTENSIONS.has(ext)) return true;
+  if (!ext || ext.length > 10) return true; // no extension = probably text
+  return false;
+}
+
+function getProjectRoot(): string {
+  return join(process.cwd(), '..', '..');
+}
+
+async function resolveSafePath(filePath: string): Promise<string> {
+  const root = resolve(getProjectRoot());
+  const fullPath = resolve(root, filePath);
+  if (!fullPath.startsWith(root)) throw new Error('Path traversal denied');
+  try {
+    const real = await realpath(fullPath);
+    if (!real.startsWith(root)) throw new Error('Path traversal denied: symlink escapes project root');
+    return real;
+  } catch {
+    // If file doesn't exist yet (e.g. write_file), allow the unresolved path
+    if (!fullPath.startsWith(root)) throw new Error('Path traversal denied');
+    return fullPath;
+  }
+}
+
+function globToRegex(pattern: string): RegExp {
+  let re = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  if (pattern.startsWith('*')) re = '.*' + re.slice(2);
+  return new RegExp('^' + re + '$');
+}
+
+function safeRegex(pattern: string): RegExp {
+  try {
+    return new RegExp(pattern, 'i');
+  } catch {
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(escaped, 'i');
+  }
+}
+
+function isInternalIP(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return true;
+  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  if (hostname === '[::1]' || hostname === '[fe80::]' || hostname.startsWith('[fc') || hostname.startsWith('[fd')) return true;
+  return false;
+}
+
+function extractTitle(html: string, contentType: string): string | undefined {
+  if (!contentType.includes('html')) return undefined;
+  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return match?.[1]?.trim().slice(0, 200);
+}
+
+const SAFE_ENV_KEYS = new Set([
+  'PATH', 'HOME', 'USER', 'USERNAME', 'TEMP', 'TMP', 'TMPDIR',
+  'SHELL', 'LANG', 'LC_ALL', 'TERM', 'COLORTERM',
+  'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT',
+  'NODE_ENV', 'NODE_PATH',
+  'DISPLAY', 'WAYLAND_DISPLAY',
+  'SSH_AUTH_SOCK',
+  'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
+  'PNPM_HOME', 'npm_config_cache',
+]);
+
+function buildSafeEnv(): Record<string, string> {
+  const safe: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (SAFE_ENV_KEYS.has(key) && value !== undefined) {
+      safe[key] = value;
+    }
+  }
+  if (!safe.PATH) safe.PATH = '/usr/local/bin:/usr/bin:/bin';
+  if (!safe.HOME) safe.HOME = process.cwd();
+  return safe;
+}
+
+function detectDangerousCommand(command: string): string | null {
+  const lower = command.toLowerCase();
+  if (/\brm\s+-rf\s+\//.test(lower)) return 'rm -rf /';
+  if (/\bdd\s+if=/.test(lower)) return 'dd';
+  if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
+  if (/>\s*\/dev\/sda/.test(lower)) return 'raw device write';
+  if (/\bmkfs\./.test(lower)) return 'mkfs';
+  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow')) return 'sensitive system file';
+  if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
+  return null;
+}
+
+// ── Chunking helpers ──
+
+interface ChunkResult {
+  content: string;
+  startChar: number;
+  endChar: number;
+}
+
+function chunkText(text: string, chunkSize = 800, overlap = 100): ChunkResult[] {
+  const chunks: ChunkResult[] = [];
+  const paragraphs = text.split(/\n\s*\n/);
+  let current = '';
+  let startChar = 0;
+  let currentStart = 0;
+
+  for (const para of paragraphs) {
+    const trimmed = para.trim();
+    if (!trimmed) continue;
+
+    if (current.length + trimmed.length > chunkSize && current.length > 0) {
+      chunks.push({ content: current.trim(), startChar: currentStart, endChar: startChar });
+      // Overlap: keep last `overlap` chars of previous chunk
+      const overlapText = current.length > overlap ? current.slice(-overlap) : current;
+      current = overlapText + '\n\n' + trimmed;
+      currentStart = startChar - overlapText.length;
+    } else {
+      current = current ? current + '\n\n' + trimmed : trimmed;
+      if (!current || current.length === trimmed.length) currentStart = startChar;
+    }
+    startChar += para.length + 2; // +2 for the double newline
+  }
+
+  if (current.trim()) {
+    chunks.push({ content: current.trim(), startChar: currentStart, endChar: text.length });
+  }
+
+  return chunks;
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += (a[i] ?? 0) * (b[i] ?? 0);
+    normA += (a[i] ?? 0) ** 2;
+    normB += (b[i] ?? 0) ** 2;
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom === 0 ? 0 : dot / denom;
+}
 
 // ── Build ToolDependencies from ServerContext ──
 function buildToolDependencies(ctx: ServerContext): ToolDependencies {
@@ -261,6 +435,356 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         constraints: JSON.parse(pctx?.constraints ?? '{}'),
         recentDecisions: decisions,
       };
+    },
+
+    // ── File system callbacks ──
+    readFile: async (filePath, offset, limit) => {
+      const safePath = await resolveSafePath(filePath);
+      const ext = extname(filePath).toLowerCase();
+      const mimeType = MIME_MAP[ext] ?? null;
+      const isText = isTextFile(ext);
+
+      if (isText) {
+        const content = await readFile(safePath, 'utf-8');
+        const size = Buffer.byteLength(content, 'utf-8');
+        if (offset !== undefined || limit !== undefined) {
+          const lines = content.split('\n');
+          const start = offset ?? 0;
+          const end = limit ? start + limit : lines.length;
+          return { content: lines.slice(start, end).join('\n'), size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
+        }
+        return { content, size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
+      }
+
+      // Binary file — read as base64
+      const buf = await readFile(safePath);
+      if (buf.length > 5 * 1024 * 1024) throw new Error('Binary file exceeds 5MB limit');
+      const base64 = buf.toString('base64');
+      return { content: base64, size: buf.length, encoding: 'base64' as const, mimeType: mimeType ?? 'application/octet-stream' };
+    },
+
+    writeFile: async (filePath, content) => {
+      const safePath = await resolveSafePath(filePath);
+      if (content.length > 5 * 1024 * 1024) throw new Error('Content exceeds 5MB limit');
+      await mkdir(dirname(safePath), { recursive: true });
+      await writeFile(safePath, content, 'utf-8');
+    },
+
+    editFile: async (filePath, oldString, newString) => {
+      const safePath = await resolveSafePath(filePath);
+      const content = await readFile(safePath, 'utf-8');
+      if (!content.includes(oldString)) return { changed: false };
+      await writeFile(safePath, content.replace(oldString, newString), 'utf-8');
+      return { changed: true };
+    },
+
+    listDirectory: async (dirPath) => {
+      const safePath = await resolveSafePath(dirPath);
+      const root = getProjectRoot();
+      const entries = await readdir(safePath, { withFileTypes: true });
+      return entries
+        .filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules')
+        .map((e) => ({
+          name: e.name,
+          path: relative(root, join(safePath, e.name)).replace(/\\/g, '/'),
+          isDir: e.isDirectory(),
+        }));
+    },
+
+    searchFiles: async (pattern, dir) => {
+      const root = resolve(getProjectRoot());
+      const searchRoot = dir ? await resolveSafePath(dir) : root;
+      const results: string[] = [];
+      const regex = globToRegex(pattern);
+      async function walk(currentDir: string, depth: number) {
+        if (depth > 5) return;
+        let entries;
+        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        for (const entry of entries) {
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          const entryPath = join(currentDir, entry.name);
+          if (entry.isDirectory()) {
+            await walk(entryPath, depth + 1);
+          } else if (regex.test(relative(root, entryPath).replace(/\\/g, '/'))) {
+            results.push(relative(root, entryPath).replace(/\\/g, '/'));
+          }
+        }
+      }
+      await walk(searchRoot, 0);
+      return results.slice(0, 200);
+    },
+
+    searchContent: async (pattern, dir, include) => {
+      const root = resolve(getProjectRoot());
+      const searchRoot = dir ? await resolveSafePath(dir) : root;
+      const results: { file: string; line: number; content: string }[] = [];
+      const regex = safeRegex(pattern);
+      const includeRegex = include ? globToRegex(include) : null;
+      async function walk(currentDir: string, depth: number) {
+        if (depth > 5 || results.length >= 100) return;
+        let entries;
+        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        for (const entry of entries) {
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          const entryPath = join(currentDir, entry.name);
+          if (entry.isDirectory()) {
+            await walk(entryPath, depth + 1);
+          } else {
+            const relPath = relative(root, entryPath).replace(/\\/g, '/');
+            if (includeRegex && !includeRegex.test(relPath)) continue;
+            try {
+              const content = await readFile(entryPath, 'utf-8');
+              const lines = content.split('\n');
+              for (let i = 0; i < lines.length && results.length < 100; i++) {
+                const line = lines[i];
+                if (line !== undefined && regex.test(line)) {
+                  results.push({ file: relPath, line: i + 1, content: line.slice(0, 200) });
+                }
+              }
+            } catch { /* skip unreadable files */ }
+          }
+        }
+      }
+      await walk(searchRoot, 0);
+      return results;
+    },
+
+    deleteFile: async (filePath) => {
+      const safePath = await resolveSafePath(filePath);
+      const s = await stat(safePath);
+      if (s.isDirectory()) {
+        await rmdir(safePath);
+      } else {
+        await unlink(safePath);
+      }
+    },
+
+    // ── Web / HTTP callbacks ──
+    webFetch: async (url) => {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Cabinet/2.0 WebFetcher' },
+          redirect: 'follow',
+        });
+        const contentType = res.headers.get('content-type') ?? 'text/plain';
+        const text = await res.text();
+        const truncated = text.slice(0, 2 * 1024 * 1024);
+        const title = extractTitle(truncated, contentType);
+        return { content: truncated, contentType, status: res.status, title };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
+    httpRequest: async (method, url, headers, body) => {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
+      if (body && body.length > 1 * 1024 * 1024) throw new Error('Request body exceeds 1MB limit');
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      try {
+        const res = await fetch(url, {
+          method,
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Cabinet/2.0', ...headers },
+          body: method !== 'GET' && method !== 'HEAD' ? body : undefined,
+          redirect: 'follow',
+        });
+        const resHeaders: Record<string, string> = {};
+        res.headers.forEach((v, k) => { resHeaders[k] = v; });
+        const resBody = await res.text();
+        return { status: res.status, headers: resHeaders, body: resBody.slice(0, 5 * 1024 * 1024) };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
+    // ── Shell execution callback ──
+    execCommand: async (command, cwd, timeout) => {
+      const blocked = detectDangerousCommand(command);
+      if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
+      const workDir = cwd ? await resolveSafePath(cwd) : getProjectRoot();
+
+      const { stdout, stderr } = await execAsync(command, {
+        cwd: workDir,
+        timeout: timeout ?? 60000,
+        maxBuffer: 10 * 1024 * 1024,
+        env: buildSafeEnv(),
+        shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
+      });
+      return { stdout, stderr, exitCode: 0 };
+    },
+
+    // ── Knowledge / RAG callbacks ──
+    indexDocument: async (filePath, projectId) => {
+      const safePath = await resolveSafePath(filePath);
+      const content = await readFile(safePath, 'utf-8');
+      if (content.length === 0) throw new Error('File is empty');
+
+      // Clear previous chunks for this file
+      ctx.db.prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?').run(projectId, filePath);
+
+      // Chunk the content
+      const chunks = chunkText(content, 800, 100);
+      if (chunks.length === 0) throw new Error('No chunks produced');
+
+      // Generate embeddings for each chunk
+      let embeddings: number[][] = [];
+      if (ctx.gateway) {
+        try {
+          const result = await ctx.gateway.generateEmbeddings({ texts: chunks.map((c) => c.content) });
+          embeddings = result.embeddings;
+        } catch {
+          // Store without embeddings — text search fallback
+        }
+      }
+
+      // Store chunks
+      const insertStmt = ctx.db.prepare(
+        `INSERT INTO document_chunks (id, project_id, source_path, chunk_index, content, embedding, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]!;
+        const id = `chunk_${Date.now()}_${i}`;
+        insertStmt.run(
+          id, projectId, filePath, i, chunk.content,
+          embeddings[i] ? JSON.stringify(embeddings[i]) : null,
+          JSON.stringify({ startChar: chunk.startChar, endChar: chunk.endChar }),
+        );
+      }
+      ctx.logger.info('Document indexed', { path: filePath, chunks: chunks.length, projectId });
+      return { chunkCount: chunks.length, filePath };
+    },
+
+    searchDocuments: async (query, projectId, limit) => {
+      // Try semantic search first
+      let queryEmbedding: number[] | undefined;
+      if (ctx.gateway) {
+        try {
+          const result = await ctx.gateway.generateEmbeddings({ texts: [query] });
+          queryEmbedding = result.embeddings[0];
+        } catch { /* fall back to text search */ }
+      }
+
+      const rows = ctx.db
+        .prepare('SELECT * FROM document_chunks WHERE project_id = ?')
+        .all(projectId) as any[];
+
+      if (rows.length === 0) return { chunks: [] };
+
+      if (queryEmbedding) {
+        // Semantic search
+        const scored = rows
+          .map((row: any) => {
+            const emb = row.embedding ? (JSON.parse(row.embedding) as number[]) : null;
+            const score = emb ? cosineSimilarity(queryEmbedding!, emb) : 0;
+            return { content: row.content as string, sourcePath: row.source_path as string, chunkIndex: row.chunk_index as number, score };
+          })
+          .filter((c) => c.score > 0.25)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit ?? 5);
+        return { chunks: scored };
+      }
+
+      // Text search fallback
+      const lower = query.toLowerCase();
+      const scored = rows
+        .filter((row: any) => (row.content as string).toLowerCase().includes(lower))
+        .slice(0, limit ?? 5)
+        .map((row: any) => ({
+          content: row.content as string,
+          sourcePath: row.source_path as string,
+          chunkIndex: row.chunk_index as number,
+          score: 0.5,
+        }));
+      return { chunks: scored };
+    },
+
+    clearDocumentIndex: async (projectId, filePath) => {
+      if (filePath) {
+        const result = ctx.db
+          .prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?')
+          .run(projectId, filePath);
+        return { removed: result.changes };
+      }
+      const result = ctx.db
+        .prepare('DELETE FROM document_chunks WHERE project_id = ?')
+        .run(projectId);
+      return { removed: result.changes };
+    },
+
+    // ── Evaluation callback ──
+    evaluateOutput: async (content, sourceType, sourceId) => {
+      if (!ctx.gateway) throw new Error('No LLM gateway available for evaluation');
+
+      const evaluatorModel = 'claude-haiku-4-5';
+      const prompt = [
+        'Evaluate the following AI-generated output across 4 dimensions. Score each 1-10.',
+        '',
+        'Dimensions:',
+        '1. accuracy — factual correctness and absence of errors',
+        '2. completeness — covers all necessary aspects, nothing important missing',
+        '3. actionability — provides concrete, usable next steps or recommendations',
+        '4. clarity — well-structured, easy to understand, appropriate tone',
+        '',
+        'Output to evaluate:',
+        content.slice(0, 4000),
+        '',
+        'Respond with ONLY a JSON object:',
+        '{',
+        '  "overallScore": <number 1-10>,',
+        '  "dimensions": {',
+        '    "accuracy": {"score": <1-10>, "feedback": "<1 sentence>"},',
+        '    "completeness": {"score": <1-10>, "feedback": "<1 sentence>"},',
+        '    "actionability": {"score": <1-10>, "feedback": "<1 sentence>"},',
+        '    "clarity": {"score": <1-10>, "feedback": "<1 sentence>"}',
+        '  },',
+        '  "feedback": "<2-3 sentence overall assessment>"',
+        '}',
+      ].join('\n');
+
+      try {
+        const result = await ctx.gateway.generateText({
+          model: evaluatorModel,
+          systemPrompt: 'You are an expert quality evaluator. Be precise and constructive.',
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const parsed = JSON.parse(result.content);
+        const overallScore = typeof parsed.overallScore === 'number' ? parsed.overallScore : 5;
+        const dimensions = parsed.dimensions ?? {};
+
+        // Persist evaluation result
+        const id = `eval_${Date.now()}`;
+        ctx.db.prepare(
+          `INSERT INTO evaluation_results (id, project_id, session_id, source_type, source_id, overall_score, dimensions, feedback, evaluator_model)
+           VALUES (?, 'default', NULL, ?, ?, ?, ?, ?, ?)`,
+        ).run(id, sourceType, sourceId ?? null, overallScore, JSON.stringify(dimensions), parsed.feedback ?? '', evaluatorModel);
+
+        return { overallScore, dimensions, feedback: parsed.feedback ?? '', evaluatorModel };
+      } catch {
+        return { overallScore: 5, dimensions: {}, feedback: 'Evaluation failed — model output unparseable', evaluatorModel };
+      }
+    },
+
+    // ── Scheduler callbacks ──
+    scheduleTask: async (name, cronExpression, prompt, recurring) => {
+      return ctx.taskScheduler.schedule(name, cronExpression, prompt, recurring);
+    },
+    listScheduledTasks: async () => {
+      return ctx.taskScheduler.list();
+    },
+    cancelScheduledTask: async (id) => {
+      ctx.taskScheduler.cancel(id);
     },
   };
 }
@@ -631,6 +1155,15 @@ async function runMeeting(
     attendees: perspectives.map((p: any) => p.name ?? p.advisor),
   });
 
+  // Auto-create deliverable for the completed meeting
+  try {
+    const did = `d_${Date.now()}`;
+    ctx.db.prepare(
+      `INSERT INTO project_deliverables (id, project_id, meeting_id, title, type, tags)
+       VALUES (?, ?, ?, ?, 'meeting_report', ?)`,
+    ).run(did, projectId ?? 'default', meetingId, topic, JSON.stringify(['meeting', 'analysis']));
+  } catch { /* non-fatal */ }
+
   // Phase 4: Auto-extract decision if meeting produced actionable options
   let decisionId: string | null = null;
   if (ctx.gateway && synthesis && synthesis.length > 20) {
@@ -947,6 +1480,21 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   const registry = getServerContext().agentRegistry;
   intentParser.setAgentDescriptions(registry.describeForRouting());
   intentParser.setValidAgentTypes(registry.getValidAgentTypes());
+  // Inject captain preferences for personalized routing
+  try {
+    const captainPrefs = ctx.entity.getPreferences(captainId);
+    if (captainPrefs?.preferences) {
+      const prefs = captainPrefs.preferences;
+      const prefLines: string[] = [];
+      if (prefs.riskTolerance) prefLines.push(`- Risk tolerance: ${prefs.riskTolerance}`);
+      if (prefs.costSensitivity) prefLines.push(`- Cost sensitivity: ${prefs.costSensitivity}`);
+      if (prefs.timeUrgency) prefLines.push(`- Time urgency: ${prefs.timeUrgency}`);
+      if (prefs.preferredDecisionStyle) prefLines.push(`- Decision style: ${prefs.preferredDecisionStyle}`);
+      if (prefLines.length > 0) {
+        intentParser.setCaptainPreferences(prefLines.join('\n'));
+      }
+    }
+  } catch { /* preferences not available — routing works without */ }
 
   const agent = new SecretaryAgent(
     secretaryLoop ?? (null as any),
@@ -1016,8 +1564,31 @@ secretaryRouter.post('/chat', async (c) => {
     }
   }
 
-  if (!ctx.sessionManager.get(sessionId)) {
+  const isNewSession = !ctx.sessionManager.get(sessionId);
+  if (isNewSession) {
     ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
+    // Proactive greeting for new sessions
+    try {
+      const greeter = new GreetingService();
+      const pendingDecisions = ctx.db
+        .prepare("SELECT COUNT(*) as count FROM decisions WHERE status = 'pending'")
+        .get() as any;
+      const activeWorkflows = ctx.db
+        .prepare("SELECT COUNT(*) as count FROM workflows WHERE status = 'active' OR status = 'running'")
+        .get() as any;
+      // Read captain preferences for personalized greeting
+      const prefs = ctx.entity.getPreferences(captainId);
+      const captainName = prefs?.name ?? 'Captain';
+      const greeting = greeter.generate({
+        captainName,
+        pendingDecisions: pendingDecisions?.count ?? 0,
+        activeWorkflows: activeWorkflows?.count ?? 0,
+        todayCost: ctx.costTracker?.getDailyCost() ?? 0,
+      });
+      broadcast('secretary_greeting', { sessionId, greeting });
+    } catch {
+      // Greeting failure is non-fatal
+    }
   }
 
   try {

@@ -1,3 +1,5 @@
+import type { Database } from '@cabinet/storage';
+
 export type WorkflowNodeType =
   | 'start' | 'end'
   | 'skill' | 'aiAgent' | 'llmCall'
@@ -72,9 +74,14 @@ export interface WorkflowHandlers {
 export class WorkflowEngine {
   private runs = new Map<string, WorkflowRun>();
   private handlers: WorkflowHandlers = {};
+  private db: Database | null = null;
 
   setHandlers(handlers: WorkflowHandlers): void {
     this.handlers = { ...this.handlers, ...handlers };
+  }
+
+  setDb(db: Database): void {
+    this.db = db;
   }
 
   async startRun(
@@ -83,6 +90,14 @@ export class WorkflowEngine {
     edges: WorkflowEdge[],
     entryNodeId: string,
   ): Promise<WorkflowRun> {
+    // Check for incomplete runs that can be resumed
+    const incomplete = this.listIncompleteRuns(workflowId);
+    if (incomplete.length > 0) {
+      const existing = incomplete[0]!;
+      this.runs.set(existing.runId, existing);
+      return this.continueRun(existing.runId, nodes, edges);
+    }
+
     const runId = `run_${Date.now()}`;
     const run: WorkflowRun = {
       runId,
@@ -94,6 +109,7 @@ export class WorkflowEngine {
       startedAt: new Date(),
     };
     this.runs.set(runId, run);
+    this.saveRun(run);
 
     const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -105,11 +121,13 @@ export class WorkflowEngine {
     } catch (error) {
       await this.finalizeAgentSegment(run);
       run.status = 'failed';
+      this.saveRun(run);
       return run;
     }
 
     if (run.status === 'running') {
       run.status = 'completed';
+      this.saveRun(run);
     }
     return run;
   }
@@ -146,17 +164,21 @@ export class WorkflowEngine {
       }
     } catch (error) {
       run.status = 'failed';
+      this.saveRun(run);
       return run;
     }
 
     if (run.status === 'running') {
       run.status = 'completed';
+      this.saveRun(run);
     }
     return run;
   }
 
   getRun(runId: string): WorkflowRun | null {
-    return this.runs.get(runId) ?? null;
+    const memRun = this.runs.get(runId);
+    if (memRun) return memRun;
+    return this.loadRun(runId);
   }
 
   // ── Segment Helpers ───────────────────────────────────────────
@@ -433,6 +455,7 @@ export class WorkflowEngine {
     run.steps.push({ nodeId, type: node.type, output });
     run.results.set(nodeId, output);
     run.currentNodeId = nodeId;
+    this.saveRun(run);
 
     // If run was paused (humanApproval), stop execution
     if (run.status === 'awaiting_approval') return;
@@ -454,5 +477,76 @@ export class WorkflowEngine {
     if (expr.includes('true')) return lower.includes('true') || lower.includes('approved');
     // Fallback string match
     return lower.includes(expr.toLowerCase());
+  }
+
+  // ── Persistence ────────────────────────────────────────────
+
+  private saveRun(run: WorkflowRun): void {
+    if (!this.db) return;
+    try {
+      const results: Record<string, unknown> = {};
+      for (const [k, v] of run.results) { results[k] = v; }
+      this.db
+        .prepare(
+          `INSERT OR REPLACE INTO workflow_runs (run_id, workflow_id, status, current_node_id, steps, results, started_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        )
+        .run(
+          run.runId,
+          run.workflowId,
+          run.status,
+          run.currentNodeId,
+          JSON.stringify(run.steps),
+          JSON.stringify(results),
+          run.startedAt.toISOString(),
+        );
+    } catch { /* persistence failure is non-fatal for execution */ }
+  }
+
+  private loadRun(runId: string): WorkflowRun | null {
+    if (!this.db) return null;
+    try {
+      const row = this.db
+        .prepare('SELECT * FROM workflow_runs WHERE run_id = ?')
+        .get(runId) as any;
+      if (!row) return null;
+      const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
+      return {
+        runId: row.run_id,
+        workflowId: row.workflow_id,
+        status: row.status,
+        currentNodeId: row.current_node_id,
+        results,
+        steps: JSON.parse(row.steps ?? '[]'),
+        startedAt: new Date(row.started_at),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private listIncompleteRuns(workflowId: string): WorkflowRun[] {
+    if (!this.db) return [];
+    try {
+      const rows = this.db
+        .prepare(
+          "SELECT * FROM workflow_runs WHERE workflow_id = ? AND status IN ('running', 'awaiting_approval', 'paused') ORDER BY updated_at DESC",
+        )
+        .all(workflowId) as any[];
+      return rows.map((row: any) => {
+        const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
+        return {
+          runId: row.run_id,
+          workflowId: row.workflow_id,
+          status: row.status,
+          currentNodeId: row.current_node_id,
+          results,
+          steps: JSON.parse(row.steps ?? '[]'),
+          startedAt: new Date(row.started_at),
+        };
+      });
+    } catch {
+      return [];
+    }
   }
 }

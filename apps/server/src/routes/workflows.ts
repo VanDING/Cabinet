@@ -154,6 +154,37 @@ function buildToolDependencies(): ToolDependencies {
       if (!project) return null;
       return { id: project.id, name: project.name };
     },
+
+    // ── File system callbacks (stubs for workflow agents) ──
+    readFile: async (_path: string, _offset?: number, _limit?: number): Promise<{ content: string; size: number; encoding: 'utf-8' | 'base64'; mimeType?: string }> => {
+      throw new Error('File access not available in workflow context');
+    },
+    writeFile: async (_path, _content) => { throw new Error('File access not available in workflow context'); },
+    editFile: async (_path, _oldString, _newString) => { throw new Error('File access not available in workflow context'); },
+    listDirectory: async (_path) => { throw new Error('File access not available in workflow context'); },
+    searchFiles: async (_pattern, _dir) => { throw new Error('File access not available in workflow context'); },
+    searchContent: async (_pattern, _dir, _include) => { throw new Error('File access not available in workflow context'); },
+    deleteFile: async (_path) => { throw new Error('File access not available in workflow context'); },
+
+    // ── Web / HTTP callbacks ──
+    webFetch: async () => { throw new Error('Web access not available in workflow context'); },
+    httpRequest: async () => { throw new Error('HTTP access not available in workflow context'); },
+
+    // ── Shell callback ──
+    execCommand: async () => { throw new Error('Shell execution not available in workflow context'); },
+
+    // ── Scheduler callbacks ──
+    scheduleTask: async () => { throw new Error('Scheduler not available in workflow context'); },
+    listScheduledTasks: async () => [],
+    cancelScheduledTask: async (_id) => { throw new Error('Scheduler not available in workflow context'); },
+
+    // ── Knowledge / RAG callbacks ──
+    indexDocument: async () => { throw new Error('Document indexing not available in workflow context'); },
+    searchDocuments: async () => { throw new Error('Document search not available in workflow context'); },
+    clearDocumentIndex: async () => { throw new Error('Index management not available in workflow context'); },
+
+    // ── Evaluation callback ──
+    evaluateOutput: async () => { throw new Error('Evaluation not available in workflow context'); },
   };
 }
 
@@ -191,6 +222,7 @@ function getEngine(): WorkflowEngine {
   if (engine) return engine;
   const ctx = getServerContext();
   engine = new WorkflowEngine();
+  engine.setDb(ctx.db);
 
   engine.setHandlers({
     // ── Segment-based agent execution (new) ──

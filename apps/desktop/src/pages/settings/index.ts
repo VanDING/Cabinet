@@ -7,3 +7,5 @@ export { AuditTab } from './AuditTab.js';
 export { RulesTab } from './RulesTab.js';
 export { McpTab } from './McpTab.js';
 export { OthersTab } from './OthersTab.js';
+export { DelegationTab } from './DelegationTab.js';
+export { ThemeTab } from './ThemeTab.js';

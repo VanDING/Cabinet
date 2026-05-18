@@ -41,6 +41,8 @@ export interface AgentLoopOptions {
   model?: string;
   activeFiles?: string[];
   taskDescription?: string;
+  /** Timeout for individual tool execution in ms (default 300000 = 5 min). */
+  toolTimeoutMs?: number;
   /** Called when the agent session completes (success or failure). */
   onSessionComplete?: SessionCompleteCallback;
 }
@@ -90,11 +92,14 @@ export class AgentLoop {
 
     // Try to restore from checkpoint (unless caller already provided state)
     const state = resumeState ?? this.checkpointManager.load(this.options.sessionId);
+    const isResuming = state !== null && state !== undefined;
     let steps = state?.step ?? 0;
-    const toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
+    const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
       state?.toolCallHistory ?? [];
 
+    // If resuming from a crashed session, skip re-adding the user message (it's already in checkpoint)
     let messages: { role: 'user' | 'assistant'; content: string }[] = state?.messages ?? [];
+    const wasCrashed = (state?.metadata as Record<string, unknown>)?.crashed === true;
 
     // Observability tracking
     const zoneCounts = { smart: 0, warning: 0, critical: 0, dumb: 0 };
@@ -104,8 +109,16 @@ export class AgentLoop {
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
 
-    // Add user message
-    messages.push({ role: 'user', content: userMessage });
+    // Add user message (skip if resuming from crash — already in checkpoint)
+    if (!isResuming || wasCrashed) {
+      // Don't re-add the same user message on resume
+      const lastMsg = messages[messages.length - 1];
+      if (!lastMsg || lastMsg.content !== userMessage) {
+        messages.push({ role: 'user', content: userMessage });
+      }
+    } else {
+      messages.push({ role: 'user', content: userMessage });
+    }
 
     // Initialize or reuse handoff tracker (persists across run() calls for segment workflows)
     if (!this.sessionHandoff) {
@@ -185,12 +198,12 @@ export class AgentLoop {
         );
       } catch (error) {
         errorCounts.fatal++;
-        this.reportSession(startTime, steps, toolCalls, totalPromptTokens, totalCompletionTokens,
+        this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, false);
         return {
           content: `Agent loop failed at step ${steps}: ${(error as Error).message}`,
           steps,
-          toolCalls,
+          toolCalls: executedToolCalls,
         };
       }
 
@@ -221,20 +234,38 @@ export class AgentLoop {
         messages.push({ role: 'assistant', content: response.content });
         handoff.recordStep(`Step ${steps + 1}: Agent completed with final response (${this.contextMonitor ? this.contextMonitor.current?.zone ?? 'unknown' : 'unknown'} zone)`);
         handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
-        this.reportSession(startTime, steps + 1, toolCalls, totalPromptTokens, totalCompletionTokens,
+        this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, true);
-        return { content: response.content, steps: steps + 1, toolCalls };
+        return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls };
       }
 
       // Execute tool calls
       for (const tc of response.toolCalls) {
         toolCounts.total++;
 
+        // ── Idempotency check on resume: skip already-executed tool calls ──
+        if (isResuming) {
+          const alreadyDone = executedToolCalls.find(
+            (prev) =>
+              prev.name === tc.name &&
+              JSON.stringify(prev.args) === JSON.stringify(tc.arguments) &&
+              prev.result !== undefined,
+          );
+          if (alreadyDone) {
+            toolCounts.succeeded++;
+            messages.push({
+              role: 'user',
+              content: `Tool result for ${tc.name} (cached): ${JSON.stringify(alreadyDone.result)}`,
+            });
+            continue;
+          }
+        }
+
         // Safety check
         const safety = this.safetyChecker.check(tc.name, tc.arguments);
         if (!safety.allowed) {
           toolCounts.blocked++;
-          toolCalls.push({
+          executedToolCalls.push({
             name: tc.name,
             args: tc.arguments,
             result: `BLOCKED: ${safety.reason}`,
@@ -242,14 +273,37 @@ export class AgentLoop {
           continue;
         }
 
-        // Execute
-        const result = await this.toolExecutor.execute(tc.name, tc.id, tc.arguments);
+        // Execute with watchdog timeout
+        const toolTimeoutMs = this.options.toolTimeoutMs ?? 300000; // default 5 min
+        let result: { toolCallId: string; output: unknown; error?: string };
+        try {
+          result = await Promise.race([
+            this.toolExecutor.execute(tc.name, tc.id, tc.arguments),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`Tool '${tc.name}' timed out after ${toolTimeoutMs}ms`)),
+                toolTimeoutMs,
+              ),
+            ),
+          ]);
+        } catch (timeoutError) {
+          // Save checkpoint with crashed marker before giving up
+          this.checkpointManager.save({
+            sessionId: this.options.sessionId,
+            step: steps,
+            messages,
+            toolCallHistory: executedToolCalls,
+            metadata: { projectId: this.options.projectId, crashed: true },
+          });
+          throw timeoutError;
+        }
+
         if (result.error) {
           toolCounts.failed++;
         } else {
           toolCounts.succeeded++;
         }
-        toolCalls.push({
+        executedToolCalls.push({
           name: tc.name,
           args: tc.arguments,
           result: result.error ?? result.output,
@@ -270,7 +324,7 @@ export class AgentLoop {
       steps++;
 
       // Record step for context handoff tracking
-      const executedCount = toolCalls.filter(t => !String(t.result).includes('BLOCKED')).length;
+      const executedCount = executedToolCalls.filter(t => !String(t.result).includes('BLOCKED')).length;
       handoff.recordStep(`Step ${steps}: ${executedCount} tool calls executed in ${this.contextMonitor?.current?.zone ?? 'unknown'} zone`);
 
       // Save checkpoint
@@ -278,17 +332,17 @@ export class AgentLoop {
         sessionId: this.options.sessionId,
         step: steps,
         messages,
-        toolCallHistory: toolCalls,
+        toolCallHistory: executedToolCalls,
         metadata: { projectId: this.options.projectId },
       });
     }
 
-    this.reportSession(startTime, steps, toolCalls, totalPromptTokens, totalCompletionTokens,
+    this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
       zoneCounts, handoffCount, errorCounts, toolCounts, false);
     return {
       content: `Agent reached max steps (${maxSteps}) without final response.`,
       steps,
-      toolCalls,
+      toolCalls: executedToolCalls,
     };
   }
 
