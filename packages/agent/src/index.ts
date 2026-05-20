@@ -33,8 +33,10 @@ export {
   CURATOR_ROLE,
   AGENT_CREATOR_ROLE,
   REVIEWER_ROLE,
+  ORGANIZE_ROLE,
   type AgentRole,
   type AgentRoleType,
+  type ModelTier,
 } from './agent-roles.js';
 export {
   AgentDispatcher,

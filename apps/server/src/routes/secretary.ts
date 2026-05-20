@@ -14,12 +14,13 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
 import { SecretaryAgent, IntentParser, GreetingService } from '@cabinet/secretary';
-import { ParallelReasoning, CrossValidator, type Advisor } from '@cabinet/meeting';
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
+import { CABINET_DIR } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, realpath } from 'node:fs/promises';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -330,13 +331,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         name: input.name,
         description: input.description,
         systemPrompt: input.systemPrompt,
+        modelTier: ((input as any).modelTier as string) || 'default',
         model: input.model,
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
         allowedTools: input.allowedTools,
         contextBudget: input.contextBudget,
       };
-      ctx.agentRegistry.register(role);
+      ctx.agentRegistry.register(role as any);
       // Persist to DB
       try {
         ctx.db.prepare(
@@ -354,11 +356,20 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           input.contextBudget,
         );
       } catch (e) {
-        ctx.logger.warn('Failed to persist custom agent', { name: input.name, error: String(e) });
+        ctx.logger.warn('Failed to persist custom agent to DB', { name: input.name, error: String(e) });
       }
-      // Update IntentParser's valid agent types
-      const newValidTypes = ctx.agentRegistry.getValidAgentTypes();
-      // Will be picked up by next request since parser is cached per session
+      // Persist to disk (~/.cabinet/agents/<name>/agent.json)
+      try {
+        const agentsDir = join(CABINET_DIR, 'agents', input.name);
+        if (!existsSync(agentsDir)) mkdirSync(agentsDir, { recursive: true });
+        writeFileSync(
+          join(agentsDir, 'agent.json'),
+          JSON.stringify(role, null, 2),
+          'utf-8',
+        );
+      } catch (e) {
+        ctx.logger.warn('Failed to persist custom agent to disk', { name: input.name, error: String(e) });
+      }
       ctx.logger.info('Agent registered via tool', { name: input.name });
       return { type: 'custom', name: input.name };
     },
@@ -1068,7 +1079,7 @@ async function runMeeting(
     perspectives = [];
   }
 
-  // Phase 3: Reviewer adversarial review (1 LLM call)
+  // Phase 3: Reviewer adversarial review using Reviewer AgentLoop
   let synthesis = '';
   let reviewPassed = false;
   let reviewIssues: any[] = [];
@@ -1080,42 +1091,36 @@ async function runMeeting(
         .join('\n');
       const synthesisText = (perspectives as any).synthesis ?? '';
 
-      const reviewerPrompt = [
-        `You are an independent Reviewer. Review this analysis for quality.`,
-        `Do NOT perform the analysis yourself — only review what was provided.`,
-        '',
-        `Topic: ${topic}`,
-        '',
-        `Analysis findings:`,
-        findingsSummary || 'No structured findings',
-        '',
-        `Synthesis: ${synthesisText}`,
-        '',
-        `Check for:`,
-        `- Logical completeness: are all claims connected and coherent?`,
-        `- Risk assessment: are risks identified and evaluated?`,
-        `- Missing perspectives: what important angle was not covered?`,
-        `- Evidence quality: are claims backed by reasoning or data?`,
-        '',
-        `Output as JSON:`,
-        `{`,
-        `  "pass": true/false,`,
-        `  "issues": [{"type": "missing_perspective|weak_evidence|logical_gap", "detail": "...", "severity": "high|medium|low"}],`,
-        `  "suggestion": {"action": "add_perspective|strengthen_evidence|revise_logic", "detail": "what to fix", "or_assign_independent_agent": false}`,
-        `}`,
-      ].join('\n');
+      // Create a fresh Reviewer AgentLoop for this review
+      const reviewerLoop = createReviewerLoop(ctx);
+      if (reviewerLoop) {
+        const reviewerTask = [
+          `## Meeting Analysis Review`,
+          '',
+          `Review the following analysis produced for a meeting on: "${topic}"`,
+          '',
+          `Analysis findings:`,
+          findingsSummary || 'No structured findings',
+          '',
+          `Synthesis: ${synthesisText}`,
+          '',
+          `Review for: logical completeness, risk assessment adequacy, missing perspectives, evidence quality, unstated assumptions.`,
+          `Use tools (search_memory, search_documents, read_file) to verify factual claims if possible.`,
+          '',
+          `After your review, output ONLY a JSON object:`,
+          `{"pass": true/false, "score": 0.0-1.0, "issues": [...], "suggestion": {...}}`,
+        ].join('\n');
 
-      const reviewerResponse = await ctx.gateway!.generateText({
-        model,
-        messages: [{ role: 'user', content: reviewerPrompt }],
-        maxTokens: 500,
-        temperature: 0.1,
-      });
-      const reviewMatch = reviewerResponse.content.match(/\{[\s\S]*\}/);
-      const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, issues: [], suggestion: {} };
-      reviewPassed = review.pass === true;
-      reviewIssues = review.issues ?? [];
-      ctx.metrics.increment('llm_call', { model, purpose: 'meeting_reviewer' });
+        const reviewerResult = await reviewerLoop.run(reviewerTask);
+        const reviewMatch = reviewerResult.content.match(/\{[\s\S]*\}/);
+        const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, issues: [], suggestion: {} };
+        reviewPassed = review.pass === true;
+        reviewIssues = review.issues ?? [];
+      } else {
+        // Fallback: no gateway, pass through
+        reviewPassed = true;
+      }
+      ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_reviewer' });
 
       // Generate synthesis from the final analysis
       if (reviewPassed || round === maxRounds - 1) {
@@ -1306,6 +1311,16 @@ function buildMemoryProvider(ctx: ServerContext) {
   };
 }
 
+/** Resolve a role's modelTier to the actual model via user-configured modelMapping. */
+function resolveModel(role: { modelTier?: string; model: string }): string {
+  const ctx = getServerContext();
+  const adapter = ctx.gateway as any;
+  if (adapter?.resolveModelString && role.modelTier) {
+    return adapter.resolveModelString(role.modelTier);
+  }
+  return role.model;
+}
+
 /** Get or create an AgentLoop for a specific role. */
 function getAgentLoopForRole(
   roleType: AgentRoleType,
@@ -1357,7 +1372,7 @@ function getAgentLoopForRole(
     projectId,
     captainId,
     systemPrompt: role.systemPrompt,
-    model: role.model,
+    model: resolveModel(role),
     maxSteps: 10,
   });
 
@@ -1393,7 +1408,46 @@ function getAgentLoopForRole(
   return loop;
 }
 
-/** Dispatch a message to a specialist role's AgentLoop. */
+/** Create a fresh (non-cached) Reviewer AgentLoop for quality review tasks. */
+function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
+  if (!ctx.gateway) return null;
+
+  const registry = ctx.agentRegistry;
+  const role = registry.get('reviewer');
+  if (!role) return null;
+
+  const executor = new ToolExecutor();
+  registerCabinetTools(executor, buildToolDependencies(ctx));
+  registerSkillTools(executor);
+  const mcpCtx = getServerContext();
+  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
+
+  // Restrict to Reviewer's allowed tools
+  if (role.allowedTools.length > 0) {
+    for (const toolName of executor.listTools()) {
+      if (!role.allowedTools.includes(toolName)) {
+        executor.unregister(toolName);
+      }
+    }
+  }
+
+  const checkpointManager = new CheckpointManager(ctx.db);
+  return new AgentLoop({
+    gateway: ctx.gateway,
+    toolExecutor: executor,
+    safetyChecker: new SafetyChecker(ctx.delegationTier),
+    checkpointManager,
+    memoryProvider: buildMemoryProvider(ctx),
+    sessionId: `reviewer_${Date.now()}`,
+    projectId: 'default',
+    captainId: 'captain-1',
+    systemPrompt: role.systemPrompt,
+    model: resolveModel(role),
+    maxSteps: 8,
+  });
+}
+
+/** Dispatch a message to a specialist role's AgentLoop, with optional Reviewer quality gate. */
 async function dispatchToSpecialist(
   roleType: AgentRoleType,
   message: string,
@@ -1401,11 +1455,88 @@ async function dispatchToSpecialist(
   projectId: string,
   captainId: string,
 ): Promise<string> {
+  const ctx = getServerContext();
   const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId);
   if (!loop) return `[No LLM] Cannot dispatch to ${roleType}.`;
 
   const result = await loop.run(message);
-  return result.content;
+  let output = result.content;
+
+  // Quality gate: non-secretary, non-reviewer outputs get reviewed
+  if (roleType !== 'secretary' && roleType !== 'reviewer') {
+    const reviewerLoop = createReviewerLoop(ctx);
+    if (reviewerLoop) {
+      const reviewTask = [
+        `## Quality Review Task`,
+        '',
+        `Review the following output produced by the "${roleType}" agent.`,
+        `The original user message was: "${message.slice(0, 500)}"`,
+        '',
+        `Agent output to review:`,
+        output.slice(0, 8000),
+        '',
+        `Review for: logical completeness, evidence quality, risk assessment, missing perspectives, factual errors.`,
+        `Use available tools (search_memory, search_documents, read_file) to verify claims if possible.`,
+        '',
+        `After review, output ONLY a JSON object:`,
+        `{"pass": true/false, "score": 0.0-1.0, "issues": [...], "suggestion": {...}}`,
+      ].join('\n');
+
+      try {
+        const reviewResult = await reviewerLoop.run(reviewTask);
+        const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
+        const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, score: 1.0, issues: [] };
+
+        // Persist review result
+        persistReviewResult(ctx, roleType, sessionId, review);
+
+        if (review.pass !== true && review.issues?.length > 0) {
+          // Publish quality alert for Harness
+          if (ctx.eventBus) {
+            ctx.eventBus.publish({
+              messageId: `quality_alert_${Date.now()}`,
+              correlationId: sessionId,
+              causationId: null,
+              timestamp: new Date(),
+              messageType: 'QualityAlert' as any,
+              payload: { source: roleType, sessionId, issues: review.issues, score: review.score },
+            }).catch(() => {});
+          }
+
+          // Append reviewer notes to output
+          const issueNotes = (review.issues as any[]).map((i: any) => `- [${i.severity}] ${i.detail}`).join('\n');
+          output = `${output}\n\n---\n### Reviewer Notes\n${issueNotes}\n\n⚠️ Review score: ${review.score ?? 'N/A'}`;
+        }
+      } catch {
+        // Review failure is non-fatal — return original output
+      }
+    }
+  }
+
+  return output;
+}
+
+/** Persist review result to evaluation_results table. */
+function persistReviewResult(
+  ctx: ServerContext,
+  sourceType: string,
+  sourceId: string,
+  review: { pass: boolean; score: number; issues: any[] },
+): void {
+  try {
+    ctx.db.prepare(
+      `INSERT INTO evaluation_results (result_id, source_type, source_id, pass, score, issues, reviewer_model, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    ).run(
+      `eval_${Date.now()}`,
+      sourceType,
+      sourceId,
+      review.pass ? 1 : 0,
+      review.score ?? 0,
+      JSON.stringify(review.issues ?? []),
+      'claude-haiku-4-5',
+    );
+  } catch { /* persistence failure is non-fatal */ }
 }
 
 function getOrCreateAgent(sessionId: string, projectId: string, captainId: string, model?: string) {
@@ -1589,6 +1720,13 @@ secretaryRouter.post('/chat', async (c) => {
       if (greeting.suggestions && greeting.suggestions.length > 0) {
         greetingText += '\n\n**Suggestions:**\n' + greeting.suggestions.map((s: string) => `- ${s}`).join('\n');
       }
+      // Inject Curator session brief if available
+      try {
+        const brief = ctx.shortTerm.get(sessionId, 'session_brief');
+        if (brief && typeof brief === 'string' && brief.length > 0) {
+          greetingText += `\n\n**Context Brief:**\n${brief}`;
+        }
+      } catch { /* brief lookup failure is non-fatal */ }
       ctx.sessionManager.addMessage(sessionId, 'assistant', greetingText);
       broadcast('secretary_greeting', { sessionId, greeting });
     } catch {

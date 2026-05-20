@@ -429,6 +429,9 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
         const contextBudget = (args.contextBudget as number) ?? 0.3;
 
         if (!name) return { error: 'name is required' };
+        if (!/^[\w一-鿿\s-]{2,64}$/.test(name)) {
+          return { error: 'Invalid agent name. Use 2-64 characters: letters, digits, Chinese, underscores, hyphens, spaces.' };
+        }
         if (!systemPrompt) return { error: 'systemPrompt is required' };
 
         return deps.registerAgent({

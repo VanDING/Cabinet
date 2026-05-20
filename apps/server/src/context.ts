@@ -34,7 +34,7 @@ import {
   AuditLogger,
   EscalationService,
 } from '@cabinet/decision';
-import { AISDKAdapter, CostTracker, BudgetGuard, ModelRouter } from '@cabinet/gateway';
+import { AISDKAdapter, CostTracker, BudgetGuard } from '@cabinet/gateway';
 import {
   ShortTermMemory,
   LongTermMemory,
@@ -45,11 +45,25 @@ import {
 import { MemoryEventBus } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
-import type { LLMGateway } from '@cabinet/gateway';
+import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
 import { DelegationTier, DEFAULT_DELEGATION_TIER, MessageType } from '@cabinet/types';
-import { AgentRoleRegistry, CURATOR_ROLE, SkillRegistry, importSkillFromMarkdown } from '@cabinet/agent';
+import {
+  AgentRoleRegistry,
+  CURATOR_ROLE,
+  SkillRegistry,
+  importSkillFromMarkdown,
+  AgentLoop,
+  ToolExecutor,
+  SafetyChecker,
+  CheckpointManager,
+  registerCabinetTools,
+  registerSkillTools,
+  registerMCPTools,
+} from '@cabinet/agent';
+import type { ToolDependencies } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
 import { TaskScheduler } from './scheduler.js';
+import { startApprovalPolling, stopApprovalPolling } from './routes/workflows.js';
 import {
   ObservabilityCollector,
   PreferenceLearner,
@@ -93,7 +107,6 @@ export interface ServerContext {
   taskScheduler: TaskScheduler;
   // Feedback loop
   observability: ObservabilityCollector;
-  modelRouter: ModelRouter;
   autoAdjuster: AutoAdjuster;
   // Infrastructure
   eventBus: MemoryEventBus;
@@ -176,6 +189,14 @@ export function getServerContext(): ServerContext {
   const eventBus = new MemoryEventBus();
   const escalation = new EscalationService(eventBus);
 
+  // Deferred Curator trigger (createCuratorLoop is defined later, after gateway is ready)
+  let _triggerCuratorDecisionUpdate: ((decisionId: string, action: string, title: string, chosenOptionId: string | undefined, captainId: string | undefined) => void) | null = null;
+  function triggerCuratorPreferenceUpdate(decisionId: string, action: string, title: string, chosenOptionId: string | undefined, captainId: string | undefined): void {
+    if (_triggerCuratorDecisionUpdate) {
+      _triggerCuratorDecisionUpdate(decisionId, action, title, chosenOptionId, captainId);
+    }
+  }
+
   // Decision resolved callback: preference learning + workflow resumption
   const decisionService = new DecisionService(
     stateMachine,
@@ -249,6 +270,9 @@ export function getServerContext(): ServerContext {
 
         // Trigger semantic preference analysis (throttled internally)
         preferenceLearner.learnFromDecisions(cid).catch(() => {});
+
+        // Trigger Curator preference update (fire-and-forget)
+        triggerCuratorPreferenceUpdate(decisionId, action, title, chosenOptionId, captainId);
       } catch (e: any) {
         logger.warn('Preference learning failed', { error: e.message });
       }
@@ -292,8 +316,15 @@ export function getServerContext(): ServerContext {
       /* API keys table not available */
     }
 
+    // Merge settings.json providers on top of env-based config
+    for (const [name, entry] of Object.entries(providerConfigsFromSettings)) {
+      if (entry?.apiKey) {
+        providerConfigs[name] = { apiKey: entry.apiKey, baseUrl: entry.baseUrl };
+      }
+    }
+
     if (Object.keys(providerConfigs).length > 0) {
-      return new AISDKAdapter(providerConfigs as any);
+      return new AISDKAdapter(providerConfigs as any, modelMapping);
     }
     return null;
   };
@@ -319,6 +350,26 @@ export function getServerContext(): ServerContext {
   // Session
   const sessionManager = new SessionManager();
 
+  // Wire Curator lifecycle callbacks (fired asynchronously, best-effort)
+  sessionManager.onSessionClose((session) => {
+    if (gateway && session.messages.length > 0) {
+      const messages = session.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+      if (messages.length > 200) {
+        runCuratorConsolidation(session.id, messages).catch((e) =>
+          logger.warn('Curator on-close consolidation failed', { error: (e as Error).message }),
+        );
+      }
+    }
+  });
+
+  sessionManager.onSessionCreate((session) => {
+    if (gateway) {
+      runCuratorBrief(session.id).catch((e) =>
+        logger.warn('Curator on-create brief failed', { error: (e as Error).message }),
+      );
+    }
+  });
+
   // Metrics
   const metrics = new MetricsCollector();
 
@@ -340,143 +391,302 @@ export function getServerContext(): ServerContext {
   // ── Self-Evolution Helpers ──
 
   /** Run Curator consolidation on a session transcript. */
+  // ── Curator AgentLoop factory (shared across curator tasks) ──
+
+  function createCuratorLoop(): AgentLoop | null {
+    if (!gateway) return null;
+
+    const role = agentRegistry.get('curator');
+    if (!role) return null;
+
+    const executor = new ToolExecutor();
+
+    // Build tool dependencies focused on Curator's needs (memory, decisions, events, project)
+    const curatorDeps: ToolDependencies = {
+      decisionStore: decisionRepo,
+      eventBus: eventBus!,
+      shortTerm,
+      longTerm,
+      entity,
+      project,
+      createDecision(input) {
+        const id = `dec_${Date.now()}`;
+        return decisionService.create({
+          id,
+          projectId: input.projectId,
+          type: input.type,
+          title: input.title,
+          description: input.description,
+          options: input.options,
+          classification: input.classification,
+          captainId: input.captainId,
+        }) as any;
+      },
+      approveDecision: (decisionId, captainId, chosenOptionId) =>
+        decisionService.approve(decisionId, captainId, chosenOptionId),
+      rejectDecision: (decisionId, captainId) =>
+        decisionService.reject(decisionId, captainId),
+      listWorkflows: () => [],
+      getWorkflow: () => undefined,
+      createWorkflow: () => ({ id: '' }),
+      updateWorkflow: () => {},
+      deleteWorkflow: () => {},
+      runWorkflow: async () => ({ runId: '', status: 'not_implemented' }),
+      startMeeting: async (topic) => ({ meetingId: '', topic, synthesis: '', perspectives: [] }),
+      writeLongTermMemory: async (content, metadata) =>
+        longTerm.store({ content, metadata: metadata ?? {}, timestamp: new Date() }),
+      createEmployee: () => {},
+      registerAgent: (input) => {
+        agentRegistry.register({
+          type: 'custom' as const,
+          name: input.name,
+          description: input.description,
+          systemPrompt: input.systemPrompt,
+          modelTier: (input as any).modelTier ?? 'default',
+          model: input.model,
+          temperature: input.temperature,
+          maxResponseTokens: input.maxResponseTokens,
+          allowedTools: input.allowedTools,
+          contextBudget: input.contextBudget,
+        });
+        return { type: 'custom', name: input.name };
+      },
+      updateAgent: () => {},
+      deleteAgent: () => {},
+      listAgents: () => agentRegistry.list().map((r) => ({
+        type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
+      })),
+      setProjectContext: (pid) => ({ id: pid, name: pid }),
+      createProject: (input) => ({ id: `proj_${Date.now()}`, name: input.name }),
+      listProjects: () => [],
+      getProjectContext: (pid) => {
+        const p = project.get(pid);
+        return p ? { id: pid, name: p.summary } : null;
+      },
+      // File / web / shell / scheduler / knowledge / eval — stubs for curator
+      readFile: async () => { throw new Error('File access not available for Curator background task'); },
+      writeFile: async () => { throw new Error('File write not available'); },
+      editFile: async () => { throw new Error('File edit not available'); },
+      listDirectory: async () => { throw new Error('Directory listing not available'); },
+      searchFiles: async () => { throw new Error('File search not available'); },
+      searchContent: async () => { throw new Error('Content search not available'); },
+      deleteFile: async () => { throw new Error('File deletion not available'); },
+      webFetch: async () => { throw new Error('Web access not available'); },
+      httpRequest: async () => { throw new Error('HTTP not available'); },
+      execCommand: async () => { throw new Error('Shell not available'); },
+      scheduleTask: async () => { throw new Error('Scheduler not available'); },
+      listScheduledTasks: async () => [],
+      cancelScheduledTask: async () => { throw new Error('Scheduler not available'); },
+      indexDocument: async () => { throw new Error('Indexing not available'); },
+      searchDocuments: async () => { throw new Error('Document search not available'); },
+      clearDocumentIndex: async () => { throw new Error('Index management not available'); },
+      evaluateOutput: async () => { throw new Error('Evaluation not available'); },
+    };
+
+    registerCabinetTools(executor, curatorDeps);
+    registerSkillTools(executor);
+
+    // Restrict to Curator's allowed tools
+    if (role.allowedTools.length > 0) {
+      for (const toolName of executor.listTools()) {
+        if (!role.allowedTools.includes(toolName)) {
+          executor.unregister(toolName);
+        }
+      }
+    }
+
+    const checkpointManager = new CheckpointManager(db);
+    return new AgentLoop({
+      gateway,
+      toolExecutor: executor,
+      safetyChecker: new SafetyChecker(currentTier),
+      checkpointManager,
+      memoryProvider: {
+        getShortTerm: async (sid) => {
+          const items: { role: 'user' | 'assistant'; content: string }[] = [];
+          const session = sessionManager.get(sid);
+          if (session && session.messages.length > 0) {
+            const recent = session.messages.slice(-20);
+            for (const m of recent) {
+              items.push({ role: m.role, content: m.content });
+            }
+          }
+          const kv = shortTerm.getAll(sid);
+          for (const [k, v] of Object.entries(kv)) {
+            if (typeof v === 'string' && v.length > 0) {
+              items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
+            }
+          }
+          return items;
+        },
+        getProjectContext: async (pid) => {
+          const p = project.get(pid);
+          if (!p) return `Project: ${pid}`;
+          return `Project: ${p.summary}\nGoals: ${p.goals.join(', ')}`;
+        },
+        getEntityPreferences: async (cid) => {
+          const prefs = entity.getPreferences(cid);
+          return prefs?.preferences ?? {};
+        },
+        searchLongTerm: async (query, _pid) => {
+          let embedding: number[] | undefined;
+          try {
+            if (gateway) {
+              const er = await gateway.generateEmbeddings({ texts: [query] });
+              embedding = er.embeddings[0];
+            }
+          } catch { /* fall back to text search */ }
+          const results = await longTerm.search(query, 10, embedding);
+          return results.map((r) => `[Memory] ${r.content}`);
+        },
+      },
+      sessionId: `curator_bg_${Date.now()}`,
+      projectId: 'default',
+      captainId: 'captain-1',
+      systemPrompt: role.systemPrompt,
+      model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.model,
+      maxSteps: 15,
+    });
+  }
+
+  // Wire the deferred curator decision update trigger
+  _triggerCuratorDecisionUpdate = (decisionId, action, title, chosenOptionId) => {
+    const loop = createCuratorLoop();
+    if (!loop) return;
+
+    const taskPrompt = [
+      `## Decision Preference Update`,
+      '',
+      `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
+      '',
+      `Instructions:`,
+      `1. Use get_decision to read the full decision record.`,
+      `2. Use get_captain_preferences to see the current preference profile.`,
+      `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
+      `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
+      `5. Use write_memory to store any notable pattern you discover.`,
+      '',
+      `Be concise — this is a background task triggered by each decision resolution.`,
+    ].join('\n');
+
+    loop.run(taskPrompt).then((result) => {
+      logger.info('Curator decision preference update completed', {
+        decisionId,
+        action,
+        preview: result.content.slice(0, 150),
+      });
+    }).catch((e: any) => {
+      logger.warn('Curator decision preference update failed', { decisionId, error: e.message });
+    });
+  };
+
   async function runCuratorConsolidation(
     sessionId: string,
     transcript: string,
-    gw: LLMGateway,
-    stm: ShortTermMemory,
-    ltm: LongTermMemory,
-    pm: ProjectMemory,
-    em: EntityMemory,
   ): Promise<void> {
-    // Build captain preferences context for personalized consolidation
-    let prefsContext = '';
-    try {
-      const captainPrefs = em.getPreferences('captain-1');
-      if (captainPrefs?.preferences) {
-        const p = captainPrefs.preferences;
-        const parts: string[] = [];
-        if (p.riskTolerance) parts.push(`risk tolerance: ${p.riskTolerance}`);
-        if (p.costSensitivity) parts.push(`cost sensitivity: ${p.costSensitivity}`);
-        if (p.timeUrgency) parts.push(`time urgency: ${p.timeUrgency}`);
-        if (p.preferredDecisionStyle) parts.push(`decision style: ${p.preferredDecisionStyle}`);
-        if (parts.length > 0) prefsContext = `\nCaptain preferences: ${parts.join(', ')}.\n`;
-      }
-    } catch { /* ok without prefs */ }
+    const loop = createCuratorLoop();
+    if (!loop) {
+      logger.warn('Curator consolidation skipped — no gateway or role');
+      return;
+    }
 
-    const prompt = [
-      CURATOR_ROLE.systemPrompt,
+    const taskPrompt = [
+      `## Background Consolidation Task`,
       '',
-      '---',
+      `You are running as a background curator. Consolidate knowledge from this session transcript.`,
       '',
-      `Analyze this session transcript and extract structured knowledge.${prefsContext}`,
+      `Instructions:`,
+      `1. Read the transcript and identify important facts, decisions, and insights.`,
+      `2. Use search_memory to check if similar information already exists in long-term memory.`,
+      `3. Use write_memory to persist NEW or UPDATED information (importance ≥ 0.5). Skip duplicates.`,
+      `4. Use query_decisions to check if any discussed decisions already have formal records.`,
+      `5. Use update_project_summary if the project direction has meaningfully changed.`,
+      `6. Use remember to store a brief session summary in short-term memory for the next interaction.`,
       '',
-      'Session transcript:',
-      transcript.slice(0, 8000), // prevent context overflow
+      `Session transcript:`,
+      transcript.slice(0, 8000),
       '',
-      'Respond with ONLY a JSON object:',
-      '{',
-      '  "summary": "1-2 sentence summary of what was discussed/decided",',
-      '  "topics": ["topic1", "topic2"],',
-      '  "memories": [',
-      '    {"content": "important fact or insight", "importance": 0.8}',
-      '  ],',
-      '  "decisions": [',
-      '    {"title": "decision made", "outcome": "approved/rejected/pending"}',
-      '  ],',
-      '  "suggestions": ["actionable follow-up"]',
-      '}',
-      '',
-      'Importance scale: 1.0 = critical knowledge, 0.5 = useful context, 0.1 = low-value.',
-      'Return empty arrays if nothing is notable.',
+      `After completing all steps, output a one-line summary of what you consolidated.`,
     ].join('\n');
 
     try {
-      const response = await gw.generateText({
-        model: 'claude-haiku-4-5',
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: 600,
-        temperature: 0.2,
-      });
-
-      const match = response.content.match(/\{[\s\S]*\}/);
-      if (!match) return;
-      const parsed = JSON.parse(match[0]);
-
-      // Embedding helper: try to generate embeddings, fall back to none
-      async function embed(content: string): Promise<number[] | undefined> {
-        try {
-          const result = await gw.generateEmbeddings({ texts: [content] });
-          return result.embeddings[0];
-        } catch {
-          return undefined;
-        }
-      }
-
-      // Store extracted memories
-      for (const mem of parsed.memories ?? []) {
-        if (mem.content && mem.content.length > 10) {
-          const embedding = await embed(mem.content);
-          await ltm.store({
-            content: mem.content,
-            metadata: {
-              sessionId,
-              source: 'curator_nudge',
-              importance: mem.importance ?? 0.5,
-              topics: parsed.topics ?? [],
-            },
-            embedding,
-            timestamp: new Date(),
-          });
-        }
-      }
-
-      // Store the summary
-      if (parsed.summary) {
-        const summaryEmbedding = await embed(parsed.summary);
-        await ltm.store({
-          content: `[Session Summary] ${parsed.summary}`,
-          metadata: { sessionId, source: 'curator_summary', importance: 1.0 },
-          embedding: summaryEmbedding,
-          timestamp: new Date(),
-        });
-      }
-
-      // Update project memory with decisions
-      if (parsed.decisions?.length > 0 && pm) {
-        for (const dec of parsed.decisions) {
-          if (dec.title) {
-            pm.addDecision('default', dec.title, dec.outcome ?? 'pending');
-          }
-        }
-      }
-
-      // Update entity memory with learned preferences
-      if (parsed.suggestions?.length > 0) {
-        const existing = em.getPreferences('captain-1');
-        const existingPrefs = existing?.preferences ?? {};
-        const learned = (existingPrefs.learnedPatterns as string[]) ?? [];
-        for (const s of parsed.suggestions) {
-          if (!learned.includes(s)) learned.push(s);
-        }
-        // Keep only last 20 patterns
-        em.setPreferences('captain-1', 'Captain', {
-          ...existingPrefs,
-          learnedPatterns: learned.slice(-20),
-          lastNudgedAt: new Date().toISOString(),
-        });
-      }
-
-      // Clean up short-term
-      stm.clear(sessionId);
-
+      const result = await loop.run(taskPrompt);
       logger.info('Curator consolidation completed', {
         sessionId,
-        memories: parsed.memories?.length ?? 0,
-        decisions: parsed.decisions?.length ?? 0,
+        steps: result.steps,
+        toolCalls: result.toolCalls,
+        preview: result.content.slice(0, 200),
       });
     } catch (e: any) {
-      logger.warn('Curator consolidation LLM call failed', { error: e.message });
+      logger.warn('Curator consolidation failed', { sessionId, error: e.message });
+    }
+  }
+
+  /** Prepare a context brief for a newly created session. */
+  async function runCuratorBrief(sessionId: string): Promise<void> {
+    const loop = createCuratorLoop();
+    if (!loop) return;
+
+    const taskPrompt = [
+      `## Session Brief Task`,
+      '',
+      `A new session has just been created. Prepare a context brief that will be shown to the Captain at session start.`,
+      '',
+      `Instructions:`,
+      `1. Use get_recent_events to see what happened recently.`,
+      `2. Use query_decisions to find pending decisions that need attention.`,
+      `3. Use search_memory to find relevant recent context.`,
+      `4. Use get_project_context to understand the current project state.`,
+      `5. Synthesize a brief (2-3 concise sentences) covering: recent activity, pending decisions, and what needs attention.`,
+      '',
+      `After your analysis, output ONLY the brief text — no JSON, no tools, just the plain text brief.`,
+    ].join('\n');
+
+    try {
+      const result = await loop.run(taskPrompt);
+      const brief = result.content.trim();
+      if (brief.length > 0) {
+        // Store directly in the user's session short-term memory
+        shortTerm.set(sessionId, 'session_brief', brief);
+        logger.info('Curator session brief prepared', { sessionId, preview: brief.slice(0, 200) });
+      }
+    } catch (e: any) {
+      logger.warn('Curator session brief failed', { sessionId, error: e.message });
+    }
+  }
+
+  /** Cross-session pattern extraction — review decisions and memories to find patterns. */
+  async function runCuratorPatternExtraction(): Promise<void> {
+    const loop = createCuratorLoop();
+    if (!loop) return;
+
+    const taskPrompt = [
+      `## Pattern Extraction Task`,
+      '',
+      `You are the Curator. Review recent history to extract patterns.`,
+      '',
+      `Instructions:`,
+      `1. Use query_decisions to list all decisions from the last 7 days.`,
+      `2. Use get_decision to review key decisions — look for patterns in what was chosen.`,
+      `3. Use search_memory to find related context around each decision.`,
+      `4. Use get_captain_preferences to see current preference profile.`,
+      `5. Identify patterns: recurring decision types, risk tolerance signals, cost sensitivity, preferred decision styles.`,
+      `6. Use write_memory to store each pattern you find (importance ≥ 0.7).`,
+      `7. If patterns differ from current preferences, use set_captain_preferences to update the preference profile.`,
+      `8. Use update_project_summary if the overall project picture has changed.`,
+      '',
+      `Focus on actionable patterns — not vague observations. Each pattern should cite specific decisions as evidence.`,
+    ].join('\n');
+
+    try {
+      const result = await loop.run(taskPrompt);
+      logger.info('Curator pattern extraction completed', {
+        steps: result.steps,
+        toolCalls: result.toolCalls,
+        preview: result.content.slice(0, 200),
+      });
+    } catch (e: any) {
+      logger.warn('Curator pattern extraction failed', { error: e.message });
     }
   }
 
@@ -562,15 +772,7 @@ export function getServerContext(): ServerContext {
           if (s.messages.length > 0) {
             const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
             if (messages.length > 200) {
-              await runCuratorConsolidation(
-                s.id,
-                messages,
-                gateway,
-                shortTerm,
-                longTerm,
-                project,
-                entity,
-              );
+              await runCuratorConsolidation(s.id, messages);
             }
           }
         }
@@ -583,6 +785,21 @@ export function getServerContext(): ServerContext {
   curatorNudgeTimer.unref();
   logger.info('Curator self-nudge scheduled (4h)');
 
+  // Curator cross-session pattern extraction: runs every 6 hours
+  const curatorPatternTimer = setInterval(
+    async () => {
+      if (!gateway) return;
+      try {
+        await runCuratorPatternExtraction();
+      } catch (e: any) {
+        logger.warn('Curator pattern extraction failed', { error: e.message });
+      }
+    },
+    6 * 60 * 60 * 1000,
+  );
+  curatorPatternTimer.unref();
+  logger.info('Curator pattern extraction scheduled (6h)');
+
   // Shared agent registry (custom roles persist across requests)
   const agentRegistry = new AgentRoleRegistry();
   // Load custom agents from DB
@@ -594,6 +811,7 @@ export function getServerContext(): ServerContext {
         name: row.name,
         description: row.description,
         systemPrompt: row.system_prompt,
+        modelTier: ((row.model_tier as string) || 'default') as ModelTier,
         model: row.model,
         temperature: row.temperature,
         maxResponseTokens: row.max_response_tokens,
@@ -720,6 +938,7 @@ export function getServerContext(): ServerContext {
               name,
               description: agentCard.description ?? '',
               systemPrompt: agentCard.systemPrompt ?? agentCard.instructions ?? '',
+              modelTier: (agentCard.modelTier as ModelTier) ?? 'default',
               model: agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
               temperature: agentCard.temperature ?? 0.7,
               maxResponseTokens: agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
@@ -771,6 +990,8 @@ export function getServerContext(): ServerContext {
 
   // ── Settings.json loading ──
   // Load settings from ~/.cabinet/settings.json into DB on startup
+  let modelMapping: ModelMapping = {};
+  let providerConfigsFromSettings: Record<string, ProviderEntry> = {};
   {
     const settingsPath = join(dataDir, 'settings.json');
     try {
@@ -783,6 +1004,12 @@ export function getServerContext(): ServerContext {
         }
         if (settings.delegationTier) {
           setCurrentTier(settings.delegationTier as DelegationTier);
+        }
+        if (settings.modelMapping) {
+          modelMapping = settings.modelMapping as ModelMapping;
+        }
+        if (settings.providers) {
+          providerConfigsFromSettings = settings.providers as Record<string, ProviderEntry>;
         }
         logger.info('Settings loaded from file', { path: settingsPath });
       }
@@ -824,8 +1051,6 @@ export function getServerContext(): ServerContext {
   }
 
   // ── Feedback Loop ──
-
-  const modelRouter = new ModelRouter();
 
   const observability = new ObservabilityCollector(eventBus);
 
@@ -892,9 +1117,14 @@ export function getServerContext(): ServerContext {
 
   const autoAdjuster = new AutoAdjuster(
     observability,
-    modelRouter,
     agentRegistry,
     eventBus,
+    (tier: string, model: string) => {
+      modelMapping = { ...modelMapping, [tier]: model };
+      if (gateway && (gateway as any).setModelMapping) {
+        (gateway as any).setModelMapping(modelMapping);
+      }
+    },
     adjustmentNotifyCallback,
   );
 
@@ -955,12 +1185,18 @@ export function getServerContext(): ServerContext {
   autoAdjustTimer.unref();
   logger.info('Auto-adjustment health check + budget enforcement scheduled (1h)');
 
+  // Workflow approval polling (30s fallback for missed WebSocket events)
+  startApprovalPolling(30_000);
+  logger.info('Workflow approval polling started (30s)');
+
   const shutdown = () => {
     logger.info('Shutting down server context...');
     clearInterval(consolidationTimer);
     clearInterval(observabilityTimer);
     clearInterval(curatorNudgeTimer);
+    clearInterval(curatorPatternTimer);
     clearInterval(autoAdjustTimer);
+    stopApprovalPolling();
     taskScheduler.stop();
     try {
       backupManager?.stopAutoBackup();
@@ -1021,7 +1257,6 @@ export function getServerContext(): ServerContext {
     mcpManager,
     taskScheduler,
     observability,
-    modelRouter,
     autoAdjuster,
     eventBus,
     metrics,

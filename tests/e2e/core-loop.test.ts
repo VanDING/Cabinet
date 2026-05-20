@@ -145,17 +145,15 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(body.status).toBe('created');
   });
 
-  // Step 9: Create a meeting
-  it('POST /api/meetings creates meeting with cost estimate', async () => {
+  // Step 9: Meeting endpoint removed — meetings are now initiated via
+  // Secretary → MeetingChair → start_meeting tool → runMeeting()
+  it('POST /api/meetings returns 404 (endpoint removed, use Secretary chat)', async () => {
     const res = await app.request('/api/meetings', {
       method: 'POST',
       headers,
       body: JSON.stringify({ topic: 'Q3 Strategy', advisorIds: ['a1', 'a2'] }),
     });
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toHaveProperty('meetingId');
-    expect(body).toHaveProperty('estimatedCost');
+    expect(res.status).toBe(404);
   });
 
   // Step 10: Auth flow — verify PIN

@@ -1,6 +1,5 @@
 import type { EventBus } from '@cabinet/events';
 import { MessageType, type DelegationTier } from '@cabinet/types';
-import type { ModelRouter } from '@cabinet/gateway';
 import type { AgentRoleRegistry } from '@cabinet/agent';
 import type { ObservabilityCollector } from './observability.js';
 
@@ -30,9 +29,9 @@ export class AutoAdjuster {
 
   constructor(
     private readonly observability: ObservabilityCollector,
-    private readonly modelRouter: ModelRouter,
     private readonly agentRegistry: AgentRoleRegistry,
     private readonly eventBus: EventBus,
+    private readonly modelMappingUpdater?: (tier: string, model: string) => void,
     private readonly notifyCallback?: AdjustmentNotifyCallback,
   ) {}
 
@@ -107,21 +106,14 @@ export class AutoAdjuster {
 
     if (needsApproval && this.notifyCallback) {
       action.applied = await this.notifyCallback(action);
-    } else {
-      const current = this.modelRouter.getModelChain('fast_execute');
-      if (current[0]?.includes('haiku')) {
-        const previousModel = current[0];
-        this.modelRouter.setRoleModels('fast_execute', [
-          'anthropic/claude-sonnet-4-6',
-          'anthropic/claude-haiku-4-5',
-        ]);
-        action.applied = true;
-        action.details = {
-          ...action.details,
-          previousModel,
-          newModel: 'anthropic/claude-sonnet-4-6',
-        };
-      }
+    } else if (this.modelMappingUpdater) {
+      this.modelMappingUpdater('fast_execution', 'anthropic/claude-sonnet-4-6');
+      action.applied = true;
+      action.details = {
+        ...action.details,
+        previousModel: 'claude-haiku-4-5',
+        newModel: 'anthropic/claude-sonnet-4-6',
+      };
     }
     return [action];
   }
