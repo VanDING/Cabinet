@@ -12,6 +12,7 @@ import {
   registerMCPTools,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
+import type { WorkflowCapabilities } from '@cabinet/types';
 
 // ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
@@ -19,9 +20,21 @@ let engine: WorkflowEngine | null = null;
 // ── AgentLoop instance cache (keyed by runId:agentId for isolation) ──
 const agentLoopCache = new Map<string, AgentLoop>();
 
-// ── Tool dependencies (focused subset for workflow agents) ──
-function buildToolDependencies(): ToolDependencies {
+// ── Capabilities cache (workflowId → capabilities declared in definition) ──
+const capabilityCache = new Map<string, WorkflowCapabilities>();
+// Pending capabilities for the currently-starting workflow (set before startRun, read in createAgentLoop)
+let pendingCapabilities: WorkflowCapabilities = {};
+
+/** Helper: return a stub that throws with a capabilities-gated message, matching the expected return type. */
+function stub<T>(feature: string): T {
+  const msg = `${feature} not enabled. Add "capabilities" to workflow definition.`;
+  return (async () => { throw new Error(msg); }) as unknown as T;
+}
+
+// ── Tool dependencies (capabilities-gated for workflow agents) ──
+function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencies {
   const ctx = getServerContext();
+
   return {
     decisionStore: ctx.decisionRepo,
     eventBus: ctx.eventBus,
@@ -69,7 +82,6 @@ function buildToolDependencies(): ToolDependencies {
       if (!row) return undefined;
       return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
     },
-
     createWorkflow(input) {
       const id = `wf_${Date.now()}`;
       ctx.db
@@ -96,7 +108,7 @@ function buildToolDependencies(): ToolDependencies {
     async runWorkflow(_id) {
       return { runId: '', status: 'not_implemented' };
     },
-    async startMeeting(topic, advisorIds) {
+    async startMeeting(topic, _advisorIds) {
       const meetingId = `meeting_${Date.now()}`;
       return { meetingId, topic, synthesis: '', perspectives: [] };
     },
@@ -110,6 +122,7 @@ function buildToolDependencies(): ToolDependencies {
         name: input.name,
         description: input.description,
         systemPrompt: input.systemPrompt,
+        modelTier: ((input as any).modelTier as string || 'default') as any,
         model: input.model,
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
@@ -133,7 +146,6 @@ function buildToolDependencies(): ToolDependencies {
         type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
       }));
     },
-    // Project tools (stubs — workflow agents don't manage projects)
     setProjectContext(projectId) {
       const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
       if (!row) throw new Error(`Project not found: ${projectId}`);
@@ -155,36 +167,66 @@ function buildToolDependencies(): ToolDependencies {
       return { id: project.id, name: project.name };
     },
 
-    // ── File system callbacks (stubs for workflow agents) ──
-    readFile: async (_path: string, _offset?: number, _limit?: number): Promise<{ content: string; size: number; encoding: 'utf-8' | 'base64'; mimeType?: string }> => {
-      throw new Error('File access not available in workflow context');
-    },
-    writeFile: async (_path, _content) => { throw new Error('File access not available in workflow context'); },
-    editFile: async (_path, _oldString, _newString) => { throw new Error('File access not available in workflow context'); },
-    listDirectory: async (_path) => { throw new Error('File access not available in workflow context'); },
-    searchFiles: async (_pattern, _dir) => { throw new Error('File access not available in workflow context'); },
-    searchContent: async (_pattern, _dir, _include) => { throw new Error('File access not available in workflow context'); },
-    deleteFile: async (_path) => { throw new Error('File access not available in workflow context'); },
+    // ── File system (capabilities-gated) ──
+    readFile: caps.files?.read
+      ? async (_p, _o, _l) => { throw new Error('File read in workflows requires server integration (coming soon)'); }
+      : stub('File read'),
+    writeFile: caps.files?.write
+      ? async (_p, _c) => { throw new Error('File write in workflows requires server integration (coming soon)'); }
+      : stub('File write'),
+    editFile: caps.files?.write
+      ? async (_p, _o, _n) => { throw new Error('File edit in workflows requires server integration (coming soon)'); }
+      : stub('File edit'),
+    listDirectory: caps.files?.read
+      ? async (_p) => { throw new Error('Directory listing in workflows requires server integration (coming soon)'); }
+      : stub('Directory listing'),
+    searchFiles: caps.files?.read
+      ? async (_p, _d) => { throw new Error('File search in workflows requires server integration (coming soon)'); }
+      : stub('File search'),
+    searchContent: caps.files?.read
+      ? async (_p, _d, _i) => { throw new Error('Content search in workflows requires server integration (coming soon)'); }
+      : stub('Content search'),
+    deleteFile: caps.files?.write
+      ? async (_p) => { throw new Error('File deletion in workflows requires server integration (coming soon)'); }
+      : stub('File deletion'),
 
-    // ── Web / HTTP callbacks ──
-    webFetch: async () => { throw new Error('Web access not available in workflow context'); },
-    httpRequest: async () => { throw new Error('HTTP access not available in workflow context'); },
+    // ── Web / HTTP (capabilities-gated) ──
+    webFetch: caps.web?.fetch
+      ? async () => { throw new Error('Web fetch in workflows requires server integration (coming soon)'); }
+      : stub('Web fetch'),
+    httpRequest: caps.web?.http
+      ? async () => { throw new Error('HTTP requests in workflows requires server integration (coming soon)'); }
+      : stub('HTTP requests'),
 
-    // ── Shell callback ──
-    execCommand: async () => { throw new Error('Shell execution not available in workflow context'); },
+    // ── Shell (capabilities-gated) ──
+    execCommand: caps.shell
+      ? async () => { throw new Error('Shell execution in workflows requires server integration (coming soon)'); }
+      : stub('Shell execution'),
 
-    // ── Scheduler callbacks ──
-    scheduleTask: async () => { throw new Error('Scheduler not available in workflow context'); },
-    listScheduledTasks: async () => [],
-    cancelScheduledTask: async (_id) => { throw new Error('Scheduler not available in workflow context'); },
+    // ── Scheduler (capabilities-gated) ──
+    scheduleTask: caps.scheduler
+      ? async () => { throw new Error('Scheduler in workflows requires server integration (coming soon)'); }
+      : stub('Scheduler'),
+    listScheduledTasks: caps.scheduler ? async () => [] : async () => [],
+    cancelScheduledTask: caps.scheduler
+      ? async (_id) => { throw new Error('Scheduler in workflows requires server integration (coming soon)'); }
+      : stub('Scheduler'),
 
-    // ── Knowledge / RAG callbacks ──
-    indexDocument: async () => { throw new Error('Document indexing not available in workflow context'); },
-    searchDocuments: async () => { throw new Error('Document search not available in workflow context'); },
-    clearDocumentIndex: async () => { throw new Error('Index management not available in workflow context'); },
+    // ── Knowledge / RAG (capabilities-gated) ──
+    indexDocument: caps.knowledge?.index
+      ? async () => { throw new Error('Document indexing in workflows requires server integration (coming soon)'); }
+      : stub('Document indexing'),
+    searchDocuments: caps.knowledge?.search
+      ? async () => { throw new Error('Document search in workflows requires server integration (coming soon)'); }
+      : stub('Document search'),
+    clearDocumentIndex: caps.knowledge?.index
+      ? async () => { throw new Error('Index management in workflows requires server integration (coming soon)'); }
+      : stub('Index management'),
 
-    // ── Evaluation callback ──
-    evaluateOutput: async () => { throw new Error('Evaluation not available in workflow context'); },
+    // ── Evaluation (capabilities-gated) ──
+    evaluateOutput: caps.evaluation
+      ? async (_c, _t, _s) => { throw new Error('Evaluation in workflows requires server integration (coming soon)'); }
+      : stub('Evaluation'),
   };
 }
 
@@ -255,7 +297,7 @@ function getEngine(): WorkflowEngine {
       }
 
       const executor = new ToolExecutor();
-      registerCabinetTools(executor, buildToolDependencies());
+      registerCabinetTools(executor, buildToolDependencies(pendingCapabilities));
       registerSkillTools(executor);
       const mcpCtx = getServerContext();
       registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
@@ -394,10 +436,24 @@ export const workflowsRouter = new Hono();
 
 // ── Helpers ──
 
-/** Convert new declarative WorkflowDefinition steps to internal node/edge format. */
+/**
+ * Convert declarative WorkflowDefinition steps to internal node/edge DAG format.
+ *
+ * Declarative step format (canonical, designed for LLM generation):
+ *   { id, type, title, description, prompt, agent, input?, condition?, approvalOptions?,
+ *     constraints?, parallel?, template?, capabilities? }
+ *
+ * Edge generation rules:
+ *   - input.from === "trigger" or absent → entry point (no incoming edge)
+ *   - input.from === otherStepId → explicit edge from that step
+ *   - Absent input.from → sequential (connect from previous non-condition step)
+ *   - condition steps → no sequential out-edges; trueBranch/falseBranch create explicit edges
+ *   - humanApproval with retryTarget → condition edge back to retry target
+ */
 function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
   const nodes: WorkflowNodeDef[] = [];
   const edges: WorkflowEdge[] = [];
+  const nodeIds = new Set<string>(steps.map((s) => s.id));
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -407,33 +463,77 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
       id: step.id,
       type: step.type ?? 'aiAgent',
       title: step.title,
+      skillId: step.skillId,
+      condition: step.condition?.expression ?? step.condition,
       data: {
         label: step.title,
         prompt: step.prompt ?? step.description,
         model: step.constraints?.model,
         maxTokens: step.constraints?.maxTokens,
+        temperature: step.constraints?.temperature,
+        maxRetries: step.constraints?.maxRetries,
+        aggregation: step.parallel?.aggregation,
+        message: step.notification?.message,
+        template: step.template,
       },
       agentId: step.agent,
       agentConfig: {
         persistent: step.constraints?.persistent,
+        segmentId: step.constraints?.segmentId,
       },
     });
 
-    // Generate edges: sequential flow or condition-based
-    if (step.type === 'condition' && step.condition) {
-      if (step.condition.trueBranch) {
-        edges.push({ from: step.id, to: step.condition.trueBranch, condition: 'true' });
+    // ── Edge generation ──
+
+    // Condition nodes: explicit branches only, no auto-sequencing
+    if (step.type === 'condition') {
+      const cond = step.condition ?? {};
+      if (cond.trueBranch && nodeIds.has(cond.trueBranch)) {
+        edges.push({ from: step.id, to: cond.trueBranch, condition: 'true' });
       }
-      if (step.condition.falseBranch) {
-        edges.push({ from: step.id, to: step.condition.falseBranch, condition: 'false' });
+      if (cond.falseBranch && nodeIds.has(cond.falseBranch)) {
+        edges.push({ from: step.id, to: cond.falseBranch, condition: 'false' });
       }
-    } else if (prevStep && prevStep.type !== 'condition') {
-      // Sequential: connect previous step to current
+      // If no branches specified, it's a sequential condition — connect to next step
+      if (!cond.trueBranch && !cond.falseBranch && prevStep) {
+        // Don't auto-connect — condition with no branches is a no-op
+      }
+      continue;
+    }
+
+    // Explicit input.from
+    if (step.input?.from) {
+      const fromId = step.input.from as string;
+      if (fromId !== 'trigger' && nodeIds.has(fromId)) {
+        // Check if an edge already exists from this source to this target
+        const exists = edges.some((e) => e.from === fromId && e.to === step.id);
+        if (!exists) {
+          edges.push({ from: fromId, to: step.id });
+        }
+      }
+      // fromId === "trigger" → entry point, no incoming edge
+      continue;
+    }
+
+    // Default: sequential connection from previous step
+    // Skip if previous was a condition (condition handles its own edges)
+    const prevIsCondition = prevStep?.type === 'condition';
+    const prevConditionHandlesThis = prevIsCondition &&
+      (prevStep?.condition?.trueBranch === step.id || prevStep?.condition?.falseBranch === step.id);
+
+    if (prevStep && !prevIsCondition) {
       edges.push({ from: prevStep.id, to: step.id });
-    } else if (prevStep && prevStep.type === 'condition') {
-      // Previous was condition — don't auto-connect; condition handles its own branches
-    } else if (i === 0) {
-      // First step — no incoming edge needed (entry point)
+    } else if (prevStep && prevIsCondition && !prevConditionHandlesThis) {
+      // Previous was condition but this step isn't a branch target — connect anyway
+      edges.push({ from: prevStep.id, to: step.id });
+    }
+
+    // humanApproval retry target
+    if (step.type === 'humanApproval' && step.approvalOptions?.retryTarget) {
+      const retryId = step.approvalOptions.retryTarget as string;
+      if (nodeIds.has(retryId)) {
+        edges.push({ from: step.id, to: retryId, condition: 'retry' });
+      }
     }
   }
 
@@ -510,6 +610,72 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   logger.info('Workflow resumed after approval', { workflowId, nodes: run.steps.length, status: finalStatus });
 }
 
+// ── Approval polling (fallback when WebSocket event is missed) ──
+
+let approvalPollTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startApprovalPolling(intervalMs: number = 30_000): void {
+  if (approvalPollTimer) return; // already running
+
+  approvalPollTimer = setInterval(async () => {
+    try {
+      const { db, logger } = getServerContext();
+
+      // Find workflows stuck in awaiting_approval state
+      const rows = db
+        .prepare("SELECT * FROM workflow_runs WHERE status = 'awaiting_approval' ORDER BY updated_at ASC")
+        .all() as any[];
+
+      for (const row of rows) {
+        const wfId = row.workflow_id as string;
+        // Check if there's a pending approval record for this workflow
+        const approvalRow = db
+          .prepare(
+            "SELECT * FROM audit_log WHERE entity_type = 'workflow_approval' AND action = 'pending' AND json_extract(changes, '$.workflowId') = ? ORDER BY timestamp DESC LIMIT 1",
+          )
+          .get(wfId) as any;
+
+        if (!approvalRow) continue;
+
+        const changes = JSON.parse(approvalRow.changes ?? '{}');
+        const decisionId = changes.decisionId as string | undefined;
+        if (!decisionId) continue;
+
+        // Check if the associated decision has been resolved
+        const decision = db
+          .prepare("SELECT * FROM decisions WHERE id = ?")
+          .get(decisionId) as any;
+
+        if (decision && (decision.status === 'approved' || decision.status === 'rejected')) {
+          logger.info('Workflow approval resolved via polling', { workflowId: wfId, decisionId, status: decision.status });
+          try {
+            if (decision.status === 'approved') {
+              await resumeWorkflowAfterApproval(wfId);
+            } else {
+              // Rejected — mark workflow as failed
+              db.prepare("UPDATE workflows SET status = 'failed' WHERE id = ?").run(wfId);
+              db.prepare("UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'").run(wfId);
+            }
+            // Mark approval as resolved
+            db.prepare("UPDATE audit_log SET action = 'resolved' WHERE entity_type = 'workflow_approval' AND entity_id = ?").run(approvalRow.entity_id);
+          } catch (err) {
+            logger.error('Failed to resume workflow after approval', { workflowId: wfId, error: (err as Error).message });
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal — polling continues on next interval
+    }
+  }, intervalMs);
+}
+
+export function stopApprovalPolling(): void {
+  if (approvalPollTimer) {
+    clearInterval(approvalPollTimer);
+    approvalPollTimer = null;
+  }
+}
+
 // ── Routes ──
 
 workflowsRouter.get('/', (c) => {
@@ -565,6 +731,10 @@ workflowsRouter.post('/:id/run', async (c) => {
 
   const def = JSON.parse(wf.definition ?? '{}');
   const { nodes, edges } = normalizeDefinition(def);
+
+  // Cache capabilities for createAgentLoop
+  pendingCapabilities = (def.capabilities as WorkflowCapabilities) ?? {};
+  capabilityCache.set(id, pendingCapabilities);
 
   if (nodes.length === 0) {
     return c.json({ error: 'Workflow has no nodes' }, 400);

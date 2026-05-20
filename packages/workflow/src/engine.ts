@@ -1,4 +1,5 @@
 import type { Database } from '@cabinet/storage';
+import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
 export type WorkflowNodeType =
   | 'start' | 'end'
@@ -377,7 +378,7 @@ export class WorkflowEngine {
       case 'condition': {
         // Evaluate condition against previous outputs
         const conditionExpr = (node.condition ?? d.condition ?? 'true') as string;
-        const isTrue = this.evaluateCondition(conditionExpr, previousOutputs);
+        const isTrue = this.evaluateCondition(conditionExpr, previousOutputs, run);
         output = `Condition evaluated: ${isTrue}`;
 
         run.steps.push({ nodeId, type: node.type, output });
@@ -404,12 +405,61 @@ export class WorkflowEngine {
 
       case 'parallel': {
         const children = node.children ?? [];
-        const childResults = await Promise.allSettled(
-          children.map((id) => this.executeNode(id, nodeMap, graph, run, visited)),
-        );
-        output = childResults
-          .map((r) => (r.status === 'fulfilled' ? 'ok' : `error: ${String((r as any).reason)}`))
-          .join(', ');
+        const aggregation = (d.aggregation as string) ?? 'all';
+
+        if (aggregation === 'first') {
+          // Race: take the first successful child result
+          let firstOutput = '';
+          let settled = false;
+          const pending = children.map(async (id) => {
+            // Each child is a promise that resolves when executeNode completes
+            return new Promise<string>((resolve) => {
+              // Wrap executeNode to capture its output
+              this.executeNode(id, nodeMap, graph, run, visited).then(() => {
+                const childStep = run.steps.find((s) => s.nodeId === id);
+                if (!settled) {
+                  settled = true;
+                  firstOutput = childStep?.output ?? '';
+                  resolve(firstOutput);
+                }
+              });
+            });
+          });
+          await Promise.any(pending);
+          // Kill remaining... we can't easily cancel, but we can mark
+          output = firstOutput || 'No child completed';
+        } else {
+          const childResults = await Promise.allSettled(
+            children.map((id) => this.executeNode(id, nodeMap, graph, run, visited)),
+          );
+
+          if (aggregation === 'merge') {
+            // Merge: collect all outputs into one string
+            const parts: string[] = [];
+            for (const childId of children) {
+              const childStep = run.steps.find((s) => s.nodeId === childId);
+              const childOutput = run.results.get(childId);
+              if (childStep) {
+                parts.push(`[${childId}]: ${childStep.output}`);
+              } else if (childOutput) {
+                parts.push(`[${childId}]: ${String(childOutput)}`);
+              }
+            }
+            output = parts.join('\n');
+          } else {
+            // "all" (default): store each output, generate summary
+            for (const childId of children) {
+              const childStep = run.steps.find((s) => s.nodeId === childId);
+              if (childStep) {
+                run.results.set(childId, childStep.output);
+              }
+            }
+            const statuses = childResults.map((r, i) =>
+              r.status === 'fulfilled' ? `${children[i]}: ok` : `${children[i]}: error`,
+            );
+            output = statuses.join(', ');
+          }
+        }
         break;
       }
 
@@ -469,14 +519,55 @@ export class WorkflowEngine {
     }
   }
 
-  private evaluateCondition(expr: string, previousOutputs: string): boolean {
+  private evaluateCondition(expr: string, previousOutputs: string, run: WorkflowRun): boolean {
     if (!expr || expr === 'true') return true;
     if (expr === 'false') return false;
-    const lower = previousOutputs.toLowerCase();
-    if (expr.includes('approved')) return lower.includes('approved');
-    if (expr.includes('true')) return lower.includes('true') || lower.includes('approved');
-    // Fallback string match
-    return lower.includes(expr.toLowerCase());
+
+    const context: ConditionContext = {
+      resolve: (path: string) => {
+        // steps.<nodeId>.output[.field...]
+        if (path.startsWith('steps.')) {
+          const parts = path.slice(6).split('.');
+          const nodeId = parts[0]!;
+          const step = run.steps.find((s) => s.nodeId === nodeId);
+          if (!step) throw new Error(`Step not found: ${nodeId}`);
+
+          let value: unknown = step.output;
+          // Try JSON parse for structured output
+          try { value = JSON.parse(step.output); } catch { /* use raw string */ }
+
+          // Walk remaining path segments
+          for (let i = 1; i < parts.length; i++) {
+            if (value && typeof value === 'object') {
+              value = (value as Record<string, unknown>)[parts[i]!];
+            } else {
+              return 'undefined';
+            }
+          }
+          return String(value ?? '');
+        }
+
+        // results.<key>
+        if (path.startsWith('results.')) {
+          const key = path.slice(8);
+          const val = run.results.get(key);
+          return val != null ? String(val) : 'undefined';
+        }
+
+        // run.status
+        if (path === 'run.status') return run.status;
+
+        throw new Error(`Unknown reference: {{${path}}}`);
+      },
+    };
+
+    try {
+      return evaluateExpr(expr, context);
+    } catch {
+      // Fallback to simple string match for backward compatibility
+      const lower = previousOutputs.toLowerCase();
+      return lower.includes(expr.toLowerCase());
+    }
   }
 
   // ── Persistence ────────────────────────────────────────────

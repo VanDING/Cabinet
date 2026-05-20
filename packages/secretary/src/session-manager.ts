@@ -12,11 +12,23 @@ export interface Session {
   updatedAt: Date;
 }
 
+export type SessionCallback = (session: Session) => Promise<void> | void;
+
 export class SessionManager {
   private sessions = new Map<string, Session>();
+  private onCloseCallbacks: SessionCallback[] = [];
+  private onCreateCallbacks: SessionCallback[] = [];
 
   constructor() {
     this.restoreSessions();
+  }
+
+  onSessionClose(cb: SessionCallback): void {
+    this.onCloseCallbacks.push(cb);
+  }
+
+  onSessionCreate(cb: SessionCallback): void {
+    this.onCreateCallbacks.push(cb);
   }
 
   create(id: string, title?: string): Session {
@@ -29,6 +41,10 @@ export class SessionManager {
     };
     this.sessions.set(id, session);
     this.persist(session);
+    // Fire create callbacks asynchronously (non-blocking)
+    for (const cb of this.onCreateCallbacks) {
+      Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+    }
     return session;
   }
 
@@ -50,6 +66,10 @@ export class SessionManager {
     if (session) {
       this.persist(session);
       this.sessions.delete(sessionId);
+      // Fire close callbacks asynchronously (non-blocking)
+      for (const cb of this.onCloseCallbacks) {
+        Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+      }
     }
   }
 

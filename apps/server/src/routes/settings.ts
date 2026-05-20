@@ -246,3 +246,37 @@ settingsRouter.post('/mcp-servers/test', async (c) => {
     return c.json({ status: 'error', error: (e as Error).message }, 500);
   }
 });
+
+// ── Model Configuration ──
+
+settingsRouter.get('/model-config', (c) => {
+  const settings = loadSettings();
+  return c.json({
+    providers: settings.providers ?? {},
+    modelMapping: settings.modelMapping ?? {
+      deep_reasoning: 'claude-sonnet-4-6',
+      fast_execution: 'claude-haiku-4-5',
+      default: 'claude-sonnet-4-6',
+    },
+  });
+});
+
+settingsRouter.put('/model-config', async (c) => {
+  const { refreshGateway, logger } = getServerContext();
+  const body = await c.req.json();
+
+  if (body.providers !== undefined && typeof body.providers !== 'object') {
+    return c.json({ error: 'providers must be an object' }, 400);
+  }
+  if (body.modelMapping !== undefined && typeof body.modelMapping !== 'object') {
+    return c.json({ error: 'modelMapping must be an object' }, 400);
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.providers !== undefined) updates.providers = body.providers;
+  if (body.modelMapping !== undefined) updates.modelMapping = body.modelMapping;
+  saveSettings(updates);
+  refreshGateway();
+  logger.info('Model config updated', { providers: Object.keys(body.providers ?? {}), tiers: Object.keys(body.modelMapping ?? {}) });
+  return c.json({ status: 'updated' });
+});

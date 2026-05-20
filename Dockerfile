@@ -11,7 +11,6 @@ COPY packages/agent/package.json packages/agent/
 COPY packages/memory/package.json packages/memory/
 COPY packages/decision/package.json packages/decision/
 COPY packages/secretary/package.json packages/secretary/
-COPY packages/meeting/package.json packages/meeting/
 COPY packages/workflow/package.json packages/workflow/
 COPY packages/harness/package.json packages/harness/
 COPY packages/ui/package.json packages/ui/

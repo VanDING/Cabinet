@@ -8,7 +8,6 @@
     { "path": "packages/memory" },
     { "path": "packages/decision" },
     { "path": "packages/workflow" },
-    { "path": "packages/meeting" },
     { "path": "packages/secretary" },
     { "path": "packages/agent" },
     { "path": "packages/harness" },

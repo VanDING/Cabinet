@@ -102,64 +102,58 @@ export interface SkillDefinition {
 
 // ── Workflow (Declarative, LLM-friendly) ──
 
-export type WorkflowStepType = 'aiAgent' | 'humanApproval' | 'condition' | 'notification' | 'dataQuery' | 'wait';
+export type WorkflowStepType = 'aiAgent' | 'llmCall' | 'humanApproval' | 'condition' | 'parallel' | 'notification' | 'dataQuery' | 'wait';
 
 export type WorkflowOutputFormat = 'json' | 'markdown' | 'text';
-
-export type WorkflowFlowMode = 'sequential' | 'conditional' | 'parallel';
 
 export type WorkflowFailureMode = 'halt' | 'skip' | 'retry';
 
 export interface WorkflowStep {
   id: string;
   title: string;
-  /** Human-readable description of what this step does. */
-  description: string;
+  description?: string;
   type: WorkflowStepType;
-  /** Reference to a registered Agent role (aiAgent steps). */
   agent?: string;
-  /** Where this step gets its input. */
-  input?: {
-    from: 'trigger' | string;
-    schema?: Record<string, unknown>;
-  };
-  /** What this step produces. */
-  output?: {
-    format: WorkflowOutputFormat;
-    schema?: Record<string, unknown>;
-  };
-  /** Step-specific instruction. Supports {{variable}} template syntax. */
+  input?: { from: 'trigger' | string };
   prompt?: string;
+  template?: Record<string, string>;
   constraints?: {
     maxTokens?: number;
     temperature?: number;
     maxRetries?: number;
+    persistent?: boolean;
+    segmentId?: string;
+    model?: string;
   };
-  /** Condition branching (condition type only). */
   condition?: {
     expression: string;
     trueBranch: string;
     falseBranch: string;
   };
-  /** Human approval options (humanApproval type only). */
-  approvalOptions?: Array<{
-    label: string;
-    action: 'continue' | 'retry' | 'halt';
-    target?: string;
-  }>;
+  approvalOptions?: {
+    retryTarget?: string;
+    actions: Array<'continue' | 'retry' | 'halt'>;
+  };
+  parallel?: {
+    children: string[];
+    aggregation?: 'all' | 'first' | 'merge';
+  };
+}
+
+export interface WorkflowCapabilities {
+  files?: { read?: boolean; write?: boolean };
+  web?: { fetch?: boolean; http?: boolean };
+  shell?: boolean;
+  scheduler?: boolean;
+  knowledge?: { search?: boolean; index?: boolean };
+  evaluation?: boolean;
 }
 
 export interface WorkflowDefinition {
   name: string;
   description?: string;
-  version: number;
-  config?: {
-    projectId?: string;
-    requireApproval?: boolean;
-  };
   steps: WorkflowStep[];
-  flow?: WorkflowFlowMode;
-  onFailure?: WorkflowFailureMode;
+  capabilities?: WorkflowCapabilities;
 }
 
 /** Legacy status values for persisted workflows. */

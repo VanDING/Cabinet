@@ -19,7 +19,6 @@
     "@cabinet/events": "workspace:*",
     "@cabinet/gateway": "workspace:*",
     "@cabinet/harness": "workspace:*",
-    "@cabinet/meeting": "workspace:*",
     "@cabinet/memory": "workspace:*",
     "@cabinet/secretary": "workspace:*",
     "@cabinet/storage": "workspace:*",
