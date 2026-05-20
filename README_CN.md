@@ -109,7 +109,6 @@ Layer 1 (Infra):       types, events, storage     ← 基础设施
 | 4   | `@cabinet/ui`        | 共享 React 组件库                             |
 | 3   | `@cabinet/decision`  | 分级决策管理（L0–L3）                         |
 | 3   | `@cabinet/secretary` | 自然语言入口，会话管理                        |
-| 3   | `@cabinet/meeting`   | 多智能体辩论与审议                            |
 | 3   | `@cabinet/workflow`  | 工作流引擎（技能、条件、并行、人工节点）      |
 | 3   | `@cabinet/harness`   | 质量闸门、评估器、验证                        |
 | 2   | `@cabinet/gateway`   | 多提供商 LLM 网关（Vercel AI SDK）            |

@@ -14,11 +14,25 @@ import type {
   EmbeddingResult,
 } from './llm-gateway.js';
 
-interface ProviderConfig {
-  [provider: string]: { apiKey: string; baseUrl?: string } | undefined;
-  anthropic?: { apiKey: string; baseUrl?: string };
-  openai?: { apiKey: string; baseUrl?: string };
-  google?: { apiKey: string; baseUrl?: string };
+export interface ProviderEntry {
+  apiKey: string;
+  baseUrl?: string;
+}
+
+export interface ProviderConfig {
+  [provider: string]: ProviderEntry | undefined;
+  anthropic?: ProviderEntry;
+  openai?: ProviderEntry;
+  google?: ProviderEntry;
+}
+
+export type ModelTier = 'deep_reasoning' | 'fast_execution' | 'default';
+
+export interface ModelMapping {
+  [tier: string]: string | undefined;
+  deep_reasoning?: string;
+  fast_execution?: string;
+  default?: string;
 }
 
 // Domestic LLM provider configurations (all OpenAI-compatible)
@@ -32,15 +46,26 @@ const DOMESTIC_PROVIDERS: Record<string, { baseURL: string }> = {
 
 /**
  * Vercel AI SDK adapter with multi-provider support.
- * Resolves provider-qualified model names (e.g. "anthropic/claude-sonnet-4-6")
- * to AI SDK model objects using @ai-sdk/anthropic and @ai-sdk/openai.
- * Falls back to environment variables for API keys when not provided in config.
+ * Resolves model tier strings (e.g. "deep_reasoning") to provider/model
+ * via user-configurable modelMapping, falling back to raw model names.
  */
 export class AISDKAdapter implements LLMGateway {
   private readonly config: ProviderConfig;
+  private modelMapping: ModelMapping;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: ProviderConfig, modelMapping?: ModelMapping) {
     this.config = config;
+    this.modelMapping = modelMapping ?? {};
+  }
+
+  /** Update model mapping at runtime (called when user changes settings). */
+  setModelMapping(mapping: ModelMapping): void {
+    this.modelMapping = mapping;
+  }
+
+  /** Resolve a model tier to the actual provider/model string. */
+  resolveModelString(tier: string): string {
+    return this.modelMapping[tier] ?? tier;
   }
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {

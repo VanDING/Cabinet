@@ -109,7 +109,6 @@ Layer 1 (Infra):       types, events, storage     ← infrastructure
 | 4     | `@cabinet/ui`        | Shared React component library                             |
 | 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                         |
 | 3     | `@cabinet/secretary` | Natural-language entry point, session management           |
-| 3     | `@cabinet/meeting`   | Multi-agent debate and deliberation                        |
 | 3     | `@cabinet/workflow`  | Workflow engine (Skill, Condition, Parallel, Human nodes)  |
 | 3     | `@cabinet/harness`   | Quality gates, evaluators, verification                    |
 | 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |

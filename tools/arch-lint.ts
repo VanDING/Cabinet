@@ -3,7 +3,7 @@
  *
  * Layer 1 (Infra):    types, events, storage       → may only import Layer 1
  * Layer 2 (Agent):    gateway, agent, memory        → may import Layer 1–2
- * Layer 3 (Business): decision, secretary, meeting,  → may import Layer 1–3
+ * Layer 3 (Business): decision, secretary,            → may import Layer 1–3
  *                       workflow, harness
  * Layer 4 (Interface): ui, server, desktop           → may import Layer 1–4
  *
@@ -28,7 +28,6 @@ const LAYERS: Record<number, string[]> = {
   3: [
     '@cabinet/decision',
     '@cabinet/secretary',
-    '@cabinet/meeting',
     '@cabinet/workflow',
     '@cabinet/harness',
   ],
@@ -140,7 +139,7 @@ function checkFile(filePath: string, pkgName: string, pkgLayer: number): Violati
       const layerNames: Record<number, string> = {
         1: 'Infra (types/events/storage)',
         2: 'Agent Core (gateway/agent/memory)',
-        3: 'Business (decision/secretary/meeting/workflow/harness)',
+        3: 'Business (decision/secretary/workflow/harness)',
         4: 'Interface (ui/server/desktop)',
       };
       violations.push({

@@ -3,7 +3,6 @@ import { cors } from 'hono/cors';
 import { healthRouter } from './routes/health.js';
 import { secretaryRouter } from './routes/secretary.js';
 import { decisionsRouter } from './routes/decisions.js';
-import { meetingsRouter } from './routes/meetings.js';
 import { workflowsRouter } from './routes/workflows.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { settingsRouter } from './routes/settings.js';
@@ -68,7 +67,6 @@ export function createApp() {
   app.route('/api/evaluations', evaluationsRouter);
   app.route('/api/secretary', secretaryRouter);
   app.route('/api/decisions', decisionsRouter);
-  app.route('/api/meetings', meetingsRouter);
   app.route('/api/factory', workflowsRouter);
   app.route('/api/dashboard', dashboardRouter);
   app.route('/api/settings', settingsRouter);

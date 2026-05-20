@@ -100,8 +100,6 @@ describe('WorkflowDefinition type', () => {
     const wf: WorkflowDefinition = {
       name: 'Market Entry Analysis',
       description: 'Analyze market entry feasibility and generate a decision recommendation',
-      version: 1,
-      config: { projectId: 'proj-1', requireApproval: true },
       steps: [
         {
           id: 'data_collection',
@@ -109,8 +107,7 @@ describe('WorkflowDefinition type', () => {
           description: 'Collect market data from internal CRM and external sources',
           type: 'aiAgent',
           agent: 'market_analyst',
-          input: { from: 'trigger', schema: { dataSource: 'string' } },
-          output: { format: 'json', schema: { records: 'number' } },
+          input: { from: 'trigger' },
           prompt: 'Collect and validate market data from {{dataSource}}',
           constraints: { maxTokens: 3000, temperature: 0.3 },
         },
@@ -119,17 +116,17 @@ describe('WorkflowDefinition type', () => {
           title: 'Quality Check',
           description: 'Check if data quality meets threshold',
           type: 'condition',
-          condition: { expression: 'output.confidence > 0.7', trueBranch: 'report_gen', falseBranch: 'human_review' },
+          condition: { expression: '{{steps.data_collection.output.confidence}} > 0.7', trueBranch: 'report_gen', falseBranch: 'human_review' },
         },
         {
           id: 'human_review',
           title: 'Human Review',
           description: 'Captain reviews low-confidence analysis',
           type: 'humanApproval',
-          approvalOptions: [
-            { label: 'Continue', action: 'continue' },
-            { label: 'Retry', action: 'retry', target: 'data_collection' },
-          ],
+          approvalOptions: {
+            actions: ['continue', 'retry', 'halt'],
+            retryTarget: 'data_collection',
+          },
         },
         {
           id: 'report_gen',
@@ -138,17 +135,14 @@ describe('WorkflowDefinition type', () => {
           type: 'aiAgent',
           agent: 'report_writer',
           input: { from: 'data_collection' },
-          output: { format: 'markdown' },
           prompt: 'Generate structured report from analysis results',
         },
       ],
-      flow: 'conditional',
-      onFailure: 'halt',
     };
     expect(wf.steps).toHaveLength(4);
     expect(wf.steps[0]!.agent).toBe('market_analyst');
     expect(wf.steps[2]!.type).toBe('humanApproval');
-    expect(wf.flow).toBe('conditional');
+    expect(wf.steps[2]!.approvalOptions?.actions).toContain('retry');
   });
 });
 

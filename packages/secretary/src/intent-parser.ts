@@ -16,6 +16,8 @@ export type ParsedIntent =
     }
   | { kind: 'knowledge_query'; question: string; scope: 'short_term' | 'long_term' | 'both' }
   | { kind: 'workflow_request'; topic: string; context: string; suggestedDimensions: string[] }
+  | { kind: 'review_request'; target: string; context: string }
+  | { kind: 'organize_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
 
@@ -38,7 +40,7 @@ export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
     'secretary', 'decision_analyst', 'meeting_chair',
-    'workflow_designer', 'curator', 'agent_creator',
+    'workflow_designer', 'curator', 'agent_creator', 'reviewer', 'organize',
   ]);
 
   constructor(private readonly gateway?: LLMGateway) {}
@@ -146,6 +148,34 @@ export class IntentParser {
       };
     }
 
+    if (
+      lower.includes('审查') ||
+      lower.includes('检查') ||
+      lower.includes('review') ||
+      lower.includes('复核') ||
+      lower.includes('审核')
+    ) {
+      return {
+        kind: 'review_request',
+        target: message.slice(0, 100),
+        context: message,
+      };
+    }
+
+    // Organize: requires strong semantic combination to avoid false positives.
+    // "组织" alone is ambiguous (could be "组织文件" or "组织会议").
+    // Only trigger when "组织" pairs with architecture/design/system words.
+    const hasOrganize = lower.includes('组织') || lower.includes('搭建') || lower.includes('organize') || lower.includes('架构');
+    const hasDesignIntent = lower.includes('设计') || lower.includes('系统') || lower.includes('流程') ||
+      lower.includes('自动化') || lower.includes('能力') || lower.includes('方案');
+    if (hasOrganize && hasDesignIntent) {
+      return {
+        kind: 'organize_request',
+        topic: message.slice(0, 100),
+        context: message,
+      };
+    }
+
     return { kind: 'unknown', raw: message };
   }
 
@@ -161,6 +191,8 @@ export class IntentParser {
 - meeting_request: user wants to organize advisors to discuss something
 - status_query: user asks about project/decision/workflow status
 - knowledge_query: user asks a general question
+- review_request: user wants to review/audit/check quality of something
+- organize_request: user wants to design/build/architect an organization or system
 
 Respond with ONLY a JSON object:
 {
@@ -208,6 +240,8 @@ Message: "${message}"`;
         '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
         '- workflow_designer: Workflow creation, modification, and execution',
         '- curator: Memory consolidation, progress summaries, pattern extraction',
+        '- reviewer: Quality review — checks outputs for logic, evidence, and completeness',
+        '- organize: Organization design — translates business goals into agent+workflow blueprints',
       ].join('\n');
 
     try {
@@ -226,6 +260,8 @@ Routing guidelines:
 - meeting_chair: The topic needs multiple perspectives, expert opinions, or debate
 - workflow_designer: The user wants to create/design/run a multi-step process
 - curator: The user asks about past events, project status, progress, or patterns
+- reviewer: The user wants to review/audit/check the quality or correctness of something
+- organize: The user wants to design/build/architect an organization, system, or capability
 
 Respond with ONLY a JSON object (no markdown, no backticks):
 {
@@ -296,8 +332,15 @@ Message: "${message}"`;
         targetAgent = 'workflow_designer';
         reasoning = 'Workflow creation/modification request routed to Workflow Designer.';
         break;
+      case 'organize_request':
+        targetAgent = 'organize';
+        reasoning = 'Organization design request routed to Organize Agent.';
+        break;
+      case 'review_request':
+        targetAgent = 'reviewer';
+        reasoning = 'Review/audit request routed to Reviewer.';
+        break;
       case 'follow_up':
-        // Keep previous route if available, otherwise stay with secretary
         targetAgent = 'secretary';
         reasoning = 'Follow-up message — continuing with Secretary.';
         break;
