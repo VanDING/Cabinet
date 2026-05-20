@@ -289,6 +289,11 @@ export function getServerContext(): ServerContext {
   const costTracker = new CostTracker();
   const budgetGuard = new BudgetGuard(costTracker);
 
+  // Provider configs & model mapping — must be declared before buildGateway()
+  // because buildGateway() is called immediately below and references these.
+  let modelMapping: ModelMapping = {};
+  let providerConfigsFromSettings: Record<string, ProviderEntry> = {};
+
   // Gateway — built from .env + database
   const buildGateway = (): LLMGateway | null => {
     const providerConfigs: Record<string, { apiKey: string; baseUrl?: string }> = {};
@@ -990,8 +995,6 @@ export function getServerContext(): ServerContext {
 
   // ── Settings.json loading ──
   // Load settings from ~/.cabinet/settings.json into DB on startup
-  let modelMapping: ModelMapping = {};
-  let providerConfigsFromSettings: Record<string, ProviderEntry> = {};
   {
     const settingsPath = join(dataDir, 'settings.json');
     try {
