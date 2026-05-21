@@ -39,8 +39,8 @@ export interface AgentRole {
   model: string;
   /** Temperature (0 = deterministic, 1 = creative). */
   temperature: number;
-  /** Max tokens for LLM response. */
-  maxResponseTokens: number;
+  /** Max tokens for LLM response (undefined = model default, no artificial limit). */
+  maxResponseTokens?: number;
   /** Tool names this role is allowed to use (empty = all tools). */
   allowedTools: string[];
   /** Context window budget as fraction of total (e.g., 0.3 = 30%). */
@@ -56,6 +56,10 @@ export const SECRETARY_ROLE: AgentRole = {
     'Conversation entry point. Understands intent, routes requests to the right cabinet member, handles general questions directly.',
   systemPrompt: [
     'You are the Secretary of Cabinet — an AI collaboration framework for super individuals.',
+    '',
+    'You have access to file system tools (read_file, write_file, edit_file, list_directory, glob, grep), web tools (web_fetch), memory tools (remember, recall, search_memory), and project management tools.',
+    'When a project is active, proactively use list_directory and read_file to understand the codebase before answering questions about it.',
+    'Use conversation history to avoid repeating the same tool calls — if you already retrieved information in a previous turn, reuse that knowledge.',
     '',
     'Your role:',
     '1. Understand what the Captain needs. Parse their intent and determine if a specialist cabinet member should handle it.',
@@ -75,14 +79,13 @@ export const SECRETARY_ROLE: AgentRole = {
     '- Present options clearly with trade-offs, not just recommendations.',
     '- When uncertain, say so rather than fabricate analysis.',
     '- Maintain continuity: reference past decisions and context when relevant.',
-    '- Be concise. The Captain values clarity over verbosity.',
-    '- When you have tools available, use them proactively. After receiving tool results, continue the task — do not stop mid-way. Keep using tools and synthesizing results until the task is complete.',
+    '- When you have tools available, use them proactively. After receiving tool results, you MUST synthesize a complete answer. Never output only a one-line status after a tool call — always produce the full result the Captain asked for.',
+    '- If a task requires multiple steps or tools, continue until the task is fully complete. Do not stop after gathering data — analyze it and present findings.',
     '- Only use Markdown formatting. Never output raw HTML tags.',
   ].join('\n'),
-  modelTier: 'deep_reasoning',
+  modelTier: 'default',
   model: 'claude-sonnet-4-6',
   temperature: 0.5,
-  maxResponseTokens: 8000,
   allowedTools: [
     // Read tools
     'query_decisions', 'get_decision', 'get_status', 'get_recent_events',
@@ -234,7 +237,7 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
     '- Consecutive steps with the same agent share context as a "segment"',
     '',
     '### Constraints',
-    '- constraints.model: model override for this step (default: claude-haiku-4-5)',
+    '- constraints.model: model override for this step (default: fast model)',
     '- constraints.temperature: 0.0-1.0',
     '- constraints.maxTokens: response token limit',
     '- constraints.maxRetries: retry count on failure',
@@ -299,7 +302,7 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
     '- Keep workflows to 4-8 steps. Split larger processes into sub-workflows.',
     '- Use condition steps for quality gates and decision points.',
     '- Add humanApproval before destructive or high-cost actions.',
-    '- Default model is claude-haiku-4-5 for routine steps. Use claude-sonnet-4-6 for complex reasoning. NEVER use gpt-4, gpt-4o, or any OpenAI/Google models unless the Captain explicitly requests them.',
+    '- Use the fast model for routine steps and the reasoning model for complex analysis, as configured by the Captain.',
     '- Check for similar workflows with list_workflows before creating duplicates.',
     '- Present the plan in plain language first, then show the JSON.',
   ].join('\n'),
@@ -395,7 +398,7 @@ export const AGENT_CREATOR_ROLE: AgentRole = {
     '   - Name: short, descriptive (e.g., "Market Analyst", "Code Reviewer"). 2-64 chars, letters/digits/Chinese/underscores/hyphens/spaces.',
     '   - Description: one sentence explaining what it does',
     '   - System prompt: detailed instructions for the agent. Include its role, rules, and output format.',
-    '   - Model: recommend claude-haiku-4-5 for lightweight tasks, claude-sonnet-4-6 for complex ones',
+    '   - Model: recommend the fast model for lightweight tasks, the reasoning model for complex ones',
     '   - Tools: which cabinet tools should it have access to? Start with the essentials, not everything.',
     '3. Use list_agents to check for duplicates before creating.',
     '4. Use register_agent to save the new agent.',
@@ -484,7 +487,6 @@ export const REVIEWER_ROLE: AgentRole = {
   modelTier: 'fast_execution',
   model: 'claude-haiku-4-5',
   temperature: 0.1,
-  maxResponseTokens: 2000,
   allowedTools: [
     'read_file',
     'list_directory',
@@ -572,7 +574,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     '',
     '## Guidelines',
     '- Prefer reusing existing agents over creating new ones. Use list_agents before register_agent.',
-    '- Default model for new agents: claude-haiku-4-5 for routine, claude-sonnet-4-6 for complex reasoning.',
+    '- Default model for new agents: fast model for routine tasks, reasoning model for complex analysis.',
     '- Keep workflows to 4-8 steps. Split larger processes.',
     '- Add humanApproval before destructive or high-cost actions.',
     '- Present the plan in plain language first, then show the structured blueprint.',
@@ -581,7 +583,6 @@ export const ORGANIZE_ROLE: AgentRole = {
   modelTier: 'deep_reasoning',
   model: 'claude-sonnet-4-6',
   temperature: 0.4,
-  maxResponseTokens: 8000,
   allowedTools: [
     'list_agents',
     'register_agent',

@@ -54,8 +54,9 @@ scheduledTasksRouter.post('/:id/run', async (c) => {
     // Execute via gateway if available
     if (!ctx.gateway) return c.json({ error: 'No LLM gateway available' }, 503);
     const task = tasks[0]!;
+    const testModel = (ctx.gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
     const result = await ctx.gateway.generateText({
-      model: 'claude-haiku-4-5',
+      model: testModel,
       systemPrompt: 'Execute this scheduled task. Be concise.',
       messages: [{ role: 'user', content: task.prompt }],
     });

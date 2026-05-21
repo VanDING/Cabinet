@@ -57,7 +57,7 @@ describe('ChatView', () => {
     renderChatView();
     fireEvent.click(screen.getByText('Help me analyze a decision'));
     expect(handler).toHaveBeenCalled();
-    expect((handler.mock.calls[0][0] as CustomEvent).detail).toBe('Help me analyze a decision');
+    expect((handler.mock.calls[0]![0] as CustomEvent).detail).toBe('Help me analyze a decision');
     window.removeEventListener('quick-suggestion', handler);
   });
 

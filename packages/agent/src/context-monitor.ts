@@ -6,6 +6,8 @@ import { MessageType } from '@cabinet/types';
 export interface ContextWindowConfig {
   /** Model's maximum context window in tokens */
   maxTokens: number;
+  /** Fraction of maxTokens this agent is allowed to use (0-1, default 1.0 = full window). */
+  contextBudget?: number;
   /** Below this ratio: focused reasoning, accurate tool calls */
   smartZoneThreshold: number;
   /** Above this ratio: first warning level */
@@ -113,9 +115,9 @@ export class ContextMonitor {
   }
 
   /** Pick context window size for a given model. */
-  static forModel(model: string, eventBus: EventBus): ContextMonitor {
+  static forModel(model: string, eventBus: EventBus, contextBudget?: number): ContextMonitor {
     const maxTokens = MODEL_CONTEXT_SIZES[model] ?? DEFAULT_WINDOW_CONFIG.maxTokens;
-    return new ContextMonitor(eventBus, { maxTokens });
+    return new ContextMonitor(eventBus, { maxTokens, contextBudget });
   }
 
   /** Estimate tokens for a block of text. Public for external use (e.g. pre-call budgeting). */
@@ -128,12 +130,14 @@ export class ContextMonitor {
     const estimatedTokens =
       breakdown.systemPrompt + breakdown.messages + breakdown.toolResults + breakdown.memory;
 
-    const utilization = estimatedTokens / this.config.maxTokens;
+    const budget = this.config.contextBudget ?? 1.0;
+    const effectiveMaxTokens = this.config.maxTokens * budget;
+    const utilization = estimatedTokens / effectiveMaxTokens;
     const zone = this.classifyZone(utilization);
 
     const snap: ContextSnapshot = {
       estimatedTokens,
-      maxTokens: this.config.maxTokens,
+      maxTokens: effectiveMaxTokens,
       utilization: Math.round(utilization * 10_000) / 10_000,
       zone,
       breakdown,

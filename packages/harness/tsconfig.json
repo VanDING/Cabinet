@@ -5,5 +5,12 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "references": [{ "path": "../types" }, { "path": "../events" }, { "path": "../gateway" }]
+  "references": [
+    { "path": "../types" },
+    { "path": "../events" },
+    { "path": "../gateway" },
+    { "path": "../agent" },
+    { "path": "../memory" },
+    { "path": "../storage" }
+  ]
 }

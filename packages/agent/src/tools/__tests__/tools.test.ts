@@ -147,7 +147,7 @@ describe('Cabinet Tools', () => {
   });
 
   it('registers 33 tools', () => {
-    expect(executor.listTools()).toHaveLength(32);
+    expect(executor.listTools()).toHaveLength(49);
   });
 
   it('remember and recall work together', async () => {

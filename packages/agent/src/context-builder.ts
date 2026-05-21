@@ -78,6 +78,9 @@ export class ContextBuilder {
   ): string {
     const parts: string[] = [
       'You are a Cabinet AI assistant (Secretary).',
+      'You have access to file system tools (read_file, write_file, edit_file, list_directory, glob, grep), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
+      'When a project is active, proactively use list_directory and read_file to understand the codebase before answering.',
+      'Use conversation history to avoid repeating the same tool calls — if you already retrieved context in a previous turn, reuse that knowledge.',
       `Current project context: ${projectContext}`,
       `Captain preferences: ${JSON.stringify(preferences)}`,
     ];

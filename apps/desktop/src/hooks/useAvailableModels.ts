@@ -5,7 +5,7 @@ export const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: ['anthropic/claude-haiku-4-5', 'anthropic/claude-sonnet-4-6', 'anthropic/claude-opus-4-7'],
   openai: ['openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/gpt-4-turbo'],
   google: ['google/gemini-2.0-flash', 'google/gemini-2.0-pro'],
-  deepseek: ['deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'deepseek/deepseek-v3', 'deepseek/deepseek-r1'],
+  deepseek: ['deepseek/deepseek-v4-flash', 'deepseek/deepseek-v4-pro', 'deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'deepseek/deepseek-v3', 'deepseek/deepseek-r1'],
   qwen: ['qwen/qwen-turbo', 'qwen/qwen-plus', 'qwen/qwen-max'],
   moonshot: ['moonshot/moonshot-v1-8k', 'moonshot/moonshot-v1-32k', 'moonshot/moonshot-v1-128k'],
   zhipu: ['zhipu/glm-4', 'zhipu/glm-4-flash'],

@@ -5,6 +5,8 @@ export interface LLMCallOptions {
   tools?: ToolDefinition[];
   maxTokens?: number;
   temperature?: number;
+  /** Anthropic extended thinking budget in tokens (1024–128000). */
+  thinkingBudget?: number;
 }
 
 export interface ToolDefinition {
@@ -30,10 +32,12 @@ export interface ToolCallResult {
 }
 
 export interface StreamChunk {
-  type: 'text' | 'tool_call' | 'tool_result' | 'done' | 'error';
+  type: 'text' | 'tool_call' | 'tool_result' | 'done' | 'error' | 'thinking' | 'thinking_done';
   content?: string;
   toolCall?: { name: string; args: Record<string, unknown>; id: string };
   toolResult?: { name: string; result: unknown; id: string };
+  /** Token usage, populated on 'done' chunks. */
+  usage?: { promptTokens: number; completionTokens: number };
 }
 
 /** Tool definition with execute function for streaming */

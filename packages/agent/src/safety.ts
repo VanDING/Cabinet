@@ -193,13 +193,15 @@ export class SafetyChecker {
         };
       }
     } else if (effectiveCategory === 'destructive') {
-      // DESTRUCTIVE tools blocked at T0, T1, T2
-      return {
-        tier: 'delegation_block',
-        allowed: false,
-        blockedByTier: this.tier,
-        reason: `Tool '${toolName}' requires Captain confirmation at ${TIER_LABELS[this.tier]}. Destructive operations are blocked.`,
-      };
+      // DESTRUCTIVE tools blocked at T0, T1, T2 — allowed at T3
+      if (this.tier !== DelegationTier.FullAutonomy) {
+        return {
+          tier: 'delegation_block',
+          allowed: false,
+          blockedByTier: this.tier,
+          reason: `Tool '${toolName}' requires Captain confirmation at ${TIER_LABELS[this.tier]}. Destructive operations are blocked.`,
+        };
+      }
     }
 
     // Allowed at current tier

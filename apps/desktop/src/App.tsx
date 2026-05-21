@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, lazy, Suspense, startTransition } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense, startTransition } from 'react';
 import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
@@ -8,6 +8,7 @@ import { ServerLoading } from './components/ServerLoading';
 import { useTheme } from './hooks/useTheme';
 import { useSessions, type ChatMessage, type AttachedFile } from './hooks/useSessions';
 import { useToast } from './components/Toast';
+import { useNotifications } from './components/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { MobileNav } from './components/MobileNav';
 import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
@@ -57,14 +58,17 @@ function PageLoader() {
 export function App() {
   const [activePage, setActivePage] = useState<NavPage>('office');
   const [chatMode, setChatMode] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingSessions, setProcessingSessions] = useState<Set<string>>(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(160);
   const [activeAgent, setActiveAgent] = useState('secretary');
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const abortRef = useRef<Map<string, AbortController>>(new Map());
   const navigate = useNavigate();
   const { isDark, toggle } = useTheme();
   const { addToast } = useToast();
+  const { addNotification } = useNotifications();
 
   // Fetch projects
   const refreshProjects = useCallback(() => {
@@ -90,8 +94,10 @@ export function App() {
   useWebSocket((type, data) => {
     window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
     startTransition(() => {
-      if (type === 'decision_created') addToast('info', `Decision "${data.data?.title ?? 'Untitled'}" created`);
-      if (type === 'decision_updated') addToast('info', `Decision ${data.data?.status ?? 'updated'}`);
+      if (type === 'decision_created') addNotification('decision', 'Decision created', data.data?.title ?? 'Untitled');
+      if (type === 'decision_updated') addNotification('decision', `Decision ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
+      if (type === 'meeting_created') addNotification('meeting', 'Meeting completed', data.data?.topic ?? 'Untitled');
+      if (type === 'task_completed') addNotification('task', 'Task completed', data.data?.name ?? 'Untitled');
     });
   });
 
@@ -111,6 +117,8 @@ export function App() {
     deleteHistorySession,
     editMessage,
   } = useSessions();
+
+  const isActiveSessionProcessing = activeSession ? processingSessions.has(activeSession.id) : false;
 
   const handleNavigate = useCallback(
     (page: NavPage) => {
@@ -157,12 +165,12 @@ export function App() {
       });
       if (r.ok) {
         refreshProjects();
-        addToast('info', `Project "${name.trim()}" created`);
+        addNotification('project', 'Project created', name.trim());
       }
     } catch {
       addToast('error', 'Failed to create project');
     }
-  }, [refreshProjects, addToast]);
+  }, [refreshProjects, addToast, addNotification]);
 
   const handleDeleteProject = useCallback(async (projectId: string, name: string) => {
     try {
@@ -173,12 +181,12 @@ export function App() {
       if (r.ok) {
         refreshProjects();
         if (projectId === activeProjectId) setActiveProjectId(null);
-        addToast('info', `Project "${name}" deleted`);
+        addNotification('project', 'Project deleted', name);
       }
     } catch {
       addToast('error', 'Failed to delete project');
     }
-  }, [refreshProjects, activeProjectId, addToast]);
+  }, [refreshProjects, activeProjectId, addToast, addNotification]);
 
   const handleRenameProject = useCallback(async (projectId: string, name: string) => {
     try {
@@ -200,10 +208,10 @@ export function App() {
   }, []);
 
   const handleCreateSession = useCallback((): string => {
-    const id = createSession();
+    const id = createSession({ projectId: activeProjectId ?? undefined });
     setChatMode(true);
     return id;
-  }, [createSession]);
+  }, [createSession, activeProjectId]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -227,9 +235,19 @@ export function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [handleCreateSession]);
 
+  const handleStop = useCallback((sessionId: string) => {
+    abortRef.current.get(sessionId)?.abort();
+    abortRef.current.delete(sessionId);
+  }, []);
+
   const handleSend = useCallback(
     async (sessionId: string, message: string, files: AttachedFile[], _dispatchMode?: string, model?: string) => {
       if (!message.trim() && files.length === 0) return;
+
+      // Abort any in-flight request for THIS session before starting a new one
+      abortRef.current.get(sessionId)?.abort();
+      const controller = new AbortController();
+      abortRef.current.set(sessionId, controller);
 
       setChatMode(true);
       setSessionActive(sessionId, true);
@@ -241,7 +259,7 @@ export function App() {
         timestamp: new Date(),
       };
       addMessage(sessionId, userMsg);
-      setIsProcessing(true);
+      setProcessingSessions(prev => new Set(prev).add(sessionId));
 
       // Always use streaming for responsive chat
       const streamId = `a_${Date.now()}`;
@@ -273,8 +291,32 @@ export function App() {
           });
 
           let meetingData: MeetingData | undefined;
+          let streamAgent = activeAgent;
+
+          const AGENT_DISPLAY: Record<string, string> = {
+            secretary: 'Secretary',
+            meeting_chair: 'Meeting Chair',
+            workflow_designer: 'Workflow Designer',
+            decision_analyst: 'Decision Analyst',
+            agent_creator: 'Agent Creator',
+            reviewer: 'Reviewer',
+            organize: 'Organizer',
+            curator: 'Curator',
+          };
 
           await readSSEStream(reader, {
+            onRoutingStart(targetAgent) {
+              streamAgent = targetAgent;
+              setActiveAgent(targetAgent);
+              const displayName = AGENT_DISPLAY[targetAgent] || targetAgent;
+              addMessage(sessionId, {
+                id: `r_${Date.now()}`,
+                role: 'assistant',
+                content: targetAgent,
+                timestamp: new Date(),
+                agentName: `→ ${displayName}`,
+              });
+            },
             onContent(_, fullContent) {
               addMessage(sessionId, {
                 id: streamId,
@@ -282,11 +324,12 @@ export function App() {
                 content: fullContent,
                 timestamp: new Date(),
                 isStreaming: true,
-                agentName: activeAgent,
+                agentName: streamAgent,
               });
             },
             onDone(fullContent, event) {
               if (event?.meeting) meetingData = event.meeting as MeetingData;
+              if ((event as any)?.targetAgent) streamAgent = (event as any).targetAgent;
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
@@ -294,7 +337,7 @@ export function App() {
                 timestamp: new Date(),
                 isStreaming: false,
                 meeting: meetingData,
-                agentName: (event as any)?.agentName ?? activeAgent,
+                agentName: (event as any)?.agentName ?? streamAgent,
               });
             },
             onError(error) {
@@ -304,13 +347,15 @@ export function App() {
                 content: `Error: ${error}`,
                 timestamp: new Date(),
                 isStreaming: false,
-                agentName: activeAgent,
+                agentName: streamAgent,
               });
             },
             onRouting(targetAgent) {
+              streamAgent = targetAgent;
               setActiveAgent(targetAgent);
+              // No longer adds a message — routing_start already handled it
             },
-          });
+          }, controller.signal);
         } else {
           // Fallback to JSON (non-streaming)
           const data = await res.json();
@@ -335,11 +380,12 @@ export function App() {
           agentName: activeAgent,
         });
       } finally {
-        setIsProcessing(false);
+        if (abortRef.current.get(sessionId) === controller) abortRef.current.delete(sessionId);
+        setProcessingSessions(prev => { const next = new Set(prev); next.delete(sessionId); return next; });
         setSessionActive(sessionId, false);
       }
     },
-    [addMessage, addToast, setSessionActive, setIsProcessing, setChatMode],
+    [addMessage, addToast, setSessionActive, setChatMode, activeProjectId, activeAgent],
   );
 
   return (
@@ -368,8 +414,37 @@ export function App() {
             onNewProject={handleCreateProject}
             onDeleteProject={handleDeleteProject}
             onRenameProject={handleRenameProject}
+            sidebarWidth={sidebarCollapsed ? undefined : sidebarWidth}
           />
         </div>
+
+        {/* Resize handle — only when sidebar is expanded */}
+        {!sidebarCollapsed && (
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startW = sidebarWidth;
+              const onMove = (ev: MouseEvent) => {
+                const next = Math.max(120, Math.min(400, startW + ev.clientX - startX));
+                setSidebarWidth(next);
+              };
+              const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+              };
+              document.body.style.cursor = 'col-resize';
+              document.body.style.userSelect = 'none';
+              document.addEventListener('mousemove', onMove);
+              document.addEventListener('mouseup', onUp);
+            }}
+            className={`w-1 flex-shrink-0 cursor-col-resize transition-colors ${
+              isDark ? 'bg-gray-700 hover:bg-blue-500' : 'bg-gray-200 hover:bg-blue-400'
+            }`}
+          />
+        )}
 
         {/* Project Explorer */}
         <ProjectExplorer
@@ -383,7 +458,7 @@ export function App() {
         {/* Main content area (relative for floating ChatPanel) */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {/* Content: browse pages or chat view */}
-          <div className="flex-1 overflow-hidden pb-4">
+          <div className="flex-1 overflow-hidden pb-40">
             {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
             <div className={chatMode && activeSession ? 'hidden' : 'h-full overflow-auto'}>
               <ErrorBoundary>
@@ -420,7 +495,7 @@ export function App() {
                 <Suspense fallback={<PageLoader />}>
                   <ChatView
                     messages={activeSession.messages}
-                    isProcessing={isProcessing}
+                    isProcessing={isActiveSessionProcessing}
                     attachedFiles={activeSession.attachedFiles}
                     sessionTitle={activeSession.title}
                     onEditMessage={(msgId, newContent) => {
@@ -458,7 +533,8 @@ export function App() {
             onDeleteHistorySession={deleteHistorySession}
             onSend={handleSend}
             onEnterChat={handleEnterChat}
-            isProcessing={isProcessing}
+            isProcessing={isActiveSessionProcessing}
+            onStop={handleStop}
             isDark={isDark}
             activeProjectId={activeProjectId}
             projects={projects}
