@@ -23,6 +23,7 @@ export interface NavigationProps {
   onNewProject?: () => void;
   onDeleteProject?: (projectId: string, name: string) => void;
   onRenameProject?: (projectId: string, name: string) => void;
+  sidebarWidth?: number;
 }
 
 const navItems: { id: NavPage; label: string; icon: string }[] = [
@@ -61,6 +62,7 @@ export function Navigation({
   onNewProject,
   onDeleteProject,
   onRenameProject,
+  sidebarWidth,
 }: NavigationProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -74,7 +76,8 @@ export function Navigation({
       return next;
     });
   };
-  const sidebarW = collapsed ? 'w-12' : 'w-40';
+  const sidebarW = collapsed ? 'w-12' : (sidebarWidth ? '' : 'w-40');
+  const sidebarStyle = !collapsed && sidebarWidth ? { width: `${sidebarWidth}px` } : undefined;
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const text = isDark ? 'text-gray-400' : 'text-gray-500';
@@ -87,6 +90,7 @@ export function Navigation({
     <nav
       aria-label="Main navigation"
       className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${bg} ${border}`}
+      style={sidebarStyle}
     >
       {/* Logo */}
       <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>

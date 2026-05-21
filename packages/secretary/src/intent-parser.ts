@@ -223,15 +223,39 @@ Message: "${message}"`;
   // ── LLM-powered Agent Routing ─────────────────────────────
 
   async routeToAgent(message: string, conversationContext?: ConversationContext): Promise<AgentRouteResult> {
-    const intent = this.gateway
-      ? await this.parseWithLLM(message, conversationContext)
-      : this.parse(message, conversationContext);
+    // Fast path: keyword-based parsing (no LLM call)
+    const fastIntent = this.parse(message, conversationContext);
 
     if (!this.gateway) {
-      // No LLM: route based on keyword intent
-      return this.fallbackRoute(intent);
+      return this.fallbackRoute(fastIntent);
     }
 
+    // For simple intents (knowledge_query, follow_up, casual chat), skip LLM routing.
+    // Only use LLM when the message is complex and keyword parser is uncertain.
+    const needsLLM =
+      fastIntent.kind === 'unknown' ||
+      fastIntent.kind === 'decision_request' ||
+      fastIntent.kind === 'meeting_request' ||
+      fastIntent.kind === 'workflow_request' ||
+      fastIntent.kind === 'review_request' ||
+      fastIntent.kind === 'organize_request';
+
+    if (!needsLLM) {
+      // Fast path is sufficient — route directly without LLM overhead
+      return this.fallbackRoute(fastIntent);
+    }
+
+    // LLM fallback for complex/uncertain messages
+    try {
+      const intent = await this.parseWithLLM(message, conversationContext);
+      return await this.routeWithLLM(message, intent);
+    } catch {
+      return this.fallbackRoute(fastIntent);
+    }
+  }
+
+  /** LLM-powered agent routing (separated from routeToAgent for clarity). */
+  private async routeWithLLM(message: string, intent: ParsedIntent): Promise<AgentRouteResult> {
     const agentList =
       this.availableAgentsDesc ||
       [
@@ -244,12 +268,11 @@ Message: "${message}"`;
         '- organize: Organization design — translates business goals into agent+workflow blueprints',
       ].join('\n');
 
-    try {
-      const prefsLine = this.captainPrefsContext
-        ? `\nCaptain preferences (use to personalize routing):\n${this.captainPrefsContext}\n`
-        : '';
+    const prefsLine = this.captainPrefsContext
+      ? `\nCaptain preferences (use to personalize routing):\n${this.captainPrefsContext}\n`
+      : '';
 
-      const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
+    const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
 
 Available agents:
 ${agentList}
@@ -273,7 +296,8 @@ Respond with ONLY a JSON object (no markdown, no backticks):
 
 Message: "${message}"`;
 
-      const response = await this.gateway.generateText({
+    try {
+      const response = await this.gateway!.generateText({
         model: 'claude-haiku-4-5',
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 250,

@@ -21,6 +21,7 @@ import { ObservabilityWidget } from '../components/office/ObservabilityWidget';
 import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidget';
 import { TokensWidget } from '../components/office/TokensWidget';
 import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
+import { MeetingList } from '../components/office/MeetingList';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/pin.js';
 
@@ -43,7 +44,8 @@ type WidgetType =
   | 'project-list'
   | 'api-switcher'
   | 'progress-board'
-  | 'tokens-usage';
+  | 'tokens-usage'
+  | 'meeting-list';
 
 interface WidgetDef {
   type: WidgetType;
@@ -73,6 +75,7 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: true },
   { type: 'progress-board', label: 'Task Board', w: 6, h: 4, available: true },
   { type: 'tokens-usage', label: 'Tokens Usage', w: 3, h: 2, available: true },
+  { type: 'meeting-list', label: 'Meetings', w: 4, h: 3, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -163,13 +166,15 @@ export function OfficePage() {
     refreshStats();
   }, [refreshStats]);
 
-  // Listen for WebSocket decision updates
+  // Listen for WebSocket event updates
   useEffect(() => {
     window.addEventListener('ws:decision_created', refreshStats);
     window.addEventListener('ws:decision_updated', refreshStats);
+    window.addEventListener('ws:meeting_created', refreshStats);
     return () => {
       window.removeEventListener('ws:decision_created', refreshStats);
       window.removeEventListener('ws:decision_updated', refreshStats);
+      window.removeEventListener('ws:meeting_created', refreshStats);
     };
   }, [refreshStats]);
 
@@ -287,6 +292,8 @@ export function OfficePage() {
         return <ProgressBoard />;
       case 'tokens-usage':
         return <TokensWidget />;
+      case 'meeting-list':
+        return <MeetingList />;
       case 'calendar':
         return <Calendar />;
       case 'clock':

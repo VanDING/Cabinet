@@ -11,15 +11,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
-    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/anthropic": "^3.0.0",
+    "@ai-sdk/deepseek": "^2.0.35",
+    "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/openai-compatible": "^2.0.47",
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",
-    "ai": "^4.0.0",
-    "zod": "^3.23.0"
+    "ai": "^6.0.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "vitest": "^1.6.0"
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
   }
 }

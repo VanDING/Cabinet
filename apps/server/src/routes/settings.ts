@@ -251,13 +251,19 @@ settingsRouter.post('/mcp-servers/test', async (c) => {
 
 settingsRouter.get('/model-config', (c) => {
   const settings = loadSettings();
+  // Reflect the actual runtime modelMapping from the gateway if available,
+  // otherwise fall back to settings.json, then to a reasonable default.
+  const ctx = getServerContext();
+  const gateway = ctx.gateway as any;
+  const runtimeMapping = gateway?.modelMapping as Record<string, string> | undefined;
+  const effectiveMapping = settings.modelMapping ?? runtimeMapping ?? {
+    deep_reasoning: 'anthropic/claude-opus-4-7',
+    default: 'anthropic/claude-sonnet-4-6',
+    fast_execution: 'anthropic/claude-haiku-4-5',
+  };
   return c.json({
     providers: settings.providers ?? {},
-    modelMapping: settings.modelMapping ?? {
-      deep_reasoning: 'claude-sonnet-4-6',
-      fast_execution: 'claude-haiku-4-5',
-      default: 'claude-sonnet-4-6',
-    },
+    modelMapping: effectiveMapping,
   });
 });
 

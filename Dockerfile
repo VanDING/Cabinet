@@ -1,7 +1,7 @@
 # Stage 1: Build
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY packages/types/package.json packages/types/
 COPY packages/events/package.json packages/events/
@@ -21,9 +21,9 @@ COPY . .
 RUN pnpm build
 
 # Stage 2: Runtime
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 COPY --from=builder /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/package.json /app/tsconfig.base.json ./
 COPY --from=builder /app/packages/types/package.json /app/packages/types/
 COPY --from=builder /app/packages/events/package.json /app/packages/events/

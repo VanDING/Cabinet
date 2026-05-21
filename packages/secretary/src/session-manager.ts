@@ -7,6 +7,7 @@ const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 export interface Session {
   id: string;
   title: string;
+  projectId?: string;
   messages: { role: 'user' | 'assistant'; content: string; timestamp: Date }[];
   createdAt: Date;
   updatedAt: Date;
@@ -31,10 +32,11 @@ export class SessionManager {
     this.onCreateCallbacks.push(cb);
   }
 
-  create(id: string, title?: string): Session {
+  create(id: string, title?: string, projectId?: string): Session {
     const session: Session = {
       id,
       title: title ?? `Session ${id}`,
+      projectId,
       messages: [],
       createdAt: new Date(),
       updatedAt: new Date(),

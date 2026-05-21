@@ -9,19 +9,32 @@ export interface AttachedFile {
 
 import type { MeetingData } from '../components/MeetingCard';
 
+export interface ToolCallStatus {
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'error';
+  args?: Record<string, unknown>;
+  result?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  isEdited?: boolean;
   meeting?: MeetingData;
   agentName?: string;
+  thinking?: string;
+  toolCalls?: ToolCallStatus[];
+  usage?: { promptTokens: number; completionTokens: number; model: string };
 }
 
 export interface Session {
   id: string;
   title: string;
+  projectId?: string;
   messages: ChatMessage[];
   attachedFiles: AttachedFile[];
   createdAt: Date;
@@ -101,11 +114,12 @@ export function useSessions() {
   }, [history]);
 
   const createSession = useCallback(
-    (options?: { title?: string; initialContext?: string; attachedFiles?: AttachedFile[] }): string => {
+    (options?: { title?: string; initialContext?: string; attachedFiles?: AttachedFile[]; projectId?: string }): string => {
       const id = generateId();
       const session: Session = {
         id,
         title: options?.title ?? `Session-${shortId(id)}`,
+        projectId: options?.projectId,
         messages: options?.initialContext
           ? [{ id: `sys_${Date.now()}`, role: 'user' as const, content: options.initialContext, timestamp: new Date() }]
           : [],
@@ -211,7 +225,7 @@ export function useSessions() {
             ? {
                 ...s,
                 messages: s.messages.map((m) =>
-                  m.id === messageId ? { ...m, content: newContent } : m,
+                  m.id === messageId ? { ...m, content: newContent, isEdited: true } : m,
                 ),
               }
             : s,

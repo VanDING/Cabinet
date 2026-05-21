@@ -1,3 +1,4 @@
+import { existsSync, readdirSync } from 'node:fs';
 import type { ToolDefinition } from './tool-executor.js';
 
 // ── Skill Metadata (L1 — always loaded, ~50 tokens each) ──
@@ -21,6 +22,8 @@ export interface SkillEntry extends SkillMetadata {
   referencesPath?: string;
   /** File path to optional executable scripts. */
   scriptsPath?: string;
+  /** Claude Code extended fields (model, effort, context, agent, etc.). */
+  metadata?: Record<string, unknown>;
 }
 
 // ── Skill Registry ──
@@ -93,17 +96,50 @@ export class SkillRegistry {
     return tools;
   }
 
-  /** Execute a skill's prompt template with input variables. */
+  /** Execute a skill with full L3 progressive disclosure context. */
   async executeSkill(
     skill: SkillEntry,
     args: Record<string, unknown>,
   ): Promise<{ skillName: string; output: string }> {
-    // Simple template substitution: replace {{key}} with arg values
     let prompt = skill.promptTemplate;
     for (const [key, value] of Object.entries(args)) {
       prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
     }
-    return { skillName: skill.name, output: prompt };
+
+    const sections: string[] = [];
+    sections.push(`## Skill: ${skill.name}`);
+    sections.push(`> ${skill.description}`);
+    sections.push('');
+    sections.push(prompt);
+
+    // L3: list available scripts (executable via execCommand)
+    if (skill.scriptsPath && existsSync(skill.scriptsPath)) {
+      try {
+        const scripts = readdirSync(skill.scriptsPath).filter((f) => !f.startsWith('.'));
+        if (scripts.length > 0) {
+          sections.push('\n## Available Scripts');
+          for (const s of scripts) {
+            const scriptPath = `${skill.scriptsPath}/${s}`;
+            sections.push(`- \`scripts/${s}\` — run with execCommand, cwd: \`${scriptPath}\``);
+          }
+        }
+      } catch { /* L3 best-effort */ }
+    }
+
+    // L3: list available references (loadable via readFile)
+    if (skill.referencesPath && existsSync(skill.referencesPath)) {
+      try {
+        const refs = readdirSync(skill.referencesPath).filter((f) => !f.startsWith('.'));
+        if (refs.length > 0) {
+          sections.push('\n## Available References');
+          for (const r of refs) {
+            sections.push(`- \`references/${r}\` — use readFile to load: \`${skill.referencesPath}/${r}\``);
+          }
+        }
+      } catch { /* L3 best-effort */ }
+    }
+
+    return { skillName: skill.name, output: sections.join('\n') };
   }
 }
 

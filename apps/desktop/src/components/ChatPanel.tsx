@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Clock, Plus, CheckCircle, Shield, Terminal } from 'lucide-react';
+import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import { FileSearchPanel } from './FileSearchPanel';
 import { SessionHistoryPanel } from './SessionHistoryPanel';
@@ -37,6 +37,7 @@ interface Props {
   ) => void;
   onEnterChat: () => void;
   isProcessing: boolean;
+  onStop?: (sessionId: string) => void;
   isDark?: boolean;
   activeProjectId?: string | null;
   projects?: ProjectInfo[];
@@ -61,6 +62,7 @@ export function ChatPanel({
   onSend,
   onEnterChat,
   isProcessing,
+  onStop,
   isDark,
   activeProjectId,
   projects = [],
@@ -650,6 +652,28 @@ export function ChatPanel({
           hoverClass={hoverClass}
           dropdownBgClass={dropdownBgClass}
         />
+
+        {/* Send / Stop button */}
+        <button
+          onClick={() => {
+            if (isProcessing) {
+              onStop?.(active?.id ?? 'default');
+            } else {
+              handleSend();
+            }
+          }}
+          disabled={!isProcessing && !input.trim()}
+          className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+            isProcessing
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : input.trim()
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-400 cursor-not-allowed dark:bg-gray-600 dark:text-gray-500'
+          }`}
+          aria-label={isProcessing ? 'Stop' : 'Send'}
+        >
+          {isProcessing ? <Square size={14} /> : <ArrowUp size={16} />}
+        </button>
       </div>
 
       {/* File search modal */}

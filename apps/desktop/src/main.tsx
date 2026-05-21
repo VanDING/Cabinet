@@ -2,16 +2,19 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
+import { NotificationProvider } from './components/NotificationContext';
 import { App } from './App';
 import './i18n';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ToastProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ToastProvider>
+    <NotificationProvider>
+      <ToastProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ToastProvider>
+    </NotificationProvider>
   </React.StrictMode>,
 );

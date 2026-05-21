@@ -228,6 +228,9 @@ export class AgentDispatcher {
         maxSteps: options.maxStepsPerAgent ?? this.baseOptions.maxSteps,
         eventBus: this.eventBus,
         taskDescription: input,
+        maxResponseTokens: role.maxResponseTokens,
+        temperature: role.temperature,
+        contextBudget: role.contextBudget,
       };
 
       const loop = new AgentLoop(agentOptions);

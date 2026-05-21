@@ -29,8 +29,12 @@ export type SessionCompleteCallback = (summary: AgentSessionSummary) => void;
 /** Callback for streaming LLM output chunk by chunk. */
 export interface StreamingCallback {
   onChunk(content: string): void;
+  onRoutingStart?(targetAgent: string): void;
   onToolCall?(name: string, args: Record<string, unknown>): void;
   onToolResult?(name: string, result: unknown): void;
+  onThinking?(content: string): void;
+  onThinkingDone?(): void;
+  onUsage?(usage: { promptTokens: number; completionTokens: number }): void;
   onDone(fullContent: string): void;
   onError?(error: string): void;
 }
@@ -54,6 +58,14 @@ export interface AgentLoopOptions {
   toolTimeoutMs?: number;
   /** Called when the agent session completes (success or failure). */
   onSessionComplete?: SessionCompleteCallback;
+  /** Max output tokens for LLM calls (undefined = model default, no artificial limit). */
+  maxResponseTokens?: number;
+  /** Temperature for LLM calls (undefined = model default). */
+  temperature?: number;
+  /** Context window budget as fraction of model window (0-1, default 0.4 = 40%). */
+  contextBudget?: number;
+  /** Anthropic extended thinking budget in tokens (1024–128000). */
+  thinkingBudget?: number;
 }
 
 export interface AgentResult {
@@ -80,7 +92,7 @@ export class AgentLoop {
     this.checkpointManager = options.checkpointManager;
     this.contextBuilder = new ContextBuilder(options.memoryProvider);
     this.contextMonitor = options.eventBus
-      ? ContextMonitor.forModel(options.model ?? 'claude-sonnet-4-6', options.eventBus)
+      ? ContextMonitor.forModel(options.model ?? 'claude-sonnet-4-6', options.eventBus, options.contextBudget)
       : null;
     this.options = options;
   }
@@ -118,9 +130,8 @@ export class AgentLoop {
     let totalPromptTokens = 0;
     let totalCompletionTokens = 0;
 
-    // Add user message (skip if resuming from crash — already in checkpoint)
-    if (!isResuming || wasCrashed) {
-      // Don't re-add the same user message on resume
+    // Add user message — always deduplicate against last message in history
+    if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       if (!lastMsg || lastMsg.content !== userMessage) {
         messages.push({ role: 'user', content: userMessage });
@@ -202,6 +213,8 @@ export class AgentLoop {
               model: this.options.model ?? 'claude-sonnet-4-6',
               systemPrompt: ctx.systemPrompt,
               messages: allMessages,
+              ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
+              ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
             }),
           new Error('LLM call'),
         );
@@ -209,6 +222,7 @@ export class AgentLoop {
         errorCounts.fatal++;
         this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, false);
+        this.checkpointManager.delete(this.options.sessionId);
         return {
           content: `Agent loop failed at step ${steps}: ${(error as Error).message}`,
           steps,
@@ -245,6 +259,7 @@ export class AgentLoop {
         handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
         this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, true);
+        this.checkpointManager.delete(this.options.sessionId);
         return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls };
       }
 
@@ -348,6 +363,7 @@ export class AgentLoop {
 
     this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
       zoneCounts, handoffCount, errorCounts, toolCounts, false);
+    this.checkpointManager.delete(this.options.sessionId);
     return {
       content: `Agent reached max steps (${maxSteps}) without final response.`,
       steps,
@@ -474,8 +490,15 @@ export class AgentLoop {
         messages,
         tools: streamingTools,
         maxSteps: this.options.maxSteps ?? 10,
+        ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
+        ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
+        ...(this.options.thinkingBudget != null ? { thinkingBudget: this.options.thinkingBudget } : {}),
       })) {
-        if (chunk.type === 'text') {
+        if (chunk.type === 'thinking') {
+          callback.onThinking?.(chunk.content ?? '');
+        } else if (chunk.type === 'thinking_done') {
+          callback.onThinkingDone?.();
+        } else if (chunk.type === 'text') {
           fullText += (chunk.content ?? '');
           callback.onChunk(chunk.content ?? '');
         } else if (chunk.type === 'tool_call' && chunk.toolCall) {
@@ -485,6 +508,8 @@ export class AgentLoop {
         } else if (chunk.type === 'error') {
           errorCounts.fatal++;
           callback.onError?.(chunk.content ?? 'Unknown streaming error');
+        } else if (chunk.type === 'done' && chunk.usage) {
+          callback.onUsage?.(chunk.usage);
         }
       }
     } catch (e) {

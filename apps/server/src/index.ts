@@ -23,6 +23,7 @@ import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
 import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
+import { meetingsRouter } from './routes/meetings.js';
 import { documentsRouter } from './routes/documents.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rate-limit.js';
@@ -69,6 +70,7 @@ export function createApp() {
   app.route('/api/decisions', decisionsRouter);
   app.route('/api/factory', workflowsRouter);
   app.route('/api/dashboard', dashboardRouter);
+  app.route('/api/meetings', meetingsRouter);
   app.route('/api/settings', settingsRouter);
   app.route('/api/auth', authRouter);
   app.route('/api/skills', skillsRouter);
