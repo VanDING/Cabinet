@@ -2,12 +2,19 @@ export interface SSEStreamCallbacks {
   onContent: (content: string, fullContent: string) => void;
   onDone: (fullContent: string, doneEvent?: Record<string, unknown>) => void;
   onError: (error: string) => void;
+  onRoutingStart?: (targetAgent: string) => void;
   onRouting?: (targetAgent: string) => void;
+  onThinking?: (content: string) => void;
+  onThinkingDone?: () => void;
+  onToolStatus?: (message: string, type: 'call' | 'result' | 'error', detail?: { name: string; args?: unknown; result?: unknown }) => void;
+  onStopped?: () => void;
+  onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void;
 }
 
 export async function readSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   callbacks: SSEStreamCallbacks,
+  signal?: AbortSignal,
 ): Promise<void> {
   const decoder = new TextDecoder();
   let fullContent = '';
@@ -15,6 +22,10 @@ export async function readSSEStream(
   let doneEvent: Record<string, unknown> | undefined;
 
   while (!done) {
+    if (signal?.aborted) {
+      callbacks.onStopped?.();
+      return;
+    }
     const { value, done: streamDone } = await reader.read();
     if (streamDone) break;
     const text = decoder.decode(value, { stream: true });
@@ -40,12 +51,38 @@ export async function readSSEStream(
             done = true;
             break;
           }
+          if (parsed.type === 'routing_start') {
+            callbacks.onRoutingStart?.(parsed.targetAgent ?? 'secretary');
+            continue;
+          }
           if (parsed.type === 'routing') {
             callbacks.onRouting?.(parsed.targetAgent ?? 'secretary');
             continue;
           }
+          if (parsed.type === 'thinking') {
+            callbacks.onThinking?.(parsed.content ?? '');
+            continue;
+          }
+          if (parsed.type === 'thinking_done') {
+            callbacks.onThinkingDone?.();
+            continue;
+          }
+          if (parsed.type === 'tool_status') {
+            callbacks.onToolStatus?.(
+              parsed.message ?? '',
+              parsed.toolType ?? 'call',
+              parsed.detail,
+            );
+            continue;
+          }
+          if (parsed.type === 'usage') {
+            callbacks.onUsage?.({
+              promptTokens: parsed.promptTokens ?? 0,
+              completionTokens: parsed.completionTokens ?? 0,
+            });
+            continue;
+          }
           if (parsed.type === 'status') {
-            // Status update — notify but don't append to content
             callbacks.onContent('', fullContent);
             continue;
           }

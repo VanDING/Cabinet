@@ -14,12 +14,13 @@ export class SecretaryAgent {
     intentParser: IntentParser,
     private readonly sessionManager: SessionManager,
     private readonly gateway?: LLMGateway,
-    /** Callback to dispatch a message to a specialist agent. */
+    /** Callback to dispatch a message to a specialist agent with streaming. */
     private readonly dispatchToRole?: (
       roleType: AgentRoleType,
       message: string,
       sessionId: string,
-    ) => Promise<string>,
+      callback: StreamingCallback,
+    ) => Promise<void>,
   ) {
     this.intentParser = intentParser;
   }
@@ -68,7 +69,14 @@ export class SecretaryAgent {
           .join('\n');
       }
     } else {
-      response = await this.dispatchToRole(targetAgent, message, sessionId);
+      // Collect streaming output into a single response for non-streaming path
+      let collected = '';
+      await this.dispatchToRole(targetAgent, message, sessionId, {
+        onChunk(content) { collected += content; },
+        onDone() {},
+        onError(err) { collected = err; },
+      });
+      response = collected || `Dispatched to ${targetAgent}.`;
     }
 
     this.sessionManager.addMessage(sessionId, 'assistant', response);
@@ -100,6 +108,11 @@ export class SecretaryAgent {
       targetAgent = this.lastRoute as AgentRoleType;
     }
 
+    // Notify frontend of routing BEFORE streaming starts
+    if (targetAgent !== 'secretary') {
+      callback.onRoutingStart?.(targetAgent);
+    }
+
     let response: string;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
       if (this.agentLoop) {
@@ -115,10 +128,22 @@ export class SecretaryAgent {
         callback.onDone(response);
       }
     } else {
-      // Specialist agents don't support streaming yet — fall back to blocking
-      response = await this.dispatchToRole(targetAgent, message, sessionId);
-      callback.onChunk(response);
-      callback.onDone(response);
+      // Specialist agents now support streaming via dispatchToRole callback
+      let streamedContent = '';
+      await this.dispatchToRole(targetAgent, message, sessionId, {
+        onChunk(content) {
+          streamedContent += content;
+          callback.onChunk(content);
+        },
+        onThinking(content) { callback.onThinking?.(content); },
+        onThinkingDone() { callback.onThinkingDone?.(); },
+        onToolCall(name, args) { callback.onToolCall?.(name, args); },
+        onToolResult(name, result) { callback.onToolResult?.(name, result); },
+        onUsage(usage) { callback.onUsage?.(usage); },
+        onDone() { callback.onDone(streamedContent); },
+        onError(err) { callback.onError?.(err); },
+      });
+      response = streamedContent;
     }
 
     this.sessionManager.addMessage(sessionId, 'assistant', response);

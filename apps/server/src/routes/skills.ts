@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, cpSync } from 'node:fs';
+import AdmZip from 'adm-zip';
 import { getServerContext } from '../context.js';
 import { importSkillFromMarkdown, exportSkillToMarkdown } from '@cabinet/agent';
 import type { SkillEntry } from '@cabinet/agent';
@@ -17,6 +18,11 @@ function ensureSkillDir(name: string): string {
   return dir;
 }
 
+function ensureSubdir(dir: string): string {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 function rowToSkill(row: any) {
   return {
     id: row.id,
@@ -28,7 +34,27 @@ function rowToSkill(row: any) {
     promptTemplate: row.prompt_template,
     inputSchema: JSON.parse(row.input_schema ?? '{}'),
     outputSchema: JSON.parse(row.output_schema ?? '{}'),
+    metadata: JSON.parse(row.metadata ?? '{}'),
+    referencesPath: row.references_path ?? '',
+    scriptsPath: row.scripts_path ?? '',
   };
+}
+
+function persistSkillToDb(db: any, skill: SkillEntry) {
+  db.prepare(
+    `INSERT OR REPLACE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
+     VALUES (?, ?, ?, ?, '{}', '{}', ?, ?, 'active', ?, ?, ?)`,
+  ).run(
+    skill.id,
+    skill.name,
+    skill.description,
+    skill.kind,
+    skill.promptTemplate,
+    skill.version,
+    JSON.stringify(skill.metadata ?? {}),
+    skill.referencesPath ?? '',
+    skill.scriptsPath ?? '',
+  );
 }
 
 // ── GET /api/skills — list from DB + filesystem scan ──
@@ -48,7 +74,6 @@ skillsRouter.get('/', (c) => {
       if (!existsSync(skillMdPath)) continue;
       try {
         const content = readFileSync(skillMdPath, 'utf-8');
-        // Parse frontmatter for name
         const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
         let name = entry.name;
         if (fmMatch) {
@@ -56,6 +81,8 @@ skillsRouter.get('/', (c) => {
           if (nameLine) name = nameLine[1]!.trim().replace(/^['"]|['"]$/g, '');
         }
         if (name) {
+          const refsDir = join(SKILLS_DIR, entry.name, 'references');
+          const scriptsDir = join(SKILLS_DIR, entry.name, 'scripts');
           dbSkills.push({
             id: `skill_fs_${name}`,
             name,
@@ -66,6 +93,9 @@ skillsRouter.get('/', (c) => {
             promptTemplate: '',
             inputSchema: {},
             outputSchema: {},
+            metadata: {},
+            referencesPath: existsSync(refsDir) ? refsDir : '',
+            scriptsPath: existsSync(scriptsDir) ? scriptsDir : '',
           });
         }
       } catch { /* skip malformed */ }
@@ -92,20 +122,31 @@ skillsRouter.post('/', async (c) => {
   const id = `skill_${Date.now()}`;
   const d = parsed.data;
 
+  const dir = ensureSkillDir(d.name);
+  const refsDir = join(dir, 'references');
+  const scriptsDir = join(dir, 'scripts');
+
   // Persist to DB (index)
   db.prepare(
-    `INSERT INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status)
-     VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active')`,
-  ).run(id, d.name, d.description ?? '', d.kind ?? 'tool', d.promptTemplate ?? '');
+    `INSERT INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
+     VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active', '{}', ?, ?)`,
+  ).run(
+    id,
+    d.name,
+    d.description ?? '',
+    d.kind ?? 'tool',
+    d.promptTemplate ?? '',
+    existsSync(refsDir) ? refsDir : '',
+    existsSync(scriptsDir) ? scriptsDir : '',
+  );
 
   // Write SKILL.md to filesystem
-  const dir = ensureSkillDir(d.name);
   const skillMd = [
     '---',
     `name: ${d.name}`,
     `description: ${d.description ?? ''}`,
     `kind: ${d.kind ?? 'tool'}`,
-    `version: 1`,
+    'version: 1',
     'status: active',
     '---',
     '',
@@ -124,6 +165,9 @@ skillsRouter.post('/', async (c) => {
     outputSchema: {},
     version: 1,
     status: 'active',
+    referencesPath: existsSync(refsDir) ? refsDir : '',
+    scriptsPath: existsSync(scriptsDir) ? scriptsDir : '',
+    metadata: {},
   });
 
   logger.info('Skill registered', { id, name: d.name });
@@ -139,10 +183,13 @@ skillsRouter.put('/:id', async (c) => {
   if (!existing) return c.json({ error: 'Skill not found' }, 404);
 
   const newVersion = existing.version + 1;
-  db.prepare('UPDATE skills SET name = ?, description = ?, version = ? WHERE id = ?').run(
+  db.prepare(
+    `UPDATE skills SET name = ?, description = ?, version = ?, metadata = ? WHERE id = ?`,
+  ).run(
     body.name ?? existing.name,
     body.description ?? existing.description,
     newVersion,
+    JSON.stringify(body.metadata ?? JSON.parse(existing.metadata ?? '{}')),
     id,
   );
 
@@ -208,12 +255,13 @@ skillsRouter.post('/:id/test', async (c) => {
       ? `${skill.prompt_template}\n\nInput: ${input}`
       : `Execute the "${skill.name}" skill. Input: ${input}`;
 
+    const testModel = (gateway as any).resolveModelString?.('default') ?? 'claude-haiku-4-5';
     const response = await gateway.generateText({
-      model: 'claude-haiku-4-5',
+      model: testModel,
       messages: [{ role: 'user', content: prompt }],
       maxTokens: 300,
     });
-    metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'skill_test' });
+    metrics.increment('llm_call', { model: response.model ?? testModel, purpose: 'skill_test' });
     logger.info('Skill test completed', { id, name: skill.name });
     return c.json({
       skillId: id,
@@ -226,31 +274,127 @@ skillsRouter.post('/:id/test', async (c) => {
   }
 });
 
-// ── POST /api/skills/import — import SKILL.md (string content) ──
+// ── POST /api/skills/import — import SKILL.md text ──
 skillsRouter.post('/import', async (c) => {
   const { db, skillRegistry, logger } = getServerContext();
   const body = await c.req.json();
-  const content = body.content as string;
+  const content = (body.content || body.markdown) as string;
   if (!content) return c.json({ error: 'content is required (SKILL.md text)' }, 400);
 
-  const result = importSkillFromMarkdown(content, skillRegistry);
-  if (!result) return c.json({ error: 'Invalid SKILL.md format' }, 400);
+  const dir = join(SKILLS_DIR, '_import_temp');
+  const result = importSkillFromMarkdown(content, skillRegistry, {
+    referencesPath: join(dir, 'references'),
+    scriptsPath: join(dir, 'scripts'),
+  });
+  if (!result) return c.json({ error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' }, 400);
 
   // Write SKILL.md to filesystem
-  const dir = ensureSkillDir(result.name);
-  writeFileSync(join(dir, 'SKILL.md'), content, 'utf-8');
+  const skillDir = ensureSkillDir(result.name);
+  writeFileSync(join(skillDir, 'SKILL.md'), content, 'utf-8');
 
-  // Persist index to DB
+  // Update runtime paths
+  const refsDir = join(skillDir, 'references');
+  const scriptsDir = join(skillDir, 'scripts');
   const skill = skillRegistry.load(result.name);
   if (skill) {
-    db.prepare(
-      `INSERT OR REPLACE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status)
-       VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active')`,
-    ).run(skill.id, skill.name, skill.description, skill.kind, skill.promptTemplate);
+    skill.referencesPath = existsSync(refsDir) ? refsDir : '';
+    skill.scriptsPath = existsSync(scriptsDir) ? scriptsDir : '';
+    persistSkillToDb(db, skill);
   }
 
   logger.info('Skill imported', { id: result.id, name: result.name });
-  return c.json({ id: result.id, name: result.name, status: 'imported', path: join(dir, 'SKILL.md') }, 201);
+  return c.json({
+    id: result.id,
+    name: result.name,
+    status: 'imported',
+    path: join(skillDir, 'SKILL.md'),
+  }, 201);
+});
+
+// ── POST /api/skills/import-zip — import full skill zip with directory structure ──
+skillsRouter.post('/import-zip', async (c) => {
+  const { db, skillRegistry, logger } = getServerContext();
+
+  const formData = await c.req.formData();
+  const zipFile = formData.get('file');
+  if (!zipFile || !(zipFile instanceof File)) {
+    return c.json({ error: 'zip file is required (multipart field: file)' }, 400);
+  }
+
+  let zip: AdmZip;
+  try {
+    const buf = Buffer.from(await zipFile.arrayBuffer());
+    zip = new AdmZip(buf);
+  } catch {
+    return c.json({ error: 'Invalid or corrupt zip file' }, 400);
+  }
+
+  // Find SKILL.md in zip (priority: root > */SKILL.md > any **/SKILL.md)
+  const entries = zip.getEntries();
+  let skillMdEntry = entries.find((e) => e.entryName === 'SKILL.md' && !e.isDirectory);
+  if (!skillMdEntry) {
+    skillMdEntry = entries.find((e) => /^[^/]+\/SKILL\.md$/i.test(e.entryName) && !e.isDirectory);
+  }
+  if (!skillMdEntry) {
+    skillMdEntry = entries.find((e) => /SKILL\.md$/i.test(e.entryName) && !e.isDirectory);
+  }
+  if (!skillMdEntry) {
+    return c.json({ error: 'No SKILL.md found in the archive' }, 400);
+  }
+
+  const skillContent = skillMdEntry.getData().toString('utf-8');
+
+  // Parse to get the skill name before extracting
+  const result = importSkillFromMarkdown(skillContent, skillRegistry);
+  if (!result) {
+    return c.json({ error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' }, 400);
+  }
+
+  // Determine the base path inside the zip (e.g. "my-skill/" or "" for root-level)
+  const isRoot = skillMdEntry.entryName === 'SKILL.md';
+  const zipBase = isRoot ? '' : skillMdEntry.entryName.replace(/SKILL\.md$/i, '');
+
+  // Extract full directory to ~/.cabinet/skills/<name>/
+  const skillDir = ensureSkillDir(result.name);
+
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+    // Compute relative path inside the skill directory
+    let relPath = entry.entryName;
+    if (zipBase && relPath.startsWith(zipBase)) {
+      relPath = relPath.slice(zipBase.length);
+    }
+    if (!relPath || relPath === 'SKILL.md') continue;
+
+    const destPath = join(skillDir, relPath);
+    try {
+      ensureSubdir(join(destPath, '..'));
+      writeFileSync(destPath, entry.getData());
+    } catch { /* skip individual file errors */ }
+  }
+
+  // Also ensure SKILL.md is at root of skill dir
+  writeFileSync(join(skillDir, 'SKILL.md'), skillContent, 'utf-8');
+
+  // Update runtime paths
+  const refsDir = join(skillDir, 'references');
+  const scriptsDir = join(skillDir, 'scripts');
+  const skill = skillRegistry.load(result.name);
+  if (skill) {
+    skill.referencesPath = existsSync(refsDir) ? refsDir : '';
+    skill.scriptsPath = existsSync(scriptsDir) ? scriptsDir : '';
+    persistSkillToDb(db, skill);
+  }
+
+  logger.info('Skill zip imported', { id: result.id, name: result.name });
+  return c.json({
+    id: result.id,
+    name: result.name,
+    status: 'imported',
+    path: join(skillDir, 'SKILL.md'),
+    hasReferences: existsSync(refsDir),
+    hasScripts: existsSync(scriptsDir),
+  }, 201);
 });
 
 // ── GET /api/skills/:id/export — export as SKILL.md ──
@@ -271,6 +415,7 @@ skillsRouter.get('/:id/export', (c) => {
     outputSchema: {},
     version: row.version,
     status: row.status,
+    metadata: JSON.parse(row.metadata ?? '{}'),
   } as SkillEntry;
 
   const markdown = exportSkillToMarkdown(skill);

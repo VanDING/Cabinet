@@ -15,11 +15,13 @@
     "@cabinet/gateway": "workspace:*",
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
-    "@cabinet/types": "workspace:*"
+    "@cabinet/types": "workspace:*",
+    "js-yaml": "^4.1.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
-    "typescript": "^5.5.0",
-    "vitest": "^1.6.0"
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
   }
 }

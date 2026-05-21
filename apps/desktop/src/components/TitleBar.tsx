@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Minus, Maximize2, RectangleHorizontal, X } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 function useTauriWindow() {
   const [available, setAvailable] = useState(false);
@@ -99,15 +100,15 @@ export function TitleBar({
       <div data-tauri-drag-region className="flex-1" />
 
       <div className="flex h-full items-center">
-        {onToggleTheme && (
-          <button
-            onClick={onToggleTheme}
-            className={`flex h-full w-8 items-center justify-center transition-colors ${btnHover}`}
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
-        )}
+        <NotificationBell isDark={isDark} />
+
+        <button
+          onClick={onToggleTheme}
+          className={`flex h-full w-8 items-center justify-center transition-colors ${btnHover}`}
+          aria-label="Toggle theme"
+        >
+          {isDark ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
 
         {available && (
           <>

@@ -1,6 +1,8 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText as aiGenerateText, streamText as aiStreamText, embed, tool } from 'ai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText as aiGenerateText, streamText as aiStreamText, embed, tool, stepCountIs } from 'ai';
 import { z } from 'zod';
 import type {
   LLMGateway,
@@ -24,6 +26,11 @@ export interface ProviderConfig {
   anthropic?: ProviderEntry;
   openai?: ProviderEntry;
   google?: ProviderEntry;
+  deepseek?: ProviderEntry;
+  qwen?: ProviderEntry;
+  moonshot?: ProviderEntry;
+  zhipu?: ProviderEntry;
+  baichuan?: ProviderEntry;
 }
 
 export type ModelTier = 'deep_reasoning' | 'fast_execution' | 'default';
@@ -35,13 +42,12 @@ export interface ModelMapping {
   default?: string;
 }
 
-// Domestic LLM provider configurations (all OpenAI-compatible)
-const DOMESTIC_PROVIDERS: Record<string, { baseURL: string }> = {
-  deepseek: { baseURL: 'https://api.deepseek.com' },
-  qwen: { baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  moonshot: { baseURL: 'https://api.moonshot.cn/v1' },
-  zhipu: { baseURL: 'https://open.bigmodel.cn/api/paas/v4' },
-  baichuan: { baseURL: 'https://api.baichuan-ai.com/v1' },
+// OpenAI-compatible provider base URLs (used by createOpenAICompatible fallback)
+const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
+  qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  moonshot: 'https://api.moonshot.cn/v1',
+  zhipu: 'https://open.bigmodel.cn/api/paas/v4',
+  baichuan: 'https://api.baichuan-ai.com/v1',
 };
 
 /**
@@ -80,8 +86,8 @@ export class AISDKAdapter implements LLMGateway {
       model,
       system: options.systemPrompt,
       messages: messages as any,
-      maxTokens: options.maxTokens ?? 4096,
-      temperature: options.temperature ?? 0.7,
+      ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
+      ...(options.temperature != null ? { temperature: options.temperature } : {}),
       tools: options.tools ? this.convertTools(options.tools) : undefined,
     });
 
@@ -90,11 +96,11 @@ export class AISDKAdapter implements LLMGateway {
       toolCalls: result.toolCalls?.map((tc: any) => ({
         id: tc.toolCallId,
         name: tc.toolName,
-        arguments: tc.args as Record<string, unknown>,
+        arguments: (tc.input ?? tc.args) as Record<string, unknown>,
       })),
       usage: {
-        promptTokens: result.usage?.promptTokens ?? 0,
-        completionTokens: result.usage?.completionTokens ?? 0,
+        promptTokens: result.usage?.inputTokens ?? 0,
+        completionTokens: result.usage?.outputTokens ?? 0,
       },
       model: options.model,
     };
@@ -115,8 +121,8 @@ export class AISDKAdapter implements LLMGateway {
         const zodSchema = jsonSchemaToZod(td.parameters);
         aiTools[td.name] = tool({
           description: td.description,
-          parameters: zodSchema,
-          execute: td.execute,
+          inputSchema: zodSchema,
+          execute: td.execute as any,
         }) as any;
       }
     }
@@ -125,50 +131,67 @@ export class AISDKAdapter implements LLMGateway {
       model,
       system: options.systemPrompt,
       messages: messages as any,
-      maxTokens: options.maxTokens ?? 4096,
-      temperature: options.temperature ?? 0.7,
+      ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
+      ...(options.temperature != null ? { temperature: options.temperature } : {}),
+      ...(options.thinkingBudget != null ? { thinking: { type: 'enabled', budgetTokens: options.thinkingBudget } } : {}),
       tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
-      maxSteps: options.maxSteps ?? 10,
-    });
+      stopWhen: stepCountIs(options.maxSteps ?? 10),
+    } as any);
 
     let fullText = '';
+    let thinkingDone = false;
     try {
       for await (const part of result.fullStream) {
-        if (part.type === 'text-delta') {
-          const td = part as { textDelta: string };
-          fullText += td.textDelta;
-          yield { type: 'text', content: td.textDelta };
+        if (part.type === 'reasoning-delta') {
+          const rd = part as { type: 'reasoning-delta'; text: string };
+          yield { type: 'thinking', content: rd.text };
+        } else if (part.type === 'reasoning-start') {
+          // reasoning phase begins
+        } else if (part.type === 'reasoning-end') {
+          yield { type: 'thinking_done' };
+          thinkingDone = true;
+        } else if (part.type === 'text-delta') {
+          // First text delta signals thinking is done if not already signaled
+          if (!thinkingDone) {
+            thinkingDone = true;
+            yield { type: 'thinking_done' };
+          }
+          const td = part as { type: 'text-delta'; text: string };
+          fullText += td.text;
+          yield { type: 'text', content: td.text };
         } else if (part.type === 'tool-call') {
-          const tc = part as { toolCallId: string; toolName: string; args: unknown };
+          const tc = part as { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown };
           yield {
             type: 'tool_call',
             toolCall: {
               id: tc.toolCallId,
               name: tc.toolName,
-              args: tc.args as Record<string, unknown>,
+              args: tc.input as Record<string, unknown>,
             },
           };
-        } else if (part.type === 'step-finish') {
-          // Tool execution completed — yield tool_result for each finished step
-          const sf = part as { toolResults?: Array<{ toolCallId: string; toolName: string; result: unknown }> };
-          if (sf.toolResults) {
-            for (const tr of sf.toolResults) {
-              yield {
-                type: 'tool_result',
-                toolResult: {
-                  id: tr.toolCallId,
-                  name: tr.toolName,
-                  result: tr.result,
-                },
-              };
-            }
-          }
+        } else if (part.type === 'tool-result') {
+          const tr = part as { type: 'tool-result'; toolCallId: string; toolName: string; output: unknown };
+          yield {
+            type: 'tool_result',
+            toolResult: {
+              id: tr.toolCallId,
+              name: tr.toolName,
+              result: tr.output,
+            },
+          };
         }
       }
     } catch (e) {
       yield { type: 'error', content: (e as Error).message };
     }
-    yield { type: 'done', content: fullText };
+    let usage: { promptTokens: number; completionTokens: number } | undefined;
+    try {
+      const u = await result.usage;
+      usage = { promptTokens: u?.inputTokens ?? 0, completionTokens: u?.outputTokens ?? 0 };
+    } catch {
+      // usage not available for this provider/model
+    }
+    yield { type: 'done', content: fullText, usage };
   }
 
   async listModels(): Promise<string[]> {
@@ -181,8 +204,10 @@ export class AISDKAdapter implements LLMGateway {
       'openai/gpt-4-turbo',
       'google/gemini-2.0-flash',
       'google/gemini-2.0-pro',
-      'deepseek/deepseek-chat',
-      'deepseek/deepseek-reasoner',
+      'deepseek/deepseek-v4-flash',
+      'deepseek/deepseek-v4-pro',
+      'deepseek/deepseek-chat',     // deprecated 2026/07/24 → v4-flash non-thinking
+      'deepseek/deepseek-reasoner', // deprecated 2026/07/24 → v4-flash thinking
       'deepseek/deepseek-v3',
       'deepseek/deepseek-r1',
       'qwen/qwen-turbo',
@@ -222,7 +247,7 @@ export class AISDKAdapter implements LLMGateway {
     anthropic: 'claude-sonnet-4-6',
     openai: 'gpt-4o',
     google: 'gemini-2.0-flash',
-    deepseek: 'deepseek-chat',
+    deepseek: 'deepseek-v4-pro',
     qwen: 'qwen-plus',
     moonshot: 'moonshot-v1-8k',
     zhipu: 'glm-4',
@@ -279,19 +304,27 @@ export class AISDKAdapter implements LLMGateway {
         const factory = google({ apiKey: key });
         return factory(name);
       }
-      case 'deepseek':
+      case 'deepseek': {
+        const key = this.config.deepseek?.apiKey ?? process.env.DEEPSEEK_API_KEY;
+        if (!key) throw new Error('DEEPSEEK_API_KEY not configured');
+        const baseURL = this.config.deepseek?.baseUrl;
+        const deepseek = createDeepSeek({
+          apiKey: key,
+          ...(baseURL ? { baseURL } : {}),
+        });
+        return deepseek(name);
+      }
       case 'qwen':
       case 'moonshot':
       case 'zhipu':
       case 'baichuan': {
-        const providerConfig = DOMESTIC_PROVIDERS[provider]!;
+        const defaultBaseURL = OPENAI_COMPATIBLE_BASE_URLS[provider]!;
         const key =
           this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
         if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
-        // Use user-configured base_url if provided, otherwise fall back to default
-        const baseURL = this.config[provider]?.baseUrl ?? providerConfig.baseURL;
-        const factory = createOpenAI({ apiKey: key, baseURL });
-        return factory(name);
+        const baseURL = this.config[provider]?.baseUrl ?? defaultBaseURL;
+        const client = createOpenAICompatible({ name: provider, apiKey: key, baseURL });
+        return client(name);
       }
       default:
         throw new Error(`Unknown provider: ${provider}`);
@@ -373,7 +406,7 @@ function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodType {
         if (!required.has(key)) zodProp = zodProp.optional();
         shape[key] = zodProp;
       }
-      let obj = Object.keys(shape).length > 0 ? z.object(shape) : z.record(z.any());
+      let obj = Object.keys(shape).length > 0 ? z.object(shape, {}) : z.record(z.string(), z.any());
       if (description) obj = obj.describe(description);
       return obj;
     }

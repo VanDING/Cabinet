@@ -8,7 +8,7 @@ export const decisionsRouter = new Hono();
 decisionsRouter.get('/', (c) => {
   const { decisionRepo } = getServerContext();
   const status = c.req.query('status') ?? 'pending';
-  const projectId = c.req.query('projectId') ?? 'proj-1';
+  const projectId = c.req.query('projectId') || undefined;
 
   try {
     const decisions =

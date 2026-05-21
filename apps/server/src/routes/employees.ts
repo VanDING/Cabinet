@@ -15,7 +15,7 @@ employeesRouter.get('/', (c) => {
     .prepare('SELECT type, name, description, model, allowed_tools FROM agent_roles WHERE is_builtin = 0 ORDER BY name ASC')
     .all() as any[];
   const agentsFromRoles = agentRows.map((r: any) => ({
-    id: `agent_${r.type}`,
+    id: `agent_${r.name}`,
     name: r.name,
     role: r.type,
     kind: 'ai' as const,
@@ -106,8 +106,28 @@ employeesRouter.put('/:id', async (c) => {
 
 // DELETE /api/employees/:id
 employeesRouter.delete('/:id', (c) => {
-  const { db, logger } = getServerContext();
+  const { db, agentRegistry, logger } = getServerContext();
   const id = c.req.param('id');
+
+  // Custom agents are stored in agent_roles, not employees table
+  if (id.startsWith('agent_')) {
+    const name = id.slice('agent_'.length);
+    const agent = agentRegistry.get(name);
+    if (!agent) return c.json({ error: 'Agent not found' }, 404);
+
+    agentRegistry.unregister(name);
+    db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
+
+    // Remove from filesystem
+    const { join } = require('node:path');
+    const { rmSync } = require('node:fs');
+    const { CABINET_DIR } = require('@cabinet/storage');
+    try { rmSync(join(CABINET_DIR, 'agents', name), { recursive: true, force: true }); } catch { /* ok */ }
+
+    logger.info('Agent deleted via employees', { name });
+    return c.json({ status: 'deleted' });
+  }
+
   db.prepare('DELETE FROM employees WHERE id = ?').run(id);
   logger.info('Employee deleted', { id });
   return c.json({ status: 'deleted' });

@@ -10,7 +10,7 @@ export function ProjectSwitcherWidget() {
         Active Project
       </h3>
       <ProjectSwitcher projects={projects} current={current} onSwitch={setProject} />
-      <span className="mt-2 text-xs text-gray-400">Project ID: {current.id}</span>
+      {current && <span className="mt-2 text-xs text-gray-400">Project ID: {current.id}</span>}
     </div>
   );
 }

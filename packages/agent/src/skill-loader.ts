@@ -1,42 +1,73 @@
+import yaml from 'js-yaml';
 import { SkillRegistry, type SkillEntry } from './skill-registry.js';
 
-/** Parsed SKILL.md content. */
+/** Parsed SKILL.md content with all Claude Code standard fields. */
 export interface ParsedSkill {
   name: string;
   description: string;
+  kind?: 'tool' | 'prompt' | 'composite';
+  version?: number;
   license?: string;
   compatibility?: string;
-  metadata?: Record<string, string>;
+  model?: string;
+  effort?: string;
+  context?: string;
+  agent?: string;
+  userInvocable?: boolean;
+  disableModelInvocation?: boolean;
+  argumentHint?: string;
+  arguments?: string | string[];
+  whenToUse?: string;
   allowedTools?: string[];
+  metadata?: Record<string, unknown>;
   body: string;
 }
 
 /**
  * Parse an Anthropic-standard SKILL.md file (YAML frontmatter + Markdown body).
- * https://github.com/anthropics/skills
+ * Uses js-yaml for full YAML 1.2 compatibility including | literals, nested objects, and lists.
  */
 export function parseSkillMarkdown(content: string): ParsedSkill | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return null;
 
   const frontmatter = match[1]!;
   const body = match[2]!.trim();
 
-  const fields = parseYamlFrontmatter(frontmatter);
+  let fields: Record<string, unknown>;
+  try {
+    fields = (yaml.load(frontmatter) as Record<string, unknown>) ?? {};
+  } catch {
+    return null;
+  }
 
-  const name = fields['name'] ?? '';
-  const description = fields['description'] ?? '';
+  const name = typeof fields['name'] === 'string' ? fields['name'].trim() : '';
+  const description = typeof fields['description'] === 'string' ? fields['description'].trim() : '';
   if (!name || !description) return null;
 
   return {
     name,
     description,
-    license: fields['license'],
-    compatibility: fields['compatibility'],
-    metadata: fields['metadata'] ? parseSubFields(fields['metadata']!) : undefined,
-    allowedTools: fields['allowed-tools']
-      ? fields['allowed-tools']!.split(/\s+/).filter(Boolean)
-      : undefined,
+    kind: validateKind(fields['kind']),
+    version: typeof fields['version'] === 'number' ? fields['version'] : undefined,
+    license: typeof fields['license'] === 'string' ? fields['license'] : undefined,
+    compatibility: typeof fields['compatibility'] === 'string' ? fields['compatibility'] : undefined,
+    model: typeof fields['model'] === 'string' ? fields['model'] : undefined,
+    effort: typeof fields['effort'] === 'string' ? fields['effort'] : undefined,
+    context: typeof fields['context'] === 'string' ? fields['context'] : undefined,
+    agent: typeof fields['agent'] === 'string' ? fields['agent'] : undefined,
+    userInvocable: typeof fields['user-invocable'] === 'boolean' ? fields['user-invocable']
+      : fields['user_invocable'] !== undefined ? Boolean(fields['user_invocable']) : undefined,
+    disableModelInvocation: typeof fields['disable-model-invocation'] === 'boolean' ? fields['disable-model-invocation']
+      : fields['disable_model_invocation'] !== undefined ? Boolean(fields['disable_model_invocation']) : undefined,
+    argumentHint: typeof fields['argument-hint'] === 'string' ? fields['argument-hint']
+      : typeof fields['argument_hint'] === 'string' ? fields['argument_hint'] : undefined,
+    arguments: typeof fields['arguments'] === 'string' || Array.isArray(fields['arguments'])
+      ? fields['arguments'] as string | string[] : undefined,
+    whenToUse: typeof fields['when_to_use'] === 'string' ? fields['when_to_use']
+      : typeof fields['when-to-use'] === 'string' ? fields['when-to-use'] : undefined,
+    allowedTools: extractAllowedTools(fields),
+    metadata: extractMetadata(fields),
     body,
   };
 }
@@ -48,6 +79,7 @@ export function parseSkillMarkdown(content: string): ParsedSkill | null {
 export function importSkillFromMarkdown(
   content: string,
   registry: SkillRegistry,
+  opts?: { referencesPath?: string; scriptsPath?: string },
 ): { id: string; name: string } | null {
   const parsed = parseSkillMarkdown(content);
   if (!parsed) return null;
@@ -57,12 +89,26 @@ export function importSkillFromMarkdown(
     id,
     name: parsed.name,
     description: parsed.description,
-    kind: 'prompt',
+    kind: parsed.kind ?? 'prompt',
     promptTemplate: parsed.body,
     inputSchema: {},
     outputSchema: {},
-    version: 1,
+    version: parsed.version ?? 1,
     status: 'active',
+    referencesPath: opts?.referencesPath,
+    scriptsPath: opts?.scriptsPath,
+    metadata: {
+      ...(parsed.metadata ?? {}),
+      license: parsed.license,
+      compatibility: parsed.compatibility,
+      model: parsed.model,
+      effort: parsed.effort,
+      context: parsed.context,
+      agent: parsed.agent,
+      userInvocable: parsed.userInvocable,
+      argumentHint: parsed.argumentHint,
+      whenToUse: parsed.whenToUse,
+    },
   };
 
   registry.register(entry);
@@ -73,53 +119,50 @@ export function importSkillFromMarkdown(
  * Export a Cabinet Skill to SKILL.md format string.
  */
 export function exportSkillToMarkdown(skill: SkillEntry): string {
-  const lines: string[] = ['---'];
-  lines.push(`name: ${skill.name}`);
-  lines.push(`description: ${skill.description}`);
-  lines.push('---');
-  lines.push('');
-  lines.push(skill.promptTemplate);
-  return lines.join('\n');
-}
-
-/** Minimal YAML frontmatter parser (no external dependency). */
-function parseYamlFrontmatter(yaml: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  const lines = yaml.split('\n');
-  let currentKey = '';
-  let currentValue = '';
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    const colonIdx = trimmed.indexOf(':');
-    if (colonIdx !== -1 && !trimmed.startsWith(' ') && !trimmed.startsWith('\t')) {
-      // New key
-      if (currentKey) {
-        result[currentKey] = currentValue.trim();
+  const frontmatter: Record<string, unknown> = {
+    name: skill.name,
+    description: skill.description,
+    kind: skill.kind,
+    version: skill.version,
+  };
+  if (skill.metadata) {
+    for (const [key, value] of Object.entries(skill.metadata)) {
+      if (value !== undefined && value !== null && value !== '') {
+        frontmatter[key] = value;
       }
-      currentKey = trimmed.slice(0, colonIdx).trim();
-      currentValue = trimmed.slice(colonIdx + 1).trim();
-    } else if (currentKey) {
-      // Continuation of previous value
-      currentValue += '\n' + trimmed;
     }
   }
-  if (currentKey) {
-    result[currentKey] = currentValue.trim();
-  }
-  return result;
+  const yamlStr = yaml.dump(frontmatter, { lineWidth: -1, noRefs: true }).trim();
+  return `---\n${yamlStr}\n---\n\n${skill.promptTemplate}`;
 }
 
-function parseSubFields(value: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  const pairs = value.split(',').map((s) => s.trim());
-  for (const pair of pairs) {
-    const eq = pair.indexOf('=');
-    if (eq !== -1) {
-      result[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+function validateKind(v: unknown): 'tool' | 'prompt' | 'composite' | undefined {
+  if (typeof v === 'string' && ['tool', 'prompt', 'composite'].includes(v)) {
+    return v as 'tool' | 'prompt' | 'composite';
+  }
+  return undefined;
+}
+
+function extractAllowedTools(fields: Record<string, unknown>): string[] | undefined {
+  const raw = fields['allowed-tools'] ?? fields['allowed_tools'];
+  if (typeof raw === 'string') return raw.split(/\s+/).filter(Boolean);
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  return undefined;
+}
+
+function extractMetadata(fields: Record<string, unknown>): Record<string, unknown> {
+  const known = new Set([
+    'name', 'description', 'kind', 'version', 'license', 'compatibility',
+    'model', 'effort', 'context', 'agent',
+    'user-invocable', 'user_invocable', 'disable-model-invocation', 'disable_model_invocation',
+    'argument-hint', 'argument_hint', 'arguments',
+    'when_to_use', 'when-to-use', 'allowed-tools', 'allowed_tools',
+  ]);
+  const meta: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (!known.has(key) && value !== undefined && value !== null) {
+      meta[key] = value;
     }
   }
-  return result;
+  return Object.keys(meta).length > 0 ? meta : {};
 }

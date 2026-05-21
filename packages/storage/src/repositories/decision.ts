@@ -58,10 +58,16 @@ export class DecisionRepository {
     return row ? rowToDecision(row) : null;
   }
 
-  listByProject(projectId: string): Decision[] {
+  listByProject(projectId?: string): Decision[] {
+    if (projectId) {
+      const rows = this.db
+        .prepare('SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC')
+        .all(projectId) as any[];
+      return rows.map(rowToDecision);
+    }
     const rows = this.db
-      .prepare('SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC')
-      .all(projectId) as any[];
+      .prepare('SELECT * FROM decisions ORDER BY created_at DESC')
+      .all() as any[];
     return rows.map(rowToDecision);
   }
 

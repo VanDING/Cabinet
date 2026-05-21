@@ -14,13 +14,14 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
 import { SecretaryAgent, IntentParser, GreetingService } from '@cabinet/secretary';
+import { ProjectIsolatedMemory } from '@cabinet/memory';
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
 import { CABINET_DIR } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, realpath } from 'node:fs/promises';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -59,21 +60,12 @@ function isTextFile(ext: string): boolean {
   return false;
 }
 
-function getProjectRoot(): string {
-  return join(process.cwd(), '..', '..');
-}
-
 async function resolveSafePath(filePath: string): Promise<string> {
-  const root = resolve(getProjectRoot());
-  const fullPath = resolve(root, filePath);
-  if (!fullPath.startsWith(root)) throw new Error('Path traversal denied');
+  const fullPath = resolve(filePath);
   try {
-    const real = await realpath(fullPath);
-    if (!real.startsWith(root)) throw new Error('Path traversal denied: symlink escapes project root');
-    return real;
+    return await realpath(fullPath);
   } catch {
-    // If file doesn't exist yet (e.g. write_file), allow the unresolved path
-    if (!fullPath.startsWith(root)) throw new Error('Path traversal denied');
+    // File doesn't exist yet (e.g. write_file), allow the unresolved path
     return fullPath;
   }
 }
@@ -403,6 +395,22 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         builtIn: r.type !== 'custom',
       }));
     },
+    async invokeAgent(agentName, message) {
+      const registry = ctx.agentRegistry;
+      const role = registry.get(agentName);
+      if (!role) throw new Error(`Agent not found: ${agentName}`);
+      const loop = getAgentLoopForRole(
+        role.type as AgentRoleType,
+        `invoke_${Date.now()}`,
+        'global',
+        'captain-1',
+        undefined,
+        resolveModel({ modelTier: 'default', model: 'claude-sonnet-4-6' }),
+      );
+      if (!loop) throw new Error(`Cannot invoke ${agentName}: no LLM gateway available`);
+      const result = await loop.run(message);
+      return { agentName: role.name, response: result.content };
+    },
 
     // ── Project tools ──
     setProjectContext(projectId) {
@@ -491,7 +499,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     listDirectory: async (dirPath) => {
       const safePath = await resolveSafePath(dirPath);
-      const root = getProjectRoot();
+      const root = process.cwd();
       const entries = await readdir(safePath, { withFileTypes: true });
       return entries
         .filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules')
@@ -503,7 +511,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
 
     searchFiles: async (pattern, dir) => {
-      const root = resolve(getProjectRoot());
+      const root = resolve(process.cwd());
       const searchRoot = dir ? await resolveSafePath(dir) : root;
       const results: string[] = [];
       const regex = globToRegex(pattern);
@@ -526,7 +534,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
 
     searchContent: async (pattern, dir, include) => {
-      const root = resolve(getProjectRoot());
+      const root = resolve(process.cwd());
       const searchRoot = dir ? await resolveSafePath(dir) : root;
       const results: { file: string; line: number; content: string }[] = [];
       const regex = safeRegex(pattern);
@@ -623,7 +631,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     execCommand: async (command, cwd, timeout) => {
       const blocked = detectDangerousCommand(command);
       if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
-      const workDir = cwd ? await resolveSafePath(cwd) : getProjectRoot();
+      const workDir = cwd ? await resolveSafePath(cwd) : process.cwd();
 
       const { stdout, stderr } = await execAsync(command, {
         cwd: workDir,
@@ -1260,7 +1268,12 @@ const MAX_CACHE_SIZE = 100;
 const secretaryAgentCache = new Map<string, SecretaryAgent>();
 let lastGatewayCheck = false;
 
-function buildMemoryProvider(ctx: ServerContext) {
+function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
+  const useIsolation = projectId && projectId !== 'global';
+  const isolated = useIsolation
+    ? new ProjectIsolatedMemory(projectId!, ctx.shortTerm, ctx.longTerm, ctx.entity, ctx.project)
+    : null;
+
   return {
     async getShortTerm(sid: string) {
       const items: { role: 'user' | 'assistant'; content: string }[] = [];
@@ -1278,8 +1291,9 @@ function buildMemoryProvider(ctx: ServerContext) {
         }
       }
 
-      // Append short-term KV data as additional context
-      const kv = ctx.shortTerm.getAll(sid);
+      // Append short-term KV data as additional context (scoped per project if isolated)
+      const scopedSid = isolated ? `${projectId}:${sid}` : sid;
+      const kv = ctx.shortTerm.getAll(scopedSid);
       for (const [k, v] of Object.entries(kv)) {
         if (typeof v === 'string' && v.length > 0) {
           items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
@@ -1289,9 +1303,30 @@ function buildMemoryProvider(ctx: ServerContext) {
       return items;
     },
     async getProjectContext(_pid: string) {
-      const projCtx = ctx.project.get(_pid);
-      if (!projCtx) return `Cabinet v2.0 project. ${_pid}`;
-      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
+      const pid = _pid === 'global' ? _pid : (_pid || projectId || 'global');
+      if (pid === 'global') return 'No project selected. Use list_projects to see available projects.';
+      const projCtx = isolated ? isolated.getProjectContext() : ctx.project.get(pid);
+      let contextStr = '';
+      if (!projCtx) {
+        contextStr = `Project "${pid}" has no context yet. Use set_project_context to add details.`;
+      } else {
+        contextStr = `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
+      }
+
+      // Inject lightweight file listing if project has a root_path
+      try {
+        const rows = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').all(pid) as any[];
+        const rootPath = rows?.[0]?.root_path;
+        if (rootPath && existsSync(rootPath)) {
+          const entries = readdirSync(rootPath, { withFileTypes: true }).slice(0, 40);
+          const fileList = entries
+            .map((d) => (d.isDirectory() ? `📁 ${d.name}/` : `📄 ${d.name}`))
+            .join('\n');
+          contextStr += `\n\nProject files (top-level, ${rootPath}):\n${fileList}`;
+        }
+      } catch { /* file listing is best-effort */ }
+
+      return contextStr;
     },
     async getEntityPreferences(_captainId: string) {
       const prefs = ctx.entity.getPreferences(_captainId);
@@ -1327,6 +1362,8 @@ function getAgentLoopForRole(
   sessionId: string,
   projectId: string,
   captainId: string,
+  thinkingBudget?: number,
+  model?: string,
 ): AgentLoop | null {
   const ctx = getServerContext();
   if (!ctx.gateway) return null;
@@ -1367,13 +1404,17 @@ function getAgentLoopForRole(
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
     checkpointManager,
-    memoryProvider: buildMemoryProvider(ctx),
+    memoryProvider: buildMemoryProvider(ctx, projectId),
     sessionId: `${sessionId}-${role.type}`,
     projectId,
     captainId,
     systemPrompt: role.systemPrompt,
-    model: resolveModel(role),
+    model: model ?? resolveModel(role),
     maxSteps: 10,
+    maxResponseTokens: role.maxResponseTokens,
+    temperature: role.temperature,
+    contextBudget: role.contextBudget,
+    thinkingBudget,
   });
 
   // FIFO eviction
@@ -1437,13 +1478,16 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
     checkpointManager,
-    memoryProvider: buildMemoryProvider(ctx),
+    memoryProvider: buildMemoryProvider(ctx, 'default'),
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
     captainId: 'captain-1',
     systemPrompt: role.systemPrompt,
     model: resolveModel(role),
     maxSteps: 8,
+    maxResponseTokens: role.maxResponseTokens,
+    temperature: role.temperature,
+    contextBudget: role.contextBudget,
   });
 }
 
@@ -1454,9 +1498,11 @@ async function dispatchToSpecialist(
   sessionId: string,
   projectId: string,
   captainId: string,
+  thinkingBudget?: number,
+  model?: string,
 ): Promise<string> {
   const ctx = getServerContext();
-  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId);
+  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, model);
   if (!loop) return `[No LLM] Cannot dispatch to ${roleType}.`;
 
   const result = await loop.run(message);
@@ -1516,6 +1562,36 @@ async function dispatchToSpecialist(
   return output;
 }
 
+/** Dispatch a message to a specialist role with streaming output. */
+async function dispatchToSpecialistStreaming(
+  roleType: AgentRoleType,
+  message: string,
+  sessionId: string,
+  projectId: string,
+  captainId: string,
+  callback: import('@cabinet/agent').StreamingCallback,
+  thinkingBudget?: number,
+  model?: string,
+): Promise<void> {
+  const ctx = getServerContext();
+  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, model);
+  if (!loop) {
+    callback.onError?.(`[No LLM] Cannot dispatch to ${roleType}.`);
+    callback.onDone('');
+    return;
+  }
+
+  try {
+    const result = await loop.runStreaming(message, callback);
+    // Note: Quality gate (Reviewer) is skipped for streaming — it would delay the stream.
+    // The non-streaming dispatchToSpecialist still runs the reviewer for blocking calls.
+    void result;
+  } catch (e: any) {
+    callback.onError?.(e.message ?? 'Unknown error');
+    callback.onDone('');
+  }
+}
+
 /** Persist review result to evaluation_results table. */
 function persistReviewResult(
   ctx: ServerContext,
@@ -1539,7 +1615,7 @@ function persistReviewResult(
   } catch { /* persistence failure is non-fatal */ }
 }
 
-function getOrCreateAgent(sessionId: string, projectId: string, captainId: string, model?: string) {
+function getOrCreateAgent(sessionId: string, projectId: string, captainId: string, model?: string, thinkingBudget?: number) {
   const ctx = getServerContext();
   const hasGateway = ctx.gateway !== null;
 
@@ -1550,7 +1626,8 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     lastGatewayCheck = hasGateway;
   }
 
-  const cached = secretaryAgentCache.get(sessionId);
+  const cacheKey = `${sessionId}:${projectId}`;
+  const cached = secretaryAgentCache.get(cacheKey);
   if (cached) {
     return { agent: cached };
   }
@@ -1565,7 +1642,10 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
   });
 
-  const memoryProvider = buildMemoryProvider(ctx);
+  const memoryProvider = buildMemoryProvider(ctx, projectId);
+
+  // Load secretary role for temperature and system prompt
+  const secretaryRole = ctx.agentRegistry.get('secretary');
 
   let secretaryLoop: AgentLoop | null = null;
   if (hasGateway) {
@@ -1579,8 +1659,12 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
-      model,
+      model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
       maxSteps: 10,
+      maxResponseTokens: secretaryRole?.maxResponseTokens,
+      temperature: secretaryRole?.temperature ?? 0.5,
+      contextBudget: secretaryRole?.contextBudget,
+      thinkingBudget,
     });
     secretaryLoop.onSessionComplete = (summary) => {
       const obs = getServerContext().observability;
@@ -1632,9 +1716,9 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     intentParser,
     ctx.sessionManager,
     ctx.gateway ?? undefined,
-    // dispatchToRole callback: routes to specialist agents
-    async (roleType, msg, sid) => {
-      return dispatchToSpecialist(roleType, msg, sid, projectId, captainId);
+    // dispatchToRole callback: routes to specialist agents with streaming
+    async (roleType: AgentRoleType, msg: string, sid: string, callback: import('@cabinet/agent').StreamingCallback) => {
+      await dispatchToSpecialistStreaming(roleType, msg, sid, projectId, captainId, callback, thinkingBudget, model ?? undefined);
     },
   );
 
@@ -1643,7 +1727,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     const firstKey = secretaryAgentCache.keys().next().value;
     if (firstKey) secretaryAgentCache.delete(firstKey);
   }
-  secretaryAgentCache.set(sessionId, agent);
+  secretaryAgentCache.set(cacheKey, agent);
 
   return { agent };
 }
@@ -1666,6 +1750,7 @@ const chatSchema = z.object({
   files: z.array(fileSchema).optional(),
   stream: z.boolean().optional(),
   dispatchMode: z.enum(['single', 'pipeline', 'parallel']).optional(),
+  thinkingBudget: z.number().min(1024).max(128000).nullable().optional(),
 });
 
 secretaryRouter.post('/chat', async (c) => {
@@ -1681,18 +1766,11 @@ secretaryRouter.post('/chat', async (c) => {
   const model = parsed.data.model;
   const stream = parsed.data.stream ?? false;
   const dispatchMode: DispatchMode = parsed.data.dispatchMode ?? 'single';
+  const thinkingBudget = parsed.data.thinkingBudget ?? undefined;
 
-  // Auto-create first project if none exist and no projectId specified
+  // Use 'global' as sentinel when no project is selected (no auto-creation)
   if (!projectId) {
-    const count = (ctx.db.prepare('SELECT COUNT(*) as count FROM projects').get() as any).count;
-    if (count === 0) {
-      const id = `proj_${Date.now()}`;
-      ctx.db.prepare('INSERT INTO projects (id, name, description, last_activity_at) VALUES (?, ?, ?, datetime(\'now\'))')
-        .run(id, 'My First Project', 'Auto-created project');
-      ctx.db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(id, '');
-      projectId = id;
-      ctx.logger.info('Auto-created first project', { id });
-    }
+    projectId = 'global';
   }
 
   const isNewSession = !ctx.sessionManager.get(sessionId);
@@ -1735,7 +1813,7 @@ secretaryRouter.post('/chat', async (c) => {
   }
 
   try {
-    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model ?? undefined);
+    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model ?? undefined, thinkingBudget);
 
     // Augment message with attached file contents (shared by all modes)
     let augmentedMessage = message;
@@ -1857,24 +1935,37 @@ secretaryRouter.post('/chat', async (c) => {
               capturedMeetingResult = null;
               emit('status', { message: 'Thinking...' });
 
+              let streamedContent = '';
+
               const streamResult = await agent.handleMessageStreaming(
                 sessionId,
                 augmentedMessage,
                 {
+                  onRoutingStart(targetAgent) {
+                    emit('routing_start', { targetAgent });
+                  },
                   onChunk(content) {
+                    streamedContent = content;
                     emit('chunk', { content });
                   },
-                  onToolCall(name) {
-                    emit('status', { message: `Using tool: ${name}...` });
+                  onThinking(content) {
+                    emit('thinking', { content });
                   },
-                  onToolResult(name) {
-                    emit('status', { message: `Tool completed: ${name}` });
+                  onThinkingDone() {
+                    emit('thinking_done', {});
+                  },
+                  onToolCall(name, args) {
+                    emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
+                  },
+                  onToolResult(name, result) {
+                    emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
+                  },
+                  onUsage(usage) {
+                    emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
                   },
                   onDone(fullContent) {
-                    const meeting = capturedMeetingResult;
-                    ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
-                    broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
-                    emit('done', { sessionId, meeting: meeting ?? undefined, agentName: 'Secretary', content: fullContent });
+                    streamedContent = fullContent;
+                    // Done event is emitted after routing below
                   },
                   onError(error) {
                     emit('error', { message: error });
@@ -1882,14 +1973,34 @@ secretaryRouter.post('/chat', async (c) => {
                 },
               );
 
-              // Emit routing info after streaming completes
-              if (streamResult.routeResult) {
+              const targetAgent = streamResult.routeResult?.targetAgent ?? 'secretary';
+              const isRouted = targetAgent !== 'secretary';
+
+              // Emit routing info BEFORE done (so client receives it before closing the stream)
+              if (streamResult.routeResult && isRouted) {
                 emit('routing', {
-                  targetAgent: streamResult.routeResult.targetAgent,
+                  targetAgent,
                   confidence: streamResult.routeResult.confidence,
                   reasoning: streamResult.routeResult.reasoning,
                 });
               }
+
+              // Emit done last — client stops reading here, so routing must come first
+              const meeting = capturedMeetingResult;
+              ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+              broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+              emit('done', {
+                sessionId,
+                meeting: meeting ?? undefined,
+                agentName: targetAgent,
+                content: streamedContent,
+                routed: isRouted,
+                ...(streamResult.routeResult ? {
+                  targetAgent,
+                  confidence: streamResult.routeResult.confidence,
+                  reasoning: streamResult.routeResult.reasoning,
+                } : {}),
+              });
             } catch (e: any) {
               emit('error', { message: e.message ?? 'Unknown error' });
             } finally {
@@ -1992,17 +2103,18 @@ secretaryRouter.get('/verify', async (c) => {
   }
   try {
     const start = Date.now();
+    const testModel = resolveModel({ modelTier: 'default', model: 'claude-haiku-4-5' });
     const response = await gateway.generateText({
-      model: 'claude-haiku-4-5',
+      model: testModel,
       messages: [{ role: 'user', content: 'Reply with just "OK".' }],
       maxTokens: 10,
     });
     costTracker.record(
-      'claude-haiku-4-5',
+      response.model ?? testModel,
       response.usage?.promptTokens ?? 0,
       response.usage?.completionTokens ?? 0,
     );
-    metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'verify' });
+    metrics.increment('llm_call', { model: response.model ?? testModel, purpose: 'verify' });
     const latency = Date.now() - start;
     return c.json({
       status: 'ok',

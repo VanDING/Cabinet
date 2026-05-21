@@ -8,6 +8,7 @@ import {
   readdirSync,
 } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
+import { broadcast } from './ws/handler.js';
 import {
   createConnection,
   runMigration001,
@@ -17,6 +18,7 @@ import {
   runMigration005,
   runMigration006,
   runMigration007,
+  runMigration008,
   DecisionRepository,
   ProjectRepository,
   EventLogRepository,
@@ -139,8 +141,10 @@ export function getServerContext(): ServerContext {
   // Database — use ~/.cabinet/ (cross-platform user data directory)
   const dataDir = ensureCabinetDir();
   const dbPath = join(dataDir, 'cabinet.db');
+  const dbExists = require('node:fs').existsSync(dbPath);
 
   let db: Database;
+  let dbMode: 'file' | 'memory' = 'file';
   try {
     db = createConnection(dbPath);
     runMigration001(db);
@@ -150,9 +154,24 @@ export function getServerContext(): ServerContext {
     runMigration005(db);
     runMigration006(db);
     runMigration007(db);
-    logger.info('SQLite database initialized', { path: dbPath });
+    runMigration008(db);
+    logger.info(`SQLite database initialized (${dbExists ? 'existing' : 'new'})`, { path: dbPath });
+    // Write a startup marker so we can diagnose persistence issues
+    try {
+      require('node:fs').writeFileSync(
+        join(dataDir, 'server-startup.log'),
+        `${new Date().toISOString()} | DB: file | path: ${dbPath} | existed: ${dbExists}\n`,
+      );
+    } catch { /* non-fatal */ }
   } catch (e) {
-    logger.error('Failed to initialize SQLite', { error: String(e) });
+    logger.error('Failed to initialize file-based SQLite', { error: String(e), path: dbPath });
+    // Write diagnostic info before falling back
+    try {
+      require('node:fs').appendFileSync(
+        join(dataDir, 'server-startup.log'),
+        `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`,
+      );
+    } catch { /* non-fatal */ }
     try {
       db = createConnection(':memory:');
       runMigration001(db);
@@ -162,20 +181,17 @@ export function getServerContext(): ServerContext {
       runMigration005(db);
       runMigration006(db);
       runMigration007(db);
-      logger.warn('Falling back to in-memory database');
+      runMigration008(db);
+      dbMode = 'memory';
+      logger.warn('Falling back to in-memory database — data will NOT persist across restarts');
     } catch (e2) {
       logger.error('SQLite completely unavailable — running without persistence', {
         error: String(e2),
       });
       db = createConnection(':memory:');
+      dbMode = 'memory';
     }
   }
-
-  // Seed default projects so foreign-key references resolve
-  db.exec(`
-    INSERT OR IGNORE INTO projects (id, name, description) VALUES ('proj-1', 'Default Project', 'Auto-seeded default project');
-    INSERT OR IGNORE INTO projects (id, name, description) VALUES ('default', 'Default', 'Auto-seeded fallback project');
-  `);
 
   // Repositories
   const decisionRepo = new DecisionRepository(db);
@@ -294,6 +310,27 @@ export function getServerContext(): ServerContext {
   let modelMapping: ModelMapping = {};
   let providerConfigsFromSettings: Record<string, ProviderEntry> = {};
 
+  // Tier → model mapping per provider. Picks the best available model
+  // from the user's configured API keys instead of hardcoding Claude.
+  const PROVIDER_TIER_MAP: Record<string, Record<string, string>> = {
+    anthropic: { deep_reasoning: 'anthropic/claude-opus-4-7', default: 'anthropic/claude-sonnet-4-6', fast_execution: 'anthropic/claude-haiku-4-5' },
+    openai:    { deep_reasoning: 'openai/gpt-4o',             default: 'openai/gpt-4o',              fast_execution: 'openai/gpt-4o-mini' },
+    google:    { deep_reasoning: 'google/gemini-2.5-pro',     default: 'google/gemini-2.5-pro',      fast_execution: 'google/gemini-2.5-flash' },
+    deepseek:  { deep_reasoning: 'deepseek/deepseek-v4-pro',  default: 'deepseek/deepseek-v4-pro',   fast_execution: 'deepseek/deepseek-v4-flash' },
+    qwen:      { deep_reasoning: 'qwen/qwen-max',             default: 'qwen/qwen-plus',             fast_execution: 'qwen/qwen-turbo' },
+    moonshot:  { deep_reasoning: 'moonshot/moonshot-v1-128k', default: 'moonshot/moonshot-v1-32k',   fast_execution: 'moonshot/moonshot-v1-8k' },
+    zhipu:     { deep_reasoning: 'zhipu/glm-4',               default: 'zhipu/glm-4',                fast_execution: 'zhipu/glm-4-flash' },
+    baichuan:  { deep_reasoning: 'baichuan/baichuan4',        default: 'baichuan/baichuan4',         fast_execution: 'baichuan/baichuan3-turbo' },
+  };
+  const PROVIDER_PREFERENCE = ['anthropic', 'openai', 'google', 'deepseek', 'qwen', 'moonshot', 'zhipu', 'baichuan'];
+  const FALLBACK_TIER_MAP = PROVIDER_TIER_MAP.anthropic; // when no keys are configured at all
+
+  function buildDefaultModelMapping(providers: Record<string, unknown>): ModelMapping {
+    const primary = PROVIDER_PREFERENCE.find((p) => providers[p] != null);
+    if (!primary) return { ...FALLBACK_TIER_MAP };
+    return { ...PROVIDER_TIER_MAP[primary] ?? FALLBACK_TIER_MAP };
+  }
+
   // Gateway — built from .env + database
   const buildGateway = (): LLMGateway | null => {
     const providerConfigs: Record<string, { apiKey: string; baseUrl?: string }> = {};
@@ -329,7 +366,11 @@ export function getServerContext(): ServerContext {
     }
 
     if (Object.keys(providerConfigs).length > 0) {
-      return new AISDKAdapter(providerConfigs as any, modelMapping);
+      // Use user-configured modelMapping if set; otherwise auto-detect from available providers
+      const effectiveMapping = Object.keys(modelMapping).length > 0
+        ? modelMapping
+        : buildDefaultModelMapping(providerConfigs);
+      return new AISDKAdapter(providerConfigs as any, effectiveMapping);
     }
     return null;
   };
@@ -458,6 +499,7 @@ export function getServerContext(): ServerContext {
       },
       updateAgent: () => {},
       deleteAgent: () => {},
+      invokeAgent: async () => { throw new Error('Agent invocation not available for Curator background task'); },
       listAgents: () => agentRegistry.list().map((r) => ({
         type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
       })),
@@ -551,6 +593,9 @@ export function getServerContext(): ServerContext {
       systemPrompt: role.systemPrompt,
       model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.model,
       maxSteps: 15,
+      maxResponseTokens: role.maxResponseTokens,
+      temperature: role.temperature,
+      contextBudget: role.contextBudget,
     });
   }
 
@@ -948,7 +993,7 @@ export function getServerContext(): ServerContext {
               temperature: agentCard.temperature ?? 0.7,
               maxResponseTokens: agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
               allowedTools: agentCard.allowedTools ?? [],
-              contextBudget: agentCard.contextBudget ?? agentCard.contextWindow ?? 100000,
+              contextBudget: agentCard.contextBudget ?? agentCard.contextWindow ?? 0.3,
             });
             db.prepare(
               `INSERT OR IGNORE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
@@ -961,7 +1006,7 @@ export function getServerContext(): ServerContext {
               agentCard.temperature ?? 0.7,
               agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
               JSON.stringify(agentCard.allowedTools ?? []),
-              agentCard.contextBudget ?? agentCard.contextWindow ?? 100000,
+              agentCard.contextBudget ?? agentCard.contextWindow ?? 0.3,
             );
           }
         } catch { /* skip malformed agent */ }
@@ -1226,14 +1271,22 @@ export function getServerContext(): ServerContext {
     }
     try {
       logger.info('Executing scheduled task', { taskId: task.id, name: task.name });
+      const taskModel = (gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
       const result = await gateway.generateText({
-        model: 'claude-haiku-4-5',
+        model: taskModel,
         systemPrompt: 'You are a proactive Cabinet assistant executing a scheduled task. Be concise and actionable.',
         messages: [{ role: 'user', content: task.prompt }],
       });
       logger.info('Scheduled task completed', { taskId: task.id, name: task.name, preview: result.content.slice(0, 200) });
       // Store result in short-term memory for retrieval
       shortTerm.set(`system`, `task_result:${task.id}`, { name: task.name, prompt: task.prompt, result: result.content, executedAt: new Date().toISOString() }, 86400000);
+      // Notify frontend via WebSocket
+      broadcast('task_completed', {
+        taskId: task.id,
+        name: task.name,
+        result: result.content,
+        executedAt: new Date().toISOString(),
+      });
     } catch (err) {
       logger.error('Scheduled task failed', { taskId: task.id, name: task.name, error: (err as Error).message });
     }

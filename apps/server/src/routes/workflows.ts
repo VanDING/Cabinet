@@ -146,6 +146,9 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
         type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
       }));
     },
+    async invokeAgent(_agentName, _message) {
+      throw new Error('Agent invocation not available in workflow tool context');
+    },
     setProjectContext(projectId) {
       const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
       if (!row) throw new Error(`Project not found: ${projectId}`);
@@ -324,6 +327,9 @@ function getEngine(): WorkflowEngine {
         systemPrompt: role.systemPrompt,
         model: role.model,
         maxSteps: options.persistent ? 20 : 10,
+        maxResponseTokens: role.maxResponseTokens,
+        temperature: role.temperature,
+        contextBudget: role.contextBudget,
       });
 
       // Wire observability

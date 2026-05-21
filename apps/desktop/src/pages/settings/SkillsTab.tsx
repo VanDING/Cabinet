@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
-import JSZip from 'jszip';
 
 // ── Skills Tab ──
 interface SkillItem {
@@ -82,23 +81,35 @@ export function SkillsTab() {
                 const file = input.files?.[0];
                 if (!file) return;
                 try {
-                  let content = '';
                   if (file.name.endsWith('.zip')) {
-                    const zip = await JSZip.loadAsync(file);
-                    const skillMd = zip.file('SKILL.md') ?? zip.file(/^[^/]*skill\.md$/i)[0];
-                    if (!skillMd) { console.error('No SKILL.md found in archive'); return; }
-                    content = await skillMd.async('text');
+                    // Send zip directly to server for full extraction (L3)
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await fetch('/api/skills/import-zip', {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({ error: 'Import failed' }));
+                      alert(`Import failed: ${(err as any).error ?? res.statusText}`);
+                      return;
+                    }
                   } else {
-                    content = await file.text();
+                    const content = await file.text();
+                    const res = await apiFetch('/api/skills/import', {
+                      method: 'POST',
+                      headers: authJsonHeaders(),
+                      body: JSON.stringify({ content }),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({ error: 'Import failed' }));
+                      alert(`Import failed: ${(err as any).error ?? res.statusText}`);
+                      return;
+                    }
                   }
-                  await apiFetch('/api/skills/import', {
-                    method: 'POST',
-                    headers: authJsonHeaders(),
-                    body: JSON.stringify({ markdown: content }),
-                  });
                   fetchSkills();
                 } catch {
-                  console.error('Failed to import skill');
+                  alert('Failed to import skill. Check file format and try again.');
                 }
               };
               input.click();

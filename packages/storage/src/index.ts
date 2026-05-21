@@ -9,6 +9,7 @@ export { runMigration004 } from './migrations/004_scheduled_tasks.js';
 export { runMigration005 } from './migrations/005_workflow_runs.js';
 export { runMigration006 } from './migrations/006_document_chunks.js';
 export { runMigration007 } from './migrations/007_evaluation_results.js';
+export { runMigration008 } from './migrations/008_skill_metadata.js';
 export { EventLogRepository } from './repositories/event-log.js';
 export { ProjectRepository } from './repositories/project.js';
 export { DecisionRepository } from './repositories/decision.js';

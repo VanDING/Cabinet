@@ -77,6 +77,7 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   updateAgent: (name: string, updates: Record<string, unknown>) => void;
   deleteAgent: (name: string) => void;
   listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
+  invokeAgent: (agentName: string, message: string) => Promise<{ agentName: string; response: string }>;
 
   // Project tools
   setProjectContext: (projectId: string) => { id: string; name: string };
@@ -470,6 +471,16 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
         if (!name) return { error: 'name is required' };
         deps.deleteAgent(name);
         return { deleted: true, name };
+      },
+    },
+    {
+      name: 'invoke_agent',
+      execute: async (args: Record<string, unknown>) => {
+        const agentName = args.agentName as string;
+        const message = args.message as string;
+        if (!agentName) return { error: 'agentName is required' };
+        if (!message) return { error: 'message is required' };
+        return deps.invokeAgent(agentName, message);
       },
     },
 
