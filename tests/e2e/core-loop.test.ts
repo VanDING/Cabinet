@@ -1,22 +1,25 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
+import { seedProject } from './test-helpers';
 
 const PIN = '1234';
 const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
 
 describe('Cabinet Core Loop (E2E)', () => {
   const app = createApp();
+  let projectId = '';
   let decisionId1 = '';
   let decisionId2 = '';
 
   // Seed test decisions used by subsequent detail/approve/reject tests
   beforeAll(async () => {
+    projectId = await seedProject(app);
     // Use 4+ options to get L2 classification (won't auto-approve on creation)
     const r1 = await app.request('/api/decisions', {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        projectId: 'proj-1',
+        projectId,
         type: 'action',
         title: 'Test Decision 1',
         description: 'For testing detail/approve',
@@ -37,7 +40,7 @@ describe('Cabinet Core Loop (E2E)', () => {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        projectId: 'proj-1',
+        projectId,
         type: 'action',
         title: 'Test Decision 2',
         description: 'For testing reject',
@@ -104,12 +107,12 @@ describe('Cabinet Core Loop (E2E)', () => {
     const res = await app.request(`/api/decisions/${id}/approve`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ chosenOptionId: 'opt-1' }),
+      body: JSON.stringify({ chosenOptionId: 'opt-a' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('approved');
-    expect(body).toHaveProperty('chosenOptionId', 'opt-1');
+    expect(body).toHaveProperty('chosenOptionId', 'opt-a');
   });
 
   // Step 6: Reject a decision
@@ -137,7 +140,7 @@ describe('Cabinet Core Loop (E2E)', () => {
     const res = await app.request('/api/factory', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ name: 'Test Workflow', nodes: [], edges: [] }),
+      body: JSON.stringify({ name: 'Test Workflow', projectId, nodes: [], edges: [] }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
