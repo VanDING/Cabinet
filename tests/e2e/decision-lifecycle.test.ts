@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createTestApp, headers, createDecision } from './test-helpers';
+import { createTestApp, headers, createDecision, seedProject, setDefaultProjectId } from './test-helpers';
 
 describe('Decision Lifecycle (E2E)', () => {
   const app = createTestApp();
+  let projectId = '';
   let decisionId = '';
 
   beforeAll(async () => {
+    const pid = await seedProject(app);
+    projectId = pid;
+    setDefaultProjectId(pid);
     const { body } = await createDecision(app, {
       title: 'Lifecycle Test Decision',
       description: 'Verify full pending→approve→audit trail',
@@ -77,7 +81,7 @@ describe('Decision Lifecycle (E2E)', () => {
     const createRes = await app.request('/api/factory', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ name: 'E2E Lifecycle Workflow', nodes: [], edges: [] }),
+      body: JSON.stringify({ name: 'E2E Lifecycle Workflow', projectId, nodes: [], edges: [] }),
     });
     expect(createRes.status).toBe(200);
     const wf = await createRes.json();
@@ -91,7 +95,7 @@ describe('Decision Lifecycle (E2E)', () => {
     expect([200, 400]).toContain(runRes.status);
 
     // Verify workflow appears in listing (default projectId filter)
-    const listRes = await app.request('/api/factory?projectId=proj-1', { headers });
+    const listRes = await app.request(`/api/factory?projectId=${projectId}`, { headers });
     expect(listRes.status).toBe(200);
     const list = await listRes.json();
     expect(list.workflows.some((w: any) => w.id === wf.id)).toBe(true);
