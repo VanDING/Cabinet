@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { getServerContext, type ServerContext } from '../context.js';
+import { getServerContext, onTierChange, type ServerContext } from '../context.js';
+import type { DelegationTier } from '@cabinet/types';
 import {
   AgentLoop,
   AgentDispatcher,
@@ -1112,7 +1113,7 @@ async function runMeeting(
           '',
           `Synthesis: ${synthesisText}`,
           '',
-          `Review for: logical completeness, risk assessment adequacy, missing perspectives, evidence quality, unstated assumptions.`,
+          `Review for: logical completeness, risk assessment adequacy, evidence quality, unstated assumptions, factual errors.`,
           `Use tools (search_memory, search_documents, read_file) to verify factual claims if possible.`,
           '',
           `After your review, output ONLY a JSON object:`,
@@ -1268,6 +1269,16 @@ const MAX_CACHE_SIZE = 100;
 const secretaryAgentCache = new Map<string, SecretaryAgent>();
 let lastGatewayCheck = false;
 
+// Keep cached agent loops in sync with delegation tier changes from the UI
+onTierChange((tier: DelegationTier) => {
+  for (const loop of agentLoopCache.values()) {
+    try { loop.setDelegationTier(tier); } catch { /* non-fatal */ }
+  }
+  for (const agent of secretaryAgentCache.values()) {
+    try { agent.setDelegationTier(tier); } catch { /* non-fatal */ }
+  }
+});
+
 function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
   const useIsolation = projectId && projectId !== 'global';
   const isolated = useIsolation
@@ -1410,7 +1421,7 @@ function getAgentLoopForRole(
     captainId,
     systemPrompt: role.systemPrompt,
     model: model ?? resolveModel(role),
-    maxSteps: 10,
+    maxSteps: 50,
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
@@ -1484,7 +1495,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     captainId: 'captain-1',
     systemPrompt: role.systemPrompt,
     model: resolveModel(role),
-    maxSteps: 8,
+    maxSteps: 50,
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
@@ -1521,7 +1532,7 @@ async function dispatchToSpecialist(
         `Agent output to review:`,
         output.slice(0, 8000),
         '',
-        `Review for: logical completeness, evidence quality, risk assessment, missing perspectives, factual errors.`,
+        `Review for: logical completeness, evidence quality, risk assessment, factual errors.`,
         `Use available tools (search_memory, search_documents, read_file) to verify claims if possible.`,
         '',
         `After review, output ONLY a JSON object:`,
@@ -1660,7 +1671,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       projectId,
       captainId,
       model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
-      maxSteps: 10,
+      maxSteps: 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
       temperature: secretaryRole?.temperature ?? 0.5,
       contextBudget: secretaryRole?.contextBudget,
@@ -1904,6 +1915,13 @@ secretaryRouter.post('/chat', async (c) => {
           purpose: dispatchMode,
         });
         broadcast('secretary_message', { sessionId, projectId, captainId, mode: dispatchMode });
+        try {
+          broadcast('cost_updated', {
+            daily: ctx.costTracker.getDailyCost(),
+            model: model ?? 'claude-sonnet-4-6',
+            timestamp: new Date().toISOString(),
+          });
+        } catch { /* non-fatal */ }
 
         return c.json({
           sessionId,
@@ -1989,6 +2007,13 @@ secretaryRouter.post('/chat', async (c) => {
               const meeting = capturedMeetingResult;
               ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
               broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+              try {
+                broadcast('cost_updated', {
+                  daily: ctx.costTracker.getDailyCost(),
+                  model: model ?? 'claude-sonnet-4-6',
+                  timestamp: new Date().toISOString(),
+                });
+              } catch { /* non-fatal */ }
               emit('done', {
                 sessionId,
                 meeting: meeting ?? undefined,
@@ -2035,6 +2060,13 @@ secretaryRouter.post('/chat', async (c) => {
       ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
 
       broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+      try {
+        broadcast('cost_updated', {
+          daily: ctx.costTracker.getDailyCost(),
+          model: model ?? 'claude-sonnet-4-6',
+          timestamp: new Date().toISOString(),
+        });
+      } catch { /* non-fatal */ }
       return c.json({
         sessionId,
         projectId,

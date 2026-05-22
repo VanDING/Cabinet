@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 
 interface CostPoint {
@@ -54,7 +54,7 @@ export function CostChart() {
   const [limits, setLimits] = useState<Limits>({ daily: 5, weekly: 25, monthly: 100 });
   const [viewMode, setViewMode] = useState<'bar' | 'stacked'>('stacked');
 
-  useEffect(() => {
+  const fetchHistory = useCallback(() => {
     apiFetch('/api/dashboard/cost-history?days=7', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => {
@@ -64,6 +64,23 @@ export function CostChart() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  useEffect(() => {
+    window.addEventListener('ws:cost_updated', fetchHistory);
+    window.addEventListener('ws:decision_updated', fetchHistory);
+    window.addEventListener('ws:meeting_created', fetchHistory);
+    window.addEventListener('ws:workflow_completed', fetchHistory);
+    return () => {
+      window.removeEventListener('ws:cost_updated', fetchHistory);
+      window.removeEventListener('ws:decision_updated', fetchHistory);
+      window.removeEventListener('ws:meeting_created', fetchHistory);
+      window.removeEventListener('ws:workflow_completed', fetchHistory);
+    };
+  }, [fetchHistory]);
 
   // Collect all models across all days
   const allModels = [...new Set(history.flatMap((h) => Object.keys(h.byModel)))];

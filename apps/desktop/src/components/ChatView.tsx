@@ -11,6 +11,7 @@ interface Props {
   isProcessing: boolean;
   attachedFiles: AttachedFile[];
   sessionTitle: string;
+  isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
 }
@@ -21,13 +22,9 @@ function escapeHtml(text: string): string {
 
 const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   const html = useMemo(() => {
-    // 1. Strip HTML tags LLM sometimes outputs alongside markdown.
-    //    Handles: <p>, </p>, <br/>, <hr />, <li class="x">, etc.
-    const cleaned = content.replace(/<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?\s*\/?>/gi, '');
-
-    // 2. Extract and protect code blocks
+    // 1. Extract and protect code blocks
     const codeBlocks: string[] = [];
-    const withCodeBlocks = cleaned.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const withCodeBlocks = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
       const langClass = ['bash', 'sh', 'shell'].includes(lang?.toLowerCase()) ? 'bash' : lang || '';
       codeBlocks.push(
         `<pre class="code-block ${langClass}"><code>${escapeHtml(code.trim())}</code></pre>`,
@@ -35,10 +32,16 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
       return `%%CB${codeBlocks.length - 1}%%`;
     });
 
-    // 3. Protect skill tags BEFORE markdown parsing so they don't become
-    //    HTML-escaped and don't clash with closing HTML tags from step 1.
+    // 2. Protect URLs BEFORE skill-tag matching so web links aren't styled as skills
+    const urlBlocks: string[] = [];
+    const withUrlsProtected = withCodeBlocks.replace(/https?:\/\/[^\s<>"']+/g, (match) => {
+      urlBlocks.push(escapeHtml(match));
+      return `%%URL${urlBlocks.length - 1}%%`;
+    });
+
+    // 3. Protect skill tags BEFORE markdown parsing so they don't become HTML-escaped
     const skillBlocks: string[] = [];
-    const withSkillTags = withCodeBlocks.replace(/\/\w[\w-]*/g, (match) => {
+    const withSkillTags = withUrlsProtected.replace(/\/\w[\w-]*/g, (match) => {
       skillBlocks.push(`<span class="skill-tag">${match}</span>`);
       return `%%SK${skillBlocks.length - 1}%%`;
     });
@@ -51,7 +54,12 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
       html = html.replace(`%%CB${i}%%`, block);
     });
 
-    // 6. Restore skill tags
+    // 6. Restore URLs (as plain links, not skill-styled)
+    urlBlocks.forEach((url, i) => {
+      html = html.replace(`%%URL${i}%%`, url);
+    });
+
+    // 7. Restore skill tags
     skillBlocks.forEach((block, i) => {
       html = html.replace(`%%SK${i}%%`, block);
     });
@@ -67,6 +75,7 @@ export const ChatView = memo(function ChatView({
   isProcessing,
   attachedFiles,
   sessionTitle,
+  isDark,
   onEditMessage,
   onRegenerate,
 }: Props) {
@@ -137,6 +146,7 @@ export const ChatView = memo(function ChatView({
             key={msg.id}
             msg={msg}
             isProcessing={isProcessing}
+            isDark={isDark}
             onEditMessage={onEditMessage}
             onRegenerate={onRegenerate}
           />
@@ -157,11 +167,13 @@ export const ChatView = memo(function ChatView({
 const MessageRow = memo(function MessageRow({
   msg,
   isProcessing,
+  isDark,
   onEditMessage,
   onRegenerate,
 }: {
   msg: ChatMessage;
   isProcessing: boolean;
+  isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
 }) {
@@ -247,8 +259,28 @@ const MessageRow = memo(function MessageRow({
             </div>
           ) : (
             <>
+              {msg.thinking && (
+                <details open className="thinking-block">
+                  <summary className="thinking-summary">{t('chat.thinking')}</summary>
+                  <div className="thinking-content">
+                    <MarkdownContent content={msg.thinking} />
+                  </div>
+                </details>
+              )}
+              {msg.toolCalls && msg.toolCalls.length > 0 && (
+                <div className="tool-calls-block">
+                  {msg.toolCalls.map((tc, i) => (
+                    <div key={i} className={`tool-call-item tool-call-${tc.status}`}>
+                      <span className="tool-call-indicator">
+                        {tc.status === 'running' ? '⟳' : tc.status === 'error' ? '✕' : '✓'}
+                      </span>
+                      <span className="tool-call-name">{tc.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <MarkdownContent content={msg.content} />
-              {msg.meeting && <MeetingCard data={msg.meeting} />}
+              {msg.meeting && <MeetingCard data={msg.meeting} isDark={isDark} />}
               {msg.isStreaming && (
                 <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-blue-500 align-middle" />
               )}

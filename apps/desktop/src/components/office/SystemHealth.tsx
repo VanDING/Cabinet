@@ -1,20 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { usePolling } from '../../hooks/usePolling';
 
 export function SystemHealth() {
-  const [health, setHealth] = useState<any>(null);
+  const { data: health, loading } = usePolling<any>(
+    () => apiFetch('/health/system', { headers: authHeaders() }).then((r) => r.json()),
+    30000,
+  );
 
   useEffect(() => {
-    apiFetch('/health/system', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => {});
+    const handler = () => {
+      apiFetch('/health/system', { headers: authHeaders() })
+        .then((r) => r.json())
+        .catch(() => {});
+    };
+    window.addEventListener('ws:workflow_started', handler);
+    window.addEventListener('ws:workflow_completed', handler);
+    return () => {
+      window.removeEventListener('ws:workflow_started', handler);
+      window.removeEventListener('ws:workflow_completed', handler);
+    };
   }, []);
 
   if (!health) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4 text-xs text-gray-400 dark:border-gray-600 dark:bg-gray-800">
-        Loading...
+        {loading ? 'Loading...' : 'No data'}
       </div>
     );
   }

@@ -38,6 +38,15 @@ export function ProgressBoard() {
     fetchProgress();
   }, []);
 
+  useEffect(() => {
+    window.addEventListener('ws:task_updated', fetchProgress);
+    window.addEventListener('ws:task_created', fetchProgress);
+    return () => {
+      window.removeEventListener('ws:task_updated', fetchProgress);
+      window.removeEventListener('ws:task_created', fetchProgress);
+    };
+  }, []);
+
   const updateStatus = async (taskId: string, status: string) => {
     await apiFetch('/api/progress', {
       method: 'POST',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 import { FileText } from 'lucide-react';
 
@@ -19,7 +19,7 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
   const [items, setItems] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchDeliverables = useCallback(() => {
     const pid = projectId ?? 'default';
     apiFetch(`/api/projects/${pid}/deliverables`, { headers: authHeaders() })
       .then((r) => r.json())
@@ -27,6 +27,21 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    fetchDeliverables();
+  }, [fetchDeliverables]);
+
+  useEffect(() => {
+    window.addEventListener('ws:deliverable_created', fetchDeliverables);
+    window.addEventListener('ws:workflow_completed', fetchDeliverables);
+    window.addEventListener('ws:meeting_created', fetchDeliverables);
+    return () => {
+      window.removeEventListener('ws:deliverable_created', fetchDeliverables);
+      window.removeEventListener('ws:workflow_completed', fetchDeliverables);
+      window.removeEventListener('ws:meeting_created', fetchDeliverables);
+    };
+  }, [fetchDeliverables]);
 
   const text = isDark ? 'text-gray-200' : 'text-gray-800';
   const sub = isDark ? 'text-gray-400' : 'text-gray-500';

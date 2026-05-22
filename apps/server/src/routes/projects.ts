@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext } from '../context.js';
+import { broadcast } from '../ws/handler.js';
 import { readdirSync, statSync, existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { CABINET_DIR } from '@cabinet/storage';
@@ -108,6 +109,7 @@ projectsRouter.post('/', async (c) => {
   });
 
   logger.info('Project created', { id, name: d.name });
+  broadcast('project_created', { id, name: d.name, timestamp: new Date().toISOString() });
 
   return c.json({ project: rowToProject(row) }, 201);
 });
@@ -159,6 +161,7 @@ projectsRouter.put('/:id', async (c) => {
     params.push(id);
     db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...params);
     logger.info('Project updated', { id });
+    broadcast('project_updated', { id, name: body.name ?? existing.name, timestamp: new Date().toISOString() });
   }
 
   const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
@@ -192,6 +195,10 @@ projectsRouter.delete('/:id', (c) => {
   const { db, logger } = getServerContext();
   const id = c.req.param('id');
 
+  // Get project name before deletion for broadcast
+  const projRow = db.prepare('SELECT name FROM projects WHERE id = ?').get(id) as any;
+  const projName = projRow?.name ?? id;
+
   // Cascade cleanup
   db.prepare('DELETE FROM project_context WHERE project_id = ?').run(id);
   db.prepare('DELETE FROM workflows WHERE project_id = ?').run(id);
@@ -203,6 +210,7 @@ projectsRouter.delete('/:id', (c) => {
   removeProjectIndex(id);
 
   logger.info('Project deleted', { id });
+  broadcast('project_deleted', { id, name: projName, timestamp: new Date().toISOString() });
   return c.json({ deleted: true });
 });
 

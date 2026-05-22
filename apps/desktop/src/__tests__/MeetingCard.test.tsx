@@ -110,9 +110,9 @@ describe('MeetingCard', () => {
   it('applies dark mode classes when isDark', () => {
     const { container } = render(<MeetingCard data={baseData} isDark />);
     const outerDiv = container.firstChild as HTMLElement;
-    // isDark swaps classes: border-gray-600 instead of border-blue-200, bg-gray-800 instead of bg-blue-50
-    expect(outerDiv.className).toContain('border-gray-600');
-    expect(outerDiv.className).toContain('bg-gray-800');
+    // isDark swaps classes: border-gray-700 instead of border-blue-200, bg-gray-800/80 instead of bg-white
+    expect(outerDiv.className).toContain('border-gray-700');
+    expect(outerDiv.className).toContain('bg-gray-800/80');
   });
 
   it('renders without perspectives gracefully', () => {

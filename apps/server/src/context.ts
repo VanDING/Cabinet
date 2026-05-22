@@ -121,6 +121,7 @@ export interface ServerContext {
 
 let ctx: ServerContext | null = null;
 let currentTier: DelegationTier = DEFAULT_DELEGATION_TIER;
+const tierChangeListeners: Array<(tier: DelegationTier) => void> = [];
 
 export function getCurrentTier(): DelegationTier {
   return currentTier;
@@ -131,6 +132,14 @@ export function setCurrentTier(tier: DelegationTier): void {
   if (ctx) {
     ctx.delegationTier = tier;
   }
+  for (const listener of tierChangeListeners) {
+    try { listener(tier); } catch { /* non-fatal */ }
+  }
+}
+
+/** Register a callback invoked whenever the delegation tier changes. */
+export function onTierChange(fn: (tier: DelegationTier) => void): void {
+  tierChangeListeners.push(fn);
 }
 
 export function getServerContext(): ServerContext {
@@ -592,7 +601,7 @@ export function getServerContext(): ServerContext {
       captainId: 'captain-1',
       systemPrompt: role.systemPrompt,
       model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.model,
-      maxSteps: 15,
+      maxSteps: 50,
       maxResponseTokens: role.maxResponseTokens,
       temperature: role.temperature,
       contextBudget: role.contextBudget,
@@ -1287,6 +1296,13 @@ export function getServerContext(): ServerContext {
         result: result.content,
         executedAt: new Date().toISOString(),
       });
+      try {
+        broadcast('cost_updated', {
+          daily: costTracker.getDailyCost(),
+          model: taskModel,
+          timestamp: new Date().toISOString(),
+        });
+      } catch { /* non-fatal */ }
     } catch (err) {
       logger.error('Scheduled task failed', { taskId: task.id, name: task.name, error: (err as Error).message });
     }

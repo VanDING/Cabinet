@@ -135,11 +135,12 @@ export class AISDKAdapter implements LLMGateway {
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
       ...(options.thinkingBudget != null ? { thinking: { type: 'enabled', budgetTokens: options.thinkingBudget } } : {}),
       tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
-      stopWhen: stepCountIs(options.maxSteps ?? 10),
+      stopWhen: stepCountIs(options.maxSteps ?? 50),
     } as any);
 
     let fullText = '';
     let thinkingDone = false;
+    let nextTextNeedsBreak = false;
     try {
       for await (const part of result.fullStream) {
         if (part.type === 'reasoning-delta') {
@@ -157,6 +158,10 @@ export class AISDKAdapter implements LLMGateway {
             yield { type: 'thinking_done' };
           }
           const td = part as { type: 'text-delta'; text: string };
+          if (nextTextNeedsBreak) {
+            nextTextNeedsBreak = false;
+            fullText += '\n\n';
+          }
           fullText += td.text;
           yield { type: 'text', content: td.text };
         } else if (part.type === 'tool-call') {
@@ -170,6 +175,7 @@ export class AISDKAdapter implements LLMGateway {
             },
           };
         } else if (part.type === 'tool-result') {
+          nextTextNeedsBreak = true;
           const tr = part as { type: 'tool-result'; toolCallId: string; toolName: string; output: unknown };
           yield {
             type: 'tool_result',

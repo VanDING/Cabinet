@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext } from '../context.js';
 import { ProgressTracker } from '@cabinet/harness';
+import { broadcast } from '../ws/handler.js';
 
 export const progressRouter = new Hono();
 
@@ -63,20 +64,36 @@ progressRouter.post('/', async (c) => {
     const tracker = ProgressTracker.default(sessionId, projectId);
 
     if (action === 'add' && task?.title) {
+      const taskId = task.id ?? `task_${Date.now()}`;
       tracker.addTask({
-        id: task.id ?? `task_${Date.now()}`,
+        id: taskId,
         title: task.title,
         description: task.description,
         dependencies: task.dependencies,
       });
       tracker.save();
-      return c.json({ status: 'added', task: tracker.getTask(task.id ?? '') });
+      broadcast('task_created', {
+        taskId,
+        title: task.title,
+        sessionId,
+        projectId,
+        timestamp: new Date().toISOString(),
+      });
+      return c.json({ status: 'added', task: tracker.getTask(taskId) });
     }
 
     if (action === 'update' && task?.id && task?.status) {
       const updated = tracker.updateStatus(task.id, task.status);
       if (!updated) return c.json({ error: 'Task not found' }, 404);
       tracker.save();
+      broadcast('task_updated', {
+        taskId: task.id,
+        status: task.status,
+        title: updated.title ?? '',
+        sessionId,
+        projectId,
+        timestamp: new Date().toISOString(),
+      });
       return c.json({ status: 'updated', task: updated });
     }
 

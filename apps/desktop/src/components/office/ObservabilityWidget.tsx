@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { usePolling } from '../../hooks/usePolling';
 
 interface HealthData {
   recentSessions: number;
@@ -10,17 +11,25 @@ interface HealthData {
 }
 
 export function ObservabilityWidget() {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: health, loading } = usePolling<HealthData>(
+    () => apiFetch('/api/observability/health', { headers: authHeaders() }).then((r) => r.json()),
+    30000,
+  );
 
   useEffect(() => {
-    apiFetch('/api/observability/health', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => {
-        setHealth(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const handler = () => {
+      apiFetch('/api/observability/health', { headers: authHeaders() })
+        .then((r) => r.json())
+        .catch(() => {});
+    };
+    window.addEventListener('ws:secretary_message', handler);
+    window.addEventListener('ws:task_completed', handler);
+    window.addEventListener('ws:workflow_completed', handler);
+    return () => {
+      window.removeEventListener('ws:secretary_message', handler);
+      window.removeEventListener('ws:task_completed', handler);
+      window.removeEventListener('ws:workflow_completed', handler);
+    };
   }, []);
 
   if (loading) {
