@@ -369,7 +369,9 @@ export function ChatPanel({
           )}
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-1">
-          {sessions.map((session) => {
+          {sessions
+            .filter((s) => !activeProjectId || s.projectId === activeProjectId)
+            .map((session) => {
             const isActive = session.id === active?.id;
             const hasActivity = isSessionActive(session.id);
             return (
@@ -402,6 +404,9 @@ export function ChatPanel({
               </div>
             );
           })}
+          {activeProjectId && sessions.filter((s) => s.projectId === activeProjectId).length === 0 && (
+            <span className="px-2 text-[10px] text-gray-400">No sessions in this project</span>
+          )}
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-0.5">

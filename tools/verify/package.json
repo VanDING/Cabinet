@@ -12,7 +12,7 @@
     "@cabinet/agent": "workspace:*",
     "@cabinet/gateway": "workspace:*",
     "@cabinet/memory": "workspace:*",
-    "better-sqlite3": "^11.7.0"
+    "better-sqlite3": "^12.10.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0"

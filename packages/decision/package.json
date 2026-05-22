@@ -16,7 +16,7 @@
     "@cabinet/storage": "workspace:*"
   },
   "devDependencies": {
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.10.0",
     "@types/better-sqlite3": "^7.6.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"

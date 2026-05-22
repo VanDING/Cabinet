@@ -277,7 +277,7 @@ export function App() {
             sessionId,
             message,
             stream: true,
-            ...(activeProjectId ? { projectId: activeProjectId } : {}),
+            ...(activeSession?.projectId ?? activeProjectId ? { projectId: activeSession?.projectId ?? activeProjectId } : {}),
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
             ...(model ? { model } : {}),
           }),
@@ -291,6 +291,8 @@ export function App() {
           let streamAgent = activeAgent;
           let thinkingAccumulated = '';
           let toolCallsAccumulated: NonNullable<ChatMessage['toolCalls']> = [];
+          let lastContent = '';
+          let toolsSinceLastSegment = false;
 
           const AGENT_DISPLAY: Record<string, string> = {
             secretary: 'Secretary',
@@ -321,7 +323,7 @@ export function App() {
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
-                content: '',
+                content: lastContent,
                 timestamp: new Date(),
                 isStreaming: true,
                 agentName: streamAgent,
@@ -330,9 +332,13 @@ export function App() {
               });
             },
             onThinkingDone() {
-              // thinking phase complete; subsequent onContent fills the content field
+              if (toolsSinceLastSegment && thinkingAccumulated.length > 0) {
+                thinkingAccumulated += '\n<!--segment-->\n';
+              }
+              toolsSinceLastSegment = false;
             },
             onContent(_, fullContent) {
+              lastContent = fullContent;
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
@@ -345,17 +351,44 @@ export function App() {
               });
             },
             onToolStatus(message, type, detail) {
-              toolCallsAccumulated = [...toolCallsAccumulated, {
-                id: `${detail?.name ?? 'tool'}_${Date.now()}`,
-                name: detail?.name ?? 'unknown',
-                status: type === 'call' ? 'running' : type === 'error' ? 'error' : 'completed',
-                args: detail?.args as Record<string, unknown> | undefined,
-                result: typeof detail?.result === 'string' ? detail.result : JSON.stringify(detail?.result),
-              }];
+              toolsSinceLastSegment = true;
+              const toolName = detail?.name ?? 'unknown';
+              if (type === 'result') {
+                const idx = toolCallsAccumulated.map(tc => tc.name === toolName && tc.status === 'running').lastIndexOf(true);
+                if (idx >= 0) {
+                  toolCallsAccumulated = toolCallsAccumulated.map((tc, i) =>
+                    i === idx
+                      ? { ...tc, status: 'completed' as const, result: typeof detail?.result === 'string' ? detail.result : JSON.stringify(detail?.result) }
+                      : tc,
+                  );
+                } else {
+                  toolCallsAccumulated = [...toolCallsAccumulated, {
+                    id: `${toolName}_${Date.now()}`,
+                    name: toolName,
+                    status: 'completed' as const,
+                    args: detail?.args as Record<string, unknown> | undefined,
+                    result: typeof detail?.result === 'string' ? detail.result : JSON.stringify(detail?.result),
+                  }];
+                }
+              } else if (type === 'error') {
+                const idx = toolCallsAccumulated.map(tc => tc.name === toolName && tc.status === 'running').lastIndexOf(true);
+                if (idx >= 0) {
+                  toolCallsAccumulated = toolCallsAccumulated.map((tc, i) =>
+                    i === idx ? { ...tc, status: 'error' as const } : tc,
+                  );
+                }
+              } else {
+                toolCallsAccumulated = [...toolCallsAccumulated, {
+                  id: `${toolName}_${Date.now()}`,
+                  name: toolName,
+                  status: 'running' as const,
+                  args: detail?.args as Record<string, unknown> | undefined,
+                }];
+              }
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
-                content: '',
+                content: lastContent,
                 timestamp: new Date(),
                 isStreaming: true,
                 agentName: streamAgent,
@@ -563,6 +596,10 @@ export function App() {
             onCreateSession={handleCreateSession}
             onCloseSession={closeSession}
             onSwitchSession={(id) => {
+              const targetSession = sessions.find(s => s.id === id);
+              if (targetSession?.projectId) {
+                setActiveProjectId(targetSession.projectId);
+              }
               switchSession(id);
               setChatMode(true);
             }}

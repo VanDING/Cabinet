@@ -469,18 +469,12 @@ export function OfficePage() {
                     </div>
                   ))}
                 </div>
-                <p className="mt-2 text-xs italic text-gray-400">
-                  Detailed cost tracking coming soon.
-                </p>
               </div>
             )}
 
             {expandedWidget === 'active-projects' && (
               <div className="space-y-3">
                 <p className="text-xs text-gray-500">Project list managed from sidebar.</p>
-                <p className="mt-2 text-xs italic text-gray-400">
-                  Full project management coming soon.
-                </p>
               </div>
             )}
 

@@ -1,6 +1,7 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
 
 function loadEnvFile(): void {
@@ -28,18 +29,38 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
+const CABINET_DIR = join(homedir(), '.cabinet');
+const MASTER_KEY_FILE = join(CABINET_DIR, '.master_key');
+
+function resolveMasterPassword(): string {
+  const envPw = process.env.CABINET_MASTER_PASSWORD;
+  if (envPw) return envPw;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('CABINET_MASTER_PASSWORD is required in production');
+  }
+
+  // Development: use persisted random key, or generate one on first run
+  if (existsSync(MASTER_KEY_FILE)) {
+    try {
+      return readFileSync(MASTER_KEY_FILE, 'utf-8').trim();
+    } catch {
+      // unreadable — fall through to regenerate
+    }
+  }
+
+  const generated = randomBytes(32).toString('hex');
+  try {
+    writeFileSync(MASTER_KEY_FILE, generated, { mode: 0o600, encoding: 'utf-8' });
+  } catch {
+    // can't persist — use in-memory only this session
+  }
+  return generated;
+}
+
 export const config = {
   port: parseInt(process.env.PORT ?? '3000', 10),
-  masterPassword: (() => {
-    const pw = process.env.CABINET_MASTER_PASSWORD;
-    if (!pw) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('CABINET_MASTER_PASSWORD is required in production');
-      }
-      return 'dev-master-password';
-    }
-    return pw;
-  })(),
+  masterPassword: resolveMasterPassword(),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   deepseekApiKey: process.env.DEEPSEEK_API_KEY,

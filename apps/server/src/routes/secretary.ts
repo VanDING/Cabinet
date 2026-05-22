@@ -20,14 +20,30 @@ import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
+import { buildEnvironmentSection } from '../capabilities.js';
+import { getWorkspaceSymbols, getDefinition, getReferences, getDiagnostics } from '../lsp/ts-service.js';
+import { indexProject } from '../lsp/indexer.js';
 import { CABINET_DIR } from '@cabinet/storage';
-import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, realpath } from 'node:fs/promises';
-import { existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
+
+/** Read a text file with auto-detected encoding (UTF-8 → GBK fallback). */
+async function readTextFile(filePath: string): Promise<string> {
+  const buf = await readFile(filePath);
+  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+    return buf.toString('utf-8').slice(1); // strip BOM
+  }
+  const utf8 = buf.toString('utf-8');
+  if (utf8.includes('�')) {
+    try { return new TextDecoder('gbk').decode(buf); } catch { /* fall through */ }
+  }
+  return utf8;
+}
 
 export const secretaryRouter = new Hono();
 
@@ -121,7 +137,7 @@ function buildSafeEnv(): Record<string, string> {
       safe[key] = value;
     }
   }
-  if (!safe.PATH) safe.PATH = '/usr/local/bin:/usr/bin:/bin';
+  if (!safe.PATH) safe.PATH = process.platform === 'win32' ? 'C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem' : '/usr/local/bin:/usr/bin:/bin';
   if (!safe.HOME) safe.HOME = process.cwd();
   return safe;
 }
@@ -338,7 +354,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         ).run(
-          'custom',
+          input.name,
           input.name,
           input.description,
           input.systemPrompt,
@@ -424,7 +440,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       ctx.db
         .prepare('INSERT INTO projects (id, name, description, root_path, last_activity_at) VALUES (?, ?, ?, ?, datetime(\'now\'))')
         .run(id, input.name, input.description ?? '', input.rootPath ?? '');
-      ctx.db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(id, '');
+      ctx.db.prepare('INSERT INTO project_context (project_id) VALUES (?)').run(id);
+      // Initialize project memory so context is immediately available to agents
+      ctx.project.initialize(id, []);
       ctx.logger.info('Project created via tool', { id, name: input.name });
       return { id, name: input.name };
     },
@@ -460,12 +478,13 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── File system callbacks ──
     readFile: async (filePath, offset, limit) => {
       const safePath = await resolveSafePath(filePath);
+      ctx.fileTracker.record('global', safePath, 'read');
       const ext = extname(filePath).toLowerCase();
       const mimeType = MIME_MAP[ext] ?? null;
       const isText = isTextFile(ext);
 
       if (isText) {
-        const content = await readFile(safePath, 'utf-8');
+        const content = await readTextFile(safePath);
         const size = Buffer.byteLength(content, 'utf-8');
         if (offset !== undefined || limit !== undefined) {
           const lines = content.split('\n');
@@ -483,19 +502,100 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       return { content: base64, size: buf.length, encoding: 'base64' as const, mimeType: mimeType ?? 'application/octet-stream' };
     },
 
-    writeFile: async (filePath, content) => {
+    writeFile: async (filePath, content, overwrite) => {
       const safePath = await resolveSafePath(filePath);
+      ctx.fileTracker.record('global', safePath, 'write');
       if (content.length > 5 * 1024 * 1024) throw new Error('Content exceeds 5MB limit');
+      if (overwrite === false && existsSync(safePath)) {
+        return { written: false, skipped: true };
+      }
       await mkdir(dirname(safePath), { recursive: true });
       await writeFile(safePath, content, 'utf-8');
+      return { written: true, skipped: false };
     },
 
-    editFile: async (filePath, oldString, newString) => {
+    editFile: async (filePath, oldString, newString, replaceAll) => {
       const safePath = await resolveSafePath(filePath);
-      const content = await readFile(safePath, 'utf-8');
-      if (!content.includes(oldString)) return { changed: false };
+      ctx.fileTracker.record('global', safePath, 'edit');
+      const content = await readTextFile(safePath);
+      if (!content.includes(oldString)) return { changed: false, occurrences: 0 };
+      if (replaceAll) {
+        const parts = content.split(oldString);
+        const occurrences = parts.length - 1;
+        await writeFile(safePath, parts.join(newString), 'utf-8');
+        return { changed: true, occurrences };
+      }
       await writeFile(safePath, content.replace(oldString, newString), 'utf-8');
-      return { changed: true };
+      return { changed: true, occurrences: 1 };
+    },
+
+    applyPatch: async (filePath, diff) => {
+      const safePath = await resolveSafePath(filePath);
+      const content = await readTextFile(safePath);
+      const lines = content.split('\n');
+      const diffLines = diff.split('\n');
+      let hunksApplied = 0;
+      let hunksFailed = 0;
+      let i = 0;
+      while (i < diffLines.length) {
+        const line = diffLines[i];
+        if (!line || line.startsWith('diff ') || line.startsWith('--- ') || line.startsWith('+++ ') || line.startsWith('index ')) {
+          i++;
+          continue;
+        }
+        const hunkMatch = line.match(/^@@\s+-(\d+),?(\d*)\s+\+(\d+),?(\d*)\s+@@/);
+        if (hunkMatch) {
+          const oldStart = parseInt(hunkMatch[1]!, 10) - 1;
+          const oldCount = hunkMatch[2] ? parseInt(hunkMatch[2], 10) : 1;
+          const newStart = parseInt(hunkMatch[3]!, 10) - 1;
+          const newCount = hunkMatch[4] ? parseInt(hunkMatch[4], 10) : 1;
+          i++;
+          const hunkLines: { type: 'context' | 'add' | 'remove'; content: string }[] = [];
+          while (i < diffLines.length && !diffLines[i]!.startsWith('@@') && !diffLines[i]!.startsWith('diff ')) {
+            const hl = diffLines[i]!;
+            if (hl.startsWith('+')) hunkLines.push({ type: 'add', content: hl.slice(1) });
+            else if (hl.startsWith('-')) hunkLines.push({ type: 'remove', content: hl.slice(1) });
+            else if (hl.startsWith(' ')) hunkLines.push({ type: 'context', content: hl.slice(1) });
+            i++;
+          }
+          // Verify context matches
+          let contextIdx = 0;
+          let mismatch = false;
+          const result: string[] = [];
+          let srcIdx = oldStart;
+          for (const hl of hunkLines) {
+            if (hl.type === 'context') {
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              result.push(lines[srcIdx]!);
+              srcIdx++;
+              contextIdx++;
+            } else if (hl.type === 'remove') {
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              srcIdx++;
+            } else if (hl.type === 'add') {
+              result.push(hl.content);
+            }
+          }
+          if (mismatch) {
+            hunksFailed++;
+          } else {
+            // Apply: replace [oldStart, srcIdx) with result
+            const before = lines.slice(0, oldStart);
+            const after = lines.slice(srcIdx);
+            const newLines = [...before, ...result, ...after];
+            lines.length = 0;
+            lines.push(...newLines);
+            hunksApplied++;
+          }
+        } else {
+          i++;
+        }
+      }
+      if (hunksApplied > 0) {
+        await writeFile(safePath, lines.join('\n'), 'utf-8');
+        return { applied: true, hunksApplied, hunksFailed };
+      }
+      return { applied: false, hunksApplied, hunksFailed };
     },
 
     listDirectory: async (dirPath) => {
@@ -553,7 +653,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
             const relPath = relative(root, entryPath).replace(/\\/g, '/');
             if (includeRegex && !includeRegex.test(relPath)) continue;
             try {
-              const content = await readFile(entryPath, 'utf-8');
+              const content = await readTextFile(entryPath);
               const lines = content.split('\n');
               for (let i = 0; i < lines.length && results.length < 100; i++) {
                 const line = lines[i];
@@ -571,12 +671,80 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     deleteFile: async (filePath) => {
       const safePath = await resolveSafePath(filePath);
+      ctx.fileTracker.record('global', safePath, 'delete');
       const s = await stat(safePath);
       if (s.isDirectory()) {
         await rmdir(safePath);
       } else {
         await unlink(safePath);
       }
+    },
+
+    moveFile: async (source, destination) => {
+      const safeSrc = await resolveSafePath(source);
+      const safeDest = await resolveSafePath(destination);
+      ctx.fileTracker.record('global', safeSrc, 'move');
+      await mkdir(dirname(safeDest), { recursive: true });
+      await rename(safeSrc, safeDest);
+    },
+
+    copyFile: async (source, destination) => {
+      const safeSrc = await resolveSafePath(source);
+      const safeDest = await resolveSafePath(destination);
+      await mkdir(dirname(safeDest), { recursive: true });
+      await fsCopyFile(safeSrc, safeDest);
+    },
+
+    makeDirectory: async (dirPath) => {
+      const safePath = await resolveSafePath(dirPath);
+      await mkdir(safePath, { recursive: true });
+    },
+
+    fileInfo: async (filePath) => {
+      const safePath = await resolveSafePath(filePath);
+      const s = await stat(safePath);
+      return {
+        size: s.size,
+        modifiedAt: s.mtime.toISOString(),
+        createdAt: s.birthtime.toISOString(),
+        isDirectory: s.isDirectory(),
+        isFile: s.isFile(),
+      };
+    },
+
+    recentFiles: async (limit) => {
+      return ctx.fileTracker.getRecent('global', limit);
+    },
+
+    indexProject: async (projectId, rootPath, force) => {
+      return indexProject({
+        projectId,
+        rootPath,
+        db: ctx.db,
+        gateway: ctx.gateway,
+        logger: ctx.logger,
+        force,
+      });
+    },
+
+    watchFile: async (filePath, timeoutMs) => {
+      const safePath = await resolveSafePath(filePath);
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          unwatchFile(safePath);
+          resolve({ changed: false, size: 0 });
+        }, Math.min(timeoutMs ?? 30000, 120000));
+        try {
+          watchFile(safePath, { interval: 500 }, (curr) => {
+            clearTimeout(timer);
+            unwatchFile(safePath);
+            resolve({ changed: true, size: curr.size });
+          });
+        } catch {
+          clearTimeout(timer);
+          resolve({ changed: false, size: 0 });
+        }
+      });
     },
 
     // ── Web / HTTP callbacks ──
@@ -639,7 +807,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         timeout: timeout ?? 60000,
         maxBuffer: 10 * 1024 * 1024,
         env: buildSafeEnv(),
-        shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
+        shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
       });
       return { stdout, stderr, exitCode: 0 };
     },
@@ -647,7 +815,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Knowledge / RAG callbacks ──
     indexDocument: async (filePath, projectId) => {
       const safePath = await resolveSafePath(filePath);
-      const content = await readFile(safePath, 'utf-8');
+      const content = await readTextFile(safePath);
       if (content.length === 0) throw new Error('File is empty');
 
       // Clear previous chunks for this file
@@ -742,6 +910,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         .run(projectId);
       return { removed: result.changes };
     },
+
+    // ── LSP / Code Intelligence ──
+    workspaceSymbols: async (query) => getWorkspaceSymbols(query),
+    goToDefinition: async (file, line, column) => getDefinition(file, line, column),
+    findReferences: async (file, line, column) => getReferences(file, line, column),
+    diagnostics: async (file) => getDiagnostics(file),
 
     // ── Evaluation callback ──
     evaluateOutput: async (content, sourceType, sourceId) => {
@@ -1379,8 +1553,8 @@ function getAgentLoopForRole(
   const ctx = getServerContext();
   if (!ctx.gateway) return null;
 
-  // Return cached if available (keyed by sessionId:roleType)
-  const cacheKey = `${sessionId}:${roleType}`;
+  // Return cached if available (keyed by sessionId:projectId:roleType)
+  const cacheKey = `${sessionId}:${projectId}:${roleType}`;
   const cached = agentLoopCache.get(cacheKey);
   if (cached) return cached;
 
@@ -1419,7 +1593,7 @@ function getAgentLoopForRole(
     sessionId: `${sessionId}-${role.type}`,
     projectId,
     captainId,
-    systemPrompt: role.systemPrompt,
+    systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
     model: model ?? resolveModel(role),
     maxSteps: 50,
     maxResponseTokens: role.maxResponseTokens,
@@ -1493,7 +1667,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
     captainId: 'captain-1',
-    systemPrompt: role.systemPrompt,
+    systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
     model: resolveModel(role),
     maxSteps: 50,
     maxResponseTokens: role.maxResponseTokens,
@@ -1670,6 +1844,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
+      systemPrompt: buildEnvironmentSection() + '\n\n' + (secretaryRole?.systemPrompt ?? ''),
       model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
       maxSteps: 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
@@ -1786,7 +1961,7 @@ secretaryRouter.post('/chat', async (c) => {
 
   const isNewSession = !ctx.sessionManager.get(sessionId);
   if (isNewSession) {
-    ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`);
+    ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`, projectId === 'global' ? undefined : projectId);
     // Proactive greeting for new sessions — persist as first assistant message
     try {
       const greeter = new GreetingService();
@@ -1839,7 +2014,7 @@ secretaryRouter.post('/chat', async (c) => {
             const root = join(process.cwd(), '..', '..', '..');
             const fullPath = join(root, f.path);
             if (fullPath.startsWith(root)) {
-              const content = await readFile(fullPath, 'utf-8');
+              const content = await readTextFile(fullPath);
               fileLines.push(`\n--- ${f.path} ---\n${content.slice(0, 8000)}\n`);
             }
           } catch {
@@ -1979,6 +2154,7 @@ secretaryRouter.post('/chat', async (c) => {
                     emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
                   },
                   onUsage(usage) {
+                    ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
                     emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
                   },
                   onDone(fullContent) {
@@ -2050,11 +2226,11 @@ secretaryRouter.post('/chat', async (c) => {
       const meeting = capturedMeetingResult; // Capture any meeting created by tools
 
       // Record cost if available
-      if ((result as any).usage) {
+      if (result.usage) {
         ctx.costTracker.record(
           model ?? 'claude-sonnet-4-6',
-          (result as any).usage.promptTokens ?? 0,
-          (result as any).usage.completionTokens ?? 0,
+          result.usage.promptTokens,
+          result.usage.completionTokens,
         );
       }
       ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
@@ -2174,6 +2350,7 @@ secretaryRouter.get('/sessions', (c) => {
     sessions: sessions.map((s) => ({
       id: s.id,
       title: s.title,
+      projectId: s.projectId,
       messageCount: s.messages.length,
       updatedAt: s.updatedAt,
     })),
