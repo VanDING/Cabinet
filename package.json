@@ -1,6 +1,7 @@
 {
   "name": "cabinet",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "commitlint": "commitlint --edit",
     "commitlint:last": "commitlint --from HEAD~1",

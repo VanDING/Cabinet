@@ -84,7 +84,7 @@ export class AgentDispatcher {
       sessionId: '',
       projectId: '',
       captainId: '',
-      maxSteps: 10,
+      maxSteps: 50,
     };
   }
 

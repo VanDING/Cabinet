@@ -1,22 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { apiFetch, authHeaders } from '../../utils/pin.js';
 
 interface Project {
   id: string;
   name: string;
-  sessions: { id: string; title: string }[];
+  workflowCount?: number;
+  lastActivityAt?: string;
 }
 
 export function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('cabinet-projects-sidebar');
-      if (raw) setProjects(JSON.parse(raw));
-    } catch {
-      /* localStorage parse error */
-    }
+  const fetchProjects = useCallback(() => {
+    apiFetch('/api/projects?archived=false', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setProjects(d.projects ?? []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  useEffect(() => {
+    window.addEventListener('ws:project_created', fetchProjects);
+    window.addEventListener('ws:project_updated', fetchProjects);
+    window.addEventListener('ws:project_deleted', fetchProjects);
+    return () => {
+      window.removeEventListener('ws:project_created', fetchProjects);
+      window.removeEventListener('ws:project_updated', fetchProjects);
+      window.removeEventListener('ws:project_deleted', fetchProjects);
+    };
+  }, [fetchProjects]);
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
@@ -32,7 +47,9 @@ export function ProjectList() {
             >
               <div>
                 <div className="font-medium text-gray-700 dark:text-gray-300">{p.name}</div>
-                <div className="text-gray-400">{p.sessions.length} sessions</div>
+                {(p.workflowCount ?? 0) > 0 && (
+                  <div className="text-gray-400">{p.workflowCount} workflows</div>
+                )}
               </div>
             </div>
           ))

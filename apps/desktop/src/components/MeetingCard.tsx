@@ -25,12 +25,12 @@ export function MeetingCard({ data, isDark }: Props) {
 
   const { topic, synthesis, perspectives, crossValidation, decisionId } = data;
 
-  const borderClass = isDark ? 'border-gray-600' : 'border-blue-200';
-  const bgClass = isDark ? 'bg-gray-800' : 'bg-blue-50';
-  const headerBg = isDark ? 'bg-gray-700' : 'bg-blue-100';
+  const borderClass = isDark ? 'border-gray-700' : 'border-blue-200';
+  const bgClass = isDark ? 'bg-gray-800/80' : 'bg-white';
+  const headerBg = isDark ? 'bg-gray-700/80' : 'bg-blue-50';
   const textClass = isDark ? 'text-gray-200' : 'text-gray-800';
   const subtextClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const advisorBg = isDark ? 'bg-gray-750' : 'bg-white';
+  const advisorBg = isDark ? 'bg-gray-700/60' : 'bg-gray-50';
   const advisorBorder = isDark ? 'border-gray-600' : 'border-gray-200';
   const scoreColor =
     (crossValidation?.coherenceScore ?? 0) >= 0.7
@@ -40,7 +40,7 @@ export function MeetingCard({ data, isDark }: Props) {
         : 'text-red-600 dark:text-red-400';
 
   return (
-    <div className={`my-3 rounded-lg border ${borderClass} ${bgClass} overflow-hidden`}>
+    <div className={`my-3 rounded-lg border ${borderClass} ${bgClass} shadow-sm overflow-hidden`}>
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}

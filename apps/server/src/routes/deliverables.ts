@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
+import { broadcast } from '../ws/handler.js';
 
 export const deliverablesRouter = new Hono();
 
@@ -62,6 +63,7 @@ deliverablesRouter.post('/:id/deliverables', async (c) => {
       .run(id, projectId, meetingId ?? null, title, type ?? 'general', filePath ?? null, JSON.stringify(tags ?? []));
 
     ctx.logger.info('Deliverable created', { id, projectId, title });
+    broadcast('deliverable_created', { id, projectId, title, type: type ?? 'general', timestamp: new Date().toISOString() });
     return c.json({ created: true, id, title, type: type ?? 'general' }, 201);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);

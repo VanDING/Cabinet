@@ -15,12 +15,17 @@ export function ApiSwitcher() {
   );
 
   useEffect(() => {
-    apiFetch('/api/settings/api-keys', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.keys) setKeys(d.keys);
-      })
-      .catch(() => {});
+    const fetchKeys = () => {
+      apiFetch('/api/settings/api-keys', { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.keys) setKeys(d.keys);
+        })
+        .catch(() => {});
+    };
+    fetchKeys();
+    window.addEventListener('ws:apikeys_changed', fetchKeys);
+    return () => window.removeEventListener('ws:apikeys_changed', fetchKeys);
   }, []);
 
   const handleSelect = (key: ApiKey) => {

@@ -9,6 +9,8 @@ const TYPE_ICONS: Record<AppNotification['type'], { label: string; color: string
   task: { label: 'T', color: 'bg-amber-500' },
   project: { label: 'P', color: 'bg-green-500' },
   system: { label: 'S', color: 'bg-gray-500' },
+  workflow: { label: 'W', color: 'bg-cyan-500' },
+  deliverable: { label: 'F', color: 'bg-teal-500' },
 };
 
 function timeAgo(date: Date): string {
