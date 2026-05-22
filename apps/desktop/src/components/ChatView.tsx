@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { marked } from 'marked';
 import { useTranslation } from 'react-i18next';
 import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
+import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
 
 marked.setOptions({ breaks: true, gfm: true });
@@ -19,6 +20,92 @@ interface Props {
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+const ToolCallSummary = memo(function ToolCallSummary({
+  toolCalls,
+  isStreaming,
+}: {
+  toolCalls: ToolCallStatus[];
+  isStreaming?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Group by tool name with counts
+  const groups = useMemo(() => {
+    const map = new Map<string, { name: string; calls: ToolCallStatus[]; running: number; completed: number; errors: number }>();
+    for (const tc of toolCalls) {
+      let g = map.get(tc.name);
+      if (!g) {
+        g = { name: tc.name, calls: [], running: 0, completed: 0, errors: 0 };
+        map.set(tc.name, g);
+      }
+      g.calls.push(tc);
+      if (tc.status === 'running') g.running++;
+      else if (tc.status === 'error') g.errors++;
+      else g.completed++;
+    }
+    return [...map.values()].sort((a, b) => b.calls.length - a.calls.length);
+  }, [toolCalls]);
+
+  const total = toolCalls.length;
+  const running = toolCalls.filter((tc) => tc.status === 'running').length;
+  if (total === 0) return null;
+
+  // During streaming with running tools: show compact inline indicator
+  if (isStreaming && running > 0) {
+    return (
+      <div className="tool-summary streaming">
+        <span className="tool-summary-indicator" onClick={() => setExpanded(!expanded)}>
+          <span className="tool-summary-spinner" />
+          Running {running} tool{running > 1 ? 's' : ''} · {total} total
+        </span>
+        {expanded && (
+          <div className="tool-summary-list">
+            {groups.map((g) => (
+              <div key={g.name} className="tool-summary-badge chip">
+                <span className="tool-chip-icon">{g.running > 0 ? '⟳' : g.errors > 0 ? '✕' : '✓'}</span>
+                <span className="tool-chip-name">{g.name}</span>
+                {g.calls.length > 1 && <span className="tool-chip-count">×{g.calls.length}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // After completion: compact summary with expand toggle
+  return (
+    <div className="tool-summary done">
+      <span className="tool-summary-toggle" onClick={() => setExpanded(!expanded)}>
+        {expanded ? '▼' : '▶'} {total} tool{total !== 1 ? 's' : ''} used
+      </span>
+      {!expanded && (
+        <span className="tool-summary-inline">
+          {groups.slice(0, 5).map((g) => (
+            <span key={g.name} className="tool-chip">
+              <span className="tool-chip-icon">{g.errors > 0 ? '✕' : '✓'}</span>
+              {g.name}{g.calls.length > 1 ? ` ×${g.calls.length}` : ''}
+            </span>
+          ))}
+          {groups.length > 5 && <span className="tool-chip-more">+{groups.length - 5} more</span>}
+        </span>
+      )}
+      {expanded && (
+        <div className="tool-summary-list">
+          {groups.map((g) => (
+            <div key={g.name} className="tool-group-row">
+              <span className="tool-group-icon">{g.errors > 0 ? '✕' : '✓'}</span>
+              <span className="tool-group-name">{g.name}</span>
+              <span className="tool-group-count">×{g.calls.length}</span>
+              {g.errors > 0 && <span className="tool-group-errors">{g.errors} error{g.errors > 1 ? 's' : ''}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   const html = useMemo(() => {
@@ -259,25 +346,29 @@ const MessageRow = memo(function MessageRow({
             </div>
           ) : (
             <>
-              {msg.thinking && (
-                <details open className="thinking-block">
-                  <summary className="thinking-summary">{t('chat.thinking')}</summary>
-                  <div className="thinking-content">
-                    <MarkdownContent content={msg.thinking} />
-                  </div>
-                </details>
-              )}
+              {msg.thinking && (() => {
+                const segments = msg.thinking.split('\n<!--segment-->\n').filter(Boolean);
+                if (segments.length <= 1) {
+                  return (
+                    <details className="thinking-block">
+                      <summary className="thinking-summary">{t('chat.thinking')}</summary>
+                      <pre className="thinking-content">{msg.thinking.replace('\n<!--segment-->\n', '')}</pre>
+                    </details>
+                  );
+                }
+                return (
+                  <>
+                    {segments.map((seg, i) => (
+                      <details key={i} className="thinking-block">
+                        <summary className="thinking-summary">{t('chat.thinking')} {i + 1}/{segments.length}</summary>
+                        <pre className="thinking-content">{seg.trim()}</pre>
+                      </details>
+                    ))}
+                  </>
+                );
+              })()}
               {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <div className="tool-calls-block">
-                  {msg.toolCalls.map((tc, i) => (
-                    <div key={i} className={`tool-call-item tool-call-${tc.status}`}>
-                      <span className="tool-call-indicator">
-                        {tc.status === 'running' ? '⟳' : tc.status === 'error' ? '✕' : '✓'}
-                      </span>
-                      <span className="tool-call-name">{tc.name}</span>
-                    </div>
-                  ))}
-                </div>
+                <ToolCallSummary toolCalls={msg.toolCalls} isStreaming={msg.isStreaming} />
               )}
               <MarkdownContent content={msg.content} />
               {msg.meeting && <MeetingCard data={msg.meeting} isDark={isDark} />}

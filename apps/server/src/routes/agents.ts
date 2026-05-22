@@ -135,7 +135,7 @@ agentsRouter.post('/import', async (c) => {
     db.prepare(
       `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-    ).run('custom', name, agentCard.description ?? '', agentCard.systemPrompt ?? agentCard.instructions ?? '',
+    ).run(name, name, agentCard.description ?? '', agentCard.systemPrompt ?? agentCard.instructions ?? '',
       agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
       agentCard.temperature ?? 0.7,
       agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
@@ -177,7 +177,7 @@ agentsRouter.post('/import', async (c) => {
   db.prepare(
     `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-  ).run('custom', name, agentJson.description, agentJson.systemPrompt,
+  ).run(name, name, agentJson.description, agentJson.systemPrompt,
     agentJson.model, agentJson.temperature, agentJson.maxResponseTokens,
     JSON.stringify(agentJson.allowedTools), agentJson.contextBudget);
 

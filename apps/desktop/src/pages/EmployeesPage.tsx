@@ -65,17 +65,34 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
 }
 
 export function EmployeesPage() {
-  const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [employees, setEmployees] = useState<EmployeeItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('cabinet-employees');
+      if (raw) return JSON.parse(raw);
+    } catch { /* fall through */ }
+    return DEFAULT_EMPLOYEES;
+  });
 
   useEffect(() => {
     fetchEmployeesAPI()
-      .then(setEmployees)
+      .then((emps) => {
+        if (emps.length > 0) {
+          setEmployees(emps);
+          saveLocalEmployees(emps);
+        }
+      })
       .catch(() => {
         try {
           const raw = localStorage.getItem('cabinet-employees');
-          if (raw) setEmployees(JSON.parse(raw));
+          if (raw) {
+            setEmployees(JSON.parse(raw));
+          } else {
+            setEmployees(DEFAULT_EMPLOYEES);
+            saveLocalEmployees(DEFAULT_EMPLOYEES);
+          }
         } catch {
-          /* localStorage fallback if API unavailable */
+          setEmployees(DEFAULT_EMPLOYEES);
+          saveLocalEmployees(DEFAULT_EMPLOYEES);
         }
       });
   }, []);
@@ -98,7 +115,10 @@ export function EmployeesPage() {
 
   const refreshEmployees = () => {
     fetchEmployeesAPI()
-      .then(setEmployees)
+      .then((emps) => {
+        setEmployees(emps);
+        saveLocalEmployees(emps);
+      })
       .catch(() => {});
   };
 

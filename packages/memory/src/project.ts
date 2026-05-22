@@ -17,7 +17,7 @@ export class ProjectMemory {
     this.db = db ?? null;
     if (this.db) {
       this.db.exec(`
-        CREATE TABLE IF NOT EXISTS project_contexts (
+        CREATE TABLE IF NOT EXISTS project_context (
           project_id TEXT PRIMARY KEY,
           goals TEXT NOT NULL DEFAULT '[]',
           milestones TEXT NOT NULL DEFAULT '[]',
@@ -49,7 +49,7 @@ export class ProjectMemory {
 
     if (this.db) {
       const row = this.db.prepare(
-        'SELECT * FROM project_contexts WHERE project_id = ?',
+        'SELECT * FROM project_context WHERE project_id = ?',
       ).get(projectId) as any;
       if (row) {
         const ctx: ProjectContext = {
@@ -70,7 +70,7 @@ export class ProjectMemory {
   getAll(): Record<string, ProjectContext> {
     // Load all from DB first
     if (this.db) {
-      const rows = this.db.prepare('SELECT * FROM project_contexts').all() as any[];
+      const rows = this.db.prepare('SELECT * FROM project_context').all() as any[];
       for (const row of rows) {
         if (!this.projects.has(row.project_id)) {
           this.projects.set(row.project_id, {
@@ -89,38 +89,38 @@ export class ProjectMemory {
     return result;
   }
 
+  private ensure(projectId: string): ProjectContext {
+    const existing = this.projects.get(projectId) ?? this.get(projectId);
+    if (existing) return existing;
+    return this.initialize(projectId, []);
+  }
+
   addMilestone(projectId: string, title: string): void {
-    const ctx = this.projects.get(projectId);
-    if (ctx) {
-      ctx.milestones.push({ title, status: 'pending' });
-      ctx.updatedAt = new Date();
-      this.persist(projectId, ctx);
-    }
+    const ctx = this.ensure(projectId);
+    ctx.milestones.push({ title, status: 'pending' });
+    ctx.updatedAt = new Date();
+    this.persist(projectId, ctx);
   }
 
   addDecision(projectId: string, title: string, outcome: string): void {
-    const ctx = this.projects.get(projectId);
-    if (ctx) {
-      ctx.keyDecisions.push({ title, outcome, date: new Date() });
-      ctx.updatedAt = new Date();
-      this.persist(projectId, ctx);
-    }
+    const ctx = this.ensure(projectId);
+    ctx.keyDecisions.push({ title, outcome, date: new Date() });
+    ctx.updatedAt = new Date();
+    this.persist(projectId, ctx);
   }
 
   updateSummary(projectId: string, summary: string): void {
-    const ctx = this.projects.get(projectId);
-    if (ctx) {
-      ctx.summary = summary;
-      ctx.updatedAt = new Date();
-      this.persist(projectId, ctx);
-    }
+    const ctx = this.ensure(projectId);
+    ctx.summary = summary;
+    ctx.updatedAt = new Date();
+    this.persist(projectId, ctx);
   }
 
   private persist(projectId: string, ctx: ProjectContext): void {
     if (!this.db) return;
     const db = this.db;
     db.prepare(
-      `INSERT OR REPLACE INTO project_contexts (project_id, goals, milestones, key_decisions, summary, updated_at)
+      `INSERT OR REPLACE INTO project_context (project_id, goals, milestones, key_decisions, summary, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
     ).run(
       projectId,

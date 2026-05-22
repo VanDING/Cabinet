@@ -98,6 +98,8 @@ export interface ServerContext {
   budgetGuard: BudgetGuard;
   // Session
   sessionManager: SessionManager;
+  // File tracking (per-session, auto-populated by tool callbacks)
+  fileTracker: FileAccessTracker;
   // Permissions
   delegationTier: DelegationTier;
   // Agent registry (shared across all requests — custom roles persist here)
@@ -117,6 +119,38 @@ export interface ServerContext {
   backupManager: BackupManager | null;
   /** Clean up all timers, close DB, stop backup. Call on process exit. */
   shutdown: () => void;
+}
+
+export interface RecentFileEntry {
+  path: string;
+  operation: 'read' | 'write' | 'edit' | 'delete' | 'move' | 'copy';
+  timestamp: string;
+}
+
+export class FileAccessTracker {
+  private entries = new Map<string, RecentFileEntry[]>();
+  private maxEntries = 100;
+
+  record(sessionId: string, path: string, operation: RecentFileEntry['operation']): void {
+    if (!this.entries.has(sessionId)) {
+      this.entries.set(sessionId, []);
+    }
+    const list = this.entries.get(sessionId)!;
+    list.push({ path, operation, timestamp: new Date().toISOString() });
+    if (list.length > this.maxEntries) {
+      list.splice(0, list.length - this.maxEntries);
+    }
+  }
+
+  getRecent(sessionId: string, limit = 20): RecentFileEntry[] {
+    const list = this.entries.get(sessionId);
+    if (!list) return [];
+    return list.slice(-limit).reverse();
+  }
+
+  clear(sessionId: string): void {
+    this.entries.delete(sessionId);
+  }
 }
 
 let ctx: ServerContext | null = null;
@@ -311,7 +345,45 @@ export function getServerContext(): ServerContext {
   const project = new ProjectMemory(db);
 
   // Gateway + Cost
-  const costTracker = new CostTracker();
+  // Ensure cost_history table exists for persistence across restarts
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cost_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      model TEXT NOT NULL,
+      prompt_tokens INTEGER NOT NULL,
+      completion_tokens INTEGER NOT NULL,
+      cost_usd REAL NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cost_history_timestamp ON cost_history(timestamp);
+  `);
+  const costTracker = new CostTracker({
+    persist: (entry) => {
+      db.prepare(
+        'INSERT INTO cost_history (timestamp, model, prompt_tokens, completion_tokens, cost_usd) VALUES (?, ?, ?, ?, ?)',
+      ).run(entry.timestamp.toISOString(), entry.model, entry.promptTokens, entry.completionTokens, entry.costUsd);
+    },
+  });
+  // Restore today's entries so daily/weekly/monthly budgets work after restart
+  try {
+    const recentRows = db.prepare(
+      "SELECT timestamp, model, prompt_tokens, completion_tokens, cost_usd FROM cost_history WHERE timestamp >= date('now', '-31 days') ORDER BY timestamp",
+    ).all() as any[];
+    if (recentRows.length > 0) {
+      costTracker.restore(
+        recentRows.map((r: any) => ({
+          timestamp: new Date(r.timestamp),
+          model: r.model,
+          promptTokens: r.prompt_tokens,
+          completionTokens: r.completion_tokens,
+          costUsd: r.cost_usd,
+        })),
+      );
+      logger.info('Cost history restored', { entries: recentRows.length });
+    }
+  } catch (e) {
+    logger.warn('Failed to restore cost history', { error: String(e) });
+  }
   const budgetGuard = new BudgetGuard(costTracker);
 
   // Provider configs & model mapping — must be declared before buildGateway()
@@ -523,10 +595,18 @@ export function getServerContext(): ServerContext {
       readFile: async () => { throw new Error('File access not available for Curator background task'); },
       writeFile: async () => { throw new Error('File write not available'); },
       editFile: async () => { throw new Error('File edit not available'); },
+      applyPatch: async () => { throw new Error('Patch not available'); },
+      moveFile: async () => { throw new Error('File move not available'); },
+      copyFile: async () => { throw new Error('File copy not available'); },
+      makeDirectory: async () => { throw new Error('Directory creation not available'); },
+      fileInfo: async () => { throw new Error('File info not available'); },
       listDirectory: async () => { throw new Error('Directory listing not available'); },
       searchFiles: async () => { throw new Error('File search not available'); },
       searchContent: async () => { throw new Error('Content search not available'); },
       deleteFile: async () => { throw new Error('File deletion not available'); },
+      recentFiles: async () => [],
+      watchFile: async () => ({ changed: false, size: 0 }),
+      indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
       webFetch: async () => { throw new Error('Web access not available'); },
       httpRequest: async () => { throw new Error('HTTP not available'); },
       execCommand: async () => { throw new Error('Shell not available'); },
@@ -537,6 +617,10 @@ export function getServerContext(): ServerContext {
       searchDocuments: async () => { throw new Error('Document search not available'); },
       clearDocumentIndex: async () => { throw new Error('Index management not available'); },
       evaluateOutput: async () => { throw new Error('Evaluation not available'); },
+      workspaceSymbols: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
+      goToDefinition: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
+      findReferences: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
+      diagnostics: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
     };
 
     registerCabinetTools(executor, curatorDeps);
@@ -761,6 +845,7 @@ export function getServerContext(): ServerContext {
         }
       } catch (e: any) {
         logger.warn('Basic consolidation failed', { error: e.message });
+        broadcast('background_error', { task: 'consolidation', error: e.message });
       }
     },
     30 * 60 * 1000,
@@ -814,6 +899,7 @@ export function getServerContext(): ServerContext {
         ).run();
       } catch (e: any) {
         logger.warn('Observability persistence failed', { error: e.message });
+        broadcast('background_error', { task: 'observability', error: e.message });
       }
     },
     30 * 60 * 1000,
@@ -837,6 +923,7 @@ export function getServerContext(): ServerContext {
         }
       } catch (e: any) {
         logger.warn('Curator nudge failed', { error: e.message });
+        broadcast('background_error', { task: 'curator_nudge', error: e.message });
       }
     },
     4 * 60 * 60 * 1000,
@@ -852,6 +939,7 @@ export function getServerContext(): ServerContext {
         await runCuratorPatternExtraction();
       } catch (e: any) {
         logger.warn('Curator pattern extraction failed', { error: e.message });
+        broadcast('background_error', { task: 'curator_pattern', error: e.message });
       }
     },
     6 * 60 * 60 * 1000,
@@ -1212,6 +1300,7 @@ export function getServerContext(): ServerContext {
         await autoAdjuster.runHealthCheck(currentTier);
       } catch (e: any) {
         logger.warn('Auto-adjustment health check failed', { error: e.message });
+        broadcast('background_error', { task: 'auto_adjust', error: e.message });
       }
 
       // Budget enforcement check
@@ -1235,6 +1324,7 @@ export function getServerContext(): ServerContext {
         }
       } catch (e: any) {
         logger.warn('Budget check failed', { error: e.message });
+        broadcast('background_error', { task: 'budget_check', error: e.message });
       }
     },
     60 * 60 * 1000,
@@ -1308,6 +1398,8 @@ export function getServerContext(): ServerContext {
     }
   });
 
+  const fileTracker = new FileAccessTracker();
+
   ctx = {
     db,
     decisionRepo,
@@ -1323,6 +1415,7 @@ export function getServerContext(): ServerContext {
     costTracker,
     budgetGuard,
     sessionManager,
+    fileTracker,
     delegationTier: currentTier,
     agentRegistry,
     skillRegistry,

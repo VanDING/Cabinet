@@ -50,6 +50,7 @@ export function runMigration002(db: Database.Database): void {
         project_id TEXT PRIMARY KEY REFERENCES projects(id),
         summary TEXT NOT NULL DEFAULT '',
         goals TEXT NOT NULL DEFAULT '[]',
+        milestones TEXT NOT NULL DEFAULT '[]',
         constraints TEXT NOT NULL DEFAULT '{}',
         tech_summary TEXT NOT NULL DEFAULT '',
         risk_map TEXT NOT NULL DEFAULT '[]',
@@ -57,6 +58,10 @@ export function runMigration002(db: Database.Database): void {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `);
+    // Ensure milestones column exists (added in v2.0 patch)
+    try {
+      db.exec(`ALTER TABLE project_context ADD COLUMN milestones TEXT NOT NULL DEFAULT '[]'`);
+    } catch { /* column may already exist */ }
   } finally {
     db.pragma('foreign_keys = ON');
   }

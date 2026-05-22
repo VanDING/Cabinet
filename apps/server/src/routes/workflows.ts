@@ -13,6 +13,7 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import type { WorkflowCapabilities } from '@cabinet/types';
+import { createAllCapabilities, buildEnvironmentSection, type CapabilitiesContext } from '../capabilities.js';
 
 // ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
@@ -34,6 +35,13 @@ function stub<T>(feature: string): T {
 // ── Tool dependencies (capabilities-gated for workflow agents) ──
 function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencies {
   const ctx = getServerContext();
+  const capabilitiesCtx: CapabilitiesContext = {
+    db: ctx.db,
+    gateway: ctx.gateway,
+    logger: ctx.logger,
+    taskScheduler: ctx.taskScheduler,
+  };
+  const shared = createAllCapabilities(capabilitiesCtx);
 
   return {
     decisionStore: ctx.decisionRepo,
@@ -172,64 +180,94 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
 
     // ── File system (capabilities-gated) ──
     readFile: caps.files?.read
-      ? async (_p, _o, _l) => { throw new Error('File read in workflows requires server integration (coming soon)'); }
+      ? shared.readFile
       : stub('File read'),
     writeFile: caps.files?.write
-      ? async (_p, _c) => { throw new Error('File write in workflows requires server integration (coming soon)'); }
+      ? shared.writeFile
       : stub('File write'),
     editFile: caps.files?.write
-      ? async (_p, _o, _n) => { throw new Error('File edit in workflows requires server integration (coming soon)'); }
+      ? shared.editFile
       : stub('File edit'),
+    applyPatch: caps.files?.write
+      ? shared.applyPatch
+      : stub('Patch application'),
+    moveFile: caps.files?.write
+      ? shared.moveFile
+      : stub('File move'),
+    copyFile: caps.files?.write
+      ? shared.copyFile
+      : stub('File copy'),
+    makeDirectory: caps.files?.write
+      ? shared.makeDirectory
+      : stub('Directory creation'),
+    fileInfo: caps.files?.read
+      ? shared.fileInfo
+      : stub('File info'),
     listDirectory: caps.files?.read
-      ? async (_p) => { throw new Error('Directory listing in workflows requires server integration (coming soon)'); }
+      ? shared.listDirectory
       : stub('Directory listing'),
     searchFiles: caps.files?.read
-      ? async (_p, _d) => { throw new Error('File search in workflows requires server integration (coming soon)'); }
+      ? shared.searchFiles
       : stub('File search'),
     searchContent: caps.files?.read
-      ? async (_p, _d, _i) => { throw new Error('Content search in workflows requires server integration (coming soon)'); }
+      ? shared.searchContent
       : stub('Content search'),
     deleteFile: caps.files?.write
-      ? async (_p) => { throw new Error('File deletion in workflows requires server integration (coming soon)'); }
+      ? shared.deleteFile
       : stub('File deletion'),
+    recentFiles: caps.files?.read
+      ? shared.recentFiles
+      : stub('Recent files'),
+    watchFile: caps.files?.read
+      ? shared.watchFile
+      : stub('File watch'),
+    indexProject: caps.knowledge?.index
+      ? shared.indexProject
+      : stub('Project indexing'),
 
     // ── Web / HTTP (capabilities-gated) ──
     webFetch: caps.web?.fetch
-      ? async () => { throw new Error('Web fetch in workflows requires server integration (coming soon)'); }
+      ? shared.webFetch
       : stub('Web fetch'),
     httpRequest: caps.web?.http
-      ? async () => { throw new Error('HTTP requests in workflows requires server integration (coming soon)'); }
+      ? shared.httpRequest
       : stub('HTTP requests'),
 
     // ── Shell (capabilities-gated) ──
     execCommand: caps.shell
-      ? async () => { throw new Error('Shell execution in workflows requires server integration (coming soon)'); }
+      ? shared.execCommand
       : stub('Shell execution'),
 
     // ── Scheduler (capabilities-gated) ──
     scheduleTask: caps.scheduler
-      ? async () => { throw new Error('Scheduler in workflows requires server integration (coming soon)'); }
+      ? shared.scheduleTask
       : stub('Scheduler'),
-    listScheduledTasks: caps.scheduler ? async () => [] : async () => [],
+    listScheduledTasks: caps.scheduler ? shared.listScheduledTasks : async () => [],
     cancelScheduledTask: caps.scheduler
-      ? async (_id) => { throw new Error('Scheduler in workflows requires server integration (coming soon)'); }
+      ? shared.cancelScheduledTask
       : stub('Scheduler'),
 
     // ── Knowledge / RAG (capabilities-gated) ──
     indexDocument: caps.knowledge?.index
-      ? async () => { throw new Error('Document indexing in workflows requires server integration (coming soon)'); }
+      ? shared.indexDocument
       : stub('Document indexing'),
     searchDocuments: caps.knowledge?.search
-      ? async () => { throw new Error('Document search in workflows requires server integration (coming soon)'); }
+      ? shared.searchDocuments
       : stub('Document search'),
     clearDocumentIndex: caps.knowledge?.index
-      ? async () => { throw new Error('Index management in workflows requires server integration (coming soon)'); }
+      ? shared.clearDocumentIndex
       : stub('Index management'),
 
     // ── Evaluation (capabilities-gated) ──
     evaluateOutput: caps.evaluation
-      ? async (_c, _t, _s) => { throw new Error('Evaluation in workflows requires server integration (coming soon)'); }
+      ? shared.evaluateOutput
       : stub('Evaluation'),
+
+    // ── LSP (always available via TypeScript service) ──
+    workspaceSymbols: shared.workspaceSymbols,
+    goToDefinition: shared.goToDefinition,
+    findReferences: shared.findReferences,
+    diagnostics: shared.diagnostics,
   };
 }
 
@@ -324,7 +362,7 @@ function getEngine(): WorkflowEngine {
         sessionId: cacheKey,
         projectId: 'default',
         captainId: 'captain-1',
-        systemPrompt: role.systemPrompt,
+        systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
         model: role.model,
         maxSteps: options.persistent ? 20 : 50,
         maxResponseTokens: role.maxResponseTokens,
