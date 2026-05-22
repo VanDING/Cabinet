@@ -326,7 +326,7 @@ function getEngine(): WorkflowEngine {
         captainId: 'captain-1',
         systemPrompt: role.systemPrompt,
         model: role.model,
-        maxSteps: options.persistent ? 20 : 10,
+        maxSteps: options.persistent ? 20 : 50,
         maxResponseTokens: role.maxResponseTokens,
         temperature: role.temperature,
         contextBudget: role.contextBudget,
@@ -768,6 +768,18 @@ workflowsRouter.post('/:id/run', async (c) => {
       }
     }
 
+    broadcast('workflow_started', {
+      workflowId: id,
+      runId: run.runId,
+      name: wf.name,
+      timestamp: new Date().toISOString(),
+    });
+    broadcast('workflow_completed', {
+      workflowId: id,
+      runId: run.runId,
+      status: finalStatus,
+      timestamp: new Date().toISOString(),
+    });
     logger.info('Workflow executed', { id, nodes: run.steps.length, status: finalStatus, segments: Object.keys(handoffs).length });
     return c.json({
       runId: run.runId,
@@ -778,6 +790,12 @@ workflowsRouter.post('/:id/run', async (c) => {
     });
   } catch (e) {
     db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('failed', id);
+    broadcast('workflow_completed', {
+      workflowId: id,
+      runId: '',
+      status: 'failed',
+      timestamp: new Date().toISOString(),
+    });
     return c.json({ error: (e as Error).message }, 500);
   }
 });

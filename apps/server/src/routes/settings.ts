@@ -6,6 +6,7 @@ import { getServerContext, getCurrentTier, setCurrentTier } from '../context.js'
 import { config } from '../config.js';
 import { DelegationTier } from '@cabinet/types';
 import { CABINET_DIR } from '@cabinet/storage';
+import { broadcast } from '../ws/handler.js';
 
 const MASTER_PW = config.masterPassword;
 const SETTINGS_PATH = join(CABINET_DIR, 'settings.json');
@@ -140,6 +141,7 @@ settingsRouter.post('/api-keys', async (c) => {
       body.model ?? '',
     );
     refreshGateway();
+    broadcast('apikeys_changed', { action: 'added', provider: body.provider, timestamp: new Date().toISOString() });
     return c.json({ id, status: 'key_added', provider: body.provider });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -152,6 +154,7 @@ settingsRouter.delete('/api-keys/:id', (c) => {
   try {
     db.prepare('DELETE FROM api_keys WHERE id = ?').run(id);
     refreshGateway();
+    broadcast('apikeys_changed', { action: 'deleted', id, timestamp: new Date().toISOString() });
     return c.json({ status: 'deleted' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);

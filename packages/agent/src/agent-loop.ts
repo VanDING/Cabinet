@@ -1,5 +1,6 @@
 import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
+import type { DelegationTier } from '@cabinet/types';
 import { ToolExecutor } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
@@ -107,8 +108,13 @@ export class AgentLoop {
     return this.contextMonitor;
   }
 
+  /** Update delegation tier on the cached safety checker (called when user changes tier in UI). */
+  setDelegationTier(tier: DelegationTier): void {
+    this.safetyChecker.setTier(tier);
+  }
+
   async run(userMessage: string, resumeState?: CheckpointState | null): Promise<AgentResult> {
-    const maxSteps = this.options.maxSteps ?? 10;
+    const maxSteps = this.options.maxSteps ?? 50;
     const startTime = Date.now();
 
     // Try to restore from checkpoint (unless caller already provided state)
@@ -489,7 +495,7 @@ export class AgentLoop {
         systemPrompt: ctx.systemPrompt,
         messages,
         tools: streamingTools,
-        maxSteps: this.options.maxSteps ?? 10,
+        maxSteps: this.options.maxSteps ?? 50,
         ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
         ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
         ...(this.options.thinkingBudget != null ? { thinkingBudget: this.options.thinkingBudget } : {}),

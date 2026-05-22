@@ -33,7 +33,11 @@ export const MeetingList = memo(function MeetingList() {
   useEffect(() => {
     const handleUpdate = () => fetchMeetings();
     window.addEventListener('ws:meeting_created', handleUpdate);
-    return () => window.removeEventListener('ws:meeting_created', handleUpdate);
+    window.addEventListener('ws:meeting_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('ws:meeting_created', handleUpdate);
+      window.removeEventListener('ws:meeting_updated', handleUpdate);
+    };
   }, []);
 
   if (meetings.length === 0) {

@@ -1,5 +1,9 @@
+import { useTheme } from '../../hooks/useTheme';
+
 // ── Theme Tab ──
 export function ThemeTab() {
+  const { isDark, toggle } = useTheme();
+
   return (
     <div>
       <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -14,12 +18,9 @@ export function ThemeTab() {
           <button
             id="theme-toggle-btn"
             className="rounded-lg border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            onClick={() => {
-              const isDark = document.documentElement.classList.toggle('dark');
-              localStorage.setItem('cabinet-theme', isDark ? 'dark' : 'light');
-            }}
+            onClick={toggle}
           >
-            Toggle
+            {isDark ? 'Light' : 'Dark'}
           </button>
         </div>
       </div>

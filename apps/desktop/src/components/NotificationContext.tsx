@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 
 export interface AppNotification {
   id: string;
-  type: 'decision' | 'meeting' | 'task' | 'project' | 'system';
+  type: 'decision' | 'meeting' | 'task' | 'project' | 'system' | 'workflow' | 'deliverable';
   title: string;
   message: string;
   timestamp: Date;

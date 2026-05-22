@@ -1,6 +1,7 @@
 import type { AgentLoop, StreamingCallback } from '@cabinet/agent';
 import type { AgentRoleType } from '@cabinet/agent';
 import type { LLMGateway } from '@cabinet/gateway';
+import type { DelegationTier } from '@cabinet/types';
 import { IntentParser, type ParsedIntent, type AgentRouteResult } from './intent-parser.js';
 import { SessionManager } from './session-manager.js';
 
@@ -8,6 +9,7 @@ export class SecretaryAgent {
   private readonly intentParser: IntentParser;
   private lastIntent: string | null = null;
   private lastRoute: string | null = null;
+  private lastRoutedAgent: string | null = null;
 
   constructor(
     private readonly agentLoop: AgentLoop,
@@ -23,6 +25,11 @@ export class SecretaryAgent {
     ) => Promise<void>,
   ) {
     this.intentParser = intentParser;
+  }
+
+  /** Update delegation tier on the underlying AgentLoop (called when user changes tier in UI). */
+  setDelegationTier(tier: DelegationTier): void {
+    this.agentLoop.setDelegationTier(tier);
   }
 
   async handleMessage(
@@ -108,8 +115,9 @@ export class SecretaryAgent {
       targetAgent = this.lastRoute as AgentRoleType;
     }
 
-    // Notify frontend of routing BEFORE streaming starts
-    if (targetAgent !== 'secretary') {
+    // Notify frontend of routing BEFORE streaming starts — only on actual agent switch
+    if (targetAgent !== 'secretary' && targetAgent !== this.lastRoutedAgent) {
+      this.lastRoutedAgent = targetAgent;
       callback.onRoutingStart?.(targetAgent);
     }
 

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { getStorageItem, setStorageItem } from '../utils/storage.js';
 
-export function useTheme() {
+function useThemeState() {
   const [isDark, setIsDark] = useState(() => {
     const stored = getStorageItem('cabinet-theme');
     if (stored) return stored === 'dark';
@@ -14,4 +14,17 @@ export function useTheme() {
   }, [isDark]);
 
   return { isDark, toggle: () => setIsDark((d) => !d) };
+}
+
+const ThemeContext = createContext<ReturnType<typeof useThemeState> | null>(null);
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useThemeState();
+  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (ctx) return ctx;
+  return useThemeState();
 }

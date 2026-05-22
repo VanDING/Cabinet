@@ -98,6 +98,12 @@ export function App() {
       if (type === 'decision_updated') addNotification('decision', `Decision ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
       if (type === 'meeting_created') addNotification('meeting', 'Meeting completed', data.data?.topic ?? 'Untitled');
       if (type === 'task_completed') addNotification('task', 'Task completed', data.data?.name ?? 'Untitled');
+      if (type === 'project_created') addNotification('project', 'Project created', data.data?.name ?? 'Untitled');
+      if (type === 'project_deleted') addNotification('project', 'Project deleted', data.data?.name ?? 'Untitled');
+      if (type === 'workflow_started') addNotification('workflow', 'Workflow started', data.data?.name ?? 'Untitled');
+      if (type === 'workflow_completed') addNotification('workflow', 'Workflow completed', data.data?.name ?? 'Untitled');
+      if (type === 'deliverable_created') addNotification('deliverable', 'Deliverable created', data.data?.title ?? 'Untitled');
+      if (type === 'task_updated') addNotification('task', `Task ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
     });
   });
 
@@ -281,17 +287,10 @@ export function App() {
         if (contentType.includes('text/event-stream') && res.body) {
           const reader = res.body.getReader();
 
-          addMessage(sessionId, {
-            id: streamId,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isStreaming: true,
-            agentName: activeAgent,
-          });
-
           let meetingData: MeetingData | undefined;
           let streamAgent = activeAgent;
+          let thinkingAccumulated = '';
+          let toolCallsAccumulated: NonNullable<ChatMessage['toolCalls']> = [];
 
           const AGENT_DISPLAY: Record<string, string> = {
             secretary: 'Secretary',
@@ -317,6 +316,22 @@ export function App() {
                 agentName: `→ ${displayName}`,
               });
             },
+            onThinking(content) {
+              thinkingAccumulated += content;
+              addMessage(sessionId, {
+                id: streamId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+                isStreaming: true,
+                agentName: streamAgent,
+                thinking: thinkingAccumulated,
+                toolCalls: toolCallsAccumulated,
+              });
+            },
+            onThinkingDone() {
+              // thinking phase complete; subsequent onContent fills the content field
+            },
             onContent(_, fullContent) {
               addMessage(sessionId, {
                 id: streamId,
@@ -325,6 +340,27 @@ export function App() {
                 timestamp: new Date(),
                 isStreaming: true,
                 agentName: streamAgent,
+                thinking: thinkingAccumulated || undefined,
+                toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
+              });
+            },
+            onToolStatus(message, type, detail) {
+              toolCallsAccumulated = [...toolCallsAccumulated, {
+                id: `${detail?.name ?? 'tool'}_${Date.now()}`,
+                name: detail?.name ?? 'unknown',
+                status: type === 'call' ? 'running' : type === 'error' ? 'error' : 'completed',
+                args: detail?.args as Record<string, unknown> | undefined,
+                result: typeof detail?.result === 'string' ? detail.result : JSON.stringify(detail?.result),
+              }];
+              addMessage(sessionId, {
+                id: streamId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+                isStreaming: true,
+                agentName: streamAgent,
+                thinking: thinkingAccumulated || undefined,
+                toolCalls: toolCallsAccumulated,
               });
             },
             onDone(fullContent, event) {
@@ -338,6 +374,8 @@ export function App() {
                 isStreaming: false,
                 meeting: meetingData,
                 agentName: (event as any)?.agentName ?? streamAgent,
+                thinking: thinkingAccumulated || undefined,
+                toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
               });
             },
             onError(error) {
@@ -498,6 +536,7 @@ export function App() {
                     isProcessing={isActiveSessionProcessing}
                     attachedFiles={activeSession.attachedFiles}
                     sessionTitle={activeSession.title}
+                    isDark={isDark}
                     onEditMessage={(msgId, newContent) => {
                       editMessage(activeSession.id, msgId, newContent);
                       handleSend(activeSession.id, newContent, activeSession.attachedFiles);
