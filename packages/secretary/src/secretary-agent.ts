@@ -39,6 +39,7 @@ export class SecretaryAgent {
     intent: ParsedIntent;
     response: string;
     routeResult?: AgentRouteResult;
+    usage?: { promptTokens: number; completionTokens: number };
   }> {
     this.sessionManager.addMessage(sessionId, 'user', message);
 
@@ -59,10 +60,12 @@ export class SecretaryAgent {
     }
 
     let response: string;
+    let usage: { promptTokens: number; completionTokens: number } | undefined;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
       if (this.agentLoop) {
         const result = await this.agentLoop.run(message);
         response = result.content;
+        usage = result.usage;
       } else {
         response = [
           `[No LLM available]`,
@@ -87,7 +90,7 @@ export class SecretaryAgent {
     }
 
     this.sessionManager.addMessage(sessionId, 'assistant', response);
-    return { intent: routeResult.intent, response, routeResult };
+    return { intent: routeResult.intent, response, routeResult, usage };
   }
 
   /** Streaming variant — routes intent then streams LLM output token by token via callback. */

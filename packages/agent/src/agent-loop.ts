@@ -73,6 +73,7 @@ export interface AgentResult {
   content: string;
   steps: number;
   toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[];
+  usage?: { promptTokens: number; completionTokens: number };
 }
 
 export class AgentLoop {
@@ -266,7 +267,7 @@ export class AgentLoop {
         this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, true);
         this.checkpointManager.delete(this.options.sessionId);
-        return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls };
+        return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls, usage: { promptTokens: totalPromptTokens, completionTokens: totalCompletionTokens } };
       }
 
       // Execute tool calls

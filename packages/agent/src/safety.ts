@@ -29,6 +29,13 @@ const READ_ONLY_TOOLS = new Set([
   'list_directory',
   'glob',
   'grep',
+  'file_info',
+  'recent_files',
+  'watch_file',
+  'workspace_symbol',
+  'go_to_definition',
+  'find_references',
+  'diagnostics',
   'web_fetch',
   'list_scheduled_tasks',
   'search_documents',
@@ -43,6 +50,7 @@ const LIGHT_WRITE_TOOLS = new Set([
   'set_captain_preferences',
   'publish_notification',
   'register_agent',
+  'make_directory',
 ]);
 
 /** Moderate tools — create/update records, no destruction, low cost. */
@@ -53,11 +61,16 @@ const MODERATE_TOOLS = new Set([
   'create_employee',
   'write_file',
   'edit_file',
+  'apply_patch',
+  'move_file',
+  'copy_file',
   'http_request',
   'schedule_task',
   'cancel_scheduled_task',
   'index_document',
+  'index_project',
   'evaluate',
+  'execute_command',
 ]);
 
 /** Heavy tools — cost money (LLM calls). */
@@ -67,7 +80,6 @@ const COST_TOOLS = new Set(['run_workflow', 'start_meeting']);
 const DESTRUCTIVE_TOOLS = new Set([
   'delete_workflow',
   'delete_file',
-  'execute_command',
   'modify_config',
   'approve_decision',
   'reject_decision',
