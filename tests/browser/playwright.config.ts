@@ -7,6 +7,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     headless: true,
+    channel: 'msedge',
     viewport: { width: 1280, height: 720 },
   },
   webServer: [

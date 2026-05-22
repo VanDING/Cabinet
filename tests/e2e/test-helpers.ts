@@ -7,6 +7,26 @@ export function createTestApp() {
   return createApp();
 }
 
+/** Ensure a test project exists. Returns the project ID so decisions/workflows can reference it. */
+export async function seedProject(app: ReturnType<typeof createApp>): Promise<string> {
+  const res = await app.request('/api/projects', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ name: 'Test Project' }),
+  });
+  if (res.status !== 201) {
+    const body = await res.json();
+    throw new Error(`Failed to seed project: ${JSON.stringify(body)}`);
+  }
+  const body = await res.json();
+  return body.project?.id ?? '';
+}
+
+/** Default projectId used by createDecision if none provided. */
+let defaultProjectId: string | null = null;
+export function getDefaultProjectId() { return defaultProjectId; }
+export function setDefaultProjectId(id: string) { defaultProjectId = id; }
+
 export interface DecisionInput {
   projectId?: string;
   type?: string;
@@ -23,7 +43,7 @@ export async function createDecision(
     method: 'POST',
     headers,
     body: JSON.stringify({
-      projectId: 'proj-1',
+      projectId: defaultProjectId ?? 'proj-1',
       type: 'action',
       options: [
         { id: 'opt-a', label: 'Option A', impact: 'High' },
