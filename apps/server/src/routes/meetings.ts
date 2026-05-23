@@ -9,26 +9,13 @@ meetingsRouter.get('/', (c) => {
   const projectId = c.req.query('projectId');
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100);
 
-  let sql = `SELECT * FROM project_deliverables WHERE type = 'meeting_report'`;
-  const params: string[] = [];
+  let rows = ctx.deliverableRepo.findByType('meeting_report', { limit: 1000 });
 
   if (projectId) {
-    sql += ` AND project_id = ?`;
-    params.push(projectId);
+    rows = rows.filter((r) => r.project_id === projectId);
   }
 
-  sql += ` ORDER BY created_at DESC LIMIT ?`;
-  params.push(String(limit));
-
-  const rows = ctx.db.prepare(sql).all(...params) as Array<{
-    id: string;
-    project_id: string;
-    meeting_id: string;
-    title: string;
-    type: string;
-    tags: string;
-    created_at: string;
-  }>;
+  rows = rows.slice(0, limit);
 
   const meetings = rows.map((r) => ({
     id: r.id,

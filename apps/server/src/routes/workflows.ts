@@ -71,10 +71,8 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       return ctx.decisionService.reject(decisionId, captainId);
     },
     listWorkflows() {
-      const rows = ctx.db
-        .prepare('SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
-        .all('default') as any[];
-      return rows.map((r: any) => {
+      const rows = ctx.workflowRepo.listByProject('default');
+      return rows.map((r) => {
         const def = JSON.parse(r.definition ?? '{}');
         return {
           id: r.id,
@@ -85,34 +83,26 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       });
     },
     getWorkflow(id) {
-      const row = ctx.db
-        .prepare('SELECT id, name, definition, status FROM workflows WHERE id = ?')
-        .get(id) as any;
+      const row = ctx.workflowRepo.findById(id);
       if (!row) return undefined;
       return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
     },
     createWorkflow(input) {
       const id = `wf_${Date.now()}`;
-      ctx.db
-        .prepare('INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)')
-        .run(id, input.projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
+      ctx.workflowRepo.create(id, input.projectId ?? 'default', input.name, JSON.stringify(input.definition ?? {}), 'draft');
       return { id };
     },
     updateWorkflow(id, input) {
       if (input.name !== undefined || input.definition !== undefined) {
-        const name = input.name;
-        const definition = input.definition;
-        if (name !== undefined && definition !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?').run(name, JSON.stringify(definition), id);
-        } else if (name !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET name = ? WHERE id = ?').run(name, id);
-        } else if (definition !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET definition = ? WHERE id = ?').run(JSON.stringify(definition), id);
-        }
+        ctx.workflowRepo.updateNameAndDefinition(
+          id,
+          input.name,
+          input.definition !== undefined ? JSON.stringify(input.definition) : undefined,
+        );
       }
     },
     deleteWorkflow(id) {
-      ctx.db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
+      ctx.workflowRepo.delete(id);
     },
     async runWorkflow(_id) {
       return { runId: '', status: 'not_implemented' };
@@ -148,7 +138,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     },
     deleteAgent(name) {
       ctx.agentRegistry.unregister(name);
-      ctx.db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
+      ctx.agentRoleRepo.deleteByName(name);
     },
     listAgents() {
       return ctx.agentRegistry.list().map((r) => ({
@@ -159,22 +149,28 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       throw new Error('Agent invocation not available in workflow tool context');
     },
     setProjectContext(projectId) {
-      const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      const row = ctx.projectRepo.findById(projectId);
       if (!row) throw new Error(`Project not found: ${projectId}`);
       return { id: row.id, name: row.name };
     },
     createProject(input) {
       const id = `proj_${Date.now()}`;
-      ctx.db.prepare('INSERT INTO projects (id, name, description, last_activity_at) VALUES (?, ?, ?, datetime(\'now\'))')
-        .run(id, input.name, input.description ?? '', input.rootPath ?? '');
+      ctx.projectRepo.create({
+        id,
+        name: input.name,
+        description: input.description ?? '',
+        status: 'active',
+        rootPath: input.rootPath ?? '',
+        createdAt: new Date(),
+      });
       return { id, name: input.name };
     },
     listProjects() {
-      const rows = ctx.db.prepare('SELECT id, name FROM projects WHERE archived = 0 ORDER BY last_activity_at DESC').all() as any[];
-      return rows.map((r: any) => ({ id: r.id, name: r.name }));
+      const rows = ctx.projectRepo.listAll().filter((p) => !p.archived);
+      return rows.map((r) => ({ id: r.id, name: r.name }));
     },
     getProjectContext(projectId) {
-      const project = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      const project = ctx.projectRepo.findById(projectId);
       if (!project) return null;
       return { id: project.id, name: project.name };
     },
@@ -417,7 +413,7 @@ function getEngine(): WorkflowEngine {
     },
 
     humanApproval: async (node: WorkflowNodeDef, run: WorkflowRun) => {
-      const { decisionService, db } = getServerContext();
+      const { decisionService, auditLogRepo } = getServerContext();
       const d = node.data ?? {};
       const decisionId = `dec_${Date.now()}`;
 
@@ -443,9 +439,7 @@ function getEngine(): WorkflowEngine {
         },
       });
 
-      db.prepare(
-        "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow_approval', ?, 'pending', 'system', ?, datetime('now'))",
-      ).run(decisionId, JSON.stringify({ workflowId: run.workflowId, nodeId: node.id }));
+      auditLogRepo.insert('workflow_approval', decisionId, 'pending', 'system', { workflowId: run.workflowId, nodeId: node.id });
 
       broadcast('decision_created', {
         decisionId,
@@ -624,9 +618,9 @@ function findEntryNode(nodes: WorkflowNodeDef[]): string {
 
 // ── Workflow resumption (called by decision callback) ──
 export async function resumeWorkflowAfterApproval(workflowId: string): Promise<void> {
-  const { db, logger } = getServerContext();
+  const { workflowRepo, auditLogRepo, logger } = getServerContext();
 
-  const wf = db.prepare('SELECT * FROM workflows WHERE id = ?').get(workflowId) as any;
+  const wf = workflowRepo.findById(workflowId);
   if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
 
   const def = JSON.parse(wf.definition ?? '{}');
@@ -647,10 +641,8 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   }
 
   const finalStatus: string = run.status === 'awaiting_approval' ? 'awaiting_approval' : 'completed';
-  db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run(finalStatus, workflowId);
-  db.prepare(
-    "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'resume', 'system', ?, datetime('now'))",
-  ).run(workflowId, JSON.stringify({ status: finalStatus, steps: run.steps, runId: run.runId }));
+  workflowRepo.updateStatus(workflowId, finalStatus);
+  auditLogRepo.insert('workflow', workflowId, 'resume', 'system', { status: finalStatus, steps: run.steps, runId: run.runId });
 
   logger.info('Workflow resumed after approval', { workflowId, nodes: run.steps.length, status: finalStatus });
 }
@@ -664,15 +656,13 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
 
   approvalPollTimer = setInterval(async () => {
     try {
-      const { db, logger } = getServerContext();
+      const { workflowRepo, auditLogRepo, decisionRepo, db, logger } = getServerContext();
 
       // Find workflows stuck in awaiting_approval state
-      const rows = db
-        .prepare("SELECT * FROM workflow_runs WHERE status = 'awaiting_approval' ORDER BY updated_at ASC")
-        .all() as any[];
+      const runs = workflowRepo.findRunsByStatus(['awaiting_approval']);
 
-      for (const row of rows) {
-        const wfId = row.workflow_id as string;
+      for (const runRow of runs) {
+        const wfId = runRow.workflow_id;
         // Check if there's a pending approval record for this workflow
         const approvalRow = db
           .prepare(
@@ -687,9 +677,7 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
         if (!decisionId) continue;
 
         // Check if the associated decision has been resolved
-        const decision = db
-          .prepare("SELECT * FROM decisions WHERE id = ?")
-          .get(decisionId) as any;
+        const decision = decisionRepo.get(decisionId);
 
         if (decision && (decision.status === 'approved' || decision.status === 'rejected')) {
           logger.info('Workflow approval resolved via polling', { workflowId: wfId, decisionId, status: decision.status });
@@ -698,11 +686,11 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
               await resumeWorkflowAfterApproval(wfId);
             } else {
               // Rejected — mark workflow as failed
-              db.prepare("UPDATE workflows SET status = 'failed' WHERE id = ?").run(wfId);
+              workflowRepo.updateStatus(wfId, 'failed');
               db.prepare("UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'").run(wfId);
             }
             // Mark approval as resolved
-            db.prepare("UPDATE audit_log SET action = 'resolved' WHERE entity_type = 'workflow_approval' AND entity_id = ?").run(approvalRow.entity_id);
+            auditLogRepo.updateAction('workflow_approval', approvalRow.entity_id, 'resolved');
           } catch (err) {
             logger.error('Failed to resume workflow after approval', { workflowId: wfId, error: (err as Error).message });
           }
@@ -724,12 +712,12 @@ export function stopApprovalPolling(): void {
 // ── Routes ──
 
 workflowsRouter.get('/', (c) => {
-  const { db } = getServerContext();
-  const projectId = c.req.query('projectId') ?? 'default';
-  const rows = db
-    .prepare('SELECT * FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
-    .all(projectId) as any[];
-  const workflows = rows.map((r: any) => ({
+  const { workflowRepo } = getServerContext();
+  const projectId = c.req.query('projectId');
+  const rows = projectId
+    ? workflowRepo.listByProject(projectId)
+    : workflowRepo.listAll();
+  const workflows = rows.map((r) => ({
     id: r.id,
     name: r.name,
     status: r.status,
@@ -741,14 +729,12 @@ workflowsRouter.get('/', (c) => {
 });
 
 workflowsRouter.post('/', async (c) => {
-  const { db } = getServerContext();
+  const { workflowRepo } = getServerContext();
   const body = await c.req.json();
   const id = `wf_${Date.now()}`;
   const definition = body.definition ?? { nodes: body.nodes ?? [], edges: body.edges ?? [] };
   try {
-    db.prepare(
-      'INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)',
-    ).run(id, body.projectId ?? 'proj-1', body.name ?? 'Untitled', JSON.stringify(definition), 'draft');
+    workflowRepo.create(id, body.projectId ?? 'default', body.name ?? 'Untitled', JSON.stringify(definition), 'draft');
     return c.json({ id, status: 'created' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -756,22 +742,22 @@ workflowsRouter.post('/', async (c) => {
 });
 
 workflowsRouter.put('/:id', async (c) => {
-  const { db } = getServerContext();
+  const { workflowRepo } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
-  db.prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?').run(
+  workflowRepo.updateNameAndDefinition(
+    id,
     body.name ?? 'Untitled',
     JSON.stringify(body.definition ?? {}),
-    id,
   );
   return c.json({ id, status: 'updated' });
 });
 
 workflowsRouter.post('/:id/run', async (c) => {
-  const { db, logger } = getServerContext();
+  const { workflowRepo, auditLogRepo, logger } = getServerContext();
   const id = c.req.param('id');
 
-  const wf = db.prepare('SELECT * FROM workflows WHERE id = ?').get(id) as any;
+  const wf = workflowRepo.findById(id);
   if (!wf) return c.json({ error: 'Workflow not found' }, 404);
 
   const def = JSON.parse(wf.definition ?? '{}');
@@ -785,7 +771,7 @@ workflowsRouter.post('/:id/run', async (c) => {
     return c.json({ error: 'Workflow has no nodes' }, 400);
   }
 
-  db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('running', id);
+  workflowRepo.updateStatus(id, 'running');
 
   const eng = getEngine();
   const entryNodeId = findEntryNode(nodes);
@@ -794,10 +780,8 @@ workflowsRouter.post('/:id/run', async (c) => {
     const run = await eng.startRun(id, nodes, edges, entryNodeId);
 
     const finalStatus = run.status;
-    db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run(finalStatus, id);
-    db.prepare(
-      "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'run', 'system', ?, datetime('now'))",
-    ).run(id, JSON.stringify({ status: finalStatus, steps: run.steps, runId: run.runId }));
+    workflowRepo.updateStatus(id, finalStatus);
+    auditLogRepo.insert('workflow', id, 'run', 'system', { status: finalStatus, steps: run.steps, runId: run.runId });
 
     // Collect handoff docs from segment boundaries
     const handoffs: Record<string, unknown> = {};
@@ -828,7 +812,7 @@ workflowsRouter.post('/:id/run', async (c) => {
       handoffs: Object.keys(handoffs).length > 0 ? handoffs : undefined,
     });
   } catch (e) {
-    db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('failed', id);
+    workflowRepo.updateStatus(id, 'failed');
     broadcast('workflow_completed', {
       workflowId: id,
       runId: '',
@@ -840,23 +824,19 @@ workflowsRouter.post('/:id/run', async (c) => {
 });
 
 workflowsRouter.delete('/:id', (c) => {
-  const { db, logger } = getServerContext();
+  const { workflowRepo, logger } = getServerContext();
   const id = c.req.param('id');
-  db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
+  workflowRepo.delete(id);
   logger.info('Workflow deleted', { id });
   return c.json({ status: 'deleted' });
 });
 
 workflowsRouter.get('/:id/runs', (c) => {
-  const { db } = getServerContext();
+  const { auditLogRepo } = getServerContext();
   const id = c.req.param('id');
-  const rows = db
-    .prepare(
-      "SELECT * FROM audit_log WHERE entity_type = 'workflow' AND entity_id = ? ORDER BY timestamp DESC LIMIT 20",
-    )
-    .all(id) as any[];
-  const runs = rows.map((r: any) => ({
-    runId: r.event_id ?? r.id,
+  const rows = auditLogRepo.findByEntity('workflow', id, { limit: 20 });
+  const runs = rows.map((r) => ({
+    runId: r.id,
     workflowId: id,
     status: JSON.parse(r.changes ?? '{}').status ?? 'completed',
     steps: JSON.parse(r.changes ?? '{}').steps ?? [],

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext, onTierChange, type ServerContext } from '../context.js';
-import { DEFAULT_CAPTAIN_ID, type DelegationTier } from '@cabinet/types';
+import { DEFAULT_CAPTAIN_ID, MessageType, type DelegationTier } from '@cabinet/types';
 import {
   AgentLoop,
   AgentDispatcher,
@@ -30,7 +30,7 @@ import type { Decision } from '@cabinet/types';
 import { buildEnvironmentSection } from '../capabilities.js';
 import { getWorkspaceSymbols, getDefinition, getReferences, getDiagnostics } from '../lsp/ts-service.js';
 import { indexProject } from '../lsp/indexer.js';
-import { CABINET_DIR } from '@cabinet/storage';
+import { CABINET_DIR, DocumentChunkRepository, EvaluationResultRepository } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
@@ -300,7 +300,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
             .prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?')
             .run(name, JSON.stringify(definition), id);
         } else if (name !== undefined) {
-          ctx.db.prepare('UPDATE workflows SET name = ? WHERE id = ?').run(name, id);
+          ctx.workflowRepo.updateNameAndDefinition(id, name);
         } else if (definition !== undefined) {
           ctx.db
             .prepare('UPDATE workflows SET definition = ? WHERE id = ?')
@@ -309,7 +309,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       }
     },
     deleteWorkflow(id) {
-      ctx.db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
+      ctx.workflowRepo.delete(id);
       ctx.logger.info('Workflow deleted via tool', { id });
     },
     async runWorkflow(id) {
@@ -369,20 +369,20 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       ctx.agentRegistry.register(role as any);
       // Persist to DB
       try {
-        ctx.db.prepare(
-          `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-        ).run(
-          input.name,
-          input.name,
-          input.description,
-          input.systemPrompt,
-          input.model,
-          input.temperature,
-          input.maxResponseTokens,
-          JSON.stringify(input.allowedTools),
-          input.contextBudget,
-        );
+        ctx.agentRoleRepo.upsert({
+          type: input.name,
+          name: input.name,
+          description: input.description,
+          system_prompt: input.systemPrompt,
+          model: input.model,
+          model_tier: 'default',
+          temperature: input.temperature,
+          max_response_tokens: input.maxResponseTokens,
+          allowed_tools: JSON.stringify(input.allowedTools),
+          context_budget: input.contextBudget,
+          is_builtin: 0,
+          created_at: new Date().toISOString(),
+        });
       } catch (e) {
         ctx.logger.warn('Failed to persist custom agent to DB', { name: input.name, error: String(e) });
       }
@@ -406,22 +406,20 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       if (existing && existing.type === 'custom') {
         ctx.agentRegistry.update(name, updates as any);
         // Update DB
-        const setClauses: string[] = [];
-        const params: any[] = [];
-        for (const [k, v] of Object.entries(updates)) {
-          const col = k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
-          setClauses.push(`${col} = ?`);
-          params.push(k === 'allowedTools' ? JSON.stringify(v) : v);
-        }
-        if (setClauses.length > 0) {
-          params.push(name);
-          ctx.db.prepare(`UPDATE agent_roles SET ${setClauses.join(', ')} WHERE name = ?`).run(...params);
-        }
+        ctx.agentRoleRepo.update(name, {
+          system_prompt: updates.systemPrompt as string,
+          model: updates.model as string,
+          model_tier: updates.modelTier as string,
+          temperature: updates.temperature as number,
+          max_response_tokens: updates.maxResponseTokens as number,
+          allowed_tools: updates.allowedTools ? JSON.stringify(updates.allowedTools) : undefined,
+          context_budget: updates.contextBudget as number,
+        });
       }
     },
     deleteAgent(name) {
       ctx.agentRegistry.unregister(name);
-      ctx.db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
+      ctx.agentRoleRepo.deleteByName(name);
     },
     listAgents() {
       return ctx.agentRegistry.list().map((r) => ({
@@ -450,44 +448,38 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── Project tools ──
     setProjectContext(projectId) {
-      const row = ctx.db.prepare('SELECT id, name FROM projects WHERE id = ?').get(projectId) as any;
+      const row = ctx.projectRepo.findById(projectId);
       if (!row) throw new Error(`Project not found: ${projectId}`);
       return { id: row.id, name: row.name };
     },
     createProject(input) {
       const id = `proj_${Date.now()}`;
-      ctx.db
-        .prepare('INSERT INTO projects (id, name, description, root_path, last_activity_at) VALUES (?, ?, ?, ?, datetime(\'now\'))')
-        .run(id, input.name, input.description ?? '', input.rootPath ?? '');
-      ctx.db.prepare('INSERT INTO project_context (project_id) VALUES (?)').run(id);
+      ctx.projectRepo.create({ id, name: input.name, description: input.description ?? '', status: 'active' as const, rootPath: input.rootPath ?? '', createdAt: new Date() });
+      ctx.projectContextRepo.insert({ project_id: id, summary: '', goals: '[]', milestones: '[]', constraints: '{}', tech_summary: '', risk_map: '[]', key_decisions: '[]', updated_at: new Date().toISOString() });
       // Initialize project memory so context is immediately available to agents
       ctx.project.initialize(id, []);
       ctx.logger.info('Project created via tool', { id, name: input.name });
       return { id, name: input.name };
     },
     listProjects() {
-      const rows = ctx.db
-        .prepare('SELECT id, name, last_activity_at FROM projects WHERE archived = 0 ORDER BY last_activity_at DESC')
-        .all() as any[];
-      return rows.map((r: any) => ({
+      const rows = ctx.projectRepo.listByStatus('active');
+      return rows.map((r) => ({
         id: r.id,
         name: r.name,
-        lastActivityAt: r.last_activity_at,
+        lastActivityAt: r.lastActivityAt,
         activeWorkflowCount: 0,
       }));
     },
     getProjectContext(projectId) {
-      const project = ctx.db.prepare('SELECT id, name, description, root_path FROM projects WHERE id = ?').get(projectId) as any;
+      const project = ctx.projectRepo.findById(projectId);
       if (!project) return null;
-      const pctx = ctx.db.prepare('SELECT * FROM project_context WHERE project_id = ?').get(projectId) as any;
-      const decisions = ctx.db
-        .prepare("SELECT id, title, status FROM decisions WHERE project_id = ? ORDER BY created_at DESC LIMIT 5")
-        .all(projectId) as any[];
+      const pctx = ctx.projectContextRepo.findByProjectId(projectId);
+      const decisions = ctx.decisionRepo.listByProject(projectId, { limit: 5 });
       return {
         id: project.id,
         name: project.name,
         description: project.description,
-        rootPath: project.root_path ?? '',
+        rootPath: project.rootPath ?? '',
         summary: pctx?.summary ?? '',
         goals: JSON.parse(pctx?.goals ?? '[]'),
         constraints: JSON.parse(pctx?.constraints ?? '{}'),
@@ -839,7 +831,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       if (content.length === 0) throw new Error('File is empty');
 
       // Clear previous chunks for this file
-      ctx.db.prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?').run(projectId, filePath);
+      new DocumentChunkRepository(ctx.db).deleteByPath(projectId, filePath);
 
       // Chunk the content
       const chunks = chunkText(content, 800, 100);
@@ -857,18 +849,17 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       }
 
       // Store chunks
-      const insertStmt = ctx.db.prepare(
-        `INSERT INTO document_chunks (id, project_id, source_path, chunk_index, content, embedding, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      );
+      const chunkRepo = new DocumentChunkRepository(ctx.db);
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]!;
-        const id = `chunk_${Date.now()}_${i}`;
-        insertStmt.run(
-          id, projectId, filePath, i, chunk.content,
-          embeddings[i] ? JSON.stringify(embeddings[i]) : null,
-          JSON.stringify({ startChar: chunk.startChar, endChar: chunk.endChar }),
-        );
+        chunkRepo.insert({
+          project_id: projectId,
+          source_path: filePath,
+          chunk_index: i,
+          content: chunk.content,
+          embedding: embeddings[i] ? JSON.stringify(embeddings[i]) : null,
+          metadata: JSON.stringify({ startChar: chunk.startChar, endChar: chunk.endChar }),
+        });
       }
       ctx.logger.info('Document indexed', { path: filePath, chunks: chunks.length, projectId });
       return { chunkCount: chunks.length, filePath };
@@ -978,11 +969,16 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         const dimensions = parsed.dimensions ?? {};
 
         // Persist evaluation result
-        const id = `eval_${Date.now()}`;
-        ctx.db.prepare(
-          `INSERT INTO evaluation_results (id, project_id, session_id, source_type, source_id, overall_score, dimensions, feedback, evaluator_model)
-           VALUES (?, 'default', NULL, ?, ?, ?, ?, ?, ?)`,
-        ).run(id, sourceType, sourceId ?? null, overallScore, JSON.stringify(dimensions), parsed.feedback ?? '', evaluatorModel);
+        new EvaluationResultRepository(ctx.db).insert({
+          project_id: 'default',
+          session_id: null,
+          source_type: sourceType,
+          source_id: sourceId ?? null,
+          overall_score: overallScore,
+          dimensions: JSON.stringify(dimensions),
+          feedback: parsed.feedback ?? '',
+          evaluator_model: evaluatorModel,
+        });
 
         return { overallScore, dimensions, feedback: parsed.feedback ?? '', evaluatorModel };
       } catch {
@@ -1008,7 +1004,7 @@ async function executeWorkflowById(
   workflowId: string,
   ctx: ServerContext,
 ): Promise<{ runId: string; status: string; steps?: unknown[] }> {
-  const wf = ctx.db.prepare('SELECT * FROM workflows WHERE id = ?').get(workflowId) as any;
+  const wf = ctx.workflowRepo.findById(workflowId);
   if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
 
   const def = JSON.parse(wf.definition ?? '{}');
@@ -1018,7 +1014,7 @@ async function executeWorkflowById(
 
   if (nodes.length === 0) throw new Error('Workflow has no nodes');
 
-  ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('running', workflowId);
+  ctx.workflowRepo.updateStatus(workflowId, 'running');
 
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const graph = new Map<string, string[]>();
@@ -1070,9 +1066,7 @@ async function executeWorkflowById(
         break;
       case 'humanApproval':
         output = `Approval pending: ${d.label ?? nodeId}`;
-        ctx.db
-          .prepare('UPDATE workflows SET status = ? WHERE id = ?')
-          .run('awaiting_approval', workflowId);
+        ctx.workflowRepo.updateStatus(workflowId, 'awaiting_approval');
         broadcast('workflow_approval_needed', { workflowId, runId, nodeId, label: d.label });
         break;
       case 'condition': {
@@ -1122,12 +1116,8 @@ async function executeWorkflowById(
     )
       ? 'awaiting_approval'
       : 'completed';
-    ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run(finalStatus, workflowId);
-    ctx.db
-      .prepare(
-        "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('workflow', ?, 'run', 'system', ?, datetime('now'))",
-      )
-      .run(workflowId, JSON.stringify({ status: finalStatus, steps: results, runId }));
+    ctx.workflowRepo.updateStatus(workflowId, finalStatus);
+    ctx.auditLogRepo.insert('workflow', workflowId, 'run', 'system', { status: finalStatus, steps: results, runId });
     ctx.logger.info('Workflow executed via tool', {
       workflowId,
       nodes: results.length,
@@ -1135,7 +1125,7 @@ async function executeWorkflowById(
     });
     return { runId, status: finalStatus, steps: results };
   } catch (e) {
-    ctx.db.prepare('UPDATE workflows SET status = ? WHERE id = ?').run('failed', workflowId);
+    ctx.workflowRepo.updateStatus(workflowId, 'failed');
     throw e;
   }
 }
@@ -1279,10 +1269,16 @@ async function runMeeting(
   // Auto-create deliverable for the completed meeting
   try {
     const did = `d_${Date.now()}`;
-    ctx.db.prepare(
-      `INSERT INTO project_deliverables (id, project_id, meeting_id, title, type, tags)
-       VALUES (?, ?, ?, ?, 'meeting_report', ?)`,
-    ).run(did, projectId ?? 'default', meetingId, topic, JSON.stringify(['meeting', 'analysis']));
+    ctx.deliverableRepo.insert({
+      id: did,
+      project_id: projectId ?? 'default',
+      meeting_id: meetingId,
+      title: topic,
+      type: 'meeting_report',
+      file_path: null,
+      tags: JSON.stringify(['meeting', 'analysis']),
+      created_at: new Date().toISOString(),
+    });
   } catch { /* non-fatal */ }
 
   // Phase 4: Auto-extract decision if meeting produced actionable options
@@ -1427,9 +1423,9 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
       let contextStr = '';
       // Include project root path so the agent knows where the project files are
       try {
-        const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(pid) as any;
-        if (projRow?.root_path && existsSync(projRow.root_path)) {
-          contextStr = `Active project files at: ${projRow.root_path}\n`;
+        const projRow = ctx.projectRepo.findById(pid);
+        if (projRow?.rootPath && existsSync(projRow.rootPath)) {
+          contextStr = `Active project files at: ${projRow.rootPath}\n`;
         }
       } catch { /* root_path lookup is best-effort */ }
       if (!projCtx) {
@@ -1513,9 +1509,9 @@ function getAgentLoopForRole(
   // Look up project root path for the system prompt
   let projectRootPath: string | undefined;
   try {
-    const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
-    if (projRow?.root_path && existsSync(projRow.root_path)) {
-      projectRootPath = projRow.root_path;
+    const projRow = ctx.projectRepo.findById(projectId);
+    if (projRow?.rootPath && existsSync(projRow.rootPath)) {
+      projectRootPath = projRow.rootPath;
     }
   } catch { /* best-effort */ }
 
@@ -1709,16 +1705,21 @@ async function dispatchToSpecialist(
               correlationId: sessionId,
               causationId: null,
               timestamp: new Date(),
-              messageType: 'QualityAlert' as any,
+              messageType: MessageType.QualityAlert,
               payload: {
-                source: roleType,
-                sessionId,
-                reviewId: `review_${Date.now()}`,
-                score: review.score,
-                issueCount: review.issues?.length ?? 0,
-                topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+                type: 'review_quality',
+                message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
+                severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
               },
             }).catch(() => {});
+
+            broadcast('quality_alert', {
+              source: roleType,
+              sessionId,
+              score: review.score,
+              issueCount: review.issues?.length ?? 0,
+              topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+            });
           }
 
           // Append reviewer notes to output
@@ -1772,18 +1773,16 @@ function persistReviewResult(
   review: { pass: boolean; score: number; issues: any[] },
 ): void {
   try {
-    ctx.db.prepare(
-      `INSERT INTO evaluation_results (result_id, source_type, source_id, pass, score, issues, reviewer_model, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-    ).run(
-      `eval_${Date.now()}`,
-      sourceType,
-      sourceId,
-      review.pass ? 1 : 0,
-      review.score ?? 0,
-      JSON.stringify(review.issues ?? []),
-      'claude-haiku-4-5',
-    );
+    new EvaluationResultRepository(ctx.db).insert({
+      project_id: null,
+      session_id: null,
+      source_type: sourceType,
+      source_id: sourceId,
+      overall_score: review.score ?? 0,
+      dimensions: JSON.stringify({ pass: review.pass, issues: review.issues ?? [] }),
+      feedback: null,
+      evaluator_model: 'claude-haiku-4-5',
+    });
   } catch { /* persistence failure is non-fatal */ }
 }
 
@@ -1825,9 +1824,9 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     let projectRootPath: string | undefined;
     try {
       if (projectId && projectId !== 'global') {
-        const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
-        if (projRow?.root_path && existsSync(projRow.root_path)) {
-          projectRootPath = projRow.root_path;
+        const projRow = ctx.projectRepo.findById(projectId);
+        if (projRow?.rootPath && existsSync(projRow.rootPath)) {
+          projectRootPath = projRow.rootPath;
         }
       }
     } catch { /* best-effort */ }
@@ -2424,17 +2423,11 @@ secretaryRouter.post('/compact', async (c) => {
 
 // ── GET /greeting ──
 secretaryRouter.get('/greeting', (c) => {
-  const { db, costTracker } = getServerContext();
+  const { decisionRepo, workflowRepo, costTracker } = getServerContext();
   const greeter = new GreetingService();
 
-  const pendingDecisions = (
-    db.prepare("SELECT COUNT(*) as count FROM decisions WHERE status = 'pending'").get() as any
-  ).count as number;
-  const activeWorkflows = (
-    db.prepare(
-      "SELECT COUNT(*) as count FROM workflows WHERE status IN ('running', 'awaiting_approval')",
-    ).get() as any
-  ).count as number;
+  const pendingDecisions = decisionRepo.countByStatus('pending');
+  const activeWorkflows = workflowRepo.countByStatus(['running', 'awaiting_approval']);
   const todayCost = costTracker.getDailyCost();
 
   const result = greeter.generate({
