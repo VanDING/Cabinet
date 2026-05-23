@@ -268,20 +268,13 @@ const MessageRow = memo(function MessageRow({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
 
-  const isRoutingMsg = msg.agentName?.startsWith('→');
+  const isRoutingMsg = msg.agentName === '→';
 
   return (
     <div className="group flex flex-col">
       {isRoutingMsg ? (
-        <div className="flex items-center gap-2 py-1">
-          <div className="flex-1 h-px bg-blue-300 dark:bg-blue-700" />
-          <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
-            🔄 {msg.agentName}
-          </span>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500">
-            {msg.timestamp.toLocaleTimeString()}
-          </span>
-          <div className="flex-1 h-px bg-blue-300 dark:bg-blue-700" />
+        <div className="text-[11px] text-gray-400 dark:text-gray-500 py-0.5">
+          {msg.content}
         </div>
       ) : (
         <>
