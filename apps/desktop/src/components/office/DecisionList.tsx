@@ -1,41 +1,57 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { Decision } from '@cabinet/types';
 import { useToast } from '../Toast';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface Props {
   onSelectDecision?: (id: string) => void;
+  projectId?: string;
 }
 
-export const DecisionList = memo(function DecisionList({ onSelectDecision }: Props) {
+export const DecisionList = memo(function DecisionList({ onSelectDecision, projectId }: Props) {
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
-  const fetchDecisions = () => {
-    apiFetch('/api/decisions?status=pending', { headers: authHeaders() })
+  const buildUrl = useCallback(() => {
+    const params = new URLSearchParams({ status: 'pending' });
+    if (projectId) params.set('projectId', projectId);
+    return `/api/decisions?${params.toString()}`;
+  }, [projectId]);
+
+  const fetchDecisions = useCallback(() => {
+    apiFetch(buildUrl(), { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.decisions) setDecisions(data.decisions);
       })
       .catch(() => {
         addToast('error', 'Failed to load decisions');
-      });
-  };
+      })
+      .finally(() => setLoading(false));
+  }, [addToast, buildUrl]);
 
   useEffect(() => {
     fetchDecisions();
-  }, [addToast]);
+  }, [fetchDecisions]);
 
   // Listen for WebSocket decision updates
   useEffect(() => {
     const handleUpdate = () => fetchDecisions();
     window.addEventListener('ws:decision_created', handleUpdate);
     window.addEventListener('ws:decision_updated', handleUpdate);
+
+    // Replay buffered events that arrived before mount
+    const buffered = getBufferedEvents();
+    const hasRelevant = buffered.some((e) => e.type === 'decision_created' || e.type === 'decision_updated');
+    if (hasRelevant) fetchDecisions();
+
     return () => {
       window.removeEventListener('ws:decision_created', handleUpdate);
       window.removeEventListener('ws:decision_updated', handleUpdate);
     };
-  }, [addToast]);
+  }, [fetchDecisions]);
 
   const levelBadge = (level: string) => {
     const colors: Record<string, string> = {
@@ -52,8 +68,13 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision }: Pro
       <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
         Pending Decisions
       </h3>
-      {decisions.length === 0 ? (
-        <p className="text-xs text-gray-400">No pending decisions</p>
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading...</p>
+      ) : decisions.length === 0 ? (
+        <>
+          <p className="text-xs text-gray-400">No pending decisions</p>
+          <p className="mt-1 text-xs text-gray-400">Agents create decisions during meetings and task execution</p>
+        </>
       ) : (
         <div className="space-y-2">
           {decisions.slice(0, 8).map((d) => (

@@ -1,18 +1,31 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useToast } from '../Toast';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface Event {
   message: string;
   time: Date;
 }
 
-export const EventTimeline = memo(function EventTimeline() {
+interface Props {
+  projectId?: string;
+}
+
+export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
   const { addToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const buildUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    const qs = params.toString();
+    return qs ? `/api/dashboard/summary?${qs}` : '/api/dashboard/summary';
+  }, [projectId]);
 
   const fetchEvents = useCallback(() => {
-    apiFetch('/api/dashboard/summary', { headers: authHeaders() })
+    apiFetch(buildUrl(), { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.recentEvents) {
@@ -21,41 +34,56 @@ export const EventTimeline = memo(function EventTimeline() {
       })
       .catch(() => {
         addToast('error', 'Failed to load events');
-      });
-  }, [addToast]);
+      })
+      .finally(() => setLoading(false));
+  }, [addToast, buildUrl]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
   useEffect(() => {
-    window.addEventListener('ws:decision_created', fetchEvents);
-    window.addEventListener('ws:decision_updated', fetchEvents);
-    window.addEventListener('ws:meeting_created', fetchEvents);
-    window.addEventListener('ws:project_created', fetchEvents);
-    window.addEventListener('ws:project_deleted', fetchEvents);
-    window.addEventListener('ws:workflow_started', fetchEvents);
-    window.addEventListener('ws:workflow_completed', fetchEvents);
-    window.addEventListener('ws:task_updated', fetchEvents);
-    window.addEventListener('ws:deliverable_created', fetchEvents);
+    const handler = () => fetchEvents();
+    window.addEventListener('ws:decision_created', handler);
+    window.addEventListener('ws:decision_updated', handler);
+    window.addEventListener('ws:meeting_created', handler);
+    window.addEventListener('ws:project_created', handler);
+    window.addEventListener('ws:project_deleted', handler);
+    window.addEventListener('ws:workflow_started', handler);
+    window.addEventListener('ws:workflow_completed', handler);
+    window.addEventListener('ws:task_updated', handler);
+    window.addEventListener('ws:deliverable_created', handler);
+
+    // Replay buffered events that arrived before mount
+    const buffered = getBufferedEvents();
+    const hasRelevant = buffered.some((e) =>
+      ['decision_created','decision_updated','meeting_created','project_created','project_deleted',
+       'workflow_started','workflow_completed','task_updated','deliverable_created'].includes(e.type));
+    if (hasRelevant) fetchEvents();
+
     return () => {
-      window.removeEventListener('ws:decision_created', fetchEvents);
-      window.removeEventListener('ws:decision_updated', fetchEvents);
-      window.removeEventListener('ws:meeting_created', fetchEvents);
-      window.removeEventListener('ws:project_created', fetchEvents);
-      window.removeEventListener('ws:project_deleted', fetchEvents);
-      window.removeEventListener('ws:workflow_started', fetchEvents);
-      window.removeEventListener('ws:workflow_completed', fetchEvents);
-      window.removeEventListener('ws:task_updated', fetchEvents);
-      window.removeEventListener('ws:deliverable_created', fetchEvents);
+      window.removeEventListener('ws:decision_created', handler);
+      window.removeEventListener('ws:decision_updated', handler);
+      window.removeEventListener('ws:meeting_created', handler);
+      window.removeEventListener('ws:project_created', handler);
+      window.removeEventListener('ws:project_deleted', handler);
+      window.removeEventListener('ws:workflow_started', handler);
+      window.removeEventListener('ws:workflow_completed', handler);
+      window.removeEventListener('ws:task_updated', handler);
+      window.removeEventListener('ws:deliverable_created', handler);
     };
   }, [fetchEvents]);
 
   return (
     <div className="h-full overflow-y-auto rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Recent Events</h3>
-      {events.length === 0 ? (
-        <p className="text-xs text-gray-400">No recent events.</p>
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading...</p>
+      ) : events.length === 0 ? (
+        <>
+          <p className="text-xs text-gray-400">No recent events.</p>
+          <p className="mt-1 text-xs text-gray-400">Activity appears as agents run tasks, meetings, and workflows</p>
+        </>
       ) : (
         <div className="space-y-2">
           {events.map((event, i) => (

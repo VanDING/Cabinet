@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { getBufferedEvents } from '../../utils/eventBuffer.js';
 import { FileText } from 'lucide-react';
 
 interface Deliverable {
@@ -33,13 +34,21 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
   }, [fetchDeliverables]);
 
   useEffect(() => {
-    window.addEventListener('ws:deliverable_created', fetchDeliverables);
-    window.addEventListener('ws:workflow_completed', fetchDeliverables);
-    window.addEventListener('ws:meeting_created', fetchDeliverables);
+    const handler = () => fetchDeliverables();
+    window.addEventListener('ws:deliverable_created', handler);
+    window.addEventListener('ws:workflow_completed', handler);
+    window.addEventListener('ws:meeting_created', handler);
+
+    // Replay buffered events that arrived before mount
+    const buffered = getBufferedEvents();
+    const hasRelevant = buffered.some((e) =>
+      ['deliverable_created', 'workflow_completed', 'meeting_created'].includes(e.type));
+    if (hasRelevant) fetchDeliverables();
+
     return () => {
-      window.removeEventListener('ws:deliverable_created', fetchDeliverables);
-      window.removeEventListener('ws:workflow_completed', fetchDeliverables);
-      window.removeEventListener('ws:meeting_created', fetchDeliverables);
+      window.removeEventListener('ws:deliverable_created', handler);
+      window.removeEventListener('ws:workflow_completed', handler);
+      window.removeEventListener('ws:meeting_created', handler);
     };
   }, [fetchDeliverables]);
 
@@ -62,6 +71,7 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
       ) : items.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
           No deliverables yet
+          <span className="mt-1 block text-[10px] text-gray-400">Meeting reports and workflow outputs appear here</span>
         </div>
       ) : (
         <div className="flex-1 space-y-1.5 overflow-auto">

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface ProgressTask {
   id: string;
@@ -20,32 +21,44 @@ interface ProgressData {
   notes: string[];
 }
 
-export function ProgressBoard() {
+interface Props {
+  projectId?: string;
+}
+
+export function ProgressBoard({ projectId }: Props) {
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProgress = () => {
-    apiFetch('/api/progress?sessionId=default&projectId=default', { headers: authHeaders() })
+  const fetchProgress = useCallback(() => {
+    const pid = projectId ?? 'default';
+    apiFetch(`/api/progress?sessionId=default&projectId=${encodeURIComponent(pid)}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => {
         if (!d.error) setData(d);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  };
+  }, [projectId]);
 
   useEffect(() => {
     fetchProgress();
-  }, []);
+  }, [fetchProgress]);
 
   useEffect(() => {
-    window.addEventListener('ws:task_updated', fetchProgress);
-    window.addEventListener('ws:task_created', fetchProgress);
+    const handler = () => fetchProgress();
+    window.addEventListener('ws:task_updated', handler);
+    window.addEventListener('ws:task_created', handler);
+
+    // Replay buffered events that arrived before mount
+    const buffered = getBufferedEvents();
+    const hasRelevant = buffered.some((e) => e.type === 'task_updated' || e.type === 'task_created');
+    if (hasRelevant) fetchProgress();
+
     return () => {
-      window.removeEventListener('ws:task_updated', fetchProgress);
-      window.removeEventListener('ws:task_created', fetchProgress);
+      window.removeEventListener('ws:task_updated', handler);
+      window.removeEventListener('ws:task_created', handler);
     };
-  }, []);
+  }, [fetchProgress]);
 
   const updateStatus = async (taskId: string, status: string) => {
     await apiFetch('/api/progress', {

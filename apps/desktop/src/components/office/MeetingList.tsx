@@ -1,6 +1,7 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useToast } from '../Toast';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface MeetingItem {
   id: string;
@@ -11,12 +12,22 @@ interface MeetingItem {
   createdAt: string;
 }
 
-export const MeetingList = memo(function MeetingList() {
+interface Props {
+  projectId?: string;
+}
+
+export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   const [meetings, setMeetings] = useState<MeetingItem[]>([]);
   const { addToast } = useToast();
 
-  const fetchMeetings = () => {
-    apiFetch('/api/meetings?limit=20', { headers: authHeaders() })
+  const buildUrl = useCallback(() => {
+    const params = new URLSearchParams({ limit: '20' });
+    if (projectId) params.set('projectId', projectId);
+    return `/api/meetings?${params.toString()}`;
+  }, [projectId]);
+
+  const fetchMeetings = useCallback(() => {
+    apiFetch(buildUrl(), { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
         if (data.meetings) setMeetings(data.meetings);
@@ -24,21 +35,27 @@ export const MeetingList = memo(function MeetingList() {
       .catch(() => {
         addToast('error', 'Failed to load meetings');
       });
-  };
+  }, [addToast, buildUrl]);
 
   useEffect(() => {
     fetchMeetings();
-  }, []);
+  }, [fetchMeetings]);
 
   useEffect(() => {
     const handleUpdate = () => fetchMeetings();
     window.addEventListener('ws:meeting_created', handleUpdate);
     window.addEventListener('ws:meeting_updated', handleUpdate);
+
+    // Replay buffered events that arrived before mount
+    const buffered = getBufferedEvents();
+    const hasRelevant = buffered.some((e) => e.type === 'meeting_created' || e.type === 'meeting_updated');
+    if (hasRelevant) fetchMeetings();
+
     return () => {
       window.removeEventListener('ws:meeting_created', handleUpdate);
       window.removeEventListener('ws:meeting_updated', handleUpdate);
     };
-  }, []);
+  }, [fetchMeetings]);
 
   if (meetings.length === 0) {
     return (
