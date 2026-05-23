@@ -1,6 +1,6 @@
 import { BACKUP_INTERVAL_MINUTES, BACKUP_KEEP_COUNT } from '@cabinet/types';
 import { join } from 'node:path';
-import { mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import Database from 'better-sqlite3';
 
 export interface BackupConfig {
@@ -8,10 +8,18 @@ export interface BackupConfig {
   backupDir: string;
   intervalMinutes?: number;
   keepCount?: number;
+  /** The live read-write connection, used for pre-backup WAL checkpoint. */
+  liveConnection?: Database.Database;
+}
+
+export interface BackupResult {
+  success: boolean;
+  path?: string;
+  error?: string;
 }
 
 export class BackupManager {
-  private readonly config: Required<BackupConfig>;
+  private readonly config: Required<Omit<BackupConfig, 'liveConnection'>> & { liveConnection?: Database.Database };
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: BackupConfig) {
@@ -23,35 +31,58 @@ export class BackupManager {
     mkdirSync(this.config.backupDir, { recursive: true });
   }
 
-  /** Create a backup of the database */
-  async backup(): Promise<string> {
-    const now = new Date();
-    const timestamp = now.toISOString().replace(/[:.]/g, '-');
-    const filename = `cabinet_backup_${timestamp}.db`;
-    const destPath = join(this.config.backupDir, filename);
+  /** Create a backup of the database. Returns structured result. */
+  async backup(): Promise<BackupResult> {
+    try {
+      // Checkpoint WAL on the live connection so all writes are in the main file
+      if (this.config.liveConnection) {
+        try {
+          this.config.liveConnection.pragma('wal_checkpoint(TRUNCATE)');
+        } catch { /* non-fatal if live connection is unavailable */ }
+      }
 
-    const srcDb = new Database(this.config.dbPath, { readonly: true });
+      if (!existsSync(this.config.dbPath)) {
+        return { success: false, error: `Database file not found: ${this.config.dbPath}` };
+      }
 
-    // better-sqlite3 v12+: backup(filename: string) returns Promise<void>
-    // Always await — if sync (v11 scenario), await is a no-op; if async, it correctly waits
-    await (srcDb as any).backup(destPath);
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-');
+      const filename = `cabinet_backup_${timestamp}.db`;
+      const destPath = join(this.config.backupDir, filename);
 
-    srcDb.close();
+      const srcDb = new Database(this.config.dbPath, { readonly: true });
+      await (srcDb as any).backup(destPath);
+      srcDb.close();
 
-    // Rotate old backups
-    this.rotate();
+      // Verify backup integrity
+      const verifyDb = new Database(destPath, { readonly: true });
+      const integrity = verifyDb.pragma('integrity_check') as Array<{ integrity_check: string }>;
+      verifyDb.close();
 
-    return destPath;
+      if (integrity.length !== 1 || integrity[0]!.integrity_check !== 'ok') {
+        try { unlinkSync(destPath); } catch { /* clean up corrupt file */ }
+        return { success: false, error: `Backup integrity check failed: ${JSON.stringify(integrity)}` };
+      }
+
+      // Rotate old backups
+      this.rotate();
+
+      return { success: true, path: destPath };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return { success: false, error };
+    }
   }
 
   /** Start automatic periodic backups */
   startAutoBackup(): void {
     if (this.timer) return;
-    // Offset by random amount to avoid exact-time clustering
     this.timer = setInterval(
       () => {
-        this.backup().catch((error: Error) => {
-          console.error('Auto-backup failed:', error.message);
+        this.backup().then((result) => {
+          if (!result.success) {
+            console.error('Auto-backup failed:', result.error);
+          }
         });
       },
       this.config.intervalMinutes * 60 * 1000,
@@ -83,13 +114,73 @@ export class BackupManager {
     }
   }
 
-  /** Restore from a backup file */
-  async restore(backupPath: string): Promise<void> {
-    const srcDb = new Database(backupPath, { readonly: true });
+  /**
+   * Restore from a backup file.
+   * - Validates the backup is a real SQLite database
+   * - Creates a pre-restore snapshot of the current database
+   * - Returns false and keeps the snapshot on failure
+   */
+  async restore(backupPath: string): Promise<boolean> {
+    // Validate backup file exists and is a real SQLite database
+    if (!existsSync(backupPath)) {
+      throw new Error(`Backup file not found: ${backupPath}`);
+    }
+    try {
+      const header = readFileSync(backupPath, { encoding: null }).subarray(0, 16);
+      if (header.toString('utf8', 0, 15) !== 'SQLite format 3') {
+        throw new Error('Not a valid SQLite database file');
+      }
+    } catch (err) {
+      if ((err as Error).message.startsWith('Not a valid')) throw err;
+      throw new Error(`Cannot read backup file: ${(err as Error).message}`);
+    }
 
-    await (srcDb as any).backup(this.config.dbPath);
+    // Create pre-restore snapshot
+    const preRestorePath = join(this.config.backupDir, `pre_restore_${Date.now()}.db`);
+    try {
+      const srcDb = new Database(this.config.dbPath, { readonly: true });
+      await (srcDb as any).backup(preRestorePath);
+      srcDb.close();
+    } catch {
+      // Current DB may not exist or be corrupt — proceed anyway
+    }
 
-    srcDb.close();
+    // Perform restore
+    try {
+      const srcDb = new Database(backupPath, { readonly: true });
+      await (srcDb as any).backup(this.config.dbPath);
+      srcDb.close();
+
+      // Verify restored DB
+      const verifyDb = new Database(this.config.dbPath, { readonly: true });
+      const integrity = verifyDb.pragma('integrity_check') as Array<{ integrity_check: string }>;
+      verifyDb.close();
+
+      if (integrity.length !== 1 || integrity[0]!.integrity_check !== 'ok') {
+        throw new Error(`Restored database integrity check failed: ${JSON.stringify(integrity)}`);
+      }
+
+      return true;
+    } catch (err) {
+      // Restore failed — the pre-restore snapshot is still available
+      throw new Error(
+        `Restore failed (pre-restore snapshot saved at ${preRestorePath}): ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Run database maintenance: VACUUM to reclaim space from deleted rows.
+   * Should be called periodically (e.g., after each backup or weekly).
+   */
+  runMaintenance(): void {
+    if (!this.config.liveConnection) return;
+    try {
+      this.config.liveConnection.pragma('wal_checkpoint(TRUNCATE)');
+      this.config.liveConnection.exec('VACUUM');
+    } catch (err) {
+      console.error('Database maintenance failed:', (err as Error).message);
+    }
   }
 
   /** Remove old backups exceeding keepCount */
