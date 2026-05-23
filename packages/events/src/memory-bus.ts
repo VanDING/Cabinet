@@ -52,7 +52,11 @@ export class MemoryEventBus implements EventBus {
       subs = new Set();
       this.subscribers.set(messageType, subs);
     }
-    subs.add({ handler, name: name ?? (handler.name || 'anonymous') });
+    const entryName = name ?? (handler.name || 'anonymous');
+    for (const existing of subs) {
+      if (existing.handler === handler) return;
+    }
+    subs.add({ handler, name: entryName });
   }
 
   once(messageType: MessageType, handler: MessageHandler, name?: string): void {
@@ -66,10 +70,9 @@ export class MemoryEventBus implements EventBus {
   unsubscribe(messageType: MessageType, handler: MessageHandler): void {
     const subs = this.subscribers.get(messageType);
     if (subs) {
-      for (const entry of subs) {
+      for (const entry of [...subs]) {
         if (entry.handler === handler) {
           subs.delete(entry);
-          break;
         }
       }
     }
