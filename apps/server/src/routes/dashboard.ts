@@ -1,18 +1,38 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
-import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
+import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD, MessageType } from '@cabinet/types';
+
+const EVENT_LABELS: Record<string, string> = {
+  [MessageType.DecisionRequest]: 'Decision requested',
+  [MessageType.DecisionResolved]: 'Decision resolved',
+  [MessageType.TaskOrder]: 'Task ordered',
+  [MessageType.TaskCompleted]: 'Task completed',
+  [MessageType.TaskFailed]: 'Task failed',
+  [MessageType.MeetingStarted]: 'Meeting started',
+  [MessageType.MeetingCompleted]: 'Meeting completed',
+  [MessageType.DeliberationProposal]: 'Deliberation proposal',
+  [MessageType.WorkflowStarted]: 'Workflow started',
+  [MessageType.WorkflowStatusChanged]: 'Workflow status changed',
+  [MessageType.WorkflowCompleted]: 'Workflow completed',
+  [MessageType.SecretaryMessage]: 'Secretary message',
+  [MessageType.GreetingGenerated]: 'Greeting generated',
+  [MessageType.BudgetAlert]: 'Budget alert',
+  [MessageType.QualityAlert]: 'Quality alert',
+  [MessageType.SystemNotification]: 'System notification',
+  [MessageType.AuditEvent]: 'Audit event',
+};
 
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const { decisionRepo, costTracker, budgetGuard, projectRepo, eventRepo, metrics, logger } =
+  const { decisionRepo, costTracker, budgetGuard, projectRepo, eventRepo, metrics, logger, db } =
     getServerContext();
   const projectId = c.req.query('projectId');
 
   let pendingDecisions = 0,
-    activeProjects = 1;
-  const activeWorkflows = 0;
-  const recentEvents: { message: string; time: Date }[] = [];
+    activeProjects = 1,
+    activeWorkflows = 0;
+  const recentEvents: { message: string; type: string; time: Date }[] = [];
 
   try {
     pendingDecisions = (projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()).length;
@@ -25,9 +45,21 @@ dashboardRouter.get('/summary', (c) => {
     logger.warn('Failed to load projects', { error: (err as Error).message });
   }
   try {
+    const workflowRow = db
+      .prepare("SELECT COUNT(*) as count FROM workflows WHERE status = 'running'")
+      .get() as { count: number } | undefined;
+    activeWorkflows = workflowRow?.count ?? 0;
+  } catch (err) {
+    logger.warn('Failed to load workflows', { error: (err as Error).message });
+  }
+  try {
     const events = eventRepo.findAll().slice(-10);
     for (const e of events) {
-      recentEvents.push({ message: e.messageType, time: e.timestamp });
+      recentEvents.push({
+        message: EVENT_LABELS[e.messageType] ?? e.messageType,
+        type: e.messageType,
+        time: e.timestamp,
+      });
     }
   } catch (err) {
     logger.warn('Failed to load events', { error: (err as Error).message });

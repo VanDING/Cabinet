@@ -85,7 +85,7 @@ const createSchema = z.object({
 });
 
 projectsRouter.post('/', async (c) => {
-  const { db, logger } = getServerContext();
+  const { projectRepo, projectContextRepo, logger } = getServerContext();
   const body = await c.req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -93,13 +93,27 @@ projectsRouter.post('/', async (c) => {
   const d = parsed.data;
   const id = `proj_${Date.now()}`;
 
-  db.prepare(
-    `INSERT INTO projects (id, name, description, root_path, last_activity_at)
-     VALUES (?, ?, ?, ?, datetime('now'))`,
-  ).run(id, d.name, d.description ?? '', d.rootPath ?? '');
+  projectRepo.create({
+    id,
+    name: d.name,
+    description: d.description ?? '',
+    status: 'active',
+    rootPath: d.rootPath ?? '',
+    createdAt: new Date(),
+  });
 
   // Create project_context entry
-  db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(id, '');
+  projectContextRepo.insert({
+    project_id: id,
+    summary: '',
+    goals: '[]',
+    milestones: '[]',
+    constraints: '{}',
+    tech_summary: '',
+    risk_map: '[]',
+    key_decisions: '[]',
+    updated_at: new Date().toISOString(),
+  });
 
   // Auto-detect project info from directory if rootPath provided
   if (d.rootPath && existsSync(d.rootPath)) {
@@ -109,15 +123,11 @@ projectsRouter.post('/', async (c) => {
         const goals = detected.techStack.length > 0
           ? [`Set up ${detected.techStack.join('/')} development environment`, 'Review project structure and dependencies']
           : ['Review project structure', 'Set up development workflow'];
-        db.prepare(
-          `UPDATE project_context SET summary = ?, goals = ?, tech_summary = ?
-           WHERE project_id = ?`,
-        ).run(
-          detected.summary,
-          JSON.stringify(goals),
-          detected.techStack.join(', '),
-          id,
-        );
+        projectContextRepo.update(id, {
+          summary: detected.summary,
+          goals: JSON.stringify(goals),
+          tech_summary: detected.techStack.join(', '),
+        });
         logger.info('Project auto-detected', { id, name: d.name, type: detected.projectType, files: detected.fileCount });
       }
     } catch (e) {
@@ -125,7 +135,7 @@ projectsRouter.post('/', async (c) => {
     }
   }
 
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
+  const project = projectRepo.findById(id)!;
 
   // Write project index file
   writeProjectIndex({
@@ -135,21 +145,43 @@ projectsRouter.post('/', async (c) => {
   logger.info('Project created', { id, name: d.name });
   broadcast('project_created', { id, name: d.name, timestamp: new Date().toISOString() });
 
-  return c.json({ project: rowToProject(row) }, 201);
+  return c.json({ project: {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    status: project.status,
+    rootPath: project.rootPath ?? '',
+    archived: project.archived,
+    lastActivityAt: project.lastActivityAt,
+    icon: 'folder',
+    workflowCount: 0,
+    createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
+  }}, 201);
 });
 
 // ── GET /api/projects/:id ──
 projectsRouter.get('/:id', (c) => {
-  const { db } = getServerContext();
+  const { projectRepo, projectContextRepo } = getServerContext();
   const id = c.req.param('id');
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
-  if (!row) return c.json({ error: 'Project not found' }, 404);
+  const project = projectRepo.findById(id);
+  if (!project) return c.json({ error: 'Project not found' }, 404);
 
   // Load project context
-  const ctx = db.prepare('SELECT * FROM project_context WHERE project_id = ?').get(id) as any;
+  const ctx = projectContextRepo.findByProjectId(id);
 
   return c.json({
-    project: rowToProject(row),
+    project: {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      rootPath: project.rootPath ?? '',
+      archived: project.archived,
+      lastActivityAt: project.lastActivityAt,
+      icon: 'folder',
+      workflowCount: 0,
+      createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
+    },
     context: ctx
       ? {
           summary: ctx.summary,
@@ -165,11 +197,11 @@ projectsRouter.get('/:id', (c) => {
 
 // ── PUT /api/projects/:id ──
 projectsRouter.put('/:id', async (c) => {
-  const { db, logger } = getServerContext();
+  const { projectRepo, db, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
 
-  const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
+  const existing = projectRepo.findById(id);
   if (!existing) return c.json({ error: 'Project not found' }, 404);
 
   const sets: string[] = [];
@@ -188,47 +220,58 @@ projectsRouter.put('/:id', async (c) => {
     broadcast('project_updated', { id, name: body.name ?? existing.name, timestamp: new Date().toISOString() });
   }
 
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
-  return c.json({ project: rowToProject(row) });
+  const updated = projectRepo.findById(id);
+  return c.json({ project: {
+    id: updated!.id,
+    name: updated!.name,
+    description: updated!.description,
+    status: updated!.status,
+    rootPath: updated!.rootPath ?? '',
+    archived: updated!.archived,
+    lastActivityAt: updated!.lastActivityAt,
+    icon: (body as any).icon ?? 'folder',
+    workflowCount: 0,
+    createdAt: updated!.createdAt instanceof Date ? updated!.createdAt.toISOString() : updated!.createdAt,
+  }});
 });
 
 // ── POST /api/projects/:id/archive ──
 projectsRouter.post('/:id/archive', (c) => {
-  const { db, logger } = getServerContext();
+  const { projectRepo, db, logger } = getServerContext();
   const id = c.req.param('id');
   db.prepare('UPDATE projects SET archived = 1 WHERE id = ?').run(id);
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
-  if (row) writeProjectIndex(rowToProject(row));
+  const project = projectRepo.findById(id);
+  if (project) writeProjectIndex({ ...project, createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : String(project.createdAt) });
   logger.info('Project archived', { id });
   return c.json({ archived: true });
 });
 
 // ── POST /api/projects/:id/restore ──
 projectsRouter.post('/:id/restore', (c) => {
-  const { db, logger } = getServerContext();
+  const { projectRepo, db, logger } = getServerContext();
   const id = c.req.param('id');
   db.prepare('UPDATE projects SET archived = 0 WHERE id = ?').run(id);
-  const restored = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
-  if (restored) writeProjectIndex(rowToProject(restored));
+  const restored = projectRepo.findById(id);
+  if (restored) writeProjectIndex({ ...restored, createdAt: restored.createdAt instanceof Date ? restored.createdAt.toISOString() : String(restored.createdAt) });
   logger.info('Project restored', { id });
   return c.json({ restored: true });
 });
 
 // ── DELETE /api/projects/:id ──
 projectsRouter.delete('/:id', (c) => {
-  const { db, logger } = getServerContext();
+  const { projectRepo, projectContextRepo, decisionRepo, employeeRepo, db, logger } = getServerContext();
   const id = c.req.param('id');
 
   // Get project name before deletion for broadcast
-  const projRow = db.prepare('SELECT name FROM projects WHERE id = ?').get(id) as any;
-  const projName = projRow?.name ?? id;
+  const proj = projectRepo.findById(id);
+  const projName = proj?.name ?? id;
 
   // Cascade cleanup
-  db.prepare('DELETE FROM project_context WHERE project_id = ?').run(id);
+  projectContextRepo.delete(id);
   db.prepare('DELETE FROM workflows WHERE project_id = ?').run(id);
-  db.prepare('DELETE FROM decisions WHERE project_id = ?').run(id);
-  db.prepare('DELETE FROM employees WHERE project_id = ?').run(id);
-  db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  decisionRepo.deleteByProject(id);
+  employeeRepo.deleteByProject(id);
+  projectRepo.delete(id);
 
   // Remove project index file
   removeProjectIndex(id);
@@ -240,12 +283,12 @@ projectsRouter.delete('/:id', (c) => {
 
 // ── GET /api/projects/:id/files ──
 projectsRouter.get('/:id/files', (c) => {
-  const { db } = getServerContext();
+  const { projectRepo } = getServerContext();
   const id = c.req.param('id');
-  const row = db.prepare('SELECT root_path FROM projects WHERE id = ?').get(id) as any;
-  if (!row?.root_path) return c.json({ files: [], rootPath: null });
+  const project = projectRepo.findById(id);
+  if (!project?.rootPath) return c.json({ files: [], rootPath: null });
 
-  const rootPath = row.root_path;
+  const rootPath = project.rootPath;
   if (!existsSync(rootPath)) return c.json({ files: [], rootPath });
 
   const files = collectFileTree(rootPath, rootPath);
@@ -254,20 +297,16 @@ projectsRouter.get('/:id/files', (c) => {
 
 // ── GET /api/projects/:id/context ──
 projectsRouter.get('/:id/context', (c) => {
-  const { db } = getServerContext();
+  const { projectRepo, projectContextRepo, decisionRepo } = getServerContext();
   const id = c.req.param('id');
 
-  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as any;
+  const project = projectRepo.findById(id);
   if (!project) return c.json({ error: 'Project not found' }, 404);
 
-  const ctx = db.prepare('SELECT * FROM project_context WHERE project_id = ?').get(id) as any;
+  const ctx = projectContextRepo.findByProjectId(id);
 
   // Also load recent decisions for this project
-  const decisions = db
-    .prepare(
-      "SELECT id, title, status, level FROM decisions WHERE project_id = ? ORDER BY created_at DESC LIMIT 10",
-    )
-    .all(id) as any[];
+  const decisions = decisionRepo.listByProject(id, { limit: 10 });
 
   return c.json({
     project: {
