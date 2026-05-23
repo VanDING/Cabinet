@@ -304,7 +304,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       name: 'set_captain_preferences',
       execute: async (args: Record<string, unknown>) => {
         const captainId = (args.captainId as string) ?? 'captain-1';
-        const name = (args.name as string) ?? captainId;
+        const name = (args.name as string) ?? 'Captain';
         const prefs = (args.preferences as Record<string, unknown>) ?? {};
         deps.entity.setPreferences(captainId, name, prefs);
         return { updated: true, captainId };

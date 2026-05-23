@@ -53,7 +53,7 @@ export class PreferenceLearner {
 
     const profile = await this.analyzeCallback(captainId, history, existingPrefs);
 
-    this.entity.setPreferences(captainId, existing?.name ?? captainId, {
+    this.entity.setPreferences(captainId, existing?.name ?? 'Captain', {
       ...existingPrefs,
       preferenceProfile: profile,
       lastPreferenceAnalysis: new Date().toISOString(),
