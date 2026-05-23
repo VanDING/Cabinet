@@ -3,16 +3,18 @@ import { buildCausationChain, validateCausation, isRootEvent } from '../causatio
 import { MessageType } from '@cabinet/types';
 import type { MessageEnvelope } from '@cabinet/types';
 
-function makeEnvelope(overrides: Partial<MessageEnvelope> = {}): MessageEnvelope {
+function makeEnvelope(
+  overrides: Partial<Pick<MessageEnvelope, 'messageId' | 'correlationId' | 'causationId' | 'timestamp'>> = {},
+): MessageEnvelope {
   return {
     messageId: 'msg-1',
     correlationId: 'corr-1',
     causationId: null,
     timestamp: new Date(),
     messageType: MessageType.SecretaryMessage,
-    payload: { text: 'test' },
+    payload: { sessionId: 'sess-1', content: 'test' },
     ...overrides,
-  };
+  } as MessageEnvelope;
 }
 
 describe('buildCausationChain', () => {

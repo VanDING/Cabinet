@@ -41,7 +41,7 @@ describe('SqliteEventStore specific', () => {
       causationId: null,
       timestamp: new Date('2026-01-01T10:00:00Z'),
       messageType: MessageType.SecretaryMessage,
-      payload: { text: 'start' },
+      payload: { sessionId: 'sess-1', content: 'start' },
     });
     await store.publish({
       messageId: 'child-msg',
@@ -74,7 +74,7 @@ describe('SqliteEventStore specific', () => {
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.SecretaryMessage,
-      payload: { text: 'persistent' },
+      payload: { sessionId: 'sess-1', content: 'persistent' },
     });
 
     const store2 = new SqliteEventStore(new EventLogRepository(getConnection()));

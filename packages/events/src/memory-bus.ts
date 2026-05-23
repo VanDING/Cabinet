@@ -1,12 +1,18 @@
 import type { MessageEnvelope, MessageType } from '@cabinet/types';
 import type { EventBus, MessageHandler } from './bus';
 import { buildCausationChain } from './causation.js';
+import { DeadLetterQueue } from './dead-letter.js';
 
 const MAX_EVENTS = 1000;
 
 export class MemoryEventBus implements EventBus {
-  private readonly subscribers = new Map<MessageType, Set<MessageHandler>>();
+  private readonly subscribers = new Map<MessageType, Set<{ handler: MessageHandler; name: string }>>();
   private readonly events: MessageEnvelope[] = [];
+  readonly deadLetterQueue = new DeadLetterQueue();
+
+  constructor() {
+    this.deadLetterQueue.setRetryBus(this);
+  }
 
   async publish(envelope: MessageEnvelope): Promise<void> {
     // Immutable append
@@ -17,29 +23,61 @@ export class MemoryEventBus implements EventBus {
       this.events.splice(0, this.events.length - MAX_EVENTS);
     }
 
-    const handlers = this.subscribers.get(envelope.messageType);
-    if (handlers) {
-      for (const handler of handlers) {
+    const subs = this.subscribers.get(envelope.messageType);
+    if (subs) {
+      for (const { handler, name } of subs) {
         try {
           await handler(envelope);
-        } catch {
-          // Isolate handler errors so one failing subscriber doesn't block others
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error(
+            `[MemoryEventBus] Handler error (${name}): ${error.message}`,
+          );
+          this.deadLetterQueue.enqueue({
+            envelope,
+            error: error.message,
+            stack: error.stack,
+            handlerName: name,
+            messageType: envelope.messageType,
+            failedAt: new Date().toISOString(),
+          });
         }
       }
     }
   }
 
-  subscribe(messageType: MessageType, handler: MessageHandler): void {
-    let handlers = this.subscribers.get(messageType);
-    if (!handlers) {
-      handlers = new Set();
-      this.subscribers.set(messageType, handlers);
+  subscribe(messageType: MessageType, handler: MessageHandler, name?: string): void {
+    let subs = this.subscribers.get(messageType);
+    if (!subs) {
+      subs = new Set();
+      this.subscribers.set(messageType, subs);
     }
-    handlers.add(handler);
+    subs.add({ handler, name: name ?? (handler.name || 'anonymous') });
+  }
+
+  once(messageType: MessageType, handler: MessageHandler, name?: string): void {
+    const wrapped: MessageHandler = (msg) => {
+      this.unsubscribe(messageType, wrapped);
+      return handler(msg);
+    };
+    this.subscribe(messageType, wrapped, name ?? (handler.name || 'anonymous'));
   }
 
   unsubscribe(messageType: MessageType, handler: MessageHandler): void {
-    this.subscribers.get(messageType)?.delete(handler);
+    const subs = this.subscribers.get(messageType);
+    if (subs) {
+      for (const entry of subs) {
+        if (entry.handler === handler) {
+          subs.delete(entry);
+          break;
+        }
+      }
+    }
+  }
+
+  dispose(): void {
+    this.subscribers.clear();
+    this.events.length = 0;
   }
 
   async getCausationChain(correlationId: string): Promise<MessageEnvelope[]> {
@@ -49,6 +87,32 @@ export class MemoryEventBus implements EventBus {
     const leaf = filtered.find((e) => !childIds.has(e.messageId));
     if (!leaf) return filtered;
     return buildCausationChain(leaf.messageId, filtered);
+  }
+
+  /**
+   * Replay buffered events to a handler. Returns the number of events replayed.
+   * Note: only events still in the ring buffer (last 1000) are available.
+   */
+  async replay(
+    since: Date,
+    handler: MessageHandler,
+    messageType?: MessageType,
+  ): Promise<number> {
+    const filtered = this.events.filter((e) => {
+      if (e.timestamp < since) return false;
+      if (messageType && e.messageType !== messageType) return false;
+      return true;
+    });
+    let count = 0;
+    for (const event of filtered) {
+      try {
+        await handler(event);
+        count++;
+      } catch {
+        // Skip events that fail during replay
+      }
+    }
+    return count;
   }
 
   /** Get all published events (for testing and debugging only) */
