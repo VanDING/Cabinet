@@ -34,7 +34,7 @@ export function runEventBusContractTests(
         causationId: null,
         timestamp: new Date(),
         messageType: MessageType.SecretaryMessage,
-        payload: { text: 'Hello' },
+        payload: { sessionId: 'sess-1', content: 'Hello' },
       };
 
       await bus.publish(envelope);
@@ -78,7 +78,7 @@ export function runEventBusContractTests(
         causationId: null,
         timestamp: new Date(),
         messageType: MessageType.SecretaryMessage,
-        payload: { text: 'Hi' },
+        payload: { sessionId: 'sess-1', content: 'Hi' },
       });
 
       expect(received).toHaveLength(0);

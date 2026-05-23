@@ -11,10 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cabinet/storage": "workspace:*"
+    "@cabinet/storage": "workspace:*",
+    "@cabinet/types": "workspace:*"
   },
   "devDependencies": {
-    "@cabinet/types": "workspace:*",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   }
