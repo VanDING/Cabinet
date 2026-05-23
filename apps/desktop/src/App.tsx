@@ -12,6 +12,7 @@ import { useNotifications } from './components/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { MobileNav } from './components/MobileNav';
 import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
+import { addToEventBuffer } from './utils/eventBuffer.js';
 import type { MeetingData } from './components/MeetingCard';
 import { readSSEStream } from './utils/streaming.js';
 import { ProjectExplorer } from './components/ProjectExplorer';
@@ -91,8 +92,14 @@ export function App() {
   }, [refreshProjects, activeProjectId]);
 
   // WebSocket for real-time events — batched as low-priority updates
-  useWebSocket((type, data) => {
+  const { connected: wsConnected } = useWebSocket((type, data) => {
+    // Buffer event for late-mounting widgets
+    addToEventBuffer(type, data.data ?? {});
     window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
+    // Also dispatch project_deleted without prefix for Navigation listener
+    if (type === 'project_deleted') {
+      window.dispatchEvent(new CustomEvent('project_deleted', { detail: data.data?.name }));
+    }
     startTransition(() => {
       if (type === 'decision_created') addNotification('decision', 'Decision created', data.data?.title ?? 'Untitled');
       if (type === 'decision_updated') addNotification('decision', `Decision ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
@@ -104,8 +111,22 @@ export function App() {
       if (type === 'workflow_completed') addNotification('workflow', 'Workflow completed', data.data?.name ?? 'Untitled');
       if (type === 'deliverable_created') addNotification('deliverable', 'Deliverable created', data.data?.title ?? 'Untitled');
       if (type === 'task_updated') addNotification('task', `Task ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
+      if (type === 'budget_alert') addNotification('system', 'Budget alert', data.data?.reason ?? 'Budget limit exceeded');
+      if (type === 'quality_alert') addNotification('system', `Quality review — score ${data.data?.score ?? 'N/A'}`, data.data?.topIssue ?? 'Review issues detected');
     });
   });
+
+  // Toast on WebSocket disconnect / reconnect
+  const prevWsConnected = useRef(wsConnected);
+  useEffect(() => {
+    if (prevWsConnected.current && !wsConnected) {
+      addToast('warning', 'Real-time connection lost. Reconnecting...');
+    }
+    if (!prevWsConnected.current && wsConnected) {
+      addToast('success', 'Real-time connection restored.');
+    }
+    prevWsConnected.current = wsConnected;
+  }, [wsConnected, addToast]);
 
   const {
     sessions,

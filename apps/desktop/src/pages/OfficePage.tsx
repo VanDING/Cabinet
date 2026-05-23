@@ -225,12 +225,21 @@ export function OfficePage() {
 
   const handleWidgetClick = (type: string) => {
     if (type === 'today-cost') {
-      // Fetch simulated cost details
-      setCostDetails([
-        { model: 'claude-sonnet-4-6', cost: 1.23 },
-        { model: 'claude-haiku-4-5', cost: 0.45 },
-        { model: 'gpt-4o', cost: 0.89 },
-      ]);
+      apiFetch('/api/dashboard/cost-history?days=1', { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((data) => {
+          const todayEntry = data.history?.[0];
+          if (todayEntry?.byModel) {
+            const details = Object.entries(todayEntry.byModel).map(([model, cost]) => ({
+              model,
+              cost: cost as number,
+            }));
+            setCostDetails(details.length > 0 ? details : [{ model: 'No usage today', cost: 0 }]);
+          } else {
+            setCostDetails([{ model: 'No usage today', cost: 0 }]);
+          }
+        })
+        .catch(() => setCostDetails([{ model: 'Unavailable', cost: 0 }]));
       setExpandedWidget('today-cost');
     } else if (type === 'active-projects') {
       setExpandedWidget('active-projects');
@@ -281,9 +290,9 @@ export function OfficePage() {
       case 'active-workflows':
         return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" />;
       case 'decision-list':
-        return <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} />;
+        return <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />;
       case 'event-timeline':
-        return <EventTimeline />;
+        return <EventTimeline projectId={projectId} />;
       case 'project-switcher':
         return <ProjectSwitcherWidget />;
       case 'cost-chart':
@@ -295,19 +304,19 @@ export function OfficePage() {
       case 'agent-health':
         return <ObservabilityWidget />;
       case 'deliverables':
-        return <Deliverables />;
+        return <Deliverables projectId={projectId} />;
       case 'project-list':
         return <ProjectList />;
       case 'api-switcher':
         return <ApiSwitcher />;
       case 'progress-board':
-        return <ProgressBoard />;
+        return <ProgressBoard projectId={projectId} />;
       case 'tokens-usage':
         return <TokensWidget />;
       case 'meeting-list':
-        return <MeetingList />;
+        return <MeetingList projectId={projectId} />;
       case 'calendar':
-        return <Calendar />;
+        return <Calendar projectId={projectId} />;
       case 'clock':
         return <Clock />;
       case 'weather':
