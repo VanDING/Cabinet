@@ -2,7 +2,8 @@ import type { ServerContext } from './context.js';
 import { DocumentChunkRepository } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, relative, dirname, extname, resolve } from 'node:path';
+import { join, relative, dirname, extname, resolve, isAbsolute } from 'node:path';
+import { homedir } from 'node:os';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -59,6 +60,14 @@ async function resolveSafePath(filePath: string): Promise<string> {
   try {
     return await realpath(fullPath);
   } catch {
+    // File does not exist — still validate path does not escape cwd or home directory
+    const relCwd = relative(process.cwd(), fullPath);
+    const relHome = relative(homedir(), fullPath);
+    const outsideCwd = relCwd.startsWith('..') || isAbsolute(relCwd);
+    const outsideHome = relHome.startsWith('..') || isAbsolute(relHome);
+    if (outsideCwd && outsideHome) {
+      throw new Error(`Path traversal blocked: ${filePath}`);
+    }
     return fullPath;
   }
 }
@@ -143,6 +152,8 @@ export function buildEnvironmentSection(projectRootPath?: string): string {
 
 function detectDangerousCommand(command: string): string | null {
   const lower = command.toLowerCase();
+
+  // Destructive filesystem operations
   if (/\brm\s+-rf\s+\//.test(lower)) return 'rm -rf /';
   if (/\bdd\s+if=/.test(lower)) return 'dd';
   if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
@@ -150,6 +161,24 @@ function detectDangerousCommand(command: string): string | null {
   if (/\bmkfs\./.test(lower)) return 'mkfs';
   if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow')) return 'sensitive system file';
   if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
+
+  // Pipeline to interpreter execution (curl/wget | sh/bash)
+  if (/(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/.test(lower)) return 'pipe to shell';
+
+  // Interpreter one-liners that can execute arbitrary code
+  if (/\b(python|python3|py)\b.*-c\b/.test(lower)) return 'python one-liner';
+  if (/\b(node|nodejs)\b.*-e\b/.test(lower)) return 'node one-liner';
+  if (/\b(perl|ruby|php)\b.*-e\b/.test(lower)) return 'interpreter one-liner';
+  if (/\bpowershell\b.*-encodedcommand/.test(lower)) return 'encoded powershell';
+
+  // Persistence vectors
+  if (/>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/.test(lower)) return 'shell persistence';
+  if (/\becho\b.*>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile)/.test(lower)) return 'shell persistence';
+
+  // Credential harvesting
+  if (/\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/.test(lower)) return 'SSH key exfil';
+  if (/\bfind\b.*-name\s*id_rsa/.test(lower)) return 'SSH key search';
+
   return null;
 }
 
@@ -483,14 +512,18 @@ export function createShellCapabilities(_ctx: CapabilitiesContext) {
       if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
       const workDir = cwd ? await resolveSafePath(cwd) : process.cwd();
 
-      const { stdout, stderr } = await execAsync(command, {
-        cwd: workDir,
-        timeout: timeout ?? 60000,
-        maxBuffer: 10 * 1024 * 1024,
-        env: buildSafeEnv(),
-        shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
-      });
-      return { stdout, stderr, exitCode: 0 };
+      try {
+        const { stdout, stderr } = await execAsync(command, {
+          cwd: workDir,
+          timeout: timeout ?? 60000,
+          maxBuffer: 10 * 1024 * 1024,
+          env: buildSafeEnv(),
+          shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
+        });
+        return { stdout, stderr, exitCode: 0 };
+      } catch (err: any) {
+        return { stdout: err.stdout ?? '', stderr: err.stderr ?? '', exitCode: err.code ?? 1 };
+      }
     },
   };
 }
