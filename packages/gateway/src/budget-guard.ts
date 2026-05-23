@@ -38,11 +38,18 @@ export class BudgetGuard {
   /** Check if a call should be allowed based on budget. Blocks non-L3 calls when at critical. */
   canProceed(decisionLevel?: string): { allowed: boolean; reason?: string } {
     const statuses = this.checkAll();
-    const critical = statuses.find((s) => s.level === 'blocked');
+    const blocked = statuses.find((s) => s.level === 'blocked');
+    const critical = statuses.find((s) => s.level === 'critical');
+    if (blocked) {
+      return {
+        allowed: false,
+        reason: `${blocked.period} budget exceeded: $${blocked.currentSpend.toFixed(2)} / $${blocked.limit.toFixed(2)}`,
+      };
+    }
     if (critical && decisionLevel !== 'L3') {
       return {
         allowed: false,
-        reason: `${critical.period} budget exceeded: $${critical.currentSpend.toFixed(2)} / $${critical.limit.toFixed(2)}`,
+        reason: `${critical.period} budget nearly exhausted: $${critical.currentSpend.toFixed(2)} / $${critical.limit.toFixed(2)}`,
       };
     }
     return { allowed: true };

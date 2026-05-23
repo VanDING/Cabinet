@@ -155,7 +155,8 @@ export class WorkflowEngine {
 
     // Execute children of the current (just-approved) node
     const children = graph.get(run.currentNodeId) ?? [];
-    const visited = new Set(run.steps.map((s) => s.nodeId));
+    // Do not reuse global visited from previous steps — allow loops and re-execution after resume
+    const visited = new Set<string>();
 
     try {
       for (const child of children) {
@@ -409,26 +410,16 @@ export class WorkflowEngine {
         const aggregation = (d.aggregation as string) ?? 'all';
 
         if (aggregation === 'first') {
-          // Race: take the first successful child result
-          let firstOutput = '';
-          let settled = false;
-          const pending = children.map(async (id) => {
-            // Each child is a promise that resolves when executeNode completes
-            return new Promise<string>((resolve) => {
-              // Wrap executeNode to capture its output
-              this.executeNode(id, nodeMap, graph, run, visited).then(() => {
-                const childStep = run.steps.find((s) => s.nodeId === id);
-                if (!settled) {
-                  settled = true;
-                  firstOutput = childStep?.output ?? '';
-                  resolve(firstOutput);
-                }
-              });
-            });
-          });
-          await Promise.any(pending);
-          // Kill remaining... we can't easily cancel, but we can mark
-          output = firstOutput || 'No child completed';
+          // Sequential first-completed to avoid orphaned executions mutating shared run state
+          for (const id of children) {
+            await this.executeNode(id, nodeMap, graph, run, visited);
+            const childStep = run.steps.find((s) => s.nodeId === id);
+            if (childStep?.output) {
+              output = childStep.output;
+              break;
+            }
+          }
+          if (!output) output = 'No child completed';
         } else {
           const childResults = await Promise.allSettled(
             children.map((id) => this.executeNode(id, nodeMap, graph, run, visited)),
