@@ -2111,7 +2111,7 @@ secretaryRouter.post('/chat', async (c) => {
                     emit('routing_start', { targetAgent });
                   },
                   onChunk(content) {
-                    streamedContent = content;
+                    streamedContent += content;
                     emit('chunk', { content });
                   },
                   onThinking(content) {
