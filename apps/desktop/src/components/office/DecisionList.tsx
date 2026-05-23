@@ -14,8 +14,11 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
+  const pending = decisions.filter((d) => d.status === 'pending');
+  const resolved = decisions.filter((d) => d.status !== 'pending').slice(0, 4);
+
   const buildUrl = useCallback(() => {
-    const params = new URLSearchParams({ status: 'pending' });
+    const params = new URLSearchParams({ status: 'all' });
     if (projectId) params.set('projectId', projectId);
     return `/api/decisions?${params.toString()}`;
   }, [projectId]);
@@ -63,31 +66,45 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
     return colors[level] ?? 'bg-gray-100 text-gray-500';
   };
 
+  const statusBadge = (status: string) => {
+    if (status === 'pending') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    if (status === 'approved') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+    if (status === 'rejected') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+    return 'bg-gray-100 text-gray-500';
+  };
+
   return (
     <div className="h-full overflow-y-auto rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
-        Pending Decisions
+        Decisions
+        {pending.length > 0 && (
+          <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            {pending.length} pending
+          </span>
+        )}
       </h3>
       {loading ? (
         <p className="text-xs text-gray-400">Loading...</p>
       ) : decisions.length === 0 ? (
         <>
-          <p className="text-xs text-gray-400">No pending decisions</p>
+          <p className="text-xs text-gray-400">No decisions yet</p>
           <p className="mt-1 text-xs text-gray-400">Agents create decisions during meetings and task execution</p>
         </>
       ) : (
         <div className="space-y-2">
-          {decisions.slice(0, 8).map((d) => (
+          {/* Pending first */}
+          {pending.slice(0, 6).map((d) => (
             <button
               key={d.id}
               onClick={() => onSelectDecision?.(d.id)}
               className="w-full rounded border p-3 text-left transition-colors hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
             >
               <div className="mb-1 flex items-center gap-2">
-                <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${levelBadge(d.level)}`}
-                >
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${levelBadge(d.level)}`}>
                   {d.level}
+                </span>
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}>
+                  {d.status}
                 </span>
                 <span className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
                   {d.title}
@@ -111,6 +128,28 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
               </div>
             </button>
           ))}
+
+          {/* Recently resolved */}
+          {resolved.length > 0 && (
+            <>
+              <div className="my-2 border-t dark:border-gray-700" />
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Recently resolved</p>
+              {resolved.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => onSelectDecision?.(d.id)}
+                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-blue-300 hover:bg-gray-50 hover:opacity-100 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}>
+                      {d.status}
+                    </span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{d.title}</span>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

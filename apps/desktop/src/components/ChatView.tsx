@@ -6,6 +6,7 @@ import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
 import { WorkflowRunCard } from './WorkflowRunCard';
+import { TaskPanel } from './TaskPanel';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -396,28 +397,6 @@ const MessageRow = memo(function MessageRow({
             </div>
           )}
         </div>
-        {msg.role === 'assistant' && (msg.toolCalls?.length || msg.durationMs || msg.usage) && (
-          <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
-            {msg.usage?.model && (
-              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">{msg.usage.model}</span>
-            )}
-            {msg.toolCalls && msg.toolCalls.length > 0 && (
-              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
-                {msg.toolCalls.length} tool{msg.toolCalls.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {msg.durationMs !== undefined && (
-              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
-                {(msg.durationMs / 1000).toFixed(1)}s
-              </span>
-            )}
-            {msg.usage && (
-              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
-                {msg.usage.promptTokens + msg.usage.completionTokens} tokens
-              </span>
-            )}
-          </div>
-        )}
         <div className="text-gray-800 dark:text-gray-200">
           {editing ? (
             <div className="space-y-2">
@@ -456,28 +435,16 @@ const MessageRow = memo(function MessageRow({
                   <span>Error</span>
                 </div>
               )}
+              {msg.tasks && msg.tasks.length > 0 && (
+                <TaskPanel tasks={msg.tasks} isDark={isDark} />
+              )}
               {msg.thinking && (() => {
                 const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
-                const segments = msg.thinking.split('\n<!--segment-->\n').filter(Boolean);
-                if (segments.length <= 1) {
-                  return (
-                    <details className="thinking-block">
-                      <summary className="thinking-summary">{t('chat.thinking')} {duration}</summary>
-                      <pre className="thinking-content">{msg.thinking.replace('\n<!--segment-->\n', '')}</pre>
-                    </details>
-                  );
-                }
                 return (
-                  <>
-                    {segments.map((seg, i) => (
-                      <details key={i} className="thinking-block">
-                        <summary className="thinking-summary">
-                          {t('chat.thinking')} {i + 1}/{segments.length} {duration}
-                        </summary>
-                        <pre className="thinking-content">{seg.trim()}</pre>
-                      </details>
-                    ))}
-                  </>
+                  <details className="thinking-block">
+                    <summary className="thinking-summary">{t('chat.thinking')} {duration}</summary>
+                    <pre className="thinking-content">{msg.thinking.replace(/\n?<!--segment-->\n?/g, '\n')}</pre>
+                  </details>
                 );
               })()}
               {msg.toolCalls && msg.toolCalls.length > 0 && (
