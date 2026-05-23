@@ -325,7 +325,7 @@ export function getServerContext(): ServerContext {
         const total = trimmed.length;
         const approvalRate = total > 0 ? approvals / total : 0;
 
-        entity.setPreferences(cid, existing?.name ?? cid, {
+        entity.setPreferences(cid, existing?.name ?? 'Captain', {
           ...existingPrefs,
           decisionHistory: trimmed,
           decisionStats: {
