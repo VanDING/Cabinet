@@ -87,7 +87,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
               {m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''}
             </span>
           </div>
-          {m.tags.length > 0 && (
+          {m.tags?.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {m.tags.map((tag) => (
                 <span
