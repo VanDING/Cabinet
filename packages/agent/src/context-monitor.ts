@@ -166,11 +166,13 @@ export class ContextMonitor {
           messageType: MessageType.SystemNotification,
           payload: {
             type: 'context_zone_alert',
-            zone,
-            utilization: snap.utilization,
-            estimatedTokens: snap.estimatedTokens,
-            maxTokens: snap.maxTokens,
-            breakdown: snap.breakdown,
+            data: {
+              zone,
+              utilization: snap.utilization,
+              estimatedTokens: snap.estimatedTokens,
+              maxTokens: snap.maxTokens,
+              breakdown: snap.breakdown,
+            },
           },
         })
         .catch(() => {
