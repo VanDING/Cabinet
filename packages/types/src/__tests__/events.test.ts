@@ -45,7 +45,7 @@ describe('MessageEnvelope', () => {
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.SecretaryMessage,
-      payload: { text: 'Hello' },
+      payload: { sessionId: 'sess-1', content: 'Hello' },
     };
     expect(envelope.causationId).toBeNull();
   });

@@ -116,9 +116,8 @@ export interface SkillDefinition {
 
 export type WorkflowStepType = 'start' | 'end' | 'skill' | 'aiAgent' | 'llmCall' | 'condition' | 'parallel' | 'human' | 'humanApproval' | 'dataQuery' | 'notification' | 'wait';
 
-export type WorkflowOutputFormat = 'json' | 'markdown' | 'text';
-
-export type WorkflowFailureMode = 'halt' | 'skip' | 'retry';
+/** Runtime node type — alias for WorkflowStepType. Used by the workflow engine. */
+export type WorkflowNodeType = WorkflowStepType;
 
 export interface WorkflowStep {
   id: string;
@@ -168,8 +167,8 @@ export interface WorkflowDefinition {
   capabilities?: WorkflowCapabilities;
 }
 
-/** Legacy status values for persisted workflows. */
-export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
+/** Lifecycle status for a workflow definition. */
+export type WorkflowDefinitionStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
 
 // ── Memory ──
 

@@ -1,3 +1,5 @@
+import type { BudgetPeriod } from './boundaries.js';
+
 // ── MessageType ──
 
 export const MessageType = {
@@ -28,20 +30,7 @@ export const MessageType = {
 
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 
-// ── MessageEnvelope ──
-
-export interface MessageEnvelope {
-  readonly messageId: string;
-  readonly correlationId: string;
-  readonly causationId: string | null;
-  readonly timestamp: Date;
-  readonly messageType: MessageType;
-  readonly payload: Record<string, unknown>;
-  /** Optional expiry time. Events past this time may be cleaned up. */
-  readonly expiresAt?: Date;
-}
-
-// ── Payload Types ──
+// ── Payload Interfaces ──
 
 export interface DecisionRequest {
   decisionId: string;
@@ -76,6 +65,11 @@ export interface DeliberationProposal {
   minorityReport?: string;
 }
 
+export interface WorkflowStarted {
+  workflowId: string;
+  projectId?: string;
+}
+
 export interface WorkflowStatusChanged {
   workflowId: string;
   runId: string;
@@ -83,11 +77,48 @@ export interface WorkflowStatusChanged {
   status: string;
 }
 
+export interface WorkflowCompleted {
+  workflowId: string;
+  runId: string;
+  status: string;
+}
+
+export interface SecretaryMessage {
+  sessionId: string;
+  content: string;
+  role?: string;
+}
+
+export interface GreetingGenerated {
+  sessionId: string;
+  greeting: string;
+}
+
 export interface BudgetAlert {
   level: 'warning' | 'critical';
   currentSpend: number;
   limit: number;
-  period: 'daily' | 'weekly' | 'monthly';
+  period: BudgetPeriod;
+}
+
+export interface QualityAlert {
+  type: string;
+  message: string;
+  severity?: 'low' | 'medium' | 'high';
+}
+
+export interface SystemNotification {
+  type: string;
+  message?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface AuditEvent {
+  entityType: string;
+  entityId: string;
+  action: string;
+  actor?: string;
+  changes?: Record<string, unknown>;
 }
 
 export interface MeetingStarted {
@@ -105,3 +136,40 @@ export interface MeetingCompleted {
   reviewPassed: boolean;
   decisionId?: string;
 }
+
+// ── Payload Map (MessageType → Payload) ──
+
+export interface PayloadMap {
+  [MessageType.DecisionRequest]: DecisionRequest;
+  [MessageType.DecisionResolved]: DecisionResolved;
+  [MessageType.TaskOrder]: TaskOrder;
+  [MessageType.TaskCompleted]: TaskCompleted;
+  [MessageType.TaskFailed]: TaskFailed;
+  [MessageType.MeetingStarted]: MeetingStarted;
+  [MessageType.MeetingCompleted]: MeetingCompleted;
+  [MessageType.DeliberationProposal]: DeliberationProposal;
+  [MessageType.WorkflowStarted]: WorkflowStarted;
+  [MessageType.WorkflowStatusChanged]: WorkflowStatusChanged;
+  [MessageType.WorkflowCompleted]: WorkflowCompleted;
+  [MessageType.SecretaryMessage]: SecretaryMessage;
+  [MessageType.GreetingGenerated]: GreetingGenerated;
+  [MessageType.BudgetAlert]: BudgetAlert;
+  [MessageType.QualityAlert]: QualityAlert;
+  [MessageType.SystemNotification]: SystemNotification;
+  [MessageType.AuditEvent]: AuditEvent;
+}
+
+// ── MessageEnvelope (discriminated union on messageType) ──
+
+export type MessageEnvelope<T extends MessageType = MessageType> = {
+  [K in T]: {
+    readonly messageId: string;
+    readonly correlationId: string;
+    readonly causationId: string | null;
+    readonly timestamp: Date;
+    readonly messageType: K;
+    readonly payload: PayloadMap[K];
+    /** Optional expiry time. Events past this time may be cleaned up. */
+    readonly expiresAt?: Date;
+  };
+}[T];
