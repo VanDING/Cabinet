@@ -43,7 +43,7 @@ export function parseSkillMarkdown(content: string): ParsedSkill | null {
 
   const name = typeof fields['name'] === 'string' ? fields['name'].trim() : '';
   const description = typeof fields['description'] === 'string' ? fields['description'].trim() : '';
-  if (!name || !description) return null;
+  if (!name && !description) return null;
 
   return {
     name,

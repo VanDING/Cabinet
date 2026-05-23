@@ -39,6 +39,7 @@ export interface WorkflowEdge {
   from: string;
   to: string;
   condition?: string;
+  branch?: 'true' | 'false';
 }
 
 export type WorkflowStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'awaiting_approval';
@@ -76,6 +77,7 @@ export class WorkflowEngine {
   private runs = new Map<string, WorkflowRun>();
   private handlers: WorkflowHandlers = {};
   private db: Database | null = null;
+  private currentEdges: WorkflowEdge[] = [];
 
   setHandlers(handlers: WorkflowHandlers): void {
     this.handlers = { ...this.handlers, ...handlers };
@@ -114,6 +116,7 @@ export class WorkflowEngine {
 
     const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    this.currentEdges = edges;
 
     try {
       await this.executeNode(entryNodeId, nodeMap, graph, run, new Set());
@@ -152,6 +155,7 @@ export class WorkflowEngine {
 
     const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    this.currentEdges = edges;
 
     // Execute children of the current (just-approved) node
     const children = graph.get(run.currentNodeId) ?? [];
@@ -387,17 +391,18 @@ export class WorkflowEngine {
 
         // Execute matching branch only
         const children = graph.get(nodeId) ?? [];
-        if (children.length >= 2) {
-          const targetIdx = isTrue ? 0 : Math.min(1, children.length - 1);
-          const targetNode = children[targetIdx];
+        if (children.length > 0) {
+          // Prefer explicit edge.branch annotations; fall back to positional ordering
+          let targetNode: string | undefined;
+          if (children.some((cid) => this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch)) {
+            targetNode = children.find((cid) =>
+              this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch === (isTrue ? 'true' : 'false'),
+            );
+          } else {
+            targetNode = isTrue ? children[0] : (children.length >= 2 ? children[1] : undefined);
+          }
           if (targetNode) {
             await this.executeNode(targetNode, nodeMap, graph, run, visited);
-          }
-        } else {
-          if (isTrue) {
-            for (const child of children) {
-              await this.executeNode(child, nodeMap, graph, run, visited);
-            }
           }
         }
         return; // Already handled children

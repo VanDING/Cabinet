@@ -12,6 +12,7 @@ export function createKnowledgeTools(deps: KnowledgeToolDeps): ToolDefinition[] 
   return [
     {
       name: 'index_document',
+      timeoutMs: 120000,
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const projectId = (args.projectId as string) ?? 'default';
@@ -26,6 +27,7 @@ export function createKnowledgeTools(deps: KnowledgeToolDeps): ToolDefinition[] 
     },
     {
       name: 'search_documents',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
         const projectId = (args.projectId as string) ?? 'default';

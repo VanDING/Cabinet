@@ -1,5 +1,6 @@
 import {
   DecisionStatus,
+  DecisionType,
   type Decision,
   type DecisionLevel,
   type DecisionStore,
@@ -12,7 +13,7 @@ import { EscalationService } from './escalation.js';
 export interface CreateDecisionInput {
   id: string;
   projectId: string;
-  type: string;
+  type: DecisionType;
   title: string;
   description: string;
   options: { id: string; label: string; impact: string }[];
@@ -43,7 +44,7 @@ export class DecisionService {
     const decision: Decision = {
       id: input.id,
       projectId: input.projectId,
-      type: input.type as any,
+      type: input.type,
       level: level as DecisionLevel,
       status: DecisionStatus.Pending,
       title: input.title,
@@ -61,11 +62,20 @@ export class DecisionService {
       changes: { level, title: input.title },
     });
 
-    // Auto-process L0/L1
+    // Auto-process L0/L1 (through state machine for audit trail)
     if (level === 'L0' || level === 'L1') {
-      decision.status = DecisionStatus.Approved;
+      const approvedStatus = this.stateMachine.transition(decision.status, 'approve');
+      decision.status = approvedStatus as typeof decision.status;
       decision.resolvedAt = new Date();
+      decision.captainId = 'system';
       this.store.save(decision);
+      this.auditLog.log({
+        entityType: 'decision',
+        entityId: decision.id,
+        action: 'auto_approved',
+        actor: 'system',
+        changes: { level, status: approvedStatus, reason: 'L0/L1 auto-approval' },
+      });
     }
 
     // Escalate L3

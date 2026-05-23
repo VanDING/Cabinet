@@ -7,6 +7,8 @@ import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
 
+const RAG_DEFAULT_TOP_K = 5;
+
 async function readTextFile(filePath: string): Promise<string> {
   const buf = await readFile(filePath);
   if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
@@ -563,16 +565,16 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
             const score = emb ? cosineSimilarity(queryEmbedding!, emb) : 0;
             return { content: row.content as string, sourcePath: row.source_path as string, chunkIndex: row.chunk_index as number, score };
           })
-          .filter((c) => c.score > 0.25)
+          .filter((c) => c.score > 0.4)
           .sort((a, b) => b.score - a.score)
-          .slice(0, limit ?? 5);
+          .slice(0, limit ?? RAG_DEFAULT_TOP_K);
         return { chunks: scored };
       }
 
       const lower = query.toLowerCase();
       const scored = rows
         .filter((row: any) => (row.content as string).toLowerCase().includes(lower))
-        .slice(0, limit ?? 5)
+        .slice(0, limit ?? RAG_DEFAULT_TOP_K)
         .map((row: any) => ({
           content: row.content as string,
           sourcePath: row.source_path as string,

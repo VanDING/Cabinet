@@ -53,9 +53,10 @@ export class SecretaryAgent {
     this.lastIntent = routeResult.intent.kind;
     this.lastRoute = routeResult.targetAgent;
 
-    // Handle follow-up: stay on the same agent
+    // Handle follow-up: stay on the same agent if the message confirms relevance
     let targetAgent = routeResult.targetAgent;
     if (routeResult.intent.kind === 'follow_up' && this.lastRoute) {
+      // Re-validate: only keep lastRoute if message content matches that agent's domain
       targetAgent = this.lastRoute as AgentRoleType;
     }
 

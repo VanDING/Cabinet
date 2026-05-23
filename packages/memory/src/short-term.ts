@@ -36,10 +36,18 @@ export class ShortTermMemory {
   set(sessionId: string, key: string, value: unknown, ttl?: number): void {
     const fullKey = `${sessionId}:${key}`;
 
-    // LRU eviction
+    // LRU eviction — also clean up DB to avoid orphaned rows
     if (this.cache.size >= this.maxSize && !this.cache.has(fullKey)) {
       const lru = this.accessOrder.shift();
-      if (lru) this.cache.delete(lru);
+      if (lru) {
+        this.cache.delete(lru);
+        if (this.db) {
+          const [sid, key] = lru.split(':', 2);
+          if (sid && key) {
+            this.db.prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?').run(sid, key);
+          }
+        }
+      }
     }
 
     const entry: ShortTermEntry = {

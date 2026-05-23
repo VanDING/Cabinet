@@ -2,7 +2,7 @@
 export { createConnection, closeConnection, getConnection } from './connection.js';
 export type { Database } from 'better-sqlite3';
 export { CABINET_DIR, CABINET_SUBDIRS, ensureCabinetDir } from './paths.js';
-export { runMigration001 } from './migrations/001_initial.js';
+export { runMigration001, trackMigration } from './migrations/001_initial.js';
 export { runMigration002 } from './migrations/002_projects.js';
 export { runMigration003 } from './migrations/003_deliverables.js';
 export { runMigration004 } from './migrations/004_scheduled_tasks.js';
@@ -10,6 +10,7 @@ export { runMigration005 } from './migrations/005_workflow_runs.js';
 export { runMigration006 } from './migrations/006_document_chunks.js';
 export { runMigration007 } from './migrations/007_evaluation_results.js';
 export { runMigration008 } from './migrations/008_skill_metadata.js';
+export { runMigration009 } from './migrations/009_checkpoints.js';
 export { EventLogRepository } from './repositories/event-log.js';
 export { ProjectRepository } from './repositories/project.js';
 export { DecisionRepository } from './repositories/decision.js';

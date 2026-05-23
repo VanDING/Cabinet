@@ -270,11 +270,33 @@ export class AgentLoop {
         return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls, usage: { promptTokens: totalPromptTokens, completionTokens: totalCompletionTokens } };
       }
 
-      // Execute tool calls
-      for (const tc of response.toolCalls) {
+      // ── Read-only tool names that can safely execute in parallel ──
+      const READ_TOOL_NAMES = new Set([
+        'read_file', 'file_info', 'list_directory', 'glob', 'grep',
+        'search_memory', 'recall', 'query_decisions', 'get_decision',
+        'get_recent_events', 'get_project_context', 'get_captain_preferences',
+        'list_workflows', 'get_workflow', 'list_agents', 'list_projects',
+        'list_scheduled_tasks', 'search_documents', 'web_fetch',
+        'workspace_symbol', 'go_to_definition', 'find_references', 'diagnostics',
+        'recent_files', 'watch_file',
+      ]);
+
+      // Determine if all tool calls in this step are independent read-only operations
+      const allReadOnly = response.toolCalls.every(tc => READ_TOOL_NAMES.has(tc.name));
+      const uniqueResources = new Set(response.toolCalls.map(tc =>
+        JSON.stringify({name: tc.name, filePath: tc.arguments?.filePath, query: tc.arguments?.query, pattern: tc.arguments?.pattern})
+      ));
+      const canParallelize = allReadOnly && uniqueResources.size === response.toolCalls.length;
+
+      // ── Execute a single tool call (used by both sequential and parallel paths) ──
+      const executeOneTool = async (tc: { id: string; name: string; arguments: Record<string, unknown> }) => {
+        // Per-tool timeout lookup
+        const toolDef = this.toolExecutor.getToolDescriptor(tc.name);
+        const toolTimeoutMs = toolDef?.timeoutMs ?? this.options.toolTimeoutMs ?? 300000;
+
         toolCounts.total++;
 
-        // ── Idempotency check on resume: skip already-executed tool calls ──
+        // Idempotency check on resume: skip already-executed tool calls
         if (isResuming) {
           const alreadyDone = executedToolCalls.find(
             (prev) =>
@@ -284,11 +306,11 @@ export class AgentLoop {
           );
           if (alreadyDone) {
             toolCounts.succeeded++;
-            messages.push({
-              role: 'user',
-              content: `Tool result for ${tc.name} (cached): ${JSON.stringify(alreadyDone.result)}`,
-            });
-            continue;
+            return {
+              tc,
+              message: { role: 'user' as const, content: `Tool result for ${tc.name} (cached): ${JSON.stringify(alreadyDone.result)}` },
+              handoffText: `${tc.name}(cached)`,
+            };
           }
         }
 
@@ -301,11 +323,10 @@ export class AgentLoop {
             args: tc.arguments,
             result: `BLOCKED: ${safety.reason}`,
           });
-          continue;
+          return null; // blocked — no message to add
         }
 
         // Execute with watchdog timeout
-        const toolTimeoutMs = this.options.toolTimeoutMs ?? 300000; // default 5 min
         let result: { toolCallId: string; output: unknown; error?: string };
         try {
           result = await Promise.race([
@@ -340,16 +361,32 @@ export class AgentLoop {
           result: result.error ?? result.output,
         });
 
-        // Record for context handoff
-        handoff.recordToolResult(
-          `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`,
-        );
+        const handoffText = `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`;
+        const msgText = `Tool result for ${tc.name}: ${JSON.stringify(result.error ?? result.output)}`;
 
-        // Add tool result as user message for feedback
-        messages.push({
-          role: 'user',
-          content: `Tool result for ${tc.name}: ${JSON.stringify(result.error ?? result.output)}`,
-        });
+        return {
+          tc,
+          message: { role: 'user' as const, content: msgText },
+          handoffText,
+        };
+      };
+
+      if (canParallelize) {
+        // Execute all independent read-only tool calls concurrently
+        const outcomes = await Promise.all(response.toolCalls.map(tc => executeOneTool(tc)));
+        for (const outcome of outcomes) {
+          if (outcome === null) continue; // blocked
+          handoff.recordToolResult(outcome.handoffText);
+          messages.push(outcome.message);
+        }
+      } else {
+        // Sequential execution (write tools, or read tools on same resource)
+        for (const tc of response.toolCalls) {
+          const outcome = await executeOneTool(tc);
+          if (outcome === null) continue; // blocked
+          handoff.recordToolResult(outcome.handoffText);
+          messages.push(outcome.message);
+        }
       }
 
       steps++;

@@ -12,6 +12,7 @@ export function createShellTools(deps: ShellToolDeps): ToolDefinition[] {
   return [
     {
       name: 'execute_command',
+      timeoutMs: 300000,
       execute: async (args: Record<string, unknown>) => {
         const command = args.command as string;
         if (!command) return { error: 'command is required' };

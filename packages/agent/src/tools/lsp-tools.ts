@@ -12,6 +12,7 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     {
       name: 'workspace_symbol',
       description: 'Search for symbols (functions, classes, variables, types) by name in the workspace using TypeScript language service. Works for TS/JS projects.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
         if (!query) return { error: 'query is required' };
@@ -25,6 +26,7 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     {
       name: 'go_to_definition',
       description: 'Find where a symbol is defined. Provide the file path, line, and column of the symbol reference.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string;
         const line = (args.line as number) ?? 1;
@@ -40,6 +42,7 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     {
       name: 'find_references',
       description: 'Find all references to a symbol across the workspace. Provide the file, line, and column of the symbol.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string;
         const line = (args.line as number) ?? 1;
@@ -55,6 +58,7 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     {
       name: 'diagnostics',
       description: 'Get TypeScript compiler errors and warnings. If file is provided, returns diagnostics for that file only. Otherwise returns diagnostics for all files.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string | undefined;
         try {

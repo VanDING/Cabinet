@@ -5,7 +5,7 @@ export class TeachBack {
       .split(/\s+/)
       .filter((w) => w.length > 2);
     const matchCount = keywords.filter((kw) => aiRestatement.toLowerCase().includes(kw)).length;
-    return matchCount >= keywords.length * 0.5;
+    return matchCount >= keywords.length * 0.75;
   }
 
   generatePrompt(task: string): string {

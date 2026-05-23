@@ -60,17 +60,15 @@ export class BudgetGuard {
     if (percentage >= 1.0) {
       level = 'blocked';
       message = `${period} budget exhausted.`;
+    } else if (percentage >= 0.95) {
+      level = 'critical';
+      message = `${period} budget nearly exhausted (${Math.round(percentage * 100)}%).`;
     } else if (percentage >= BUDGET_WARNING_THRESHOLD) {
       level = 'warning';
       message = `${period} budget at ${Math.round(percentage * 100)}%.`;
     } else {
       level = 'ok';
       message = `${period} budget OK (${Math.round(percentage * 100)}%).`;
-    }
-
-    if (percentage >= 0.95 && percentage < 1.0) {
-      level = 'critical';
-      message = `${period} budget nearly exhausted (${Math.round(percentage * 100)}%).`;
     }
 
     return { period, currentSpend, limit, percentage, level, message };

@@ -15,7 +15,7 @@ dashboardRouter.get('/summary', (c) => {
   const recentEvents: { message: string; time: Date }[] = [];
 
   try {
-    pendingDecisions = decisionRepo.listPending(projectId).length;
+    pendingDecisions = (projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()).length;
   } catch (err) {
     logger.warn('Failed to load pending decisions', { error: (err as Error).message });
   }

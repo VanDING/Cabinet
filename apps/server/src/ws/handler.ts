@@ -27,20 +27,51 @@ export function createWSServer(server: Server): WebSocketServer {
 }
 
 function setupClient(ws: WebSocket): void {
+  let pingTimer: ReturnType<typeof setInterval> | null = null;
+
+  // Heartbeat: ping every 30s, terminate if no pong within 10s
+  ws.on('pong', () => {
+    // Client responded — connection is alive
+  });
+
+  pingTimer = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+      // Set a short timeout: if still alive after 10s, it's dead
+      const deadTimer = setTimeout(() => {
+        ws.terminate();
+      }, 10_000);
+      ws.once('pong', () => clearTimeout(deadTimer));
+    } else {
+      clearInterval(pingTimer!);
+    }
+  }, 30_000);
+
   ws.on('message', () => {
     // Client messages are ignored — server only broadcasts
   });
 
   ws.on('close', () => {
+    if (pingTimer) clearInterval(pingTimer);
     clients.delete(ws);
   });
 
   ws.on('error', () => {
+    if (pingTimer) clearInterval(pingTimer);
     clients.delete(ws);
   });
 }
 
+/** Event types that are too high-frequency for WebSocket broadcast.
+ *  Frontend polls /observability for aggregated data instead. */
+const LOW_PRIORITY_EVENTS = new Set([
+  'system_notification',
+  'secretary_message',
+]);
+
 export function broadcast(type: string, data?: Record<string, unknown>): void {
+  // Skip high-frequency events — frontend polls /observability for these
+  if (LOW_PRIORITY_EVENTS.has(type)) return;
   if (!wss) return;
   const message = JSON.stringify({ type, data: data ?? {}, timestamp: new Date().toISOString() });
   for (const client of clients) {
