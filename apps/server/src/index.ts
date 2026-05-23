@@ -21,6 +21,7 @@ import { observabilityRouter } from './routes/observability.js';
 import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
+import { meetingsRouter } from './routes/meetings.js';
 import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
 
@@ -68,6 +69,7 @@ export function createApp() {
   app.route('/api/evaluations', evaluationsRouter);
   app.route('/api/secretary', secretaryRouter);
   app.route('/api/decisions', decisionsRouter);
+  app.route('/api/meetings', meetingsRouter);
   app.route('/api/factory', workflowsRouter);
   app.route('/api/dashboard', dashboardRouter);
 

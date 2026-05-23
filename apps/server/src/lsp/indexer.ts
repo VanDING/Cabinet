@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { join, relative, extname } from 'node:path';
+import { DocumentChunkRepository } from '@cabinet/storage';
 
 function readTextFileSync(filePath: string): string {
   const buf = readFileSync(filePath);
@@ -73,11 +74,10 @@ export async function indexProject(options: IndexerOptions): Promise<{ indexed: 
   // Check which files are already indexed
   const indexedFiles = new Set<string>();
   if (!force) {
-    const rows = db.prepare(
-      'SELECT DISTINCT file_path FROM document_chunks WHERE project_id = ?',
-    ).all(projectId) as any[];
-    for (const r of rows) {
-      indexedFiles.add(r.file_path);
+    const chunksRepo = new DocumentChunkRepository(db);
+    const indexedPaths = chunksRepo.findDistinctPaths(projectId);
+    for (const filePath of indexedPaths) {
+      indexedFiles.add(filePath);
     }
   }
 
@@ -141,22 +141,18 @@ export async function indexProject(options: IndexerOptions): Promise<{ indexed: 
     const embeddings = await generateEmbeddings(batchTexts, gateway);
 
     // Store chunks in DB
-    const insertStmt = db.prepare(
-      'INSERT INTO document_chunks (project_id, file_path, chunk_index, content, embedding) VALUES (?, ?, ?, ?, ?)',
-    );
-    const tx = db.transaction(() => {
-      for (let j = 0; j < batchChunks.length; j++) {
-        const chunk = batchChunks[j]!;
-        insertStmt.run(
-          projectId,
-          chunk.filePath,
-          chunk.chunkIndex,
-          chunk.content,
-          embeddings?.[j] ? JSON.stringify(embeddings[j]) : null,
-        );
-      }
-    });
-    tx();
+    const chunksRepo = new DocumentChunkRepository(db);
+    for (let j = 0; j < batchChunks.length; j++) {
+      const chunk = batchChunks[j]!;
+      chunksRepo.insert({
+        project_id: projectId,
+        source_path: chunk.filePath,
+        chunk_index: chunk.chunkIndex,
+        content: chunk.content,
+        embedding: embeddings?.[j] ? JSON.stringify(embeddings[j]) : null,
+        metadata: '{}',
+      });
+    }
     indexed += batch.length;
     logger.info('Indexed batch', { batchStart: i, count: batch.length, projectId });
   }

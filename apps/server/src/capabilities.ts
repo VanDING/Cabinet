@@ -1,4 +1,5 @@
 import type { ServerContext } from './context.js';
+import { DocumentChunkRepository } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, dirname, extname, resolve } from 'node:path';
@@ -515,7 +516,8 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
       const content = await readTextFile(safePath);
       if (content.length === 0) throw new Error('File is empty');
 
-      ctx.db.prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?').run(projectId, filePath);
+      const chunksRepo = new DocumentChunkRepository(ctx.db);
+      chunksRepo.deleteByPath(projectId, filePath);
 
       const chunks = chunkText(content, 800, 100);
       if (chunks.length === 0) throw new Error('No chunks produced');
@@ -530,18 +532,16 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
         }
       }
 
-      const insertStmt = ctx.db.prepare(
-        `INSERT INTO document_chunks (id, project_id, source_path, chunk_index, content, embedding, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      );
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]!;
-        const id = `chunk_${Date.now()}_${i}`;
-        insertStmt.run(
-          id, projectId, filePath, i, chunk.content,
-          embeddings[i] ? JSON.stringify(embeddings[i]) : null,
-          JSON.stringify({ startChar: chunk.startChar, endChar: chunk.endChar }),
-        );
+        chunksRepo.insert({
+          project_id: projectId,
+          source_path: filePath,
+          chunk_index: i,
+          content: chunk.content,
+          embedding: embeddings[i] ? JSON.stringify(embeddings[i]) : null,
+          metadata: JSON.stringify({ startChar: chunk.startChar, endChar: chunk.endChar }),
+        });
       }
       ctx.logger.info('Document indexed', { path: filePath, chunks: chunks.length, projectId });
       return { chunkCount: chunks.length, filePath };
@@ -556,18 +556,17 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
         } catch { /* fall back to text search */ }
       }
 
-      const rows = ctx.db
-        .prepare('SELECT * FROM document_chunks WHERE project_id = ?')
-        .all(projectId) as any[];
+      const chunksRepo = new DocumentChunkRepository(ctx.db);
+      const rows = chunksRepo.findByProject(projectId);
 
       if (rows.length === 0) return { chunks: [] };
 
       if (queryEmbedding) {
         const scored = rows
-          .map((row: any) => {
+          .map((row) => {
             const emb = row.embedding ? (JSON.parse(row.embedding) as number[]) : null;
             const score = emb ? cosineSimilarity(queryEmbedding!, emb) : 0;
-            return { content: row.content as string, sourcePath: row.source_path as string, chunkIndex: row.chunk_index as number, score };
+            return { content: row.content, sourcePath: row.source_path, chunkIndex: row.chunk_index, score };
           })
           .filter((c) => c.score > 0.4)
           .sort((a, b) => b.score - a.score)
@@ -577,28 +576,25 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
 
       const lower = query.toLowerCase();
       const scored = rows
-        .filter((row: any) => (row.content as string).toLowerCase().includes(lower))
+        .filter((row) => row.content.toLowerCase().includes(lower))
         .slice(0, limit ?? RAG_DEFAULT_TOP_K)
-        .map((row: any) => ({
-          content: row.content as string,
-          sourcePath: row.source_path as string,
-          chunkIndex: row.chunk_index as number,
+        .map((row) => ({
+          content: row.content,
+          sourcePath: row.source_path,
+          chunkIndex: row.chunk_index,
           score: 0.5,
         }));
       return { chunks: scored };
     },
 
     clearDocumentIndex: async (projectId: string, filePath?: string) => {
+      const chunksRepo = new DocumentChunkRepository(ctx.db);
       if (filePath) {
-        const result = ctx.db
-          .prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?')
-          .run(projectId, filePath);
-        return { removed: result.changes };
+        chunksRepo.deleteByPath(projectId, filePath);
+        return { removed: -1 };
       }
-      const result = ctx.db
-        .prepare('DELETE FROM document_chunks WHERE project_id = ?')
-        .run(projectId);
-      return { removed: result.changes };
+      chunksRepo.deleteByProject(projectId);
+      return { removed: -1 };
     },
   };
 }

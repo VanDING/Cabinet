@@ -113,7 +113,7 @@ describe('Security Audit', () => {
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.TaskOrder,
-      payload: { inject: "'; DROP TABLE event_log;--" },
+      payload: { orderId: "'; DROP TABLE event_log;--", action: 'test' },
     };
     await store.publish(envelope);
 

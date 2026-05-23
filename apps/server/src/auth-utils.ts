@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual, scryptSync } from 'node:crypto';
+import { MetricRepository } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 
 const SALT = 'cabinet-salt';
@@ -44,10 +45,7 @@ export function verifyPin(
 /** Read the stored PIN hash from DB. Returns null if not set (first run). */
 export function getStoredHash(db: Database): string | null {
   try {
-    const row = db
-      .prepare("SELECT value FROM metrics WHERE name = 'pin_hash' ORDER BY id DESC LIMIT 1")
-      .get() as { value: string } | undefined;
-    return row?.value ?? null;
+    return new MetricRepository(db).getLatestValue('pin_hash');
   } catch {
     return null;
   }
@@ -55,9 +53,7 @@ export function getStoredHash(db: Database): string | null {
 
 /** Store a new PIN hash in the database. */
 export function storePinHash(db: Database, pin: string): void {
-  db.prepare("INSERT INTO metrics (name, value, tags) VALUES ('pin_hash', ?, '{}')").run(
-    hashPin(pin),
-  );
+  new MetricRepository(db).insert('pin_hash', hashPin(pin), {});
 }
 
 export { SALT };
