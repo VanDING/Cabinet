@@ -268,16 +268,8 @@ const MessageRow = memo(function MessageRow({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
 
-  const isRoutingMsg = msg.agentName === '→';
-
   return (
     <div className="group flex flex-col">
-      {isRoutingMsg ? (
-        <div className="text-[11px] text-gray-400 dark:text-gray-500 py-0.5">
-          {msg.content}
-        </div>
-      ) : (
-        <>
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -372,8 +364,6 @@ const MessageRow = memo(function MessageRow({
           )}
         </div>
       </div>
-        </>
-      )}
     </div>
   );
 });

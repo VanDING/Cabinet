@@ -294,30 +294,10 @@ export function App() {
           let lastContent = '';
           let toolsSinceLastSegment = false;
 
-          const AGENT_DISPLAY: Record<string, string> = {
-            secretary: 'Secretary',
-            meeting_chair: 'Meeting Chair',
-            workflow_designer: 'Workflow Designer',
-            decision_analyst: 'Decision Analyst',
-            agent_creator: 'Agent Creator',
-            reviewer: 'Reviewer',
-            organize: 'Organizer',
-            curator: 'Curator',
-          };
-
           await readSSEStream(reader, {
             onRoutingStart(targetAgent) {
-              const sourceDisplay = streamAgent ? (AGENT_DISPLAY[streamAgent] || streamAgent) : null;
-              const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
               streamAgent = targetAgent;
               setActiveAgent(targetAgent);
-              addMessage(sessionId, {
-                id: `r_${Date.now()}`,
-                role: 'assistant',
-                content: sourceDisplay ? `${sourceDisplay} → ${targetDisplay}` : targetDisplay,
-                timestamp: new Date(),
-                agentName: '→',
-              });
             },
             onThinking(content) {
               thinkingAccumulated += content;
@@ -408,7 +388,6 @@ export function App() {
                 isStreaming: false,
                 meeting: meetingData,
                 agentName: (event as any)?.agentName ?? streamAgent,
-                thinking: thinkingAccumulated || undefined,
                 toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
               });
             },
