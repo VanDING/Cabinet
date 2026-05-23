@@ -16,9 +16,9 @@ const MODEL_PRICING: Record<string, { prompt: number; completion: number }> = {
   'google/gemini-2.5-pro': { prompt: 1.25, completion: 5.0 },
   // DeepSeek pricing (RMB converted to USD at ~0.14 rate)
   // https://api-docs.deepseek.com/zh-cn/quick_start/pricing
-  // deepseek-v4-pro currently 75% off until 2026/05/31 (¥3→¥0.42 / ¥6→¥0.84)
+  // Regular pricing (no promotion): v4-pro ¥3/M in, ¥6/M out
   'deepseek/deepseek-v4-flash': { prompt: 0.14, completion: 0.28 },
-  'deepseek/deepseek-v4-pro': { prompt: 1.68, completion: 3.36 },
+  'deepseek/deepseek-v4-pro': { prompt: 0.42, completion: 0.84 },
   'deepseek/deepseek-chat': { prompt: 0.14, completion: 0.28 },     // deprecated → v4-flash
   'deepseek/deepseek-reasoner': { prompt: 0.14, completion: 0.28 },  // deprecated → v4-flash
   'deepseek/deepseek-v3': { prompt: 0.27, completion: 1.10 },

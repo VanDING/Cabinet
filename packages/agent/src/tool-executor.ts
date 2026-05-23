@@ -11,6 +11,8 @@ export interface ToolDefinition {
   description?: string;
   /** JSON Schema for the tool's input parameters. */
   parameters?: Record<string, unknown>;
+  /** Per-tool timeout in ms. Falls back to AgentLoop's toolTimeoutMs. */
+  timeoutMs?: number;
 }
 
 /** Full metadata for a tool (for AI SDK conversion). */
@@ -19,6 +21,8 @@ export interface ToolDescriptor {
   description: string;
   parameters: Record<string, unknown>;
   execute(args: Record<string, unknown>): Promise<unknown>;
+  /** Per-tool timeout in ms. Falls back to AgentLoop's toolTimeoutMs. */
+  timeoutMs?: number;
 }
 
 /** Called after each tool execution with timing and result info. */
@@ -74,6 +78,20 @@ export class ToolExecutor {
       description: def.description ?? `Execute the ${name} tool`,
       parameters: def.parameters ?? { type: 'object', properties: {} },
       execute: def.execute,
+      timeoutMs: def.timeoutMs,
     }));
+  }
+
+  /** Look up a single tool's descriptor by name. */
+  getToolDescriptor(name: string): ToolDescriptor | undefined {
+    const def = this.tools.get(name);
+    if (!def) return undefined;
+    return {
+      name,
+      description: def.description ?? `Execute the ${name} tool`,
+      parameters: def.parameters ?? { type: 'object', properties: {} },
+      execute: def.execute,
+      timeoutMs: def.timeoutMs,
+    };
   }
 }

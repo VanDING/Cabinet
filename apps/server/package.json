@@ -20,6 +20,7 @@
     "@cabinet/gateway": "workspace:*",
     "@cabinet/harness": "workspace:*",
     "@cabinet/memory": "workspace:*",
+    "@cabinet/meeting": "workspace:*",
     "@cabinet/secretary": "workspace:*",
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",

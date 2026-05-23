@@ -14,6 +14,7 @@ export function createWebTools(deps: WebToolDeps): ToolDefinition[] {
   return [
     {
       name: 'web_fetch',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const url = args.url as string;
         if (!url) return { error: 'url is required' };

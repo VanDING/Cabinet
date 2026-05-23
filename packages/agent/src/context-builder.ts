@@ -27,6 +27,7 @@ export interface ContextBuildResult {
 
 export class ContextBuilder {
   private rulesLoader: RulesLoader | null = null;
+  private sessionCache = new Map<string, { projectContext: string; preferences: Record<string, unknown> }>();
 
   constructor(private readonly memory: MemoryProvider) {}
 
@@ -37,11 +38,20 @@ export class ContextBuilder {
   }
 
   async build(options: ContextBuilderOptions): Promise<ContextBuildResult> {
+    const cacheKey = `${options.sessionId}:${options.projectId}`;
+    const cached = this.sessionCache.get(cacheKey);
+
+    // Always reload short-term memory (it changes each iteration).
+    // Project context and preferences are session-stable, so use cache when available.
     const [shortTerm, projectContext, preferences] = await Promise.all([
       this.memory.getShortTerm(options.sessionId),
-      this.memory.getProjectContext(options.projectId),
-      this.memory.getEntityPreferences(options.captainId),
+      cached ? Promise.resolve(cached.projectContext) : this.memory.getProjectContext(options.projectId),
+      cached ? Promise.resolve(cached.preferences) : this.memory.getEntityPreferences(options.captainId),
     ]);
+
+    if (!cached) {
+      this.sessionCache.set(cacheKey, { projectContext: projectContext as string, preferences: preferences as Record<string, unknown> });
+    }
 
     // Load matching rules
     const rulesContext: RulesContext = {
@@ -69,6 +79,15 @@ export class ContextBuilder {
   /** Reload rules from disk. */
   reloadRules(): void {
     this.rulesLoader?.reload();
+  }
+
+  /** Clear cached project context and preferences for a session. */
+  clearSessionCache(sessionId: string): void {
+    for (const key of this.sessionCache.keys()) {
+      if (key.startsWith(sessionId + ':')) {
+        this.sessionCache.delete(key);
+      }
+    }
   }
 
   private buildDefaultSystemPrompt(

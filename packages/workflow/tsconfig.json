@@ -5,5 +5,5 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "references": [{ "path": "../types" }, { "path": "../events" }, { "path": "../decision" }, { "path": "../storage" }]
+  "references": [{ "path": "../types" }, { "path": "../events" }, { "path": "../decision" }, { "path": "../storage" }, { "path": "../organize" }]
 }

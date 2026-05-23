@@ -19,6 +19,7 @@ import {
   runMigration006,
   runMigration007,
   runMigration008,
+  runMigration009,
   DecisionRepository,
   ProjectRepository,
   EventLogRepository,
@@ -77,6 +78,12 @@ import type {
   AdjustmentNotifyCallback,
   ReconsolidationCallback,
 } from '@cabinet/harness';
+
+const RAG_CURATOR_TOP_K = 10;
+
+// Redefined locally to avoid circular dependency on @cabinet/secretary internals
+const SESSION_KEEP_OLDEST = 30;
+const SESSION_KEEP_RECENT = 30;
 
 export interface ServerContext {
   db: Database;
@@ -198,6 +205,7 @@ export function getServerContext(): ServerContext {
     runMigration006(db);
     runMigration007(db);
     runMigration008(db);
+    runMigration009(db);
     logger.info(`SQLite database initialized (${dbExists ? 'existing' : 'new'})`, { path: dbPath });
     // Write a startup marker so we can diagnose persistence issues
     try {
@@ -225,6 +233,7 @@ export function getServerContext(): ServerContext {
       runMigration006(db);
       runMigration007(db);
       runMigration008(db);
+      runMigration009(db);
       dbMode = 'memory';
       logger.warn('Falling back to in-memory database — data will NOT persist across restarts');
     } catch (e2) {
@@ -482,7 +491,10 @@ export function getServerContext(): ServerContext {
     if (gateway && session.messages.length > 0) {
       const messages = session.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
       if (messages.length > 200) {
-        runCuratorConsolidation(session.id, messages).catch((e) =>
+        enqueueCuratorTask(
+          () => runCuratorConsolidation(session.id, messages),
+          'consolidation',
+        ).catch((e) =>
           logger.warn('Curator on-close consolidation failed', { error: (e as Error).message }),
         );
       }
@@ -491,7 +503,10 @@ export function getServerContext(): ServerContext {
 
   sessionManager.onSessionCreate((session) => {
     if (gateway) {
-      runCuratorBrief(session.id).catch((e) =>
+      enqueueCuratorTask(
+        () => runCuratorBrief(session.id),
+        'brief',
+      ).catch((e) =>
         logger.warn('Curator on-create brief failed', { error: (e as Error).message }),
       );
     }
@@ -676,7 +691,7 @@ export function getServerContext(): ServerContext {
               embedding = er.embeddings[0];
             }
           } catch { /* fall back to text search */ }
-          const results = await longTerm.search(query, 10, embedding);
+          const results = await longTerm.search(query, RAG_CURATOR_TOP_K, embedding);
           return results.map((r) => `[Memory] ${r.content}`);
         },
       },
@@ -685,40 +700,71 @@ export function getServerContext(): ServerContext {
       captainId: 'captain-1',
       systemPrompt: role.systemPrompt,
       model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.model,
-      maxSteps: 50,
+      maxSteps: role.maxSteps ?? 50,
       maxResponseTokens: role.maxResponseTokens,
       temperature: role.temperature,
       contextBudget: role.contextBudget,
     });
   }
 
+  // ── Curator concurrency control ──
+  let curatorBusy = false;
+  const curatorQueue: Array<{ task: () => Promise<void>; label: string }> = [];
+
+  async function enqueueCuratorTask(task: () => Promise<void>, label: string): Promise<void> {
+    if (curatorBusy) {
+      // Replace existing queued task of the same label (debounce)
+      const existingIdx = curatorQueue.findIndex((t) => t.label === label);
+      if (existingIdx !== -1) {
+        curatorQueue[existingIdx] = { task, label };
+      } else {
+        curatorQueue.push({ task, label });
+      }
+      return;
+    }
+    curatorBusy = true;
+    try {
+      await task();
+    } finally {
+      curatorBusy = false;
+      // Process next queued task
+      const next = curatorQueue.shift();
+      if (next) {
+        enqueueCuratorTask(next.task, next.label).catch((e) =>
+          logger.warn('Curator queued task failed', { label: next.label, error: (e as Error).message }),
+        );
+      }
+    }
+  }
+
   // Wire the deferred curator decision update trigger
   _triggerCuratorDecisionUpdate = (decisionId, action, title, chosenOptionId) => {
-    const loop = createCuratorLoop();
-    if (!loop) return;
+    enqueueCuratorTask(async () => {
+      const loop = createCuratorLoop();
+      if (!loop) return;
 
-    const taskPrompt = [
-      `## Decision Preference Update`,
-      '',
-      `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
-      '',
-      `Instructions:`,
-      `1. Use get_decision to read the full decision record.`,
-      `2. Use get_captain_preferences to see the current preference profile.`,
-      `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
-      `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
-      `5. Use write_memory to store any notable pattern you discover.`,
-      '',
-      `Be concise — this is a background task triggered by each decision resolution.`,
-    ].join('\n');
+      const taskPrompt = [
+        `## Decision Preference Update`,
+        '',
+        `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
+        '',
+        `Instructions:`,
+        `1. Use get_decision to read the full decision record.`,
+        `2. Use get_captain_preferences to see the current preference profile.`,
+        `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
+        `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
+        `5. Use write_memory to store any notable pattern you discover.`,
+        '',
+        `Be concise — this is a background task triggered by each decision resolution.`,
+      ].join('\n');
 
-    loop.run(taskPrompt).then((result) => {
+      const result = await loop.run(taskPrompt);
       logger.info('Curator decision preference update completed', {
         decisionId,
         action,
         preview: result.content.slice(0, 150),
       });
-    }).catch((e: any) => {
+    }, 'preference').catch((e: any) => {
       logger.warn('Curator decision preference update failed', { decisionId, error: e.message });
     });
   };
@@ -731,6 +777,40 @@ export function getServerContext(): ServerContext {
     if (!loop) {
       logger.warn('Curator consolidation skipped — no gateway or role');
       return;
+    }
+
+    // Layered transcript summarization for long sessions
+    let processedTranscript = transcript;
+    if (transcript.length > 8000) {
+      // Split into 4000-char chunks with 200-char overlap
+      const chunks: string[] = [];
+      let offset = 0;
+      const chunkSize = 4000;
+      const overlap = 200;
+      while (offset < transcript.length) {
+        chunks.push(transcript.slice(offset, offset + chunkSize));
+        if (offset + chunkSize >= transcript.length) break;
+        offset += chunkSize - overlap;
+      }
+
+      // Generate one-sentence summary per chunk using the gateway directly
+      if (gateway && chunks.length > 1) {
+        const chunkSummaries: string[] = [];
+        for (let i = 0; i < chunks.length; i++) {
+          try {
+            const resp = await gateway.generateText({
+              model: 'claude-haiku-4-5',
+              messages: [{ role: 'user', content: `Summarize this conversation segment in one sentence (in the original language):\n\n${chunks[i]}` }],
+              maxTokens: 150,
+              temperature: 0.1,
+            });
+            chunkSummaries.push(`[Segment ${i + 1}]: ${resp.content.trim()}`);
+          } catch {
+            chunkSummaries.push(`[Segment ${i + 1}]: (summary unavailable)`);
+          }
+        }
+        processedTranscript = chunkSummaries.join('\n');
+      }
     }
 
     const taskPrompt = [
@@ -747,7 +827,7 @@ export function getServerContext(): ServerContext {
       `6. Use remember to store a brief session summary in short-term memory for the next interaction.`,
       '',
       `Session transcript:`,
-      transcript.slice(0, 8000),
+      processedTranscript.slice(0, 8000),
       '',
       `After completing all steps, output a one-line summary of what you consolidated.`,
     ].join('\n');
@@ -917,7 +997,10 @@ export function getServerContext(): ServerContext {
           if (s.messages.length > 0) {
             const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
             if (messages.length > 200) {
-              await runCuratorConsolidation(s.id, messages);
+              await enqueueCuratorTask(
+                () => runCuratorConsolidation(s.id, messages),
+                'nudge',
+              );
             }
           }
         }
@@ -936,7 +1019,10 @@ export function getServerContext(): ServerContext {
     async () => {
       if (!gateway) return;
       try {
-        await runCuratorPatternExtraction();
+        await enqueueCuratorTask(
+          () => runCuratorPatternExtraction(),
+          'pattern',
+        );
       } catch (e: any) {
         logger.warn('Curator pattern extraction failed', { error: e.message });
         broadcast('background_error', { task: 'curator_pattern', error: e.message });
@@ -946,6 +1032,39 @@ export function getServerContext(): ServerContext {
   );
   curatorPatternTimer.unref();
   logger.info('Curator pattern extraction scheduled (6h)');
+
+  // Wire session compression callback to Curator background task
+  // (registered here because it depends on enqueueCuratorTask and gateway)
+  sessionManager.onCompressionNeeded((session) => {
+    const gw = gateway;
+    if (!gw) return;
+    const middleStart = SESSION_KEEP_OLDEST;
+    const middleEnd = session.messages.length - SESSION_KEEP_RECENT;
+    const middleMessages = session.messages.slice(middleStart, middleEnd);
+    const middleText = middleMessages.map((m) => `${m.role}: ${m.content.slice(0, 200)}`).join('\n');
+
+    if (middleText.length > 200) {
+      enqueueCuratorTask(
+        async () => {
+          try {
+            const resp = await gw.generateText({
+              model: 'claude-haiku-4-5',
+              messages: [{ role: 'user', content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}` }],
+              maxTokens: 200,
+              temperature: 0.1,
+            });
+            sessionManager.compactMessages(session.id, resp.content.trim());
+            logger.info('Session compression completed', { sessionId: session.id, msgCount: session.messages.length });
+          } catch (e: any) {
+            // Fallback: simple truncation
+            sessionManager.compactMessages(session.id, `${middleMessages.length} intermediate messages compressed.`);
+            logger.warn('Session compression fell back to truncation', { sessionId: session.id, error: e.message });
+          }
+        },
+        'compress',
+      ).catch((e) => logger.warn('Session compression failed', { sessionId: session.id, error: (e as Error).message }));
+    }
+  });
 
   // Shared agent registry (custom roles persist across requests)
   const agentRegistry = new AgentRoleRegistry();
@@ -1305,7 +1424,7 @@ export function getServerContext(): ServerContext {
 
       // Budget enforcement check
       try {
-        const budget = budgetGuard.canProceed();
+        const budget = budgetGuard.canProceed(); // periodic check: non-L3 context — L3 decisions always bypass budget
         if (!budget.allowed && eventBus) {
           const todayCost = costTracker.getDailyCost();
           await eventBus.publish({
@@ -1332,6 +1451,23 @@ export function getServerContext(): ServerContext {
   autoAdjustTimer.unref();
   logger.info('Auto-adjustment health check + budget enforcement scheduled (1h)');
 
+  // Session expiry cleanup (every 6 hours)
+  const sessionCleanupTimer = setInterval(
+    () => {
+      try {
+        const cleaned = sessionManager.cleanExpiredSessions();
+        if (cleaned > 0) {
+          logger.info('Session cleanup completed', { cleaned });
+        }
+      } catch (e: any) {
+        logger.warn('Session cleanup failed', { error: e.message });
+      }
+    },
+    6 * 60 * 60 * 1000,
+  );
+  sessionCleanupTimer.unref();
+  logger.info('Session cleanup scheduled (6h)');
+
   // Workflow approval polling (30s fallback for missed WebSocket events)
   startApprovalPolling(30_000);
   logger.info('Workflow approval polling started (30s)');
@@ -1343,6 +1479,7 @@ export function getServerContext(): ServerContext {
     clearInterval(curatorNudgeTimer);
     clearInterval(curatorPatternTimer);
     clearInterval(autoAdjustTimer);
+    clearInterval(sessionCleanupTimer);
     stopApprovalPolling();
     taskScheduler.stop();
     try {

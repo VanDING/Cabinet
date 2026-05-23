@@ -225,7 +225,7 @@ export class AgentDispatcher {
         captainId: options.captainId,
         systemPrompt: role.systemPrompt,
         model: role.model,
-        maxSteps: options.maxStepsPerAgent ?? this.baseOptions.maxSteps,
+        maxSteps: options.maxStepsPerAgent ?? role.maxSteps ?? this.baseOptions.maxSteps,
         eventBus: this.eventBus,
         taskDescription: input,
         maxResponseTokens: role.maxResponseTokens,

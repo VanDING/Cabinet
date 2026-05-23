@@ -126,5 +126,16 @@ export function runMigration001(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(name);
     CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+}
+
+export function trackMigration(db: Database.Database, version: number): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, datetime(\'now\'))',
+  ).run(version);
 }

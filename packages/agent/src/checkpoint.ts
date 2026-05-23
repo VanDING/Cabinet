@@ -10,7 +10,8 @@ export interface CheckpointState {
 
 export class CheckpointManager {
   constructor(private readonly db: Database.Database) {
-    // Ensure checkpoint table exists
+    // Table created by migration 009; this is a no-op fallback for environments
+    // where migrations haven't been run yet.
     db.exec(`
       CREATE TABLE IF NOT EXISTS agent_checkpoints (
         session_id TEXT PRIMARY KEY,

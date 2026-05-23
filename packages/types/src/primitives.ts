@@ -19,14 +19,26 @@ export interface Project {
   createdAt: Date;
 }
 
+export interface RiskItem {
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  mitigation?: string;
+}
+
+export interface KeyDecisionItem {
+  title: string;
+  outcome: string;
+  date?: string;
+}
+
 export interface ProjectContext {
   projectId: string;
   summary: string;
   goals: string[];
   constraints: Record<string, unknown>;
   techSummary: string;
-  riskMap: unknown[];
-  keyDecisions: unknown[];
+  riskMap: RiskItem[];
+  keyDecisions: KeyDecisionItem[];
 }
 
 // ── Employee ──
@@ -102,7 +114,7 @@ export interface SkillDefinition {
 
 // ── Workflow (Declarative, LLM-friendly) ──
 
-export type WorkflowStepType = 'aiAgent' | 'llmCall' | 'humanApproval' | 'condition' | 'parallel' | 'notification' | 'dataQuery' | 'wait';
+export type WorkflowStepType = 'start' | 'end' | 'skill' | 'aiAgent' | 'llmCall' | 'condition' | 'parallel' | 'human' | 'humanApproval' | 'dataQuery' | 'notification' | 'wait';
 
 export type WorkflowOutputFormat = 'json' | 'markdown' | 'text';
 

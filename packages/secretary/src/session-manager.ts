@@ -4,6 +4,17 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdir
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
+/** Soft limit: trigger background compression when exceeded. */
+const MESSAGE_SOFT_LIMIT = 200;
+/** Hard cap: messages beyond this are aggressively trimmed. */
+const MESSAGE_HARD_LIMIT = 500;
+/** Number of recent messages to always keep uncompressed. */
+const KEEP_RECENT = 30;
+/** Number of oldest messages to keep (prevents total context loss). */
+const KEEP_OLDEST = 30;
+/** Sessions inactive longer than this are archived on cleanup. */
+const SESSION_MAX_AGE_DAYS = 30;
+
 export interface Session {
   id: string;
   title: string;
@@ -30,6 +41,12 @@ export class SessionManager {
 
   onSessionCreate(cb: SessionCallback): void {
     this.onCreateCallbacks.push(cb);
+  }
+
+  private onCompressionCallbacks: SessionCallback[] = [];
+
+  onCompressionNeeded(cb: SessionCallback): void {
+    this.onCompressionCallbacks.push(cb);
   }
 
   create(id: string, title?: string, projectId?: string): Session {
@@ -59,6 +76,28 @@ export class SessionManager {
     if (session) {
       session.messages.push({ role, content, timestamp: new Date() });
       session.updatedAt = new Date();
+
+      // Trigger compression callback when soft limit exceeded
+      if (session.messages.length > MESSAGE_SOFT_LIMIT && session.messages.length <= MESSAGE_HARD_LIMIT) {
+        for (const cb of this.onCompressionCallbacks) {
+          Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+        }
+      }
+
+      // Hard cap: aggressively trim oldest messages if above hard limit
+      if (session.messages.length > MESSAGE_HARD_LIMIT) {
+        const excess = session.messages.length - MESSAGE_HARD_LIMIT + (MESSAGE_SOFT_LIMIT - KEEP_RECENT - KEEP_OLDEST);
+        // Remove messages between KEEP_OLDEST and (length - KEEP_RECENT)
+        const oldest = session.messages.slice(0, KEEP_OLDEST);
+        const recent = session.messages.slice(-KEEP_RECENT);
+        const compactMarker: typeof session.messages[0] = {
+          role: 'assistant',
+          content: `[context_compact] ${excess} intermediate messages compressed due to session length limit.`,
+          timestamp: new Date(),
+        };
+        session.messages = [...oldest, compactMarker, ...recent];
+      }
+
       this.persist(session);
     }
   }
@@ -79,6 +118,37 @@ export class SessionManager {
     this.sessions.delete(sessionId);
     const path = this.sessionPath(sessionId);
     try { unlinkSync(path); } catch { /* ok */ }
+  }
+
+  /** Replace middle messages with a compressed summary marker. */
+  compactMessages(sessionId: string, summary: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+
+    const oldest = session.messages.slice(0, KEEP_OLDEST);
+    const recent = session.messages.slice(-KEEP_RECENT);
+    const compactMarker: typeof session.messages[0] = {
+      role: 'assistant',
+      content: `[context_compact] ${summary}`,
+      timestamp: new Date(),
+    };
+    session.messages = [...oldest, compactMarker, ...recent];
+    this.persist(session);
+  }
+
+  /** Archive sessions that have been inactive for more than SESSION_MAX_AGE_DAYS.
+   *  Returns the number of sessions cleaned up. */
+  cleanExpiredSessions(): number {
+    const cutoff = Date.now() - SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+    let cleaned = 0;
+    for (const [id, session] of this.sessions) {
+      if (session.updatedAt.getTime() < cutoff) {
+        this.sessions.delete(id);
+        cleaned++;
+        // Keep disk file for archival but remove from memory
+      }
+    }
+    return cleaned;
   }
 
   list(): Session[] {
@@ -103,6 +173,7 @@ export class SessionManager {
   private restoreSessions(): void {
     try {
       if (!existsSync(SESSIONS_DIR)) return;
+      const cutoff = Date.now() - SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
       const files = readdirSync(SESSIONS_DIR).filter((f) => f.endsWith('.json'));
       for (const f of files) {
         try {
@@ -114,6 +185,8 @@ export class SessionManager {
           for (const msg of session.messages) {
             msg.timestamp = new Date(msg.timestamp);
           }
+          // Skip sessions older than max age
+          if (session.updatedAt.getTime() < cutoff) continue;
           this.sessions.set(session.id, session);
         } catch { /* skip corrupt session file */ }
       }

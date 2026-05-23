@@ -37,6 +37,8 @@ export interface MessageEnvelope {
   readonly timestamp: Date;
   readonly messageType: MessageType;
   readonly payload: Record<string, unknown>;
+  /** Optional expiry time. Events past this time may be cleaned up. */
+  readonly expiresAt?: Date;
 }
 
 // ── Payload Types ──
@@ -86,4 +88,20 @@ export interface BudgetAlert {
   currentSpend: number;
   limit: number;
   period: 'daily' | 'weekly' | 'monthly';
+}
+
+export interface MeetingStarted {
+  meetingId: string;
+  topic: string;
+  advisorIds: string[];
+  projectId?: string;
+}
+
+export interface MeetingCompleted {
+  meetingId: string;
+  topic: string;
+  synthesis: string;
+  perspectiveCount: number;
+  reviewPassed: boolean;
+  decisionId?: string;
 }

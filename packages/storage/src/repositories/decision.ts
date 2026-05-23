@@ -58,28 +58,30 @@ export class DecisionRepository {
     return row ? rowToDecision(row) : null;
   }
 
-  listByProject(projectId?: string): Decision[] {
-    if (projectId) {
-      const rows = this.db
-        .prepare('SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC')
-        .all(projectId) as any[];
-      return rows.map(rowToDecision);
-    }
+  listByProject(projectId: string): Decision[] {
+    const rows = this.db
+      .prepare('SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC')
+      .all(projectId) as any[];
+    return rows.map(rowToDecision);
+  }
+
+  listAll(): Decision[] {
     const rows = this.db
       .prepare('SELECT * FROM decisions ORDER BY created_at DESC')
       .all() as any[];
     return rows.map(rowToDecision);
   }
 
-  listPending(projectId?: string): Decision[] {
-    if (projectId) {
-      const rows = this.db
-        .prepare(
-          "SELECT * FROM decisions WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC",
-        )
-        .all(projectId) as any[];
-      return rows.map(rowToDecision);
-    }
+  listPending(projectId: string): Decision[] {
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM decisions WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC",
+      )
+      .all(projectId) as any[];
+    return rows.map(rowToDecision);
+  }
+
+  listAllPending(): Decision[] {
     const rows = this.db
       .prepare("SELECT * FROM decisions WHERE status = 'pending' ORDER BY created_at DESC")
       .all() as any[];

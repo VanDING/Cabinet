@@ -22,6 +22,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
   return [
     {
       name: 'read_file',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         if (!filePath) return { error: 'path is required' };
@@ -141,6 +142,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'file_info',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         if (!filePath) return { error: 'path is required' };
@@ -154,6 +156,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'list_directory',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const dirPath = (args.path as string) ?? '.';
         try {
@@ -166,6 +169,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'glob',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const pattern = args.pattern as string;
         if (!pattern) return { error: 'pattern is required' };
@@ -180,6 +184,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'grep',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const pattern = args.pattern as string;
         if (!pattern) return { error: 'pattern is required' };
@@ -196,6 +201,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'recent_files',
       description: 'List recently accessed files in the current workspace. Useful for understanding what files are being worked on.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const limit = (args.limit as number) ?? 20;
         try {
@@ -209,6 +215,7 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'watch_file',
       description: 'Watch a file for changes. Returns when the file is modified or the timeout is reached. Useful after running build commands to wait for output files.',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const timeoutMs = (args.timeout_ms as number) ?? 30000;

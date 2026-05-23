@@ -251,8 +251,22 @@ export class ObservabilityCollector {
     avgCostPerSession: number;
     toolHealth: 'healthy' | 'degraded' | 'unhealthy';
     contextHealth: 'healthy' | 'warning' | 'critical';
+    insufficientData: boolean;
   } {
     const recent = this.sessions.slice(-50);
+
+    // Require minimum 10 sessions before reporting meaningful health data.
+    if (recent.length < 10) {
+      return {
+        recentSessions: recent.length,
+        successRate: 1, // optimistic default when insufficient data
+        avgCostPerSession: 0,
+        toolHealth: 'healthy' as const,
+        contextHealth: 'healthy' as const,
+        insufficientData: true,
+      };
+    }
+
     const successRate =
       recent.length > 0 ? recent.filter((s) => s.success).length / recent.length : 1;
 
@@ -276,7 +290,76 @@ export class ObservabilityCollector {
       avgCostPerSession: Math.round(avgCost * 100) / 100,
       toolHealth,
       contextHealth,
+      insufficientData: false,
     };
+  }
+
+  /** Get health metrics grouped by agent role. */
+  getHealthByRole(): Map<
+    string,
+    {
+      recentSessions: number;
+      successRate: number | null; // null = insufficient data
+      avgCostPerSession: number;
+      contextHealth: 'healthy' | 'warning' | 'critical' | 'insufficient_data';
+      insufficientData: boolean;
+    }
+  > {
+    const MIN_SAMPLES = 5;
+    const byRole = new Map<string, SessionMetric[]>();
+
+    const recent = this.sessions.slice(-200); // broader window for per-role analysis
+    for (const s of recent) {
+      const list = byRole.get(s.role) ?? [];
+      list.push(s);
+      byRole.set(s.role, list);
+    }
+
+    const result = new Map<
+      string,
+      {
+        recentSessions: number;
+        successRate: number | null;
+        avgCostPerSession: number;
+        contextHealth: 'healthy' | 'warning' | 'critical' | 'insufficient_data';
+        insufficientData: boolean;
+      }
+    >();
+
+    for (const [role, sessions] of byRole) {
+      if (sessions.length < MIN_SAMPLES) {
+        result.set(role, {
+          recentSessions: sessions.length,
+          successRate: null,
+          avgCostPerSession: 0,
+          contextHealth: 'insufficient_data' as const,
+          insufficientData: true,
+        });
+        continue;
+      }
+
+      const successRate = sessions.filter((s) => s.success).length / sessions.length;
+      const avgCost =
+        sessions.reduce((sum, s) => sum + s.totalCost, 0) / sessions.length;
+      const dumbZoneSessions = sessions.filter(
+        (s) => s.contextZoneDistribution.dumb > 0,
+      ).length;
+      const contextHealth: 'healthy' | 'warning' | 'critical' =
+        dumbZoneSessions === 0
+          ? 'healthy'
+          : dumbZoneSessions < Math.ceil(sessions.length * 0.1)
+            ? 'warning'
+            : 'critical';
+
+      result.set(role, {
+        recentSessions: sessions.length,
+        successRate: Math.round(successRate * 100) / 100,
+        avgCostPerSession: Math.round(avgCost * 100) / 100,
+        contextHealth,
+        insufficientData: false,
+      });
+    }
+    return result;
   }
 
   /** Export all session data for external analysis. */

@@ -42,8 +42,8 @@ export const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
     DecisionStatus.Expired,
   ],
   [DecisionStatus.Approved]: [DecisionStatus.Archived],
-  [DecisionStatus.Rejected]: [DecisionStatus.Archived],
-  [DecisionStatus.Expired]: [DecisionStatus.Archived],
+  [DecisionStatus.Rejected]: [DecisionStatus.Archived, DecisionStatus.Pending],
+  [DecisionStatus.Expired]: [DecisionStatus.Archived, DecisionStatus.Pending],
   [DecisionStatus.Archived]: [],
 };
 

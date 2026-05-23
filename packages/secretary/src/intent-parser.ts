@@ -113,10 +113,9 @@ export class IntentParser {
     }
 
     if (
-      lower.includes('组织') ||
-      lower.includes('讨论') ||
-      lower.includes('会议') ||
-      lower.includes('顾问')
+      (lower.includes('组织') && lower.includes('讨论')) ||
+      (lower.includes('会议') && trimmed.length > 10) ||
+      (lower.includes('顾问') && trimmed.length > 8)
     ) {
       return {
         kind: 'meeting_request',
