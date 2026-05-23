@@ -44,9 +44,9 @@ const RAG_LONGTERM_TOP_K = 5;
 /** Roles that need the system environment section in their prompt. */
 const ROLES_NEEDING_ENV = new Set(['secretary', 'workflow_designer', 'organize']);
 
-function buildSystemPrompt(roleType: string, roleSystemPrompt: string): string {
+function buildSystemPrompt(roleType: string, roleSystemPrompt: string, projectRootPath?: string): string {
   if (ROLES_NEEDING_ENV.has(roleType)) {
-    return buildEnvironmentSection() + '\n\n' + roleSystemPrompt;
+    return buildEnvironmentSection(projectRootPath) + '\n\n' + roleSystemPrompt;
   }
   return roleSystemPrompt;
 }
@@ -1429,7 +1429,7 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
       try {
         const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(pid) as any;
         if (projRow?.root_path && existsSync(projRow.root_path)) {
-          contextStr = `Project root: ${projRow.root_path}\n`;
+          contextStr = `Active project files at: ${projRow.root_path}\n`;
         }
       } catch { /* root_path lookup is best-effort */ }
       if (!projCtx) {
@@ -1510,6 +1510,15 @@ function getAgentLoopForRole(
     }
   }
 
+  // Look up project root path for the system prompt
+  let projectRootPath: string | undefined;
+  try {
+    const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
+    if (projRow?.root_path && existsSync(projRow.root_path)) {
+      projectRootPath = projRow.root_path;
+    }
+  } catch { /* best-effort */ }
+
   const checkpointManager = new CheckpointManager(ctx.db);
   const loop = new AgentLoop({
     gateway: ctx.gateway,
@@ -1520,7 +1529,7 @@ function getAgentLoopForRole(
     sessionId: `${sessionId}-${role.type}`,
     projectId,
     captainId,
-    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt),
+    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt, projectRootPath),
     model: model ?? resolveModel(role),
     maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
@@ -1812,6 +1821,17 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
 
   let secretaryLoop: AgentLoop | null = null;
   if (hasGateway) {
+    // Look up project root path for the system prompt
+    let projectRootPath: string | undefined;
+    try {
+      if (projectId && projectId !== 'global') {
+        const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
+        if (projRow?.root_path && existsSync(projRow.root_path)) {
+          projectRootPath = projRow.root_path;
+        }
+      }
+    } catch { /* best-effort */ }
+
     const checkpointManager = new CheckpointManager(ctx.db);
     secretaryLoop = new AgentLoop({
       gateway: ctx.gateway!,
@@ -1822,7 +1842,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
-      systemPrompt: buildSystemPrompt('secretary', secretaryRole?.systemPrompt ?? ''),
+      systemPrompt: buildSystemPrompt('secretary', secretaryRole?.systemPrompt ?? '', projectRootPath),
       model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
       maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
