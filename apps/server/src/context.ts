@@ -301,11 +301,11 @@ export function getServerContext(): ServerContext {
             if (wfId) {
               if (action === 'approved' && chosenOptionId === 'approve_continue') {
                 workflowRepo.updateStatus(wfId, 'completed');
-                auditLogRepo.updateAction('workflow_approval', decisionId, 'approved', { ...wfData, status: 'approved', decisionId });
+                auditLogRepo.insert('workflow_approval', decisionId, 'approved', 'system', { ...wfData, status: 'approved', decisionId });
                 logger.info('Workflow approved via decision', { workflowId: wfId, decisionId });
               } else {
                 workflowRepo.updateStatus(wfId, 'failed');
-                auditLogRepo.updateAction('workflow_approval', decisionId, 'terminated', { ...wfData, status: 'terminated', decisionId });
+                auditLogRepo.insert('workflow_approval', decisionId, 'terminated', 'system', { ...wfData, status: 'terminated', decisionId });
                 logger.info('Workflow terminated via decision', { workflowId: wfId, decisionId });
               }
             }
