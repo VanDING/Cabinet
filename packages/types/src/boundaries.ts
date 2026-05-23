@@ -13,6 +13,12 @@ export const DelegationTier = {
 
 export type DelegationTier = (typeof DelegationTier)[keyof typeof DelegationTier];
 
+/** Default captain ID used when none is provided. */
+export const DEFAULT_CAPTAIN_ID = 'captain-1';
+
+/** Default captain display name. */
+export const DEFAULT_CAPTAIN_NAME = 'Captain';
+
 /** Default delegation tier for new setups */
 export const DEFAULT_DELEGATION_TIER: DelegationTier = DelegationTier.StrategicGuard;
 

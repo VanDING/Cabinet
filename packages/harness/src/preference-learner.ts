@@ -1,4 +1,5 @@
 import type { EntityMemory } from '@cabinet/memory';
+import { DEFAULT_CAPTAIN_NAME } from '@cabinet/types';
 
 export interface CaptainPreferenceProfile {
   riskTolerance: 'low' | 'medium' | 'high';
@@ -53,7 +54,7 @@ export class PreferenceLearner {
 
     const profile = await this.analyzeCallback(captainId, history, existingPrefs);
 
-    this.entity.setPreferences(captainId, existing?.name ?? 'Captain', {
+    this.entity.setPreferences(captainId, existing?.name ?? DEFAULT_CAPTAIN_NAME, {
       ...existingPrefs,
       preferenceProfile: profile,
       lastPreferenceAnalysis: new Date().toISOString(),

@@ -49,7 +49,7 @@ import { MemoryEventBus } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
-import { DelegationTier, DEFAULT_DELEGATION_TIER, MessageType } from '@cabinet/types';
+import { DelegationTier, DEFAULT_DELEGATION_TIER, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, MessageType } from '@cabinet/types';
 import {
   AgentRoleRegistry,
   CURATOR_ROLE,
@@ -274,7 +274,7 @@ export function getServerContext(): ServerContext {
     decisionRepo,
     (decisionId, action, title, chosenOptionId, captainId) => {
       try {
-        const cid = captainId ?? 'captain-1';
+        const cid = captainId ?? DEFAULT_CAPTAIN_ID;
 
         // ── Workflow resumption ──
         const wfRow = db
@@ -325,7 +325,7 @@ export function getServerContext(): ServerContext {
         const total = trimmed.length;
         const approvalRate = total > 0 ? approvals / total : 0;
 
-        entity.setPreferences(cid, existing?.name ?? 'Captain', {
+        entity.setPreferences(cid, existing?.name ?? DEFAULT_CAPTAIN_NAME, {
           ...existingPrefs,
           decisionHistory: trimmed,
           decisionStats: {
@@ -697,7 +697,7 @@ export function getServerContext(): ServerContext {
       },
       sessionId: `curator_bg_${Date.now()}`,
       projectId: 'default',
-      captainId: 'captain-1',
+      captainId: DEFAULT_CAPTAIN_ID,
       systemPrompt: role.systemPrompt,
       model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.model,
       maxSteps: role.maxSteps ?? 50,

@@ -1,7 +1,7 @@
 import { ToolExecutor, type ToolDefinition } from '../tool-executor.js';
 import type { EventBus } from '@cabinet/events';
 import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
-import { MessageType, type DecisionStore, type Decision } from '@cabinet/types';
+import { MessageType, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, type DecisionStore, type Decision } from '@cabinet/types';
 import { getSkillRegistry } from '../skill-registry.js';
 import { createFileTools, type FileToolDeps } from './file-tools.js';
 import { createWebTools, type WebToolDeps } from './web-tools.js';
@@ -155,7 +155,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       name: 'approve_decision',
       execute: async (args: Record<string, unknown>) => {
         const decisionId = args.decisionId as string;
-        const captainId = (args.captainId as string) ?? 'captain-1';
+        const captainId = (args.captainId as string) ?? DEFAULT_CAPTAIN_ID;
         const chosenOptionId = (args.chosenOptionId as string) ?? (args.optionId as string);
         if (!decisionId || !chosenOptionId) {
           return { error: 'decisionId and chosenOptionId are required' };
@@ -167,7 +167,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       name: 'reject_decision',
       execute: async (args: Record<string, unknown>) => {
         const decisionId = args.decisionId as string;
-        const captainId = (args.captainId as string) ?? 'captain-1';
+        const captainId = (args.captainId as string) ?? DEFAULT_CAPTAIN_ID;
         if (!decisionId) return { error: 'decisionId is required' };
         return deps.rejectDecision(decisionId, captainId);
       },
@@ -303,8 +303,8 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     {
       name: 'set_captain_preferences',
       execute: async (args: Record<string, unknown>) => {
-        const captainId = (args.captainId as string) ?? 'captain-1';
-        const name = (args.name as string) ?? 'Captain';
+        const captainId = (args.captainId as string) ?? DEFAULT_CAPTAIN_ID;
+        const name = (args.name as string) ?? DEFAULT_CAPTAIN_NAME;
         const prefs = (args.preferences as Record<string, unknown>) ?? {};
         deps.entity.setPreferences(captainId, name, prefs);
         return { updated: true, captainId };
