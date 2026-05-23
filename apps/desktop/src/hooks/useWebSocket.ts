@@ -51,7 +51,14 @@ export function useWebSocket(onEvent?: WSEventHandler) {
       };
     } catch {
       setConnected(false);
-      /* WebSocket construction failed */
+      wsRef.current = null;
+      if (!reconnecting.current) {
+        reconnecting.current = true;
+        reconnectTimer.current = setTimeout(() => {
+          reconnecting.current = false;
+          connect();
+        }, 5000);
+      }
     }
   }, []);
 

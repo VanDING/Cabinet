@@ -36,7 +36,9 @@ export function Calendar({ projectId }: Props) {
         const dates = new Set<string>();
         for (const m of data.meetings ?? []) {
           if (m.createdAt) {
-            dates.add(m.createdAt.slice(0, 10));
+            const d = new Date(m.createdAt);
+            const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            dates.add(localStr);
           }
         }
         setMeetingDates(dates);
