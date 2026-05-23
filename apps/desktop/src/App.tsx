@@ -307,15 +307,16 @@ export function App() {
 
           await readSSEStream(reader, {
             onRoutingStart(targetAgent) {
+              const sourceDisplay = streamAgent ? (AGENT_DISPLAY[streamAgent] || streamAgent) : null;
+              const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
               streamAgent = targetAgent;
               setActiveAgent(targetAgent);
-              const displayName = AGENT_DISPLAY[targetAgent] || targetAgent;
               addMessage(sessionId, {
                 id: `r_${Date.now()}`,
                 role: 'assistant',
-                content: targetAgent,
+                content: sourceDisplay ? `${sourceDisplay} → ${targetDisplay}` : targetDisplay,
                 timestamp: new Date(),
-                agentName: `→ ${displayName}`,
+                agentName: '→',
               });
             },
             onThinking(content) {
