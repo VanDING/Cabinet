@@ -196,7 +196,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           causationId: null,
           timestamp: new Date(),
           messageType: MessageType.SystemNotification,
-          payload: { message: args.message as string, level: (args.level as string) ?? 'info' },
+          payload: { type: 'tool_notification', message: args.message as string, data: { level: (args.level as string) ?? 'info' } },
         });
         return { published: true, messageId };
       },

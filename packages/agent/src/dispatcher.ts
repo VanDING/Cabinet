@@ -24,9 +24,11 @@ import { SafetyChecker } from './safety.js';
 import { CheckpointManager } from './checkpoint.js';
 import type { Database } from '@cabinet/storage';
 
+import type { DispatchMode, PipelineStep } from '@cabinet/types';
+
 // ── Types ──────────────────────────────────────────────────────
 
-export type DispatchMode = 'pipeline' | 'parallel' | 'single';
+export type { DispatchMode, PipelineStep };
 
 export interface DispatchOptions {
   mode: DispatchMode;
@@ -40,16 +42,6 @@ export interface DispatchOptions {
   roles?: AgentRoleType[];
   /** Max steps per agent. */
   maxStepsPerAgent?: number;
-}
-
-export interface PipelineStep {
-  role: AgentRoleType;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  input: string;
-  output?: string;
-  error?: string;
-  durationMs: number;
-  steps: number;
 }
 
 export interface DispatchResult {
