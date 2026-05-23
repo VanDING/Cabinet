@@ -30,27 +30,25 @@ export const settingsRouter = new Hono();
 
 // ── Budget ──
 
-function loadBudget(db: any): { daily: number; weekly: number; monthly: number } {
+function loadBudget(): { daily: number; weekly: number; monthly: number } {
   try {
-    const row = db
-      .prepare("SELECT value FROM metrics WHERE name = 'budget_limits' ORDER BY id DESC LIMIT 1")
-      .get() as any;
-    if (row) return JSON.parse(row.value);
+    const { metricRepo } = getServerContext();
+    const value = metricRepo.getLatestValue('budget_limits');
+    if (value) return JSON.parse(value);
   } catch {
     /* budget not configured yet */
   }
   return { daily: config.dailyBudget, weekly: config.weeklyBudget, monthly: config.monthlyBudget };
 }
 
-function saveBudget(db: any, limits: { daily: number; weekly: number; monthly: number }) {
-  db.prepare("INSERT INTO metrics (name, value, tags) VALUES ('budget_limits', ?, '{}')").run(
-    JSON.stringify(limits),
-  );
+function saveBudget(limits: { daily: number; weekly: number; monthly: number }) {
+  const { metricRepo } = getServerContext();
+  metricRepo.insert('budget_limits', JSON.stringify(limits));
 }
 
 settingsRouter.get('/budget', (c) => {
-  const { budgetGuard, costTracker, db } = getServerContext();
-  const budget = loadBudget(db);
+  const { budgetGuard, costTracker } = getServerContext();
+  const budget = loadBudget();
   const status = budgetGuard.checkAll();
   return c.json({
     ...budget,
@@ -60,14 +58,14 @@ settingsRouter.get('/budget', (c) => {
 });
 
 settingsRouter.put('/budget', async (c) => {
-  const { budgetGuard, db, logger } = getServerContext();
+  const { budgetGuard, logger } = getServerContext();
   const body = await c.req.json();
   const limits = {
     daily: parseFloat(body.daily) || config.dailyBudget,
     weekly: parseFloat(body.weekly) || config.weeklyBudget,
     monthly: parseFloat(body.monthly) || config.monthlyBudget,
   };
-  saveBudget(db, limits);
+  saveBudget(limits);
   if (typeof (budgetGuard as any).setLimits === 'function') {
     (budgetGuard as any).setLimits(limits);
   }
@@ -91,15 +89,10 @@ function ensureApiKeyColumns(db: any) {
 }
 
 settingsRouter.get('/api-keys', (c) => {
-  const { db } = getServerContext();
-  ensureApiKeyColumns(db);
+  const { apiKeyRepo } = getServerContext();
   try {
-    const rows = db
-      .prepare(
-        'SELECT id, provider, encrypted_key, key_type, created_at, last_used_at, base_url, model FROM api_keys ORDER BY created_at DESC',
-      )
-      .all() as any[];
-    const keys = rows.map((k: any) => ({
+    const rows = apiKeyRepo.findAll();
+    const keys = rows.map((k) => ({
       id: k.id,
       provider: k.provider,
       keyPreview: (() => {
@@ -122,24 +115,22 @@ settingsRouter.get('/api-keys', (c) => {
 });
 
 settingsRouter.post('/api-keys', async (c) => {
-  const { db, refreshGateway } = getServerContext();
-  ensureApiKeyColumns(db);
+  const { apiKeyRepo, refreshGateway } = getServerContext();
   const body = await c.req.json();
   const id = `key_${Date.now()}`;
   const encryptedKey = encryptApiKey(body.apiKey, MASTER_PW);
 
   try {
-    db.prepare(
-      'INSERT INTO api_keys (id, provider, encrypted_key, key_type, created_at, base_url, model) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(
+    apiKeyRepo.insert({
       id,
-      body.provider ?? 'unknown',
-      encryptedKey,
-      body.keyType ?? 'api_key',
-      new Date().toISOString(),
-      body.baseUrl ?? '',
-      body.model ?? '',
-    );
+      provider: body.provider ?? 'unknown',
+      encrypted_key: encryptedKey,
+      key_type: body.keyType ?? 'api_key',
+      created_at: new Date().toISOString(),
+      last_used_at: null,
+      base_url: body.baseUrl ?? '',
+      model: body.model ?? '',
+    });
     refreshGateway();
     broadcast('apikeys_changed', { action: 'added', provider: body.provider, timestamp: new Date().toISOString() });
     return c.json({ id, status: 'key_added', provider: body.provider });
@@ -149,10 +140,10 @@ settingsRouter.post('/api-keys', async (c) => {
 });
 
 settingsRouter.delete('/api-keys/:id', (c) => {
-  const { db, refreshGateway } = getServerContext();
+  const { apiKeyRepo, refreshGateway } = getServerContext();
   const id = c.req.param('id');
   try {
-    db.prepare('DELETE FROM api_keys WHERE id = ?').run(id);
+    apiKeyRepo.delete(id);
     refreshGateway();
     broadcast('apikeys_changed', { action: 'deleted', id, timestamp: new Date().toISOString() });
     return c.json({ status: 'deleted' });
@@ -227,11 +218,11 @@ settingsRouter.get('/mcp-servers', (c) => {
 });
 
 settingsRouter.put('/mcp-servers', async (c) => {
-  const { mcpManager, db, logger } = getServerContext();
+  const { mcpManager, settingsRepo, logger } = getServerContext();
   const body = await c.req.json();
   const configs = body.configs ?? [];
   // Persist to DB and settings.json
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('mcp_servers', ?)").run(JSON.stringify(configs));
+  settingsRepo.set('mcp_servers', JSON.stringify(configs));
   saveSettings({ mcpServers: configs });
   await mcpManager.updateConfigs(configs);
   logger.info('MCP servers updated', { count: configs.length });

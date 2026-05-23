@@ -6,15 +6,13 @@ export const employeesRouter = new Hono();
 
 // GET /api/employees — includes both employees and agent_roles
 employeesRouter.get('/', (c) => {
-  const { db } = getServerContext();
-  const empRows = db.prepare('SELECT * FROM employees ORDER BY name ASC').all() as any[];
+  const { employeeRepo, agentRoleRepo } = getServerContext();
+  const empRows = employeeRepo.findAll();
   const employees = empRows.map(rowToEmployee);
 
   // Also include custom agents from agent_roles table
-  const agentRows = db
-    .prepare('SELECT type, name, description, model, allowed_tools FROM agent_roles WHERE is_builtin = 0 ORDER BY name ASC')
-    .all() as any[];
-  const agentsFromRoles = agentRows.map((r: any) => ({
+  const agentRows = agentRoleRepo.findCustom();
+  const agentsFromRoles = agentRows.map((r) => ({
     id: `agent_${r.name}`,
     name: r.name,
     role: r.type,
@@ -42,7 +40,7 @@ const createSchema = z.object({
 });
 
 employeesRouter.post('/', async (c) => {
-  const { db, logger } = getServerContext();
+  const { employeeRepo, logger } = getServerContext();
   const body = await c.req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -55,30 +53,29 @@ employeesRouter.post('/', async (c) => {
     status: d.status ?? 'active',
   });
 
-  db.prepare(
-    'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(
+  employeeRepo.insert({
     id,
-    d.projectId ?? 'default',
-    d.name,
-    d.role ?? 'advisor',
-    d.kind ?? 'ai',
+    project_id: d.projectId ?? 'default',
+    name: d.name,
+    role: d.role ?? 'advisor',
+    kind: d.kind ?? 'ai',
+    pipeline_config: null,
     persona,
-    d.permissionLevel ?? 'read',
-  );
+    permission_level: d.permissionLevel ?? 'read',
+  });
 
-  const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as any;
+  const row = employeeRepo.findById(id);
   logger.info('Employee created', { id, name: d.name });
   return c.json({ employee: rowToEmployee(row) }, 201);
 });
 
 // PUT /api/employees/:id
 employeesRouter.put('/:id', async (c) => {
-  const { db, logger } = getServerContext();
+  const { employeeRepo, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
 
-  const existing = db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as any;
+  const existing = employeeRepo.findById(id);
   if (!existing) return c.json({ error: 'Employee not found' }, 404);
 
   const oldPersona = JSON.parse(existing.persona ?? '{}');
@@ -88,25 +85,22 @@ employeesRouter.put('/:id', async (c) => {
     status: body.status ?? oldPersona.status ?? 'active',
   });
 
-  db.prepare(
-    'UPDATE employees SET name = ?, role = ?, kind = ?, persona = ?, permission_level = ? WHERE id = ?',
-  ).run(
-    body.name ?? existing.name,
-    body.role ?? existing.role,
-    body.kind ?? existing.kind,
-    newPersona,
-    body.permissionLevel ?? existing.permission_level,
-    id,
-  );
+  employeeRepo.update(id, {
+    name: body.name ?? existing.name,
+    role: body.role ?? existing.role,
+    kind: body.kind ?? existing.kind,
+    persona: newPersona,
+    permission_level: body.permissionLevel ?? existing.permission_level,
+  });
 
-  const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as any;
+  const row = employeeRepo.findById(id);
   logger.info('Employee updated', { id });
   return c.json({ employee: rowToEmployee(row) });
 });
 
 // DELETE /api/employees/:id
 employeesRouter.delete('/:id', (c) => {
-  const { db, agentRegistry, logger } = getServerContext();
+  const { employeeRepo, agentRoleRepo, agentRegistry, logger } = getServerContext();
   const id = c.req.param('id');
 
   // Custom agents are stored in agent_roles, not employees table
@@ -116,7 +110,7 @@ employeesRouter.delete('/:id', (c) => {
     if (!agent) return c.json({ error: 'Agent not found' }, 404);
 
     agentRegistry.unregister(name);
-    db.prepare('DELETE FROM agent_roles WHERE name = ?').run(name);
+    agentRoleRepo.deleteByName(name);
 
     // Remove from filesystem
     const { join } = require('node:path');
@@ -128,7 +122,7 @@ employeesRouter.delete('/:id', (c) => {
     return c.json({ status: 'deleted' });
   }
 
-  db.prepare('DELETE FROM employees WHERE id = ?').run(id);
+  employeeRepo.delete(id);
   logger.info('Employee deleted', { id });
   return c.json({ status: 'deleted' });
 });

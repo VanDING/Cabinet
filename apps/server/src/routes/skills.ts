@@ -40,27 +40,27 @@ function rowToSkill(row: any) {
   };
 }
 
-function persistSkillToDb(db: any, skill: SkillEntry) {
-  db.prepare(
-    `INSERT OR REPLACE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
-     VALUES (?, ?, ?, ?, '{}', '{}', ?, ?, 'active', ?, ?, ?)`,
-  ).run(
-    skill.id,
-    skill.name,
-    skill.description,
-    skill.kind,
-    skill.promptTemplate,
-    skill.version,
-    JSON.stringify(skill.metadata ?? {}),
-    skill.referencesPath ?? '',
-    skill.scriptsPath ?? '',
-  );
+function persistSkillToDb(skillRepo: import('@cabinet/storage').SkillRepository, skill: SkillEntry) {
+  skillRepo.upsert({
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+    kind: skill.kind,
+    input_schema: '{}',
+    output_schema: '{}',
+    prompt_template: skill.promptTemplate,
+    version: skill.version,
+    status: 'active',
+    metadata: JSON.stringify(skill.metadata ?? {}),
+    references_path: skill.referencesPath ?? '',
+    scripts_path: skill.scriptsPath ?? '',
+  });
 }
 
 // ── GET /api/skills — list from DB + filesystem scan ──
 skillsRouter.get('/', (c) => {
-  const { db } = getServerContext();
-  const rows = db.prepare('SELECT * FROM skills ORDER BY version DESC').all() as any[];
+  const { skillRepo } = getServerContext();
+  const rows = skillRepo.findAll();
   const dbSkills = rows.map(rowToSkill);
 
   // Scan filesystem for skills not yet in DB
@@ -114,7 +114,7 @@ const createSchema = z.object({
 });
 
 skillsRouter.post('/', async (c) => {
-  const { db, logger, skillRegistry } = getServerContext();
+  const { skillRepo, logger, skillRegistry } = getServerContext();
   const body = await c.req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -127,18 +127,20 @@ skillsRouter.post('/', async (c) => {
   const scriptsDir = join(dir, 'scripts');
 
   // Persist to DB (index)
-  db.prepare(
-    `INSERT INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
-     VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active', '{}', ?, ?)`,
-  ).run(
+  skillRepo.insert({
     id,
-    d.name,
-    d.description ?? '',
-    d.kind ?? 'tool',
-    d.promptTemplate ?? '',
-    existsSync(refsDir) ? refsDir : '',
-    existsSync(scriptsDir) ? scriptsDir : '',
-  );
+    name: d.name,
+    description: d.description ?? '',
+    kind: d.kind ?? 'tool',
+    input_schema: '{}',
+    output_schema: '{}',
+    prompt_template: d.promptTemplate ?? '',
+    version: 1,
+    status: 'active',
+    metadata: '{}',
+    references_path: existsSync(refsDir) ? refsDir : '',
+    scripts_path: existsSync(scriptsDir) ? scriptsDir : '',
+  });
 
   // Write SKILL.md to filesystem
   const skillMd = [
@@ -176,22 +178,19 @@ skillsRouter.post('/', async (c) => {
 
 // ── PUT /api/skills/:id ──
 skillsRouter.put('/:id', async (c) => {
-  const { db, logger } = getServerContext();
+  const { skillRepo, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
-  const existing = db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as any;
+  const existing = skillRepo.findById(id);
   if (!existing) return c.json({ error: 'Skill not found' }, 404);
 
   const newVersion = existing.version + 1;
-  db.prepare(
-    `UPDATE skills SET name = ?, description = ?, version = ?, metadata = ? WHERE id = ?`,
-  ).run(
-    body.name ?? existing.name,
-    body.description ?? existing.description,
-    newVersion,
-    JSON.stringify(body.metadata ?? JSON.parse(existing.metadata ?? '{}')),
-    id,
-  );
+  skillRepo.update(id, {
+    name: body.name ?? existing.name,
+    description: body.description ?? existing.description,
+    version: newVersion,
+    metadata: JSON.stringify(body.metadata ?? JSON.parse(existing.metadata ?? '{}')),
+  });
 
   // Update SKILL.md
   const name = body.name ?? existing.name;
@@ -215,10 +214,10 @@ skillsRouter.put('/:id', async (c) => {
 
 // ── DELETE /api/skills/:id — remove DB entry + skill directory ──
 skillsRouter.delete('/:id', (c) => {
-  const { db, skillRegistry, logger } = getServerContext();
+  const { skillRepo, skillRegistry, logger } = getServerContext();
   const id = c.req.param('id');
 
-  const row = db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as any;
+  const row = skillRepo.findById(id);
   if (row) {
     // Remove from filesystem
     const skillDir = join(SKILLS_DIR, row.name);
@@ -226,7 +225,7 @@ skillsRouter.delete('/:id', (c) => {
     // Remove from registry
     skillRegistry.unregister(row.name);
     // Remove from DB
-    db.prepare('DELETE FROM skills WHERE id = ?').run(id);
+    skillRepo.delete(id);
     logger.info('Skill deleted', { id, name: row.name });
   }
   return c.json({ status: 'deleted' });
@@ -234,12 +233,12 @@ skillsRouter.delete('/:id', (c) => {
 
 // ── POST /api/skills/:id/test ──
 skillsRouter.post('/:id/test', async (c) => {
-  const { gateway, db, metrics, logger } = getServerContext();
+  const { gateway, skillRepo, metrics, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
   const input = (body.input as string) ?? '';
 
-  const skill = db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as any;
+  const skill = skillRepo.findById(id);
   if (!skill) return c.json({ error: 'Skill not found' }, 404);
 
   if (!gateway) {
@@ -276,7 +275,7 @@ skillsRouter.post('/:id/test', async (c) => {
 
 // ── POST /api/skills/import — import SKILL.md text ──
 skillsRouter.post('/import', async (c) => {
-  const { db, skillRegistry, logger } = getServerContext();
+  const { skillRepo, skillRegistry, logger } = getServerContext();
   const body = await c.req.json();
   const content = (body.content || body.markdown) as string;
   if (!content) return c.json({ error: 'content is required (SKILL.md text)' }, 400);
@@ -299,7 +298,7 @@ skillsRouter.post('/import', async (c) => {
   if (skill) {
     skill.referencesPath = existsSync(refsDir) ? refsDir : '';
     skill.scriptsPath = existsSync(scriptsDir) ? scriptsDir : '';
-    persistSkillToDb(db, skill);
+    persistSkillToDb(skillRepo, skill);
   }
 
   logger.info('Skill imported', { id: result.id, name: result.name });
@@ -313,7 +312,7 @@ skillsRouter.post('/import', async (c) => {
 
 // ── POST /api/skills/import-zip — import full skill zip with directory structure ──
 skillsRouter.post('/import-zip', async (c) => {
-  const { db, skillRegistry, logger } = getServerContext();
+  const { skillRepo, skillRegistry, logger } = getServerContext();
 
   const formData = await c.req.formData();
   const zipFile = formData.get('file');
@@ -383,7 +382,7 @@ skillsRouter.post('/import-zip', async (c) => {
   if (skill) {
     skill.referencesPath = existsSync(refsDir) ? refsDir : '';
     skill.scriptsPath = existsSync(scriptsDir) ? scriptsDir : '';
-    persistSkillToDb(db, skill);
+    persistSkillToDb(skillRepo, skill);
   }
 
   logger.info('Skill zip imported', { id: result.id, name: result.name });
@@ -399,10 +398,10 @@ skillsRouter.post('/import-zip', async (c) => {
 
 // ── GET /api/skills/:id/export — export as SKILL.md ──
 skillsRouter.get('/:id/export', (c) => {
-  const { db, skillRegistry } = getServerContext();
+  const { skillRepo, skillRegistry } = getServerContext();
   const id = c.req.param('id');
 
-  const row = db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as any;
+  const row = skillRepo.findById(id);
   if (!row) return c.json({ error: 'Skill not found' }, 404);
 
   const skill = skillRegistry.load(row.name) ?? {

@@ -98,10 +98,10 @@ filesRouter.get('/read', async (c) => {
   // If projectId provided, resolve against that project's rootPath
   if (projectId) {
     try {
-      const { db } = getServerContext();
-      const row = db.prepare('SELECT root_path FROM projects WHERE id = ?').get(projectId) as any;
-      if (row?.root_path) {
-        root = resolve(row.root_path);
+      const { projectRepo } = getServerContext();
+      const project = projectRepo.findById(projectId);
+      if (project?.rootPath) {
+        root = resolve(project.rootPath);
       }
     } catch { /* fall back to default PROJECT_ROOT */ }
   }

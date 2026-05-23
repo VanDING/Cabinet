@@ -99,7 +99,7 @@ agentsRouter.get('/', (c) => {
 
 // ── POST /api/agents/import — import agent from .md or .json ──
 agentsRouter.post('/import', async (c) => {
-  const { agentRegistry, db, logger } = getServerContext();
+  const { agentRegistry, agentRoleRepo, logger } = getServerContext();
   const body = await c.req.json();
   const content = body.content as string;
   const format = (body.format as string) ?? 'md';
@@ -132,15 +132,19 @@ agentsRouter.post('/import', async (c) => {
       allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
       contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
     });
-    db.prepare(
-      `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-    ).run(name, name, agentCard.description ?? '', agentCard.systemPrompt ?? agentCard.instructions ?? '',
-      agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
-      agentCard.temperature ?? 0.7,
-      agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
-      JSON.stringify(agentCard.allowedTools ?? []),
-      agentCard.contextBudget ?? agentCard.contextWindow ?? 100000);
+    agentRoleRepo.upsert({
+      type: name,
+      name,
+      description: String(agentCard.description ?? ''),
+      system_prompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
+      model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
+      temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
+      max_response_tokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
+      allowed_tools: JSON.stringify(agentCard.allowedTools ?? []),
+      context_budget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+      is_builtin: 0,
+      created_at: new Date().toISOString(),
+    });
 
     logger.info('Agent imported from JSON', { name });
     return c.json({ name, status: 'imported', path: join(dir, 'agent.json') }, 201);
@@ -174,12 +178,19 @@ agentsRouter.post('/import', async (c) => {
     allowedTools: agentJson.allowedTools as string[],
     contextBudget: agentJson.contextBudget as number,
   });
-  db.prepare(
-    `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-  ).run(name, name, agentJson.description, agentJson.systemPrompt,
-    agentJson.model, agentJson.temperature, agentJson.maxResponseTokens,
-    JSON.stringify(agentJson.allowedTools), agentJson.contextBudget);
+  agentRoleRepo.upsert({
+    type: name,
+    name,
+    description: String(agentJson.description),
+    system_prompt: String(agentJson.systemPrompt),
+    model: String(agentJson.model),
+    temperature: agentJson.temperature as number,
+    max_response_tokens: agentJson.maxResponseTokens as number,
+    allowed_tools: JSON.stringify(agentJson.allowedTools),
+    context_budget: agentJson.contextBudget as number,
+    is_builtin: 0,
+    created_at: new Date().toISOString(),
+  });
 
   logger.info('Agent imported from .md', { name });
   return c.json({ name, status: 'imported', path: join(dir, 'agent.json'), mdPath: join(dir, 'agent.md') }, 201);
@@ -187,7 +198,7 @@ agentsRouter.post('/import', async (c) => {
 
 // ── DELETE /api/agents/:type — unregister custom agent + remove directory ──
 agentsRouter.delete('/:type', (c) => {
-  const { agentRegistry, db, logger } = getServerContext();
+  const { agentRegistry, agentRoleRepo, logger } = getServerContext();
   const type = c.req.param('type');
 
   const agent = agentRegistry.get(type);
@@ -196,7 +207,7 @@ agentsRouter.delete('/:type', (c) => {
   }
 
   agentRegistry.unregister(type);
-  db.prepare('DELETE FROM agent_roles WHERE type = ? AND name = ?').run(type, agent.name);
+  agentRoleRepo.deleteByType(type);
 
   // Remove agent directory
   const agentDir = join(AGENTS_DIR, agent.name);
