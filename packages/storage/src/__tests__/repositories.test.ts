@@ -118,7 +118,7 @@ describe('EventLogRepository', () => {
       causationId: null,
       timestamp: new Date('2026-01-01T10:00:02Z'),
       messageType: MessageType.TaskOrder,
-      payload: {},
+      payload: { orderId: 'o1', action: 'start' },
     });
     repo.append({
       messageId: 'msg-earlier',
@@ -126,7 +126,7 @@ describe('EventLogRepository', () => {
       causationId: null,
       timestamp: new Date('2026-01-01T10:00:01Z'),
       messageType: MessageType.TaskCompleted,
-      payload: {},
+      payload: { orderId: 'o1', result: {} },
     });
 
     const events = repo.findByCorrelationId('corr-seq');
