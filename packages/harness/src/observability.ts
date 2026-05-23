@@ -381,7 +381,7 @@ export class ObservabilityCollector {
   private subscribe(): void {
     // Listen for system notifications that contain metric data
     this.eventBus.subscribe(MessageType.SystemNotification, (event) => {
-      const payload = event.payload as Record<string, unknown> | undefined;
+      const payload = event.payload as unknown as Record<string, unknown> | undefined;
       if (payload?.type === 'context_zone_alert') {
         // Zone crossing events are tracked via recordSession
       }

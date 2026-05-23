@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { AuditLogRepository, type Database } from '@cabinet/storage';
 
 export interface AuditEntry {
   entityType: string;
@@ -10,29 +10,18 @@ export interface AuditEntry {
 }
 
 export class AuditLogger {
-  constructor(private readonly db: Database.Database) {}
+  private readonly repo: AuditLogRepository;
+
+  constructor(db: Database) {
+    this.repo = new AuditLogRepository(db);
+  }
 
   log(entry: Omit<AuditEntry, 'timestamp'>): void {
-    this.db
-      .prepare(
-        `INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-      )
-      .run(
-        entry.entityType,
-        entry.entityId,
-        entry.action,
-        entry.actor,
-        JSON.stringify(entry.changes),
-      );
+    this.repo.insert(entry.entityType, entry.entityId, entry.action, entry.actor, entry.changes);
   }
 
   findByEntity(entityType: string, entityId: string): AuditEntry[] {
-    const rows = this.db
-      .prepare(
-        'SELECT * FROM audit_log WHERE entity_type = ? AND entity_id = ? ORDER BY timestamp DESC',
-      )
-      .all(entityType, entityId) as any[];
+    const rows = this.repo.findByEntity(entityType, entityId);
     return rows.map((r) => ({
       entityType: r.entity_type,
       entityId: r.entity_id,
@@ -44,7 +33,7 @@ export class AuditLogger {
   }
 
   findAll(): AuditEntry[] {
-    const rows = this.db.prepare('SELECT * FROM audit_log ORDER BY timestamp DESC').all() as any[];
+    const rows = this.repo.findAll();
     return rows.map((r) => ({
       entityType: r.entity_type,
       entityId: r.entity_id,

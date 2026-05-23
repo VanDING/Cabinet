@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { ProjectContextRepository, type Database } from '@cabinet/storage';
 
 export interface ProjectContext {
   projectId: string;
@@ -11,22 +11,10 @@ export interface ProjectContext {
 
 export class ProjectMemory {
   private projects = new Map<string, ProjectContext>();
-  private db: Database.Database | null;
+  private repo: ProjectContextRepository | null;
 
-  constructor(db?: Database.Database) {
-    this.db = db ?? null;
-    if (this.db) {
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS project_context (
-          project_id TEXT PRIMARY KEY,
-          goals TEXT NOT NULL DEFAULT '[]',
-          milestones TEXT NOT NULL DEFAULT '[]',
-          key_decisions TEXT NOT NULL DEFAULT '[]',
-          summary TEXT NOT NULL DEFAULT '',
-          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-      `);
-    }
+  constructor(db?: Database) {
+    this.repo = db ? new ProjectContextRepository(db) : null;
   }
 
   initialize(projectId: string, goals: string[]): ProjectContext {
@@ -47,10 +35,8 @@ export class ProjectMemory {
     const cached = this.projects.get(projectId);
     if (cached) return cached;
 
-    if (this.db) {
-      const row = this.db.prepare(
-        'SELECT * FROM project_context WHERE project_id = ?',
-      ).get(projectId) as any;
+    if (this.repo) {
+      const row = this.repo.findByProjectId(projectId);
       if (row) {
         const ctx: ProjectContext = {
           projectId: row.project_id,
@@ -69,8 +55,8 @@ export class ProjectMemory {
 
   getAll(): Record<string, ProjectContext> {
     // Load all from DB first
-    if (this.db) {
-      const rows = this.db.prepare('SELECT * FROM project_context').all() as any[];
+    if (this.repo) {
+      const rows = this.repo.findAll();
       for (const row of rows) {
         if (!this.projects.has(row.project_id)) {
           this.projects.set(row.project_id, {
@@ -117,18 +103,17 @@ export class ProjectMemory {
   }
 
   private persist(projectId: string, ctx: ProjectContext): void {
-    if (!this.db) return;
-    const db = this.db;
-    db.prepare(
-      `INSERT OR REPLACE INTO project_context (project_id, goals, milestones, key_decisions, summary, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(
-      projectId,
-      JSON.stringify(ctx.goals),
-      JSON.stringify(ctx.milestones),
-      JSON.stringify(ctx.keyDecisions),
-      ctx.summary,
-      ctx.updatedAt.toISOString(),
-    );
+    if (!this.repo) return;
+    this.repo.upsert({
+      project_id: projectId,
+      summary: ctx.summary,
+      goals: JSON.stringify(ctx.goals),
+      milestones: JSON.stringify(ctx.milestones),
+      key_decisions: JSON.stringify(ctx.keyDecisions),
+      constraints: '[]',
+      tech_summary: '',
+      risk_map: '{}',
+      updated_at: ctx.updatedAt.toISOString(),
+    });
   }
 }

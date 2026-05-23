@@ -3,7 +3,7 @@ export {
   type WorkflowNodeType,
   type WorkflowNodeDef,
   type WorkflowEdge,
-  type WorkflowStatus,
+  type WorkflowRunStatus,
   type WorkflowRun,
   type WorkflowHandlers,
   type AgentLoopHandle,

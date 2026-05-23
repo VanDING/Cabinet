@@ -20,7 +20,7 @@ export class QualityResponseService {
 
   private subscribe(): void {
     this.eventBus.subscribe(MessageType.QualityAlert, async (event) => {
-      const payload = (event.payload as Record<string, unknown> | undefined) ?? {};
+      const payload = (event.payload as unknown as Record<string, unknown> | undefined) ?? {};
       await this.handleQualityAlert(payload);
     });
   }
