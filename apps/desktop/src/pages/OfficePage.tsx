@@ -489,6 +489,7 @@ export function OfficePage() {
 
             {expandedWidget === 'decision-list' && (
               <DecisionList
+                projectId={projectId}
                 onSelectDecision={(id) => {
                   setReviewDecisionId(id);
                   setExpandedWidget(null);
