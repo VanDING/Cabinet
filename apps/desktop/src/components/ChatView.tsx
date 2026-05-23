@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { marked } from 'marked';
 import { useTranslation } from 'react-i18next';
+import hljs from 'highlight.js';
 import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
+import { WorkflowRunCard } from './WorkflowRunCard';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -15,10 +17,47 @@ interface Props {
   isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
+  onForkMessage?: (messageId: string) => void;
 }
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatToolPreview(tc: ToolCallStatus): string {
+  const args = tc.args ?? {};
+  const preview = (val: unknown) => {
+    const s = String(val ?? '');
+    return s.length > 30 ? s.slice(0, 30) + '…' : s;
+  };
+  switch (tc.name) {
+    case 'read_file':
+    case 'writeFile':
+    case 'editFile':
+    case 'applyPatch':
+    case 'deleteFile':
+    case 'fileInfo':
+    case 'indexDocument':
+      return args.filePath ? `${tc.name}(${preview(args.filePath)})` : tc.name;
+    case 'execCommand':
+      return args.command ? `${tc.name}(${preview(args.command)})` : tc.name;
+    case 'searchFiles':
+      return args.pattern ? `${tc.name}(${preview(args.pattern)})` : tc.name;
+    case 'searchContent':
+      return args.pattern ? `${tc.name}(${preview(args.pattern)})` : tc.name;
+    case 'listDirectory':
+      return args.dirPath ? `${tc.name}(${preview(args.dirPath)})` : tc.name;
+    case 'webFetch':
+      return args.url ? `${tc.name}(${preview(args.url)})` : tc.name;
+    case 'httpRequest':
+      return args.url ? `${tc.name}(${preview(args.url)})` : tc.name;
+    case 'moveFile':
+      return args.source ? `${tc.name}(${preview(args.source)})` : tc.name;
+    case 'copyFile':
+      return args.source ? `${tc.name}(${preview(args.source)})` : tc.name;
+    default:
+      return tc.name;
+  }
 }
 
 const ToolCallSummary = memo(function ToolCallSummary({
@@ -30,75 +69,69 @@ const ToolCallSummary = memo(function ToolCallSummary({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Group by tool name with counts
-  const groups = useMemo(() => {
-    const map = new Map<string, { name: string; calls: ToolCallStatus[]; running: number; completed: number; errors: number }>();
-    for (const tc of toolCalls) {
-      let g = map.get(tc.name);
-      if (!g) {
-        g = { name: tc.name, calls: [], running: 0, completed: 0, errors: 0 };
-        map.set(tc.name, g);
-      }
-      g.calls.push(tc);
-      if (tc.status === 'running') g.running++;
-      else if (tc.status === 'error') g.errors++;
-      else g.completed++;
-    }
-    return [...map.values()].sort((a, b) => b.calls.length - a.calls.length);
-  }, [toolCalls]);
-
   const total = toolCalls.length;
   const running = toolCalls.filter((tc) => tc.status === 'running').length;
   if (total === 0) return null;
 
-  // During streaming with running tools: show compact inline indicator
+  // During streaming with running tools: show compact inline indicator with previews
   if (isStreaming && running > 0) {
     return (
-      <div className="tool-summary streaming">
-        <span className="tool-summary-indicator" onClick={() => setExpanded(!expanded)}>
-          <span className="tool-summary-spinner" />
-          Running {running} tool{running > 1 ? 's' : ''} · {total} total
-        </span>
-        {expanded && (
-          <div className="tool-summary-list">
-            {groups.map((g) => (
-              <div key={g.name} className="tool-summary-badge chip">
-                <span className="tool-chip-icon">{g.running > 0 ? '⟳' : g.errors > 0 ? '✕' : '✓'}</span>
-                <span className="tool-chip-name">{g.name}</span>
-                {g.calls.length > 1 && <span className="tool-chip-count">×{g.calls.length}</span>}
-              </div>
+      <div className="my-1">
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500"></span>
+            Running {running} tool{running > 1 ? 's' : ''}
+          </span>
+          {toolCalls
+            .filter((tc) => tc.status === 'running')
+            .map((tc) => (
+              <span
+                key={tc.id}
+                className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              >
+                <span className="opacity-70">⟳</span>
+                {formatToolPreview(tc)}
+              </span>
             ))}
-          </div>
-        )}
+        </div>
       </div>
     );
   }
 
   // After completion: compact summary with expand toggle
   return (
-    <div className="tool-summary done">
-      <span className="tool-summary-toggle" onClick={() => setExpanded(!expanded)}>
-        {expanded ? '▼' : '▶'} {total} tool{total !== 1 ? 's' : ''} used
-      </span>
-      {!expanded && (
-        <span className="tool-summary-inline">
-          {groups.slice(0, 5).map((g) => (
-            <span key={g.name} className="tool-chip">
-              <span className="tool-chip-icon">{g.errors > 0 ? '✕' : '✓'}</span>
-              {g.name}{g.calls.length > 1 ? ` ×${g.calls.length}` : ''}
+    <div className="my-1">
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="inline-flex items-center gap-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 transition-colors"
+        >
+          <span>{expanded ? '▼' : '▶'}</span>
+          {total} tool{total !== 1 ? 's' : ''}
+        </button>
+        {!expanded &&
+          toolCalls.slice(0, 4).map((tc) => (
+            <span
+              key={tc.id}
+              className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            >
+              <span>{tc.status === 'error' ? '✕' : '✓'}</span>
+              {formatToolPreview(tc)}
             </span>
           ))}
-          {groups.length > 5 && <span className="tool-chip-more">+{groups.length - 5} more</span>}
-        </span>
-      )}
+        {!expanded && toolCalls.length > 4 && (
+          <span className="text-gray-400">+{toolCalls.length - 4} more</span>
+        )}
+      </div>
       {expanded && (
-        <div className="tool-summary-list">
-          {groups.map((g) => (
-            <div key={g.name} className="tool-group-row">
-              <span className="tool-group-icon">{g.errors > 0 ? '✕' : '✓'}</span>
-              <span className="tool-group-name">{g.name}</span>
-              <span className="tool-group-count">×{g.calls.length}</span>
-              {g.errors > 0 && <span className="tool-group-errors">{g.errors} error{g.errors > 1 ? 's' : ''}</span>}
+        <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/60">
+          {toolCalls.map((tc) => (
+            <div key={tc.id} className="flex items-center gap-2 text-xs">
+              <span>{tc.status === 'error' ? '✕' : tc.status === 'running' ? '⟳' : '✓'}</span>
+              <span className="font-mono text-gray-700 dark:text-gray-300">{formatToolPreview(tc)}</span>
+              {tc.status === 'error' && (
+                <span className="text-red-500">error</span>
+              )}
             </div>
           ))}
         </div>
@@ -109,12 +142,22 @@ const ToolCallSummary = memo(function ToolCallSummary({
 
 const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   const html = useMemo(() => {
-    // 1. Extract and protect code blocks
+    // 1. Extract and protect code blocks (with syntax highlighting)
     const codeBlocks: string[] = [];
     const withCodeBlocks = content.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-      const langClass = ['bash', 'sh', 'shell'].includes(lang?.toLowerCase()) ? 'bash' : lang || '';
+      const trimmed = code.trim();
+      let highlighted: string;
+      try {
+        if (lang && hljs.getLanguage(lang)) {
+          highlighted = hljs.highlight(trimmed, { language: lang }).value;
+        } else {
+          highlighted = hljs.highlightAuto(trimmed).value;
+        }
+      } catch {
+        highlighted = escapeHtml(trimmed);
+      }
       codeBlocks.push(
-        `<pre class="code-block ${langClass}"><code>${escapeHtml(code.trim())}</code></pre>`,
+        `<pre class="code-block"><code class="hljs ${lang || ''}">${highlighted}</code></pre>`,
       );
       return `%%CB${codeBlocks.length - 1}%%`;
     });
@@ -127,8 +170,9 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
     });
 
     // 3. Protect skill tags BEFORE markdown parsing so they don't become HTML-escaped
+    // Match /skill-name but not file paths like /usr/bin or /api/secretary/chat
     const skillBlocks: string[] = [];
-    const withSkillTags = withUrlsProtected.replace(/\/\w[\w-]*/g, (match) => {
+    const withSkillTags = withUrlsProtected.replace(/\/(?![\/\.\\])[a-zA-Z][\w-]{0,19}(?![\w\.\/\\])/g, (match) => {
       skillBlocks.push(`<span class="skill-tag">${match}</span>`);
       return `%%SK${skillBlocks.length - 1}%%`;
     });
@@ -165,13 +209,31 @@ export const ChatView = memo(function ChatView({
   isDark,
   onEditMessage,
   onRegenerate,
+  onForkMessage,
 }: Props) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Track whether user is near bottom; only auto-scroll if they are
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const threshold = 80;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+      isNearBottomRef.current = nearBottom;
+      setShowScrollButton(!nearBottom);
+    };
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (el && isNearBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
 
@@ -197,7 +259,7 @@ export const ChatView = memo(function ChatView({
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+      <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4 pb-48">
         {messages.length === 0 && !isProcessing && (
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <div className="text-center text-gray-400 dark:text-gray-500">
@@ -236,6 +298,7 @@ export const ChatView = memo(function ChatView({
             isDark={isDark}
             onEditMessage={onEditMessage}
             onRegenerate={onRegenerate}
+            onForkMessage={onForkMessage}
           />
         ))}
 
@@ -245,6 +308,22 @@ export const ChatView = memo(function ChatView({
               <span className="text-sm italic text-gray-400 dark:text-gray-500">{t('chat.thinking')}</span>
             </div>
           </div>
+        )}
+
+        {showScrollButton && (
+          <button
+            onClick={() => {
+              const el = scrollRef.current;
+              if (el) {
+                el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                isNearBottomRef.current = true;
+                setShowScrollButton(false);
+              }
+            }}
+            className="sticky bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1.5 text-xs text-white shadow-lg hover:bg-blue-700"
+          >
+            New messages ↓
+          </button>
         )}
       </div>
     </div>
@@ -257,19 +336,21 @@ const MessageRow = memo(function MessageRow({
   isDark,
   onEditMessage,
   onRegenerate,
+  onForkMessage,
 }: {
   msg: ChatMessage;
   isProcessing: boolean;
   isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
+  onForkMessage?: (messageId: string) => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
 
   return (
-    <div className="group flex flex-col">
+    <div className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-red-400 bg-red-50/50 pl-2 dark:border-red-600 dark:bg-red-900/10' : ''}`}>
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -278,6 +359,13 @@ const MessageRow = memo(function MessageRow({
           <span className="text-xs text-gray-400 dark:text-gray-500">
             {msg.timestamp.toLocaleTimeString()}
           </span>
+          {msg.routing && (
+            <span className="inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+              <span>{msg.routing.from}</span>
+              <span>→</span>
+              <span>{msg.routing.to}</span>
+            </span>
+          )}
           {!isProcessing && (
             <div className="ml-auto hidden gap-1 group-hover:flex">
               {msg.role === 'user' && onEditMessage && (
@@ -296,9 +384,40 @@ const MessageRow = memo(function MessageRow({
                   {t('chat.regenerate')}
                 </button>
               )}
+              {onForkMessage && (
+                <button
+                  onClick={() => onForkMessage(msg.id)}
+                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  title="Fork session from here"
+                >
+                  Fork
+                </button>
+              )}
             </div>
           )}
         </div>
+        {msg.role === 'assistant' && (msg.toolCalls?.length || msg.durationMs || msg.usage) && (
+          <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
+            {msg.usage?.model && (
+              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">{msg.usage.model}</span>
+            )}
+            {msg.toolCalls && msg.toolCalls.length > 0 && (
+              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
+                {msg.toolCalls.length} tool{msg.toolCalls.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {msg.durationMs !== undefined && (
+              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
+                {(msg.durationMs / 1000).toFixed(1)}s
+              </span>
+            )}
+            {msg.usage && (
+              <span className="rounded bg-gray-100 px-1 py-0.5 dark:bg-gray-800">
+                {msg.usage.promptTokens + msg.usage.completionTokens} tokens
+              </span>
+            )}
+          </div>
+        )}
         <div className="text-gray-800 dark:text-gray-200">
           {editing ? (
             <div className="space-y-2">
@@ -331,12 +450,19 @@ const MessageRow = memo(function MessageRow({
             </div>
           ) : (
             <>
+              {msg.isError && (
+                <div className="mb-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                  <span>⚠</span>
+                  <span>Error</span>
+                </div>
+              )}
               {msg.thinking && (() => {
+                const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
                 const segments = msg.thinking.split('\n<!--segment-->\n').filter(Boolean);
                 if (segments.length <= 1) {
                   return (
                     <details className="thinking-block">
-                      <summary className="thinking-summary">{t('chat.thinking')}</summary>
+                      <summary className="thinking-summary">{t('chat.thinking')} {duration}</summary>
                       <pre className="thinking-content">{msg.thinking.replace('\n<!--segment-->\n', '')}</pre>
                     </details>
                   );
@@ -345,7 +471,9 @@ const MessageRow = memo(function MessageRow({
                   <>
                     {segments.map((seg, i) => (
                       <details key={i} className="thinking-block">
-                        <summary className="thinking-summary">{t('chat.thinking')} {i + 1}/{segments.length}</summary>
+                        <summary className="thinking-summary">
+                          {t('chat.thinking')} {i + 1}/{segments.length} {duration}
+                        </summary>
                         <pre className="thinking-content">{seg.trim()}</pre>
                       </details>
                     ))}
@@ -357,6 +485,28 @@ const MessageRow = memo(function MessageRow({
               )}
               <MarkdownContent content={msg.content} />
               {msg.meeting && <MeetingCard data={msg.meeting} isDark={isDark} />}
+              {(() => {
+                const call = msg.toolCalls?.find(
+                  (tc) => tc.name === 'runWorkflow' && tc.status === 'completed',
+                );
+                if (!call?.result) return null;
+                try {
+                  const parsed = JSON.parse(call.result);
+                  if (parsed.runId && parsed.status) {
+                    return (
+                      <WorkflowRunCard
+                        data={{
+                          runId: parsed.runId,
+                          status: parsed.status,
+                          steps: parsed.steps,
+                        }}
+                        isDark={isDark}
+                      />
+                    );
+                  }
+                } catch { /* ignore parse errors */ }
+                return null;
+              })()}
               {msg.isStreaming && (
                 <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-blue-500 align-middle" />
               )}
