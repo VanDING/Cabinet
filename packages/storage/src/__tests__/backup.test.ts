@@ -28,9 +28,10 @@ describe('BackupManager', () => {
 
   it('creates a backup file', async () => {
     const manager = new BackupManager({ dbPath, backupDir, keepCount: 3 });
-    const path = await manager.backup();
-    expect(path).toContain('cabinet_backup_');
-    expect(path).toContain('.db');
+    const result = await manager.backup();
+    expect(result.success).toBe(true);
+    expect(result.path).toContain('cabinet_backup_');
+    expect(result.path).toContain('.db');
   });
 
   it('lists backups after creating one', async () => {
@@ -52,7 +53,8 @@ describe('BackupManager', () => {
 
   it('restores from backup', async () => {
     const manager = new BackupManager({ dbPath, backupDir });
-    const backupPath = await manager.backup();
+    const result = await manager.backup();
+    expect(result.success).toBe(true);
 
     // Modify the original
     const db = new Database(dbPath);
@@ -60,12 +62,19 @@ describe('BackupManager', () => {
     db.close();
 
     // Restore
-    await manager.restore(backupPath);
+    await manager.restore(result.path!);
 
     // Verify data is back
     const restored = new Database(dbPath);
     const row = restored.prepare('SELECT value FROM test').get() as any;
     expect(row.value).toBe('hello');
     restored.close();
+  });
+
+  it('returns error for non-existent database', async () => {
+    const manager = new BackupManager({ dbPath: join(tmpDir, 'nonexistent.db'), backupDir });
+    const result = await manager.backup();
+    expect(result.success).toBe(false);
+    expect(result.error).toBeTruthy();
   });
 });
