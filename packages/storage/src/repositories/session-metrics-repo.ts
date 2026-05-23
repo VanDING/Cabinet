@@ -43,6 +43,13 @@ export class SessionMetricsRepository {
       .run(`-${days} days`);
   }
 
+  sumTokensByDate(dateLike: string): number {
+    const row = this.db
+      .prepare("SELECT SUM(total_tokens) as tokens FROM session_metrics WHERE started_at LIKE ?")
+      .get(dateLike) as { tokens: number } | undefined;
+    return row?.tokens ?? 0;
+  }
+
   private rowToMetric(row: Record<string, unknown>): SessionMetricRow {
     return {
       id: row.id as number,

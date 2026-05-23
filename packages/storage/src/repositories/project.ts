@@ -51,7 +51,7 @@ export class ProjectRepository {
     return rows.map((r) => this.rowToProject(r));
   }
 
-  update(id: string, changes: Partial<Pick<Project, 'name' | 'description' | 'status'>>): void {
+  update(id: string, changes: Partial<Pick<Project, 'name' | 'description' | 'status' | 'rootPath'>> & { icon?: string }): void {
     const sets: string[] = [];
     const values: unknown[] = [];
 
@@ -67,11 +67,27 @@ export class ProjectRepository {
       sets.push('status = ?');
       values.push(changes.status);
     }
+    if (changes.rootPath !== undefined) {
+      sets.push('root_path = ?');
+      values.push(changes.rootPath);
+    }
+    if (changes.icon !== undefined) {
+      sets.push('icon = ?');
+      values.push(changes.icon);
+    }
 
     if (sets.length > 0) {
       values.push(id);
       this.db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...values);
     }
+  }
+
+  archive(id: string): void {
+    this.db.prepare('UPDATE projects SET archived = 1 WHERE id = ?').run(id);
+  }
+
+  restore(id: string): void {
+    this.db.prepare('UPDATE projects SET archived = 0 WHERE id = ?').run(id);
   }
 
   delete(id: string): void {
