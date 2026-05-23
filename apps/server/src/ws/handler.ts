@@ -62,16 +62,7 @@ function setupClient(ws: WebSocket): void {
   });
 }
 
-/** Event types that are too high-frequency for WebSocket broadcast.
- *  Frontend polls /observability for aggregated data instead. */
-const LOW_PRIORITY_EVENTS = new Set([
-  'system_notification',
-  'secretary_message',
-]);
-
 export function broadcast(type: string, data?: Record<string, unknown>): void {
-  // Skip high-frequency events — frontend polls /observability for these
-  if (LOW_PRIORITY_EVENTS.has(type)) return;
   if (!wss) return;
   const message = JSON.stringify({ type, data: data ?? {}, timestamp: new Date().toISOString() });
   for (const client of clients) {

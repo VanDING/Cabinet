@@ -171,7 +171,7 @@ export function App() {
       });
       if (r.ok) {
         refreshProjects();
-        addNotification('project', 'Project created', name.trim());
+        // Notification handled by WebSocket broadcast (ws:project_created)
       }
     } catch {
       addToast('error', 'Failed to create project');
@@ -187,7 +187,7 @@ export function App() {
       if (r.ok) {
         refreshProjects();
         if (projectId === activeProjectId) setActiveProjectId(null);
-        addNotification('project', 'Project deleted', name);
+        // Notification handled by WebSocket broadcast (ws:project_deleted)
       }
     } catch {
       addToast('error', 'Failed to delete project');
