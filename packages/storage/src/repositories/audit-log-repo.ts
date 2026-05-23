@@ -59,33 +59,6 @@ export class AuditLogRepository {
     return rows.map((r) => this.rowToAuditLog(r));
   }
 
-  updateAction(
-    entityType: string,
-    entityId: string,
-    action: string,
-    changes?: Record<string, unknown>,
-  ): void {
-    if (changes) {
-      this.db
-        .prepare(
-          'UPDATE audit_log SET action = ?, changes = ? WHERE entity_type = ? AND entity_id = ? AND id = (SELECT MAX(id) FROM audit_log WHERE entity_type = ? AND entity_id = ?)',
-        )
-        .run(action, JSON.stringify(changes), entityType, entityId, entityType, entityId);
-    } else {
-      this.db
-        .prepare(
-          'UPDATE audit_log SET action = ? WHERE entity_type = ? AND entity_id = ? AND id = (SELECT MAX(id) FROM audit_log WHERE entity_type = ? AND entity_id = ?)',
-        )
-        .run(action, entityType, entityId, entityType, entityId);
-    }
-  }
-
-  deleteByEntity(entityType: string, entityId: string): void {
-    this.db
-      .prepare('DELETE FROM audit_log WHERE entity_type = ? AND entity_id = ?')
-      .run(entityType, entityId);
-  }
-
   private rowToAuditLog(row: Record<string, unknown>): AuditLogRow {
     return {
       id: row.id as number,
