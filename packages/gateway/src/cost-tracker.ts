@@ -89,13 +89,13 @@ export class CostTracker {
   }
 
   getDailyCost(since: Date = new Date()): number {
-    const startOfDay = new Date(since);
+    const startOfDay = new Date(since.getTime());
     startOfDay.setHours(0, 0, 0, 0);
     return this.sumCosts(startOfDay);
   }
 
   getWeeklyCost(since: Date = new Date()): number {
-    const startOfWeek = new Date(since);
+    const startOfWeek = new Date(since.getTime());
     startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
     return this.sumCosts(startOfWeek);
