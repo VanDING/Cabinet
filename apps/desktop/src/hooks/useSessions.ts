@@ -29,6 +29,10 @@ export interface ChatMessage {
   thinking?: string;
   toolCalls?: ToolCallStatus[];
   usage?: { promptTokens: number; completionTokens: number; model: string };
+  durationMs?: number;
+  routing?: { from: string; to: string };
+  isError?: boolean;
+  thinkingDurationMs?: number;
 }
 
 export interface Session {
@@ -235,6 +239,24 @@ export function useSessions() {
     [],
   );
 
+  /** Partially update an existing message — used for streaming increments to avoid full object replacement. */
+  const updateMessage = useCallback(
+    (sessionId: string, messageId: string, patch: Partial<Omit<ChatMessage, 'id'>>) => {
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          const idx = s.messages.findIndex((m) => m.id === messageId);
+          if (idx === -1) return s;
+          const existing = s.messages[idx]!;
+          const nextMessages = [...s.messages];
+          nextMessages[idx] = { ...existing, ...patch } as ChatMessage;
+          return { ...s, messages: nextMessages, updatedAt: new Date() };
+        }),
+      );
+    },
+    [],
+  );
+
   const deleteMessagesFrom = useCallback((sessionId: string, messageId: string) => {
     setSessions((prev) =>
       prev.map((s) => {
@@ -245,6 +267,28 @@ export function useSessions() {
       }),
     );
   }, []);
+
+  /** Fork a new session from an existing one up to (and including) a message. */
+  const forkSession = useCallback((sessionId: string, messageId: string): string | null => {
+    const source = sessions.find((s) => s.id === sessionId);
+    if (!source) return null;
+    const idx = source.messages.findIndex((m) => m.id === messageId);
+    if (idx === -1) return null;
+
+    const id = generateId();
+    const forked: Session = {
+      ...source,
+      id,
+      title: `${source.title} (fork)`,
+      messages: source.messages.slice(0, idx + 1).map((m) => ({ ...m })),
+      attachedFiles: [...source.attachedFiles],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setSessions((prev) => [forked, ...prev]);
+    setActiveSessionId(id);
+    return id;
+  }, [sessions]);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
   const isSessionActive = useCallback((id: string) => activeSessionIds.has(id), [activeSessionIds]);
@@ -265,6 +309,8 @@ export function useSessions() {
     deleteHistorySession,
     isSessionActive,
     editMessage,
+    updateMessage,
     deleteMessagesFrom,
+    forkSession,
   };
 }
