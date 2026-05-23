@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 type WSEventHandler = (type: string, data: any) => void;
 
@@ -8,6 +8,7 @@ export function useWebSocket(onEvent?: WSEventHandler) {
   const reconnecting = useRef(false);
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
+  const [connected, setConnected] = useState(false);
 
   const connect = useCallback(() => {
     if (reconnecting.current) return;
@@ -19,6 +20,10 @@ export function useWebSocket(onEvent?: WSEventHandler) {
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
+      ws.onopen = () => {
+        setConnected(true);
+      };
+
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
@@ -29,6 +34,7 @@ export function useWebSocket(onEvent?: WSEventHandler) {
       };
 
       ws.onclose = () => {
+        setConnected(false);
         wsRef.current = null;
         if (!reconnecting.current) {
           reconnecting.current = true;
@@ -40,9 +46,11 @@ export function useWebSocket(onEvent?: WSEventHandler) {
       };
 
       ws.onerror = () => {
+        setConnected(false);
         // Let onclose fire naturally — do not call ws.close() here
       };
     } catch {
+      setConnected(false);
       /* WebSocket construction failed */
     }
   }, []);
@@ -80,5 +88,5 @@ export function useWebSocket(onEvent?: WSEventHandler) {
     wsRef.current?.send(JSON.stringify(data));
   }, []);
 
-  return { send };
+  return { send, connected };
 }

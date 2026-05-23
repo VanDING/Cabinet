@@ -97,7 +97,7 @@ export function Navigation({
         <img
           src={isDark ? "/Cabinet_logo_darkcolor.png" : "/Cabinet_logo_color.png"}
           alt="Cabinet"
-          className={`object-contain transition-all duration-200 ${collapsed ? 'h-10 w-10' : 'h-20 w-20'}`}
+          className={`object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
         />
       </div>
 
