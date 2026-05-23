@@ -78,7 +78,7 @@ describe('BlueprintDeployer', () => {
     await deployer.deploy(bp);
     expect(deps.eventBus.publish).toHaveBeenCalled();
     const callArgs = (deps.eventBus.publish as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-    expect(callArgs?.payload?.success).toBe(true);
+    expect((callArgs?.payload as any)?.data?.success).toBe(true);
   });
 
   it('records agent registration failure gracefully', async () => {

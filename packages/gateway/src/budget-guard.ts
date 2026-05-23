@@ -4,9 +4,8 @@ import {
   MONTHLY_BUDGET_USD,
   BUDGET_WARNING_THRESHOLD,
 } from '@cabinet/types';
+import type { BudgetPeriod } from '@cabinet/types';
 import type { CostTracker } from './cost-tracker';
-
-export type BudgetPeriod = 'daily' | 'weekly' | 'monthly';
 
 export interface BudgetStatus {
   period: BudgetPeriod;

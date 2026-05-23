@@ -1,12 +1,8 @@
-import type { Database } from '@cabinet/storage';
+import { WorkflowRepository, type Database } from '@cabinet/storage';
+import type { WorkflowNodeType } from '@cabinet/types';
 import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
-export type WorkflowNodeType =
-  | 'start' | 'end'
-  | 'skill' | 'aiAgent' | 'llmCall'
-  | 'condition' | 'parallel'
-  | 'human' | 'humanApproval'
-  | 'dataQuery' | 'notification' | 'wait';
+export type { WorkflowNodeType };
 
 export interface WorkflowNodeDef {
   id: string;
@@ -42,12 +38,12 @@ export interface WorkflowEdge {
   branch?: 'true' | 'false';
 }
 
-export type WorkflowStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'awaiting_approval';
+export type WorkflowRunStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'awaiting_approval';
 
 export interface WorkflowRun {
   runId: string;
   workflowId: string;
-  status: WorkflowStatus;
+  status: WorkflowRunStatus;
   currentNodeId: string;
   results: Map<string, unknown>;
   /** Ordered steps executed so far. */
@@ -76,7 +72,7 @@ export interface WorkflowHandlers {
 export class WorkflowEngine {
   private runs = new Map<string, WorkflowRun>();
   private handlers: WorkflowHandlers = {};
-  private db: Database | null = null;
+  private repo: WorkflowRepository | null = null;
   private currentEdges: WorkflowEdge[] = [];
 
   setHandlers(handlers: WorkflowHandlers): void {
@@ -84,7 +80,7 @@ export class WorkflowEngine {
   }
 
   setDb(db: Database): void {
-    this.db = db;
+    this.repo = new WorkflowRepository(db);
   }
 
   async startRun(
@@ -578,40 +574,34 @@ export class WorkflowEngine {
   // ── Persistence ────────────────────────────────────────────
 
   private saveRun(run: WorkflowRun): void {
-    if (!this.db) return;
+    if (!this.repo) return;
     try {
       const results: Record<string, unknown> = {};
       for (const [k, v] of run.results) { results[k] = v; }
-      this.db
-        .prepare(
-          `INSERT OR REPLACE INTO workflow_runs (run_id, workflow_id, status, current_node_id, steps, results, started_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-        )
-        .run(
-          run.runId,
-          run.workflowId,
-          run.status,
-          run.currentNodeId,
-          JSON.stringify(run.steps),
-          JSON.stringify(results),
-          run.startedAt.toISOString(),
-        );
+      this.repo.saveRun({
+        run_id: run.runId,
+        workflow_id: run.workflowId,
+        status: run.status,
+        current_node_id: run.currentNodeId,
+        steps: JSON.stringify(run.steps),
+        results: JSON.stringify(results),
+        started_at: run.startedAt.toISOString(),
+        updated_at: '',
+      });
     } catch { /* persistence failure is non-fatal for execution */ }
   }
 
   private loadRun(runId: string): WorkflowRun | null {
-    if (!this.db) return null;
+    if (!this.repo) return null;
     try {
-      const row = this.db
-        .prepare('SELECT * FROM workflow_runs WHERE run_id = ?')
-        .get(runId) as any;
+      const row = this.repo.findRunById(runId);
       if (!row) return null;
       const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
       return {
         runId: row.run_id,
         workflowId: row.workflow_id,
-        status: row.status,
-        currentNodeId: row.current_node_id,
+        status: row.status as WorkflowRunStatus,
+        currentNodeId: row.current_node_id ?? '',
         results,
         steps: JSON.parse(row.steps ?? '[]'),
         startedAt: new Date(row.started_at),
@@ -622,25 +612,24 @@ export class WorkflowEngine {
   }
 
   private listIncompleteRuns(workflowId: string): WorkflowRun[] {
-    if (!this.db) return [];
+    if (!this.repo) return [];
     try {
-      const rows = this.db
-        .prepare(
-          "SELECT * FROM workflow_runs WHERE workflow_id = ? AND status IN ('running', 'awaiting_approval', 'paused') ORDER BY updated_at DESC",
-        )
-        .all(workflowId) as any[];
-      return rows.map((row: any) => {
-        const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
-        return {
-          runId: row.run_id,
-          workflowId: row.workflow_id,
-          status: row.status,
-          currentNodeId: row.current_node_id,
-          results,
-          steps: JSON.parse(row.steps ?? '[]'),
-          startedAt: new Date(row.started_at),
-        };
-      });
+      const incompleteStatuses = new Set(['running', 'awaiting_approval', 'paused']);
+      const rows = this.repo.findRunsByWorkflow(workflowId);
+      return rows
+        .filter((row) => incompleteStatuses.has(row.status))
+        .map((row) => {
+          const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
+          return {
+            runId: row.run_id,
+            workflowId: row.workflow_id,
+            status: row.status as WorkflowRunStatus,
+            currentNodeId: row.current_node_id ?? '',
+            results,
+            steps: JSON.parse(row.steps ?? '[]'),
+            startedAt: new Date(row.started_at),
+          };
+        });
     } catch {
       return [];
     }

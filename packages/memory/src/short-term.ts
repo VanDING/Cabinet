@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { ShortTermMemoryRepository, type Database } from '@cabinet/storage';
 
 export interface ShortTermEntry {
   key: string;
@@ -13,24 +13,12 @@ export class ShortTermMemory {
   private readonly accessOrder: string[] = [];
   private readonly defaultTtl = 30 * 60 * 1000;
   private readonly maxSize: number;
-  private db: Database.Database | null;
+  private repo: ShortTermMemoryRepository | null;
 
-  constructor(db?: Database.Database, maxSize = 1000) {
-    this.db = db ?? null;
+  constructor(db?: Database, maxSize = 1000) {
+    this.repo = db ? new ShortTermMemoryRepository(db) : null;
+    this.repo?.ensureTable();
     this.maxSize = maxSize;
-    if (this.db) {
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS short_term (
-          session_id TEXT NOT NULL,
-          key TEXT NOT NULL,
-          value TEXT NOT NULL,
-          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
-          ttl INTEGER NOT NULL DEFAULT 1800000,
-          PRIMARY KEY (session_id, key)
-        );
-        CREATE INDEX IF NOT EXISTS idx_short_term_session ON short_term(session_id);
-      `);
-    }
   }
 
   set(sessionId: string, key: string, value: unknown, ttl?: number): void {
@@ -41,10 +29,10 @@ export class ShortTermMemory {
       const lru = this.accessOrder.shift();
       if (lru) {
         this.cache.delete(lru);
-        if (this.db) {
+        if (this.repo) {
           const [sid, key] = lru.split(':', 2);
           if (sid && key) {
-            this.db.prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?').run(sid, key);
+            this.repo.delete(sid, key);
           }
         }
       }
@@ -65,11 +53,8 @@ export class ShortTermMemory {
     this.accessOrder.push(fullKey);
 
     // Persist to DB
-    if (this.db) {
-      this.db.prepare(
-        `INSERT OR REPLACE INTO short_term (session_id, key, value, timestamp, ttl)
-         VALUES (?, ?, ?, ?, ?)`,
-      ).run(sessionId, key, JSON.stringify(value), entry.timestamp.toISOString(), entry.ttl);
+    if (this.repo) {
+      this.repo.upsert(sessionId, key, JSON.stringify(value), entry.ttl);
     }
   }
 
@@ -82,8 +67,8 @@ export class ShortTermMemory {
       this.cache.delete(fullKey);
       const idx = this.accessOrder.indexOf(fullKey);
       if (idx !== -1) this.accessOrder.splice(idx, 1);
-      if (this.db) {
-        this.db.prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?').run(sessionId, key);
+      if (this.repo) {
+        this.repo.delete(sessionId, key);
       }
       return null;
     }
@@ -96,13 +81,11 @@ export class ShortTermMemory {
     }
 
     // Try DB
-    if (this.db) {
-      const row = this.db.prepare(
-        'SELECT * FROM short_term WHERE session_id = ? AND key = ?',
-      ).get(sessionId, key) as any;
+    if (this.repo) {
+      const row = this.repo.findBySessionAndKey(sessionId, key);
       if (row) {
         if (Date.now() - new Date(row.timestamp).getTime() > (row.ttl ?? this.defaultTtl)) {
-          this.db.prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?').run(sessionId, key);
+          this.repo.delete(sessionId, key);
           return null;
         }
         const value = JSON.parse(row.value ?? 'null');
@@ -139,10 +122,8 @@ export class ShortTermMemory {
     }
 
     // Load from DB for this session
-    if (this.db) {
-      const rows = this.db.prepare(
-        'SELECT * FROM short_term WHERE session_id = ?',
-      ).all(sessionId) as any[];
+    if (this.repo) {
+      const rows = this.repo.findBySession(sessionId);
       for (const row of rows) {
         if (!(row.key in result)) {
           if (now - new Date(row.timestamp).getTime() <= (row.ttl ?? this.defaultTtl)) {
@@ -163,8 +144,8 @@ export class ShortTermMemory {
         if (idx !== -1) this.accessOrder.splice(idx, 1);
       }
     }
-    if (this.db) {
-      this.db.prepare('DELETE FROM short_term WHERE session_id = ?').run(sessionId);
+    if (this.repo) {
+      this.repo.deleteBySession(sessionId);
     }
   }
 

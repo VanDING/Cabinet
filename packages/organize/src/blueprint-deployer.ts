@@ -120,13 +120,16 @@ export class BlueprintDeployer {
       timestamp: new Date(),
       messageType: MessageType.SystemNotification,
       payload: {
-        action: 'blueprint_deployed',
-        success: result.success,
-        agentsCreated: result.agentsCreated,
-        agentsReused: result.agentsReused,
-        workflowId: result.workflowId,
-        runId: result.runId,
-        errorCount: result.errors.length,
+        type: 'blueprint_deployed',
+        message: result.success ? 'Blueprint deployed successfully' : `Blueprint deployed with ${result.errors.length} errors`,
+        data: {
+          success: result.success,
+          agentsCreated: result.agentsCreated,
+          agentsReused: result.agentsReused,
+          workflowId: result.workflowId,
+          runId: result.runId,
+          errorCount: result.errors.length,
+        },
       },
     });
 

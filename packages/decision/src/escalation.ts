@@ -12,11 +12,9 @@ export class EscalationService {
       timestamp: new Date(),
       messageType: MessageType.SystemNotification,
       payload: {
-        decisionId,
-        title,
-        level,
+        type: 'decision_escalation',
         message: `Decision escalated: ${title} (Level: ${level})`,
-        urgency: level === 'L3' ? 'immediate' : 'normal',
+        data: { decisionId, title, level, urgency: level === 'L3' ? 'immediate' : 'normal' },
       },
     });
   }

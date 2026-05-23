@@ -147,13 +147,15 @@ export class GarbageCollector {
       messageType: MessageType.SystemNotification,
       payload: {
         type: 'garbage_collection',
-        summary: report.summary,
-        topIssues: issues.slice(0, 10).map((i) => ({
-          category: i.category,
-          severity: i.severity,
-          description: i.description,
-          location: i.location,
-        })),
+        data: {
+          summary: report.summary,
+          topIssues: issues.slice(0, 10).map((i) => ({
+            category: i.category,
+            severity: i.severity,
+            description: i.description,
+            location: i.location,
+          })),
+        },
       },
     });
 
