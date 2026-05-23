@@ -48,4 +48,5 @@ export {
 export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback, type StreamingCallback } from './agent-loop.js';
 export { createCabinetTools, registerCabinetTools, registerSkillTools, registerMCPTools, type ToolDependencies } from './tools/index.js';
 export { SkillRegistry, getSkillRegistry, setSkillRegistry, type SkillMetadata, type SkillEntry } from './skill-registry.js';
-export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown, type ParsedSkill } from './skill-loader.js';
+export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown } from './skill-loader.js';
+export type { ParsedSkill } from '@cabinet/types';
