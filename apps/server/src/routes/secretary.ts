@@ -477,7 +477,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       }));
     },
     getProjectContext(projectId) {
-      const project = ctx.db.prepare('SELECT id, name, description FROM projects WHERE id = ?').get(projectId) as any;
+      const project = ctx.db.prepare('SELECT id, name, description, root_path FROM projects WHERE id = ?').get(projectId) as any;
       if (!project) return null;
       const pctx = ctx.db.prepare('SELECT * FROM project_context WHERE project_id = ?').get(projectId) as any;
       const decisions = ctx.db
@@ -487,6 +487,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         id: project.id,
         name: project.name,
         description: project.description,
+        rootPath: project.root_path ?? '',
         summary: pctx?.summary ?? '',
         goals: JSON.parse(pctx?.goals ?? '[]'),
         constraints: JSON.parse(pctx?.constraints ?? '{}'),
@@ -1424,14 +1425,18 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
       if (pid === 'global') return 'No project selected. Use list_projects to see available projects.';
       const projCtx = isolated ? isolated.getProjectContext() : ctx.project.get(pid);
       let contextStr = '';
+      // Include project root path so the agent knows where the project files are
+      try {
+        const projRow = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').get(pid) as any;
+        if (projRow?.root_path && existsSync(projRow.root_path)) {
+          contextStr = `Project root: ${projRow.root_path}\n`;
+        }
+      } catch { /* root_path lookup is best-effort */ }
       if (!projCtx) {
-        contextStr = `Project "${pid}" has no context yet. Use set_project_context to add details.`;
+        contextStr += `Project "${pid}" has no context yet. Use set_project_context to add details.`;
       } else {
-        contextStr = `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
+        contextStr += `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
       }
-
-      // File listing is available through the list_directory tool when the agent explicitly calls it.
-      // Removed readdirSync here to avoid expensive I/O on every agent step.
 
       return contextStr;
     },
