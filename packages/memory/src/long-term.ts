@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { LongTermMemoryRepository, type Database } from '@cabinet/storage';
 
 export interface LongTermEntry {
   id: string;
@@ -17,42 +17,23 @@ export interface SimilarityResult extends LongTermEntry {
  * Supports both text search (LIKE queries) and vector similarity search (cosine similarity).
  */
 export class LongTermMemory {
-  private db: Database.Database;
+  private repo: LongTermMemoryRepository;
 
-  constructor(db: Database.Database) {
-    this.db = db;
-    this.ensureTable();
-  }
-
-  private ensureTable(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS memory_embeddings (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        embedding TEXT,
-        metadata TEXT NOT NULL DEFAULT '{}',
-        timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-      CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_embeddings(timestamp);
-    `);
+  constructor(db: Database) {
+    this.repo = new LongTermMemoryRepository(db);
+    this.repo.ensureTable();
   }
 
   async store(entry: Omit<LongTermEntry, 'id'>): Promise<string> {
     const id = `ltm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const embeddingJson = entry.embedding ? JSON.stringify(entry.embedding) : null;
 
-    this.db
-      .prepare(
-        `INSERT INTO memory_embeddings (id, content, embedding, metadata, timestamp)
-       VALUES (?, ?, ?, ?, ?)`,
-      )
-      .run(
-        id,
-        entry.content,
-        embeddingJson,
-        JSON.stringify(entry.metadata),
-        entry.timestamp.toISOString(),
-      );
+    this.repo.insert({
+      id,
+      content: entry.content,
+      embedding: embeddingJson,
+      metadata: JSON.stringify(entry.metadata),
+    });
 
     return id;
   }
@@ -77,16 +58,10 @@ export class LongTermMemory {
       }
     }
 
-    // Text LIKE search supplements semantic results
+    // Text search supplements semantic results
     const textLimit = limit - results.length;
     if (textLimit > 0) {
-      const rows = this.db
-        .prepare(
-          `SELECT * FROM memory_embeddings
-         WHERE content LIKE ? OR metadata LIKE ?
-         ORDER BY timestamp DESC LIMIT ?`,
-        )
-        .all(`%${query}%`, `%${query}%`, limit + 5) as any[];
+      const rows = this.repo.searchByText(query, limit + 5);
 
       for (const r of rows) {
         if (results.length >= limit) break;
@@ -94,7 +69,7 @@ export class LongTermMemory {
           results.push({
             id: r.id, content: r.content,
             embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
-            metadata: JSON.parse(r.metadata),
+            metadata: JSON.parse(r.metadata ?? '{}'),
             timestamp: new Date(r.timestamp),
           });
         }
@@ -109,12 +84,10 @@ export class LongTermMemory {
    * Only searches entries that have embeddings stored.
    */
   async semanticSearch(queryEmbedding: number[], limit = 5): Promise<SimilarityResult[]> {
-    const rows = this.db
-      .prepare('SELECT * FROM memory_embeddings WHERE embedding IS NOT NULL')
-      .all() as any[];
+    const rows = this.repo.findAllWithEmbeddings();
 
     const scored = rows.map((row) => {
-      const embedding = JSON.parse(row.embedding) as number[];
+      const embedding = JSON.parse(row.embedding!) as number[];
       const score = this.cosineSimilarity(queryEmbedding, embedding);
       return { row, score };
     });
@@ -126,21 +99,21 @@ export class LongTermMemory {
       .map((s) => ({
         id: s.row.id,
         content: s.row.content,
-        embedding: JSON.parse(s.row.embedding),
-        metadata: JSON.parse(s.row.metadata),
+        embedding: JSON.parse(s.row.embedding!),
+        metadata: JSON.parse(s.row.metadata ?? '{}'),
         timestamp: new Date(s.row.timestamp),
         score: s.score,
       }));
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = this.db.prepare('DELETE FROM memory_embeddings WHERE id = ?').run(id);
-    return result.changes > 0;
+    const before = this.repo.count();
+    this.repo.delete(id);
+    return this.repo.count() < before;
   }
 
   size(): number {
-    const row = this.db.prepare('SELECT COUNT(*) as count FROM memory_embeddings').get() as any;
-    return row.count;
+    return this.repo.count();
   }
 
   /** Database is managed externally — close is a no-op. */

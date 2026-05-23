@@ -22,9 +22,9 @@ export class HarnessEscalation {
         timestamp: new Date(),
         messageType: MessageType.QualityAlert,
         payload: {
-          message: `Quality alert: ${this.consecutiveLowQuality} consecutive low-quality outputs.`,
-          outputId,
-          quality,
+          type: 'low_quality',
+          message: `Quality alert: ${this.consecutiveLowQuality} consecutive low-quality outputs (output: ${outputId}, score: ${quality}).`,
+          severity: 'high',
         },
       });
     }
