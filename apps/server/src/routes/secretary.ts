@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext, onTierChange, type ServerContext } from '../context.js';
-import type { DelegationTier } from '@cabinet/types';
+import { DEFAULT_CAPTAIN_ID, type DelegationTier } from '@cabinet/types';
 import {
   AgentLoop,
   AgentDispatcher,
@@ -439,7 +439,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         role.type as AgentRoleType,
         `invoke_${Date.now()}`,
         'global',
-        'captain-1',
+        DEFAULT_CAPTAIN_ID,
         undefined,
         resolveModel({ modelTier: 'default', model: 'claude-sonnet-4-6' }),
       );
@@ -1593,7 +1593,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     memoryProvider: buildMemoryProvider(ctx, 'default'),
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
-    captainId: 'captain-1',
+    captainId: DEFAULT_CAPTAIN_ID,
     systemPrompt: buildSystemPrompt(role.type, role.systemPrompt),
     model: resolveModel(role),
     maxSteps: role.maxSteps ?? 50,
@@ -1919,7 +1919,7 @@ secretaryRouter.post('/chat', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
 
   const { sessionId, message } = parsed.data;
-  const captainId = parsed.data.captainId ?? 'captain-1';
+  const captainId = parsed.data.captainId ?? DEFAULT_CAPTAIN_ID;
   const files = parsed.data.files ?? [];
   let projectId: string = parsed.data.projectId || '';
   const model = parsed.data.model;

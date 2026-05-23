@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
 import { WorkflowEngine, type WorkflowNodeDef, type WorkflowEdge, type WorkflowRun, type AgentLoopHandle } from '@cabinet/workflow';
+import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
 import {
   AgentLoop,
   ToolExecutor,
@@ -361,7 +362,7 @@ function getEngine(): WorkflowEngine {
         memoryProvider: buildWorkflowMemoryProvider(runId),
         sessionId: cacheKey,
         projectId: 'default',
-        captainId: 'captain-1',
+        captainId: DEFAULT_CAPTAIN_ID,
         systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
         model: role.model,
         maxSteps: options.persistent ? 20 : 50,
