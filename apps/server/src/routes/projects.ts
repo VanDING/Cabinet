@@ -197,25 +197,23 @@ projectsRouter.get('/:id', (c) => {
 
 // ── PUT /api/projects/:id ──
 projectsRouter.put('/:id', async (c) => {
-  const { projectRepo, db, logger } = getServerContext();
+  const { projectRepo, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
 
   const existing = projectRepo.findById(id);
   if (!existing) return c.json({ error: 'Project not found' }, 404);
 
-  const sets: string[] = [];
-  const params: any[] = [];
+  const changes: Partial<Pick<typeof existing, 'name' | 'description' | 'rootPath'>> & { icon?: string } = {};
   for (const [k, v] of Object.entries(body)) {
-    if (['name', 'description', 'root_path', 'icon'].includes(k)) {
-      sets.push(`${k} = ?`);
-      params.push(v);
-    }
+    if (k === 'name') changes.name = String(v);
+    if (k === 'description') changes.description = String(v);
+    if (k === 'root_path') changes.rootPath = String(v);
+    if (k === 'icon') changes.icon = String(v);
   }
 
-  if (sets.length > 0) {
-    params.push(id);
-    db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  if (Object.keys(changes).length > 0) {
+    projectRepo.update(id, changes);
     logger.info('Project updated', { id });
     broadcast('project_updated', { id, name: body.name ?? existing.name, timestamp: new Date().toISOString() });
   }
@@ -237,9 +235,9 @@ projectsRouter.put('/:id', async (c) => {
 
 // ── POST /api/projects/:id/archive ──
 projectsRouter.post('/:id/archive', (c) => {
-  const { projectRepo, db, logger } = getServerContext();
+  const { projectRepo, logger } = getServerContext();
   const id = c.req.param('id');
-  db.prepare('UPDATE projects SET archived = 1 WHERE id = ?').run(id);
+  projectRepo.archive(id);
   const project = projectRepo.findById(id);
   if (project) writeProjectIndex({ ...project, createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : String(project.createdAt) });
   logger.info('Project archived', { id });
@@ -248,9 +246,9 @@ projectsRouter.post('/:id/archive', (c) => {
 
 // ── POST /api/projects/:id/restore ──
 projectsRouter.post('/:id/restore', (c) => {
-  const { projectRepo, db, logger } = getServerContext();
+  const { projectRepo, logger } = getServerContext();
   const id = c.req.param('id');
-  db.prepare('UPDATE projects SET archived = 0 WHERE id = ?').run(id);
+  projectRepo.restore(id);
   const restored = projectRepo.findById(id);
   if (restored) writeProjectIndex({ ...restored, createdAt: restored.createdAt instanceof Date ? restored.createdAt.toISOString() : String(restored.createdAt) });
   logger.info('Project restored', { id });
@@ -259,19 +257,21 @@ projectsRouter.post('/:id/restore', (c) => {
 
 // ── DELETE /api/projects/:id ──
 projectsRouter.delete('/:id', (c) => {
-  const { projectRepo, projectContextRepo, decisionRepo, employeeRepo, db, logger } = getServerContext();
+  const { projectRepo, projectContextRepo, decisionRepo, employeeRepo, workflowRepo, db, logger } = getServerContext();
   const id = c.req.param('id');
 
   // Get project name before deletion for broadcast
   const proj = projectRepo.findById(id);
   const projName = proj?.name ?? id;
 
-  // Cascade cleanup
-  projectContextRepo.delete(id);
-  db.prepare('DELETE FROM workflows WHERE project_id = ?').run(id);
-  decisionRepo.deleteByProject(id);
-  employeeRepo.deleteByProject(id);
-  projectRepo.delete(id);
+  // Atomic cascade cleanup
+  db.transaction(() => {
+    projectContextRepo.delete(id);
+    workflowRepo.deleteByProject(id);
+    decisionRepo.deleteByProject(id);
+    employeeRepo.deleteByProject(id);
+    projectRepo.delete(id);
+  })();
 
   // Remove project index file
   removeProjectIndex(id);

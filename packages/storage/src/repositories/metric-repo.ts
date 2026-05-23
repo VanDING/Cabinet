@@ -32,6 +32,22 @@ export class MetricRepository {
     return row?.value ?? null;
   }
 
+  aggregateCostByDate(dateLike: string): Array<{ tags: string; cost: number }> {
+    const rows = this.db
+      .prepare(
+        "SELECT tags, SUM(value) as cost FROM metrics WHERE name = 'llm_cost' AND tags LIKE ? GROUP BY tags",
+      )
+      .all(dateLike) as Array<{ tags: string; cost: number }>;
+    return rows;
+  }
+
+  aggregateCallsByDate(dateLike: string): number {
+    const row = this.db
+      .prepare("SELECT SUM(value) as count FROM metrics WHERE name = 'llm_call' AND tags LIKE ?")
+      .get(dateLike) as { count: number } | undefined;
+    return row?.count ?? 0;
+  }
+
   private rowToMetric(row: Record<string, unknown>): MetricRow {
     return {
       id: row.id as number,

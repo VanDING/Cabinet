@@ -25,7 +25,7 @@ const EVENT_LABELS: Record<string, string> = {
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const { decisionRepo, costTracker, budgetGuard, projectRepo, eventRepo, metrics, logger, db } =
+  const { decisionRepo, costTracker, budgetGuard, projectRepo, workflowRepo, eventRepo, metrics, logger, db } =
     getServerContext();
   const projectId = c.req.query('projectId');
 
@@ -45,10 +45,7 @@ dashboardRouter.get('/summary', (c) => {
     logger.warn('Failed to load projects', { error: (err as Error).message });
   }
   try {
-    const workflowRow = db
-      .prepare("SELECT COUNT(*) as count FROM workflows WHERE status = 'running'")
-      .get() as { count: number } | undefined;
-    activeWorkflows = workflowRow?.count ?? 0;
+    activeWorkflows = workflowRepo.countByStatus(['running']);
   } catch (err) {
     logger.warn('Failed to load workflows', { error: (err as Error).message });
   }
@@ -77,7 +74,7 @@ dashboardRouter.get('/summary', (c) => {
 });
 
 dashboardRouter.get('/cost-history', (c) => {
-  const { costTracker, db } = getServerContext();
+  const { costTracker, metricRepo, sessionMetricsRepo } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
   const history: { date: string; cost: number; calls: number; tokens: number; byModel: Record<string, number> }[] =
     [];
@@ -91,28 +88,20 @@ dashboardRouter.get('/cost-history', (c) => {
     // Per-model cost breakdown
     const byModel: Record<string, number> = {};
     try {
-      const rows = db
-        .prepare(
-          "SELECT tags, SUM(value) as cost FROM metrics WHERE name = 'llm_cost' AND tags LIKE ? GROUP BY tags",
-        )
-        .all(`%${dateStr}%`) as any[];
+      const rows = metricRepo.aggregateCostByDate(`%${dateStr}%`);
 
       for (const row of rows) {
         // Extract model from tags JSON: {"model":"claude-sonnet-4-6",...}
         try {
           const tags = JSON.parse(row.tags ?? '{}');
           const model = tags.model ?? 'unknown';
-          byModel[model] = (byModel[model] ?? 0) + parseFloat(row.cost ?? 0);
+          byModel[model] = (byModel[model] ?? 0) + parseFloat(String(row.cost ?? 0));
         } catch {
-          byModel['unknown'] = (byModel['unknown'] ?? 0) + parseFloat(row.cost ?? 0);
+          byModel['unknown'] = (byModel['unknown'] ?? 0) + parseFloat(String(row.cost ?? 0));
         }
       }
 
-      // Also get call count
-      const callRow = db
-        .prepare("SELECT SUM(value) as count FROM metrics WHERE name = 'llm_call' AND tags LIKE ?")
-        .get(`%${dateStr}%`) as any;
-      totalCalls += callRow?.count ?? 0;
+      totalCalls += metricRepo.aggregateCallsByDate(`%${dateStr}%`);
     } catch {
       /* metrics aggregation error for this date */
     }
@@ -122,10 +111,7 @@ dashboardRouter.get('/cost-history', (c) => {
     // Tokens for this day from session_metrics
     let tokens = 0;
     try {
-      const tokenRow = db
-        .prepare("SELECT SUM(total_tokens) as tokens FROM session_metrics WHERE started_at LIKE ?")
-        .get(`${dateStr}%`) as any;
-      tokens = tokenRow?.tokens ?? 0;
+      tokens = sessionMetricsRepo.sumTokensByDate(`${dateStr}%`);
     } catch { /* ignore */ }
 
     history.push({

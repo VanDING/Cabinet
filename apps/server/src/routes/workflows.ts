@@ -687,7 +687,7 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
             } else {
               // Rejected — mark workflow as failed
               workflowRepo.updateStatus(wfId, 'failed');
-              db.prepare("UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'").run(wfId);
+              workflowRepo.failAwaitingRuns(wfId);
             }
             // Mark approval as resolved
             auditLogRepo.updateAction('workflow_approval', approvalRow.entity_id, 'resolved');
