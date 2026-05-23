@@ -690,7 +690,7 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
               workflowRepo.failAwaitingRuns(wfId);
             }
             // Mark approval as resolved
-            auditLogRepo.updateAction('workflow_approval', approvalRow.entity_id, 'resolved');
+            auditLogRepo.insert('workflow_approval', approvalRow.entity_id, 'resolved', 'system', { workflowId: wfId, status: 'resolved' });
           } catch (err) {
             logger.error('Failed to resume workflow after approval', { workflowId: wfId, error: (err as Error).message });
           }
