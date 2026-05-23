@@ -10,13 +10,13 @@ export class Evaluator {
         messages: [
           {
             role: 'user',
-            content: `Rate this output quality (0-10) and give brief feedback:\n\n${output}`,
+            content: `Rate this output quality on a 0-10 scale. Reply with ONLY "Score: X/10" followed by one line of feedback.\n\n${output}`,
           },
         ],
       });
-      const qualityMatch = response.content.match(/(\d+)/);
+      const scoreMatch = response.content.match(/Score:\s*(\d+)\s*\/\s*10/i);
       return {
-        quality: qualityMatch?.[1] ? parseInt(qualityMatch[1]) / 10 : 0.5,
+        quality: scoreMatch?.[1] ? Math.min(1, Math.max(0, parseInt(scoreMatch[1]) / 10)) : 0.5,
         feedback: response.content.slice(0, 200),
       };
     } catch {

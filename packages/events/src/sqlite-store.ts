@@ -1,6 +1,7 @@
 import type { MessageEnvelope, MessageType } from '@cabinet/types';
 import type { EventBus, MessageHandler } from './bus';
 import type { EventLogRepository } from '@cabinet/storage/repositories/event-log';
+import { buildCausationChain } from './causation.js';
 
 export class SqliteEventStore implements EventBus {
   private readonly subscribers = new Map<MessageType, Set<MessageHandler>>();
@@ -13,7 +14,11 @@ export class SqliteEventStore implements EventBus {
     const handlers = this.subscribers.get(envelope.messageType);
     if (handlers) {
       for (const handler of handlers) {
-        await handler(envelope);
+        try {
+          await handler(envelope);
+        } catch {
+          // Isolate handler errors so one failing subscriber doesn't block others
+        }
       }
     }
   }
@@ -32,7 +37,12 @@ export class SqliteEventStore implements EventBus {
   }
 
   async getCausationChain(correlationId: string): Promise<MessageEnvelope[]> {
-    return this.eventLog.findByCorrelationId(correlationId);
+    const allEvents = await this.eventLog.findByCorrelationId(correlationId);
+    if (allEvents.length === 0) return [];
+    const childIds = new Set(allEvents.map((e) => e.causationId).filter(Boolean) as string[]);
+    const leaf = allEvents.find((e) => !childIds.has(e.messageId));
+    if (!leaf) return allEvents;
+    return buildCausationChain(leaf.messageId, allEvents);
   }
 
   async findAll(): Promise<MessageEnvelope[]> {

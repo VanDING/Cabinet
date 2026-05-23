@@ -13,8 +13,8 @@ decisionsRouter.get('/', (c) => {
   try {
     const decisions =
       status === 'all'
-        ? decisionRepo.listByProject(projectId)
-        : decisionRepo.listPending(projectId);
+        ? (projectId ? decisionRepo.listByProject(projectId) : decisionRepo.listAll())
+        : (projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending());
     return c.json({ decisions, status, total: decisions.length });
   } catch (err) {
     const { logger } = getServerContext();
@@ -32,7 +32,7 @@ decisionsRouter.get('/:id', (c) => {
 
 const createSchema = z.object({
   projectId: z.string(),
-  type: z.string(),
+  type: z.enum(['strategic', 'action', 'execution', 'anomaly', 'evolution']),
   title: z.string(),
   description: z.string().optional(),
   options: z.array(z.object({ id: z.string(), label: z.string(), impact: z.string() })).optional(),

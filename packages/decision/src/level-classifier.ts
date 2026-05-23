@@ -36,8 +36,8 @@ export class LevelClassifier {
       return DecisionLevel.L1;
     }
 
-    // L0: single call, no side effects, minimal cost
-    if (input.optionCount <= 1 && totalCost < 0.01) {
+    // L0: no side effects, no cost, within single call
+    if (!input.isCrossSession && input.optionCount <= 2 && totalCost === 0) {
       return DecisionLevel.L0;
     }
 

@@ -42,7 +42,7 @@ export class ConsolidationService {
     let migrated = 0;
 
     for (const [key, value] of Object.entries(allEntries)) {
-      if (typeof value === 'string' && value.length > 50) {
+      if (typeof value === 'string' && isImportant(value)) {
         await this.longTerm.store({
           content: value,
           metadata: { key, sessionId, source: 'consolidation_basic' },
@@ -99,4 +99,13 @@ export class ConsolidationService {
     this.shortTerm.clear(sessionId);
     return result;
   }
+}
+
+function isImportant(value: string): boolean {
+  if (value.length > 50) return true;
+  // Shorter strings that contain structured data are still important
+  const hasDate = /\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/.test(value);
+  const hasNumber = /\b\d+\b/.test(value);
+  const hasDecision = /决策|决定|Decision|decision|批准|拒绝|approve|reject/i.test(value);
+  return (hasDate || hasNumber || hasDecision) && value.length > 10;
 }

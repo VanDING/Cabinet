@@ -4,6 +4,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText as aiGenerateText, streamText as aiStreamText, embed, tool, stepCountIs } from 'ai';
 import { z } from 'zod';
+import { ModelRouter } from './model-router.js';
+import type { ModelRole } from './model-router.js';
 import type {
   LLMGateway,
   LLMCallOptions,
@@ -55,23 +57,68 @@ const OPENAI_COMPATIBLE_BASE_URLS: Record<string, string> = {
  * Resolves model tier strings (e.g. "deep_reasoning") to provider/model
  * via user-configurable modelMapping, falling back to raw model names.
  */
+/** Map ModelTier (used by agent-roles) to ModelRole (used by ModelRouter). */
+const TIER_TO_ROLE: Record<string, ModelRole> = {
+  deep_reasoning: 'deep_think',
+  fast_execution: 'fast_execute',
+  default: 'default',
+};
+
 export class AISDKAdapter implements LLMGateway {
   private readonly config: ProviderConfig;
   private modelMapping: ModelMapping;
+  private router: ModelRouter;
 
   constructor(config: ProviderConfig, modelMapping?: ModelMapping) {
     this.config = config;
     this.modelMapping = modelMapping ?? {};
+    // Build router fallbacks from user's modelMapping: each user-mapped model becomes
+    // the primary model for that role with DEFAULT_CONFIG as fallback chain
+    const userFallbacks: Partial<Record<ModelRole, string[]>> = {};
+    if (modelMapping) {
+      for (const [tier, model] of Object.entries(modelMapping)) {
+        if (model) {
+          const role = TIER_TO_ROLE[tier];
+          if (role) {
+            userFallbacks[role] = [model];
+          }
+        }
+      }
+    }
+    this.router = new ModelRouter(undefined, userFallbacks);
   }
 
   /** Update model mapping at runtime (called when user changes settings). */
   setModelMapping(mapping: ModelMapping): void {
     this.modelMapping = mapping;
+    // Rebuild router fallbacks
+    const userFallbacks: Partial<Record<ModelRole, string[]>> = {};
+    for (const [tier, model] of Object.entries(mapping)) {
+      if (model) {
+        const role = TIER_TO_ROLE[tier];
+        if (role) {
+          userFallbacks[role] = [model];
+        }
+      }
+    }
+    this.router = new ModelRouter(undefined, userFallbacks);
   }
 
   /** Resolve a model tier to the actual provider/model string. */
   resolveModelString(tier: string): string {
-    return this.modelMapping[tier] ?? tier;
+    // User-configured model takes priority first
+    if (this.modelMapping[tier]) return this.modelMapping[tier];
+    // Fall back to ModelRouter defaults
+    const role = TIER_TO_ROLE[tier];
+    if (role) return this.router.getModel(role);
+    return tier;
+  }
+
+  /** Get the fallback chain for a model tier (for retry logic). */
+  getModelChain(tier: string): string[] {
+    const role = TIER_TO_ROLE[tier];
+    if (role) return this.router.getModelChain(role);
+    return [tier];
   }
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {

@@ -16,6 +16,7 @@
     { "path": "../../packages/decision" },
     { "path": "../../packages/secretary" },
     { "path": "../../packages/workflow" },
-    { "path": "../../packages/harness" }
+    { "path": "../../packages/harness" },
+    { "path": "../../packages/meeting" }
   ]
 }

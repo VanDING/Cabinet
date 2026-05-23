@@ -17,6 +17,7 @@ const EXPECTED_TABLES = [
   'api_keys',
   'audit_log',
   'metrics',
+  'schema_migrations',
 ];
 
 describe('migration 001', () => {

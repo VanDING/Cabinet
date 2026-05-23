@@ -15,8 +15,16 @@ const DEFAULT_CONFIG: RouterConfig = {
 export class ModelRouter {
   private config: RouterConfig;
 
-  constructor(config?: Partial<RouterConfig>) {
+  constructor(config?: Partial<RouterConfig>, userFallbacks?: Partial<Record<ModelRole, string[]>>) {
     this.config = { roles: { ...DEFAULT_CONFIG.roles, ...config?.roles } };
+    // Merge user-configured fallback chains (user config takes priority for specified tiers)
+    if (userFallbacks) {
+      for (const [role, models] of Object.entries(userFallbacks)) {
+        if (models && models.length > 0) {
+          this.config.roles[role as ModelRole] = models;
+        }
+      }
+    }
   }
 
   /** Get the primary model for a given role */

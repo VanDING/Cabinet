@@ -127,7 +127,7 @@ export class AutoAdjuster {
     const action: AdjustmentAction = {
       type: 'context_budget_reduce',
       severity: health.contextHealth === 'critical' ? 'critical' : 'warning',
-      description: `Context health is ${health.contextHealth}. Reducing agent context budgets.`,
+      description: `Context health is ${health.contextHealth}. Reducing context budgets for affected roles only.`,
       details: { contextHealth: health.contextHealth, changes },
       requiresCaptainApproval: needsApproval,
       applied: false,
@@ -137,11 +137,21 @@ export class AutoAdjuster {
     if (needsApproval && this.notifyCallback) {
       action.applied = await this.notifyCallback(action);
     } else {
+      const healthByRole = this.observability.getHealthByRole();
       for (const role of this.agentRegistry.list()) {
-        const newBudget = Math.round(Math.max(0.1, role.contextBudget - 0.1) * 10) / 10;
-        if (newBudget < role.contextBudget) {
-          this.agentRegistry.update(role.type, { contextBudget: newBudget });
-          changes[role.type] = newBudget;
+        const roleHealth = healthByRole.get(role.type);
+        // Only adjust roles actually experiencing context pressure.
+        if (
+          roleHealth &&
+          (roleHealth.contextHealth === 'critical' ||
+            roleHealth.contextHealth === 'warning') &&
+          !roleHealth.insufficientData
+        ) {
+          const newBudget = Math.round(Math.max(0.15, role.contextBudget - 0.1) * 10) / 10;
+          if (newBudget < role.contextBudget) {
+            this.agentRegistry.update(role.type, { contextBudget: newBudget });
+            changes[role.type] = newBudget;
+          }
         }
       }
       action.applied = Object.keys(changes).length > 0;
@@ -158,7 +168,7 @@ export class AutoAdjuster {
     const action: AdjustmentAction = {
       type: 'temperature_adjust',
       severity: health.successRate < 0.5 ? 'critical' : 'warning',
-      description: `Success rate at ${(health.successRate * 100).toFixed(0)}%. Reducing temperature for determinism.`,
+      description: `Success rate at ${(health.successRate * 100).toFixed(0)}%. Reducing temperature for affected roles.`,
       details: { successRate: health.successRate, changes },
       requiresCaptainApproval: needsApproval,
       applied: false,
@@ -168,11 +178,20 @@ export class AutoAdjuster {
     if (needsApproval && this.notifyCallback) {
       action.applied = await this.notifyCallback(action);
     } else {
+      const healthByRole = this.observability.getHealthByRole();
       for (const role of this.agentRegistry.list()) {
-        if (role.temperature > 0.1) {
-          const newTemp = Math.round((role.temperature - 0.1) * 10) / 10;
-          this.agentRegistry.update(role.type, { temperature: Math.max(0, newTemp) });
-          changes[role.type] = newTemp;
+        const roleHealth = healthByRole.get(role.type);
+        // Skip roles with insufficient data or healthy success rate.
+        if (!roleHealth || roleHealth.insufficientData) continue;
+        if (roleHealth.successRate === null || roleHealth.successRate >= 0.7) continue;
+
+        // Only reduce temperature for struggling roles, with a floor of 0.05.
+        if (role.temperature > 0.05) {
+          const newTemp = Math.round(Math.max(0.05, role.temperature - 0.1) * 10) / 10;
+          if (newTemp < role.temperature) {
+            this.agentRegistry.update(role.type, { temperature: newTemp });
+            changes[role.type] = newTemp;
+          }
         }
       }
       action.applied = Object.keys(changes).length > 0;

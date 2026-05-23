@@ -1,5 +1,8 @@
 import type { MessageEnvelope, MessageType } from '@cabinet/types';
 import type { EventBus, MessageHandler } from './bus';
+import { buildCausationChain } from './causation.js';
+
+const MAX_EVENTS = 1000;
 
 export class MemoryEventBus implements EventBus {
   private readonly subscribers = new Map<MessageType, Set<MessageHandler>>();
@@ -9,10 +12,19 @@ export class MemoryEventBus implements EventBus {
     // Immutable append
     this.events.push(Object.freeze({ ...envelope }));
 
+    // Ring buffer: evict oldest events when above limit
+    if (this.events.length > MAX_EVENTS) {
+      this.events.splice(0, this.events.length - MAX_EVENTS);
+    }
+
     const handlers = this.subscribers.get(envelope.messageType);
     if (handlers) {
       for (const handler of handlers) {
-        await handler(envelope);
+        try {
+          await handler(envelope);
+        } catch {
+          // Isolate handler errors so one failing subscriber doesn't block others
+        }
       }
     }
   }
@@ -31,9 +43,12 @@ export class MemoryEventBus implements EventBus {
   }
 
   async getCausationChain(correlationId: string): Promise<MessageEnvelope[]> {
-    return this.events
-      .filter((e) => e.correlationId === correlationId)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const filtered = this.events.filter((e) => e.correlationId === correlationId);
+    if (filtered.length === 0) return [];
+    const childIds = new Set(filtered.map((e) => e.causationId).filter(Boolean) as string[]);
+    const leaf = filtered.find((e) => !childIds.has(e.messageId));
+    if (!leaf) return filtered;
+    return buildCausationChain(leaf.messageId, filtered);
   }
 
   /** Get all published events (for testing and debugging only) */

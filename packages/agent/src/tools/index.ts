@@ -23,7 +23,7 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   // ── Write callbacks (wired by server layer) ──
   createDecision: (input: {
     projectId: string;
-    type: string;
+    type: import('@cabinet/types').DecisionType;
     title: string;
     description: string;
     options: { id: string; label: string; impact: string }[];
@@ -123,7 +123,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       execute: async (args: Record<string, unknown>) => {
         const title = args.title as string;
         const description = (args.description as string) ?? '';
-        const type = (args.type as string) ?? 'strategic';
+        const type = (args.type as import('@cabinet/types').DecisionType) ?? 'strategic';
         const projectId = (args.projectId as string) ?? 'default';
         const captainId = args.captainId as string | undefined;
         const options = (args.options as { id: string; label: string; impact: string }[]) ?? [
@@ -217,6 +217,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'recall',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const sessionId = args.sessionId as string;
         const key = args.key as string | undefined;
@@ -229,6 +230,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'search_memory',
+      timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
         const limit = (args.limit as number) ?? 5;

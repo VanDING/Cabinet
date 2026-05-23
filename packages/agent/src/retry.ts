@@ -14,6 +14,9 @@ const DEFAULT_CONFIGS: Record<ErrorCategory, RetryConfig> = {
   fatal: { maxRetries: 0, baseDelayMs: 0, strategy: 'fixed' },
 };
 
+// The `error` parameter provides a provisional classification used as the initial
+// RetryConfig. The actual category is re-evaluated from each thrown Error in the
+// catch block, so the initial value only affects the first attempt's retry budget.
 export function classifyError(error: Error): ErrorCategory {
   const msg = error.message.toLowerCase();
   if (

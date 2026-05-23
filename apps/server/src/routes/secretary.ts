@@ -15,11 +15,18 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
 import { SecretaryAgent, IntentParser, GreetingService } from '@cabinet/secretary';
+import {
+  buildChairPrompt, parseChairResponse,
+  buildAdvisorPrompt, parseAdvisorResponse,
+  buildReviewerTask, parseReviewerResponse,
+  buildExtractionPrompt, parseExtractionResponse,
+  generateSynthesis,
+  type AdvisorFinding,
+} from '@cabinet/meeting';
 import { ProjectIsolatedMemory } from '@cabinet/memory';
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
-import { ANALYSIS_PERSPECTIVES } from '../api-helpers.js';
 import { buildEnvironmentSection } from '../capabilities.js';
 import { getWorkspaceSymbols, getDefinition, getReferences, getDiagnostics } from '../lsp/ts-service.js';
 import { indexProject } from '../lsp/indexer.js';
@@ -31,6 +38,18 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
+
+const RAG_LONGTERM_TOP_K = 5;
+
+/** Roles that need the system environment section in their prompt. */
+const ROLES_NEEDING_ENV = new Set(['secretary', 'workflow_designer', 'organize']);
+
+function buildSystemPrompt(roleType: string, roleSystemPrompt: string): string {
+  if (ROLES_NEEDING_ENV.has(roleType)) {
+    return buildEnvironmentSection() + '\n\n' + roleSystemPrompt;
+  }
+  return roleSystemPrompt;
+}
 
 /** Read a text file with auto-detected encoding (UTF-8 → GBK fallback). */
 async function readTextFile(filePath: string): Promise<string> {
@@ -1146,10 +1165,17 @@ async function runMeeting(
   decisionId?: string | null;
 }> {
   const meetingId = `meeting_${Date.now()}`;
-  const selected = advisorIds ?? ANALYSIS_PERSPECTIVES.map((p) => p.id);
-  const advisors = ANALYSIS_PERSPECTIVES
-    .filter((p) => selected.includes(p.id))
-    .map((p) => ({ id: p.id, name: p.name, role: p.framework, model: 'claude-haiku-4-5', perspective: p.framework }));
+
+  // Budget gate: refuse meeting if daily budget is already blocked
+  const budget = ctx.budgetGuard.canProceed();
+  if (!budget.allowed) {
+    return {
+      meetingId,
+      topic,
+      synthesis: `Meeting blocked: ${budget.reason ?? 'Budget limit exceeded'}. Approve more budget in Settings to run meetings.`,
+      perspectives: [],
+    };
+  }
 
   if (!ctx.gateway) {
     const synthesis = `[No LLM] Meeting on "${topic}" created. Configure API keys for AI-powered meetings.`;
@@ -1163,103 +1189,42 @@ async function runMeeting(
 
   const model = 'claude-haiku-4-5';
 
-  // Phase 1: MeetingChair constructs analysis Brief (1 LLM call — coordination)
+  // Phase 1: MeetingChair dynamically generates analysis perspectives based on the topic.
+  // If the user specified advisor names, they are included as mandatory perspectives.
   let analysisBrief: string;
   try {
-    const perspectiveList = advisors
-      .map((a) => `- ${a.name}: ${a.perspective}`)
-      .join('\n');
-    const chairPrompt = [
-      `You are the Meeting Chair. Your job is to coordinate analysis, not perform it.`,
-      `Construct a structured analysis Brief for the Advisor.`,
-      '',
-      `Topic: "${topic}"`,
-      '',
-      `Available perspectives:`,
-      perspectiveList,
-      '',
-      `Your task:`,
-      `1. Select the most relevant perspectives for this topic (2-4).`,
-      `2. For each selected perspective, specify a FOCUSED analysis angle — not generic "analyze the market" but specific like "assess market entry barriers for this product in the EU."`,
-      `3. Include any project context that is relevant.`,
-      '',
-      `Output as JSON:`,
-      `{`,
-      `  "selected_perspectives": [`,
-      `    {"id": "market", "focus": "specific analysis focus here"},`,
-      `    ...`,
-      `  ],`,
-      `  "topic_refined": "refined topic statement",`,
-      `  "key_questions": ["question the analysis must answer"]`,
-      `}`,
-    ].join('\n');
-
+    const chairPrompt = buildChairPrompt(topic, advisorIds);
     const chairResponse = await ctx.gateway!.generateText({
       model,
       messages: [{ role: 'user', content: chairPrompt }],
-      maxTokens: 600,
+      maxTokens: 1200,
       temperature: 0.3,
     });
-    const match = chairResponse.content.match(/\{[\s\S]*\}/);
-    analysisBrief = match ? match[0] : JSON.stringify({ selected_perspectives: advisors.map((a) => ({ id: a.id, focus: a.perspective })), topic_refined: topic, key_questions: [] });
+    const brief = parseChairResponse(chairResponse.content, topic);
+    analysisBrief = JSON.stringify(brief);
     ctx.metrics.increment('llm_call', { model, purpose: 'meeting_chair_brief' });
   } catch {
-    analysisBrief = JSON.stringify({ selected_perspectives: advisors.map((a) => ({ id: a.id, focus: a.perspective })), topic_refined: topic, key_questions: [] });
+    analysisBrief = JSON.stringify(parseChairResponse('', topic));
   }
 
   // Phase 2: Advisor multi-perspective analysis (1 LLM call)
   let perspectives: any[];
+  let advisorResult: import('@cabinet/meeting').AdvisorResult;
   try {
     const brief = JSON.parse(analysisBrief);
-    const selectedIds = new Set((brief.selected_perspectives as any[]).map((p: any) => p.id));
-    const selectedAdvisors = advisors.filter((a) => selectedIds.has(a.id));
-    const perspectiveInstructions = (brief.selected_perspectives as any[])
-      .map((p: any) => `- ${p.id}: FOCUS on "${p.focus}"`)
-      .join('\n');
-
-    const advisorPrompt = [
-      `You are a specialized analyst. Analyze the following topic from MULTIPLE perspectives in a single response.`,
-      '',
-      `Topic: ${brief.topic_refined}`,
-      `Key questions to answer: ${(brief.key_questions as string[]).join('; ')}`,
-      '',
-      `You must analyze from these perspectives:`,
-      perspectiveInstructions,
-      '',
-      `For each perspective, provide:`,
-      `- claim: your analytical conclusion`,
-      `- evidence: supporting data or reasoning`,
-      `- confidence: 0.0 to 1.0`,
-      '',
-      `After all perspectives, provide:`,
-      `- synthesis: 2-3 sentence overall conclusion`,
-      `- risks: key risks identified`,
-      `- open_questions: what remains uncertain`,
-      '',
-      `Output as JSON:`,
-      `{`,
-      `  "perspectives_applied": ["list"],`,
-      `  "findings": [`,
-      `    {"perspective": "name", "claim": "...", "evidence": "...", "confidence": 0.8}`,
-      `  ],`,
-      `  "synthesis": "...",`,
-      `  "risks": ["..."],`,
-      `  "open_questions": ["..."]`,
-      `}`,
-    ].join('\n');
-
+    const advisorPrompt = buildAdvisorPrompt(brief);
     const advisorResponse = await ctx.gateway!.generateText({
       model,
       messages: [{ role: 'user', content: advisorPrompt }],
       maxTokens: 1500,
       temperature: 0.4,
     });
-    const advisorMatch = advisorResponse.content.match(/\{[\s\S]*\}/);
-    const advisorResult = advisorMatch ? JSON.parse(advisorMatch[0]) : { findings: [], synthesis: advisorResponse.content, risks: [], open_questions: [] };
-    perspectives = advisorResult.findings ?? [];
+    advisorResult = parseAdvisorResponse(advisorResponse.content);
+    perspectives = advisorResult.findings;
     ctx.metrics.increment('llm_call', { model, purpose: 'meeting_advisor' });
   } catch {
     perspectives = [];
+    advisorResult = { findings: [], synthesis: '', risks: [], open_questions: [] };
   }
 
   // Phase 3: Reviewer adversarial review using Reviewer AgentLoop
@@ -1269,58 +1234,25 @@ async function runMeeting(
   const maxRounds = 2;
   for (let round = 0; round < maxRounds && !reviewPassed; round++) {
     try {
-      const findingsSummary = perspectives
-        .map((f: any) => `[${f.perspective}] claim: ${f.claim} | evidence: ${f.evidence} | confidence: ${f.confidence}`)
-        .join('\n');
-      const synthesisText = (perspectives as any).synthesis ?? '';
-
-      // Create a fresh Reviewer AgentLoop for this review
       const reviewerLoop = createReviewerLoop(ctx);
       if (reviewerLoop) {
-        const reviewerTask = [
-          `## Meeting Analysis Review`,
-          '',
-          `Review the following analysis produced for a meeting on: "${topic}"`,
-          '',
-          `Analysis findings:`,
-          findingsSummary || 'No structured findings',
-          '',
-          `Synthesis: ${synthesisText}`,
-          '',
-          `Review for: logical completeness, risk assessment adequacy, evidence quality, unstated assumptions, factual errors.`,
-          `Use tools (search_memory, search_documents, read_file) to verify factual claims if possible.`,
-          '',
-          `After your review, output ONLY a JSON object:`,
-          `{"pass": true/false, "score": 0.0-1.0, "issues": [...], "suggestion": {...}}`,
-        ].join('\n');
-
+        const reviewerTask = buildReviewerTask(topic, perspectives as AdvisorFinding[], advisorResult.synthesis);
         const reviewerResult = await reviewerLoop.run(reviewerTask);
-        const reviewMatch = reviewerResult.content.match(/\{[\s\S]*\}/);
-        const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, issues: [], suggestion: {} };
-        reviewPassed = review.pass === true;
-        reviewIssues = review.issues ?? [];
+        const review = parseReviewerResponse(reviewerResult.content);
+        reviewPassed = review.pass;
+        reviewIssues = review.issues;
       } else {
-        // Fallback: no gateway, pass through
         reviewPassed = true;
       }
       ctx.metrics.increment('llm_call', { model: 'claude-haiku-4-5', purpose: 'meeting_reviewer' });
 
-      // Generate synthesis from the final analysis
       if (reviewPassed || round === maxRounds - 1) {
-        synthesis = `## Analysis: ${topic}\n\n`;
-        if (synthesisText) synthesis += `**Synthesis:** ${synthesisText}\n\n`;
-        if (perspectives.length > 0) {
-          synthesis += `### Perspectives\n`;
-          for (const f of perspectives) {
-            synthesis += `- **${(f as any).perspective}** (confidence: ${(f as any).confidence}): ${(f as any).claim}\n`;
-          }
-        }
-        if (reviewIssues.length > 0) {
-          synthesis += `\n### Reviewer Notes\n`;
-          for (const i of reviewIssues) {
-            synthesis += `- [${(i as any).severity}] ${(i as any).detail}\n`;
-          }
-        }
+        synthesis = generateSynthesis({
+          topic,
+          findings: perspectives as AdvisorFinding[],
+          synthesisText: advisorResult.synthesis,
+          reviewIssues,
+        });
       }
     } catch {
       synthesis = 'Analysis completed.';
@@ -1356,26 +1288,7 @@ async function runMeeting(
   let decisionId: string | null = null;
   if (ctx.gateway && synthesis && synthesis.length > 20) {
     try {
-      const summary = perspectives.map((p: any) => `[${p.perspective ?? p.name}]: ${p.claim ?? p.content}`).join('\n');
-      const extractionPrompt = [
-        `Analyze this meeting outcome and determine if it contains a decision the Captain should make.`,
-        '',
-        `Topic: ${topic}`,
-        '',
-        `Synthesis: ${synthesis}`,
-        '',
-        `Advisor views:`,
-        summary,
-        '',
-        `Respond with ONLY a JSON object. If there IS an actionable decision, return:`,
-        `{"hasDecision": true, "title": "short decision title", "description": "1-2 sentence summary", "options": [{"label": "Option A", "impact": "what happens if chosen"}], "level": "L1"}`,
-        '',
-        `If there is NO actionable decision (just information sharing, status updates, etc.), return:`,
-        `{"hasDecision": false}`,
-        '',
-        `Only flag as a decision if there are genuinely different options the Captain needs to choose between.`,
-      ].join('\n');
-
+      const extractionPrompt = buildExtractionPrompt(topic, synthesis, perspectives as AdvisorFinding[]);
       const extractionResponse = await ctx.gateway.generateText({
         model: 'claude-haiku-4-5',
         messages: [{ role: 'user', content: extractionPrompt }],
@@ -1383,9 +1296,7 @@ async function runMeeting(
         temperature: 0.1,
       });
 
-      const match = extractionResponse.content.match(/\{[\s\S]*\}/);
-      if (match) {
-        const extracted = JSON.parse(match[0]);
+      const extracted = parseExtractionResponse(extractionResponse.content);
         if (extracted.hasDecision && extracted.title) {
           const decId = `dec_${Date.now()}`;
           const options = (
@@ -1425,7 +1336,6 @@ async function runMeeting(
           });
           ctx.logger.info('Decision auto-extracted from meeting', { meetingId, decisionId: decId });
         }
-      }
     } catch (e: any) {
       ctx.logger.warn('Meeting decision extraction failed', { error: e.message, meetingId });
     }
@@ -1441,6 +1351,9 @@ const agentLoopCache = new Map<string, AgentLoop>();
 const MAX_CACHE_SIZE = 100;
 // Per-session secretary agents (keyed by sessionId)
 const secretaryAgentCache = new Map<string, SecretaryAgent>();
+// Reviewer AgentLoop cache (keyed by delegation tier)
+const reviewerLoopCache = new Map<string, AgentLoop>();
+const REVIEWER_CACHE_SIZE = 20;
 let lastGatewayCheck = false;
 
 // Keep cached agent loops in sync with delegation tier changes from the UI
@@ -1463,16 +1376,35 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
     async getShortTerm(sid: string) {
       const items: { role: 'user' | 'assistant'; content: string }[] = [];
 
-      // Include conversation history from SessionManager (last 20 messages)
+      // Include conversation history from SessionManager
       const session = ctx.sessionManager.get(sid);
       if (session && session.messages.length > 0) {
         // Exclude last message if it's a user message (will be re-added by AgentLoop)
         const last = session.messages[session.messages.length - 1]!;
         const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
         const start = Math.max(0, end - 20);
-        for (let i = start; i < end; i++) {
-          const m = session.messages[i]!;
-          items.push({ role: m.role, content: m.content });
+
+        if (end > 20) {
+          // Keep the most recent 15 messages as-is
+          const recentStart = end - 15;
+          for (let i = recentStart; i < end; i++) {
+            const m = session.messages[i]!;
+            items.push({ role: m.role, content: m.content });
+          }
+          // Compress older messages (from start to recentStart) into a summary
+          const olderParts: string[] = [];
+          for (let i = start; i < recentStart; i++) {
+            const m = session.messages[i]!;
+            olderParts.push(m.content.slice(0, 100));
+          }
+          if (olderParts.length > 0) {
+            items.unshift({ role: 'user', content: '[Earlier context summary]: ' + olderParts.join(' | ') });
+          }
+        } else {
+          for (let i = start; i < end; i++) {
+            const m = session.messages[i]!;
+            items.push({ role: m.role, content: m.content });
+          }
         }
       }
 
@@ -1498,18 +1430,8 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
         contextStr = `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
       }
 
-      // Inject lightweight file listing if project has a root_path
-      try {
-        const rows = ctx.db.prepare('SELECT root_path FROM projects WHERE id = ?').all(pid) as any[];
-        const rootPath = rows?.[0]?.root_path;
-        if (rootPath && existsSync(rootPath)) {
-          const entries = readdirSync(rootPath, { withFileTypes: true }).slice(0, 40);
-          const fileList = entries
-            .map((d) => (d.isDirectory() ? `📁 ${d.name}/` : `📄 ${d.name}`))
-            .join('\n');
-          contextStr += `\n\nProject files (top-level, ${rootPath}):\n${fileList}`;
-        }
-      } catch { /* file listing is best-effort */ }
+      // File listing is available through the list_directory tool when the agent explicitly calls it.
+      // Removed readdirSync here to avoid expensive I/O on every agent step.
 
       return contextStr;
     },
@@ -1525,7 +1447,7 @@ function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
           queryEmbedding = er.embeddings[0];
         } catch { /* fall back to text search */ }
       }
-      const results = await ctx.longTerm.search(query, 5, queryEmbedding);
+      const results = await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
       return results.map((r) => `[Memory] ${r.content}`);
     },
   };
@@ -1593,9 +1515,9 @@ function getAgentLoopForRole(
     sessionId: `${sessionId}-${role.type}`,
     projectId,
     captainId,
-    systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
+    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt),
     model: model ?? resolveModel(role),
-    maxSteps: 50,
+    maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
@@ -1642,6 +1564,11 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
   const role = registry.get('reviewer');
   if (!role) return null;
 
+  // Check cache first
+  const cacheKey = `reviewer_${ctx.delegationTier}`;
+  const cached = reviewerLoopCache.get(cacheKey);
+  if (cached) return cached;
+
   const executor = new ToolExecutor();
   registerCabinetTools(executor, buildToolDependencies(ctx));
   registerSkillTools(executor);
@@ -1658,7 +1585,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
   }
 
   const checkpointManager = new CheckpointManager(ctx.db);
-  return new AgentLoop({
+  const loop = new AgentLoop({
     gateway: ctx.gateway,
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
@@ -1667,13 +1594,21 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
     captainId: 'captain-1',
-    systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
+    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt),
     model: resolveModel(role),
-    maxSteps: 50,
+    maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
   });
+
+  // FIFO eviction
+  if (reviewerLoopCache.size >= REVIEWER_CACHE_SIZE) {
+    const firstKey = reviewerLoopCache.keys().next().value;
+    if (firstKey) reviewerLoopCache.delete(firstKey);
+  }
+  reviewerLoopCache.set(cacheKey, loop);
+  return loop;
 }
 
 /** Dispatch a message to a specialist role's AgentLoop, with optional Reviewer quality gate. */
@@ -1687,7 +1622,33 @@ async function dispatchToSpecialist(
   model?: string,
 ): Promise<string> {
   const ctx = getServerContext();
-  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, model);
+  // Dynamic model up/downgrade based on task complexity
+  let effectiveModel = model;
+  if (!effectiveModel) {
+    const registry = ctx.agentRegistry;
+    const roleDef = registry.get(roleType);
+
+    // Upgrade: complex tasks need better models
+    if (roleDef?.upgradeModelTier) {
+      const needsUpgrade =
+        (roleType === 'decision_analyst' && (message.includes('架构') || message.includes('安全') || message.includes('预算') || message.includes('战略') || message.includes('迁移') || message.length > 500)) ||
+        (roleType === 'reviewer' && (message.includes('L3') || message.includes('安全关键') || message.length > 2000));
+      if (needsUpgrade) {
+        effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier, model: roleDef.model });
+      }
+    }
+
+    // Downgrade: simple modifications don't need reasoning models
+    if (!effectiveModel && roleDef?.downgradeModelTier) {
+      const needsDowngrade =
+        (roleType === 'workflow_designer' && (message.includes('修改') || message.includes('更新') || message.includes('调整') || message.includes('改一下')) && !message.includes('创建') && !message.includes('新建') && !message.includes('设计'));
+      if (needsDowngrade) {
+        effectiveModel = resolveModel({ modelTier: roleDef.downgradeModelTier, model: roleDef.model });
+      }
+    }
+  }
+
+  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, effectiveModel);
   if (!loop) return `[No LLM] Cannot dispatch to ${roleType}.`;
 
   const result = await loop.run(message);
@@ -1697,6 +1658,11 @@ async function dispatchToSpecialist(
   if (roleType !== 'secretary' && roleType !== 'reviewer') {
     const reviewerLoop = createReviewerLoop(ctx);
     if (reviewerLoop) {
+      // Segmented review for long outputs: show first 4000 + last 4000 chars with truncation note
+      const reviewContent = output.length > 8000
+        ? output.slice(0, 4000) + '\n\n[...output truncated, total length: ' + output.length + ' chars...]\n\n' + output.slice(-4000)
+        : output;
+
       const reviewTask = [
         `## Quality Review Task`,
         '',
@@ -1704,7 +1670,7 @@ async function dispatchToSpecialist(
         `The original user message was: "${message.slice(0, 500)}"`,
         '',
         `Agent output to review:`,
-        output.slice(0, 8000),
+        reviewContent,
         '',
         `Review for: logical completeness, evidence quality, risk assessment, factual errors.`,
         `Use available tools (search_memory, search_documents, read_file) to verify claims if possible.`,
@@ -1730,7 +1696,14 @@ async function dispatchToSpecialist(
               causationId: null,
               timestamp: new Date(),
               messageType: 'QualityAlert' as any,
-              payload: { source: roleType, sessionId, issues: review.issues, score: review.score },
+              payload: {
+                source: roleType,
+                sessionId,
+                reviewId: `review_${Date.now()}`,
+                score: review.score,
+                issueCount: review.issues?.length ?? 0,
+                topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+              },
             }).catch(() => {});
           }
 
@@ -1844,9 +1817,9 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
-      systemPrompt: buildEnvironmentSection() + '\n\n' + (secretaryRole?.systemPrompt ?? ''),
+      systemPrompt: buildSystemPrompt('secretary', secretaryRole?.systemPrompt ?? ''),
       model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
-      maxSteps: 50,
+      maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
       temperature: secretaryRole?.temperature ?? 0.5,
       contextBudget: secretaryRole?.contextBudget,

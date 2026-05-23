@@ -32,20 +32,9 @@ export class BackupManager {
 
     const srcDb = new Database(this.config.dbPath, { readonly: true });
 
-    // better-sqlite3 v11: backup(filename: string, options?) is async
-    // better-sqlite3 v12+: backup(destDb: Database) is sync
-    // We detect the API shape and use the appropriate approach.
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    const backupFn = (srcDb as any).backup as Function;
-    const isV11 = /filename/.test(backupFn.toString());
-
-    if (isV11) {
-      await (srcDb as any).backup(destPath);
-    } else {
-      const destDb = new Database(destPath);
-      (srcDb as any).backup(destDb);
-      destDb.close();
-    }
+    // better-sqlite3 v12+: backup(filename: string) returns Promise<void>
+    // Always await — if sync (v11 scenario), await is a no-op; if async, it correctly waits
+    await (srcDb as any).backup(destPath);
 
     srcDb.close();
 
@@ -98,20 +87,7 @@ export class BackupManager {
   async restore(backupPath: string): Promise<void> {
     const srcDb = new Database(backupPath, { readonly: true });
 
-    // Detect API version (same pattern as backup())
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    const backupFn = (srcDb as any).backup as Function;
-    const isV11 = /filename/.test(backupFn.toString());
-
-    if (isV11) {
-      // v11: backup(destPath: string) - use backup-to-file to overwrite main DB
-      await (srcDb as any).backup(this.config.dbPath);
-    } else {
-      // v12+: backup(destDb: Database)
-      const destDb = new Database(this.config.dbPath);
-      (srcDb as any).backup(destDb);
-      destDb.close();
-    }
+    await (srcDb as any).backup(this.config.dbPath);
 
     srcDb.close();
   }
