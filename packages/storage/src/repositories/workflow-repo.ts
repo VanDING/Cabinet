@@ -78,6 +78,10 @@ export class WorkflowRepository {
     this.db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
   }
 
+  deleteByProject(projectId: string): void {
+    this.db.prepare('DELETE FROM workflows WHERE project_id = ?').run(projectId);
+  }
+
   countByStatus(statuses: string[]): number {
     const placeholders = statuses.map(() => '?').join(',');
     const row = this.db
@@ -137,6 +141,12 @@ export class WorkflowRepository {
     this.db
       .prepare("UPDATE workflow_runs SET status = ?, updated_at = datetime('now') WHERE run_id = ?")
       .run(status, runId);
+  }
+
+  failAwaitingRuns(workflowId: string): void {
+    this.db
+      .prepare("UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'")
+      .run(workflowId);
   }
 
   private rowToRun(row: Record<string, unknown>): WorkflowRunRow {

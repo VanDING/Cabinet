@@ -296,15 +296,11 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         const name = input.name;
         const definition = input.definition;
         if (name !== undefined && definition !== undefined) {
-          ctx.db
-            .prepare('UPDATE workflows SET name = ?, definition = ? WHERE id = ?')
-            .run(name, JSON.stringify(definition), id);
+          ctx.workflowRepo.updateNameAndDefinition(id, name, JSON.stringify(definition));
         } else if (name !== undefined) {
           ctx.workflowRepo.updateNameAndDefinition(id, name);
         } else if (definition !== undefined) {
-          ctx.db
-            .prepare('UPDATE workflows SET definition = ? WHERE id = ?')
-            .run(JSON.stringify(definition), id);
+          ctx.workflowRepo.updateNameAndDefinition(id, undefined, JSON.stringify(definition));
         }
       }
     },
