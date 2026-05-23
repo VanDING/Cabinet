@@ -16,6 +16,13 @@ interface Props {
 
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'];
 
+function safeBtoa(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
 export function FileViewer({ isDark }: Props) {
   const [tabs, setTabs] = useState<FileTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -135,7 +142,7 @@ export function FileViewer({ isDark }: Props) {
           isImage ? (
             <div className="flex items-center justify-center h-full p-4">
               <img
-                src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : btoa(active.content)}`}
+                src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : safeBtoa(active.content)}`}
                 alt={active.name}
                 className="max-w-full max-h-full object-contain"
               />

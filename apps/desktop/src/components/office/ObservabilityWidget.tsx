@@ -11,17 +11,13 @@ interface HealthData {
 }
 
 export function ObservabilityWidget() {
-  const { data: health, loading } = usePolling<HealthData>(
+  const { data: health, loading, refresh } = usePolling<HealthData>(
     () => apiFetch('/api/observability/health', { headers: authHeaders() }).then((r) => r.json()),
     30000,
   );
 
   useEffect(() => {
-    const handler = () => {
-      apiFetch('/api/observability/health', { headers: authHeaders() })
-        .then((r) => r.json())
-        .catch(() => {});
-    };
+    const handler = () => { refresh(); };
     window.addEventListener('ws:secretary_message', handler);
     window.addEventListener('ws:task_completed', handler);
     window.addEventListener('ws:workflow_completed', handler);
@@ -30,7 +26,7 @@ export function ObservabilityWidget() {
       window.removeEventListener('ws:task_completed', handler);
       window.removeEventListener('ws:workflow_completed', handler);
     };
-  }, []);
+  }, [refresh]);
 
   if (loading) {
     return (

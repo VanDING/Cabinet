@@ -14,7 +14,7 @@ export function useProject() {
     return localStorage.getItem('cabinet-project') || null;
   });
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     apiFetch('/api/projects?archived=false', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => {
@@ -28,6 +28,19 @@ export function useProject() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  useEffect(() => {
+    window.addEventListener('ws:project_created', fetchProjects);
+    window.addEventListener('ws:project_deleted', fetchProjects);
+    return () => {
+      window.removeEventListener('ws:project_created', fetchProjects);
+      window.removeEventListener('ws:project_deleted', fetchProjects);
+    };
+  }, [fetchProjects]);
 
   useEffect(() => {
     if (currentId) {

@@ -33,6 +33,7 @@ export interface ChatMessage {
   routing?: { from: string; to: string };
   isError?: boolean;
   thinkingDurationMs?: number;
+  tasks?: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>;
 }
 
 export interface Session {

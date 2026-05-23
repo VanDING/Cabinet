@@ -8,6 +8,7 @@ import { CheckpointManager, type CheckpointState } from './checkpoint.js';
 import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './context-builder.js';
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
+import { TaskTracker, type AgentTask } from './task-tracker.js';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -36,6 +37,7 @@ export interface StreamingCallback {
   onThinking?(content: string): void;
   onThinkingDone?(): void;
   onUsage?(usage: { promptTokens: number; completionTokens: number }): void;
+  onTaskUpdate?(tasks: AgentTask[]): void;
   onDone(fullContent: string): void;
   onError?(error: string): void;
 }
@@ -76,6 +78,40 @@ export interface AgentResult {
   usage?: { promptTokens: number; completionTokens: number };
 }
 
+/** Format a human-readable task name from a tool call. */
+function formatToolTaskName(toolName: string, args: Record<string, unknown>): string {
+  const preview = (val: unknown) => {
+    const s = String(val ?? '');
+    return s.length > 40 ? s.slice(0, 40) + '…' : s;
+  };
+  switch (toolName) {
+    case 'read_file':
+      return args.filePath ? `Read ${preview(args.filePath)}` : 'Read file';
+    case 'writeFile':
+      return args.filePath ? `Write ${preview(args.filePath)}` : 'Write file';
+    case 'editFile':
+      return args.filePath ? `Edit ${preview(args.filePath)}` : 'Edit file';
+    case 'execCommand':
+      return args.command ? `Run ${preview(args.command)}` : 'Run command';
+    case 'searchFiles':
+      return args.pattern ? `Search ${preview(args.pattern)}` : 'Search files';
+    case 'searchContent':
+      return args.pattern ? `Search content ${preview(args.pattern)}` : 'Search content';
+    case 'listDirectory':
+      return args.dirPath ? `List ${preview(args.dirPath)}` : 'List directory';
+    case 'webFetch':
+      return args.url ? `Fetch ${preview(args.url)}` : 'Fetch URL';
+    case 'httpRequest':
+      return args.url ? `HTTP ${preview(args.url)}` : 'HTTP request';
+    case 'runWorkflow':
+      return 'Run workflow';
+    case 'startMeeting':
+      return 'Start meeting';
+    default:
+      return toolName;
+  }
+}
+
 export class AgentLoop {
   private readonly gateway: LLMGateway;
   private readonly toolExecutor: ToolExecutor;
@@ -103,7 +139,6 @@ export class AgentLoop {
   set onSessionComplete(callback: SessionCompleteCallback | undefined) {
     this.options.onSessionComplete = callback;
   }
-
   /** Expose the context monitor for external querying. */
   get monitor(): ContextMonitor | null {
     return this.contextMonitor;
@@ -526,6 +561,8 @@ export class AgentLoop {
       },
     }));
 
+    const taskTracker = new TaskTracker();
+    const taskMap = new Map<string, string>(); // toolCallId -> taskId
     let fullText = '';
     try {
       for await (const chunk of this.gateway.streamText({
@@ -546,8 +583,20 @@ export class AgentLoop {
           fullText += (chunk.content ?? '');
           callback.onChunk(chunk.content ?? '');
         } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+          const taskName = formatToolTaskName(chunk.toolCall.name, chunk.toolCall.args);
+          const taskId = taskTracker.addTask(taskName);
+          taskMap.set(chunk.toolCall.id, taskId);
+          callback.onTaskUpdate?.(taskTracker.getTasks());
           callback.onToolCall?.(chunk.toolCall.name, chunk.toolCall.args);
         } else if (chunk.type === 'tool_result' && chunk.toolResult) {
+          const taskId = taskMap.get(chunk.toolResult.id);
+          if (taskId) {
+            const hasError =
+              typeof chunk.toolResult.result === 'string' &&
+              chunk.toolResult.result.startsWith('Error');
+            taskTracker.completeTask(taskId, !hasError);
+            callback.onTaskUpdate?.(taskTracker.getTasks());
+          }
           callback.onToolResult?.(chunk.toolResult.name, chunk.toolResult.result);
         } else if (chunk.type === 'error') {
           errorCounts.fatal++;

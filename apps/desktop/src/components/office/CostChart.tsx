@@ -87,7 +87,8 @@ export function CostChart() {
   const maxCost = Math.max(...history.map((h) => h.cost), limits.daily, 0.01);
 
   const totalCost = history.reduce((sum, h) => sum + h.cost, 0);
-  const totalCalls = history.reduce((sum, h) => sum + (h.calls ?? 0), 0);
+  // `calls` is a running cumulative total from the backend, so take the last day's value
+  const totalCalls = history.length > 0 ? (history[history.length - 1]!.calls ?? 0) : 0;
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">

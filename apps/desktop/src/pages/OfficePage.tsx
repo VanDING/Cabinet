@@ -85,8 +85,9 @@ const DEFAULT_LAYOUT = [
   { i: 'active-workflows', x: 9, y: 0, w: 3, h: 1 },
   { i: 'decision-list', x: 0, y: 1, w: 6, h: 3 },
   { i: 'event-timeline', x: 6, y: 1, w: 6, h: 2 },
-  { i: 'project-switcher', x: 0, y: 4, w: 4, h: 2 },
-  { i: 'progress-board', x: 4, y: 4, w: 6, h: 4 },
+  { i: 'deliverables', x: 0, y: 3, w: 6, h: 3 },
+  { i: 'project-switcher', x: 0, y: 6, w: 4, h: 2 },
+  { i: 'progress-board', x: 4, y: 6, w: 6, h: 4 },
 ];
 
 function getLayoutKey(projectId?: string): string {

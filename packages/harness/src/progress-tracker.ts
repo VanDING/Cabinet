@@ -58,11 +58,11 @@ export class ProgressTracker {
     this.snapshot = this.load(sessionId, projectId);
   }
 
-  /** Create a tracker using the default path. */
+  /** Create a tracker using the default path, isolated per project. */
   static default(sessionId: string, projectId: string): ProgressTracker {
-    const dir = join(process.cwd(), '.cabinet');
+    const dir = join(process.cwd(), '.cabinet', 'progress');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    return new ProgressTracker(join(dir, 'progress.json'), sessionId, projectId);
+    return new ProgressTracker(join(dir, `${projectId}.json`), sessionId, projectId);
   }
 
   /** Create a tracker for a specific project (used when Cabinet manages agents). */
@@ -293,7 +293,9 @@ export class ProgressTracker {
       try {
         const raw = readFileSync(this.filePath, 'utf-8');
         const parsed = JSON.parse(raw) as ProgressSnapshot;
-        if (parsed.version === 1 && parsed.sessionId === sessionId) {
+        if (parsed.version === 1 && parsed.projectId === projectId) {
+          // Migrate sessionId so the snapshot reflects the current session
+          parsed.sessionId = sessionId;
           return parsed;
         }
       } catch {

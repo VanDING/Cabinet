@@ -9,6 +9,9 @@ function mockEventBus(): EventBus {
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     getCausationChain: vi.fn().mockResolvedValue([]),
+    once: vi.fn(),
+    replay: vi.fn().mockResolvedValue([]),
+    dispose: vi.fn(),
   };
 }
 

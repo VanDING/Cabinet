@@ -7,6 +7,7 @@ export interface SSEStreamCallbacks {
   onThinking?: (content: string) => void;
   onThinkingDone?: () => void;
   onToolStatus?: (message: string, type: 'call' | 'result' | 'error', detail?: { name: string; args?: unknown; result?: unknown }) => void;
+  onTaskUpdate?: (tasks: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>) => void;
   onStopped?: () => void;
   onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void;
 }
@@ -80,6 +81,17 @@ export async function readSSEStream(
               promptTokens: parsed.promptTokens ?? 0,
               completionTokens: parsed.completionTokens ?? 0,
             });
+            continue;
+          }
+          if (parsed.type === 'task_status') {
+            const tasks = (parsed.tasks ?? []).map((t: any) => ({
+              id: String(t.id ?? ''),
+              name: String(t.name ?? ''),
+              status: (['pending', 'running', 'done', 'error'].includes(t.status) ? t.status : 'pending') as 'pending' | 'running' | 'done' | 'error',
+              startTime: typeof t.startTime === 'number' ? t.startTime : undefined,
+              endTime: typeof t.endTime === 'number' ? t.endTime : undefined,
+            }));
+            callbacks.onTaskUpdate?.(tasks);
             continue;
           }
           if (parsed.type === 'status') {
