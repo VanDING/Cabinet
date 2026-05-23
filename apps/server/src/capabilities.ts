@@ -696,9 +696,12 @@ export function createLSPCapabilities() {
   };
 }
 
-/** Build all capabilities from server context. Returns an object keyed by capability area. */
-export function createAllCapabilities(ctx: CapabilitiesContext) {
-  return {
+/** Build capabilities from server context. Pass `allowed` to restrict capability areas. */
+export function createAllCapabilities(
+  ctx: CapabilitiesContext,
+  allowed?: Array<'file' | 'web' | 'shell' | 'scheduler' | 'knowledge' | 'evaluation' | 'lsp'>,
+) {
+  const all = {
     ...createFileCapabilities(ctx),
     ...createWebCapabilities(ctx),
     ...createShellCapabilities(ctx),
@@ -707,4 +710,23 @@ export function createAllCapabilities(ctx: CapabilitiesContext) {
     ...createEvaluationCapabilities(ctx),
     ...createLSPCapabilities(),
   };
+  if (!allowed || allowed.length === 0) return all;
+  const areaMap: Record<string, string[]> = {
+    file: ['readFile', 'writeFile', 'listFiles', 'searchFiles', 'readDirectory', 'makeDirectory', 'moveFile', 'copyFile', 'deleteFile', 'removeDirectory', 'readFileChunk', 'globFiles'],
+    web: ['httpGet', 'httpPost'],
+    shell: ['execCommand'],
+    scheduler: ['scheduleTask', 'listScheduledTasks', 'cancelTask'],
+    knowledge: ['searchKnowledge', 'indexDocument', 'queryDocument', 'clearDocumentIndex'],
+    evaluation: ['evaluateQuality'],
+    lsp: ['workspaceSymbols', 'goToDefinition', 'findReferences', 'diagnostics'],
+  };
+  const permitted = new Set<string>();
+  for (const area of allowed) {
+    for (const key of areaMap[area] ?? []) permitted.add(key);
+  }
+  const filtered: any = {};
+  for (const key of permitted) {
+    if (key in all) filtered[key] = (all as any)[key];
+  }
+  return filtered as typeof all;
 }

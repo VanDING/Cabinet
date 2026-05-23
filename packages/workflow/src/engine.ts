@@ -287,6 +287,15 @@ export class WorkflowEngine {
     return graph;
   }
 
+  private async withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+      ),
+    ]);
+  }
+
   private async executeNode(
     nodeId: string,
     nodeMap: Map<string, WorkflowNodeDef>,
@@ -353,7 +362,8 @@ export class WorkflowEngine {
             run._agentLoop = { agentId, handle };
           } else if (this.handlers.aiAgent) {
             // Fallback to legacy per-node handler
-            output = await this.handlers.aiAgent(node, previousOutputs);
+            const timeoutMs = typeof node.data?.timeout === 'number' ? node.data.timeout : 120_000;
+            output = await this.withTimeout(this.handlers.aiAgent(node, previousOutputs), timeoutMs, `Step ${node.id}`);
             break;
           } else {
             output = 'No agent handler registered';
@@ -361,10 +371,11 @@ export class WorkflowEngine {
           }
         }
 
-        // Execute with shared AgentLoop
+        // Execute with shared AgentLoop (respect node-level timeout)
         const d = node.data ?? {};
         const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
-        output = await run._agentLoop.handle.run(prompt);
+        const timeoutMs = typeof d.timeout === 'number' ? d.timeout : 120_000;
+        output = await this.withTimeout(run._agentLoop.handle.run(prompt), timeoutMs, `Step ${node.id}`);
 
         // If no child shares this agent, finalize the segment
         if (!nextChildIsSameAgent) {
@@ -577,7 +588,7 @@ export class WorkflowEngine {
         steps: JSON.stringify(run.steps),
         results: JSON.stringify(results),
         started_at: run.startedAt.toISOString(),
-        updated_at: '',
+        updated_at: new Date().toISOString(),
       });
     } catch { /* persistence failure is non-fatal for execution */ }
   }

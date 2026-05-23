@@ -153,10 +153,16 @@ export class AgentDispatcher {
   private async runParallel(options: DispatchOptions): Promise<DispatchResult> {
     const startTime = Date.now();
     const roleTypes = options.roles ?? ['secretary'];
+    const MAX_CONCURRENCY = 3;
 
-    const promises = roleTypes.map((role) => this.runAgentStep(role, options.request, options));
-
-    const steps = await Promise.all(promises);
+    const steps: PipelineStep[] = [];
+    for (let i = 0; i < roleTypes.length; i += MAX_CONCURRENCY) {
+      const batch = roleTypes.slice(i, i + MAX_CONCURRENCY);
+      const batchSteps = await Promise.all(
+        batch.map((role) => this.runAgentStep(role, options.request, options)),
+      );
+      steps.push(...batchSteps);
+    }
     const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
 
     const outputs = steps

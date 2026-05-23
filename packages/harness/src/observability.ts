@@ -154,9 +154,9 @@ export class ObservabilityCollector {
         ? sessions.reduce((sum, s) => sum + s.durationMs, 0) / sessions.length
         : 0;
 
-    // p95 duration
+    // p95 duration — use ceil-based index for standard percentile behaviour
     const sortedDurations = sessions.map((s) => s.durationMs).sort((a, b) => a - b);
-    const p95Idx = Math.floor(sortedDurations.length * 0.95);
+    const p95Idx = Math.max(0, Math.ceil(sortedDurations.length * 0.95) - 1);
     const p95Duration = sortedDurations[p95Idx] ?? 0;
 
     // Tool success rate
