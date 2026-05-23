@@ -293,9 +293,24 @@ export function App() {
           let toolCallsAccumulated: NonNullable<ChatMessage['toolCalls']> = [];
           let lastContent = '';
           let toolsSinceLastSegment = false;
+          let routingPrefix: string | null = null;
+
+          const AGENT_DISPLAY: Record<string, string> = {
+            secretary: 'Secretary',
+            meeting_chair: 'Meeting Chair',
+            workflow_designer: 'Workflow Designer',
+            decision_analyst: 'Decision Analyst',
+            agent_creator: 'Agent Creator',
+            reviewer: 'Reviewer',
+            organize: 'Organizer',
+            curator: 'Curator',
+          };
 
           await readSSEStream(reader, {
             onRoutingStart(targetAgent) {
+              const sourceDisplay = AGENT_DISPLAY[streamAgent] || streamAgent;
+              const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
+              routingPrefix = `**${sourceDisplay} → ${targetDisplay}**\n\n`;
               streamAgent = targetAgent;
               setActiveAgent(targetAgent);
             },
@@ -319,11 +334,13 @@ export function App() {
               toolsSinceLastSegment = false;
             },
             onContent(_, fullContent) {
-              lastContent = fullContent;
+              const displayContent = routingPrefix ? routingPrefix + fullContent : fullContent;
+              routingPrefix = null;
+              lastContent = displayContent;
               addMessage(sessionId, {
                 id: streamId,
                 role: 'assistant',
-                content: fullContent,
+                content: displayContent,
                 timestamp: new Date(),
                 isStreaming: true,
                 agentName: streamAgent,
