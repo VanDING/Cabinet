@@ -11,18 +11,23 @@ import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
 import {
   createConnection,
-  runMigration001,
-  runMigration002,
-  runMigration003,
-  runMigration004,
-  runMigration005,
-  runMigration006,
-  runMigration007,
-  runMigration008,
-  runMigration009,
+  runMigrations,
   DecisionRepository,
   ProjectRepository,
   EventLogRepository,
+  WorkflowRepository,
+  AuditLogRepository,
+  DeliverableRepository,
+  ApiKeyRepository,
+  AgentRoleRepository,
+  SkillRepository,
+  EmployeeRepository,
+  ProjectContextRepository,
+  MetricRepository,
+  CostHistoryRepository,
+  SessionMetricsRepository,
+  SettingsRepository,
+  ScheduledTaskRepository,
   MetricsCollector,
   BackupManager,
   getLogger,
@@ -49,7 +54,7 @@ import { MemoryEventBus } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
-import { DelegationTier, DEFAULT_DELEGATION_TIER, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, MessageType } from '@cabinet/types';
+import { DelegationTier, DEFAULT_DELEGATION_TIER, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, MessageType, DAILY_BUDGET_USD } from '@cabinet/types';
 import {
   AgentRoleRegistry,
   CURATOR_ROLE,
@@ -91,6 +96,18 @@ export interface ServerContext {
   decisionRepo: DecisionRepository;
   projectRepo: ProjectRepository;
   eventRepo: EventLogRepository;
+  workflowRepo: WorkflowRepository;
+  auditLogRepo: AuditLogRepository;
+  deliverableRepo: DeliverableRepository;
+  apiKeyRepo: ApiKeyRepository;
+  agentRoleRepo: AgentRoleRepository;
+  skillRepo: SkillRepository;
+  employeeRepo: EmployeeRepository;
+  projectContextRepo: ProjectContextRepository;
+  metricRepo: MetricRepository;
+  costHistoryRepo: CostHistoryRepository;
+  sessionMetricsRepo: SessionMetricsRepository;
+  settingsRepo: SettingsRepository;
   // Decision service
   decisionService: DecisionService;
   // Memory
@@ -197,15 +214,7 @@ export function getServerContext(): ServerContext {
   let dbMode: 'file' | 'memory' = 'file';
   try {
     db = createConnection(dbPath);
-    runMigration001(db);
-    runMigration002(db);
-    runMigration003(db);
-    runMigration004(db);
-    runMigration005(db);
-    runMigration006(db);
-    runMigration007(db);
-    runMigration008(db);
-    runMigration009(db);
+    runMigrations(db);
     logger.info(`SQLite database initialized (${dbExists ? 'existing' : 'new'})`, { path: dbPath });
     // Write a startup marker so we can diagnose persistence issues
     try {
@@ -225,15 +234,7 @@ export function getServerContext(): ServerContext {
     } catch { /* non-fatal */ }
     try {
       db = createConnection(':memory:');
-      runMigration001(db);
-      runMigration002(db);
-      runMigration003(db);
-      runMigration004(db);
-      runMigration005(db);
-      runMigration006(db);
-      runMigration007(db);
-      runMigration008(db);
-      runMigration009(db);
+      runMigrations(db);
       dbMode = 'memory';
       logger.warn('Falling back to in-memory database — data will NOT persist across restarts');
     } catch (e2) {
@@ -249,12 +250,25 @@ export function getServerContext(): ServerContext {
   const decisionRepo = new DecisionRepository(db);
   const projectRepo = new ProjectRepository(db);
   const eventRepo = new EventLogRepository(db);
+  const workflowRepo = new WorkflowRepository(db);
+  const auditLogRepo = new AuditLogRepository(db);
+  const deliverableRepo = new DeliverableRepository(db);
+  const apiKeyRepo = new ApiKeyRepository(db);
+  const agentRoleRepo = new AgentRoleRepository(db);
+  const skillRepo = new SkillRepository(db);
+  const employeeRepo = new EmployeeRepository(db);
+  const projectContextRepo = new ProjectContextRepository(db);
+  const metricRepo = new MetricRepository(db);
+  const costHistoryRepo = new CostHistoryRepository(db);
+  const sessionMetricsRepo = new SessionMetricsRepository(db);
+  const settingsRepo = new SettingsRepository(db);
 
   // Decision service with preference learning
   const stateMachine = new DecisionStateMachine();
   const classifier = new LevelClassifier();
   const auditLog = new AuditLogger(db);
   const eventBus = new MemoryEventBus();
+  eventBus.deadLetterQueue.setDb(db);
   const escalation = new EscalationService(eventBus);
 
   // Deferred Curator trigger (createCuratorLoop is defined later, after gateway is ready)
@@ -277,11 +291,8 @@ export function getServerContext(): ServerContext {
         const cid = captainId ?? DEFAULT_CAPTAIN_ID;
 
         // ── Workflow resumption ──
-        const wfRow = db
-          .prepare(
-            "SELECT * FROM audit_log WHERE entity_type = 'workflow_approval' AND entity_id = ? ORDER BY timestamp DESC LIMIT 1",
-          )
-          .get(decisionId) as any;
+        const wfRows = auditLogRepo.findByEntity('workflow_approval', decisionId, { limit: 1 });
+        const wfRow = wfRows[0];
 
         if (wfRow) {
           try {
@@ -289,16 +300,12 @@ export function getServerContext(): ServerContext {
             const wfId = wfData.workflowId as string;
             if (wfId) {
               if (action === 'approved' && chosenOptionId === 'approve_continue') {
-                db.prepare("UPDATE workflows SET status = 'completed' WHERE id = ?").run(wfId);
-                db.prepare(
-                  "UPDATE audit_log SET action = 'approved', changes = ? WHERE entity_type = 'workflow_approval' AND entity_id = ?",
-                ).run(JSON.stringify({ ...wfData, status: 'approved', decisionId }), decisionId);
+                workflowRepo.updateStatus(wfId, 'completed');
+                auditLogRepo.updateAction('workflow_approval', decisionId, 'approved', { ...wfData, status: 'approved', decisionId });
                 logger.info('Workflow approved via decision', { workflowId: wfId, decisionId });
               } else {
-                db.prepare("UPDATE workflows SET status = 'failed' WHERE id = ?").run(wfId);
-                db.prepare(
-                  "UPDATE audit_log SET action = 'terminated', changes = ? WHERE entity_type = 'workflow_approval' AND entity_id = ?",
-                ).run(JSON.stringify({ ...wfData, status: 'terminated', decisionId }), decisionId);
+                workflowRepo.updateStatus(wfId, 'failed');
+                auditLogRepo.updateAction('workflow_approval', decisionId, 'terminated', { ...wfData, status: 'terminated', decisionId });
                 logger.info('Workflow terminated via decision', { workflowId: wfId, decisionId });
               }
             }
@@ -354,33 +361,18 @@ export function getServerContext(): ServerContext {
   const project = new ProjectMemory(db);
 
   // Gateway + Cost
-  // Ensure cost_history table exists for persistence across restarts
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS cost_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      model TEXT NOT NULL,
-      prompt_tokens INTEGER NOT NULL,
-      completion_tokens INTEGER NOT NULL,
-      cost_usd REAL NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_cost_history_timestamp ON cost_history(timestamp);
-  `);
+  costHistoryRepo.ensureTable();
   const costTracker = new CostTracker({
     persist: (entry) => {
-      db.prepare(
-        'INSERT INTO cost_history (timestamp, model, prompt_tokens, completion_tokens, cost_usd) VALUES (?, ?, ?, ?, ?)',
-      ).run(entry.timestamp.toISOString(), entry.model, entry.promptTokens, entry.completionTokens, entry.costUsd);
+      costHistoryRepo.insert(entry.model, entry.promptTokens, entry.completionTokens, entry.costUsd);
     },
   });
   // Restore today's entries so daily/weekly/monthly budgets work after restart
   try {
-    const recentRows = db.prepare(
-      "SELECT timestamp, model, prompt_tokens, completion_tokens, cost_usd FROM cost_history WHERE timestamp >= date('now', '-31 days') ORDER BY timestamp",
-    ).all() as any[];
+    const recentRows = costHistoryRepo.findSince(31);
     if (recentRows.length > 0) {
       costTracker.restore(
-        recentRows.map((r: any) => ({
+        recentRows.map((r) => ({
           timestamp: new Date(r.timestamp),
           model: r.model,
           promptTokens: r.prompt_tokens,
@@ -435,8 +427,8 @@ export function getServerContext(): ServerContext {
 
     const mpw = config.masterPassword;
     try {
-      const rows = db.prepare('SELECT * FROM api_keys').all() as any[];
-      for (const row of rows) {
+      const apiKeys = apiKeyRepo.findAll();
+      for (const row of apiKeys) {
         try {
           const decrypted = decryptApiKey(row.encrypted_key, mpw);
           providerConfigs[row.provider] = { apiKey: decrypted, baseUrl: row.base_url ?? undefined };
@@ -513,7 +505,8 @@ export function getServerContext(): ServerContext {
   });
 
   // Metrics
-  const metrics = new MetricsCollector();
+  const metrics = new MetricsCollector({ repo: metricRepo });
+  metrics.startPeriodicFlush();
 
   // Backup (to ~/.cabinet/backups)
   let backupManager: BackupManager | null = null;
@@ -523,8 +516,14 @@ export function getServerContext(): ServerContext {
       backupDir: join(dataDir, 'backups'),
       intervalMinutes: 60,
       keepCount: 7,
+      liveConnection: db,
     });
     backupManager.startAutoBackup();
+    // Daily database maintenance (VACUUM) — runs 1 hour after startup, then every 24h
+    setTimeout(() => {
+      backupManager!.runMaintenance();
+      setInterval(() => backupManager!.runMaintenance(), 24 * 60 * 60 * 1000);
+    }, 60 * 60 * 1000);
     logger.info('Backup manager started');
   } catch {
     logger.warn('Backup manager unavailable');
@@ -939,21 +938,10 @@ export function getServerContext(): ServerContext {
       try {
         const now = new Date();
         const summary = metrics.getSummary();
-        db.prepare(
-          "INSERT INTO metrics (name, value, tags) VALUES ('observability_snapshot', ?, ?)",
-        ).run(
-          JSON.stringify(summary),
-          JSON.stringify({ date: now.toISOString().slice(0, 10), type: 'daily' }),
-        );
+        metricRepo.insert('observability_snapshot', JSON.stringify(summary), { date: now.toISOString().slice(0, 10), type: 'daily' });
 
         // Persist recent session metrics to DB
         const { sessions } = observability.export();
-        const insertStmt = db.prepare(
-          `INSERT OR REPLACE INTO session_metrics
-           (session_id, project_id, role, model, total_steps, total_tokens, total_cost,
-            tool_calls_total, tool_calls_failed, tool_calls_blocked, duration_ms, success, error_type, started_at, ended_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        );
         for (const s of sessions) {
           const totalTokens = (s.totalTokens?.prompt ?? 0) + (s.totalTokens?.completion ?? 0);
           const durationMs = s.startTime && s.endTime
@@ -965,18 +953,26 @@ export function getServerContext(): ServerContext {
           const errorType = s.errors && s.errors.fatal > 0 ? 'fatal'
             : s.errors && s.errors.recoverable > 0 ? 'recoverable'
             : null;
-          insertStmt.run(
-            s.sessionId, s.projectId ?? null, s.role ?? null, s.model ?? null,
-            s.totalSteps, totalTokens, s.totalCost,
-            s.toolCalls?.total ?? 0, s.toolCalls?.failed ?? 0, s.toolCalls?.blocked ?? 0,
-            durationMs, success, errorType,
-            s.startTime, s.endTime ?? now.toISOString(),
-          );
+          sessionMetricsRepo.upsert({
+            session_id: s.sessionId,
+            project_id: s.projectId ?? null,
+            role: s.role ?? null,
+            model: s.model ?? null,
+            total_steps: s.totalSteps,
+            total_tokens: totalTokens,
+            total_cost: s.totalCost,
+            tool_calls_total: s.toolCalls?.total ?? 0,
+            tool_calls_failed: s.toolCalls?.failed ?? 0,
+            tool_calls_blocked: s.toolCalls?.blocked ?? 0,
+            duration_ms: durationMs,
+            success,
+            error_type: errorType,
+            started_at: s.startTime,
+            ended_at: s.endTime ?? now.toISOString(),
+          });
         }
         // Cleanup sessions older than 30 days
-        db.prepare(
-          "DELETE FROM session_metrics WHERE started_at < datetime('now', '-30 days')",
-        ).run();
+        sessionMetricsRepo.pruneOlderThan(30);
       } catch (e: any) {
         logger.warn('Observability persistence failed', { error: e.message });
         broadcast('background_error', { task: 'observability', error: e.message });
@@ -1070,7 +1066,7 @@ export function getServerContext(): ServerContext {
   const agentRegistry = new AgentRoleRegistry();
   // Load custom agents from DB
   try {
-    const customRows = db.prepare("SELECT * FROM agent_roles WHERE is_builtin = 0").all() as any[];
+    const customRows = agentRoleRepo.findCustom();
     for (const row of customRows) {
       agentRegistry.register({
         type: 'custom' as const,
@@ -1093,18 +1089,18 @@ export function getServerContext(): ServerContext {
   // Shared skill registry — load from DB on startup
   const skillRegistry = new SkillRegistry();
   try {
-    const skillRows = db.prepare("SELECT * FROM skills WHERE status = 'active'").all() as any[];
+    const skillRows = skillRepo.findActive();
     for (const row of skillRows) {
       skillRegistry.register({
         id: row.id,
         name: row.name,
         description: row.description,
-        kind: row.kind,
+        kind: row.kind as 'tool' | 'prompt' | 'composite',
         promptTemplate: row.prompt_template,
         inputSchema: JSON.parse(row.input_schema ?? '{}'),
         outputSchema: JSON.parse(row.output_schema ?? '{}'),
         version: row.version,
-        status: row.status,
+        status: row.status as 'active' | 'draft' | 'deprecated',
       });
     }
     logger.info('Skill registry loaded', { count: skillRows.length });
@@ -1135,8 +1131,8 @@ export function getServerContext(): ServerContext {
     } catch { /* mcp dir empty */ }
     // Also load from DB settings (merge, file-based take priority)
     try {
-      const row = db.prepare("SELECT value FROM settings WHERE key = 'mcp_servers'").get() as any;
-      const dbConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = JSON.parse(row?.value ?? '[]');
+      const value = settingsRepo.get('mcp_servers');
+      const dbConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = JSON.parse(value ?? '[]');
       for (const dbCfg of dbConfigs) {
         if (!mcpConfigs.some((fc) => fc.name === dbCfg.name)) {
           mcpConfigs.push(dbCfg);
@@ -1167,14 +1163,24 @@ export function getServerContext(): ServerContext {
           const result = importSkillFromMarkdown(content, skillRegistry);
           if (result) {
             // Sync to DB if not present
-            const existing = db.prepare('SELECT id FROM skills WHERE name = ?').get(result.name) as any;
+            const existing = skillRepo.findByName(result.name);
             if (!existing) {
               const skill = skillRegistry.load(result.name);
               if (skill) {
-                db.prepare(
-                  `INSERT OR IGNORE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status)
-                   VALUES (?, ?, ?, ?, '{}', '{}', ?, 1, 'active')`,
-                ).run(skill.id, skill.name, skill.description, skill.kind, skill.promptTemplate);
+                skillRepo.insert({
+                  id: skill.id,
+                  name: skill.name,
+                  description: skill.description,
+                  kind: skill.kind,
+                  input_schema: '{}',
+                  output_schema: '{}',
+                  prompt_template: skill.promptTemplate,
+                  version: 1,
+                  status: 'active',
+                  metadata: null,
+                  references_path: null,
+                  scripts_path: null,
+                });
               }
             }
           }
@@ -1197,7 +1203,7 @@ export function getServerContext(): ServerContext {
         try {
           const agentCard = JSON.parse(readFileSync(agentJsonPath, 'utf-8'));
           const name = agentCard.name ?? entry.name;
-          const existing = db.prepare('SELECT type FROM agent_roles WHERE name = ? AND is_builtin = 0').get(name) as any;
+          const existing = agentRoleRepo.findByName(name);
           if (!existing) {
             agentRegistry.register({
               type: 'custom' as const,
@@ -1211,19 +1217,20 @@ export function getServerContext(): ServerContext {
               allowedTools: agentCard.allowedTools ?? [],
               contextBudget: agentCard.contextBudget ?? agentCard.contextWindow ?? 0.3,
             });
-            db.prepare(
-              `INSERT OR IGNORE INTO agent_roles (type, name, description, system_prompt, model, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-            ).run(
-              'custom', name,
-              agentCard.description ?? '',
-              agentCard.systemPrompt ?? agentCard.instructions ?? '',
-              agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
-              agentCard.temperature ?? 0.7,
-              agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
-              JSON.stringify(agentCard.allowedTools ?? []),
-              agentCard.contextBudget ?? agentCard.contextWindow ?? 0.3,
-            );
+            agentRoleRepo.upsert({
+              type: 'custom',
+              name,
+              description: agentCard.description ?? '',
+              system_prompt: agentCard.systemPrompt ?? agentCard.instructions ?? '',
+              model: agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6',
+              model_tier: (agentCard.modelTier as string) ?? 'default',
+              temperature: agentCard.temperature ?? 0.7,
+              max_response_tokens: agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096,
+              allowed_tools: JSON.stringify(agentCard.allowedTools ?? []),
+              context_budget: agentCard.contextBudget ?? agentCard.contextWindow ?? 0.3,
+              is_builtin: 0,
+              created_at: new Date().toISOString(),
+            });
           }
         } catch { /* skip malformed agent */ }
       }
@@ -1240,13 +1247,27 @@ export function getServerContext(): ServerContext {
       for (const f of projFiles) {
         try {
           const proj = JSON.parse(readFileSync(join(projectsDir, f), 'utf-8'));
-          const existing = db.prepare('SELECT id FROM projects WHERE id = ?').get(proj.id) as any;
+          const existing = projectRepo.findById(proj.id);
           if (!existing) {
-            db.prepare(
-              `INSERT INTO projects (id, name, description, root_path, last_activity_at)
-               VALUES (?, ?, ?, ?, ?)`,
-            ).run(proj.id, proj.name, proj.description ?? '', proj.rootPath ?? '', proj.lastActivityAt ?? new Date().toISOString());
-            db.prepare('INSERT INTO project_context (project_id, summary) VALUES (?, ?)').run(proj.id, '');
+            projectRepo.create({
+              id: proj.id,
+              name: proj.name,
+              description: proj.description ?? '',
+              status: 'active' as const,
+              rootPath: proj.rootPath ?? '',
+              createdAt: new Date(),
+            });
+            projectContextRepo.insert({
+              project_id: proj.id,
+              summary: '',
+              goals: '[]',
+              milestones: '[]',
+              constraints: '{}',
+              tech_summary: '',
+              risk_map: '[]',
+              key_decisions: '[]',
+              updated_at: new Date().toISOString(),
+            });
           }
         } catch { /* skip malformed project index */ }
       }
@@ -1262,9 +1283,7 @@ export function getServerContext(): ServerContext {
       if (existsSync(settingsPath)) {
         const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
         if (settings.mcpServers) {
-          db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('mcp_servers', ?)").run(
-            JSON.stringify(settings.mcpServers),
-          );
+          settingsRepo.set('mcp_servers', JSON.stringify(settings.mcpServers));
         }
         if (settings.delegationTier) {
           setCurrentTier(settings.delegationTier as DelegationTier);
@@ -1374,7 +1393,7 @@ export function getServerContext(): ServerContext {
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.SystemNotification,
-      payload: { ...action, type: 'adjustment_pending' as const } as Record<string, unknown>,
+      payload: { type: 'adjustment_pending', data: action as unknown as Record<string, unknown> },
     });
     return true;
   };
@@ -1434,10 +1453,15 @@ export function getServerContext(): ServerContext {
             timestamp: new Date(),
             messageType: MessageType.BudgetAlert,
             payload: {
-              message: budget.reason ?? 'Budget limit exceeded',
-              currentCost: todayCost,
-              reason: budget.reason ?? 'Budget exceeded',
+              level: 'critical' as const,
+              currentSpend: todayCost,
+              limit: DAILY_BUDGET_USD,
+              period: 'daily' as const,
             },
+          });
+          broadcast('budget_alert', {
+            reason: budget.reason ?? 'Budget limit exceeded',
+            currentCost: todayCost,
           });
           logger.warn('BudgetAlert published', { todayCost, reason: budget.reason });
         }
@@ -1496,7 +1520,7 @@ export function getServerContext(): ServerContext {
   };
 
   // Task scheduler
-  const taskScheduler = new TaskScheduler(db, logger);
+  const taskScheduler = new TaskScheduler(new ScheduledTaskRepository(db), decisionRepo, logger);
   taskScheduler.start();
 
   // Wire TaskExecutor so scheduled tasks actually execute
@@ -1540,8 +1564,20 @@ export function getServerContext(): ServerContext {
   ctx = {
     db,
     decisionRepo,
-     projectRepo,
+    projectRepo,
     eventRepo,
+    workflowRepo,
+    auditLogRepo,
+    deliverableRepo,
+    apiKeyRepo,
+    agentRoleRepo,
+    skillRepo,
+    employeeRepo,
+    projectContextRepo,
+    metricRepo,
+    costHistoryRepo,
+    sessionMetricsRepo,
+    settingsRepo,
     decisionService,
     shortTerm,
     longTerm,
