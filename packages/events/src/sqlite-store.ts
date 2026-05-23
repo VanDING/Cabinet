@@ -2,38 +2,73 @@ import type { MessageEnvelope, MessageType } from '@cabinet/types';
 import type { EventBus, MessageHandler } from './bus';
 import type { EventLogRepository } from '@cabinet/storage/repositories/event-log';
 import { buildCausationChain } from './causation.js';
+import { DeadLetterQueue } from './dead-letter.js';
 
 export class SqliteEventStore implements EventBus {
-  private readonly subscribers = new Map<MessageType, Set<MessageHandler>>();
+  private readonly subscribers = new Map<MessageType, Set<{ handler: MessageHandler; name: string }>>();
+  readonly deadLetterQueue = new DeadLetterQueue();
 
-  constructor(private readonly eventLog: EventLogRepository) {}
+  constructor(private readonly eventLog: EventLogRepository) {
+    this.deadLetterQueue.setRetryBus(this);
+  }
 
   async publish(envelope: MessageEnvelope): Promise<void> {
     this.eventLog.append(envelope);
 
-    const handlers = this.subscribers.get(envelope.messageType);
-    if (handlers) {
-      for (const handler of handlers) {
+    const subs = this.subscribers.get(envelope.messageType);
+    if (subs) {
+      for (const { handler, name } of subs) {
         try {
           await handler(envelope);
-        } catch {
-          // Isolate handler errors so one failing subscriber doesn't block others
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error(
+            `[SqliteEventStore] Handler error (${name}): ${error.message}`,
+          );
+          this.deadLetterQueue.enqueue({
+            envelope,
+            error: error.message,
+            stack: error.stack,
+            handlerName: name,
+            messageType: envelope.messageType,
+            failedAt: new Date().toISOString(),
+          });
         }
       }
     }
   }
 
-  subscribe(messageType: MessageType, handler: MessageHandler): void {
-    let handlers = this.subscribers.get(messageType);
-    if (!handlers) {
-      handlers = new Set();
-      this.subscribers.set(messageType, handlers);
+  subscribe(messageType: MessageType, handler: MessageHandler, name?: string): void {
+    let subs = this.subscribers.get(messageType);
+    if (!subs) {
+      subs = new Set();
+      this.subscribers.set(messageType, subs);
     }
-    handlers.add(handler);
+    subs.add({ handler, name: name ?? (handler.name || 'anonymous') });
+  }
+
+  once(messageType: MessageType, handler: MessageHandler, name?: string): void {
+    const wrapped: MessageHandler = (msg) => {
+      this.unsubscribe(messageType, wrapped);
+      return handler(msg);
+    };
+    this.subscribe(messageType, wrapped, name ?? (handler.name || 'anonymous'));
   }
 
   unsubscribe(messageType: MessageType, handler: MessageHandler): void {
-    this.subscribers.get(messageType)?.delete(handler);
+    const subs = this.subscribers.get(messageType);
+    if (subs) {
+      for (const entry of subs) {
+        if (entry.handler === handler) {
+          subs.delete(entry);
+          break;
+        }
+      }
+    }
+  }
+
+  dispose(): void {
+    this.subscribers.clear();
   }
 
   async getCausationChain(correlationId: string): Promise<MessageEnvelope[]> {
@@ -45,7 +80,33 @@ export class SqliteEventStore implements EventBus {
     return buildCausationChain(leaf.messageId, allEvents);
   }
 
-  async findAll(): Promise<MessageEnvelope[]> {
-    return this.eventLog.findAll();
+  async findAll(opts?: { limit?: number; offset?: number }): Promise<MessageEnvelope[]> {
+    return this.eventLog.findAll(opts);
+  }
+
+  /**
+   * Replay historical events to a handler. Returns the number of events replayed.
+   * Useful for new subscribers that need to catch up on past events.
+   */
+  async replay(
+    since: Date,
+    handler: MessageHandler,
+    messageType?: string,
+  ): Promise<number> {
+    const events = messageType
+      ? this.eventLog.findByType(messageType)
+      : this.eventLog.findAll();
+    let count = 0;
+    for (const event of events) {
+      if (event.timestamp >= since) {
+        try {
+          await handler(event);
+          count++;
+        } catch {
+          // Skip events that fail during replay
+        }
+      }
+    }
+    return count;
   }
 }
