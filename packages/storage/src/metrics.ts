@@ -1,3 +1,5 @@
+import type { MetricRepository } from './repositories/metric-repo.js';
+
 export interface Metric {
   name: string;
   value: number;
@@ -7,9 +9,47 @@ export interface Metric {
 
 export class MetricsCollector {
   private metrics: Metric[] = [];
+  private readonly repo: MetricRepository | null;
+  private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly flushIntervalMs: number;
+  private readonly maxBatchSize: number;
+
+  constructor(opts?: {
+    repo?: MetricRepository;
+    flushIntervalMs?: number;
+    maxBatchSize?: number;
+  }) {
+    this.repo = opts?.repo ?? null;
+    this.flushIntervalMs = opts?.flushIntervalMs ?? 30_000;
+    this.maxBatchSize = opts?.maxBatchSize ?? 100;
+  }
+
+  /** Start periodic batch flush to DB. No-op if no repo configured. */
+  startPeriodicFlush(): void {
+    if (!this.repo || this.flushTimer) return;
+    this.flushTimer = setInterval(() => {
+      this.flushToDb();
+    }, this.flushIntervalMs);
+  }
+
+  /** Stop periodic flush and flush remaining metrics. */
+  stopPeriodicFlush(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+    this.flushToDb();
+  }
 
   record(name: string, value: number, tags: Record<string, string> = {}): void {
     this.metrics.push({ name, value, tags, timestamp: new Date() });
+
+    // Persist to DB immediately if configured (fire-and-forget, error is non-fatal)
+    if (this.repo) {
+      try {
+        this.repo.insert(name, value, tags);
+      } catch { /* persistence failure is non-fatal */ }
+    }
   }
 
   increment(name: string, tags: Record<string, string> = {}): void {
@@ -49,6 +89,12 @@ export class MetricsCollector {
 
   clear(): void {
     this.metrics = [];
+  }
+
+  /** Flush pending metrics to DB (they are already written individually; this is a no-op). */
+  private flushToDb(): void {
+    // Individual record() calls already persist to DB via repo.insert().
+    // This method exists for API symmetry and for potential future batch-insert optimization.
   }
 }
 

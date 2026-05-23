@@ -27,10 +27,27 @@ export class ProjectRepository {
     return this.rowToProject(row);
   }
 
-  listAll(): Project[] {
+  listAll(opts?: { limit?: number; offset?: number }): Project[] {
     const rows = this.db
-      .prepare('SELECT * FROM projects ORDER BY created_at DESC')
-      .all() as Record<string, unknown>[];
+      .prepare('SELECT * FROM projects ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .all(opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
+    return rows.map((r) => this.rowToProject(r));
+  }
+
+  listByStatus(status: string, opts?: { limit?: number; offset?: number }): Project[] {
+    const rows = this.db
+      .prepare('SELECT * FROM projects WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
+      .all(status, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
+    return rows.map((r) => this.rowToProject(r));
+  }
+
+  searchByName(query: string, opts?: { limit?: number; offset?: number }): Project[] {
+    const escaped = query.replace(/[%_\\]/g, '\\$&');
+    const rows = this.db
+      .prepare(
+        'SELECT * FROM projects WHERE name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      )
+      .all(`%${escaped}%`, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
     return rows.map((r) => this.rowToProject(r));
   }
 
@@ -55,6 +72,10 @@ export class ProjectRepository {
       values.push(id);
       this.db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...values);
     }
+  }
+
+  delete(id: string): void {
+    this.db.prepare('DELETE FROM projects WHERE id = ?').run(id);
   }
 
   private rowToProject(row: Record<string, unknown>): Project {

@@ -13,6 +13,9 @@ export function createConnection(path: string): Database.Database {
   db = new Database(path);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
+  db.pragma('wal_autocheckpoint = 250');
+  db.pragma('synchronous = NORMAL');
   return db;
 }
 
@@ -31,6 +34,8 @@ export function getConnection(): Database.Database {
  */
 export function closeConnection(): void {
   if (db) {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* best-effort */ }
+    try { db.pragma('optimize'); } catch { /* best-effort */ }
     db.close();
     db = null;
   }
