@@ -1,5 +1,5 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
-import type { Database } from '@cabinet/storage';
+import type { ScheduledTaskRepository, DecisionRepository } from '@cabinet/storage';
 
 export interface SchedulerLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
@@ -20,16 +20,31 @@ export interface ScheduledTask {
 
 export type TaskExecutor = (task: ScheduledTask) => Promise<void>;
 
+function rowToScheduledTask(r: { id: string; name: string; cron_expression: string; prompt: string; recurring: number; enabled: number; last_run_at: string | null; next_run_at: string | null }): ScheduledTask {
+  return {
+    id: r.id,
+    name: r.name,
+    cronExpression: r.cron_expression,
+    prompt: r.prompt,
+    recurring: r.recurring === 1,
+    enabled: r.enabled === 1,
+    lastRunAt: r.last_run_at ?? undefined,
+    nextRunAt: r.next_run_at ?? undefined,
+  };
+}
+
 export class TaskScheduler {
-  private db: Database;
+  private scheduledTaskRepo: ScheduledTaskRepository;
+  private decisionRepo: DecisionRepository;
   private logger: SchedulerLogger;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private autoArchiveTimer: ReturnType<typeof setInterval> | null = null;
   private executor: TaskExecutor | null = null;
   private pollIntervalMs: number;
 
-  constructor(db: Database, logger: SchedulerLogger, pollIntervalMs = 30000) {
-    this.db = db;
+  constructor(scheduledTaskRepo: ScheduledTaskRepository, decisionRepo: DecisionRepository, logger: SchedulerLogger, pollIntervalMs = 30000) {
+    this.scheduledTaskRepo = scheduledTaskRepo;
+    this.decisionRepo = decisionRepo;
     this.logger = logger;
     this.pollIntervalMs = pollIntervalMs;
   }
@@ -43,34 +58,27 @@ export class TaskScheduler {
   schedule(name: string, cronExpression: string, prompt: string, recurring: boolean): { id: string } {
     const id = `task_${Date.now()}`;
     const nextRun = this.nextCronTime(cronExpression);
-    this.db
-      .prepare(
-        `INSERT INTO scheduled_tasks (id, name, cron_expression, prompt, recurring, next_run_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(id, name, cronExpression, prompt, recurring ? 1 : 0, nextRun);
+    this.scheduledTaskRepo.insert({
+      id,
+      name,
+      cron_expression: cronExpression,
+      prompt,
+      recurring: recurring ? 1 : 0,
+      enabled: 1,
+      created_at: new Date().toISOString(),
+      last_run_at: null,
+      next_run_at: nextRun,
+    });
     this.logger.info('Scheduled task created', { id, name, cron: cronExpression });
     return { id };
   }
 
   list(): ScheduledTask[] {
-    const rows = this.db
-      .prepare('SELECT id, name, cron_expression, prompt, recurring, enabled, last_run_at, next_run_at FROM scheduled_tasks WHERE enabled = 1 ORDER BY created_at DESC')
-      .all() as any[];
-    return rows.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      cronExpression: r.cron_expression,
-      prompt: r.prompt,
-      recurring: r.recurring === 1,
-      enabled: r.enabled === 1,
-      lastRunAt: r.last_run_at ?? undefined,
-      nextRunAt: r.next_run_at ?? undefined,
-    }));
+    return this.scheduledTaskRepo.findAll().map(rowToScheduledTask);
   }
 
   cancel(id: string): void {
-    this.db.prepare('UPDATE scheduled_tasks SET enabled = 0 WHERE id = ?').run(id);
+    this.scheduledTaskRepo.disable(id);
     this.logger.info('Scheduled task cancelled', { id });
   }
 
@@ -97,25 +105,10 @@ export class TaskScheduler {
   private async poll(): Promise<void> {
     try {
       const now = new Date().toISOString();
-      const rows = this.db
-        .prepare(
-          `SELECT id, name, cron_expression, prompt, recurring, enabled, last_run_at, next_run_at
-           FROM scheduled_tasks
-           WHERE enabled = 1 AND next_run_at <= ?`,
-        )
-        .all(now) as any[];
+      const rows = this.scheduledTaskRepo.findDue(now);
 
       for (const row of rows) {
-        await this.executeTask({
-          id: row.id,
-          name: row.name,
-          cronExpression: row.cron_expression,
-          prompt: row.prompt,
-          recurring: row.recurring === 1,
-          enabled: row.enabled === 1,
-          lastRunAt: row.last_run_at ?? undefined,
-          nextRunAt: row.next_run_at ?? undefined,
-        });
+        await this.executeTask(rowToScheduledTask(row));
       }
     } catch (err) {
       this.logger.error('Scheduler poll error', { error: (err as Error).message });
@@ -125,13 +118,13 @@ export class TaskScheduler {
   private async executeTask(task: ScheduledTask): Promise<void> {
     try {
       const now = new Date().toISOString();
-      this.db.prepare('UPDATE scheduled_tasks SET last_run_at = ? WHERE id = ?').run(now, task.id);
+      this.scheduledTaskRepo.updateLastRun(task.id, now);
 
       if (!task.recurring) {
-        this.db.prepare('UPDATE scheduled_tasks SET enabled = 0, next_run_at = NULL WHERE id = ?').run(task.id);
+        this.scheduledTaskRepo.disable(task.id);
       } else {
         const next = this.nextCronTime(task.cronExpression);
-        this.db.prepare('UPDATE scheduled_tasks SET next_run_at = ? WHERE id = ?').run(next, task.id);
+        this.scheduledTaskRepo.updateRunTimings(task.id, now, next);
       }
 
       if (this.executor) {
@@ -143,19 +136,10 @@ export class TaskScheduler {
   }
 
   private startAutoArchive(): void {
-    const expiryMs = DECISION_EXPIRY_HOURS * 60 * 60 * 1000;
     const check = () => {
       try {
-        const cutoff = new Date(Date.now() - expiryMs).toISOString();
-        const expired = this.db
-          .prepare(
-            "UPDATE decisions SET status = 'expired', resolved_at = datetime('now') WHERE status = 'pending' AND created_at < ?",
-          )
-          .run(cutoff);
-        if (expired.changes > 0) {
-          this.logger.info('Auto-expired decisions', { count: expired.changes });
-          this.db.prepare("UPDATE decisions SET status = 'archived' WHERE status = 'expired'").run();
-        }
+        this.decisionRepo.expireOlderThan(DECISION_EXPIRY_HOURS);
+        this.decisionRepo.archiveExpired();
       } catch (err) {
         this.logger.error('Auto-archive error', { error: (err as Error).message });
       }
@@ -214,11 +198,12 @@ export class TaskScheduler {
 }
 
 export function startAutoArchive(
-  db: Database,
+  scheduledTaskRepo: ScheduledTaskRepository,
+  decisionRepo: DecisionRepository,
   logger: SchedulerLogger,
   checkIntervalMs: number = 3600000,
 ): () => void {
-  const scheduler = new TaskScheduler(db, logger, checkIntervalMs);
+  const scheduler = new TaskScheduler(scheduledTaskRepo, decisionRepo, logger, checkIntervalMs);
   scheduler.start();
   return () => scheduler.stop();
 }
