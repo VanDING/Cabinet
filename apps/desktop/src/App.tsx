@@ -137,12 +137,14 @@ export function App() {
     closeSession,
     switchSession,
     addMessage,
+    updateMessage,
     addFile,
     removeFile,
     setSessionActive,
     reopenSession,
     deleteHistorySession,
     editMessage,
+    forkSession,
   } = useSessions();
 
   const isActiveSessionProcessing = activeSession ? processingSessions.has(activeSession.id) : false;
@@ -314,7 +316,8 @@ export function App() {
           let toolCallsAccumulated: NonNullable<ChatMessage['toolCalls']> = [];
           let lastContent = '';
           let toolsSinceLastSegment = false;
-          let routingPrefix: string | null = null;
+          let thinkingStart: number | undefined;
+          const streamStart = Date.now();
 
           const AGENT_DISPLAY: Record<string, string> = {
             secretary: 'Secretary',
@@ -327,44 +330,49 @@ export function App() {
             curator: 'Curator',
           };
 
+          // Create skeleton message once; update incrementally during streaming
+          addMessage(sessionId, {
+            id: streamId,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            isStreaming: true,
+            agentName: streamAgent,
+          });
+
           await readSSEStream(reader, {
             onRoutingStart(targetAgent) {
               const sourceDisplay = AGENT_DISPLAY[streamAgent] || streamAgent;
               const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
-              routingPrefix = `**${sourceDisplay} → ${targetDisplay}**\n\n`;
               streamAgent = targetAgent;
               setActiveAgent(targetAgent);
+              updateMessage(sessionId, streamId, {
+                routing: { from: sourceDisplay, to: targetDisplay },
+              });
             },
             onThinking(content) {
+              if (thinkingStart === undefined) thinkingStart = Date.now();
               thinkingAccumulated += content;
-              addMessage(sessionId, {
-                id: streamId,
-                role: 'assistant',
-                content: lastContent,
-                timestamp: new Date(),
-                isStreaming: true,
-                agentName: streamAgent,
+              updateMessage(sessionId, streamId, {
                 thinking: thinkingAccumulated,
-                toolCalls: toolCallsAccumulated,
+                toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
               });
             },
             onThinkingDone() {
+              if (thinkingStart !== undefined) {
+                const thinkingDurationMs = Date.now() - thinkingStart;
+                updateMessage(sessionId, streamId, { thinkingDurationMs });
+                thinkingStart = undefined;
+              }
               if (toolsSinceLastSegment && thinkingAccumulated.length > 0) {
                 thinkingAccumulated += '\n<!--segment-->\n';
               }
               toolsSinceLastSegment = false;
             },
             onContent(_, fullContent) {
-              const displayContent = routingPrefix ? routingPrefix + fullContent : fullContent;
-              routingPrefix = null;
-              lastContent = displayContent;
-              addMessage(sessionId, {
-                id: streamId,
-                role: 'assistant',
-                content: displayContent,
-                timestamp: new Date(),
-                isStreaming: true,
-                agentName: streamAgent,
+              lastContent = fullContent;
+              updateMessage(sessionId, streamId, {
+                content: fullContent,
                 thinking: thinkingAccumulated || undefined,
                 toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
               });
@@ -404,13 +412,7 @@ export function App() {
                   args: detail?.args as Record<string, unknown> | undefined,
                 }];
               }
-              addMessage(sessionId, {
-                id: streamId,
-                role: 'assistant',
-                content: lastContent,
-                timestamp: new Date(),
-                isStreaming: true,
-                agentName: streamAgent,
+              updateMessage(sessionId, streamId, {
                 thinking: thinkingAccumulated || undefined,
                 toolCalls: toolCallsAccumulated,
               });
@@ -418,31 +420,27 @@ export function App() {
             onDone(fullContent, event) {
               if (event?.meeting) meetingData = event.meeting as MeetingData;
               if ((event as any)?.targetAgent) streamAgent = (event as any).targetAgent;
-              addMessage(sessionId, {
-                id: streamId,
-                role: 'assistant',
+              updateMessage(sessionId, streamId, {
                 content: fullContent,
-                timestamp: new Date(),
                 isStreaming: false,
                 meeting: meetingData,
                 agentName: (event as any)?.agentName ?? streamAgent,
                 toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
+                durationMs: Date.now() - streamStart,
               });
             },
             onError(error) {
-              addMessage(sessionId, {
-                id: streamId,
-                role: 'assistant',
+              updateMessage(sessionId, streamId, {
                 content: `Error: ${error}`,
-                timestamp: new Date(),
                 isStreaming: false,
-                agentName: streamAgent,
+                isError: true,
+                durationMs: Date.now() - streamStart,
               });
             },
             onRouting(targetAgent) {
               streamAgent = targetAgent;
               setActiveAgent(targetAgent);
-              // No longer adds a message — routing_start already handled it
+              // routing_start already emitted prefix; no message update needed here
             },
           }, controller.signal);
         } else {
@@ -461,13 +459,24 @@ export function App() {
         }
       } catch {
         addToast('error', 'Failed to send message. Server may be offline.');
-        addMessage(sessionId, {
-          id: `e_${Date.now()}`,
-          role: 'assistant',
-          content: 'Sorry, I could not connect to the server.',
-          timestamp: new Date(),
-          agentName: activeAgent,
-        });
+        const session = sessions.find((s) => s.id === sessionId);
+        const hasSkeleton = session?.messages.some((m) => m.id === streamId);
+        if (hasSkeleton) {
+          updateMessage(sessionId, streamId, {
+            content: 'Sorry, I could not connect to the server.',
+            isStreaming: false,
+            isError: true,
+          });
+        } else {
+          addMessage(sessionId, {
+            id: `e_${Date.now()}`,
+            role: 'assistant',
+            content: 'Sorry, I could not connect to the server.',
+            timestamp: new Date(),
+            agentName: activeAgent,
+            isError: true,
+          });
+        }
       } finally {
         if (abortRef.current.get(sessionId) === controller) abortRef.current.delete(sessionId);
         setProcessingSessions(prev => { const next = new Set(prev); next.delete(sessionId); return next; });
@@ -547,7 +556,7 @@ export function App() {
         {/* Main content area (relative for floating ChatPanel) */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden relative">
           {/* Content: browse pages or chat view */}
-          <div className="flex-1 overflow-hidden pb-40">
+          <div className="flex-1 overflow-hidden">
             {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
             <div className={chatMode && activeSession ? 'hidden' : 'h-full overflow-auto'}>
               <ErrorBoundary>
@@ -597,6 +606,12 @@ export function App() {
                       if (idx > 0) {
                         const prevUser = activeSession.messages.slice(0, idx).reverse().find(m => m.role === 'user');
                         if (prevUser) handleSend(activeSession.id, prevUser.content, activeSession.attachedFiles);
+                      }
+                    }}
+                    onForkMessage={(msgId) => {
+                      const forkedId = forkSession(activeSession.id, msgId);
+                      if (forkedId) {
+                        addToast('success', 'Forked to new session');
                       }
                     }}
                   />

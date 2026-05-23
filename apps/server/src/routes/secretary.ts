@@ -1136,6 +1136,13 @@ interface MeetingResult {
   perspectives: unknown[];
   crossValidation?: unknown;
   decisionId?: string | null;
+  process?: {
+    analysisBrief: string;
+    advisorSynthesis: string;
+    reviewRounds: number;
+    reviewPassed: boolean;
+    reviewIssues: unknown[];
+  };
 }
 
 // ── Meeting execution helper ──
@@ -1150,6 +1157,13 @@ async function runMeeting(
   synthesis: string;
   perspectives: unknown[];
   decisionId?: string | null;
+  process?: {
+    analysisBrief: string;
+    advisorSynthesis: string;
+    reviewRounds: number;
+    reviewPassed: boolean;
+    reviewIssues: unknown[];
+  };
 }> {
   const meetingId = `meeting_${Date.now()}`;
 
@@ -1334,7 +1348,20 @@ async function runMeeting(
     }
   }
 
-  const result: MeetingResult = { meetingId, topic, synthesis, perspectives, decisionId };
+  const result: MeetingResult = {
+    meetingId,
+    topic,
+    synthesis,
+    perspectives,
+    decisionId,
+    process: {
+      analysisBrief,
+      advisorSynthesis: advisorResult.synthesis,
+      reviewRounds: maxRounds,
+      reviewPassed,
+      reviewIssues,
+    },
+  };
   capturedMeetingResult = result;
   return result;
 }
