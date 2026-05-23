@@ -70,3 +70,6 @@ export const BACKUP_INTERVAL_MINUTES = 360; // 6 hours
 /** Number of backup copies to retain */
 export const BACKUP_KEEP_COUNT = 7;
 
+/** Budget period for cost tracking and alerts. */
+export type BudgetPeriod = 'daily' | 'weekly' | 'monthly';
+
