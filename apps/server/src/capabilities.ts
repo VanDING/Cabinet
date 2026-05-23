@@ -123,7 +123,8 @@ function buildSafeEnv(): Record<string, string> {
   return safe;
 }
 
-export function buildEnvironmentSection(): string {
+export function buildEnvironmentSection(projectRootPath?: string): string {
+  const workDir = projectRootPath || process.cwd();
   const parts = ['## System Environment'];
   parts.push(`- Platform: ${process.platform} (${process.arch})`);
   if (process.platform === 'win32') {
@@ -131,7 +132,10 @@ export function buildEnvironmentSection(): string {
   } else {
     parts.push(`- Shell: ${process.env.SHELL || '/bin/bash'}`);
   }
-  parts.push(`- Working Directory: ${process.cwd()}`);
+  parts.push(`- Working Directory: ${workDir}`);
+  if (projectRootPath) {
+    parts.push(`- Note: You are working on a project at the above path. Use it for all file operations.`);
+  }
   parts.push(`- Node.js: ${process.version}`);
   return parts.join('\n');
 }
