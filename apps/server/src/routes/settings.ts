@@ -60,10 +60,14 @@ settingsRouter.get('/budget', (c) => {
 settingsRouter.put('/budget', async (c) => {
   const { budgetGuard, logger } = getServerContext();
   const body = await c.req.json();
+  const parseBudget = (v: unknown, fallback: number) => {
+    const n = parseFloat(String(v));
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  };
   const limits = {
-    daily: parseFloat(body.daily) || config.dailyBudget,
-    weekly: parseFloat(body.weekly) || config.weeklyBudget,
-    monthly: parseFloat(body.monthly) || config.monthlyBudget,
+    daily: parseBudget(body.daily, config.dailyBudget),
+    weekly: parseBudget(body.weekly, config.weeklyBudget),
+    monthly: parseBudget(body.monthly, config.monthlyBudget),
   };
   saveBudget(limits);
   if (typeof (budgetGuard as any).setLimits === 'function') {

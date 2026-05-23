@@ -421,8 +421,12 @@ export class GarbageCollector {
     for (const issue of issues) {
       if (issue.category === 'expired_data') {
         try {
-          const { unlink } = await import('node:fs/promises');
-          await unlink(join(this.options.rootDir, issue.location));
+          const { rename, mkdir } = await import('node:fs/promises');
+          const src = join(this.options.rootDir, issue.location);
+          const trashDir = join(this.options.rootDir, '.trash');
+          await mkdir(trashDir, { recursive: true });
+          const dest = join(trashDir, `${Date.now()}_${issue.location.replace(/[\\/]/g, '_')}`);
+          await rename(src, dest);
         } catch {
           // best-effort cleanup
         }
