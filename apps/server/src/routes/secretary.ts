@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { getServerContext, onTierChange, type ServerContext } from '../context.js';
 import { DEFAULT_CAPTAIN_ID, MessageType, type DelegationTier } from '@cabinet/types';
 import {
@@ -282,13 +283,27 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── Workflow write callbacks ──
     createWorkflow(input) {
+      let projectId = input.projectId;
+      if (!projectId || projectId === 'global') {
+        const activeProjects = ctx.projectRepo.listByStatus('active');
+        const fallback = activeProjects[0];
+        if (!fallback) {
+          throw new Error('No active project available. Create a project first before creating a workflow.');
+        }
+        projectId = fallback.id;
+      }
+      // Verify the project exists to satisfy foreign key constraint
+      const project = ctx.projectRepo.findById(projectId);
+      if (!project) {
+        throw new Error(`Project not found: ${projectId}`);
+      }
       const id = `wf_${Date.now()}`;
       ctx.db
         .prepare(
           'INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)',
         )
-        .run(id, input.projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
-      ctx.logger.info('Workflow created via tool', { id, name: input.name });
+        .run(id, projectId, input.name, JSON.stringify(input.definition ?? {}), 'draft');
+      ctx.logger.info('Workflow created via tool', { id, name: input.name, projectId });
       return { id };
     },
     updateWorkflow(id, input) {
@@ -1126,7 +1141,9 @@ async function executeWorkflowById(
   }
 }
 
-// ── Meeting result capture (module-level, read by /chat handler) ──
+// ── Meeting result capture (request-scoped via AsyncLocalStorage) ──
+const meetingResultStore = new AsyncLocalStorage<{ result: MeetingResult | null }>();
+/** Legacy fallback — kept for any direct callers outside AsyncLocalStorage context */
 let capturedMeetingResult: MeetingResult | null = null;
 
 interface MeetingResult {
@@ -1279,9 +1296,10 @@ async function runMeeting(
   // Auto-create deliverable for the completed meeting
   try {
     const did = `d_${Date.now()}`;
+    const effectiveProjectId = projectId === 'global' || !projectId ? 'default' : projectId;
     ctx.deliverableRepo.insert({
       id: did,
-      project_id: projectId ?? 'default',
+      project_id: effectiveProjectId,
       meeting_id: meetingId,
       title: topic,
       type: 'meeting_report',
@@ -1362,7 +1380,9 @@ async function runMeeting(
       reviewIssues,
     },
   };
-  capturedMeetingResult = result;
+  const store = meetingResultStore.getStore();
+  if (store) store.result = result;
+  capturedMeetingResult = result; // legacy fallback
   return result;
 }
 
@@ -2140,93 +2160,98 @@ secretaryRouter.post('/chat', async (c) => {
       if (stream) {
         const sseStream = new ReadableStream({
           async start(controller) {
-            const encoder = new TextEncoder();
-            function emit(type: string, data: Record<string, unknown>) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
-            }
-            try {
-              capturedMeetingResult = null;
-              emit('status', { message: 'Thinking...' });
-
-              let streamedContent = '';
-
-              const streamResult = await agent.handleMessageStreaming(
-                sessionId,
-                augmentedMessage,
-                {
-                  onRoutingStart(targetAgent) {
-                    emit('routing_start', { targetAgent });
-                  },
-                  onChunk(content) {
-                    streamedContent += content;
-                    emit('chunk', { content });
-                  },
-                  onThinking(content) {
-                    emit('thinking', { content });
-                  },
-                  onThinkingDone() {
-                    emit('thinking_done', {});
-                  },
-                  onToolCall(name, args) {
-                    emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
-                  },
-                  onToolResult(name, result) {
-                    emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
-                  },
-                  onUsage(usage) {
-                    ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
-                    emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
-                  },
-                  onDone(fullContent) {
-                    streamedContent = fullContent;
-                    // Done event is emitted after routing below
-                  },
-                  onError(error) {
-                    emit('error', { message: error });
-                  },
-                },
-              );
-
-              const targetAgent = streamResult.routeResult?.targetAgent ?? 'secretary';
-              const isRouted = targetAgent !== 'secretary';
-
-              // Emit routing info BEFORE done (so client receives it before closing the stream)
-              if (streamResult.routeResult && isRouted) {
-                emit('routing', {
-                  targetAgent,
-                  confidence: streamResult.routeResult.confidence,
-                  reasoning: streamResult.routeResult.reasoning,
-                });
+            const store = { result: null as MeetingResult | null };
+            await meetingResultStore.run(store, async () => {
+              const encoder = new TextEncoder();
+              function emit(type: string, data: Record<string, unknown>) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
               }
-
-              // Emit done last — client stops reading here, so routing must come first
-              const meeting = capturedMeetingResult;
-              ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
-              broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
               try {
-                broadcast('cost_updated', {
-                  daily: ctx.costTracker.getDailyCost(),
-                  model: model ?? 'claude-sonnet-4-6',
-                  timestamp: new Date().toISOString(),
+                emit('status', { message: 'Thinking...' });
+
+                let streamedContent = '';
+
+                const streamResult = await agent.handleMessageStreaming(
+                  sessionId,
+                  augmentedMessage,
+                  {
+                    onRoutingStart(targetAgent) {
+                      emit('routing_start', { targetAgent });
+                    },
+                    onChunk(content) {
+                      streamedContent += content;
+                      emit('chunk', { content });
+                    },
+                    onThinking(content) {
+                      emit('thinking', { content });
+                    },
+                    onThinkingDone() {
+                      emit('thinking_done', {});
+                    },
+                    onToolCall(name, args) {
+                      emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
+                    },
+                    onToolResult(name, result) {
+                      emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
+                    },
+                    onTaskUpdate(tasks) {
+                      emit('task_status', { tasks });
+                    },
+                    onUsage(usage) {
+                      ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
+                      emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
+                    },
+                    onDone(fullContent) {
+                      streamedContent = fullContent;
+                      // Done event is emitted after routing below
+                    },
+                    onError(error) {
+                      emit('error', { message: error });
+                    },
+                  },
+                );
+
+                const targetAgent = streamResult.routeResult?.targetAgent ?? 'secretary';
+                const isRouted = targetAgent !== 'secretary';
+
+                // Emit routing info BEFORE done (so client receives it before closing the stream)
+                if (streamResult.routeResult && isRouted) {
+                  emit('routing', {
+                    targetAgent,
+                    confidence: streamResult.routeResult.confidence,
+                    reasoning: streamResult.routeResult.reasoning,
+                  });
+                }
+
+                // Emit done last — client stops reading here, so routing must come first
+                const meeting = store.result;
+                ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+                broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+                try {
+                  broadcast('cost_updated', {
+                    daily: ctx.costTracker.getDailyCost(),
+                    model: model ?? 'claude-sonnet-4-6',
+                    timestamp: new Date().toISOString(),
+                  });
+                } catch { /* non-fatal */ }
+                emit('done', {
+                  sessionId,
+                  meeting: meeting ?? undefined,
+                  agentName: targetAgent,
+                  content: streamedContent,
+                  routed: isRouted,
+                  ...(streamResult.routeResult ? {
+                    targetAgent,
+                    confidence: streamResult.routeResult.confidence,
+                    reasoning: streamResult.routeResult.reasoning,
+                  } : {}),
                 });
-              } catch { /* non-fatal */ }
-              emit('done', {
-                sessionId,
-                meeting: meeting ?? undefined,
-                agentName: targetAgent,
-                content: streamedContent,
-                routed: isRouted,
-                ...(streamResult.routeResult ? {
-                  targetAgent,
-                  confidence: streamResult.routeResult.confidence,
-                  reasoning: streamResult.routeResult.reasoning,
-                } : {}),
-              });
-            } catch (e: any) {
-              emit('error', { message: e.message ?? 'Unknown error' });
-            } finally {
-              controller.close();
-            }
+              } catch (e: any) {
+                emit('error', { message: e.message ?? 'Unknown error' });
+              } finally {
+                controller.close();
+              }
+            });
           },
         });
 
@@ -2241,9 +2266,11 @@ secretaryRouter.post('/chat', async (c) => {
       }
 
       // ── Non-streaming single mode ──
-      capturedMeetingResult = null; // Reset before running
-      const result = await agent.handleMessage(sessionId, augmentedMessage);
-      const meeting = capturedMeetingResult; // Capture any meeting created by tools
+      const store = { result: null as MeetingResult | null };
+      const result = await meetingResultStore.run(store, () =>
+        agent.handleMessage(sessionId, augmentedMessage),
+      );
+      const meeting = store.result; // Capture any meeting created by tools
 
       // Record cost if available
       if (result.usage) {

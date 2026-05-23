@@ -364,10 +364,6 @@ export function App() {
                 updateMessage(sessionId, streamId, { thinkingDurationMs });
                 thinkingStart = undefined;
               }
-              if (toolsSinceLastSegment && thinkingAccumulated.length > 0) {
-                thinkingAccumulated += '\n<!--segment-->\n';
-              }
-              toolsSinceLastSegment = false;
             },
             onContent(_, fullContent) {
               lastContent = fullContent;
@@ -376,6 +372,9 @@ export function App() {
                 thinking: thinkingAccumulated || undefined,
                 toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
               });
+            },
+            onTaskUpdate(tasks) {
+              updateMessage(sessionId, streamId, { tasks });
             },
             onToolStatus(message, type, detail) {
               toolsSinceLastSegment = true;
@@ -483,7 +482,7 @@ export function App() {
         setSessionActive(sessionId, false);
       }
     },
-    [addMessage, addToast, setSessionActive, setChatMode, activeProjectId, activeAgent],
+    [addMessage, addToast, setSessionActive, setChatMode, activeProjectId, activeAgent, activeSession],
   );
 
   return (

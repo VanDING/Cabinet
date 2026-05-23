@@ -18,6 +18,7 @@ interface Props {
 
 export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   const [meetings, setMeetings] = useState<MeetingItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
 
   const buildUrl = useCallback(() => {
@@ -27,6 +28,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   }, [projectId]);
 
   const fetchMeetings = useCallback(() => {
+    setLoading(true);
     apiFetch(buildUrl(), { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
@@ -34,7 +36,8 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
       })
       .catch(() => {
         addToast('error', 'Failed to load meetings');
-      });
+      })
+      .finally(() => setLoading(false));
   }, [addToast, buildUrl]);
 
   useEffect(() => {
@@ -56,6 +59,16 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
       window.removeEventListener('ws:meeting_updated', handleUpdate);
     };
   }, [fetchMeetings]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center text-gray-400 dark:text-gray-500">
+          <p className="text-xs">Loading meetings...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (meetings.length === 0) {
     return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, Trash2, Tag } from 'lucide-react';
-import { apiFetch, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 
 interface Deliverable {
   id: string;
@@ -27,7 +27,7 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/projects/${projectId}/deliverables`);
+      const res = await apiFetch(`/api/projects/${projectId}/deliverables`, { headers: authHeaders() });
       if (res.ok) setDeliverables((await res.json()).deliverables ?? []);
     } catch { /* ignore */ }
     setLoading(false);

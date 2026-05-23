@@ -25,7 +25,7 @@ const EVENT_LABELS: Record<string, string> = {
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const { decisionRepo, costTracker, budgetGuard, projectRepo, workflowRepo, eventRepo, metrics, logger, db } =
+  const { decisionRepo, costTracker, budgetGuard, projectRepo, workflowRepo, eventRepo, auditLogRepo, metrics, logger, db } =
     getServerContext();
   const projectId = c.req.query('projectId');
 
@@ -60,6 +60,24 @@ dashboardRouter.get('/summary', (c) => {
     }
   } catch (err) {
     logger.warn('Failed to load events', { error: (err as Error).message });
+  }
+
+  // Fallback: if event_log is empty (broadcast doesn't write to it), synthesise
+  // recent events from audit_log which is reliably populated.
+  if (recentEvents.length === 0) {
+    try {
+      const audits = auditLogRepo.findAll({ limit: 20 });
+      for (const row of audits.reverse()) {
+        const label = `${row.entity_type} ${row.action}`;
+        recentEvents.push({
+          message: label.charAt(0).toUpperCase() + label.slice(1),
+          type: row.entity_type,
+          time: new Date(row.timestamp),
+        });
+      }
+    } catch (err) {
+      logger.warn('Failed to load audit fallback events', { error: (err as Error).message });
+    }
   }
 
   return c.json({

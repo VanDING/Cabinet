@@ -46,6 +46,7 @@ export {
   type PipelineStep,
 } from './dispatcher.js';
 export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback, type StreamingCallback } from './agent-loop.js';
+export { TaskTracker, type AgentTask, type TaskStatus } from './task-tracker.js';
 export { createCabinetTools, registerCabinetTools, registerSkillTools, registerMCPTools, type ToolDependencies } from './tools/index.js';
 export { SkillRegistry, getSkillRegistry, setSkillRegistry, type SkillMetadata, type SkillEntry } from './skill-registry.js';
 export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown } from './skill-loader.js';

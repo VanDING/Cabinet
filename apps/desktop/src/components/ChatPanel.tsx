@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import { FileSearchPanel } from './FileSearchPanel';
@@ -112,15 +112,6 @@ export function ChatPanel({
   const availableModels = useAvailableModels();
   const active = activeSession;
   const attachedFiles = active?.attachedFiles ?? [];
-
-  const contextStats = useMemo(() => {
-    const msgCount = active?.messages.length ?? 0;
-    const estimatedChars = active?.messages.reduce((sum, m) => sum + m.content.length, 0) ?? 0;
-    const estimatedTokens = Math.ceil(estimatedChars / 4);
-    const maxTokens = 200_000;
-    const pct = Math.min(100, Math.round((estimatedTokens / maxTokens) * 100));
-    return { msgCount, estimatedTokens, pct };
-  }, [active?.messages]);
 
   const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
   const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
@@ -690,29 +681,6 @@ export function ChatPanel({
           {isProcessing ? <Square size={14} /> : <ArrowUp size={16} />}
         </button>
       </div>
-
-      {/* Persistent context usage status line */}
-      {active && (
-        <div className={`flex h-5 items-center justify-between border-t px-3 ${borderClass} ${tabBgClass}`}>
-          <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
-            <span>Msgs: {contextStats.msgCount}</span>
-            <span>·</span>
-            <span>Ctx: {contextStats.estimatedTokens.toLocaleString()} / 200k</span>
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-              <div
-                className={`h-full rounded-full ${
-                  contextStats.pct > 80 ? 'bg-red-500' : contextStats.pct > 50 ? 'bg-amber-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${contextStats.pct}%` }}
-              />
-            </div>
-            <span>{contextStats.pct}%</span>
-          </div>
-          {isProcessing && (
-            <span className="text-[10px] text-blue-500 dark:text-blue-400">Streaming…</span>
-          )}
-        </div>
-      )}
 
       {/* File search modal */}
       <FileSearchPanel
