@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
+import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
 
 export const decisionsRouter = new Hono();
 
@@ -89,7 +90,7 @@ decisionsRouter.post('/', async (c) => {
         .prepare(
           "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'create', ?, ?, datetime('now'))",
         )
-        .run(decision.id, input.captainId ?? 'captain-1', JSON.stringify({ title: decision.title, level: decision.level }));
+        .run(decision.id, input.captainId ?? DEFAULT_CAPTAIN_ID, JSON.stringify({ title: decision.title, level: decision.level }));
     } catch { /* non-critical */ }
     return c.json({ decision }, 201);
   } catch (e) {
@@ -103,7 +104,7 @@ decisionsRouter.post('/:id/approve', async (c) => {
   try {
     const decision = decisionService.approve(
       c.req.param('id'),
-      body.captainId ?? 'captain-1',
+      body.captainId ?? DEFAULT_CAPTAIN_ID,
       body.chosenOptionId ?? 'approve',
     );
     broadcast('decision_updated', { decisionId: decision.id, status: 'approved' });
@@ -112,7 +113,7 @@ decisionsRouter.post('/:id/approve', async (c) => {
         .prepare(
           "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'approve', ?, ?, datetime('now'))",
         )
-        .run(decision.id, body.captainId ?? 'captain-1', JSON.stringify({ chosenOptionId: decision.chosenOptionId }));
+        .run(decision.id, body.captainId ?? DEFAULT_CAPTAIN_ID, JSON.stringify({ chosenOptionId: decision.chosenOptionId }));
     } catch { /* non-critical */ }
     return c.json({ status: decision.status, chosenOptionId: decision.chosenOptionId, decision });
   } catch (e) {
@@ -131,14 +132,14 @@ decisionsRouter.post('/:id/reject', async (c) => {
     /* body is optional */
   }
   try {
-    const decision = decisionService.reject(c.req.param('id'), body.captainId ?? 'captain-1');
+    const decision = decisionService.reject(c.req.param('id'), body.captainId ?? DEFAULT_CAPTAIN_ID);
     broadcast('decision_updated', { decisionId: decision.id, status: 'rejected' });
     try {
       getServerContext().db
         .prepare(
           "INSERT INTO audit_log (entity_type, entity_id, action, actor, changes, timestamp) VALUES ('decision', ?, 'reject', ?, ?, datetime('now'))",
         )
-        .run(decision.id, body.captainId ?? 'captain-1', JSON.stringify({}));
+        .run(decision.id, body.captainId ?? DEFAULT_CAPTAIN_ID, JSON.stringify({}));
     } catch { /* non-critical */ }
     return c.json({ status: decision.status, decision });
   } catch (e) {
