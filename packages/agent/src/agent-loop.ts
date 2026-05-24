@@ -9,6 +9,7 @@ import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
 import { TaskTracker, type AgentTask } from './task-tracker.js';
+import { ProjectSnapshot } from './project-snapshot.js';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -73,6 +74,8 @@ export interface AgentLoopOptions {
   contextBudget?: number;
   /** Anthropic extended thinking budget in tokens (1024–128000). */
   thinkingBudget?: number;
+  /** Project root directory for snapshot caching (defaults to process.cwd()). */
+  projectRoot?: string;
 }
 
 export interface AgentResult {
@@ -204,13 +207,25 @@ export class AgentLoop {
         memorySessionId: this.options.memorySessionId,
       });
 
+      // ── Project snapshot injection ──
+      let systemPrompt = ctx.systemPrompt;
+      const snapshot = ProjectSnapshot.getCached(this.options.sessionId)
+        ?? (() => {
+          const captured = ProjectSnapshot.capture(this.options.projectRoot ?? process.cwd());
+          ProjectSnapshot.store(this.options.sessionId, captured);
+          return captured;
+        })();
+      if (snapshot && !this.options.systemPrompt) {
+        systemPrompt = `${systemPrompt}\n\n## Project Structure\n${snapshot.summary}\n\nKey directories:\n${snapshot.tree.slice(0, 20).join('\n')}`;
+      }
+
       // Combine system context messages with conversation messages
       const allMessages = [...ctx.messages, ...messages];
 
       // ── Context Utilization Check (before LLM call) ──
       if (this.contextMonitor) {
         const breakdown: ContextBreakdown = {
-          systemPrompt: this.contextMonitor.estimateTokens(ctx.systemPrompt),
+          systemPrompt: this.contextMonitor.estimateTokens(systemPrompt),
           messages: this.contextMonitor.estimateTokens(
             allMessages.map((m) => m.content).join('\n'),
           ),
@@ -242,8 +257,20 @@ export class AgentLoop {
               `[ContextHandoff] Handoff #${result.state.handoffId} performed. ` +
                 `Resetting context from ${snap.estimatedTokens.toLocaleString()} tokens.`,
             );
-            // Reset messages to just the handoff message
-            messages = [{ role: 'user', content: result.handoffMessage }];
+            // Soft handoff: preserve last 2 turns (up to 4 messages) and compress middle
+            const keepRecent = 4;
+            const recentMessages = messages.slice(-keepRecent);
+            const middleMessages = messages.slice(0, -keepRecent);
+            const middleSummary = middleMessages.length > 0
+              ? `${middleMessages.length} prior messages summarized. Latest: ${middleMessages[middleMessages.length - 1]?.content.slice(0, 200) ?? ''}`
+              : '';
+            messages = [
+              { role: 'user', content: result.handoffMessage },
+              ...(middleMessages.length > 0
+                ? [{ role: 'assistant' as const, content: `[context_compact] ${middleSummary}` }]
+                : []),
+              ...recentMessages,
+            ];
             handoff.reset();
             // Skip LLM call this iteration — restart with fresh context
             continue;
@@ -258,8 +285,9 @@ export class AgentLoop {
           () =>
             this.gateway.generateText({
               model: this.options.model ?? 'claude-sonnet-4-6',
-              systemPrompt: ctx.systemPrompt,
+              systemPrompt: systemPrompt,
               messages: allMessages,
+              cacheSystemPrompt: true,
               ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
               ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
             }),
@@ -533,6 +561,13 @@ export class AgentLoop {
       memorySessionId: this.options.memorySessionId,
     });
 
+    // Inject project snapshot into system prompt for streaming too
+    let streamingSystemPrompt = ctx.systemPrompt;
+    const snap = ProjectSnapshot.getCached(this.options.sessionId);
+    if (snap && !this.options.systemPrompt) {
+      streamingSystemPrompt = `${streamingSystemPrompt}\n\n## Project Structure\n${snap.summary}\n\nKey directories:\n${snap.tree.slice(0, 20).join('\n')}`;
+    }
+
     const messages: { role: 'user' | 'assistant'; content: string }[] = [
       ...ctx.messages.map((m) => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: userMessage },
@@ -574,7 +609,7 @@ export class AgentLoop {
     try {
       for await (const chunk of this.gateway.streamText({
         model: this.options.model ?? 'claude-sonnet-4-6',
-        systemPrompt: ctx.systemPrompt,
+        systemPrompt: streamingSystemPrompt,
         messages,
         tools: streamingTools,
         maxSteps: this.options.maxSteps ?? 50,

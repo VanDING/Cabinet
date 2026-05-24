@@ -65,8 +65,21 @@ export class ContextBuilder {
     const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
     const rulesSummary = this.rulesLoader?.summarize() ?? '';
 
-    const systemPrompt =
+    let systemPrompt =
       options.systemPrompt ?? this.buildDefaultSystemPrompt(projectContext, preferences, rules);
+
+    // Retrieve and inject RAG results at the end of system prompt (fixed position)
+    if (options.taskDescription) {
+      try {
+        const ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
+        if (ragResults.length > 0) {
+          const trimmed = ragResults.slice(0, 3).map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
+          systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
+        }
+      } catch {
+        // RAG is best-effort; do not fail context build on search errors
+      }
+    }
 
     return {
       systemPrompt,
@@ -94,21 +107,29 @@ export class ContextBuilder {
     }
   }
 
-  private buildDefaultSystemPrompt(
+  /** Build Tier 1: static role instructions (stable across all calls). */
+  private buildTier1Prompt(): string {
+    return [
+      'You are a Cabinet AI assistant (Secretary).',
+      'You have access to file system tools (read_file, write_file, edit_file, apply_patch, move_file, copy_file, make_directory, file_info, list_directory, glob, grep, delete_file), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
+      'For general questions and conversation, answer directly without file system exploration.',
+      'Only explore the codebase when: (1) the user explicitly asks for code analysis, (2) you need to read specific files to fulfill a direct request, or (3) you need to verify facts about the project structure.',
+      'When you do explore, use parallel tool calls to read multiple files at once.',
+      'Use conversation history to avoid repeating the same tool calls — if you already retrieved context in a previous turn, reuse that knowledge.',
+    ].join('\n');
+  }
+
+  /** Build Tier 2: session-stable context (project, preferences, rules). */
+  private buildTier2Prompt(
     projectContext: string,
     preferences: Record<string, unknown>,
     rules: { path: string; content: string }[],
   ): string {
     const parts: string[] = [
-      'You are a Cabinet AI assistant (Secretary).',
-      'You have access to file system tools (read_file, write_file, edit_file, apply_patch, move_file, copy_file, make_directory, file_info, list_directory, glob, grep, delete_file), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
-      'When a project is active, proactively use list_directory and read_file to understand the codebase before answering.',
-      'Use conversation history to avoid repeating the same tool calls — if you already retrieved context in a previous turn, reuse that knowledge.',
       `Current project context: ${projectContext}`,
-      `Captain preferences: ${JSON.stringify(preferences)}`,
+      `Captain preferences: ${this.stableStringify(preferences)}`,
     ];
 
-    // Inject always-apply rules (only the always-apply ones are passed in)
     if (rules.length > 0) {
       parts.push('\n## Project Rules\n');
       for (const rule of rules) {
@@ -116,7 +137,44 @@ export class ContextBuilder {
       }
     }
 
-    parts.push('Help the Captain make decisions. Present options clearly with impact analysis.');
     return parts.join('\n');
+  }
+
+  /** Deterministic JSON stringify to avoid cache jitter from key ordering. */
+  private stableStringify(obj: Record<string, unknown>): string {
+    const sortedKeys = Object.keys(obj).sort();
+    const sorted: Record<string, unknown> = {};
+    for (const key of sortedKeys) {
+      const value = obj[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        sorted[key] = JSON.parse(this.stableStringify(value as Record<string, unknown>));
+      } else {
+        sorted[key] = value;
+      }
+    }
+    return JSON.stringify(sorted);
+  }
+
+  /**
+   * Build the cached portion of the system prompt (Tier 1 + Tier 2).
+   * This is the stable prefix that should be marked with cache_control.
+   */
+  buildCachedSystemPrompt(
+    projectContext: string,
+    preferences: Record<string, unknown>,
+    rules: { path: string; content: string }[],
+  ): string {
+    const tier1 = this.buildTier1Prompt();
+    const tier2 = this.buildTier2Prompt(projectContext, preferences, rules);
+    return [tier1, tier2].join('\n\n');
+  }
+
+  private buildDefaultSystemPrompt(
+    projectContext: string,
+    preferences: Record<string, unknown>,
+    rules: { path: string; content: string }[],
+  ): string {
+    const cached = this.buildCachedSystemPrompt(projectContext, preferences, rules);
+    return [cached, 'Help the Captain make decisions. Present options clearly with impact analysis.'].join('\n\n');
   }
 }

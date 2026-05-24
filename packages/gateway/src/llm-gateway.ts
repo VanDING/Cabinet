@@ -7,6 +7,10 @@ export interface LLMCallOptions {
   temperature?: number;
   /** Anthropic extended thinking budget in tokens (1024–128000). */
   thinkingBudget?: number;
+  /** Cache the system prompt (Anthropic cache_control). Reduces token cost for multi-step loops. */
+  cacheSystemPrompt?: boolean;
+  /** Cache the first N messages as a prefix (Anthropic cache_control on message boundary). */
+  cachePrefixMessages?: number;
 }
 
 export interface ToolDefinition {

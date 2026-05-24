@@ -154,74 +154,31 @@ export class ContextHandoff {
   // ── Private ────────────────────────────────────────────────
 
   private formatHandoff(state: HandoffState): string {
-    const lines: string[] = [
-      `[CONTEXT HANDOFF #${state.handoffId}]`,
-      `Context was at ${(state.contextUtilization * 100).toFixed(0)}% utilization and has been reset.`,
-      '',
-      `## Original Request`,
-      state.originalRequest,
-      '',
+    const parts: string[] = [
+      `[HANDOFF #${state.handoffId}] Context at ${(state.contextUtilization * 100).toFixed(0)}%.`,
+      `Request: ${state.originalRequest.slice(0, 120)}`,
     ];
 
     if (state.completedSteps.length > 0) {
-      lines.push('## Completed Steps');
-      for (const step of state.completedSteps) {
-        lines.push(`- [x] ${step}`);
-      }
-      lines.push('');
+      parts.push(`Done: ${state.completedSteps.slice(-3).join('; ')}`);
     }
-
     if (state.remainingSteps.length > 0) {
-      lines.push('## Remaining Steps');
-      for (const step of state.remainingSteps) {
-        lines.push(`- [ ] ${step}`);
-      }
-      lines.push('');
+      parts.push(`Todo: ${state.remainingSteps.slice(0, 3).join('; ')}`);
     }
-
     if (state.decisions.length > 0) {
-      lines.push('## Key Decisions');
-      for (const d of state.decisions) {
-        lines.push(`- **${d.decision}**: ${d.rationale}`);
-      }
-      lines.push('');
+      parts.push(`Decisions: ${state.decisions.slice(-2).map((d) => `${d.decision}→${d.rationale.slice(0, 40)}`).join('; ')}`);
     }
-
     if (state.learnedFacts.length > 0) {
-      lines.push('## Learned Facts');
-      for (const fact of state.learnedFacts) {
-        lines.push(`- ${fact}`);
-      }
-      lines.push('');
+      parts.push(`Facts: ${state.learnedFacts.slice(-3).join('; ')}`);
     }
-
     if (state.openQuestions.length > 0) {
-      lines.push('## Open Questions');
-      for (const q of state.openQuestions) {
-        lines.push(`- ${q}`);
-      }
-      lines.push('');
+      parts.push(`Open: ${state.openQuestions.slice(0, 2).join('; ')}`);
     }
 
-    if (state.lastToolResults.length > 0) {
-      lines.push('## Recent Tool Results (compressed)');
-      for (const result of state.lastToolResults) {
-        // Truncate tool results to 120 chars each
-        lines.push(`- ${result.slice(0, 120)}`);
-      }
-      lines.push('');
-    }
+    parts.push('Resume — do NOT redo completed steps.');
 
-    lines.push('## Continuation Instructions');
-    lines.push(
-      '1. Read the above context carefully — this is your state from the previous session.',
-    );
-    lines.push('2. Pick up from where you left off. Do NOT redo completed steps.');
-    lines.push('3. Answer any open questions before starting new work.');
-    lines.push('4. Update the progress tracker as you complete each remaining step.');
-    lines.push('');
-    lines.push(`Progress: ${state.progressCompact}`);
-
-    return lines.join('\n');
+    let text = parts.join(' | ');
+    if (text.length > 1000) text = text.slice(0, 997) + '...';
+    return text;
   }
 }
