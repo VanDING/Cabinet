@@ -1930,6 +1930,14 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   const registry = getServerContext().agentRegistry;
   intentParser.setAgentDescriptions(registry.describeForRouting());
   intentParser.setValidAgentTypes(registry.getValidAgentTypes());
+  // Register custom agents for fallback routing by name/description match
+  const customAgents = new Map<string, string>();
+  for (const role of registry.list()) {
+    if (role.type === 'custom') {
+      customAgents.set(role.name, role.description);
+    }
+  }
+  intentParser.setCustomAgents(customAgents);
   // Inject captain preferences for personalized routing
   try {
     const captainPrefs = ctx.entity.getPreferences(captainId);

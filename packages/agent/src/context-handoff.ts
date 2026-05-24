@@ -19,6 +19,12 @@ export interface ProgressInfo {
 
 // ── Types ──────────────────────────────────────────────────────
 
+export interface ToolResultRecord {
+  name: string;
+  summary: string;
+  detailRef?: string;
+}
+
 export interface HandoffState {
   /** Unique handoff ID (increments each reset). */
   handoffId: number;
@@ -38,8 +44,10 @@ export interface HandoffState {
   openQuestions: string[];
   /** Current progress snapshot. */
   progressCompact: string;
-  /** The last tool call results (compressed). */
-  lastToolResults: string[];
+  /** The last tool call results (structured, up to 15). */
+  lastToolResults: ToolResultRecord[];
+  /** Full detail store for tool results keyed by handoffId. */
+  toolResultDetails: Record<string, string>;
   /** Context utilization at time of handoff. */
   contextUtilization: number;
 }
@@ -62,7 +70,8 @@ export class ContextHandoff {
   private decisions: { decision: string; rationale: string }[] = [];
   private learnedFacts: string[] = [];
   private openQuestions: string[] = [];
-  private lastToolResults: string[] = [];
+  private lastToolResults: ToolResultRecord[] = [];
+  private toolResultDetails: Record<string, string> = {};
   private originalRequest: string;
 
   constructor(originalRequest: string) {
@@ -99,11 +108,24 @@ export class ContextHandoff {
     this.openQuestions.push(question);
   }
 
-  /** Record a tool result (compressed — store only the last 5). */
+  /** Record a tool result (structured — store up to 15, with summary + detail ref). */
   recordToolResult(result: string): void {
-    this.lastToolResults.push(result);
-    if (this.lastToolResults.length > 5) {
-      this.lastToolResults.shift();
+    const handoffId = this.handoffCount;
+    const index = this.lastToolResults.length;
+    const detailKey = `tool_results:${handoffId}:${index}`;
+
+    this.lastToolResults.push({
+      name: result.split('(')[0] ?? 'tool',
+      summary: result.slice(0, 200),
+      detailRef: detailKey,
+    });
+    this.toolResultDetails[detailKey] = result;
+
+    if (this.lastToolResults.length > 15) {
+      const removed = this.lastToolResults.shift();
+      if (removed?.detailRef) {
+        delete this.toolResultDetails[removed.detailRef];
+      }
     }
   }
 
@@ -135,6 +157,7 @@ export class ContextHandoff {
       openQuestions: [...this.openQuestions],
       progressCompact,
       lastToolResults: [...this.lastToolResults],
+      toolResultDetails: { ...this.toolResultDetails },
       contextUtilization: snapshot.utilization,
     };
 
@@ -148,37 +171,54 @@ export class ContextHandoff {
   /** Reset tracking state (call after a successful handoff). */
   reset(): void {
     this.lastToolResults = [];
+    this.toolResultDetails = {};
     this.openQuestions = [];
   }
 
   // ── Private ────────────────────────────────────────────────
 
   private formatHandoff(state: HandoffState): string {
-    const parts: string[] = [
+    // Markdown format for human readability
+    const mdParts: string[] = [
       `[HANDOFF #${state.handoffId}] Context at ${(state.contextUtilization * 100).toFixed(0)}%.`,
       `Request: ${state.originalRequest.slice(0, 120)}`,
     ];
 
     if (state.completedSteps.length > 0) {
-      parts.push(`Done: ${state.completedSteps.slice(-3).join('; ')}`);
+      mdParts.push(`Done: ${state.completedSteps.slice(-3).join('; ')}`);
     }
     if (state.remainingSteps.length > 0) {
-      parts.push(`Todo: ${state.remainingSteps.slice(0, 3).join('; ')}`);
+      mdParts.push(`Todo: ${state.remainingSteps.slice(0, 3).join('; ')}`);
     }
     if (state.decisions.length > 0) {
-      parts.push(`Decisions: ${state.decisions.slice(-2).map((d) => `${d.decision}→${d.rationale.slice(0, 40)}`).join('; ')}`);
+      mdParts.push(`Decisions: ${state.decisions.slice(-2).map((d) => `${d.decision}→${d.rationale.slice(0, 40)}`).join('; ')}`);
     }
     if (state.learnedFacts.length > 0) {
-      parts.push(`Facts: ${state.learnedFacts.slice(-3).join('; ')}`);
+      mdParts.push(`Facts: ${state.learnedFacts.slice(-3).join('; ')}`);
     }
     if (state.openQuestions.length > 0) {
-      parts.push(`Open: ${state.openQuestions.slice(0, 2).join('; ')}`);
+      mdParts.push(`Open: ${state.openQuestions.slice(0, 2).join('; ')}`);
+    }
+    if (state.lastToolResults.length > 0) {
+      mdParts.push(`Tools: ${state.lastToolResults.slice(-3).map((t) => `${t.name}(${t.summary.slice(0, 40)})`).join('; ')}`);
     }
 
-    parts.push('Resume — do NOT redo completed steps.');
+    mdParts.push('Resume — do NOT redo completed steps.');
 
-    let text = parts.join(' | ');
+    let text = mdParts.join(' | ');
     if (text.length > 1000) text = text.slice(0, 997) + '...';
-    return text;
+
+    // Append compact JSON for structured parsing
+    const jsonBlock = `\n\n<!-- handoff-json\n${JSON.stringify({
+      handoffId: state.handoffId,
+      completedSteps: state.completedSteps.slice(-5),
+      remainingSteps: state.remainingSteps.slice(0, 5),
+      decisions: state.decisions.slice(-3),
+      learnedFacts: state.learnedFacts.slice(-5),
+      openQuestions: state.openQuestions.slice(0, 3),
+      toolRefs: state.lastToolResults.slice(-5).map((t) => ({ name: t.name, ref: t.detailRef })),
+    })}\n-->`;
+
+    return text + jsonBlock;
   }
 }

@@ -18,6 +18,11 @@ export const MessageType = {
   WorkflowStarted: 'workflow_started',
   WorkflowStatusChanged: 'workflow_status_changed',
   WorkflowCompleted: 'workflow_completed',
+  // Agent间通信
+  AgentTaskAssigned: 'agent_task_assigned',
+  AgentTaskCompleted: 'agent_task_completed',
+  AgentContextRequested: 'agent_context_requested',
+  AgentContextShared: 'agent_context_shared',
   // 秘书
   SecretaryMessage: 'secretary_message',
   GreetingGenerated: 'greeting_generated',
@@ -137,6 +142,36 @@ export interface MeetingCompleted {
   decisionId?: string;
 }
 
+export interface AgentTaskAssigned {
+  agentId: string;
+  taskId: string;
+  request: string;
+  sessionId: string;
+  projectId?: string;
+}
+
+export interface AgentTaskCompleted {
+  agentId: string;
+  taskId: string;
+  result: string;
+  structuredOutput?: Record<string, unknown>;
+  sessionId: string;
+}
+
+export interface AgentContextRequested {
+  agentId: string;
+  requestorId: string;
+  contextKeys: string[];
+  sessionId: string;
+}
+
+export interface AgentContextShared {
+  agentId: string;
+  recipientId: string;
+  context: Record<string, unknown>;
+  sessionId: string;
+}
+
 // ── Payload Map (MessageType → Payload) ──
 
 export interface PayloadMap {
@@ -151,6 +186,10 @@ export interface PayloadMap {
   [MessageType.WorkflowStarted]: WorkflowStarted;
   [MessageType.WorkflowStatusChanged]: WorkflowStatusChanged;
   [MessageType.WorkflowCompleted]: WorkflowCompleted;
+  [MessageType.AgentTaskAssigned]: AgentTaskAssigned;
+  [MessageType.AgentTaskCompleted]: AgentTaskCompleted;
+  [MessageType.AgentContextRequested]: AgentContextRequested;
+  [MessageType.AgentContextShared]: AgentContextShared;
   [MessageType.SecretaryMessage]: SecretaryMessage;
   [MessageType.GreetingGenerated]: GreetingGenerated;
   [MessageType.BudgetAlert]: BudgetAlert;

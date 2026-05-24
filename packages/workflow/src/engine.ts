@@ -267,6 +267,8 @@ export class WorkflowEngine {
         /* cleanup failure is non-fatal */
       }
       run._agentLoop = null;
+      // Full save at segment boundary for durability
+      this.saveRun(run);
     }
   }
 
@@ -354,7 +356,7 @@ export class WorkflowEngine {
           // Create new segment
           if (this.handlers.createAgentLoop) {
             const handle = await this.handlers.createAgentLoop(agentId, run.runId, {
-              persistent: node.agentConfig?.persistent,
+              persistent: node.agentConfig?.persistent ?? true,
               segmentId: node.agentConfig?.segmentId,
             });
             run._agentLoop = { agentId, handle };
@@ -419,16 +421,16 @@ export class WorkflowEngine {
         const aggregation = (d.aggregation as string) ?? 'all';
 
         if (aggregation === 'first') {
-          // Sequential first-completed to avoid orphaned executions mutating shared run state
-          for (const id of children) {
+          // True concurrent first-completed using Promise.race
+          const promises = children.map(async (id) => {
             await this.executeNode(id, nodeMap, graph, run, visited);
             const childStep = run.steps.find((s) => s.nodeId === id);
-            if (childStep?.output) {
-              output = childStep.output;
-              break;
-            }
-          }
-          if (!output) output = 'No child completed';
+            return { id, output: childStep?.output ?? '' };
+          });
+          const winner = await Promise.race(promises);
+          output = winner.output || 'No child completed';
+          // Allow remaining promises to settle for state consistency
+          await Promise.allSettled(promises);
         } else {
           const childResults = await Promise.allSettled(
             children.map((id) => this.executeNode(id, nodeMap, graph, run, visited)),
@@ -506,10 +508,13 @@ export class WorkflowEngine {
     run.steps.push({ nodeId, type: node.type, output });
     run.results.set(nodeId, output);
     run.currentNodeId = nodeId;
-    this.saveRun(run);
+    this.appendStepAndResult(run, nodeId, node.type, output);
 
-    // If run was paused (humanApproval), stop execution
-    if (run.status === 'awaiting_approval') return;
+    // If run was paused (humanApproval), do a full save for durability
+    if (run.status === 'awaiting_approval') {
+      this.saveRun(run);
+      return;
+    }
 
     // Execute downstream nodes
     const children = graph.get(nodeId) ?? [];
@@ -573,6 +578,16 @@ export class WorkflowEngine {
 
   // ── Persistence ────────────────────────────────────────────
 
+  private appendStepAndResult(run: WorkflowRun, nodeId: string, nodeType: string, output: string): void {
+    if (!this.repo) return;
+    try {
+      this.repo.appendStep(run.runId, nodeId, nodeType, output);
+      this.repo.appendResult(run.runId, nodeId, output);
+    } catch (err) {
+      console.error(`[WorkflowEngine] Failed to append step ${nodeId} for run ${run.runId}:`, (err as Error).message);
+    }
+  }
+
   private saveRun(run: WorkflowRun): void {
     if (!this.repo) return;
     try {
@@ -599,13 +614,22 @@ export class WorkflowEngine {
       const row = this.repo.findRunById(runId);
       if (!row) return null;
       const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
+      // Rebuild steps and results from incremental tables if available
+      const incrementalSteps = this.repo.findStepsByRunId(runId);
+      const incrementalResults = this.repo.findResultsByRunId(runId);
+      const steps = incrementalSteps.length > 0
+        ? incrementalSteps.map((s) => ({ nodeId: s.nodeId, type: s.type as WorkflowNodeType, output: s.output }))
+        : JSON.parse(row.steps ?? '[]');
+      for (const [key, value] of Object.entries(incrementalResults)) {
+        results.set(key, value);
+      }
       return {
         runId: row.run_id,
         workflowId: row.workflow_id,
         status: row.status as WorkflowRunStatus,
         currentNodeId: row.current_node_id ?? '',
         results,
-        steps: JSON.parse(row.steps ?? '[]'),
+        steps,
         startedAt: new Date(row.started_at),
       };
     } catch {
