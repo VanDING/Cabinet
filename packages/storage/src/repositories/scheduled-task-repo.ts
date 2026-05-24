@@ -22,13 +22,6 @@ export class ScheduledTaskRepository {
     return rows.map((r) => this.rowToTask(r));
   }
 
-  findDue(now: string): ScheduledTaskRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM scheduled_tasks WHERE enabled = 1 AND next_run_at <= ?')
-      .all(now) as Record<string, unknown>[];
-    return rows.map((r) => this.rowToTask(r));
-  }
-
   insert(task: ScheduledTaskRow): void {
     this.db
       .prepare(

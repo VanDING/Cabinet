@@ -1,5 +1,6 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
 import { CronExpressionParser } from 'cron-parser';
+import cron from 'node-cron';
 import type { ScheduledTaskRepository, DecisionRepository } from '@cabinet/storage';
 
 export interface SchedulerLogger {
@@ -38,16 +39,14 @@ export class TaskScheduler {
   private scheduledTaskRepo: ScheduledTaskRepository;
   private decisionRepo: DecisionRepository;
   private logger: SchedulerLogger;
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private autoArchiveTimer: ReturnType<typeof setInterval> | null = null;
   private executor: TaskExecutor | null = null;
-  private pollIntervalMs: number;
+  private jobs = new Map<string, ReturnType<typeof cron.schedule>>();
+  private autoArchiveJob: ReturnType<typeof cron.schedule> | null = null;
 
-  constructor(scheduledTaskRepo: ScheduledTaskRepository, decisionRepo: DecisionRepository, logger: SchedulerLogger, pollIntervalMs = 30000) {
+  constructor(scheduledTaskRepo: ScheduledTaskRepository, decisionRepo: DecisionRepository, logger: SchedulerLogger, _pollIntervalMs = 30000) {
     this.scheduledTaskRepo = scheduledTaskRepo;
     this.decisionRepo = decisionRepo;
     this.logger = logger;
-    this.pollIntervalMs = pollIntervalMs;
   }
 
   setExecutor(executor: TaskExecutor): void {
@@ -70,6 +69,12 @@ export class TaskScheduler {
       last_run_at: null,
       next_run_at: nextRun,
     });
+
+    const effectiveCron = this.validateOrFallback(cronExpression);
+    const job = cron.schedule(effectiveCron, () => this.executeTask(id));
+    job.start();
+    this.jobs.set(id, job);
+
     this.logger.info('Scheduled task created', { id, name, cron: cronExpression });
     return { id };
   }
@@ -79,6 +84,12 @@ export class TaskScheduler {
   }
 
   cancel(id: string): void {
+    const job = this.jobs.get(id);
+    if (job) {
+      job.stop();
+      job.destroy();
+      this.jobs.delete(id);
+    }
     this.scheduledTaskRepo.disable(id);
     this.logger.info('Scheduled task cancelled', { id });
   }
@@ -86,43 +97,57 @@ export class TaskScheduler {
   // ── Lifecycle ──
 
   start(): void {
-    this.startAutoArchive();
-    this.startPolling();
-    this.logger.info('TaskScheduler started', { pollIntervalMs: this.pollIntervalMs });
+    // Reload all enabled tasks from SQLite and register node-cron jobs
+    const tasks = this.scheduledTaskRepo.findAll();
+    for (const task of tasks) {
+      const effectiveCron = this.validateOrFallback(task.cron_expression);
+      const job = cron.schedule(effectiveCron, () => this.executeTask(task.id));
+      job.start();
+      this.jobs.set(task.id, job);
+    }
+
+    this.autoArchiveJob = cron.schedule('0 * * * *', () => this.runAutoArchive());
+    this.autoArchiveJob.start();
+
+    this.logger.info('TaskScheduler started', { tasksLoaded: tasks.length });
   }
 
   stop(): void {
-    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-    if (this.autoArchiveTimer) { clearInterval(this.autoArchiveTimer); this.autoArchiveTimer = null; }
+    for (const [id, job] of this.jobs) {
+      job.stop();
+      job.destroy();
+    }
+    this.jobs.clear();
+
+    if (this.autoArchiveJob) {
+      this.autoArchiveJob.stop();
+      this.autoArchiveJob.destroy();
+      this.autoArchiveJob = null;
+    }
+
     this.logger.info('TaskScheduler stopped');
   }
 
   // ── Internal ──
 
-  private startPolling(): void {
-    this.pollTimer = setInterval(() => this.poll(), this.pollIntervalMs);
-  }
+  private async executeTask(taskId: string): Promise<void> {
+    const rows = this.scheduledTaskRepo.findAll();
+    const row = rows.find((r) => r.id === taskId);
+    if (!row) return;
+    const task = rowToScheduledTask(row);
 
-  private async poll(): Promise<void> {
-    try {
-      const now = new Date().toISOString();
-      const rows = this.scheduledTaskRepo.findDue(now);
-
-      for (const row of rows) {
-        await this.executeTask(rowToScheduledTask(row));
-      }
-    } catch (err) {
-      this.logger.error('Scheduler poll error', { error: (err as Error).message });
-    }
-  }
-
-  private async executeTask(task: ScheduledTask): Promise<void> {
     try {
       const now = new Date().toISOString();
       this.scheduledTaskRepo.updateLastRun(task.id, now);
 
       if (!task.recurring) {
         this.scheduledTaskRepo.disable(task.id);
+        const job = this.jobs.get(task.id);
+        if (job) {
+          job.stop();
+          job.destroy();
+          this.jobs.delete(task.id);
+        }
       } else {
         const next = this.nextCronTime(task.cronExpression);
         this.scheduledTaskRepo.updateRunTimings(task.id, now, next);
@@ -136,16 +161,19 @@ export class TaskScheduler {
     }
   }
 
-  private startAutoArchive(): void {
-    const check = () => {
-      try {
-        this.decisionRepo.expireOlderThan(DECISION_EXPIRY_HOURS);
-        this.decisionRepo.archiveExpired();
-      } catch (err) {
-        this.logger.error('Auto-archive error', { error: (err as Error).message });
-      }
-    };
-    this.autoArchiveTimer = setInterval(check, 3600000);
+  private runAutoArchive(): void {
+    try {
+      this.decisionRepo.expireOlderThan(DECISION_EXPIRY_HOURS);
+      this.decisionRepo.archiveExpired();
+    } catch (err) {
+      this.logger.error('Auto-archive error', { error: (err as Error).message });
+    }
+  }
+
+  private validateOrFallback(cronExpression: string): string {
+    if (cron.validate(cronExpression)) return cronExpression;
+    this.logger.warn('Invalid cron expression, falling back to every minute', { cron: cronExpression });
+    return '* * * * *';
   }
 
   private nextCronTime(cronExpression: string): string {
@@ -162,9 +190,9 @@ export function startAutoArchive(
   scheduledTaskRepo: ScheduledTaskRepository,
   decisionRepo: DecisionRepository,
   logger: SchedulerLogger,
-  checkIntervalMs: number = 3600000,
+  _checkIntervalMs: number = 3600000,
 ): () => void {
-  const scheduler = new TaskScheduler(scheduledTaskRepo, decisionRepo, logger, checkIntervalMs);
+  const scheduler = new TaskScheduler(scheduledTaskRepo, decisionRepo, logger);
   scheduler.start();
   return () => scheduler.stop();
 }
