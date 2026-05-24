@@ -176,47 +176,128 @@ export class LongTermMemory {
   }
 
   /**
-   * Hybrid search: semantic (if embedding provided) + text.
+   * Hybrid search: RRF fusion of semantic + BM25 text search.
+   * Results are ranked by RRF score and decay-weighted relevance.
    */
   async search(query: string, limit = 5, queryEmbedding?: number[]): Promise<LongTermEntry[]> {
-    const semanticIds = new Set<string>();
-    const results: LongTermEntry[] = [];
+    const semanticResults: Array<{ entry: LongTermEntry; rank: number; score: number }> = [];
+    const textResults: Array<{ entry: LongTermEntry; rank: number }> = [];
 
     if (queryEmbedding) {
-      const semantic = await this.semanticSearch(queryEmbedding, limit);
-      for (const r of semantic) {
-        semanticIds.add(r.id);
-        results.push({
-          id: r.id,
-          content: r.content,
-          embedding: r.embedding,
-          metadata: r.metadata,
-          timestamp: r.timestamp,
+      const semantic = await this.semanticSearch(queryEmbedding, limit * 2);
+      for (let i = 0; i < semantic.length; i++) {
+        const r = semantic[i]!;
+        semanticResults.push({
+          entry: {
+            id: r.id,
+            content: r.content,
+            embedding: r.embedding,
+            metadata: r.metadata,
+            timestamp: r.timestamp,
+          },
+          rank: i + 1,
+          score: r.score,
         });
       }
     }
 
-    const textLimit = limit - results.length;
-    if (textLimit > 0) {
-      const rows = this.repo.searchByText(query, limit + 5);
-      for (const r of rows) {
-        if (results.length >= limit) break;
-        if (!semanticIds.has(r.id)) {
-          const metadata = JSON.parse(r.metadata ?? '{}') as Record<string, unknown>;
-          const status = metadata.status as string | undefined;
-          if (status === 'expired' || status === 'archived') continue;
-          results.push({
-            id: r.id,
-            content: r.content,
-            embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
-            metadata,
-            timestamp: new Date(r.timestamp),
-          });
-        }
+    // BM25 text search via FTS5
+    const textRows = this.repo.searchByBM25(query, limit * 2);
+    for (let i = 0; i < textRows.length; i++) {
+      const r = textRows[i]!;
+      const metadata = JSON.parse(r.metadata ?? '{}') as Record<string, unknown>;
+      const status = metadata.status as string | undefined;
+      if (status === 'expired' || status === 'archived') continue;
+      textResults.push({
+        entry: {
+          id: r.id,
+          content: r.content,
+          embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
+          metadata,
+          timestamp: new Date(r.timestamp),
+        },
+        rank: i + 1,
+      });
+    }
+
+    // RRF fusion (k=60)
+    const k = 60;
+    const rrfScores = new Map<string, { entry: LongTermEntry; score: number }>();
+
+    for (const s of semanticResults) {
+      const decayScore = this.computeDecayScore(s.entry);
+      const rrf = (1 / (k + s.rank)) * decayScore;
+      rrfScores.set(s.entry.id, { entry: s.entry, score: rrf });
+    }
+
+    for (const t of textResults) {
+      const decayScore = this.computeDecayScore(t.entry);
+      const rrf = (1 / (k + t.rank)) * decayScore;
+      const existing = rrfScores.get(t.entry.id);
+      if (existing) {
+        existing.score += rrf;
+      } else {
+        rrfScores.set(t.entry.id, { entry: t.entry, score: rrf });
       }
     }
 
-    return results;
+    const fused = [...rrfScores.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((v) => v.entry);
+
+    // Async accessCount update (best-effort)
+    for (const entry of fused) {
+      this.incrementAccessCount(entry.id).catch(() => { /* best-effort */ });
+    }
+
+    return fused;
+  }
+
+  private computeDecayScore(entry: LongTermEntry): number {
+    try {
+      const { MemoryDecayService } = require('./memory-decay.js') as typeof import('./memory-decay.js');
+      return MemoryDecayService.score(entry);
+    } catch {
+      return 1;
+    }
+  }
+
+  private async incrementAccessCount(id: string): Promise<void> {
+    try {
+      const rows = this.repo.findByIds([id]);
+      if (rows.length === 0) return;
+      const meta = JSON.parse(rows[0]!.metadata ?? '{}') as Record<string, unknown>;
+      meta.accessCount = ((meta.accessCount as number) ?? 0) + 1;
+      this.repo.updateMetadata(id, JSON.stringify(meta));
+    } catch {
+      // best-effort
+    }
+  }
+
+  /** Update memory metadata (e.g., mark as outdated). */
+  async updateMemory(id: string, updates: Partial<{ status: string; importance: number; confidence: number }>): Promise<boolean> {
+    try {
+      const rows = this.repo.findByIds([id]);
+      if (rows.length === 0) return false;
+      const meta = JSON.parse(rows[0]!.metadata ?? '{}') as Record<string, unknown>;
+      if (updates.status !== undefined) meta.status = updates.status;
+      if (updates.importance !== undefined) meta.importance = updates.importance;
+      if (updates.confidence !== undefined) meta.confidence = updates.confidence;
+      this.repo.updateMetadata(id, JSON.stringify(meta));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Synchronous metadata update (for decay service internal use). */
+  _setMetadataSync(id: string, metadata: Record<string, unknown>): void {
+    try {
+      this.repo.updateMetadata(id, JSON.stringify(metadata));
+    } catch {
+      // best-effort
+    }
   }
 
   /**

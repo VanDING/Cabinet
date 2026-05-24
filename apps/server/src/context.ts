@@ -1587,6 +1587,7 @@ export function getServerContext(): ServerContext {
     clearInterval(autoAdjustTimer);
     clearInterval(sessionCleanupTimer);
     clearInterval(subconsciousTimer);
+    clearInterval(memoryMaintenanceTimer);
     stopApprovalPolling();
     taskScheduler.stop();
     try {
@@ -1605,6 +1606,29 @@ export function getServerContext(): ServerContext {
   // Task scheduler
   const taskScheduler = new TaskScheduler(new ScheduledTaskRepository(db), decisionRepo, logger);
   taskScheduler.start();
+
+  // Memory maintenance: decay cycle every hour, index rebuild weekly on Sunday 3 AM
+  const memoryMaintenanceTimer = setInterval(async () => {
+    try {
+      const result = await memoryDecay.runDecayCycle();
+      if (result.expired > 0 || result.archived > 0) {
+        logger.info('Memory decay cycle completed', { expired: result.expired, archived: result.archived, superseded: result.superseded });
+      }
+    } catch (err) {
+      logger.error('Memory decay cycle failed', { error: (err as Error).message });
+    }
+    // Weekly rebuild check (Sunday ~3:00 AM local)
+    const now = new Date();
+    if (now.getDay() === 0 && now.getHours() === 3 && now.getMinutes() < 5) {
+      try {
+        logger.info('Starting weekly long-term memory index rebuild');
+        await longTerm.rebuildIndex();
+        logger.info('Weekly long-term memory index rebuild completed');
+      } catch (err) {
+        logger.error('Weekly index rebuild failed', { error: (err as Error).message });
+      }
+    }
+  }, 3600000); // every hour
 
   // Wire TaskExecutor so scheduled tasks actually execute
   taskScheduler.setExecutor(async (task) => {

@@ -35,6 +35,13 @@ export interface ProviderConfig {
   baichuan?: ProviderEntry;
 }
 
+export interface EmbeddingConfig {
+  /** Default embedding model (provider/model or just model name). Defaults to text-embedding-3-small. */
+  model?: string;
+  /** Embedding dimension. Defaults to 1536. */
+  dimension?: number;
+}
+
 export type ModelTier = 'deep_reasoning' | 'fast_execution' | 'default';
 
 export interface ModelMapping {
@@ -66,11 +73,13 @@ const TIER_TO_ROLE: Record<string, ModelRole> = {
 
 export class AISDKAdapter implements LLMGateway {
   private readonly config: ProviderConfig;
+  private readonly embeddingConfig: EmbeddingConfig;
   private modelMapping: ModelMapping;
   private router: ModelRouter;
 
-  constructor(config: ProviderConfig, modelMapping?: ModelMapping) {
+  constructor(config: ProviderConfig, modelMapping?: ModelMapping, embeddingConfig?: EmbeddingConfig) {
     this.config = config;
+    this.embeddingConfig = embeddingConfig ?? {};
     this.modelMapping = modelMapping ?? {};
     // Build router fallbacks from user's modelMapping: each user-mapped model becomes
     // the primary model for that role with DEFAULT_CONFIG as fallback chain
@@ -283,7 +292,8 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult> {
-    const model = await this.resolveEmbeddingModel(options.model ?? 'text-embedding-3-small');
+    const defaultModel = this.embeddingConfig.model ?? 'text-embedding-3-small';
+    const model = await this.resolveEmbeddingModel(options.model ?? defaultModel);
 
     const results = await Promise.all(
       options.texts.map((text) =>

@@ -149,6 +149,46 @@ export class WorkflowRepository {
       .run(workflowId);
   }
 
+  // ── Incremental Step / Result Persistence ──
+
+  appendStep(runId: string, nodeId: string, nodeType: string, output: string): void {
+    this.db
+      .prepare(
+        'INSERT INTO workflow_run_steps (run_id, node_id, node_type, output) VALUES (?, ?, ?, ?)',
+      )
+      .run(runId, nodeId, nodeType, output);
+  }
+
+  appendResult(runId: string, key: string, value: string): void {
+    this.db
+      .prepare(
+        'INSERT OR REPLACE INTO workflow_run_results (run_id, result_key, result_value) VALUES (?, ?, ?)',
+      )
+      .run(runId, key, value);
+  }
+
+  findStepsByRunId(runId: string): Array<{ nodeId: string; type: string; output: string }> {
+    const rows = this.db
+      .prepare('SELECT node_id, node_type, output FROM workflow_run_steps WHERE run_id = ? ORDER BY id ASC')
+      .all(runId) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      nodeId: r.node_id as string,
+      type: r.node_type as string,
+      output: r.output as string,
+    }));
+  }
+
+  findResultsByRunId(runId: string): Record<string, string> {
+    const rows = this.db
+      .prepare('SELECT result_key, result_value FROM workflow_run_results WHERE run_id = ?')
+      .all(runId) as Record<string, unknown>[];
+    const results: Record<string, string> = {};
+    for (const r of rows) {
+      results[r.result_key as string] = r.result_value as string;
+    }
+    return results;
+  }
+
   private rowToRun(row: Record<string, unknown>): WorkflowRunRow {
     return {
       run_id: row.run_id as string,

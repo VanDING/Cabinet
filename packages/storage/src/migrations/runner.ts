@@ -12,6 +12,7 @@ import { runMigration009 } from './009_checkpoints.js';
 import { runMigration010 } from './010_runtime_tables.js';
 import { runMigration011 } from './011_memory_metadata_index.js';
 import { runMigration015 } from './015_memory_graph.js';
+import { runMigration016 } from './016_workflow_run_steps.js';
 
 export interface MigrationEntry {
   version: number;
@@ -33,6 +34,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 10, name: '010_runtime_tables', up: runMigration010 },
   { version: 11, name: '011_memory_metadata_index', up: runMigration011 },
   { version: 15, name: '015_memory_graph', up: runMigration015 },
+  { version: 16, name: '016_workflow_run_steps', up: runMigration016 },
 ];
 
 /**

@@ -19,8 +19,12 @@ import { createAllCapabilities, buildEnvironmentSection, type CapabilitiesContex
 // ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
 
-// ── AgentLoop instance cache (keyed by runId:agentId for isolation) ──
-const agentLoopCache = new Map<string, AgentLoop>();
+// ── ToolExecutor cache (keyed by capability JSON hash) ──
+const toolExecutorCache = new Map<string, ToolExecutor>();
+
+// ── AgentLoop instance pool (keyed by runId:agentId, LRU eviction, max 10) ──
+const AGENT_LOOP_POOL_MAX = 10;
+const agentLoopPool = new Map<string, AgentLoop>();
 
 // ── Capabilities cache (workflowId → capabilities declared in definition) ──
 const capabilityCache = new Map<string, WorkflowCapabilities>();
@@ -315,10 +319,13 @@ function getEngine(): WorkflowEngine {
 
       const cacheKey = `${runId}:${agentId}`;
 
-      // Check cache first (persistent agents reuse their instance)
-      if (options.persistent) {
-        const cached = agentLoopCache.get(cacheKey);
+      // Check pool first (persistent agents reuse their instance; default persistent=true)
+      if (options.persistent !== false) {
+        const cached = agentLoopPool.get(cacheKey);
         if (cached) {
+          // Move to end (MRU)
+          agentLoopPool.delete(cacheKey);
+          agentLoopPool.set(cacheKey, cached);
           return {
             async run(message: string) {
               const result = await cached.run(message);
@@ -334,20 +341,25 @@ function getEngine(): WorkflowEngine {
         }
       }
 
-      const executor = new ToolExecutor();
-      registerCabinetTools(executor, buildToolDependencies(pendingCapabilities));
-      registerSkillTools(executor);
-      const mcpCtx = getServerContext();
-      registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
-
-      // Restrict tools per role
-      if (role.allowedTools.length > 0) {
-        for (const toolName of executor.listTools()) {
-          if (!role.allowedTools.includes(toolName)) {
-            executor.unregister(toolName);
-          }
-        }
+      // Reuse a cached ToolExecutor for the same capabilities (avoid re-registering all tools)
+      const capsKey = JSON.stringify(pendingCapabilities);
+      let baseExecutor = toolExecutorCache.get(capsKey);
+      if (!baseExecutor) {
+        baseExecutor = new ToolExecutor();
+        registerCabinetTools(baseExecutor, buildToolDependencies(pendingCapabilities));
+        registerSkillTools(baseExecutor);
+        const mcpCtx = getServerContext();
+        registerMCPTools(baseExecutor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
+        baseExecutor.setToolCallCallback((toolName, success, blocked, durationMs) => {
+          ctx.observability.recordToolCall(toolName, success, blocked, durationMs);
+        });
+        toolExecutorCache.set(capsKey, baseExecutor);
       }
+
+      // Create a filtered view instead of rebuilding the tool registry
+      const executor = role.allowedTools.length > 0
+        ? baseExecutor.createView(role.allowedTools)
+        : baseExecutor;
 
       const checkpointManager = new CheckpointManager(ctx.db);
       const loop = new AgentLoop({
@@ -361,20 +373,22 @@ function getEngine(): WorkflowEngine {
         captainId: DEFAULT_CAPTAIN_ID,
         systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
         model: role.model,
-        maxSteps: options.persistent ? 20 : 50,
+        maxSteps: options.persistent !== false ? 20 : 50,
         maxResponseTokens: role.maxResponseTokens,
         temperature: role.temperature,
         contextBudget: role.contextBudget,
       });
 
-      // Wire observability
-      executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
-        ctx.observability.recordToolCall(toolName, success, blocked, durationMs);
-      });
-
-      // Cache persistent agents
-      if (options.persistent) {
-        agentLoopCache.set(cacheKey, loop);
+      // Add to pool with LRU eviction
+      if (options.persistent !== false) {
+        if (agentLoopPool.size >= AGENT_LOOP_POOL_MAX) {
+          const firstKey = agentLoopPool.keys().next().value;
+          if (firstKey) {
+            agentLoopPool.get(firstKey)?.resetHandoff();
+            agentLoopPool.delete(firstKey);
+          }
+        }
+        agentLoopPool.set(cacheKey, loop);
       }
 
       return {
@@ -385,8 +399,8 @@ function getEngine(): WorkflowEngine {
         },
         async dispose() {
           loop.resetHandoff();
-          if (!options.persistent) {
-            agentLoopCache.delete(cacheKey);
+          if (options.persistent === false) {
+            agentLoopPool.delete(cacheKey);
           }
         },
         async handoff() {
@@ -826,6 +840,15 @@ workflowsRouter.post('/:id/run', async (c) => {
       timestamp: new Date().toISOString(),
     });
     return c.json({ error: (e as Error).message }, 500);
+  } finally {
+    // Clean up agentLoop pool entries for this workflow run to prevent unbounded growth
+    const runPrefix = `run_`;
+    for (const key of agentLoopPool.keys()) {
+      if (key.startsWith(runPrefix)) {
+        agentLoopPool.get(key)?.resetHandoff();
+        agentLoopPool.delete(key);
+      }
+    }
   }
 });
 

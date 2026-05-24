@@ -83,6 +83,31 @@ export interface AgentResult {
   steps: number;
   toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[];
   usage?: { promptTokens: number; completionTokens: number };
+  /** Parsed structured output if the agent emitted a JSON block. */
+  structuredOutput?: import('@cabinet/types').AgentOutput;
+}
+
+/** Format a human-readable task name from a tool call. */
+/** Try to extract a structured AgentOutput from LLM text containing a ```json block. */
+function parseStructuredOutput(content: string): import('@cabinet/types').AgentOutput | undefined {
+  const match = content.match(/```json\s*([\s\S]*?)\s*```/);
+  if (!match) return undefined;
+  try {
+    const parsed = JSON.parse(match[1]!);
+    if (parsed && typeof parsed === 'object' && (parsed.summary || parsed.findings || parsed.decisions)) {
+      return {
+        summary: String(parsed.summary ?? ''),
+        findings: Array.isArray(parsed.findings) ? parsed.findings : [],
+        decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+        openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions : [],
+        confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
+        suggestedNextSteps: Array.isArray(parsed.suggestedNextSteps) ? parsed.suggestedNextSteps : [],
+      };
+    }
+  } catch {
+    // Ignore malformed JSON
+  }
+  return undefined;
 }
 
 /** Format a human-readable task name from a tool call. */
@@ -129,6 +154,9 @@ export class AgentLoop {
   private readonly options: AgentLoopOptions;
   /** Accumulated handoff state across multiple run() calls (for segment-based workflow use). */
   private sessionHandoff: ContextHandoff | null = null;
+  /** In-memory checkpoint buffer for async batch writes. */
+  private pendingCheckpoint: CheckpointState | null = null;
+  private lastSavedStep = 0;
 
   constructor(options: AgentLoopOptions) {
     this.gateway = options.gateway;
@@ -297,7 +325,9 @@ export class AgentLoop {
         errorCounts.fatal++;
         this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, false);
+        this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
+        this.pendingCheckpoint = null;
         return {
           content: `Agent loop failed at step ${steps}: ${(error as Error).message}`,
           steps,
@@ -334,8 +364,16 @@ export class AgentLoop {
         handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
         this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
           zoneCounts, handoffCount, errorCounts, toolCounts, true);
+        this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
-        return { content: response.content, steps: steps + 1, toolCalls: executedToolCalls, usage: { promptTokens: totalPromptTokens, completionTokens: totalCompletionTokens } };
+        this.pendingCheckpoint = null;
+        return {
+          content: response.content,
+          steps: steps + 1,
+          toolCalls: executedToolCalls,
+          usage: { promptTokens: totalPromptTokens, completionTokens: totalCompletionTokens },
+          structuredOutput: parseStructuredOutput(response.content),
+        };
       }
 
       // ── Read-only tool names that can safely execute in parallel ──
@@ -407,14 +445,15 @@ export class AgentLoop {
             ),
           ]);
         } catch (timeoutError) {
-          // Save checkpoint with crashed marker before giving up
-          this.checkpointManager.save({
+          // Emergency sync checkpoint before giving up
+          this.pendingCheckpoint = {
             sessionId: this.options.sessionId,
             step: steps,
             messages,
             toolCallHistory: executedToolCalls,
             metadata: { projectId: this.options.projectId, crashed: true },
-          });
+          };
+          this.flushCheckpoint();
           throw timeoutError;
         }
 
@@ -463,19 +502,24 @@ export class AgentLoop {
       const executedCount = executedToolCalls.filter(t => !String(t.result).includes('BLOCKED')).length;
       handoff.recordStep(`Step ${steps}: ${executedCount} tool calls executed in ${this.contextMonitor?.current?.zone ?? 'unknown'} zone`);
 
-      // Save checkpoint
-      this.checkpointManager.save({
+      // Buffer checkpoint in memory; batch flush every 5 steps
+      this.pendingCheckpoint = {
         sessionId: this.options.sessionId,
         step: steps,
         messages,
         toolCallHistory: executedToolCalls,
         metadata: { projectId: this.options.projectId },
-      });
+      };
+      if (steps - this.lastSavedStep >= 5) {
+        this.flushCheckpoint();
+      }
     }
 
     this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
       zoneCounts, handoffCount, errorCounts, toolCounts, false);
+    this.flushCheckpoint();
     this.checkpointManager.delete(this.options.sessionId);
+    this.pendingCheckpoint = null;
     return {
       content: `Agent reached max steps (${maxSteps}) without final response.`,
       steps,
@@ -659,12 +703,24 @@ export class AgentLoop {
     callback.onDone(fullText);
     this.reportSession(startTime, 1, executedToolCalls, 0, 0,
       { smart: 1, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, true);
-    return { content: fullText, steps: 1, toolCalls: executedToolCalls };
+    return {
+      content: fullText,
+      steps: 1,
+      toolCalls: executedToolCalls,
+      structuredOutput: parseStructuredOutput(fullText),
+    };
   }
 
-  /** Resume from a saved checkpoint */
+  /** Flush the in-memory checkpoint to persistent storage synchronously. */
+  private flushCheckpoint(): void {
+    if (!this.pendingCheckpoint) return;
+    this.checkpointManager.save(this.pendingCheckpoint);
+    this.lastSavedStep = this.pendingCheckpoint.step;
+  }
+
+  /** Resume from a saved checkpoint (prefer in-memory buffer if available). */
   async resume(userMessage: string): Promise<AgentResult> {
-    const state = this.checkpointManager.load(this.options.sessionId);
+    const state = this.pendingCheckpoint ?? this.checkpointManager.load(this.options.sessionId);
     if (!state) {
       return this.run(userMessage);
     }

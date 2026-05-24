@@ -124,4 +124,20 @@ export class ToolExecutor {
       timeoutMs: def.timeoutMs,
     };
   }
+
+  /** Create a lightweight view that only exposes allowed tools.
+   *  The view shares the same tool instances and callback — no re-registration needed. */
+  createView(allowedTools: string[]): ToolExecutor {
+    const allowed = new Set(allowedTools);
+    const view = new ToolExecutor();
+    for (const [name, tool] of this.tools) {
+      if (allowed.has(name)) {
+        view.register(tool);
+      }
+    }
+    if (this.onToolCall) {
+      view.setToolCallCallback(this.onToolCall);
+    }
+    return view;
+  }
 }
