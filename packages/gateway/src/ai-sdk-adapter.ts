@@ -281,7 +281,14 @@ export class AISDKAdapter implements LLMGateway {
     } catch {
       // usage not available for this provider/model
     }
-    yield { type: 'done', content: fullText, usage };
+    let steps: number | undefined;
+    try {
+      const stepArray = await result.steps;
+      steps = stepArray.length;
+    } catch {
+      // steps not available for this provider/model
+    }
+    yield { type: 'done', content: fullText, usage, steps };
   }
 
   async listModels(): Promise<string[]> {

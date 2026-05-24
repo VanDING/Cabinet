@@ -42,6 +42,8 @@ export interface StreamChunk {
   toolResult?: { name: string; result: unknown; id: string };
   /** Token usage, populated on 'done' chunks. */
   usage?: { promptTokens: number; completionTokens: number };
+  /** Number of LLM tool rounds consumed, populated on 'done' chunks. */
+  steps?: number;
 }
 
 /** Tool definition with execute function for streaming */

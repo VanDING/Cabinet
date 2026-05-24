@@ -2284,6 +2284,12 @@ secretaryRouter.post('/chat', async (c) => {
                     onTaskUpdate(tasks) {
                       emit('task_status', { tasks });
                     },
+                    onSemanticTaskUpdate(tasks) {
+                      emit('semantic_task_status', { tasks });
+                    },
+                    onStepBudgetWarning(remaining, maxSteps) {
+                      emit('step_budget_warning', { remaining, maxSteps });
+                    },
                     onUsage(usage) {
                       ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
                       emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });

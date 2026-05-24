@@ -8,6 +8,8 @@ export interface SSEStreamCallbacks {
   onThinkingDone?: () => void;
   onToolStatus?: (message: string, type: 'call' | 'result' | 'error', detail?: { name: string; args?: unknown; result?: unknown }) => void;
   onTaskUpdate?: (tasks: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>) => void;
+  onSemanticTaskUpdate?: (tasks: Array<{ id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; steps?: number }>) => void;
+  onStepBudgetWarning?: (remaining: number, maxSteps: number) => void;
   onStopped?: () => void;
   onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void;
   onSubAgentStart?: (agentName: string, taskDescription: string) => void;
@@ -97,6 +99,23 @@ export async function readSSEStream(
               endTime: typeof t.endTime === 'number' ? t.endTime : undefined,
             }));
             callbacks.onTaskUpdate?.(tasks);
+            continue;
+          }
+          if (parsed.type === 'semantic_task_status') {
+            const tasks = (parsed.tasks ?? []).map((t: any) => ({
+              id: String(t.id ?? ''),
+              title: String(t.title ?? ''),
+              status: (['pending', 'running', 'done', 'error'].includes(t.status) ? t.status : 'pending') as 'pending' | 'running' | 'done' | 'error',
+              steps: typeof t.steps === 'number' ? t.steps : undefined,
+            }));
+            callbacks.onSemanticTaskUpdate?.(tasks);
+            continue;
+          }
+          if (parsed.type === 'step_budget_warning') {
+            callbacks.onStepBudgetWarning?.(
+              typeof parsed.remaining === 'number' ? parsed.remaining : 0,
+              typeof parsed.maxSteps === 'number' ? parsed.maxSteps : 50,
+            );
             continue;
           }
           if (parsed.type === 'sub_agent_start') {

@@ -406,6 +406,12 @@ export function App() {
             onTaskUpdate(tasks) {
               updateMessage(sessionId, streamId, { tasks });
             },
+            onSemanticTaskUpdate(tasks) {
+              updateMessage(sessionId, streamId, { semanticTasks: tasks });
+            },
+            onStepBudgetWarning(remaining, maxSteps) {
+              updateMessage(sessionId, streamId, { stepBudget: { remaining, maxSteps } });
+            },
             onToolStatus(message, type, detail) {
               toolsSinceLastSegment = true;
               const toolName = detail?.name ?? 'unknown';
@@ -642,6 +648,9 @@ export function App() {
                       if (forkedId) {
                         addToast('success', 'Forked to new session');
                       }
+                    }}
+                    onContinue={(msgId) => {
+                      handleSend(activeSession.id, '请继续完成上述任务', activeSession.attachedFiles);
                     }}
                   />
                 </Suspense>
