@@ -19,6 +19,7 @@ export type ParsedIntent =
   | { kind: 'workflow_request'; topic: string; context: string; suggestedDimensions: string[] }
   | { kind: 'review_request'; target: string; context: string }
   | { kind: 'organize_request'; topic: string; context: string }
+  | { kind: 'schedule_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
 
@@ -80,8 +81,13 @@ const INTENT_EXAMPLES: IntentExample[] = [
     excludeWords: ['不要审查', '不用review', '别检查'],
   },
   {
+    intent: 'schedule_request',
+    examples: ['定时任务', '每天执行', '周期性运行', '定时触发', 'cron', '每小时', '每周', '自动执行', 'schedule', 'reminder'],
+    excludeWords: ['不要定时', '不用定时', '别定时'],
+  },
+  {
     intent: 'organize_request',
-    examples: ['组织架构', '系统设计', '搭建体系', '设计能力', '组织方案', '构建系统', '规划架构'],
+    examples: ['组织架构', '系统设计', '搭建体系', '设计能力', '组织方案', '构建系统', '规划架构', '创建系统', '设计流程', '构建架构', '组织自动化'],
     excludeWords: ['不要组织', '不用组织', '别搭建'],
   },
 ];
@@ -222,6 +228,20 @@ export class IntentParser {
       };
     }
 
+    // Schedule request: before workflow_request to avoid being swallowed
+    const hasScheduleKeyword = lower.includes('定时') || lower.includes('周期') || lower.includes('cron') || lower.includes('schedule') || lower.includes('reminder');
+    const hasRecurringIntent = lower.includes('每天') || lower.includes('每小时') || lower.includes('每周') || lower.includes('每月') || lower.includes('自动');
+    if ((hasScheduleKeyword || hasRecurringIntent) && !this.hasNegation(lower, 'schedule_request')) {
+      return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
+    }
+
+    // Organize: higher-level design intent — must be checked before workflow_request
+    const hasCreateOrDesign = lower.includes('创建') || lower.includes('设计') || lower.includes('搭建') || lower.includes('组织') || lower.includes('构建') || lower.includes('规划');
+    const hasSystemOrWorkflowOrAgent = lower.includes('系统') || lower.includes('流程') || lower.includes('agent') || lower.includes('工作流') || lower.includes('自动化') || lower.includes('架构') || lower.includes('方案');
+    if (hasCreateOrDesign && hasSystemOrWorkflowOrAgent && !this.hasNegation(lower, 'organize_request')) {
+      return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
+    }
+
     // Workflow request: "流程" alone catches too much (e.g. "业务流程" in casual chat).
     // Require explicit workflow-related keywords or creation intent.
     const hasWorkflowKeyword = lower.includes('工作流') || lower.includes('workflow');
@@ -249,20 +269,6 @@ export class IntentParser {
       return {
         kind: 'review_request',
         target: message.slice(0, 100),
-        context: message,
-      };
-    }
-
-    // Organize: requires strong semantic combination to avoid false positives.
-    // "组织" alone is ambiguous (could be "组织文件" or "组织会议").
-    // Only trigger when "组织" pairs with architecture/design/system words.
-    const hasOrganize = lower.includes('组织') || lower.includes('搭建') || lower.includes('organize') || lower.includes('架构');
-    const hasDesignIntent = lower.includes('设计') || lower.includes('系统') || lower.includes('流程') ||
-      lower.includes('自动化') || lower.includes('能力') || lower.includes('方案');
-    if (hasOrganize && hasDesignIntent && !this.hasNegation(lower, 'organize_request')) {
-      return {
-        kind: 'organize_request',
-        topic: message.slice(0, 100),
         context: message,
       };
     }
@@ -356,7 +362,9 @@ Examples:
    → {"kind": "review_request", "target": "方案", "context": "review一下这个方案的质量"}
 7. Message: "搭建一个市场营销体系"
    → {"kind": "organize_request", "topic": "市场营销体系", "context": "..."}
-8. Message: "继续"
+8. Message: "帮我设置一个每天执行的任务"
+   → {"kind": "schedule_request", "topic": "每天执行的任务", "context": "..."}
+9. Message: "继续"
    → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
 
       const historyConstraint = conversationContext?.lastIntent
@@ -371,6 +379,7 @@ Examples:
 - knowledge_query: user asks a general question
 - review_request: user wants to review/audit/check quality of something
 - organize_request: user wants to design/build/architect an organization or system
+- schedule_request: user wants to create a scheduled/recurring task
 - follow_up: user is continuing or elaborating on a previous topic
 - unknown: none of the above
 ${fewShotExamples}${historyConstraint}
@@ -560,6 +569,8 @@ Message: "${message}"`;
         return { kind: 'review_request', target: message.slice(0, 100), context: message };
       case 'organize_request':
         return { kind: 'organize_request', ...base };
+      case 'schedule_request':
+        return { kind: 'schedule_request', ...base };
       default:
         return { kind: 'unknown', raw: message };
     }
@@ -631,6 +642,10 @@ Message: "${message}"`;
       case 'organize_request':
         targetAgent = 'organize';
         reasoning = 'Organization design request routed to Organize Agent.';
+        break;
+      case 'schedule_request':
+        targetAgent = 'secretary';
+        reasoning = 'Scheduling request — Secretary has schedule_task tools.';
         break;
       case 'review_request':
         targetAgent = 'reviewer';

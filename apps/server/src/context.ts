@@ -33,6 +33,9 @@ import {
   getLogger,
   CABINET_DIR,
   ensureCabinetDir,
+  SystemKnowledgeRepository,
+  syncSystemKnowledge,
+  SYSTEM_KNOWLEDGE_BASE,
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import {
@@ -112,6 +115,7 @@ export interface ServerContext {
   costHistoryRepo: CostHistoryRepository;
   sessionMetricsRepo: SessionMetricsRepository;
   settingsRepo: SettingsRepository;
+  systemKnowledgeRepo: SystemKnowledgeRepository;
   // Decision service
   decisionService: DecisionService;
   // Memory
@@ -277,6 +281,14 @@ export function getServerContext(): ServerContext {
   const costHistoryRepo = new CostHistoryRepository(db);
   const sessionMetricsRepo = new SessionMetricsRepository(db);
   const settingsRepo = new SettingsRepository(db);
+
+  // System knowledge repository — sync code baseline to DB on startup
+  const systemKnowledgeRepo = new SystemKnowledgeRepository(db);
+  systemKnowledgeRepo.ensureTable();
+  const syncResult = syncSystemKnowledge(db, SYSTEM_KNOWLEDGE_BASE);
+  if (syncResult.updated > 0 || syncResult.created > 0) {
+    logger.info('System knowledge synchronized', syncResult);
+  }
 
   // Decision service with preference learning
   const stateMachine = new DecisionStateMachine();
@@ -651,6 +663,8 @@ export function getServerContext(): ServerContext {
       goToDefinition: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
       findReferences: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
       diagnostics: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
+      querySystemKnowledge: async () => [],
+      getSystemKnowledge: async () => null,
     };
 
     registerCabinetTools(executor, curatorDeps);
@@ -1689,6 +1703,7 @@ export function getServerContext(): ServerContext {
     costHistoryRepo,
     sessionMetricsRepo,
     settingsRepo,
+    systemKnowledgeRepo,
     decisionService,
     shortTerm,
     longTerm,

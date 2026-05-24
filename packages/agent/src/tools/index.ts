@@ -10,8 +10,9 @@ import { createSchedulerTools, type SchedulerToolDeps } from './scheduler-tools.
 import { createKnowledgeTools, type KnowledgeToolDeps } from './knowledge-tools.js';
 import { createEvaluationTools, type EvaluationToolDeps } from './evaluation-tools.js';
 import { createLSPTools, type LSPToolDeps } from './lsp-tools.js';
+import { createSystemKnowledgeTools, type SystemKnowledgeToolDeps } from './system-knowledge-tools.js';
 
-export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDeps, SchedulerToolDeps, KnowledgeToolDeps, EvaluationToolDeps, LSPToolDeps {
+export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDeps, SchedulerToolDeps, KnowledgeToolDeps, EvaluationToolDeps, LSPToolDeps, SystemKnowledgeToolDeps {
   // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
@@ -575,6 +576,11 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
     // LSP Tools
     // ═══════════════════════════════════════════════════════════
     ...createLSPTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // System Knowledge Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createSystemKnowledgeTools(deps),
   ];
 }
 

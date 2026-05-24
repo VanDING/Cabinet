@@ -116,4 +116,14 @@ export class EntityMemory {
     for (const [k, v] of this.employees) result[k] = v;
     return result;
   }
+
+  deletePreferences(captainId: string): void {
+    this.preferences.delete(captainId);
+    this.repo?.deletePreferences(captainId);
+  }
+
+  deleteEmployee(employeeId: string): void {
+    this.employees.delete(employeeId);
+    this.repo?.deleteEmployee(employeeId);
+  }
 }

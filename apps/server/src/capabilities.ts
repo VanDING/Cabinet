@@ -139,6 +139,7 @@ export function buildEnvironmentSection(projectRootPath?: string): string {
     parts.push(`- Note: You are working on a project at the above path. Use it for all file operations.`);
   }
   parts.push(`- Node.js: ${process.version}`);
+  parts.push(`- If you need information about system capabilities, directories, or agent roles, use the query_system_knowledge tool.`);
   return parts.join('\n');
 }
 
@@ -763,6 +764,19 @@ export function createEvaluationCapabilities(ctx: CapabilitiesContext) {
   };
 }
 
+export function createSystemKnowledgeCapabilities(ctx: CapabilitiesContext) {
+  const { SystemKnowledgeRepository } = require('@cabinet/storage');
+  const repo = new SystemKnowledgeRepository(ctx.db);
+  return {
+    querySystemKnowledge: async (query: string, limit?: number) => {
+      return repo.search(query, limit ?? 5);
+    },
+    getSystemKnowledge: async (topic: string) => {
+      return repo.findByTopic(topic) ?? null;
+    },
+  };
+}
+
 export function createLSPCapabilities() {
   return {
     workspaceSymbols: async () => ({ available: false as const, error: 'LSP not available in capabilities mode' }),
@@ -785,6 +799,7 @@ export function createAllCapabilities(
     ...createKnowledgeCapabilities(ctx),
     ...createEvaluationCapabilities(ctx),
     ...createLSPCapabilities(),
+    ...createSystemKnowledgeCapabilities(ctx),
   };
   if (!allowed || allowed.length === 0) return all;
   const areaMap: Record<string, string[]> = {

@@ -28,7 +28,7 @@ import { ProjectIsolatedMemory } from '@cabinet/memory';
 import { broadcast } from '../ws/handler.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
-import { buildEnvironmentSection } from '../capabilities.js';
+import { buildEnvironmentSection, createSystemKnowledgeCapabilities } from '../capabilities.js';
 import { getWorkspaceSymbols, getDefinition, getReferences, getDiagnostics } from '../lsp/ts-service.js';
 import { indexProject } from '../lsp/indexer.js';
 import { CABINET_DIR, DocumentChunkRepository, EvaluationResultRepository } from '@cabinet/storage';
@@ -43,7 +43,10 @@ const execAsync = promisify(exec);
 const RAG_LONGTERM_TOP_K = 5;
 
 /** Roles that need the system environment section in their prompt. */
-const ROLES_NEEDING_ENV = new Set(['secretary', 'workflow_designer', 'organize']);
+const ROLES_NEEDING_ENV = new Set([
+  'secretary', 'workflow_designer', 'organize', 'curator',
+  'decision_analyst', 'meeting_chair', 'reviewer', 'agent_creator',
+]);
 
 function buildSystemPrompt(roleType: string, roleSystemPrompt: string, projectRootPath?: string): string {
   if (ROLES_NEEDING_ENV.has(roleType)) {
@@ -1074,6 +1077,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
     cancelScheduledTask: async (id) => {
       ctx.taskScheduler.cancel(id);
+    },
+
+    // ── System knowledge callbacks ──
+    querySystemKnowledge: async (query, limit) => {
+      return createSystemKnowledgeCapabilities({ db: ctx.db, gateway: ctx.gateway, logger: ctx.logger, taskScheduler: ctx.taskScheduler }).querySystemKnowledge(query, limit);
+    },
+    getSystemKnowledge: async (topic) => {
+      return createSystemKnowledgeCapabilities({ db: ctx.db, gateway: ctx.gateway, logger: ctx.logger, taskScheduler: ctx.taskScheduler }).getSystemKnowledge(topic);
     },
   };
 }

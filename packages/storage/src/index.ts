@@ -38,6 +38,8 @@ export { ShortTermMemoryRepository, type ShortTermMemoryRow } from './repositori
 export { LongTermMemoryRepository, type LongTermMemoryRow } from './repositories/long-term-memory-repo.js';
 export { EntityMemoryRepository, type EntityPrefsRow, type EntityEmployeeRow } from './repositories/entity-memory-repo.js';
 export { CheckpointRepository } from './repositories/checkpoint-repo.js';
+export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
+export { SYSTEM_KNOWLEDGE_BASE, syncSystemKnowledge, type SystemKnowledgeBaseEntry } from './system-knowledge-base.js';
 // Utilities
 export { BackupManager, type BackupConfig, type BackupResult } from './backup.js';
 export { Logger, getLogger, type LogLevel, type LogEntry } from './logger.js';
