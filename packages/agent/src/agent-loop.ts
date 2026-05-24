@@ -41,6 +41,12 @@ export interface StreamingCallback {
   onThinkingDone?(): void;
   onUsage?(usage: { promptTokens: number; completionTokens: number }): void;
   onTaskUpdate?(tasks: AgentTask[]): void;
+  // Sub-agent orchestration events
+  onSubAgentStart?(agentName: string, taskDescription: string): void;
+  onSubAgentToolCall?(agentName: string, toolName: string, args: Record<string, unknown>): void;
+  onSubAgentThinking?(agentName: string, content: string): void;
+  onSubAgentDone?(agentName: string, result: string): void;
+  onSubAgentError?(agentName: string, error: string): void;
   onDone(fullContent: string): void;
   onError?(error: string): void;
 }
@@ -387,12 +393,35 @@ export class AgentLoop {
         'recent_files', 'watch_file',
       ]);
 
+      // ── Write tool names that can parallelize when operating on different paths ──
+      const WRITE_TOOL_NAMES = new Set([
+        'write_file', 'edit_file', 'apply_patch', 'move_file', 'copy_file', 'make_directory',
+        'delete_file', 'execute_command',
+      ]);
+
+      function hasResourceConflict(toolCalls: { name: string; arguments: Record<string, unknown> }[]): boolean {
+        const filePaths = new Set<string>();
+        for (const tc of toolCalls) {
+          const fp = tc.arguments?.filePath as string | undefined;
+          if (!fp) continue;
+          if (filePaths.has(fp)) return true;
+          filePaths.add(fp);
+        }
+        return false;
+      }
+
       // Determine if all tool calls in this step are independent read-only operations
       const allReadOnly = response.toolCalls.every(tc => READ_TOOL_NAMES.has(tc.name));
       const uniqueResources = new Set(response.toolCalls.map(tc =>
         JSON.stringify({name: tc.name, filePath: tc.arguments?.filePath, query: tc.arguments?.query, pattern: tc.arguments?.pattern})
       ));
-      const canParallelize = allReadOnly && uniqueResources.size === response.toolCalls.length;
+      const canParallelizeReads = allReadOnly && uniqueResources.size === response.toolCalls.length;
+
+      // Write tools: parallel if operating on DIFFERENT file paths
+      const allWrite = response.toolCalls.every(tc => WRITE_TOOL_NAMES.has(tc.name));
+      const canParallelizeWrites = allWrite && !hasResourceConflict(response.toolCalls);
+
+      const canParallelize = canParallelizeReads || canParallelizeWrites;
 
       // ── Execute a single tool call (used by both sequential and parallel paths) ──
       const executeOneTool = async (tc: { id: string; name: string; arguments: Record<string, unknown> }) => {

@@ -1,5 +1,6 @@
 export { DecisionCard, type DecisionCardProps } from './decision-card.js';
-export { SecretaryChat, type SecretaryChatProps, type ChatMessage } from './secretary-chat.js';
+export { SecretaryChat, type SecretaryChatProps, type ChatMessage, type AgentVisibility } from './secretary-chat.js';
+export { SubAgentCard, type SubAgentCardProps, type SubAgentActivity, type SubAgentStatus } from './sub-agent-card.js';
 export {
   DashboardSummary,
   type DashboardSummaryProps,

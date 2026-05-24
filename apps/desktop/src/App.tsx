@@ -65,6 +65,7 @@ export function App() {
   const [activeAgent, setActiveAgent] = useState('secretary');
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [showProjectActionModal, setShowProjectActionModal] = useState(false);
   const abortRef = useRef<Map<string, AbortController>>(new Map());
   const navigate = useNavigate();
   const { isDark, toggle } = useTheme();
@@ -171,10 +172,36 @@ export function App() {
     [navigate],
   );
 
-  const handleCreateProject = useCallback(async () => {
+  const handleOpenProjectActionModal = useCallback(() => {
+    setShowProjectActionModal(true);
+  }, []);
+
+  const handleCreateNewProject = useCallback(async () => {
+    const name = prompt('Project name:') || '';
+    if (!name.trim()) return;
+    try {
+      const r = await apiFetch('/api/projects', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ name: name.trim(), rootPath: '' }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        const newProjectId = data.project?.id;
+        refreshProjects();
+        if (newProjectId) {
+          setActiveProjectId(newProjectId);
+          navigate(`/project/${newProjectId}/office`);
+        }
+      }
+    } catch {
+      addToast('error', 'Failed to create project');
+    }
+  }, [refreshProjects, addToast]);
+
+  const handleImportProject = useCallback(async () => {
     let name = '';
     let rootPath = '';
-    // Try folder picker first — folder name becomes project name
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const selected = await open({ directory: true, title: 'Select project folder', multiple: false });
@@ -183,10 +210,6 @@ export function App() {
         name = selected.split(/[/\\]/).pop() || selected;
       }
     } catch { /* Tauri dialog not available */ }
-    // Fallback to manual name entry
-    if (!name) {
-      name = prompt('Project name:') || '';
-    }
     if (!name.trim()) return;
     try {
       const r = await apiFetch('/api/projects', {
@@ -202,12 +225,11 @@ export function App() {
           setActiveProjectId(newProjectId);
           navigate(`/project/${newProjectId}/office`);
         }
-        // Notification handled by WebSocket broadcast (ws:project_created)
       }
     } catch {
-      addToast('error', 'Failed to create project');
+      addToast('error', 'Failed to import project');
     }
-  }, [refreshProjects, addToast, addNotification]);
+  }, [refreshProjects, addToast]);
 
   const handleDeleteProject = useCallback(async (projectId: string, name: string) => {
     try {
@@ -516,7 +538,7 @@ export function App() {
             onNavigateToProject={handleNavigateToProject}
             activeProjectId={activeProjectId}
             projects={projects}
-            onNewProject={handleCreateProject}
+            onNewProject={handleOpenProjectActionModal}
             onDeleteProject={handleDeleteProject}
             onRenameProject={handleRenameProject}
             sidebarWidth={sidebarCollapsed ? undefined : sidebarWidth}
@@ -655,7 +677,7 @@ export function App() {
             activeProjectId={activeProjectId}
             projects={projects}
             onSwitchProject={(id) => setActiveProjectId(id)}
-            onNewProject={handleCreateProject}
+            onNewProject={handleOpenProjectActionModal}
             activeAgent={activeAgent}
             onAgentChange={setActiveAgent}
           />
@@ -667,6 +689,39 @@ export function App() {
 
       {/* Mobile bottom nav */}
       <MobileNav activePage={activePage} onNavigate={handleNavigate} />
+
+      {/* Project action modal */}
+      {showProjectActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowProjectActionModal(false)}>
+          <div className={`rounded-xl border ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} p-6 w-full max-w-sm shadow-2xl mx-4`} onClick={(e) => e.stopPropagation()}>
+            <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Add Project</h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => { setShowProjectActionModal(false); handleCreateNewProject(); }}
+                className={`w-full rounded-lg border ${isDark ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'} px-4 py-3 text-sm font-medium text-left transition-colors`}
+              >
+                <span className={`block text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>Create New Project</span>
+                <span className={`block text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start with an empty project</span>
+              </button>
+              <button
+                onClick={() => { setShowProjectActionModal(false); handleImportProject(); }}
+                className={`w-full rounded-lg border ${isDark ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'} px-4 py-3 text-sm font-medium text-left transition-colors`}
+              >
+                <span className={`block text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>Import Existing Folder</span>
+                <span className={`block text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Import a local folder as project</span>
+              </button>
+            </div>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowProjectActionModal(false)}
+                className={`rounded px-3 py-1.5 text-sm border ${isDark ? 'border-gray-600 text-gray-300' : 'border-gray-300 text-gray-700'}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </ServerLoading>
   );

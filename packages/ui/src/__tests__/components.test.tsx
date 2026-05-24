@@ -11,6 +11,11 @@ describe('UI Components', () => {
     expect(mod.SecretaryChat).toBeDefined();
   });
 
+  it('SubAgentCard export exists', async () => {
+    const mod = await import('../sub-agent-card.js');
+    expect(mod.SubAgentCard).toBeDefined();
+  });
+
   it('DashboardSummary export exists', async () => {
     const mod = await import('../dashboard-summary.js');
     expect(mod.DashboardSummary).toBeDefined();

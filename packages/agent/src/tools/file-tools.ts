@@ -10,8 +10,8 @@ export interface FileToolDeps {
   makeDirectory: (path: string) => Promise<void>;
   fileInfo: (path: string) => Promise<{ size: number; modifiedAt: string; createdAt: string; isDirectory: boolean; isFile: boolean }>;
   listDirectory: (path: string) => Promise<{ name: string; path: string; isDir: boolean }[]>;
-  searchFiles: (pattern: string, dir?: string) => Promise<string[]>;
-  searchContent: (pattern: string, dir?: string, include?: string) => Promise<{ file: string; line: number; content: string }[]>;
+  searchFiles: (pattern: string, dir?: string, maxDepth?: number) => Promise<string[]>;
+  searchContent: (pattern: string, dir?: string, include?: string, maxDepth?: number) => Promise<{ file: string; line: number; content: string }[]>;
   deleteFile: (path: string) => Promise<void>;
   recentFiles: (limit?: number) => Promise<{ path: string; operation: string; timestamp: string }[]>;
   watchFile: (path: string, timeoutMs?: number) => Promise<{ changed: boolean; size: number }>;
@@ -174,8 +174,9 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
         const pattern = args.pattern as string;
         if (!pattern) return { error: 'pattern is required' };
         const dir = args.path as string | undefined;
+        const maxDepth = args.max_depth as number | undefined;
         try {
-          const matches = await deps.searchFiles(pattern, dir);
+          const matches = await deps.searchFiles(pattern, dir, maxDepth);
           return { pattern, matches, count: matches.length };
         } catch (e) {
           return { error: (e as Error).message };
@@ -190,8 +191,9 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
         if (!pattern) return { error: 'pattern is required' };
         const dir = args.path as string | undefined;
         const include = args.include as string | undefined;
+        const maxDepth = args.max_depth as number | undefined;
         try {
-          const matches = await deps.searchContent(pattern, dir, include);
+          const matches = await deps.searchContent(pattern, dir, include, maxDepth);
           return { pattern, matches, count: matches.length };
         } catch (e) {
           return { error: (e as Error).message };

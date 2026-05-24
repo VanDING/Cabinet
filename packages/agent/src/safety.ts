@@ -141,6 +141,62 @@ function resolveEffectiveCategory(toolName: string): ToolCategory {
   return 'light_write';
 }
 
+// ── Sensitive path detection ─────────────────────────────────
+
+export function isSensitivePath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (normalized.includes('/etc/passwd')) return true;
+  if (normalized.includes('/etc/shadow')) return true;
+  if (normalized.includes('/etc/ssh/sshd_config')) return true;
+  if (normalized.includes('.ssh/id_rsa')) return true;
+  if (normalized.includes('.ssh/id_ed25519')) return true;
+  if (normalized.includes('.ssh/id_ecdsa')) return true;
+  if (normalized.includes('.ssh/authorized_keys')) return true;
+  if (normalized.includes('.gnupg')) return true;
+  if (normalized.includes('.aws/credentials') || normalized.includes('.aws\\credentials')) return true;
+  if (normalized.endsWith('.env')) return true;
+  return false;
+}
+
+// ── Command risk assessment ──────────────────────────────────
+
+export interface CommandRiskAssessment {
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  reason: string;
+  blockedPatterns?: string[];
+}
+
+export function assessCommandRisk(command: string): CommandRiskAssessment {
+  const lower = command.toLowerCase();
+  const blockedPatterns: string[] = [];
+
+  if (/\brm\s+-rf\s+\//.test(lower)) blockedPatterns.push('rm -rf /');
+  if (/\bdd\s+if=/.test(lower)) blockedPatterns.push('dd');
+  if (/:\s*\(\)\s*\{/.test(lower)) blockedPatterns.push('fork bomb');
+  if (/\>\s*\/dev\/sda/.test(lower)) blockedPatterns.push('raw device write');
+  if (/\bmkfs\./.test(lower)) blockedPatterns.push('mkfs');
+  if (/(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/.test(lower)) blockedPatterns.push('pipe to shell');
+
+  if (blockedPatterns.length > 0) {
+    return { riskLevel: 'critical', reason: `Dangerous command detected: ${blockedPatterns.join(', ')}`, blockedPatterns };
+  }
+
+  if (/\brm\s+.*-rf\b/.test(lower)) return { riskLevel: 'high', reason: 'Recursive deletion' };
+  if (/\bchmod\s+.*\/etc\//.test(lower)) return { riskLevel: 'high', reason: 'Modifying system files' };
+  if (/\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/.test(lower)) return { riskLevel: 'high', reason: 'Accessing SSH keys' };
+  if (/\bfind\b.*-name\s*id_rsa/.test(lower)) return { riskLevel: 'high', reason: 'Searching for SSH keys' };
+
+  if (/\bnpm\s+(install|ci)/.test(lower)) return { riskLevel: 'medium', reason: 'Package installation' };
+  if (/\b(git\s+clone|curl|wget)\b/.test(lower)) return { riskLevel: 'medium', reason: 'Network download' };
+  if (/\bdocker\s+(run|exec)/.test(lower)) return { riskLevel: 'medium', reason: 'Docker execution' };
+
+  if (/^(\s*(ls|cat|pwd|echo|ps|top|df|du|head|tail|grep|find|git\s+(status|log|diff|show))\b)/.test(lower)) {
+    return { riskLevel: 'low', reason: 'Read-only inspection command' };
+  }
+
+  return { riskLevel: 'medium', reason: 'Unclassified command' };
+}
+
 // ── SafetyChecker ────────────────────────────────────────────
 
 export class SafetyChecker {
@@ -163,7 +219,12 @@ export class SafetyChecker {
   }
 
   check(toolName: string, _args: Record<string, unknown>): SafetyCheck {
-    // Pure reads are always safe regardless of tier
+    const filePath = _args.filePath as string | undefined;
+    if (filePath && isSensitivePath(filePath)) {
+      const fileCheck = this.checkFileAccess(filePath);
+      if (!fileCheck.allowed) return fileCheck;
+    }
+
     if (READ_ONLY_TOOLS.has(toolName)) {
       return { tier: 'cache', allowed: true };
     }
@@ -216,8 +277,39 @@ export class SafetyChecker {
       }
     }
 
-    // Allowed at current tier
+    if (toolName === 'execute_command' && _args.command) {
+      const assessment = assessCommandRisk(String(_args.command));
+      if (assessment.riskLevel === 'critical') {
+        return { tier: 'delegation_block', allowed: false, blockedByTier: this.tier, reason: `Command blocked: ${assessment.reason}` };
+      }
+      if (assessment.riskLevel === 'high' && (this.tier === DelegationTier.CaptainReview || this.tier === DelegationTier.StrategicGuard)) {
+        return { tier: 'delegation_block', allowed: false, blockedByTier: this.tier, reason: `High-risk command requires T2+: ${assessment.reason}` };
+      }
+      if (assessment.riskLevel === 'medium' && this.tier === DelegationTier.CaptainReview) {
+        return { tier: 'delegation_block', allowed: false, blockedByTier: this.tier, reason: `Medium-risk command requires T1+: ${assessment.reason}` };
+      }
+    }
+
     return { tier: 'auto', allowed: true };
+  }
+
+  checkFileAccess(filePath: string): SafetyCheck {
+    if (!isSensitivePath(filePath)) {
+      return { tier: 'auto', allowed: true };
+    }
+    if (this.tier === DelegationTier.CaptainReview || this.tier === DelegationTier.StrategicGuard) {
+      return {
+        tier: 'delegation_block',
+        allowed: false,
+        blockedByTier: this.tier,
+        reason: `Access to sensitive path '${filePath}' requires Trusted Mode (T2) or higher.`,
+      };
+    }
+    return {
+      tier: 'ai_classifier',
+      allowed: true,
+      reason: `Sensitive path access allowed at ${TIER_LABELS[this.tier]} -- audit logged.`,
+    };
   }
 
   /** Quick check: would this tool be blocked at the current tier? */

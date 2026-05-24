@@ -10,6 +10,11 @@ export interface SSEStreamCallbacks {
   onTaskUpdate?: (tasks: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>) => void;
   onStopped?: () => void;
   onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void;
+  onSubAgentStart?: (agentName: string, taskDescription: string) => void;
+  onSubAgentToolCall?: (agentName: string, toolName: string, args: unknown) => void;
+  onSubAgentThinking?: (agentName: string, content: string) => void;
+  onSubAgentDone?: (agentName: string, result: string) => void;
+  onSubAgentError?: (agentName: string, error: string) => void;
 }
 
 export async function readSSEStream(
@@ -92,6 +97,26 @@ export async function readSSEStream(
               endTime: typeof t.endTime === 'number' ? t.endTime : undefined,
             }));
             callbacks.onTaskUpdate?.(tasks);
+            continue;
+          }
+          if (parsed.type === 'sub_agent_start') {
+            callbacks.onSubAgentStart?.(parsed.agentName ?? '', parsed.taskDescription ?? '');
+            continue;
+          }
+          if (parsed.type === 'sub_agent_tool_call') {
+            callbacks.onSubAgentToolCall?.(parsed.agentName ?? '', parsed.toolName ?? '', parsed.args);
+            continue;
+          }
+          if (parsed.type === 'sub_agent_thinking') {
+            callbacks.onSubAgentThinking?.(parsed.agentName ?? '', parsed.content ?? '');
+            continue;
+          }
+          if (parsed.type === 'sub_agent_done') {
+            callbacks.onSubAgentDone?.(parsed.agentName ?? '', parsed.result ?? '');
+            continue;
+          }
+          if (parsed.type === 'sub_agent_error') {
+            callbacks.onSubAgentError?.(parsed.agentName ?? '', parsed.error ?? '');
             continue;
           }
           if (parsed.type === 'status') {

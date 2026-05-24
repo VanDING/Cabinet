@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Decision } from '@cabinet/types';
 
 export interface DecisionCardProps {
@@ -15,6 +16,10 @@ export function DecisionCard({
   onViewDetails,
   variant = 'compact',
 }: DecisionCardProps) {
+  const [selectedOptionId, setSelectedOptionId] = useState(
+    decision.chosenOptionId ?? decision.options[0]?.id ?? '',
+  );
+
   const levelColors: Record<string, string> = {
     L0: 'bg-gray-100 text-gray-600',
     L1: 'bg-green-100 text-green-700',
@@ -49,7 +54,8 @@ export function DecisionCard({
                 name={`decision_${decision.id}`}
                 value={opt.id}
                 className="mt-0.5"
-                defaultChecked={opt.id === decision.chosenOptionId}
+                checked={selectedOptionId === opt.id}
+                onChange={() => setSelectedOptionId(opt.id)}
               />
               <div>
                 <div className="font-medium text-gray-700 dark:text-gray-300">{opt.label}</div>
@@ -63,7 +69,7 @@ export function DecisionCard({
       <div className="flex gap-2">
         {onApprove && decision.status === 'pending' && (
           <button
-            onClick={() => onApprove(decision.id, decision.options[0]?.id ?? '')}
+            onClick={() => onApprove(decision.id, selectedOptionId)}
             className="rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
           >
             Approve

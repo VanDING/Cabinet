@@ -7,12 +7,22 @@ export function createTestApp() {
   return createApp();
 }
 
+/** Reset delegation tier to T0 for predictable test behavior. */
+export async function resetTier(app: ReturnType<typeof createApp>) {
+  await app.request('/api/settings/delegation-tier', {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ tier: 'T0' }),
+  });
+}
+
 /** Ensure a test project exists. Returns the project ID so decisions/workflows can reference it. */
 export async function seedProject(app: ReturnType<typeof createApp>): Promise<string> {
+  const name = `Test Project ${Date.now()}`;
   const res = await app.request('/api/projects', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ name: 'Test Project' }),
+    body: JSON.stringify({ name }),
   });
   if (res.status !== 201) {
     const body = await res.json();
