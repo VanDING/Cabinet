@@ -24,7 +24,7 @@ import { SafetyChecker } from './safety.js';
 import { CheckpointManager } from './checkpoint.js';
 import type { Database } from '@cabinet/storage';
 
-import type { DispatchMode, PipelineStep } from '@cabinet/types';
+import type { DispatchMode, PipelineStep, AgentOutput, PipelineContext, PipelineStepContext } from '@cabinet/types';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -50,6 +50,50 @@ export interface DispatchResult {
   finalOutput: string;
   totalSteps: number;
   totalDurationMs: number;
+  /** Structured output from the final step, if available. */
+  structuredOutput?: AgentOutput;
+}
+
+// ── Result Synthesizer (for Parallel mode) ────────────────────
+
+class ResultSynthesizer {
+  synthesize(outputs: AgentOutput[]): AgentOutput {
+    const summary = outputs.map((o) => o.summary).filter(Boolean).join('\n');
+    const allFindings = outputs.flatMap((o) => o.findings ?? []);
+    const dedupedFindings = this.deduplicateFindings(allFindings);
+    const decisions = outputs.flatMap((o) => o.decisions ?? []);
+    const openQuestions = [...new Set(outputs.flatMap((o) => o.openQuestions ?? []))];
+    const avgConfidence = outputs.length > 0
+      ? outputs.reduce((sum, o) => sum + (o.confidence ?? 0.5), 0) / outputs.length
+      : 0.5;
+    const suggestedNextSteps = [...new Set(outputs.flatMap((o) => o.suggestedNextSteps ?? []))];
+
+    return {
+      summary,
+      findings: dedupedFindings,
+      decisions,
+      openQuestions,
+      confidence: avgConfidence,
+      suggestedNextSteps,
+    };
+  }
+
+  private deduplicateFindings(findings: AgentOutput['findings']): AgentOutput['findings'] {
+    const seen = new Set<string>();
+    const result: AgentOutput['findings'] = [];
+    for (const f of findings) {
+      const key = `${f.type}:${f.detail}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(f);
+      }
+    }
+    // Sort by severity
+    const severityOrder = { high: 0, medium: 1, low: 2 };
+    return result.sort((a, b) =>
+      (severityOrder[a.severity ?? 'low'] ?? 2) - (severityOrder[b.severity ?? 'low'] ?? 2),
+    );
+  }
 }
 
 // ── Dispatcher ─────────────────────────────────────────────────
@@ -112,10 +156,14 @@ export class AgentDispatcher {
     let totalSteps = 0;
     const roleTypes = options.roles ?? ['secretary'];
 
-    let currentInput = options.request;
+    const pipelineContext: PipelineContext = {
+      originalRequest: options.request,
+      steps: [],
+    };
 
     for (const roleType of roleTypes) {
-      const step = await this.runAgentStep(roleType, currentInput, options);
+      const input = this.serializePipelineContext(pipelineContext);
+      const step = await this.runAgentStep(roleType, input, options);
       steps.push(step);
       totalSteps += step.steps;
 
@@ -129,13 +177,13 @@ export class AgentDispatcher {
         };
       }
 
-      // Feed output as input to the next role in the pipeline
-      currentInput = [
-        `Previous step (${roleType}) output:`,
-        step.output,
-        '',
-        `Original request: ${options.request}`,
-      ].join('\n');
+      // Accumulate structured context for the next step
+      pipelineContext.steps.push({
+        role: roleType,
+        summary: step.structuredOutput?.summary ?? step.output?.slice(0, 500) ?? '',
+        findings: step.structuredOutput?.findings ?? [],
+        decisions: step.structuredOutput?.decisions ?? [],
+      });
     }
 
     const final = steps[steps.length - 1];
@@ -145,7 +193,33 @@ export class AgentDispatcher {
       finalOutput: final?.output ?? 'No output produced.',
       totalSteps,
       totalDurationMs: Date.now() - startTime,
+      structuredOutput: final?.structuredOutput,
     };
+  }
+
+  private serializePipelineContext(ctx: PipelineContext): string {
+    const parts: string[] = [];
+    parts.push(`Original request: ${ctx.originalRequest}`);
+    if (ctx.steps.length > 0) {
+      parts.push('\n## Previous steps');
+      for (const step of ctx.steps) {
+        parts.push(`\n### ${step.role}`);
+        parts.push(`Summary: ${step.summary}`);
+        if (step.findings.length > 0) {
+          parts.push('Findings:');
+          for (const f of step.findings) {
+            parts.push(`- [${f.type}${f.severity ? `/${f.severity}` : ''}] ${f.detail}`);
+          }
+        }
+        if (step.decisions.length > 0) {
+          parts.push('Decisions:');
+          for (const d of step.decisions) {
+            parts.push(`- ${d.decision}`);
+          }
+        }
+      }
+    }
+    return parts.join('\n');
   }
 
   // ── Parallel Mode ─────────────────────────────────────────
@@ -165,16 +239,38 @@ export class AgentDispatcher {
     }
     const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
 
-    const outputs = steps
-      .filter((s) => s.status === 'completed')
-      .map((s) => `[${s.role}] ${s.output}`);
+    const structuredOutputs = steps
+      .map((s) => s.structuredOutput)
+      .filter(Boolean) as AgentOutput[];
+
+    let finalOutput: string;
+    let synthesized: AgentOutput | undefined;
+    if (structuredOutputs.length > 0) {
+      const synthesizer = new ResultSynthesizer();
+      synthesized = synthesizer.synthesize(structuredOutputs);
+      finalOutput = [
+        ...steps.map((s) => `[${s.role}] ${s.output}`),
+        '',
+        '--- Synthesized ---',
+        synthesized.summary,
+        ...(synthesized.findings.length > 0
+          ? ['\nFindings:', ...synthesized.findings.map((f) => `- [${f.type}] ${f.detail}`)]
+          : []),
+      ].join('\n');
+    } else {
+      finalOutput = steps
+        .filter((s) => s.status === 'completed')
+        .map((s) => `[${s.role}] ${s.output}`)
+        .join('\n\n---\n\n') || 'No outputs produced.';
+    }
 
     return {
       mode: 'parallel',
       steps,
-      finalOutput: outputs.join('\n\n---\n\n') || 'No outputs produced.',
+      finalOutput,
       totalSteps,
       totalDurationMs: Date.now() - startTime,
+      structuredOutput: synthesized,
     };
   }
 
@@ -192,6 +288,7 @@ export class AgentDispatcher {
       finalOutput: step.output ?? step.error ?? 'No output.',
       totalSteps: step.steps,
       totalDurationMs: Date.now() - startTime,
+      structuredOutput: step.structuredOutput,
     };
   }
 
@@ -201,7 +298,7 @@ export class AgentDispatcher {
     roleType: AgentRoleType | string,
     input: string,
     options: DispatchOptions,
-  ): Promise<PipelineStep> {
+  ): Promise<PipelineStep & { structuredOutput?: AgentOutput }> {
     const startTime = Date.now();
     const role = this.registry.get(roleType);
     if (!role) {
@@ -242,6 +339,7 @@ export class AgentDispatcher {
         output: result.content,
         durationMs: Date.now() - startTime,
         steps: result.steps,
+        structuredOutput: result.structuredOutput,
       };
     } catch (error) {
       return {

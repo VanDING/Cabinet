@@ -4,6 +4,7 @@ import type { AgentRoleType } from '@cabinet/agent';
 export interface ConversationContext {
   lastIntent?: string;
   lastRoute?: string;
+  topicEmbedding?: number[];
 }
 
 export type ParsedIntent =
@@ -34,7 +35,78 @@ export interface AgentRouteResult {
   suggestion?: string;
   /** The original parsed intent (for backward compatibility). */
   intent: ParsedIntent;
+  /** Whether this message is a topic continuation from the previous turn. */
+  topicContinuity?: boolean;
 }
+
+// ── Embedding-based Semantic Routing ──────────────────────────
+
+interface IntentExample {
+  intent: string;
+  examples: string[];
+  embeddings?: number[][];
+  excludeWords?: string[];
+}
+
+const INTENT_EXAMPLES: IntentExample[] = [
+  {
+    intent: 'decision_request',
+    examples: ['帮我决策', '该不该', 'A和B哪个好', '怎么选择', '权衡利弊', '是否值得', '哪个方案更好', '给我建议', '优缺点对比', '风险评估'],
+    excludeWords: ['不要决策', '不用决策', '别决策', '不需要决策', '不用分析'],
+  },
+  {
+    intent: 'meeting_request',
+    examples: ['组织会议', '开会讨论', '召集顾问', '启动会议', '安排讨论', '需要多方意见', '开个会', '组织讨论'],
+    excludeWords: ['不要开会', '不用开会', '别组织会议', '不需要会议', '不用召集'],
+  },
+  {
+    intent: 'status_query',
+    examples: ['查询状态', '项目进度', '工作流状态', '任务执行情况', '现在怎么样了', '完成了吗', '进展如何', '到哪里了'],
+    excludeWords: ['不要查询'],
+  },
+  {
+    intent: 'knowledge_query',
+    examples: ['什么是', '如何', '怎么', '为什么', '解释一下', '告诉我关于', '什么是', '介绍一下'],
+    excludeWords: [],
+  },
+  {
+    intent: 'workflow_request',
+    examples: ['创建工作流', '设计流程', '自动化步骤', '修改workflow', '定义流程', '建立工作流', '跑个流程'],
+    excludeWords: ['不要创建', '不用工作流'],
+  },
+  {
+    intent: 'review_request',
+    examples: ['审查代码', '检查质量', 'review一下', '复核结果', '审核方案', '评估一下', '把关'],
+    excludeWords: ['不要审查', '不用review', '别检查'],
+  },
+  {
+    intent: 'organize_request',
+    examples: ['组织架构', '系统设计', '搭建体系', '设计能力', '组织方案', '构建系统', '规划架构'],
+    excludeWords: ['不要组织', '不用组织', '别搭建'],
+  },
+];
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i]! * b[i]!;
+    normA += a[i]! * a[i]!;
+    normB += b[i]! * b[i]!;
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+interface EmbeddingMatch {
+  intent: string;
+  confidence: number;
+  topExample: string;
+}
+
+// ── Intent Parser ─────────────────────────────────────────────
 
 export class IntentParser {
   private availableAgentsDesc = '';
@@ -42,6 +114,8 @@ export class IntentParser {
     'secretary', 'decision_analyst', 'meeting_chair',
     'workflow_designer', 'curator', 'agent_creator', 'reviewer', 'organize',
   ]);
+  private customAgents: Map<string, string> = new Map(); // name -> description
+  private exampleEmbeddingsWarmed = false;
 
   constructor(private readonly gateway?: LLMGateway) {}
 
@@ -53,6 +127,11 @@ export class IntentParser {
   /** Update valid agent types from registry (includes custom agents). */
   setValidAgentTypes(types: Set<string>): void {
     this.validAgentTypes = types;
+  }
+
+  /** Register custom agent names and descriptions for fallback routing. */
+  setCustomAgents(agents: Map<string, string>): void {
+    this.customAgents = agents;
   }
 
   /** Inject captain preferences for personalized routing. */
@@ -105,7 +184,7 @@ export class IntentParser {
       lower.includes('对比') || lower.includes('比较') || lower.includes('优劣') ||
       lower.includes('哪个') || lower.includes('怎么选') || lower.includes('权衡')
     );
-    if (hasDecisionKeyword || hasAnalyticalContext) {
+    if ((hasDecisionKeyword || hasAnalyticalContext) && !this.hasNegation(lower, 'decision_request')) {
       return {
         kind: 'decision_request',
         topic: message.slice(0, 100),
@@ -120,7 +199,7 @@ export class IntentParser {
     const hasAdvisorIntent = lower.includes('顾问') && (
       lower.includes('讨论') || lower.includes('分析') || lower.includes('会议') || lower.includes('咨询')
     );
-    if (hasOrganizeMeeting || hasAdvisorIntent) {
+    if ((hasOrganizeMeeting || hasAdvisorIntent) && !this.hasNegation(lower, 'meeting_request')) {
       return {
         kind: 'meeting_request',
         topic: message,
@@ -135,7 +214,7 @@ export class IntentParser {
       lower.includes('决策') || lower.includes('状态') || lower.includes('进度') ||
       lower.includes('任务') || lower.includes('执行')
     );
-    if (hasStatusKeyword || hasQueryWithContext) {
+    if ((hasStatusKeyword || hasQueryWithContext) && !this.hasNegation(lower, 'status_query')) {
       return {
         kind: 'status_query',
         target: 'project',
@@ -151,7 +230,7 @@ export class IntentParser {
     const hasDesignFlow = lower.includes('流程') && (
       lower.includes('创建') || lower.includes('设计') || lower.includes('定义') || lower.includes('自动化')
     );
-    if (hasWorkflowKeyword || hasCreateAutomation || hasModifyWorkflow || hasDesignFlow) {
+    if ((hasWorkflowKeyword || hasCreateAutomation || hasModifyWorkflow || hasDesignFlow) && !this.hasNegation(lower, 'workflow_request')) {
       return {
         kind: 'workflow_request',
         topic: message.slice(0, 100),
@@ -161,11 +240,11 @@ export class IntentParser {
     }
 
     if (
-      lower.includes('审查') ||
+      (lower.includes('审查') ||
       lower.includes('检查') ||
       lower.includes('review') ||
       lower.includes('复核') ||
-      lower.includes('审核')
+      lower.includes('审核')) && !this.hasNegation(lower, 'review_request')
     ) {
       return {
         kind: 'review_request',
@@ -180,7 +259,7 @@ export class IntentParser {
     const hasOrganize = lower.includes('组织') || lower.includes('搭建') || lower.includes('organize') || lower.includes('架构');
     const hasDesignIntent = lower.includes('设计') || lower.includes('系统') || lower.includes('流程') ||
       lower.includes('自动化') || lower.includes('能力') || lower.includes('方案');
-    if (hasOrganize && hasDesignIntent) {
+    if (hasOrganize && hasDesignIntent && !this.hasNegation(lower, 'organize_request')) {
       return {
         kind: 'organize_request',
         topic: message.slice(0, 100),
@@ -191,12 +270,99 @@ export class IntentParser {
     return { kind: 'unknown', raw: message };
   }
 
+  /** Check if the message contains negation patterns for a specific intent. */
+  private hasNegation(lower: string, intent: string): boolean {
+    const example = INTENT_EXAMPLES.find((e) => e.intent === intent);
+    if (!example?.excludeWords) return false;
+    return example.excludeWords.some((ew) => lower.includes(ew.toLowerCase()));
+  }
+
+  // ── Embedding-based Intent Matching ────────────────────────
+
+  /** Warm up example embeddings (call once at startup). Idempotent. */
+  async warmupEmbeddings(): Promise<void> {
+    if (!this.gateway || this.exampleEmbeddingsWarmed) return;
+    try {
+      const allExamples: string[] = [];
+      const offsets: number[] = [];
+      for (const ie of INTENT_EXAMPLES) {
+        offsets.push(allExamples.length);
+        allExamples.push(...ie.examples);
+      }
+      if (allExamples.length === 0) return;
+      const result = await this.gateway.generateEmbeddings({ texts: allExamples });
+      let idx = 0;
+      for (let i = 0; i < INTENT_EXAMPLES.length; i++) {
+        const ie = INTENT_EXAMPLES[i]!;
+        ie.embeddings = result.embeddings.slice(idx, idx + ie.examples.length);
+        idx += ie.examples.length;
+      }
+      this.exampleEmbeddingsWarmed = true;
+    } catch {
+      // Embedding warmup is best-effort; fall back to keyword routing
+    }
+  }
+
+  /** Match user message to intent examples using embedding similarity. */
+  private async matchIntentByEmbedding(message: string): Promise<EmbeddingMatch | null> {
+    if (!this.gateway || !this.exampleEmbeddingsWarmed) return null;
+    try {
+      const userResult = await this.gateway.generateEmbeddings({ texts: [message] });
+      const userEmbedding = userResult.embeddings[0];
+      if (!userEmbedding) return null;
+
+      let bestIntent = '';
+      let bestScore = -1;
+      let bestExample = '';
+
+      for (const ie of INTENT_EXAMPLES) {
+        if (!ie.embeddings || ie.embeddings.length === 0) continue;
+        for (let i = 0; i < ie.embeddings.length; i++) {
+          const score = cosineSimilarity(userEmbedding, ie.embeddings[i]!);
+          if (score > bestScore) {
+            bestScore = score;
+            bestIntent = ie.intent;
+            bestExample = ie.examples[i]!;
+          }
+        }
+      }
+
+      if (bestScore < 0) return null;
+      return { intent: bestIntent, confidence: bestScore, topExample: bestExample };
+    } catch {
+      return null;
+    }
+  }
+
   // ── LLM-powered Intent Classification ─────────────────────
 
   async parseWithLLM(message: string, conversationContext?: ConversationContext): Promise<ParsedIntent> {
     if (!this.gateway) return this.parse(message, conversationContext);
 
     try {
+      const fewShotExamples = `
+Examples:
+1. Message: "帮我分析一下该不该投资这个项目"
+   → {"kind": "decision_request", "topic": "投资这个项目", "context": "...", "suggestedDimensions": ["成本", "风险", "时间", "收益"]}
+2. Message: "组织一个会议讨论下季度计划"
+   → {"kind": "meeting_request", "topic": "下季度计划", "requiredPerspectives": ["general"]}
+3. Message: "查询一下项目当前进度"
+   → {"kind": "status_query", "target": "project", "filters": {"query": "项目当前进度"}}
+4. Message: "什么是我们的核心竞争优势"
+   → {"kind": "knowledge_query", "question": "什么是我们的核心竞争优势", "scope": "both"}
+5. Message: "帮我设计一个自动化的数据处理工作流"
+   → {"kind": "workflow_request", "topic": "数据处理工作流", "context": "...", "suggestedDimensions": []}
+6. Message: "review一下这个方案的质量"
+   → {"kind": "review_request", "target": "方案", "context": "review一下这个方案的质量"}
+7. Message: "搭建一个市场营销体系"
+   → {"kind": "organize_request", "topic": "市场营销体系", "context": "..."}
+8. Message: "继续"
+   → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
+
+      const historyConstraint = conversationContext?.lastIntent
+        ? `\nHistory context: The previous message was classified as "${conversationContext.lastIntent}". If this message is a continuation of the same topic (same entities, task, or files), prefer the same intent unless the user explicitly switches topics.`
+        : '';
+
       const prompt = `Classify this user message into one of these intents:
 
 - decision_request: user wants to analyze/decide something
@@ -205,6 +371,9 @@ export class IntentParser {
 - knowledge_query: user asks a general question
 - review_request: user wants to review/audit/check quality of something
 - organize_request: user wants to design/build/architect an organization or system
+- follow_up: user is continuing or elaborating on a previous topic
+- unknown: none of the above
+${fewShotExamples}${historyConstraint}
 
 Respond with ONLY a JSON object:
 {
@@ -220,30 +389,64 @@ Respond with ONLY a JSON object:
 Message: "${message}"`;
 
       const response = await this.gateway.generateText({
-        model: 'claude-haiku-4-5',
+        model: 'claude-sonnet-4-6',
         messages: [{ role: 'user', content: prompt }],
-        maxTokens: 300,
+        maxTokens: 400,
         temperature: 0.1,
       });
 
       return this.parseJSONIntent(response.content);
     } catch {
-      return this.parse(message);
+      return this.parse(message, conversationContext);
     }
   }
 
   // ── LLM-powered Agent Routing ─────────────────────────────
 
   async routeToAgent(message: string, conversationContext?: ConversationContext): Promise<AgentRouteResult> {
+    // Ensure embeddings are warmed up
+    await this.warmupEmbeddings();
+
     // Fast path: keyword-based parsing (no LLM call)
     const fastIntent = this.parse(message, conversationContext);
 
     if (!this.gateway) {
-      return this.fallbackRoute(fastIntent);
+      return this.fallbackRoute(fastIntent, message);
+    }
+
+    // Topic continuity check: if semantic similarity to previous topic > 0.7, force follow-up
+    if (conversationContext?.topicEmbedding && conversationContext.lastRoute) {
+      try {
+        const userResult = await this.gateway.generateEmbeddings({ texts: [message] });
+        const userEmbedding = userResult.embeddings[0];
+        if (userEmbedding) {
+          const topicSim = cosineSimilarity(userEmbedding, conversationContext.topicEmbedding);
+          if (topicSim > 0.7) {
+            return {
+              targetAgent: conversationContext.lastRoute as AgentRoleType,
+              confidence: 0.85,
+              reasoning: 'Topic continuation detected via semantic similarity.',
+              intent: { kind: 'follow_up', previousKind: conversationContext.lastIntent ?? 'unknown', raw: message },
+              topicContinuity: true,
+            };
+          }
+        }
+      } catch {
+        // Best-effort topic continuity check
+      }
+    }
+
+    // Embedding semantic match
+    const embeddingMatch = await this.matchIntentByEmbedding(message);
+    if (embeddingMatch && embeddingMatch.confidence > 0.75) {
+      const intent = this.buildIntentFromMatch(embeddingMatch, message);
+      const route = this.fallbackRoute(intent, message);
+      route.confidence = embeddingMatch.confidence;
+      route.reasoning = `Embedding semantic match: "${embeddingMatch.topExample}" (confidence: ${(embeddingMatch.confidence * 100).toFixed(0)}%)`;
+      return route;
     }
 
     // For simple intents (knowledge_query, follow_up, casual chat), skip LLM routing.
-    // Only use LLM when the message is complex and keyword parser is uncertain.
     const needsLLM =
       fastIntent.kind === 'unknown' ||
       fastIntent.kind === 'decision_request' ||
@@ -253,21 +456,25 @@ Message: "${message}"`;
       fastIntent.kind === 'organize_request';
 
     if (!needsLLM) {
-      // Fast path is sufficient — route directly without LLM overhead
-      return this.fallbackRoute(fastIntent);
+      return this.fallbackRoute(fastIntent, message);
     }
 
     // LLM fallback for complex/uncertain messages
     try {
       const intent = await this.parseWithLLM(message, conversationContext);
-      return await this.routeWithLLM(message, intent);
+      return await this.routeWithLLM(message, intent, conversationContext, embeddingMatch);
     } catch {
-      return this.fallbackRoute(fastIntent);
+      return this.fallbackRoute(fastIntent, message);
     }
   }
 
   /** LLM-powered agent routing (separated from routeToAgent for clarity). */
-  private async routeWithLLM(message: string, intent: ParsedIntent): Promise<AgentRouteResult> {
+  private async routeWithLLM(
+    message: string,
+    intent: ParsedIntent,
+    conversationContext?: ConversationContext,
+    embeddingMatch?: EmbeddingMatch | null,
+  ): Promise<AgentRouteResult> {
     const agentList =
       this.availableAgentsDesc ||
       [
@@ -284,6 +491,16 @@ Message: "${message}"`;
       ? `\nCaptain preferences (use to personalize routing):\n${this.captainPrefsContext}\n`
       : '';
 
+    const historyLine = conversationContext?.lastRoute
+      ? `\nRouting history: The previous turn was routed to "${conversationContext.lastRoute}". ` +
+        `If the user message is a continuation of the same topic (involving the same entities, task, or files), ` +
+        `please prefer the SAME targetAgent, unless the user explicitly asks to switch topics.`
+      : '';
+
+    const embeddingHint = embeddingMatch && embeddingMatch.confidence >= 0.55
+      ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
+      : '';
+
     const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
 
 Available agents:
@@ -297,32 +514,56 @@ Routing guidelines:
 - curator: The user asks about past events, project status, progress, or patterns
 - reviewer: The user wants to review/audit/check the quality or correctness of something
 - organize: The user wants to design/build/architect an organization, system, or capability
+${historyLine}${embeddingHint}
 
 Respond with ONLY a JSON object (no markdown, no backticks):
 {
   "targetAgent": "one of the agent types above",
   "confidence": 0.0 to 1.0,
   "reasoning": "one sentence explaining why",
-  "suggestion": "if confidence < 0.5, suggest what kind of specialist might help, otherwise null"
+  "suggestion": "if confidence < 0.5, suggest what kind of specialist might help, otherwise null",
+  "topicContinuity": true or false
 }
 
 Message: "${message}"`;
 
     try {
       const response = await this.gateway!.generateText({
-        model: 'claude-haiku-4-5',
+        model: 'claude-sonnet-4-6',
         messages: [{ role: 'user', content: prompt }],
-        maxTokens: 250,
+        maxTokens: 300,
         temperature: 0.1,
       });
 
       return this.parseRouteResult(response.content, intent);
     } catch {
-      return this.fallbackRoute(intent);
+      return this.fallbackRoute(intent, message);
     }
   }
 
   // ── Private ───────────────────────────────────────────────
+
+  private buildIntentFromMatch(match: EmbeddingMatch, message: string): ParsedIntent {
+    const base = { topic: message.slice(0, 100), context: message };
+    switch (match.intent) {
+      case 'decision_request':
+        return { kind: 'decision_request', ...base, suggestedDimensions: ['成本', '风险', '时间', '收益'] };
+      case 'meeting_request':
+        return { kind: 'meeting_request', topic: message, requiredPerspectives: ['general'] };
+      case 'status_query':
+        return { kind: 'status_query', target: 'project', filters: { query: message } };
+      case 'knowledge_query':
+        return { kind: 'knowledge_query', question: message, scope: 'both' };
+      case 'workflow_request':
+        return { kind: 'workflow_request', ...base, suggestedDimensions: [] };
+      case 'review_request':
+        return { kind: 'review_request', target: message.slice(0, 100), context: message };
+      case 'organize_request':
+        return { kind: 'organize_request', ...base };
+      default:
+        return { kind: 'unknown', raw: message };
+    }
+  }
 
   private parseRouteResult(json: string, intent: ParsedIntent): AgentRouteResult {
     try {
@@ -337,15 +578,34 @@ Message: "${message}"`;
         reasoning: parsed.reasoning ?? 'No reasoning provided.',
         suggestion: parsed.suggestion ?? undefined,
         intent,
+        topicContinuity: !!parsed.topicContinuity,
       };
     } catch {
       return this.fallbackRoute(intent);
     }
   }
 
-  private fallbackRoute(intent: ParsedIntent): AgentRouteResult {
+  private fallbackRoute(intent: ParsedIntent, message?: string): AgentRouteResult {
     let targetAgent: AgentRoleType = 'secretary';
     let reasoning = 'Default routing (no LLM available).';
+
+    // Custom agent detection: if a custom agent name appears in the message, route to it
+    if (message) {
+      const lowerMsg = message.toLowerCase();
+      for (const [name, description] of this.customAgents) {
+        const lowerName = name.toLowerCase();
+        if (lowerMsg.includes(lowerName) || lowerMsg.includes(description.toLowerCase())) {
+          targetAgent = name as AgentRoleType;
+          reasoning = `Custom agent "${name}" matched in user message.`;
+          return {
+            targetAgent,
+            confidence: 0.75,
+            reasoning,
+            intent,
+          };
+        }
+      }
+    }
 
     switch (intent.kind) {
       case 'decision_request':

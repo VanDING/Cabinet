@@ -10,4 +10,6 @@ export interface PipelineStep {
   error?: string;
   durationMs: number;
   steps: number;
+  /** Structured parsed output from the agent, if available. */
+  structuredOutput?: import('./agent-output.js').AgentOutput;
 }

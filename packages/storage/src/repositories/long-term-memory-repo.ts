@@ -23,6 +23,18 @@ export class LongTermMemoryRepository {
       CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_embeddings(timestamp);
       CREATE INDEX IF NOT EXISTS idx_memory_metadata_project ON memory_embeddings(json_extract(metadata, '$.projectId'));
       CREATE INDEX IF NOT EXISTS idx_memory_has_embedding ON memory_embeddings(embedding) WHERE embedding IS NOT NULL;
+
+      CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(content, content_rowid=rowid);
+      CREATE TRIGGER IF NOT EXISTS memory_fts_insert AFTER INSERT ON memory_embeddings BEGIN
+        INSERT INTO memory_fts(rowid, content) VALUES (new.rowid, new.content);
+      END;
+      CREATE TRIGGER IF NOT EXISTS memory_fts_delete AFTER DELETE ON memory_embeddings BEGIN
+        INSERT INTO memory_fts(memory_fts, rowid, content) VALUES('delete', old.rowid, old.content);
+      END;
+      CREATE TRIGGER IF NOT EXISTS memory_fts_update AFTER UPDATE ON memory_embeddings BEGIN
+        INSERT INTO memory_fts(memory_fts, rowid, content) VALUES('delete', old.rowid, old.content);
+        INSERT INTO memory_fts(rowid, content) VALUES (new.rowid, new.content);
+      END;
     `);
   }
 
@@ -48,6 +60,24 @@ export class LongTermMemoryRepository {
       )
       .all(`%${escaped}%`, limit) as Record<string, unknown>[];
     return rows.map((r) => this.rowToEntry(r));
+  }
+
+  searchByBM25(query: string, limit = 10): LongTermMemoryRow[] {
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT m.* FROM memory_embeddings m
+           JOIN memory_fts f ON m.rowid = f.rowid
+           WHERE memory_fts MATCH ?
+           ORDER BY rank
+           LIMIT ?`,
+        )
+        .all(query, limit) as Record<string, unknown>[];
+      return rows.map((r) => this.rowToEntry(r));
+    } catch {
+      // Fallback to LIKE if FTS5 is unavailable or query is malformed
+      return this.searchByText(query, limit);
+    }
   }
 
   findAllWithEmbeddings(): LongTermMemoryRow[] {
@@ -98,6 +128,12 @@ export class LongTermMemoryRepository {
 
   delete(id: string): void {
     this.db.prepare('DELETE FROM memory_embeddings WHERE id = ?').run(id);
+  }
+
+  updateMetadata(id: string, metadata: string): void {
+    this.db
+      .prepare('UPDATE memory_embeddings SET metadata = ? WHERE id = ?')
+      .run(metadata, id);
   }
 
   private rowToEntry(row: Record<string, unknown>): LongTermMemoryRow {

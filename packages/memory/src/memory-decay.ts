@@ -35,6 +35,7 @@ export class MemoryDecayService {
       if (validUntil && new Date(validUntil) < now) {
         meta.status = 'expired';
         expired++;
+        this.longTerm._setMetadataSync(entry.id, meta);
         continue;
       }
 
@@ -46,12 +47,14 @@ export class MemoryDecayService {
       if (confidence < 0.3 && accessCount < 3 && ageDays > 30) {
         meta.status = 'archived';
         archived++;
+        this.longTerm._setMetadataSync(entry.id, meta);
         continue;
       }
 
       if (importance < 0.2 && ageDays > 90) {
         meta.status = 'archived';
         archived++;
+        this.longTerm._setMetadataSync(entry.id, meta);
         continue;
       }
 

@@ -35,11 +35,19 @@ function estimateMessagesTokens(messages: { role: string; content: string }[]): 
   return messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
 }
 
+export interface RoutingState {
+  lastIntent: string;
+  lastRoute: string;
+  topicEmbedding: number[];
+  routedAt: Date;
+}
+
 export interface Session {
   id: string;
   title: string;
   projectId?: string;
   messages: { role: 'user' | 'assistant'; content: string; timestamp: Date }[];
+  routingState?: RoutingState;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -237,6 +245,20 @@ export class SessionManager {
 
   list(): Session[] {
     return [...this.sessions.values()];
+  }
+
+  getRoutingState(sessionId: string): RoutingState | null {
+    const session = this.sessions.get(sessionId);
+    return session?.routingState ?? null;
+  }
+
+  setRoutingState(sessionId: string, state: RoutingState): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.routingState = state;
+      session.updatedAt = new Date();
+      this.persist(session);
+    }
   }
 
   /** Persist a session to ~/.cabinet/sessions/<id>.json */
