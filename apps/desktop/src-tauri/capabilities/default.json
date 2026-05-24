@@ -15,6 +15,6 @@
     "dialog:allow-open",
     "dialog:allow-confirm",
     "dialog:allow-message",
-    "window:allow-start-dragging"
+    "core:window:allow-start-dragging"
   ]
 }
