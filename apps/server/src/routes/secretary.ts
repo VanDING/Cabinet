@@ -1566,6 +1566,7 @@ function getAgentLoopForRole(
     checkpointManager,
     memoryProvider: buildMemoryProvider(ctx, projectId),
     sessionId: `${sessionId}-${role.type}`,
+    memorySessionId: sessionId,
     projectId,
     captainId,
     systemPrompt: buildSystemPrompt(role.type, role.systemPrompt, projectRootPath),
@@ -1582,10 +1583,10 @@ function getAgentLoopForRole(
     const firstKey = agentLoopCache.keys().next().value;
     if (firstKey) agentLoopCache.delete(firstKey);
   }
-  // Wire observability: report session completion
+  // Wire observability + skill extraction on session completion
   loop.onSessionComplete = (summary) => {
-    const obs = getServerContext().observability;
-    obs.recordSession({
+    const ctx = getServerContext();
+    ctx.observability.recordSession({
       sessionId: summary.sessionId,
       projectId: summary.projectId,
       captainId: summary.captainId,
@@ -1603,6 +1604,14 @@ function getAgentLoopForRole(
       durationMs: summary.durationMs,
       success: summary.success,
     });
+
+    // Auto-extract skill from successful complex sessions
+    ctx.skillExtractor.extract(summary).then((skill) => {
+      if (skill) {
+        const path = ctx.skillExtractor.save(skill);
+        ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
+      }
+    }).catch(() => { /* best-effort */ });
   };
 
   agentLoopCache.set(cacheKey, loop);

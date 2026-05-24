@@ -84,14 +84,15 @@ export class ShortTermMemory {
     if (this.repo) {
       const row = this.repo.findBySessionAndKey(sessionId, key);
       if (row) {
-        if (Date.now() - new Date(row.timestamp).getTime() > (row.ttl ?? this.defaultTtl)) {
+        const ts = new Date(row.timestamp + 'Z').getTime();
+        if (Date.now() - ts > (row.ttl ?? this.defaultTtl)) {
           this.repo.delete(sessionId, key);
           return null;
         }
         const value = JSON.parse(row.value ?? 'null');
         this.cache.set(fullKey, {
           key, value, sessionId,
-          timestamp: new Date(row.timestamp),
+          timestamp: new Date(ts),
           ttl: row.ttl ?? this.defaultTtl,
         });
         this.accessOrder.push(fullKey);
@@ -134,6 +135,16 @@ export class ShortTermMemory {
     }
 
     return result;
+  }
+
+  delete(sessionId: string, key: string): void {
+    const fullKey = `${sessionId}:${key}`;
+    this.cache.delete(fullKey);
+    const idx = this.accessOrder.indexOf(fullKey);
+    if (idx !== -1) this.accessOrder.splice(idx, 1);
+    if (this.repo) {
+      this.repo.delete(sessionId, key);
+    }
   }
 
   clear(sessionId: string): void {

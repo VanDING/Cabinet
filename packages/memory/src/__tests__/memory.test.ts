@@ -5,6 +5,9 @@ import { EntityMemory } from '../entity.js';
 import { ProjectMemory } from '../project.js';
 import { LongTermMemory } from '../long-term.js';
 import { ConsolidationService } from '../consolidation.js';
+import { ProjectIsolatedMemory } from '../project-isolation.js';
+
+// ── ShortTermMemory ───────────────────────────────────────────
 
 describe('ShortTermMemory', () => {
   let mem: ShortTermMemory;
@@ -19,7 +22,6 @@ describe('ShortTermMemory', () => {
 
   it('returns null for expired entries', () => {
     mem.set('sess-1', 'temp', 'data', 1); // 1ms TTL
-    // Wait a tick
     return new Promise((resolve) => setTimeout(resolve, 5)).then(() => {
       expect(mem.get('sess-1', 'temp')).toBeNull();
     });
@@ -43,7 +45,52 @@ describe('ShortTermMemory', () => {
     expect(mem.get('sess-1', 'key')).toBe('one');
     expect(mem.get('sess-2', 'key')).toBe('two');
   });
+
+  it('deletes a single key', () => {
+    mem.set('sess-1', 'a', 1);
+    mem.set('sess-1', 'b', 2);
+    mem.delete('sess-1', 'a');
+    expect(mem.get('sess-1', 'a')).toBeNull();
+    expect(mem.get('sess-1', 'b')).toBe(2);
+  });
 });
+
+describe('ShortTermMemory with DB', () => {
+  let db: Database.Database;
+  let mem: ShortTermMemory;
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+    mem = new ShortTermMemory(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it('persists to SQLite and recovers', () => {
+    mem.set('sess-db', 'k1', 'v1');
+    // Create a fresh instance against the same DB to simulate restart
+    const mem2 = new ShortTermMemory(db);
+    expect(mem2.get('sess-db', 'k1')).toBe('v1');
+  });
+
+  it('delete removes from DB', () => {
+    mem.set('sess-db', 'k1', 'v1');
+    mem.delete('sess-db', 'k1');
+    const mem2 = new ShortTermMemory(db);
+    expect(mem2.get('sess-db', 'k1')).toBeNull();
+  });
+
+  it('TTL is enforced from DB on recovery', async () => {
+    mem.set('sess-db', 'k1', 'v1', 1);
+    await new Promise((r) => setTimeout(r, 10));
+    const mem2 = new ShortTermMemory(db);
+    expect(mem2.get('sess-db', 'k1')).toBeNull();
+  });
+});
+
+// ── EntityMemory ──────────────────────────────────────────────
 
 describe('EntityMemory', () => {
   let mem: EntityMemory;
@@ -75,6 +122,8 @@ describe('EntityMemory', () => {
   });
 });
 
+// ── ProjectMemory ─────────────────────────────────────────────
+
 describe('ProjectMemory', () => {
   let mem: ProjectMemory;
   beforeEach(() => {
@@ -97,16 +146,27 @@ describe('ProjectMemory', () => {
   });
 });
 
+// ── LongTermMemory ────────────────────────────────────────────
+
 describe('LongTermMemory', () => {
   let mem: LongTermMemory;
   let db: Database.Database;
+  let indexPath: string;
+
   beforeEach(() => {
     db = new Database(':memory:');
-    mem = new LongTermMemory(db);
+    indexPath = `/tmp/cabinet-test-${Date.now()}.hnsw.index`;
+    mem = new LongTermMemory(db, 3, indexPath);
   });
+
   afterEach(() => {
     mem.close();
     db.close();
+    try {
+      require('node:fs').unlinkSync(indexPath);
+    } catch {
+      /* ignore */
+    }
   });
 
   it('stores and searches entries by text', async () => {
@@ -133,25 +193,10 @@ describe('LongTermMemory', () => {
     expect(mem.size()).toBe(1);
   });
 
-  it('searches by embedding similarity', async () => {
-    await mem.store({
-      content: 'Apple makes great computers',
-      embedding: [1, 0, 0],
-      metadata: {},
-      timestamp: new Date(),
-    });
-    await mem.store({
-      content: 'Bananas are yellow fruits',
-      embedding: [0, 1, 0],
-      metadata: {},
-      timestamp: new Date(),
-    });
-    await mem.store({
-      content: 'Microsoft makes software',
-      embedding: [0.9, 0.1, 0],
-      metadata: {},
-      timestamp: new Date(),
-    });
+  it('searches by embedding similarity via HNSW', async () => {
+    await mem.store({ content: 'Apple makes computers', embedding: [1, 0, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({ content: 'Bananas are yellow', embedding: [0, 1, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({ content: 'Microsoft makes software', embedding: [0.9, 0.1, 0], metadata: {}, timestamp: new Date() });
 
     const results = await mem.semanticSearch([1, 0, 0], 5);
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -175,27 +220,105 @@ describe('LongTermMemory', () => {
     expect(results[0]!.id).toBe(id);
     expect(results[0]!.embedding).toEqual([0.5, 0.5, 0.5]);
   });
+
+  it('HNSW semantic search is fast (p95 < 100ms for 1000 entries)', async () => {
+    const dim = 3;
+    for (let i = 0; i < 1000; i++) {
+      const vec = [Math.random(), Math.random(), Math.random()];
+      await mem.store({ content: `entry-${i}`, embedding: vec, metadata: {}, timestamp: new Date() });
+    }
+    const times: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const q = [Math.random(), Math.random(), Math.random()];
+      const start = performance.now();
+      await mem.semanticSearch(q, 5);
+      times.push(performance.now() - start);
+    }
+    const p95 = times.sort((a, b) => a - b)[Math.ceil(times.length * 0.95) - 1];
+    expect(p95).toBeLessThan(100);
+  });
 });
 
-describe('ConsolidationService', () => {
-  it('migrates long content to long-term memory', async () => {
-    const short = new ShortTermMemory();
-    const long = new LongTermMemory(new Database(':memory:'));
-    const svc = new ConsolidationService(short, long);
+// ── ProjectIsolatedMemory ─────────────────────────────────────
 
-    short.set(
-      'sess-1',
-      'insight',
-      'This is a very important insight that should be stored in long-term memory for future reference.',
-    );
+describe('ProjectIsolatedMemory', () => {
+  let db: Database.Database;
+  let isolatedA: ProjectIsolatedMemory;
+  let isolatedB: ProjectIsolatedMemory;
+  let indexPathA: string;
+  let indexPathB: string;
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+    indexPathA = `/tmp/cabinet-test-a-${Date.now()}.hnsw.index`;
+    indexPathB = `/tmp/cabinet-test-b-${Date.now()}.hnsw.index`;
+    const shortTerm = new ShortTermMemory(db);
+    const entity = new EntityMemory(db);
+    const project = new ProjectMemory(db);
+    isolatedA = new ProjectIsolatedMemory('proj-a', shortTerm, new LongTermMemory(db, 3, indexPathA), entity, project);
+    isolatedB = new ProjectIsolatedMemory('proj-b', shortTerm, new LongTermMemory(db, 3, indexPathB), entity, project);
+  });
+
+  afterEach(() => {
+    db.close();
+    [indexPathA, indexPathB].forEach((p) => {
+      try {
+        require('node:fs').unlinkSync(p);
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+
+  it('isolates long-term memories by projectId', async () => {
+    await isolatedA.longTermStore('Alpha project spec', {}, [1, 0, 0]);
+    await isolatedB.longTermStore('Beta project spec', {}, [0, 1, 0]);
+
+    const resultsA = await isolatedA.longTermSearch('spec', 5);
+    const resultsB = await isolatedB.longTermSearch('spec', 5);
+
+    expect(resultsA.every((r) => r.metadata.projectId === 'proj-a')).toBe(true);
+    expect(resultsB.every((r) => r.metadata.projectId === 'proj-b')).toBe(true);
+    expect(resultsA).toHaveLength(1);
+    expect(resultsB).toHaveLength(1);
+  });
+});
+
+// ── ConsolidationService ──────────────────────────────────────
+
+describe('ConsolidationService', () => {
+  it('migrates long content to long-term memory and deletes only migrated keys', async () => {
+    const short = new ShortTermMemory();
+    const long = new LongTermMemory(new Database(':memory:'), 3, `/tmp/cabinet-consolidation-${Date.now()}.hnsw.index`);
+    const svc = new ConsolidationService(short, long);
+    svc.preserveRecentMs = 0; // disable freshness gate for testing
+
+    short.set('sess-1', 'insight', 'This is a very important insight that should be stored in long-term memory for future reference.');
     short.set('sess-1', 'brief', 'ok'); // too short, won't migrate
+    short.set('sess-1', 'decision_foo', 'small'); // short but decision key, should migrate
+    short.set('sess-1', 'fresh', 'This is also important but just written.');
 
     const count = await svc.consolidateBasic('sess-1');
+    // decision_foo (register tier) migrates directly.
+    // insight (daily tier) is staged in cascade buffer, not yet sealed.
     expect(count).toBe(1);
     expect(long.size()).toBe(1);
 
-    // Short-term should be cleared
+    // Non-migrated keys should still be accessible
+    expect(short.get('sess-1', 'brief')).toBe('ok');
+    expect(short.get('sess-1', 'fresh')).toBe('This is also important but just written.');
+    // insight is still in short-term (buffered, not sealed)
+    expect(short.get('sess-1', 'insight')).not.toBeNull();
+    // decision_foo is gone (directly migrated)
+    expect(short.get('sess-1', 'decision_foo')).toBeNull();
+
+    // Flush cascade buffer to force-seal daily-tier entries
+    const flushed = await svc.flushSession('sess-1');
+    expect(flushed).toBe(1);
+    expect(long.size()).toBe(2);
+    // Now insight is also gone from short-term
     expect(short.get('sess-1', 'insight')).toBeNull();
-    expect(short.get('sess-1', 'brief')).toBeNull();
+
+    long.close();
   });
 });

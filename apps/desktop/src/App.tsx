@@ -113,6 +113,8 @@ export function App() {
       if (type === 'task_updated') addNotification('task', `Task ${data.data?.status ?? 'updated'}`, data.data?.title ?? 'Untitled');
       if (type === 'budget_alert') addNotification('system', 'Budget alert', data.data?.reason ?? 'Budget limit exceeded');
       if (type === 'quality_alert') addNotification('system', `Quality review — score ${data.data?.score ?? 'N/A'}`, data.data?.topIssue ?? 'Review issues detected');
+      if (type === 'subconscious_insight') addNotification('system', 'Insight', data.data?.text ?? 'A new insight surfaced');
+      if (type === 'memory_contradiction') addNotification('system', 'Memory contradiction', data.data?.message ?? 'A memory conflict was detected');
     });
   });
 

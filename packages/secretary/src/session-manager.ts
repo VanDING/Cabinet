@@ -84,18 +84,31 @@ export class SessionManager {
         }
       }
 
-      // Hard cap: aggressively trim oldest messages if above hard limit
+      // Hard cap: layered compression before aggressive truncation
       if (session.messages.length > MESSAGE_HARD_LIMIT) {
-        const excess = session.messages.length - MESSAGE_HARD_LIMIT + (MESSAGE_SOFT_LIMIT - KEEP_RECENT - KEEP_OLDEST);
-        // Remove messages between KEEP_OLDEST and (length - KEEP_RECENT)
-        const oldest = session.messages.slice(0, KEEP_OLDEST);
-        const recent = session.messages.slice(-KEEP_RECENT);
-        const compactMarker: typeof session.messages[0] = {
-          role: 'assistant',
-          content: `[context_compact] ${excess} intermediate messages compressed due to session length limit.`,
-          timestamp: new Date(),
-        };
-        session.messages = [...oldest, compactMarker, ...recent];
+        // Layer 1 — Virtual-view: compress oversized tool results in the middle band
+        for (let i = KEEP_OLDEST; i < session.messages.length - KEEP_RECENT; i++) {
+          const msg = session.messages[i]!;
+          if (msg.role === 'user' && msg.content.length > 800) {
+            const compressed = this.compressToolResult(msg.content);
+            if (compressed.length < msg.content.length) {
+              session.messages[i] = { role: msg.role, content: compressed, timestamp: msg.timestamp };
+            }
+          }
+        }
+
+        // Layer 2 — If still over limit, aggressive truncation
+        if (session.messages.length > MESSAGE_HARD_LIMIT) {
+          const excess = session.messages.length - MESSAGE_HARD_LIMIT + (MESSAGE_SOFT_LIMIT - KEEP_RECENT - KEEP_OLDEST);
+          const oldest = session.messages.slice(0, KEEP_OLDEST);
+          const recent = session.messages.slice(-KEEP_RECENT);
+          const compactMarker: typeof session.messages[0] = {
+            role: 'assistant',
+            content: `[context_compact] ${excess} intermediate messages compressed due to session length limit.`,
+            timestamp: new Date(),
+          };
+          session.messages = [...oldest, compactMarker, ...recent];
+        }
       }
 
       this.persist(session);
@@ -195,5 +208,23 @@ export class SessionManager {
 
   private sessionPath(id: string): string {
     return join(SESSIONS_DIR, `${id}.json`);
+  }
+
+  /** Compress an oversized tool-result message by truncating and adding reload hints. */
+  private compressToolResult(content: string): string {
+    if (!content.includes('Tool result')) return content;
+
+    const toolMatch = content.match(/Tool result for (\w+):/);
+    const toolName = toolMatch ? toolMatch[1] : 'tool';
+
+    // For file reads, preserve the file path so the agent can reload
+    if (toolName === 'read_file' || toolName === 'file_info') {
+      const pathMatch = content.match(/(?:filePath|file path|path):?\s*([^\n\r]+)/i);
+      const path = pathMatch?.[1]?.trim() ?? 'unknown';
+      return `[Tool result: ${toolName} ${path}] Content truncated (${content.length} chars). Use ${toolName} to reload if needed.\n${content.slice(0, 150)}...`;
+    }
+
+    // General truncation with tool name preserved
+    return `[Tool result: ${toolName}] Content truncated (${content.length} chars).\n${content.slice(0, 200)}...`;
   }
 }

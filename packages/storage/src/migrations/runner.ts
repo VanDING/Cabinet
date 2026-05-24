@@ -10,6 +10,8 @@ import { runMigration007 } from './007_evaluation_results.js';
 import { runMigration008 } from './008_skill_metadata.js';
 import { runMigration009 } from './009_checkpoints.js';
 import { runMigration010 } from './010_runtime_tables.js';
+import { runMigration011 } from './011_memory_metadata_index.js';
+import { runMigration015 } from './015_memory_graph.js';
 
 export interface MigrationEntry {
   version: number;
@@ -29,6 +31,8 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 8, name: '008_skill_metadata', up: runMigration008 },
   { version: 9, name: '009_checkpoints', up: runMigration009 },
   { version: 10, name: '010_runtime_tables', up: runMigration010 },
+  { version: 11, name: '011_memory_metadata_index', up: runMigration011 },
+  { version: 15, name: '015_memory_graph', up: runMigration015 },
 ];
 
 /**
