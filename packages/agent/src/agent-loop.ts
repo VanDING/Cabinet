@@ -8,7 +8,7 @@ import { CheckpointManager, type CheckpointState } from './checkpoint.js';
 import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './context-builder.js';
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
-import { TaskTracker, type AgentTask } from './task-tracker.js';
+import { TaskTracker, type AgentTask, SemanticTaskTracker } from './task-tracker.js';
 import { ProjectSnapshot } from './project-snapshot.js';
 
 export interface AgentSessionSummary {
@@ -41,6 +41,8 @@ export interface StreamingCallback {
   onThinkingDone?(): void;
   onUsage?(usage: { promptTokens: number; completionTokens: number }): void;
   onTaskUpdate?(tasks: AgentTask[]): void;
+  onSemanticTaskUpdate?(tasks: import('./task-tracker.js').SemanticTask[]): void;
+  onStepBudgetWarning?(remaining: number, maxSteps: number): void;
   // Sub-agent orchestration events
   onSubAgentStart?(agentName: string, taskDescription: string): void;
   onSubAgentToolCall?(agentName: string, toolName: string, args: Record<string, unknown>): void;
@@ -677,19 +679,37 @@ export class AgentLoop {
     }));
 
     const taskTracker = new TaskTracker();
+    const semanticTracker = new SemanticTaskTracker();
     const taskMap = new Map<string, string>(); // toolCallId -> taskId
     let fullText = '';
+    let estimatedSteps = 1;
+    let afterToolResult = false;
+    let warnedBudget = false;
+    const maxSteps = this.options.maxSteps ?? 50;
     try {
       for await (const chunk of this.gateway.streamText({
         model: this.options.model ?? 'claude-sonnet-4-6',
         systemPrompt: streamingSystemPrompt,
         messages,
         tools: streamingTools,
-        maxSteps: this.options.maxSteps ?? 50,
+        maxSteps,
         ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
         ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
         ...(this.options.thinkingBudget != null ? { thinkingBudget: this.options.thinkingBudget } : {}),
       })) {
+        // Step boundary detection: after a tool_result, the next LLM output starts a new step
+        if (afterToolResult && (chunk.type === 'text' || chunk.type === 'tool_call' || chunk.type === 'thinking')) {
+          estimatedSteps++;
+          afterToolResult = false;
+          semanticTracker.completeCurrentStep();
+          // Budget warning
+          const remaining = maxSteps - estimatedSteps;
+          if (!warnedBudget && remaining <= Math.ceil(maxSteps * 0.25)) {
+            warnedBudget = true;
+            callback.onStepBudgetWarning?.(remaining, maxSteps);
+          }
+        }
+
         if (chunk.type === 'thinking') {
           callback.onThinking?.(chunk.content ?? '');
         } else if (chunk.type === 'thinking_done') {
@@ -703,7 +723,15 @@ export class AgentLoop {
           taskMap.set(chunk.toolCall.id, taskId);
           callback.onTaskUpdate?.(taskTracker.getTasks());
           callback.onToolCall?.(chunk.toolCall.name, chunk.toolCall.args);
+          // Semantic task tracking
+          const commandHint =
+            chunk.toolCall.name === 'execCommand' || chunk.toolCall.name === 'exec_command'
+              ? String(chunk.toolCall.args?.command ?? '')
+              : undefined;
+          semanticTracker.addToolCall(chunk.toolCall.id, chunk.toolCall.name, commandHint);
+          callback.onSemanticTaskUpdate?.(semanticTracker.getTasks());
         } else if (chunk.type === 'tool_result' && chunk.toolResult) {
+          afterToolResult = true;
           const taskId = taskMap.get(chunk.toolResult.id);
           if (taskId) {
             const hasError =
@@ -716,25 +744,40 @@ export class AgentLoop {
         } else if (chunk.type === 'error') {
           errorCounts.fatal++;
           callback.onError?.(chunk.content ?? 'Unknown streaming error');
-        } else if (chunk.type === 'done' && chunk.usage) {
-          callback.onUsage?.(chunk.usage);
+        } else if (chunk.type === 'done') {
+          if (chunk.usage) {
+            callback.onUsage?.(chunk.usage);
+          }
+          // Prefer real step count from gateway if available, else fallback to estimate
+          if (typeof chunk.steps === 'number' && chunk.steps > 0) {
+            estimatedSteps = chunk.steps;
+          }
         }
       }
     } catch (e) {
       errorCounts.fatal++;
       const msg = (e as Error).message;
       callback.onError?.(msg);
+      semanticTracker.finalizeAll(false);
       this.reportSession(startTime, 0, executedToolCalls, 0, 0,
         { smart: 0, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, false);
       return { content: `Streaming error: ${msg}`, steps: 0, toolCalls: executedToolCalls };
     }
 
+    // Append incomplete marker if max steps was likely reached
+    const effectiveSteps = estimatedSteps;
+    if (effectiveSteps >= maxSteps && !fullText.includes('[INCOMPLETE: max_steps_reached]')) {
+      fullText += '\n\n[INCOMPLETE: max_steps_reached]';
+    }
+
+    semanticTracker.finalizeAll(true);
+    callback.onSemanticTaskUpdate?.(semanticTracker.getTasks());
     callback.onDone(fullText);
-    this.reportSession(startTime, 1, executedToolCalls, 0, 0,
+    this.reportSession(startTime, estimatedSteps, executedToolCalls, 0, 0,
       { smart: 1, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, true);
     return {
       content: fullText,
-      steps: 1,
+      steps: estimatedSteps,
       toolCalls: executedToolCalls,
       structuredOutput: parseStructuredOutput(fullText),
     };

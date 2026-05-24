@@ -34,6 +34,8 @@ export interface ChatMessage {
   isError?: boolean;
   thinkingDurationMs?: number;
   tasks?: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>;
+  semanticTasks?: Array<{ id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; steps?: number }>;
+  stepBudget?: { remaining: number; maxSteps: number };
 }
 
 export interface Session {
