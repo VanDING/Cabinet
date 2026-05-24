@@ -101,7 +101,7 @@ export class Logger {
       namespace: this.namespace,
       traceId: this.instanceTraceId ?? globalTraceId,
       sessionId: this.instanceSessionId ?? globalSessionId,
-      context,
+      context: context ? { ...context, namespace: this.namespace } : undefined,
     };
 
     // Buffer

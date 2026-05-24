@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createTestApp, headers, createDecision, seedProject, setDefaultProjectId } from './test-helpers';
+import { createTestApp, headers, createDecision, seedProject, setDefaultProjectId, resetTier } from './test-helpers';
 
 describe('Decision Lifecycle (E2E)', () => {
   const app = createTestApp();
@@ -7,6 +7,7 @@ describe('Decision Lifecycle (E2E)', () => {
   let decisionId = '';
 
   beforeAll(async () => {
+    await resetTier(app);
     const pid = await seedProject(app);
     projectId = pid;
     setDefaultProjectId(pid);

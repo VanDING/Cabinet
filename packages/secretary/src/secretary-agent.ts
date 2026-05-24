@@ -100,14 +100,13 @@ export class SecretaryAgent {
           .join('\n');
       }
     } else {
-      // Collect streaming output into a single response for non-streaming path
-      let collected = '';
-      await this.dispatchToRole(targetAgent, message, sessionId, {
-        onChunk(content) { collected += content; },
-        onDone() {},
-        onError(err) { collected = err; },
-      });
-      response = collected || `Dispatched to ${targetAgent}.`;
+      // Orchestrator mode: run specialist first, then secretary synthesizes
+      const specialistResult = await this.runSpecialist(
+        targetAgent,
+        message,
+        sessionId,
+      );
+      response = specialistResult.response;
 
       // Post-route verification: check if specialist output matches the request
       const verified = await this.verifyRoute(message, response, targetAgent);
@@ -120,6 +119,14 @@ export class SecretaryAgent {
         routeResult.targetAgent = verified.correctAgent as AgentRoleType;
       } else if (feedback === 'positive') {
         await this.storeRouteFeedback(message, targetAgent, true);
+      }
+
+      // Synthesize through secretary
+      if (this.agentLoop) {
+        const synthesis = this.buildSynthesisPrompt(targetAgent, message, response);
+        const result = await this.agentLoop.run(synthesis);
+        response = result.content;
+        usage = result.usage;
       }
     }
 
@@ -183,24 +190,44 @@ export class SecretaryAgent {
         callback.onDone(response);
       }
     } else {
+      // Orchestrator mode: track specialist activity, then secretary synthesizes
+      callback.onSubAgentStart?.(targetAgent, message);
       let streamedContent = '';
+      const toolCalls: { name: string; args: Record<string, unknown> }[] = [];
       await this.dispatchToRole(targetAgent, message, sessionId, {
         onChunk(content) {
           streamedContent += content;
-          callback.onChunk(content);
         },
-        onThinking(content) { callback.onThinking?.(content); },
+        onThinking(content) {
+          callback.onSubAgentThinking?.(targetAgent, content);
+        },
         onThinkingDone() { callback.onThinkingDone?.(); },
-        onToolCall(name, args) { callback.onToolCall?.(name, args); },
-        onToolResult(name, result) { callback.onToolResult?.(name, result); },
+        onToolCall(name, args) {
+          toolCalls.push({ name, args });
+          callback.onSubAgentToolCall?.(targetAgent, name, args);
+        },
+        onToolResult(name, result) {
+          callback.onSubAgentToolCall?.(targetAgent, `${name}_result`, { result });
+        },
         onUsage(usage) { callback.onUsage?.(usage); },
-        onDone() { callback.onDone(streamedContent); },
-        onError(err) { callback.onError?.(err); },
+        onDone() {
+          callback.onSubAgentDone?.(targetAgent, streamedContent);
+        },
+        onError(err) {
+          callback.onSubAgentError?.(targetAgent, err);
+        },
       });
       response = streamedContent;
 
       if (feedback === 'positive') {
         await this.storeRouteFeedback(message, targetAgent, true);
+      }
+
+      // Secretary synthesizes specialist output for the Captain
+      if (this.agentLoop) {
+        const synthesisPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
+        const result = await this.agentLoop.runStreaming(synthesisPrompt, callback);
+        response = result.content;
       }
     }
 
@@ -282,6 +309,36 @@ Respond with ONLY a JSON object (no markdown, no backticks):
       onError(err) { collected = err; },
     });
     return collected || `Dispatched to ${agent}.`;
+  }
+
+  // ── Orchestrator helpers ────────────────────────────────────
+
+  private async runSpecialist(
+    targetAgent: string,
+    message: string,
+    sessionId: string,
+  ): Promise<{ response: string }> {
+    if (!this.dispatchToRole) return { response: `No dispatch handler for ${targetAgent}.` };
+    let collected = '';
+    await this.dispatchToRole(targetAgent as AgentRoleType, message, sessionId, {
+      onChunk(content) { collected += content; },
+      onDone() {},
+      onError(err) { collected = err; },
+    });
+    return { response: collected || `Dispatched to ${targetAgent}.` };
+  }
+
+  private buildSynthesisPrompt(agentName: string, originalMessage: string, specialistOutput: string): string {
+    return [
+      `The ${agentName} specialist has completed the following task for the Captain.`,
+      ``,
+      `Original request: "${originalMessage.slice(0, 300)}"`,
+      ``,
+      `[${agentName} output]`,
+      specialistOutput.slice(0, 8000),
+      ``,
+      `Please synthesize a clear, concise response for the Captain. Highlight key findings, decisions needed, and next steps. Do not mention the specialist agent unless relevant.`,
+    ].join('\n');
   }
 
   // ── Feedback Detection ─────────────────────────────────────

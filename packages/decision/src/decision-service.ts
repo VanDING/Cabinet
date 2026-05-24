@@ -4,6 +4,7 @@ import {
   type Decision,
   type DecisionLevel,
   type DecisionStore,
+  type DelegationTier,
 } from '@cabinet/types';
 import { DecisionStateMachine } from './state-machine.js';
 import { LevelClassifier, type ClassificationInput } from './level-classifier.js';
@@ -37,7 +38,27 @@ export class DecisionService {
     private readonly escalation: EscalationService,
     private readonly store: DecisionStore,
     private readonly onResolved?: DecisionResolvedCallback,
+    private readonly getCurrentTier?: () => DelegationTier,
   ) {}
+
+  /** Map current delegation tier to the maximum decision level that can be auto-approved. */
+  getAutoApproveMaxLevel(): DecisionLevel {
+    const tier = this.getCurrentTier?.() ?? 'T1';
+    const map: Record<DelegationTier, DecisionLevel> = {
+      T0: 'L0',
+      T1: 'L1',
+      T2: 'L2',
+      T3: 'L3',
+    };
+    return map[tier];
+  }
+
+  /** Check whether a decision level should be auto-approved at the current delegation tier. */
+  shouldAutoApprove(level: DecisionLevel): boolean {
+    const maxLevel = this.getAutoApproveMaxLevel();
+    const order: Record<DecisionLevel, number> = { L0: 0, L1: 1, L2: 2, L3: 3 };
+    return order[level] <= order[maxLevel];
+  }
 
   create(input: CreateDecisionInput): Decision {
     const level = this.classifier.classify(input.classification);
@@ -62,8 +83,8 @@ export class DecisionService {
       changes: { level, title: input.title },
     });
 
-    // Auto-process L0/L1 (through state machine for audit trail)
-    if (level === 'L0' || level === 'L1') {
+    // Auto-process based on delegation tier (through state machine for audit trail)
+    if (this.shouldAutoApprove(level as DecisionLevel)) {
       const approvedStatus = this.stateMachine.transition(decision.status, 'approve');
       decision.status = approvedStatus as typeof decision.status;
       decision.resolvedAt = new Date();
@@ -74,7 +95,7 @@ export class DecisionService {
         entityId: decision.id,
         action: 'auto_approved',
         actor: 'system',
-        changes: { level, status: approvedStatus, reason: 'L0/L1 auto-approval' },
+        changes: { level, status: approvedStatus, reason: `Auto-approved up to ${this.getAutoApproveMaxLevel()}` },
       });
     }
 

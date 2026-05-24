@@ -132,6 +132,9 @@ export class AISDKAdapter implements LLMGateway {
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
     const model = await this.resolveModelObj(options.model);
+    const provider = options.model.includes('/')
+      ? options.model.split('/')[0]!
+      : this.firstConfiguredProvider();
 
     const messages = options.messages.map((m) => ({
       role: m.role as 'user' | 'assistant' | 'system',
@@ -149,6 +152,25 @@ export class AISDKAdapter implements LLMGateway {
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
       tools: options.tools ? this.convertTools(options.tools) : undefined,
     } as any);
+
+    // Intercept rate limit headers and update tracker
+    const response = (result as any).response;
+    if (response?.headers && typeof response.headers.get === 'function') {
+      const headers = response.headers as Headers;
+      const remaining = this.parseRateLimitHeader(headers, 'x-ratelimit-remaining-requests')
+        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-remaining')
+        ?? undefined;
+      const limit = this.parseRateLimitHeader(headers, 'x-ratelimit-limit-requests')
+        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-limit')
+        ?? undefined;
+      const reset = this.parseRateLimitHeader(headers, 'x-ratelimit-reset-requests')
+        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-reset')
+        ?? undefined;
+      if (remaining != null && limit != null) {
+        const resetAt = reset != null ? Date.now() + reset * 1000 : Date.now() + 60_000;
+        this.router.getRateLimitTracker().update(provider, remaining, limit, resetAt);
+      }
+    }
 
     return {
       content: result.text ?? '',
@@ -294,15 +316,22 @@ export class AISDKAdapter implements LLMGateway {
   async generateEmbeddings(options: EmbeddingOptions): Promise<EmbeddingResult> {
     const defaultModel = this.embeddingConfig.model ?? 'text-embedding-3-small';
     const model = await this.resolveEmbeddingModel(options.model ?? defaultModel);
+    const CONCURRENCY = 10;
 
-    const results = await Promise.all(
-      options.texts.map((text) =>
-        embed({ model, value: text }),
-      ),
-    );
+    const results: { embedding: number[]; usage?: { tokens: number } }[] = [];
+    for (let i = 0; i < options.texts.length; i += CONCURRENCY) {
+      const batch = options.texts.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map((text) => embed({ model, value: text })),
+      );
+      results.push(...batchResults.map((r) => ({
+        embedding: Array.from(r.embedding as Iterable<number>),
+        usage: r.usage,
+      })));
+    }
 
     return {
-      embeddings: results.map((r) => Array.from(r.embedding as Iterable<number>)),
+      embeddings: results.map((r) => r.embedding),
       model: options.model ?? 'text-embedding-3-small',
       usage: { tokens: results.reduce((sum, r) => sum + (r.usage?.tokens ?? 0), 0) },
     };
@@ -457,6 +486,13 @@ export class AISDKAdapter implements LLMGateway {
       };
     }
     return options.systemPrompt;
+  }
+
+  private parseRateLimitHeader(headers: Headers, name: string): number | null {
+    const value = headers.get(name);
+    if (value == null) return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
   }
 
   private convertTools(tools: ToolDefinition[]): any {

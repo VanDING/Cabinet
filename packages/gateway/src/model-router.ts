@@ -4,6 +4,27 @@ export interface RouterConfig {
   roles: Record<ModelRole, string[]>;
 }
 
+export interface RateLimitState {
+  remaining: number;
+  limit: number;
+  resetAt: number;
+}
+
+export class RateLimitTracker {
+  private state = new Map<string, RateLimitState>();
+
+  update(provider: string, remaining: number, limit: number, resetAt: number): void {
+    this.state.set(provider, { remaining, limit, resetAt });
+  }
+
+  getRemaining(provider: string): number {
+    const s = this.state.get(provider);
+    if (!s) return Infinity;
+    if (Date.now() > s.resetAt) return s.limit;
+    return s.remaining;
+  }
+}
+
 const DEFAULT_CONFIG: RouterConfig = {
   roles: {
     deep_think: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6'],
@@ -14,6 +35,7 @@ const DEFAULT_CONFIG: RouterConfig = {
 
 export class ModelRouter {
   private config: RouterConfig;
+  private rateLimitTracker: RateLimitTracker;
 
   constructor(config?: Partial<RouterConfig>, userFallbacks?: Partial<Record<ModelRole, string[]>>) {
     this.config = { roles: { ...DEFAULT_CONFIG.roles, ...config?.roles } };
@@ -25,6 +47,11 @@ export class ModelRouter {
         }
       }
     }
+    this.rateLimitTracker = new RateLimitTracker();
+  }
+
+  getRateLimitTracker(): RateLimitTracker {
+    return this.rateLimitTracker;
   }
 
   /** Get the primary model for a given role */
