@@ -36,6 +36,9 @@ describe('Cabinet Tools', () => {
         if (sql.startsWith('INSERT')) {
           return {
             run: (...args: any[]) => {
+              if (sql.includes('memory_fts')) {
+                return { changes: 1, lastInsertRowid: 1 };
+              }
               rows.push({
                 id: args[0],
                 content: args[1],
@@ -43,7 +46,27 @@ describe('Cabinet Tools', () => {
                 metadata: args[3],
                 timestamp: args[4],
               });
+              return { changes: 1, lastInsertRowid: rows.length };
+            },
+          };
+        }
+        // For DELETE
+        if (sql.startsWith('DELETE')) {
+          return {
+            run: (...args: any[]) => {
+              const idx = rows.findIndex((r) => r.id === args[0]);
+              if (idx >= 0) rows.splice(idx, 1);
               return { changes: 1 };
+            },
+          };
+        }
+        // For SELECT rowid
+        if (sql.includes('rowid')) {
+          return {
+            all: () => rows,
+            get: (key: any) => {
+              const r = rows.find((row) => row.id === key);
+              return r ? { rowid: rows.indexOf(r) + 1 } : null;
             },
           };
         }
@@ -147,7 +170,7 @@ describe('Cabinet Tools', () => {
   });
 
   it('registers 33 tools', () => {
-    expect(executor.listTools()).toHaveLength(62);
+    expect(executor.listTools()).toHaveLength(64);
   });
 
   it('remember and recall work together', async () => {
