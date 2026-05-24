@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { join } from 'node:path';
+import { rmSync } from 'node:fs';
+import { CABINET_DIR } from '@cabinet/storage';
 import { getServerContext } from '../context.js';
 
 export const employeesRouter = new Hono();
@@ -114,9 +117,6 @@ employeesRouter.delete('/:id', (c) => {
     agentRoleRepo.deleteByName(name);
 
     // Remove from filesystem
-    const { join } = require('node:path');
-    const { rmSync } = require('node:fs');
-    const { CABINET_DIR } = require('@cabinet/storage');
     try { rmSync(join(CABINET_DIR, 'agents', name), { recursive: true, force: true }); } catch { /* ok */ }
 
     logger.info('Agent deleted via employees', { name });
