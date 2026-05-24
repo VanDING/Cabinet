@@ -203,7 +203,7 @@ importers:
         specifier: ^8.20.1
         version: 8.20.1
       zod:
-        specifier: ^4.4.3
+        specifier: ^4.0.0
         version: 4.4.3
     devDependencies:
       '@hono/node-server':
@@ -254,6 +254,9 @@ importers:
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types
+      js-tiktoken:
+        specifier: ^1.0.21
+        version: 1.0.21
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
@@ -3280,6 +3283,9 @@ packages:
 
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
+
+  js-tiktoken@1.0.21:
+    resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -7165,6 +7171,10 @@ snapshots:
   jiti@2.6.1: {}
 
   jose@6.2.3: {}
+
+  js-tiktoken@1.0.21:
+    dependencies:
+      base64-js: 1.5.1
 
   js-tokens@4.0.0: {}
 
