@@ -1,5 +1,6 @@
 import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
+import { getEncoding, type TiktokenEncoding } from 'js-tiktoken';
 
 // ── Configuration ──────────────────────────────────────────────
 
@@ -47,37 +48,40 @@ export const MODEL_CONTEXT_SIZES: Record<string, number> = {
 
 // ── Token Estimation ───────────────────────────────────────────
 
-/**
- * Rough token estimation without a real tokenizer.
- * Uses character-based heuristics:
- *   - CJK characters: ~2 chars per token
- *   - English/other:   ~4 chars per token
- *   - Mixed text:      weighted average
- */
-function estimateTokens(text: string): number {
-  if (!text) return 0;
+const MODEL_TO_ENCODER: Record<string, TiktokenEncoding> = {
+  'claude-haiku-4-5': 'cl100k_base',
+  'claude-sonnet-4-6': 'cl100k_base',
+  'claude-opus-4-7': 'cl100k_base',
+  'gpt-4o': 'o200k_base',
+  'gpt-4o-mini': 'o200k_base',
+  'gpt-4.1': 'o200k_base',
+  'deepseek-v4-pro': 'cl100k_base',
+  'deepseek-v3': 'cl100k_base',
+  'gemini-2.5-pro': 'cl100k_base',
+  'gemini-2.5-flash': 'cl100k_base',
+  'qwen-3': 'cl100k_base',
+};
 
-  let cjkChars = 0;
-  let otherChars = 0;
+const encoderCache = new Map<TiktokenEncoding, ReturnType<typeof getEncoding>>();
 
-  for (const ch of text) {
-    const code = ch.codePointAt(0)!;
-    if (
-      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified
-      (code >= 0x3400 && code <= 0x4dbf) || // CJK Ext-A
-      (code >= 0x20000 && code <= 0x2a6df) || // CJK Ext-B
-      (code >= 0xf900 && code <= 0xfaff) || // CJK Compat
-      (code >= 0x3040 && code <= 0x309f) || // Hiragana
-      (code >= 0x30a0 && code <= 0x30ff) || // Katakana
-      (code >= 0xac00 && code <= 0xd7af) // Hangul
-    ) {
-      cjkChars++;
-    } else {
-      otherChars++;
-    }
+function getCachedEncoder(name: TiktokenEncoding): ReturnType<typeof getEncoding> {
+  let enc = encoderCache.get(name);
+  if (!enc) {
+    enc = getEncoding(name);
+    encoderCache.set(name, enc);
   }
+  return enc;
+}
 
-  return Math.ceil(cjkChars / 2 + otherChars / 4);
+function getEncoderName(model: string): TiktokenEncoding {
+  return MODEL_TO_ENCODER[model] ?? 'cl100k_base';
+}
+
+function estimateTokens(text: string, model?: string): number {
+  if (!text) return 0;
+  const encoderName = getEncoderName(model ?? 'claude-sonnet-4-6');
+  const enc = getCachedEncoder(encoderName);
+  return enc.encode(text).length;
 }
 
 // ── Snapshot ───────────────────────────────────────────────────
@@ -106,23 +110,26 @@ export class ContextMonitor {
   private config: ContextWindowConfig;
   private lastSnapshot: ContextSnapshot | null = null;
   private zoneCrossings: { from: ContextZone; to: ContextZone; at: Date }[] = [];
+  private model: string;
 
   constructor(
     private readonly eventBus: EventBus,
     config?: Partial<ContextWindowConfig>,
+    model?: string,
   ) {
     this.config = { ...DEFAULT_WINDOW_CONFIG, ...config };
+    this.model = model ?? 'claude-sonnet-4-6';
   }
 
   /** Pick context window size for a given model. */
   static forModel(model: string, eventBus: EventBus, contextBudget?: number): ContextMonitor {
     const maxTokens = MODEL_CONTEXT_SIZES[model] ?? DEFAULT_WINDOW_CONFIG.maxTokens;
-    return new ContextMonitor(eventBus, { maxTokens, contextBudget });
+    return new ContextMonitor(eventBus, { maxTokens, contextBudget }, model);
   }
 
   /** Estimate tokens for a block of text. Public for external use (e.g. pre-call budgeting). */
   estimateTokens(text: string): number {
-    return estimateTokens(text);
+    return estimateTokens(text, this.model);
   }
 
   /** Take a snapshot of current context utilization. */
