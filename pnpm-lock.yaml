@@ -317,10 +317,10 @@ importers:
       '@cabinet/storage':
         specifier: workspace:*
         version: link:../storage
-    devDependencies:
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types
+    devDependencies:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -420,6 +420,9 @@ importers:
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types
+      hnswlib-node:
+        specifier: ^3.0.0
+        version: 3.0.0
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.0
@@ -3132,6 +3135,9 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
+  hnswlib-node@3.0.0:
+    resolution: {integrity: sha512-fypn21qvVORassppC8/qNfZ5KAOspZpm/IbUkAtlqvbtDNnF5VVk5RWF7O5V6qwr7z+T3s1ePej6wQt5wRQ4Cg==}
+
   hono@4.12.18:
     resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
     engines: {node: '>=16.9.0'}
@@ -3486,6 +3492,10 @@ packages:
   node-abi@3.92.0:
     resolution: {integrity: sha512-KdHvFWZjEKDf0cakgFjebl371GPsISX2oZHcuyKqM7DtogIsHrqKeLTo8wBHxaXRAQlY2PsPlZmfo+9ZCxEREQ==}
     engines: {node: '>=10'}
+
+  node-addon-api@8.8.0:
+    resolution: {integrity: sha512-c5Ko1fZJIJmzhFIkhRN76WTq+fC6tWnGy9CXA0fA+XygsWZmEwG8vmbkNqxMyoaa0Tin4djul49NzdVcJJcjeA==}
+    engines: {node: ^18 || ^20 || >= 21}
 
   node-releases@2.0.44:
     resolution: {integrity: sha512-5WUyunoPMsvvEhS8AxHtRzP+oA8UCkJ7YRxatWKjngndhDGLiqEVAQKWjFAiAiuL8zMRGzGSJxFnLetoa43qGQ==}
@@ -7050,6 +7060,11 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
+  hnswlib-node@3.0.0:
+    dependencies:
+      bindings: 1.5.0
+      node-addon-api: 8.8.0
+
   hono@4.12.18: {}
 
   hookable@5.5.3: {}
@@ -7333,6 +7348,8 @@ snapshots:
   node-abi@3.92.0:
     dependencies:
       semver: 7.8.0
+
+  node-addon-api@8.8.0: {}
 
   node-releases@2.0.44: {}
 

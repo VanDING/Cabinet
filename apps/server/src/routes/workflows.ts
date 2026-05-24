@@ -632,13 +632,19 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
     return;
   }
 
-  const eng = getEngine();
-  let run = await eng.startRun(workflowId, nodes, edges, approvalNode.id);
+  // Find the latest incomplete run for this workflow to resume
+  const incompleteRuns = workflowRepo.findRunsByWorkflow(workflowId)
+    .filter((r) => r.status === 'awaiting_approval' || r.status === 'paused' || r.status === 'running')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
-  if (run.status === 'awaiting_approval') {
-    run.status = 'running';
-    run = await eng.continueRun(run.runId, nodes, edges);
+  const latestRun = incompleteRuns[0];
+  if (!latestRun) {
+    logger.warn('No incomplete run found for resume', { workflowId });
+    return;
   }
+
+  const eng = getEngine();
+  let run = await eng.continueRun(latestRun.run_id, nodes, edges);
 
   const finalStatus: string = run.status === 'awaiting_approval' ? 'awaiting_approval' : 'completed';
   workflowRepo.updateStatus(workflowId, finalStatus);

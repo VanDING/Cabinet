@@ -219,6 +219,7 @@ export class AgentDispatcher {
       const agentOptions: AgentLoopOptions = {
         ...this.baseOptions,
         sessionId: `${options.sessionId}-${role.type}`,
+        memorySessionId: options.sessionId,
         projectId: options.projectId,
         captainId: options.captainId,
         systemPrompt: role.systemPrompt,

@@ -16,6 +16,8 @@ export interface ContextBuilderOptions {
   activeFiles?: string[];
   /** Current task description (for semantic rule matching). */
   taskDescription?: string;
+  /** Override sessionId for memory lookups (allows agents to share conversation context). */
+  memorySessionId?: string;
 }
 
 export interface ContextBuildResult {
@@ -42,9 +44,11 @@ export class ContextBuilder {
     const cached = this.sessionCache.get(cacheKey);
 
     // Always reload short-term memory (it changes each iteration).
+    // Use memorySessionId if provided so specialist agents can share the base session context.
     // Project context and preferences are session-stable, so use cache when available.
+    const memorySid = options.memorySessionId ?? options.sessionId;
     const [shortTerm, projectContext, preferences] = await Promise.all([
-      this.memory.getShortTerm(options.sessionId),
+      this.memory.getShortTerm(memorySid),
       cached ? Promise.resolve(cached.projectContext) : this.memory.getProjectContext(options.projectId),
       cached ? Promise.resolve(cached.preferences) : this.memory.getEntityPreferences(options.captainId),
     ]);

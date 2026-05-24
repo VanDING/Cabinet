@@ -49,6 +49,8 @@ import {
   EntityMemory,
   ProjectMemory,
   ConsolidationService,
+  KnowledgeGraph,
+  MemoryDecayService,
 } from '@cabinet/memory';
 import { MemoryEventBus } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
@@ -69,6 +71,7 @@ import {
   registerMCPTools,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
+import { SkillExtractor } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
 import { TaskScheduler } from './scheduler.js';
 import { startApprovalPolling, stopApprovalPolling } from './routes/workflows.js';
@@ -77,6 +80,7 @@ import {
   PreferenceLearner,
   AutoAdjuster,
   QualityResponseService,
+  SubconsciousLoop,
 } from '@cabinet/harness';
 import type {
   PreferenceAnalysisCallback,
@@ -136,6 +140,14 @@ export interface ServerContext {
   // Feedback loop
   observability: ObservabilityCollector;
   autoAdjuster: AutoAdjuster;
+  // Skill extraction
+  skillExtractor: SkillExtractor;
+  // Knowledge graph
+  knowledgeGraph: KnowledgeGraph;
+  // Memory decay
+  memoryDecay: MemoryDecayService;
+  // Subconscious loop
+  subconsciousLoop: SubconsciousLoop;
   // Infrastructure
   eventBus: MemoryEventBus;
   metrics: MetricsCollector;
@@ -1411,6 +1423,61 @@ export function getServerContext(): ServerContext {
     adjustmentNotifyCallback,
   );
 
+  // Skill extraction
+  const skillExtractor = new SkillExtractor(gateway);
+
+  // Knowledge graph
+  const knowledgeGraph = new KnowledgeGraph(db);
+  knowledgeGraph.ensureTables();
+
+  // Memory decay
+  const memoryDecay = new MemoryDecayService(longTerm);
+
+  // Subconscious loop
+  const subconsciousLoop = new SubconsciousLoop(longTerm, knowledgeGraph, eventBus);
+
+  // Wire knowledge graph into long-term memory for contradiction detection
+  longTerm.setKnowledgeGraph(knowledgeGraph);
+  longTerm.setContradictionHandler((contradiction) => {
+    // Medium-confidence contradictions (0.5-0.8) create a decision for Captain
+    logger.info('Contradiction detected', {
+      oldMemoryId: contradiction.oldMemoryId,
+      confidence: contradiction.confidence,
+      newMemoryId: contradiction.newMemoryId,
+    });
+    // Publish as system notification so Secretary can surface it
+    eventBus.publish({
+      messageId: `contradiction_${Date.now()}`,
+      correlationId: contradiction.newMemoryId,
+      causationId: null,
+      timestamp: new Date(),
+      messageType: MessageType.SystemNotification,
+      payload: {
+        type: 'memory_contradiction',
+        oldMemoryId: contradiction.oldMemoryId,
+        oldContent: contradiction.oldContent.slice(0, 200),
+        confidence: contradiction.confidence,
+        newMemoryId: contradiction.newMemoryId,
+        message: `A new memory may contradict an existing one (${Math.round(contradiction.confidence * 100)}% confidence).`,
+      } as any,
+    }).catch(() => {});
+  });
+
+  // Subscribe to subconscious insights — surface high-relevance ones via broadcast
+  eventBus.subscribe(MessageType.SystemNotification, (msg) => {
+    const payload = (msg.payload as unknown) as Record<string, unknown> | undefined;
+    if (payload?.type === 'subconscious_insight') {
+      const insight = payload.insight as Record<string, unknown> | undefined;
+      if ((insight?.relevance as number) ?? 0 > 0.7) {
+        broadcast('subconscious_insight', {
+          text: insight?.text,
+          relevance: insight?.relevance,
+          sourceMemoryId: insight?.sourceMemoryId,
+        });
+      }
+    }
+  });
+
   // Quality response: subscribe to quality alerts, trigger adjustments + re-consolidation
   const reconsolidationCallback: ReconsolidationCallback = async () => {
     if (!gateway) return;
@@ -1492,6 +1559,21 @@ export function getServerContext(): ServerContext {
   sessionCleanupTimer.unref();
   logger.info('Session cleanup scheduled (6h)');
 
+  // Subconscious loop: runs every hour
+  const subconsciousTimer = setInterval(
+    async () => {
+      try {
+        await subconsciousLoop.tick();
+        logger.info('Subconscious loop tick completed');
+      } catch (e: any) {
+        logger.warn('Subconscious loop tick failed', { error: e.message });
+      }
+    },
+    60 * 60 * 1000,
+  );
+  subconsciousTimer.unref();
+  logger.info('Subconscious loop scheduled (1h)');
+
   // Workflow approval polling (30s fallback for missed WebSocket events)
   startApprovalPolling(30_000);
   logger.info('Workflow approval polling started (30s)');
@@ -1504,6 +1586,7 @@ export function getServerContext(): ServerContext {
     clearInterval(curatorPatternTimer);
     clearInterval(autoAdjustTimer);
     clearInterval(sessionCleanupTimer);
+    clearInterval(subconsciousTimer);
     stopApprovalPolling();
     taskScheduler.stop();
     try {
@@ -1596,6 +1679,10 @@ export function getServerContext(): ServerContext {
     taskScheduler,
     observability,
     autoAdjuster,
+    skillExtractor,
+    knowledgeGraph,
+    memoryDecay,
+    subconsciousLoop,
     eventBus,
     metrics,
     logger,

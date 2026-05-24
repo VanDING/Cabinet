@@ -34,10 +34,17 @@ export class ProjectIsolatedMemory {
 
   // Long-term: filter by project metadata
   async longTermSearch(query: string, limit = 5): Promise<any[]> {
-    // In production, filter by projectId in metadata.
-    // For now we delegate to text search with the query string.
     const results = await this.longTerm.search(query, limit);
-    return results;
+    return results.filter((r) => r.metadata?.projectId === this.projectId);
+  }
+
+  async longTermStore(content: string, metadata: Record<string, unknown>, embedding?: number[]): Promise<string> {
+    return this.longTerm.store({
+      content,
+      metadata: { ...metadata, projectId: this.projectId },
+      embedding,
+      timestamp: new Date(),
+    });
   }
 
   // Entity: always scoped to captain (not project)
