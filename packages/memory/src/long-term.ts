@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { HierarchicalNSW } from 'hnswlib-node';
+import type { HierarchicalNSW as HierarchicalNSWType } from 'hnswlib-node';
+import hnswlib from 'hnswlib-node';
+const HierarchicalNSW = (hnswlib as any).HierarchicalNSW as typeof HierarchicalNSWType;
 import { LongTermMemoryRepository, type Database } from '@cabinet/storage';
 import type { KnowledgeGraph } from './knowledge-graph.js';
 
@@ -38,7 +40,7 @@ const INITIAL_MAX_ELEMENTS = 100_000;
  */
 export class LongTermMemory {
   private repo: LongTermMemoryRepository;
-  private hnsw: HierarchicalNSW | null = null;
+  private hnsw: HierarchicalNSWType | null = null;
   private dimension: number;
   private indexPath: string;
   private metaPath: string;

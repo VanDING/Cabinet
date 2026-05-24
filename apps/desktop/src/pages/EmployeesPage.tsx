@@ -76,10 +76,8 @@ export function EmployeesPage() {
   useEffect(() => {
     fetchEmployeesAPI()
       .then((emps) => {
-        if (emps.length > 0) {
-          setEmployees(emps);
-          saveLocalEmployees(emps);
-        }
+        setEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
+        saveLocalEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
       })
       .catch(() => {
         try {
@@ -116,8 +114,8 @@ export function EmployeesPage() {
   const refreshEmployees = () => {
     fetchEmployeesAPI()
       .then((emps) => {
-        setEmployees(emps);
-        saveLocalEmployees(emps);
+        setEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
+        saveLocalEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
       })
       .catch(() => {});
   };
