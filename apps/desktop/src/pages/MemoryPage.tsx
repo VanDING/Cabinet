@@ -29,17 +29,6 @@ const layerColors: Record<string, string> = {
   project: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
 };
 
-const statusColors: Record<string, string> = {
-  active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  superseded: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-  expired: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  archived: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-};
-
-function getMemoryStatus(meta: Record<string, unknown>): string | undefined {
-  return typeof meta.status === 'string' ? meta.status : undefined;
-}
-
 function getNumericMeta(meta: Record<string, unknown>, key: string): number | undefined {
   const v = meta[key];
   if (typeof v === 'number') return v;
@@ -52,7 +41,6 @@ function getNumericMeta(meta: Record<string, unknown>, key: string): number | un
 
 export function MemoryPage() {
   const [filter, setFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [layerCounts, setLayerCounts] = useState<Record<string, number>>({});
@@ -69,7 +57,6 @@ export function MemoryPage() {
     try {
       const params = new URLSearchParams();
       if (filter !== 'all') params.set('layer', filter);
-      if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('query', search);
       params.set('limit', '50');
       const res = await apiFetch(`/api/memory?${params}`, { headers: authHeaders() });
@@ -84,7 +71,7 @@ export function MemoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, statusFilter, search]);
+  }, [filter, search]);
 
   useEffect(() => { fetchMemories(); }, [fetchMemories]);
 
@@ -159,22 +146,6 @@ export function MemoryPage() {
             {layer === 'all' ? 'All Layers' : layer.replace('_', ' ')}
           </button>
         ))}
-        {/* Status filter — only meaningful for long_term */}
-        {(filter === 'all' || filter === 'long_term') && (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400">Status:</span>
-            {['all', 'active', 'superseded', 'expired', 'archived'].map((s) => (
-              <button key={s} onClick={() => setStatusFilter(s)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                  statusFilter === s
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
-                }`}>
-                {s === 'all' ? 'Any' : s}
-              </button>
-            ))}
-          </div>
-        )}
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search memories..." className="ml-auto w-48 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
         <button onClick={fetchMemories}
@@ -215,11 +186,6 @@ export function MemoryPage() {
                 <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${layerColors[m.layer] || 'bg-gray-100 text-gray-600'}`}>
                   {m.layer.replace('_', ' ')}
                 </span>
-                {m.layer === 'long_term' && getMemoryStatus(m.metadata) && (
-                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${statusColors[getMemoryStatus(m.metadata)!] || 'bg-gray-100 text-gray-600'}`}>
-                    {getMemoryStatus(m.metadata)}
-                  </span>
-                )}
                 <span className="min-w-0 flex-1">
                   <span className={`block text-sm ${isExpanded ? '' : 'line-clamp-2'} text-gray-700 dark:text-gray-300`}>
                     {(() => {
