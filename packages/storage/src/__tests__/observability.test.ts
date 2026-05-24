@@ -47,6 +47,26 @@ describe('Logger', () => {
     logger.clear();
     expect(logger.getEntries()).toHaveLength(0);
   });
+
+  it('redacts sensitive fields via pino', async () => {
+    const { default: pino } = await import('pino');
+    const lines: string[] = [];
+    const stream = { write: (chunk: string) => lines.push(chunk) };
+    const testLogger = pino(
+      {
+        redact: {
+          paths: ['apiKey', '*.apiKey', 'context.apiKey'],
+          censor: '[Redacted]',
+        },
+      },
+      stream as unknown as NodeJS.WritableStream,
+    );
+    testLogger.info({ apiKey: 'super-secret', user: 'alice' }, 'login attempt');
+    const output = lines[0] ?? '';
+    expect(output).toContain('[Redacted]');
+    expect(output).not.toContain('super-secret');
+    expect(output).toContain('alice');
+  });
 });
 
 describe('MetricsCollector', () => {
