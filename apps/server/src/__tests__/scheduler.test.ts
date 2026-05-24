@@ -59,7 +59,8 @@ describe('Cron expression parsing with cron-parser', () => {
 
     // Invalid expression should still schedule (fallback to +1 min)
     scheduler.schedule('bad-task', 'not-a-cron', 'prompt', false);
-    const call = mockRepo.insert.mock.calls[0][0];
+    expect(mockRepo.insert).toHaveBeenCalledOnce();
+    const call = mockRepo.insert.mock.calls[0]![0];
     const nextRun = new Date(call.next_run_at);
     const now = Date.now();
     expect(nextRun.getTime()).toBeGreaterThanOrEqual(now - 5000);
@@ -68,7 +69,16 @@ describe('Cron expression parsing with cron-parser', () => {
 });
 
 describe('TaskScheduler CRUD', () => {
-  const makeMockRepo = () => ({
+  interface MockRepo {
+    insert: ReturnType<typeof vi.fn>;
+    findAll: ReturnType<typeof vi.fn>;
+    disable: ReturnType<typeof vi.fn>;
+    findDue: ReturnType<typeof vi.fn>;
+    updateLastRun: ReturnType<typeof vi.fn>;
+    updateRunTimings: ReturnType<typeof vi.fn>;
+  }
+
+  const makeMockRepo = (): MockRepo => ({
     insert: vi.fn(),
     findAll: vi.fn(() => []),
     disable: vi.fn(),
@@ -85,7 +95,7 @@ describe('TaskScheduler CRUD', () => {
     scheduler.schedule('daily', '0 9 * * *', 'prompt', true);
 
     expect(repo.insert).toHaveBeenCalledOnce();
-    const row = repo.insert.mock.calls[0][0];
+    const row = repo.insert.mock.calls[0]![0];
     expect(row.name).toBe('daily');
     expect(row.cron_expression).toBe('0 9 * * *');
     expect(row.next_run_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
