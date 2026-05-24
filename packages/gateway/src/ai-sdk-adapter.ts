@@ -129,14 +129,17 @@ export class AISDKAdapter implements LLMGateway {
       content: m.content,
     }));
 
+    // Build system prompt with cache control for Anthropic models
+    const system = this.buildSystemPrompt(options);
+
     const result = await aiGenerateText({
       model,
-      system: options.systemPrompt,
+      system,
       messages: messages as any,
       ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
       tools: options.tools ? this.convertTools(options.tools) : undefined,
-    });
+    } as any);
 
     return {
       content: result.text ?? '',
@@ -174,9 +177,12 @@ export class AISDKAdapter implements LLMGateway {
       }
     }
 
+    // Build system prompt with cache control for Anthropic models
+    const system = this.buildSystemPrompt(options);
+
     const result = aiStreamText({
       model,
-      system: options.systemPrompt,
+      system,
       messages: messages as any,
       ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
@@ -414,6 +420,33 @@ export class AISDKAdapter implements LLMGateway {
           throw new Error('@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google');
         }
     }
+  }
+
+  /** Determine if the model name resolves to an Anthropic provider. */
+  private isAnthropicModel(modelName: string): boolean {
+    const lower = modelName.toLowerCase();
+    return lower.startsWith('anthropic/') || lower.includes('claude');
+  }
+
+  /**
+   * Build the system prompt parameter for AI SDK.
+   * When cacheSystemPrompt is enabled and the model is Anthropic,
+   * returns a SystemModelMessage with cacheControl provider metadata.
+   */
+  private buildSystemPrompt(options: LLMCallOptions): string | { role: 'system'; content: string; providerOptions: Record<string, unknown> } | undefined {
+    if (!options.systemPrompt) return undefined;
+    if (options.cacheSystemPrompt && this.isAnthropicModel(options.model)) {
+      return {
+        role: 'system',
+        content: options.systemPrompt,
+        providerOptions: {
+          anthropic: {
+            cacheControl: { type: 'ephemeral' },
+          },
+        },
+      };
+    }
+    return options.systemPrompt;
   }
 
   private convertTools(tools: ToolDefinition[]): any {

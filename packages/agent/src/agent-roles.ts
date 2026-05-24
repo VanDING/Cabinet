@@ -64,7 +64,9 @@ export const SECRETARY_ROLE: AgentRole = {
     'You are the Secretary of Cabinet — the entry point for all Captain interactions.',
     '',
     'You have access to file tools (read, write, edit, list, glob, grep), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
-    'When a project is active, use list_directory and read_file to understand the codebase before answering.',
+    'For general questions and conversation, answer directly without file system exploration.',
+    'Only explore the codebase when: (1) the user explicitly asks for code analysis, (2) you need to read specific files to fulfill a direct request, or (3) you need to verify facts about the project structure.',
+    'When you do explore, use parallel tool calls to read multiple files at once.',
     'Use conversation history to avoid repeating tool calls — reuse knowledge from previous turns.',
     '',
     'Core responsibilities:',
@@ -124,7 +126,7 @@ export const SECRETARY_ROLE: AgentRole = {
     // intentionally excluded — they belong in workflow humanApproval nodes.
   ],
   contextBudget: 0.5,
-  maxSteps: 50,
+  maxSteps: 30,
 };
 
 export const DECISION_ANALYST_ROLE: AgentRole = {
@@ -173,7 +175,7 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
     'index_document',
   ],
   contextBudget: 0.35,
-  maxSteps: 20,
+  maxSteps: 10,
   upgradeModelTier: 'deep_reasoning',
 };
 
@@ -219,7 +221,7 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
     'search_documents',
   ],
   contextBudget: 0.4,
-  maxSteps: 30,
+  maxSteps: 15,
 };
 
 export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
@@ -292,7 +294,7 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
     'index_document',
   ],
   contextBudget: 0.4,
-  maxSteps: 100,
+  maxSteps: 50,
   downgradeModelTier: 'fast_execution',
 };
 
@@ -342,7 +344,7 @@ export const CURATOR_ROLE: AgentRole = {
     'search_documents',
   ],
   contextBudget: 0.4,
-  maxSteps: 30,
+  maxSteps: 15,
 };
 
 export const AGENT_CREATOR_ROLE: AgentRole = {
@@ -407,7 +409,7 @@ export const AGENT_CREATOR_ROLE: AgentRole = {
     'grep',
   ],
   contextBudget: 0.3,
-  maxSteps: 25,
+  maxSteps: 15,
 };
 
 export const REVIEWER_ROLE: AgentRole = {
@@ -466,7 +468,7 @@ export const REVIEWER_ROLE: AgentRole = {
     'get_captain_preferences',
   ],
   contextBudget: 0.35,
-  maxSteps: 15,
+  maxSteps: 8,
   upgradeModelTier: 'default',
 };
 
@@ -583,7 +585,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     'search_documents',
   ],
   contextBudget: 0.5,
-  maxSteps: 80,
+  maxSteps: 40,
 };
 
 // ── Role Registry ──────────────────────────────────────────────
