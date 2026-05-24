@@ -42,8 +42,6 @@ memoryRouter.get('/', async (c) => {
       const results = await longTerm.search(query || '*', limit);
       for (const r of results) {
         const meta = r.metadata ?? {};
-        const status = c.req.query('status');
-        if (status && status !== 'all' && meta.status !== status) continue;
         entries.push({
           id: r.id ?? `lt_${Date.now()}`,
           layer: 'long_term',
@@ -119,11 +117,11 @@ memoryRouter.get('/', async (c) => {
 });
 
 // DELETE /api/memory/:id — delete entry
-memoryRouter.delete('/:id', (c) => {
+memoryRouter.delete('/:id', async (c) => {
   const { longTerm, logger } = getServerContext();
   const id = c.req.param('id');
   try {
-    longTerm.delete(id);
+    await longTerm.delete(id);
     return c.json({ status: 'deleted' });
   } catch (err) {
     logger.warn('Failed to delete memory entry', { error: (err as Error).message, id });

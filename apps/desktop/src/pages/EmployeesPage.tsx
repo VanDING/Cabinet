@@ -12,48 +12,6 @@ interface EmployeeItem {
   status: 'active' | 'idle' | 'offline';
 }
 
-const DEFAULT_EMPLOYEES: EmployeeItem[] = [
-  {
-    id: 'emp-1',
-    name: 'Financial Advisor',
-    role: 'advisor',
-    kind: 'ai',
-    model: 'claude-sonnet-4-6',
-    expertise: ['finance', 'investment', 'budgeting'],
-    permissionLevel: 'read',
-    status: 'active',
-  },
-  {
-    id: 'emp-2',
-    name: 'Market Analyst',
-    role: 'analyst',
-    kind: 'ai',
-    model: 'claude-opus-4-7',
-    expertise: ['market research', 'competitor analysis', 'trends'],
-    permissionLevel: 'read',
-    status: 'active',
-  },
-  {
-    id: 'emp-3',
-    name: 'Legal Advisor',
-    role: 'advisor',
-    kind: 'ai',
-    model: 'claude-sonnet-4-6',
-    expertise: ['contract law', 'compliance', 'IP'],
-    permissionLevel: 'read',
-    status: 'idle',
-  },
-  {
-    id: 'emp-4',
-    name: 'Captain',
-    role: 'decision_maker',
-    kind: 'human',
-    expertise: ['strategy', 'product'],
-    permissionLevel: 'admin',
-    status: 'active',
-  },
-];
-
 function saveLocalEmployees(emps: EmployeeItem[]) {
   localStorage.setItem('cabinet-employees', JSON.stringify(emps));
 }
@@ -70,27 +28,23 @@ export function EmployeesPage() {
       const raw = localStorage.getItem('cabinet-employees');
       if (raw) return JSON.parse(raw);
     } catch { /* fall through */ }
-    return DEFAULT_EMPLOYEES;
+    return [];
   });
 
   useEffect(() => {
     fetchEmployeesAPI()
       .then((emps) => {
-        setEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
-        saveLocalEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
+        setEmployees(emps);
+        saveLocalEmployees(emps);
       })
       .catch(() => {
         try {
           const raw = localStorage.getItem('cabinet-employees');
           if (raw) {
             setEmployees(JSON.parse(raw));
-          } else {
-            setEmployees(DEFAULT_EMPLOYEES);
-            saveLocalEmployees(DEFAULT_EMPLOYEES);
           }
         } catch {
-          setEmployees(DEFAULT_EMPLOYEES);
-          saveLocalEmployees(DEFAULT_EMPLOYEES);
+          setEmployees([]);
         }
       });
   }, []);
@@ -114,8 +68,8 @@ export function EmployeesPage() {
   const refreshEmployees = () => {
     fetchEmployeesAPI()
       .then((emps) => {
-        setEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
-        saveLocalEmployees(emps.length > 0 ? emps : DEFAULT_EMPLOYEES);
+        setEmployees(emps);
+        saveLocalEmployees(emps);
       })
       .catch(() => {});
   };
@@ -291,6 +245,13 @@ export function EmployeesPage() {
       )}
 
       <div className="mb-4 text-sm text-gray-500">{employees.length} team members</div>
+
+      {employees.length === 0 && !showForm && (
+        <div className="rounded-lg border border-dashed p-8 text-center dark:border-gray-700">
+          <p className="text-gray-500 dark:text-gray-400">No employees yet.</p>
+          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">Create your first team member to get started.</p>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {employees.map((emp) => (
