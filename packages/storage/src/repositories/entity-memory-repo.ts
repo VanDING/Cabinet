@@ -79,6 +79,14 @@ export class EntityMemoryRepository {
     return rows.map((r) => this.rowToEmployee(r));
   }
 
+  deletePreferences(captainId: string): void {
+    this.db.prepare('DELETE FROM entity_prefs WHERE captain_id = ?').run(captainId);
+  }
+
+  deleteEmployee(employeeId: string): void {
+    this.db.prepare('DELETE FROM entity_employees WHERE employee_id = ?').run(employeeId);
+  }
+
   private rowToPrefs(row: Record<string, unknown>): EntityPrefsRow {
     return {
       captain_id: row.captain_id as string,
