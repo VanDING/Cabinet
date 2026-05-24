@@ -59,12 +59,42 @@ export class ToolExecutor {
     }
     try {
       const output = await tool.execute(args);
+      const summarized = this.summarizeToolResult(name, output);
       this.onToolCall?.(name, true, false, Date.now() - startTime);
-      return { toolCallId, output };
+      return { toolCallId, output: summarized };
     } catch (error) {
       this.onToolCall?.(name, false, false, Date.now() - startTime);
       return { toolCallId, output: null, error: (error as Error).message };
     }
+  }
+
+  /** Summarize verbose tool results to reduce context bloat. */
+  private summarizeToolResult(name: string, output: unknown): unknown {
+    if (name === 'read_file' || name === 'file_info') {
+      if (typeof output === 'string' && output.length > 200) {
+        return `${output.slice(0, 200)}... (${output.length - 200} more chars)`;
+      }
+    }
+    if (name === 'list_directory') {
+      if (Array.isArray(output) && output.length > 20) {
+        return [...output.slice(0, 20), `... (${output.length - 20} more items)`];
+      }
+    }
+    if (name === 'grep' || name === 'searchFiles' || name === 'searchContent') {
+      if (Array.isArray(output)) {
+        if (output.length > 3) {
+          return [...output.slice(0, 3), `... (${output.length - 3} more matches)`];
+        }
+        return output;
+      }
+      if (typeof output === 'string') {
+        const lines = output.split('\n');
+        if (lines.length > 3) {
+          return `${lines.slice(0, 3).join('\n')}\n... (${lines.length - 3} more lines)`;
+        }
+      }
+    }
+    return output;
   }
 
   listTools(): string[] {

@@ -4,16 +4,36 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdir
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
-/** Soft limit: trigger background compression when exceeded. */
-const MESSAGE_SOFT_LIMIT = 200;
-/** Hard cap: messages beyond this are aggressively trimmed. */
-const MESSAGE_HARD_LIMIT = 500;
-/** Number of recent messages to always keep uncompressed. */
-const KEEP_RECENT = 30;
-/** Number of oldest messages to keep (prevents total context loss). */
-const KEEP_OLDEST = 30;
 /** Sessions inactive longer than this are archived on cleanup. */
 const SESSION_MAX_AGE_DAYS = 30;
+
+/** Rough token estimation (same heuristic as ContextMonitor). */
+function estimateTokens(text: string): number {
+  if (!text) return 0;
+  let cjk = 0;
+  let other = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (
+      (cp >= 0x4e00 && cp <= 0x9fff) ||
+      (cp >= 0x3400 && cp <= 0x4dbf) ||
+      (cp >= 0x20000 && cp <= 0x2a6df) ||
+      (cp >= 0xf900 && cp <= 0xfaff) ||
+      (cp >= 0x3040 && cp <= 0x309f) ||
+      (cp >= 0x30a0 && cp <= 0x30ff) ||
+      (cp >= 0xac00 && cp <= 0xd7af)
+    ) {
+      cjk++;
+    } else {
+      other++;
+    }
+  }
+  return Math.ceil(cjk / 2 + other / 4);
+}
+
+function estimateMessagesTokens(messages: { role: string; content: string }[]): number {
+  return messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+}
 
 export interface Session {
   id: string;
@@ -30,8 +50,14 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private onCloseCallbacks: SessionCallback[] = [];
   private onCreateCallbacks: SessionCallback[] = [];
+  private readonly maxTokens: number;
+  private readonly softLimit: number;
+  private readonly hardLimit: number;
 
-  constructor() {
+  constructor(maxTokens = 200_000) {
+    this.maxTokens = maxTokens;
+    this.softLimit = Math.floor(maxTokens * 0.6);
+    this.hardLimit = Math.floor(maxTokens * 0.8);
     this.restoreSessions();
   }
 
@@ -77,17 +103,40 @@ export class SessionManager {
       session.messages.push({ role, content, timestamp: new Date() });
       session.updatedAt = new Date();
 
+      const totalTokens = estimateMessagesTokens(session.messages);
+
       // Trigger compression callback when soft limit exceeded
-      if (session.messages.length > MESSAGE_SOFT_LIMIT && session.messages.length <= MESSAGE_HARD_LIMIT) {
+      if (totalTokens > this.softLimit && totalTokens <= this.hardLimit) {
         for (const cb of this.onCompressionCallbacks) {
           Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
         }
       }
 
       // Hard cap: layered compression before aggressive truncation
-      if (session.messages.length > MESSAGE_HARD_LIMIT) {
+      if (totalTokens > this.hardLimit) {
         // Layer 1 — Virtual-view: compress oversized tool results in the middle band
-        for (let i = KEEP_OLDEST; i < session.messages.length - KEEP_RECENT; i++) {
+        const keepOldestTokens = Math.floor(this.maxTokens * 0.2);
+        const keepRecentTokens = Math.floor(this.maxTokens * 0.3);
+        let oldestTokenCount = 0;
+        let oldestIndex = 0;
+        for (let i = 0; i < session.messages.length; i++) {
+          oldestTokenCount += estimateTokens(session.messages[i]!.content);
+          if (oldestTokenCount >= keepOldestTokens) {
+            oldestIndex = i + 1;
+            break;
+          }
+        }
+        let recentTokenCount = 0;
+        let recentIndex = session.messages.length;
+        for (let i = session.messages.length - 1; i >= 0; i--) {
+          recentTokenCount += estimateTokens(session.messages[i]!.content);
+          if (recentTokenCount >= keepRecentTokens) {
+            recentIndex = i;
+            break;
+          }
+        }
+
+        for (let i = oldestIndex; i < recentIndex; i++) {
           const msg = session.messages[i]!;
           if (msg.role === 'user' && msg.content.length > 800) {
             const compressed = this.compressToolResult(msg.content);
@@ -97,14 +146,15 @@ export class SessionManager {
           }
         }
 
-        // Layer 2 — If still over limit, aggressive truncation
-        if (session.messages.length > MESSAGE_HARD_LIMIT) {
-          const excess = session.messages.length - MESSAGE_HARD_LIMIT + (MESSAGE_SOFT_LIMIT - KEEP_RECENT - KEEP_OLDEST);
-          const oldest = session.messages.slice(0, KEEP_OLDEST);
-          const recent = session.messages.slice(-KEEP_RECENT);
+        // Layer 2 — If still over limit, aggressive token-based truncation
+        const newTotalTokens = estimateMessagesTokens(session.messages);
+        if (newTotalTokens > this.hardLimit) {
+          const oldest = session.messages.slice(0, oldestIndex);
+          const recent = session.messages.slice(recentIndex);
+          const excessTokens = newTotalTokens - estimateMessagesTokens([...oldest, ...recent]);
           const compactMarker: typeof session.messages[0] = {
             role: 'assistant',
-            content: `[context_compact] ${excess} intermediate messages compressed due to session length limit.`,
+            content: `[context_compact] ~${excessTokens} tokens of intermediate messages compressed due to context budget (${newTotalTokens.toLocaleString()} / ${this.maxTokens.toLocaleString()}).`,
             timestamp: new Date(),
           };
           session.messages = [...oldest, compactMarker, ...recent];
@@ -138,8 +188,29 @@ export class SessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    const oldest = session.messages.slice(0, KEEP_OLDEST);
-    const recent = session.messages.slice(-KEEP_RECENT);
+    const keepOldestTokens = Math.floor(this.maxTokens * 0.2);
+    const keepRecentTokens = Math.floor(this.maxTokens * 0.3);
+    let oldestTokenCount = 0;
+    let oldestIndex = 0;
+    for (let i = 0; i < session.messages.length; i++) {
+      oldestTokenCount += estimateTokens(session.messages[i]!.content);
+      if (oldestTokenCount >= keepOldestTokens) {
+        oldestIndex = i + 1;
+        break;
+      }
+    }
+    let recentTokenCount = 0;
+    let recentIndex = session.messages.length;
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      recentTokenCount += estimateTokens(session.messages[i]!.content);
+      if (recentTokenCount >= keepRecentTokens) {
+        recentIndex = i;
+        break;
+      }
+    }
+
+    const oldest = session.messages.slice(0, oldestIndex);
+    const recent = session.messages.slice(recentIndex);
     const compactMarker: typeof session.messages[0] = {
       role: 'assistant',
       content: `[context_compact] ${summary}`,
