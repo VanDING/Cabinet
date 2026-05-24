@@ -19,6 +19,7 @@ interface Props {
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
   onForkMessage?: (messageId: string) => void;
+  onContinue?: (messageId: string) => void;
 }
 
 function escapeHtml(text: string): string {
@@ -211,6 +212,7 @@ export const ChatView = memo(function ChatView({
   onEditMessage,
   onRegenerate,
   onForkMessage,
+  onContinue,
 }: Props) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -300,6 +302,7 @@ export const ChatView = memo(function ChatView({
             onEditMessage={onEditMessage}
             onRegenerate={onRegenerate}
             onForkMessage={onForkMessage}
+            onContinue={onContinue}
           />
         ))}
 
@@ -338,6 +341,7 @@ const MessageRow = memo(function MessageRow({
   onEditMessage,
   onRegenerate,
   onForkMessage,
+  onContinue,
 }: {
   msg: ChatMessage;
   isProcessing: boolean;
@@ -345,6 +349,7 @@ const MessageRow = memo(function MessageRow({
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
   onForkMessage?: (messageId: string) => void;
+  onContinue?: (messageId: string) => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
@@ -435,8 +440,23 @@ const MessageRow = memo(function MessageRow({
                   <span>Error</span>
                 </div>
               )}
-              {msg.tasks && msg.tasks.length > 0 && (
-                <TaskPanel tasks={msg.tasks} isDark={isDark} />
+              {(msg.semanticTasks || msg.tasks) && (
+                <TaskPanel
+                  semanticTasks={msg.semanticTasks}
+                  tasks={msg.tasks}
+                  isDark={isDark}
+                />
+              )}
+              {msg.stepBudget && msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
+                <div className={`mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
+                  msg.stepBudget.remaining <= 0
+                    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
+                    : 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
+                }`}>
+                  {msg.stepBudget.remaining <= 0
+                    ? `步骤预算已耗尽 (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps})，任务可能未完成。`
+                    : `步骤预算即将耗尽 (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
+                </div>
               )}
               {msg.thinking && (() => {
                 const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
@@ -451,6 +471,16 @@ const MessageRow = memo(function MessageRow({
                 <ToolCallSummary toolCalls={msg.toolCalls} isStreaming={msg.isStreaming} />
               )}
               <MarkdownContent content={msg.content} />
+              {msg.content.includes('[INCOMPLETE: max_steps_reached]') && onContinue && (
+                <button
+                  onClick={() => onContinue(msg.id)}
+                  disabled={isProcessing}
+                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                >
+                  <span>Continue</span>
+                  <span>→</span>
+                </button>
+              )}
               {msg.meeting && <MeetingCard data={msg.meeting} isDark={isDark} />}
               {(() => {
                 const call = msg.toolCalls?.find(
