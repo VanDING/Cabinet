@@ -1,0 +1,81 @@
+import type { LongTermMemory } from './long-term.js';
+
+export interface DecayResult {
+  expired: number;
+  archived: number;
+  superseded: number;
+}
+
+/**
+ * Temporal memory decay service.
+ *
+ * Rules:
+ * 1. validUntil < now → status = 'expired'
+ * 2. confidence < 0.3 && accessCount < 3 && age > 30 days → status = 'archived'
+ * 3. importance < 0.2 && age > 90 days → status = 'archived'
+ *
+ * Retrieval score = importance * confidence * recencyDecay(age) * accessBoost
+ */
+export class MemoryDecayService {
+  constructor(private readonly longTerm: LongTermMemory) {}
+
+  async runDecayCycle(): Promise<DecayResult> {
+    const now = new Date();
+    const results = await this.longTerm.search('', 10_000); // load all active entries
+    let expired = 0;
+    let archived = 0;
+    let superseded = 0;
+
+    for (const entry of results) {
+      const meta = entry.metadata;
+      const status = meta.status as string | undefined;
+      if (status === 'expired' || status === 'archived') continue;
+
+      const validUntil = meta.validUntil as string | undefined;
+      if (validUntil && new Date(validUntil) < now) {
+        meta.status = 'expired';
+        expired++;
+        continue;
+      }
+
+      const ageDays = (now.getTime() - entry.timestamp.getTime()) / (1000 * 60 * 60 * 24);
+      const confidence = (meta.confidence as number) ?? 0.5;
+      const importance = (meta.importance as number) ?? 0.5;
+      const accessCount = (meta.accessCount as number) ?? 0;
+
+      if (confidence < 0.3 && accessCount < 3 && ageDays > 30) {
+        meta.status = 'archived';
+        archived++;
+        continue;
+      }
+
+      if (importance < 0.2 && ageDays > 90) {
+        meta.status = 'archived';
+        archived++;
+        continue;
+      }
+
+      if (status === 'superseded') {
+        superseded++;
+      }
+    }
+
+    return { expired, archived, superseded };
+  }
+
+  /** Compute a retrieval score for a memory entry. Higher = more relevant. */
+  static score(entry: {
+    timestamp: Date;
+    metadata: Record<string, unknown>;
+  }): number {
+    const importance = (entry.metadata.importance as number) ?? 0.5;
+    const confidence = (entry.metadata.confidence as number) ?? 0.5;
+    const accessCount = (entry.metadata.accessCount as number) ?? 0;
+    const ageDays = (Date.now() - entry.timestamp.getTime()) / (1000 * 60 * 60 * 24);
+
+    const recencyDecay = Math.exp(-ageDays / 30); // half-life 30 days
+    const accessBoost = 1 + Math.log1p(accessCount);
+
+    return importance * confidence * recencyDecay * accessBoost;
+  }
+}

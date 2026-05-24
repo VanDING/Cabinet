@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@cabinet/storage": "workspace:*",
-    "@cabinet/types": "workspace:*"
+    "@cabinet/types": "workspace:*",
+    "hnswlib-node": "^3.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",

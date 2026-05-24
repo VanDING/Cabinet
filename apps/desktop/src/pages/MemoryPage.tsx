@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 import { KnowledgeTab } from '../components/KnowledgeTab';
 import { EvaluationTab } from '../components/EvaluationTab';
+import { GraphTab } from '../components/GraphTab';
 import { useTheme } from '../hooks/useTheme';
 
 interface MemoryEntry {
@@ -28,8 +29,30 @@ const layerColors: Record<string, string> = {
   project: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
 };
 
+const statusColors: Record<string, string> = {
+  active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  superseded: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  expired: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  archived: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+};
+
+function getMemoryStatus(meta: Record<string, unknown>): string | undefined {
+  return typeof meta.status === 'string' ? meta.status : undefined;
+}
+
+function getNumericMeta(meta: Record<string, unknown>, key: string): number | undefined {
+  const v = meta[key];
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v);
+    if (!isNaN(parsed)) return parsed;
+  }
+  return undefined;
+}
+
 export function MemoryPage() {
   const [filter, setFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [layerCounts, setLayerCounts] = useState<Record<string, number>>({});
@@ -38,7 +61,7 @@ export function MemoryPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
   const [consolidateResult, setConsolidateResult] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation'>('memory');
+  const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation' | 'graph'>('memory');
   const { isDark } = useTheme();
 
   const fetchMemories = useCallback(async () => {
@@ -46,6 +69,7 @@ export function MemoryPage() {
     try {
       const params = new URLSearchParams();
       if (filter !== 'all') params.set('layer', filter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('query', search);
       params.set('limit', '50');
       const res = await apiFetch(`/api/memory?${params}`, { headers: authHeaders() });
@@ -60,7 +84,7 @@ export function MemoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, search]);
+  }, [filter, statusFilter, search]);
 
   useEffect(() => { fetchMemories(); }, [fetchMemories]);
 
@@ -103,7 +127,7 @@ export function MemoryPage() {
 
       {/* Tab bar */}
       <div className={`flex gap-4 mb-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        {(['memory', 'knowledge', 'evaluation'] as const).map((tab) => (
+        {(['memory', 'knowledge', 'evaluation', 'graph'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`pb-2 text-sm font-medium border-b-2 transition-colors capitalize ${
               activeTab === tab
@@ -119,6 +143,8 @@ export function MemoryPage() {
         <KnowledgeTab isDark={isDark} />
       ) : activeTab === 'evaluation' ? (
         <EvaluationTab isDark={isDark} />
+      ) : activeTab === 'graph' ? (
+        <GraphTab isDark={isDark} />
       ) : (
       <>
       {/* Filters */}
@@ -133,6 +159,22 @@ export function MemoryPage() {
             {layer === 'all' ? 'All Layers' : layer.replace('_', ' ')}
           </button>
         ))}
+        {/* Status filter — only meaningful for long_term */}
+        {(filter === 'all' || filter === 'long_term') && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-400">Status:</span>
+            {['all', 'active', 'superseded', 'expired', 'archived'].map((s) => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  statusFilter === s
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                }`}>
+                {s === 'all' ? 'Any' : s}
+              </button>
+            ))}
+          </div>
+        )}
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search memories..." className="ml-auto w-48 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100" />
         <button onClick={fetchMemories}
@@ -173,6 +215,11 @@ export function MemoryPage() {
                 <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${layerColors[m.layer] || 'bg-gray-100 text-gray-600'}`}>
                   {m.layer.replace('_', ' ')}
                 </span>
+                {m.layer === 'long_term' && getMemoryStatus(m.metadata) && (
+                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${statusColors[getMemoryStatus(m.metadata)!] || 'bg-gray-100 text-gray-600'}`}>
+                    {getMemoryStatus(m.metadata)}
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span className={`block text-sm ${isExpanded ? '' : 'line-clamp-2'} text-gray-700 dark:text-gray-300`}>
                     {(() => {
@@ -200,9 +247,59 @@ export function MemoryPage() {
               {isExpanded && (
                 <div className="border-t px-3 py-2 dark:border-gray-700">
                   <div className="mb-2 text-xs text-gray-400">ID: {m.id}</div>
+                  {/* Visualized metadata fields */}
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                    {(() => {
+                      const confidence = getNumericMeta(m.metadata, 'confidence');
+                      const importance = getNumericMeta(m.metadata, 'importance');
+                      const accessCount = getNumericMeta(m.metadata, 'accessCount');
+                      const validUntil = m.metadata.validUntil as string | undefined;
+                      const supersededBy = m.metadata.supersededBy as string | undefined;
+                      return (
+                        <>
+                          {confidence !== undefined && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-gray-500">Confidence</span>
+                              <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.round(confidence * 100)}%` }} />
+                              </div>
+                              <span className="text-xs text-gray-500">{Math.round(confidence * 100)}%</span>
+                            </div>
+                          )}
+                          {importance !== undefined && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-gray-500">Importance</span>
+                              <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.round(importance * 100)}%` }} />
+                              </div>
+                              <span className="text-xs text-gray-500">{Math.round(importance * 100)}%</span>
+                            </div>
+                          )}
+                          {accessCount !== undefined && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                              Accessed {accessCount} times
+                            </span>
+                          )}
+                          {validUntil && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                              Valid until: {new Date(validUntil).toLocaleDateString()}
+                            </span>
+                          )}
+                          {supersededBy && (
+                            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                              Superseded by: {String(supersededBy).slice(0, 20)}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {/* Remaining metadata tags */}
                   {Object.keys(m.metadata || {}).length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(m.metadata).map(([k, v]) => (
+                      {Object.entries(m.metadata).filter(([k]) =>
+                        !['status', 'confidence', 'importance', 'accessCount', 'validUntil', 'supersededBy'].includes(k)
+                      ).map(([k, v]) => (
                         <span key={k} className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
                           {k}: {typeof v === 'object' ? JSON.stringify(v).slice(0, 80) : String(v).slice(0, 80)}
                         </span>

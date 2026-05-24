@@ -89,14 +89,6 @@ export class WorkflowEngine {
     edges: WorkflowEdge[],
     entryNodeId: string,
   ): Promise<WorkflowRun> {
-    // Check for incomplete runs that can be resumed
-    const incomplete = this.listIncompleteRuns(workflowId);
-    if (incomplete.length > 0) {
-      const existing = incomplete[0]!;
-      this.runs.set(existing.runId, existing);
-      return this.continueRun(existing.runId, nodes, edges);
-    }
-
     const runId = `run_${Date.now()}`;
     const run: WorkflowRun = {
       runId,
@@ -140,8 +132,14 @@ export class WorkflowEngine {
     nodes: WorkflowNodeDef[],
     edges: WorkflowEdge[],
   ): Promise<WorkflowRun> {
-    const run = this.runs.get(runId);
-    if (!run) throw new Error(`Run not found: ${runId}`);
+    let run = this.runs.get(runId);
+    if (!run) {
+      // Attempt to load from persistent storage (e.g. after process restart)
+      const loaded = this.loadRun(runId);
+      if (!loaded) throw new Error(`Run not found: ${runId}`);
+      run = loaded;
+      this.runs.set(runId, run);
+    }
     if (run.status !== 'awaiting_approval' && run.status !== 'paused') {
       throw new Error(`Cannot continue run with status: ${run.status}`);
     }
@@ -590,7 +588,9 @@ export class WorkflowEngine {
         started_at: run.startedAt.toISOString(),
         updated_at: new Date().toISOString(),
       });
-    } catch { /* persistence failure is non-fatal for execution */ }
+    } catch (err) {
+      console.error(`[WorkflowEngine] Failed to persist run ${run.runId}:`, (err as Error).message);
+    }
   }
 
   private loadRun(runId: string): WorkflowRun | null {

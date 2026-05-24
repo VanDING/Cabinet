@@ -41,11 +41,14 @@ memoryRouter.get('/', async (c) => {
     try {
       const results = await longTerm.search(query || '*', limit);
       for (const r of results) {
+        const meta = r.metadata ?? {};
+        const status = c.req.query('status');
+        if (status && status !== 'all' && meta.status !== status) continue;
         entries.push({
           id: r.id ?? `lt_${Date.now()}`,
           layer: 'long_term',
           content: r.content,
-          metadata: r.metadata ?? {},
+          metadata: meta,
           timestamp: r.timestamp?.toISOString?.() ?? new Date().toISOString(),
         });
       }
@@ -151,6 +154,34 @@ memoryRouter.post('/consolidate', async (c) => {
     return c.json({ migrated, status: 'completed' });
   } catch (e: any) {
     return c.json({ error: e.message, migrated }, 500);
+  }
+});
+
+// GET /api/memory/graph — return knowledge graph entities and relations
+memoryRouter.get('/graph', (c) => {
+  const { knowledgeGraph, logger } = getServerContext();
+  try {
+    const db = (knowledgeGraph as any).db;
+    const entities = db.prepare('SELECT * FROM memory_entities ORDER BY frequency DESC LIMIT 200').all() as any[];
+    const relations = db.prepare('SELECT * FROM memory_relations LIMIT 500').all() as any[];
+    return c.json({
+      entities: entities.map((e) => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        frequency: e.frequency,
+      })),
+      relations: relations.map((r) => ({
+        id: r.id,
+        from: r.from_entity_id,
+        to: r.to_entity_id,
+        relation: r.relation,
+        strength: r.strength,
+      })),
+    });
+  } catch (err) {
+    logger.warn('Knowledge graph query failed', { error: (err as Error).message });
+    return c.json({ entities: [], relations: [] });
   }
 });
 

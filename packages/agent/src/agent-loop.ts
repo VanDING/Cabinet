@@ -24,6 +24,8 @@ export interface AgentSessionSummary {
   durationMs: number;
   success: boolean;
   startTime: string;
+  /** Detailed tool call history for skill extraction and debugging. */
+  toolCallHistory?: { name: string; args: Record<string, unknown>; result: unknown }[];
 }
 
 export type SessionCompleteCallback = (summary: AgentSessionSummary) => void;
@@ -59,6 +61,8 @@ export interface AgentLoopOptions {
   taskDescription?: string;
   /** Timeout for individual tool execution in ms (default 300000 = 5 min). */
   toolTimeoutMs?: number;
+  /** Session ID used for memory lookups (defaults to sessionId if omitted). Allows specialist agents to share conversation context while keeping separate checkpoints. */
+  memorySessionId?: string;
   /** Called when the agent session completes (success or failure). */
   onSessionComplete?: SessionCompleteCallback;
   /** Max output tokens for LLM calls (undefined = model default, no artificial limit). */
@@ -197,6 +201,7 @@ export class AgentLoop {
         systemPrompt: this.options.systemPrompt,
         activeFiles: this.options.activeFiles,
         taskDescription: this.options.taskDescription,
+        memorySessionId: this.options.memorySessionId,
       });
 
       // Combine system context messages with conversation messages
@@ -473,6 +478,7 @@ export class AgentLoop {
       durationMs: Date.now() - startTime,
       success,
       startTime: new Date(startTime).toISOString(),
+      toolCallHistory: toolCalls,
     });
   }
 
@@ -524,6 +530,7 @@ export class AgentLoop {
       systemPrompt: this.options.systemPrompt,
       activeFiles: this.options.activeFiles,
       taskDescription: this.options.taskDescription,
+      memorySessionId: this.options.memorySessionId,
     });
 
     const messages: { role: 'user' | 'assistant'; content: string }[] = [

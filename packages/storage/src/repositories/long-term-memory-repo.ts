@@ -21,6 +21,8 @@ export class LongTermMemoryRepository {
         timestamp TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memory_embeddings(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_memory_metadata_project ON memory_embeddings(json_extract(metadata, '$.projectId'));
+      CREATE INDEX IF NOT EXISTS idx_memory_has_embedding ON memory_embeddings(embedding) WHERE embedding IS NOT NULL;
     `);
   }
 
@@ -60,6 +62,38 @@ export class LongTermMemoryRepository {
       .prepare('SELECT COUNT(*) as count FROM memory_embeddings')
       .get() as { count: number };
     return row.count;
+  }
+
+  findByMetadataFilter(filter: Record<string, unknown>, limit = 10): LongTermMemoryRow[] {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    for (const [key, val] of Object.entries(filter)) {
+      conditions.push(`json_extract(metadata, '$.${key}') = ?`);
+      values.push(val);
+    }
+    if (conditions.length === 0) {
+      return this.searchByText('', limit);
+    }
+    const sql = `SELECT * FROM memory_embeddings WHERE ${conditions.join(' AND ')} ORDER BY timestamp DESC LIMIT ?`;
+    values.push(limit);
+    const rows = this.db.prepare(sql).all(...values) as Record<string, unknown>[];
+    return rows.map((r) => this.rowToEntry(r));
+  }
+
+  findWithEmbeddingsPaged(limit: number, offset: number): LongTermMemoryRow[] {
+    const rows = this.db
+      .prepare('SELECT * FROM memory_embeddings WHERE embedding IS NOT NULL ORDER BY timestamp DESC LIMIT ? OFFSET ?')
+      .all(limit, offset) as Record<string, unknown>[];
+    return rows.map((r) => this.rowToEntry(r));
+  }
+
+  findByIds(ids: string[]): LongTermMemoryRow[] {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = this.db
+      .prepare(`SELECT * FROM memory_embeddings WHERE id IN (${placeholders})`)
+      .all(...ids) as Record<string, unknown>[];
+    return rows.map((r) => this.rowToEntry(r));
   }
 
   delete(id: string): void {

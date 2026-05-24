@@ -68,16 +68,15 @@ export class IntentParser {
     const lower = message.toLowerCase();
     const trimmed = lower.trim();
 
-    // Follow-up detection: short messages that reference previous conversation
+    // Follow-up detection: only continuation/elaboration requests (not generic affirmations)
     const followUpPatterns = [
       '继续', '然后', '接下来', '接着', '下一步', 'go on', 'continue', 'next',
       '详细', '具体', '展开', '多说', '仔细', 'elaborate', 'explain', 'detail',
-      '好的', '可以', '行', '没问题', 'ok', 'yes', 'sure', 'okay', 'fine',
-      '明白', '了解', '懂了', 'got it', 'understood',
     ];
-    const isShortFollowUp = trimmed.length < 15 && followUpPatterns.some((p) => lower.includes(p));
+    const isShortFollowUp = trimmed.length < 20 && followUpPatterns.some((p) => lower.includes(p));
 
-    if (isShortFollowUp && conversationContext?.lastIntent) {
+    // Require both a follow-up pattern AND a known previous route to avoid false positives
+    if (isShortFollowUp && conversationContext?.lastIntent && conversationContext?.lastRoute) {
       return {
         kind: 'follow_up',
         previousKind: conversationContext.lastIntent,
@@ -98,12 +97,15 @@ export class IntentParser {
       };
     }
 
-    if (
-      lower.includes('分析') ||
-      lower.includes('是否') ||
-      lower.includes('该不该') ||
-      lower.includes('决策')
-    ) {
+    // Decision analysis: requires decision-oriented keywords.
+    // "分析" alone is too broad (e.g. "分析代码") — require pairing with option/comparison words.
+    const hasDecisionKeyword = lower.includes('是否') || lower.includes('该不该') || lower.includes('决策');
+    const hasAnalyticalContext = lower.includes('分析') && (
+      lower.includes('选项') || lower.includes('方案') || lower.includes('选择') ||
+      lower.includes('对比') || lower.includes('比较') || lower.includes('优劣') ||
+      lower.includes('哪个') || lower.includes('怎么选') || lower.includes('权衡')
+    );
+    if (hasDecisionKeyword || hasAnalyticalContext) {
       return {
         kind: 'decision_request',
         topic: message.slice(0, 100),
@@ -112,11 +114,13 @@ export class IntentParser {
       };
     }
 
-    if (
-      (lower.includes('组织') && lower.includes('讨论')) ||
-      (lower.includes('会议') && trimmed.length > 10) ||
-      (lower.includes('顾问') && trimmed.length > 8)
-    ) {
+    // Meeting request: must explicitly ask to organize/schedule a meeting, not just mention one.
+    const hasOrganizeMeeting = (lower.includes('组织') && lower.includes('讨论')) ||
+      lower.includes('开会') || lower.includes('召集') || lower.includes('启动会议');
+    const hasAdvisorIntent = lower.includes('顾问') && (
+      lower.includes('讨论') || lower.includes('分析') || lower.includes('会议') || lower.includes('咨询')
+    );
+    if (hasOrganizeMeeting || hasAdvisorIntent) {
       return {
         kind: 'meeting_request',
         topic: message,
@@ -124,7 +128,14 @@ export class IntentParser {
       };
     }
 
-    if (lower.includes('状态') || lower.includes('进度') || lower.includes('查询')) {
+    // Status query: "查询" alone is too broad. Require pairing with status/project/workflow context.
+    const hasStatusKeyword = lower.includes('状态') || lower.includes('进度');
+    const hasQueryWithContext = lower.includes('查询') && (
+      lower.includes('项目') || lower.includes('工作流') || lower.includes('workflow') ||
+      lower.includes('决策') || lower.includes('状态') || lower.includes('进度') ||
+      lower.includes('任务') || lower.includes('执行')
+    );
+    if (hasStatusKeyword || hasQueryWithContext) {
       return {
         kind: 'status_query',
         target: 'project',
@@ -132,13 +143,15 @@ export class IntentParser {
       };
     }
 
-    if (
-      lower.includes('工作流') ||
-      lower.includes('流程') ||
-      lower.includes('workflow') ||
-      (lower.includes('创建') && (lower.includes('步骤') || lower.includes('自动'))) ||
-      lower.includes('修改') && lower.includes('workflow')
-    ) {
+    // Workflow request: "流程" alone catches too much (e.g. "业务流程" in casual chat).
+    // Require explicit workflow-related keywords or creation intent.
+    const hasWorkflowKeyword = lower.includes('工作流') || lower.includes('workflow');
+    const hasCreateAutomation = lower.includes('创建') && (lower.includes('步骤') || lower.includes('自动'));
+    const hasModifyWorkflow = lower.includes('修改') && lower.includes('workflow');
+    const hasDesignFlow = lower.includes('流程') && (
+      lower.includes('创建') || lower.includes('设计') || lower.includes('定义') || lower.includes('自动化')
+    );
+    if (hasWorkflowKeyword || hasCreateAutomation || hasModifyWorkflow || hasDesignFlow) {
       return {
         kind: 'workflow_request',
         topic: message.slice(0, 100),
