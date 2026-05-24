@@ -11,7 +11,6 @@
     "updater:allow-install",
     "process:default",
     "process:allow-exit",
-    "dialog:default",
     "dialog:allow-open",
     "dialog:allow-confirm",
     "dialog:allow-message",
