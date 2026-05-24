@@ -153,6 +153,9 @@ export function EmployeesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    const emp = employees.find((e) => e.id === id);
+    if (!emp) return;
+    if (!confirm(`Delete "${emp.name}"?`)) return;
     try {
       await apiFetch(`/api/employees/${id}`, { method: 'DELETE', headers: authHeaders() });
       refreshEmployees();
