@@ -2,6 +2,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { z } from 'zod';
 import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
 
 function loadEnvFile(): void {
@@ -58,17 +59,40 @@ function resolveMasterPassword(): string {
   return generated;
 }
 
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3000),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  DEEPSEEK_API_KEY: z.string().optional(),
+  QWEN_API_KEY: z.string().optional(),
+  MOONSHOT_API_KEY: z.string().optional(),
+  ZHIPU_API_KEY: z.string().optional(),
+  BAICHUAN_API_KEY: z.string().optional(),
+  CABINET_DAILY_BUDGET: z.coerce.number().default(DAILY_BUDGET_USD),
+  CABINET_WEEKLY_BUDGET: z.coerce.number().default(WEEKLY_BUDGET_USD),
+  CABINET_MONTHLY_BUDGET: z.coerce.number().default(MONTHLY_BUDGET_USD),
+});
+
+const result = envSchema.safeParse(process.env);
+if (!result.success) {
+  const issues = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
+  console.error(`Environment validation failed:\n${issues}`);
+  process.exit(1);
+}
+
+const parsedEnv = result.data;
+
 export const config = {
-  port: parseInt(process.env.PORT ?? '3000', 10),
+  port: parsedEnv.PORT,
   masterPassword: resolveMasterPassword(),
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  deepseekApiKey: process.env.DEEPSEEK_API_KEY,
-  qwenApiKey: process.env.QWEN_API_KEY,
-  moonshotApiKey: process.env.MOONSHOT_API_KEY,
-  zhipuApiKey: process.env.ZHIPU_API_KEY,
-  baichuanApiKey: process.env.BAICHUAN_API_KEY,
-  dailyBudget: parseFloat(process.env.CABINET_DAILY_BUDGET ?? String(DAILY_BUDGET_USD)),
-  weeklyBudget: parseFloat(process.env.CABINET_WEEKLY_BUDGET ?? String(WEEKLY_BUDGET_USD)),
-  monthlyBudget: parseFloat(process.env.CABINET_MONTHLY_BUDGET ?? String(MONTHLY_BUDGET_USD)),
+  anthropicApiKey: parsedEnv.ANTHROPIC_API_KEY,
+  openaiApiKey: parsedEnv.OPENAI_API_KEY,
+  deepseekApiKey: parsedEnv.DEEPSEEK_API_KEY,
+  qwenApiKey: parsedEnv.QWEN_API_KEY,
+  moonshotApiKey: parsedEnv.MOONSHOT_API_KEY,
+  zhipuApiKey: parsedEnv.ZHIPU_API_KEY,
+  baichuanApiKey: parsedEnv.BAICHUAN_API_KEY,
+  dailyBudget: parsedEnv.CABINET_DAILY_BUDGET,
+  weeklyBudget: parsedEnv.CABINET_WEEKLY_BUDGET,
+  monthlyBudget: parsedEnv.CABINET_MONTHLY_BUDGET,
 };
