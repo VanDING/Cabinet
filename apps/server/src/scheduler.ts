@@ -1,4 +1,5 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
+import { CronExpressionParser } from 'cron-parser';
 import type { ScheduledTaskRepository, DecisionRepository } from '@cabinet/storage';
 
 export interface SchedulerLogger {
@@ -148,52 +149,12 @@ export class TaskScheduler {
   }
 
   private nextCronTime(cronExpression: string): string {
-    const now = new Date();
-    const parts = cronExpression.trim().split(/\s+/);
-    if (parts.length !== 5) {
-      return new Date(now.getTime() + 60000).toISOString();
+    try {
+      const expr = CronExpressionParser.parse(cronExpression);
+      return expr.next().toDate().toISOString();
+    } catch {
+      return new Date(Date.now() + 60000).toISOString();
     }
-    const min = parts[0] ?? '*';
-    const hour = parts[1] ?? '*';
-    const dom = parts[2] ?? '*';
-    const month = parts[3] ?? '*';
-    const dow = parts[4] ?? '*';
-    const next = new Date(now);
-    next.setSeconds(0, 0);
-    next.setMinutes(next.getMinutes() + 1);
-
-    for (let i = 0; i < 1440; i++) {
-      if (
-        this.matchField(min, next.getMinutes(), 0, 59) &&
-        this.matchField(hour, next.getHours(), 0, 23) &&
-        this.matchField(dom, next.getDate(), 1, 31) &&
-        this.matchField(month, next.getMonth() + 1, 1, 12) &&
-        this.matchField(dow, next.getDay(), 0, 6)
-      ) {
-        return next.toISOString();
-      }
-      next.setMinutes(next.getMinutes() + 1);
-    }
-    return new Date(now.getTime() + 60000).toISOString();
-  }
-
-  private matchField(field: string, value: number, _min: number, _max: number): boolean {
-    if (field === '*') return true;
-    for (const part of field.split(',')) {
-      if (part.includes('/')) {
-        const [range, step] = part.split('/');
-        const stepNum = parseInt(step ?? '1', 10);
-        if (range === '*') {
-          if (value % stepNum === 0) return true;
-        }
-      } else if (part.includes('-')) {
-        const [lo, hi] = part.split('-');
-        if (value >= parseInt(lo ?? '0', 10) && value <= parseInt(hi ?? '0', 10)) return true;
-      } else {
-        if (parseInt(part, 10) === value) return true;
-      }
-    }
-    return false;
   }
 }
 
