@@ -106,10 +106,11 @@ employeesRouter.delete('/:id', (c) => {
   // Custom agents are stored in agent_roles, not employees table
   if (id.startsWith('agent_')) {
     const name = id.slice('agent_'.length);
+    // Allow deletion even if not in runtime registry (may be DB-only after restart)
     const agent = agentRegistry.get(name);
-    if (!agent) return c.json({ error: 'Agent not found' }, 404);
-
-    agentRegistry.unregister(name);
+    if (agent) {
+      agentRegistry.unregister(name);
+    }
     agentRoleRepo.deleteByName(name);
 
     // Remove from filesystem
