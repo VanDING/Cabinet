@@ -9,6 +9,7 @@ await esbuild.build({
   outfile: 'bundle/main.cjs',
   external: [
     'better-sqlite3',
+    'hnswlib-node',
     'fsevents',
     'playwright',
     'playwright-core',

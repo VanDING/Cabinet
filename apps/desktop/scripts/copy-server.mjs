@@ -10,7 +10,17 @@ const pnpmStore = join(workspaceRoot, 'node_modules', '.pnpm');
 const dest = join(__dirname, '..', 'src-tauri', 'resources', 'server-dist');
 
 console.log('Copying server to resources...');
-rmSync(dest, { recursive: true, force: true });
+try {
+  rmSync(dest, { recursive: true, force: true });
+} catch {
+  // On Windows the directory may be locked; fall back to clearing contents
+  try {
+    for (const entry of readdirSync(dest)) {
+      const full = join(dest, entry);
+      try { rmSync(full, { recursive: true, force: true }); } catch { /* ignore locked files */ }
+    }
+  } catch { /* dest may not exist */ }
+}
 mkdirSync(dest, { recursive: true });
 
 // 1. Copy the esbuild bundle (CJS format)
@@ -111,5 +121,29 @@ function copyPackage(packageName, resolvedEntry) {
 // Seed with better-sqlite3 (the sole native module kept external by esbuild)
 const bsql3Entry = serverRequire.resolve('better-sqlite3');
 copyPackage('better-sqlite3', bsql3Entry);
+
+// Also copy hnswlib-node (externalized by esbuild since v3.0.0)
+try {
+  const memoryPkgPath = join(workspaceRoot, 'packages', 'memory', 'package.json');
+  const memoryRequire = createRequire(memoryPkgPath);
+  const hnswEntry = memoryRequire.resolve('hnswlib-node');
+  copyPackage('hnswlib-node', hnswEntry);
+} catch (e) {
+  console.warn('hnswlib-node not found, skipping native binary copy');
+}
+
+// hnswlib-node JS is bundled by esbuild, but bindings() searches from __dirname
+// (which is server-dist/ when main.cjs runs). Copy .node to root build/Release.
+try {
+  const hnswlibBuild = join(dest, 'node_modules', 'hnswlib-node', 'build', 'Release', 'addon.node');
+  const rootBuild = join(dest, 'build', 'Release', 'addon.node');
+  if (existsSync(hnswlibBuild)) {
+    mkdirSync(dirname(rootBuild), { recursive: true });
+    cpSync(hnswlibBuild, rootBuild);
+    console.log('  hnswlib-node native binary copied to server-dist root');
+  }
+} catch (e) {
+  console.warn('hnswlib-node native binary root copy failed:', e.message);
+}
 
 console.log('Standalone server ready');

@@ -195,7 +195,13 @@ export function App() {
         body: JSON.stringify({ name: name.trim(), rootPath }),
       });
       if (r.ok) {
+        const data = await r.json();
+        const newProjectId = data.project?.id;
         refreshProjects();
+        if (newProjectId) {
+          setActiveProjectId(newProjectId);
+          navigate(`/project/${newProjectId}/office`);
+        }
         // Notification handled by WebSocket broadcast (ws:project_created)
       }
     } catch {
