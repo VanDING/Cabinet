@@ -364,6 +364,7 @@ export function getServerContext(): ServerContext {
         logger.warn('Preference learning failed', { error: e.message });
       }
     },
+    getCurrentTier,
   );
 
   // Memory (shared DB for long-term)

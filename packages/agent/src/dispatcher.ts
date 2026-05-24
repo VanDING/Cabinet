@@ -25,6 +25,7 @@ import { CheckpointManager } from './checkpoint.js';
 import type { Database } from '@cabinet/storage';
 
 import type { DispatchMode, PipelineStep, AgentOutput, PipelineContext, PipelineStepContext } from '@cabinet/types';
+import type { RateLimitTracker } from '@cabinet/gateway';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -109,6 +110,7 @@ export class AgentDispatcher {
     private readonly memoryProvider: MemoryProvider,
     private readonly eventBus?: EventBus,
     externalRegistry?: AgentRoleRegistry,
+    private readonly rateLimitTracker?: RateLimitTracker,
   ) {
     this.registry = externalRegistry ?? new AgentRoleRegistry();
     this.baseOptions = {
@@ -227,11 +229,21 @@ export class AgentDispatcher {
   private async runParallel(options: DispatchOptions): Promise<DispatchResult> {
     const startTime = Date.now();
     const roleTypes = options.roles ?? ['secretary'];
-    const MAX_CONCURRENCY = 3;
+
+    // Dynamic concurrency based on rate limit tracker
+    let maxConcurrency = 3;
+    if (this.rateLimitTracker) {
+      const provider = this.inferProviderFromModel(options.roles?.[0] ?? 'secretary');
+      const remaining = this.rateLimitTracker.getRemaining(provider);
+      if (remaining !== Infinity) {
+        maxConcurrency = Math.min(3, Math.floor(remaining / 2));
+        maxConcurrency = Math.max(1, maxConcurrency);
+      }
+    }
 
     const steps: PipelineStep[] = [];
-    for (let i = 0; i < roleTypes.length; i += MAX_CONCURRENCY) {
-      const batch = roleTypes.slice(i, i + MAX_CONCURRENCY);
+    for (let i = 0; i < roleTypes.length; i += maxConcurrency) {
+      const batch = roleTypes.slice(i, i + maxConcurrency);
       const batchSteps = await Promise.all(
         batch.map((role) => this.runAgentStep(role, options.request, options)),
       );
@@ -290,6 +302,18 @@ export class AgentDispatcher {
       totalDurationMs: Date.now() - startTime,
       structuredOutput: step.structuredOutput,
     };
+  }
+
+  /** Infer a provider name from the first role's model configuration. */
+  private inferProviderFromModel(roleType: string): string {
+    const role = this.registry.get(roleType);
+    const model = role?.model ?? '';
+    if (model.includes('/')) return model.split('/')[0]!;
+    if (model.toLowerCase().startsWith('claude')) return 'anthropic';
+    if (model.toLowerCase().startsWith('gpt')) return 'openai';
+    if (model.toLowerCase().startsWith('gemini')) return 'google';
+    if (model.toLowerCase().startsWith('deepseek')) return 'deepseek';
+    return 'anthropic';
   }
 
   // ── Agent Step Runner ─────────────────────────────────────

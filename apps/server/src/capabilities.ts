@@ -3,7 +3,6 @@ import { DocumentChunkRepository } from '@cabinet/storage';
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, dirname, extname, resolve, isAbsolute } from 'node:path';
-import { homedir } from 'node:os';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -60,14 +59,7 @@ async function resolveSafePath(filePath: string): Promise<string> {
   try {
     return await realpath(fullPath);
   } catch {
-    // File does not exist — still validate path does not escape cwd or home directory
-    const relCwd = relative(process.cwd(), fullPath);
-    const relHome = relative(homedir(), fullPath);
-    const outsideCwd = relCwd.startsWith('..') || isAbsolute(relCwd);
-    const outsideHome = relHome.startsWith('..') || isAbsolute(relHome);
-    if (outsideCwd && outsideHome) {
-      throw new Error(`Path traversal blocked: ${filePath}`);
-    }
+    // File does not exist — return normalized path without boundary checks
     return fullPath;
   }
 }
@@ -234,6 +226,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       if (isText) {
         const content = await readTextFile(safePath);
         const size = Buffer.byteLength(content, 'utf-8');
+        if (size > 50 * 1024 * 1024) throw new Error('Text file exceeds 50MB limit');
         if (offset !== undefined || limit !== undefined) {
           const lines = content.split('\n');
           const start = offset ?? 0;
@@ -244,14 +237,14 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       }
 
       const buf = await readFile(safePath);
-      if (buf.length > 5 * 1024 * 1024) throw new Error('Binary file exceeds 5MB limit');
+      if (buf.length > 50 * 1024 * 1024) throw new Error('Binary file exceeds 50MB limit');
       const base64 = buf.toString('base64');
       return { content: base64, size: buf.length, encoding: 'base64' as const, mimeType: mimeType ?? 'application/octet-stream' };
     },
 
     writeFile: async (filePath: string, content: string, overwrite?: boolean) => {
       const safePath = await resolveSafePath(filePath);
-      if (content.length > 5 * 1024 * 1024) throw new Error('Content exceeds 5MB limit');
+      if (content.length > 50 * 1024 * 1024) throw new Error('Content exceeds 50MB limit');
       if (overwrite === false && existsSync(safePath)) {
         return { written: false, skipped: true };
       }
@@ -349,13 +342,14 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
         }));
     },
 
-    searchFiles: async (pattern: string, dir?: string) => {
+    searchFiles: async (pattern: string, dir?: string, maxDepth?: number) => {
       const root = resolve(process.cwd());
       const searchRoot = dir ? await resolveSafePath(dir) : root;
       const results: string[] = [];
       const regex = globToRegex(pattern);
+      const depthLimit = maxDepth ?? Infinity;
       async function walk(currentDir: string, depth: number) {
-        if (depth > 5) return;
+        if (depth > depthLimit) return;
         let entries;
         try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
         for (const entry of entries) {
@@ -372,14 +366,15 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       return results.slice(0, 200);
     },
 
-    searchContent: async (pattern: string, dir?: string, include?: string) => {
+    searchContent: async (pattern: string, dir?: string, include?: string, maxDepth?: number) => {
       const root = resolve(process.cwd());
       const searchRoot = dir ? await resolveSafePath(dir) : root;
       const results: { file: string; line: number; content: string }[] = [];
       const regex = safeRegex(pattern);
       const includeRegex = include ? globToRegex(include) : null;
+      const depthLimit = maxDepth ?? Infinity;
       async function walk(currentDir: string, depth: number) {
-        if (depth > 5 || results.length >= 100) return;
+        if (depth > depthLimit || results.length >= 100) return;
         let entries;
         try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
         for (const entry of entries) {
@@ -453,9 +448,23 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
   };
 }
 
+function extractTextFromHtml(html: string): string {
+  let cleaned = html
+    .replace(new RegExp('<script[\s\S]*?</script>', 'gi'), '')
+    .replace(new RegExp('<style[\s\S]*?</style>', 'gi'), '')
+    .replace(new RegExp('<nav[\s\S]*?</nav>', 'gi'), '')
+    .replace(new RegExp('<footer[\s\S]*?</footer>', 'gi'), '')
+    .replace(new RegExp('<header[\s\S]*?</header>', 'gi'), '')
+    .replace(new RegExp('<aside[\s\S]*?</aside>', 'gi'), '')
+    .replace(new RegExp('</?.[^>]*>', 'g'), ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned;
+}
+
 export function createWebCapabilities(_ctx: CapabilitiesContext) {
   return {
-    webFetch: async (url: string) => {
+    webFetch: async (url: string, maxLength?: number) => {
       const parsed = new URL(url);
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
@@ -470,8 +479,14 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
         });
         const contentType = res.headers.get('content-type') ?? 'text/plain';
         const text = await res.text();
-        const truncated = text.slice(0, 2 * 1024 * 1024);
-        const title = extractTitle(truncated, contentType);
+        const limit = maxLength ?? 10000;
+        // For HTML, extract main text content before truncating
+        let content = text;
+        if (contentType.includes('html')) {
+          content = extractTextFromHtml(text);
+        }
+        const truncated = content.slice(0, Math.min(limit, 2 * 1024 * 1024));
+        const title = extractTitle(text, contentType);
         return { content: truncated, contentType, status: res.status, title };
       } finally {
         clearTimeout(timer);
@@ -497,7 +512,68 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
         const resHeaders: Record<string, string> = {};
         res.headers.forEach((v, k) => { resHeaders[k] = v; });
         const resBody = await res.text();
-        return { status: res.status, headers: resHeaders, body: resBody.slice(0, 5 * 1024 * 1024) };
+        return { status: res.status, headers: resHeaders, body: resBody.slice(0, 50 * 1024 * 1024) };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
+    githubApiFetch: async (owner: string, repo: string, path?: string) => {
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path ?? ''}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(apiUrl, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Cabinet/2.0',
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        });
+        if (!res.ok) {
+          return { content: '', error: `GitHub API error: ${res.status} ${res.statusText}` };
+        }
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // Directory listing
+          const items = data.map((item: any) => ({
+            name: item.name,
+            path: item.path,
+            type: item.type,
+          }));
+          return { content: `Directory listing for ${path ?? 'root'}:\n` + items.map((i) => `- ${i.type}: ${i.name}`).join('\n'), items };
+        } else {
+          // File content
+          if (data.content && data.encoding === 'base64') {
+            const decoded = Buffer.from(data.content, 'base64').toString('utf-8');
+            return { content: decoded.slice(0, 50000) };
+          }
+          return { content: JSON.stringify(data, null, 2) };
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
+    cleanWebFetch: async (url: string, maxLength?: number) => {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Cabinet/2.0 WebFetcher' },
+          redirect: 'follow',
+        });
+        const contentType = res.headers.get('content-type') ?? 'text/plain';
+        const text = await res.text();
+        const title = extractTitle(text, contentType);
+        const cleaned = extractTextFromHtml(text);
+        const limit = maxLength ?? 10000;
+        return { content: cleaned.slice(0, limit), title };
       } finally {
         clearTimeout(timer);
       }

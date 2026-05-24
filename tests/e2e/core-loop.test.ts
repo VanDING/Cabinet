@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
-import { seedProject } from './test-helpers';
+import { seedProject, resetTier } from './test-helpers';
 
 const PIN = '1234';
 const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
@@ -13,6 +13,7 @@ describe('Cabinet Core Loop (E2E)', () => {
 
   // Seed test decisions used by subsequent detail/approve/reject tests
   beforeAll(async () => {
+    await resetTier(app);
     projectId = await seedProject(app);
     // Use 4+ options to get L2 classification (won't auto-approve on creation)
     const r1 = await app.request('/api/decisions', {
