@@ -220,7 +220,7 @@ export function getServerContext(): ServerContext {
   // Database — use ~/.cabinet/ (cross-platform user data directory)
   const dataDir = ensureCabinetDir();
   const dbPath = join(dataDir, 'cabinet.db');
-  const dbExists = require('node:fs').existsSync(dbPath);
+  const dbExists = existsSync(dbPath);
 
   let db: Database;
   let dbMode: 'file' | 'memory' = 'file';
@@ -230,7 +230,7 @@ export function getServerContext(): ServerContext {
     logger.info(`SQLite database initialized (${dbExists ? 'existing' : 'new'})`, { path: dbPath });
     // Write a startup marker so we can diagnose persistence issues
     try {
-      require('node:fs').writeFileSync(
+      writeFileSync(
         join(dataDir, 'server-startup.log'),
         `${new Date().toISOString()} | DB: file | path: ${dbPath} | existed: ${dbExists}\n`,
       );
@@ -239,10 +239,13 @@ export function getServerContext(): ServerContext {
     logger.error('Failed to initialize file-based SQLite', { error: String(e), path: dbPath });
     // Write diagnostic info before falling back
     try {
-      require('node:fs').appendFileSync(
-        join(dataDir, 'server-startup.log'),
-        `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`,
-      );
+      // appendFileSync not imported; use writeFileSync with existing content fallback
+      try {
+        const existing = readFileSync(join(dataDir, 'server-startup.log'), 'utf-8');
+        writeFileSync(join(dataDir, 'server-startup.log'), existing + `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`);
+      } catch {
+        writeFileSync(join(dataDir, 'server-startup.log'), `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`);
+      }
     } catch { /* non-fatal */ }
     try {
       db = createConnection(':memory:');

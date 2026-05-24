@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { HierarchicalNSW as HierarchicalNSWType } from 'hnswlib-node';
 import hnswlib from 'hnswlib-node';
@@ -26,8 +27,8 @@ interface IndexMeta {
 
 const DEFAULT_DIMENSION = 1536;
 const SIMILARITY_THRESHOLD = 0.3;
-const INDEX_PATH = join(process.env.CABINET_DIR ?? require('node:os').homedir(), '.cabinet', 'memory.hnsw.index');
-const META_PATH = join(process.env.CABINET_DIR ?? require('node:os').homedir(), '.cabinet', 'memory.hnsw.meta.json');
+const INDEX_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.index');
+const META_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.meta.json');
 const INITIAL_MAX_ELEMENTS = 100_000;
 
 /**
@@ -68,7 +69,7 @@ export class LongTermMemory {
   }
 
   private initIndex(): void {
-    const indexDir = require('node:path').dirname(this.indexPath);
+    const indexDir = dirname(this.indexPath);
     if (!existsSync(indexDir)) {
       mkdirSync(indexDir, { recursive: true });
     }
