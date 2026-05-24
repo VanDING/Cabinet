@@ -269,6 +269,10 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     goToDefinition: shared.goToDefinition,
     findReferences: shared.findReferences,
     diagnostics: shared.diagnostics,
+
+    // ── System knowledge (always available) ──
+    querySystemKnowledge: shared.querySystemKnowledge,
+    getSystemKnowledge: shared.getSystemKnowledge,
   };
 }
 

@@ -102,6 +102,11 @@ export class ProjectMemory {
     this.persist(projectId, ctx);
   }
 
+  delete(projectId: string): void {
+    this.projects.delete(projectId);
+    this.repo?.delete(projectId);
+  }
+
   private persist(projectId: string, ctx: ProjectContext): void {
     if (!this.repo) return;
     this.repo.upsert({

@@ -118,10 +118,21 @@ memoryRouter.get('/', async (c) => {
 
 // DELETE /api/memory/:id — delete entry
 memoryRouter.delete('/:id', async (c) => {
-  const { longTerm, logger } = getServerContext();
+  const { longTerm, entity, project, logger } = getServerContext();
   const id = c.req.param('id');
   try {
-    await longTerm.delete(id);
+    if (id.startsWith('ent_')) {
+      const captainId = id.slice(4);
+      entity.deletePreferences?.(captainId);
+    } else if (id.startsWith('emp_')) {
+      const empId = id.slice(4);
+      entity.deleteEmployee?.(empId);
+    } else if (id.startsWith('proj_')) {
+      const projId = id.slice(5);
+      project.delete?.(projId);
+    } else {
+      await longTerm.delete(id);
+    }
     return c.json({ status: 'deleted' });
   } catch (err) {
     logger.warn('Failed to delete memory entry', { error: (err as Error).message, id });
