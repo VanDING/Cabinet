@@ -33,6 +33,18 @@ export function SkillsTab() {
     fetchSkills();
   }, []);
 
+  useEffect(() => {
+    const handler = () => fetchSkills();
+    window.addEventListener('ws:skill_created', handler);
+    window.addEventListener('ws:skill_updated', handler);
+    window.addEventListener('ws:skill_deleted', handler);
+    return () => {
+      window.removeEventListener('ws:skill_created', handler);
+      window.removeEventListener('ws:skill_updated', handler);
+      window.removeEventListener('ws:skill_deleted', handler);
+    };
+  }, []);
+
   const handleCreate = async () => {
     if (editingId) {
       await apiFetch(`/api/skills/${editingId}`, {

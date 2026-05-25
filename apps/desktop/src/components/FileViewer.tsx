@@ -8,6 +8,7 @@ interface FileTab {
   content: string;
   encoding: 'utf-8' | 'base64';
   mimeType?: string;
+  absolutePath?: string;
 }
 
 interface Props {
@@ -72,6 +73,7 @@ export function FileViewer({ isDark }: Props) {
           content: detail.content ?? '',
           encoding: (detail.encoding as 'utf-8' | 'base64') ?? 'utf-8',
           mimeType: detail.mimeType,
+          absolutePath: (detail as any).absolutePath,
         };
         setActiveTab(detail.path);
         setVisible(true);
@@ -92,7 +94,7 @@ export function FileViewer({ isDark }: Props) {
           const data = await res.json();
           setTabs((prev) =>
             prev.map((t) =>
-              t.path === filePath ? { ...t, content: data.content, encoding: data.encoding ?? 'utf-8', mimeType: data.mimeType } : t,
+              t.path === filePath ? { ...t, content: data.content, encoding: data.encoding ?? 'utf-8', mimeType: data.mimeType, absolutePath: data.absolutePath } : t,
             ),
           );
         }
@@ -131,11 +133,6 @@ export function FileViewer({ isDark }: Props) {
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const tabBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
 
-  const htmlContent = isHtml && active
-    ? (active.content.includes('<base')
-        ? active.content
-        : active.content.replace('<head>', `<head><base href="file://${active.path.substring(0, active.path.lastIndexOf('/') + 1)}">`))
-    : '';
 
   return (
     <div className="relative flex flex-shrink-0" style={{ width }}>
@@ -202,8 +199,7 @@ export function FileViewer({ isDark }: Props) {
               </div>
             ) : isHtml && viewMode === 'preview' ? (
               <iframe
-                sandbox="allow-scripts"
-                srcDoc={htmlContent}
+                srcDoc={active.content}
                 className="w-full h-full border-0"
                 title={active.name}
               />
