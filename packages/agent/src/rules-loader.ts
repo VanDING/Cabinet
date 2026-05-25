@@ -77,6 +77,8 @@ export class RulesLoader {
   private cache: Map<string, LoadedRule[]> = new Map();
   private fileTimestamps: Map<string, number> = new Map();
   private globalFileTimestamp = 0;
+  /** Cached summarize result to avoid repeated loadAll() traversals. */
+  private summaryCache: string | null = null;
 
   constructor(
     private readonly rulesDirs: string[],
@@ -144,6 +146,9 @@ export class RulesLoader {
 
   /** Get a summary of available rules (for the agent to know what's available). */
   summarize(): string {
+    if (this.summaryCache !== null) {
+      return this.summaryCache;
+    }
     const all = this.loadAll();
     if (all.length === 0) return 'No .cabinet/rules/ found.';
 
@@ -154,7 +159,8 @@ export class RulesLoader {
         rule.mode === 'always' ? '[always]' : rule.mode === 'auto' ? '[auto]' : '[on-demand]';
       lines.push(`- ${mode} ${desc} (${rule.path})`);
     }
-    return lines.join('\n');
+    this.summaryCache = lines.join('\n');
+    return this.summaryCache;
   }
 
   /** Reload rules (clears cache). */
@@ -162,6 +168,7 @@ export class RulesLoader {
     this.cache.clear();
     this.fileTimestamps.clear();
     this.globalFileTimestamp = 0;
+    this.summaryCache = null;
   }
 
   // ── Private ────────────────────────────────────────────────
