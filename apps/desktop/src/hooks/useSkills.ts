@@ -13,7 +13,7 @@ export interface SkillInfo {
 export function useSkills(): SkillInfo[] {
   const [skills, setSkills] = useState<SkillInfo[]>([]);
 
-  useEffect(() => {
+  const fetchSkills = () => {
     apiFetch('/api/skills', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => {
@@ -32,6 +32,22 @@ export function useSkills(): SkillInfo[] {
           /* localStorage fallback parse error */
         }
       });
+  };
+
+  useEffect(() => {
+    fetchSkills();
+  }, []);
+
+  useEffect(() => {
+    const handler = () => fetchSkills();
+    window.addEventListener('ws:skill_created', handler);
+    window.addEventListener('ws:skill_updated', handler);
+    window.addEventListener('ws:skill_deleted', handler);
+    return () => {
+      window.removeEventListener('ws:skill_created', handler);
+      window.removeEventListener('ws:skill_updated', handler);
+      window.removeEventListener('ws:skill_deleted', handler);
+    };
   }, []);
 
   return skills;

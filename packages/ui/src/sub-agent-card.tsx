@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+
 export type SubAgentStatus = 'running' | 'completed' | 'error';
 
 export interface SubAgentActivity {
@@ -46,6 +47,7 @@ const statusConfig: Record<
 
 export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: SubAgentCardProps) {
   const [expanded, setExpanded] = useState(activity.status === 'running' || activity.status === 'error');
+  const [toolCallsExpanded, setToolCallsExpanded] = useState(false);
 
   if (visibility === 'hidden') return null;
 
@@ -110,27 +112,42 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           )}
 
           {activity.toolCalls && activity.toolCalls.length > 0 && (
-            <div>
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                工具调用 ({activity.toolCalls.length})
-              </div>
-              <div className="mt-1 space-y-1">
-                {activity.toolCalls.map((tc, i) => (
-                  <div
-                    key={i}
-                    className="rounded bg-white/60 px-2 py-1 text-xs dark:bg-black/20"
-                  >
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                      {tc.name}
+            <div className="mt-2">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                <button
+                  onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
+                  className="inline-flex items-center gap-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 transition-colors"
+                >
+                  <span>{toolCallsExpanded ? '▼' : '▶'}</span>
+                  工具调用 ({activity.toolCalls.length})
+                </button>
+                {!toolCallsExpanded &&
+                  activity.toolCalls.slice(0, 4).map((tc, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+                    >
+                      <span className="font-mono text-gray-700 dark:text-gray-300">{tc.name}</span>
                     </span>
-                    <span className="ml-1 text-gray-500 dark:text-gray-400">
-                      {Object.entries(tc.args)
-                        .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
-                        .join(', ')}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                {!toolCallsExpanded && activity.toolCalls.length > 4 && (
+                  <span className="text-gray-400">+{activity.toolCalls.length - 4}</span>
+                )}
               </div>
+              {toolCallsExpanded && (
+                <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/60">
+                  {activity.toolCalls.map((tc, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs">
+                      <span className="mt-0.5 font-mono text-gray-700 dark:text-gray-300">{tc.name}</span>
+                      <span className="text-gray-500 dark:text-gray-400 truncate">
+                        {Object.entries(tc.args)
+                          .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
+                          .join(', ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

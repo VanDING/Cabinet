@@ -60,33 +60,27 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
     };
   }, [fetchMeetings]);
 
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center text-gray-400 dark:text-gray-500">
-          <p className="text-xs">Loading meetings...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (meetings.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center text-gray-400 dark:text-gray-500">
-          <p className="text-sm">No meetings yet</p>
-          <p className="mt-1 text-xs">Start a meeting via chat to see results here</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-        <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300">Meetings</h3>
-        <span className="text-xs text-gray-400">{meetings.length}</span>
-      </div>
+    <div className="flex h-full flex-col overflow-y-auto rounded-lg border bg-white dark:border-gray-700 dark:bg-gray-800">
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center text-gray-400 dark:text-gray-500">
+            <p className="text-xs">Loading meetings...</p>
+          </div>
+        </div>
+      ) : meetings.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center text-gray-400 dark:text-gray-500">
+            <p className="text-sm">No meetings yet</p>
+            <p className="mt-1 text-xs">Start a meeting via chat to see results here</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+            <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300">Meetings</h3>
+            <span className="text-xs text-gray-400">{meetings.length}</span>
+          </div>
       {meetings.map((m) => (
         <div
           key={m.id}
@@ -114,6 +108,8 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
           )}
         </div>
       ))}
+      </>
+    )}
     </div>
   );
 });

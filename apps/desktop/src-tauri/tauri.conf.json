@@ -29,7 +29,7 @@
       "tooltip": "Cabinet AI Collaboration"
     },
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 http://tauri.localhost:3000 ws://localhost:3000 ws://tauri.localhost:3000 wss://localhost:3000 http://ipc.localhost https://api.open-meteo.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:"
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 http://tauri.localhost:3000 ws://localhost:3000 ws://tauri.localhost:3000 wss://localhost:3000 http://ipc.localhost https://api.open-meteo.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-src 'self' asset:"
     }
   },
   "bundle": {
