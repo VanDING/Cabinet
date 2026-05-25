@@ -239,14 +239,10 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       ? shared.execCommand
       : stub('Shell execution'),
 
-    // ── Scheduler (capabilities-gated) ──
-    scheduleTask: caps.scheduler
-      ? shared.scheduleTask
-      : stub('Scheduler'),
-    listScheduledTasks: caps.scheduler ? shared.listScheduledTasks : async () => [],
-    cancelScheduledTask: caps.scheduler
-      ? shared.cancelScheduledTask
-      : stub('Scheduler'),
+    // ── Scheduler (always enabled) ──
+    scheduleTask: shared.scheduleTask,
+    listScheduledTasks: shared.listScheduledTasks,
+    cancelScheduledTask: shared.cancelScheduledTask,
 
     // ── Knowledge / RAG (capabilities-gated) ──
     indexDocument: caps.knowledge?.index
