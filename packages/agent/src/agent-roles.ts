@@ -74,6 +74,14 @@ export const SECRETARY_ROLE: AgentRole = {
     '2. For specialized tasks, route to the appropriate cabinet member (DecisionAnalyst, MeetingChair, WorkflowDesigner, Curator, Reviewer, AgentCreator, Organize, or any custom agent).',
     '3. The routing system suggests the best agent — trust it for clear-cut cases, override when you see a better fit.',
     '',
+    'When you identify the following intents, you MUST route to the corresponding specialist and MUST NOT handle them yourself:',
+    '- decision analysis (权衡、选择、决策) → decision_analyst',
+    '- meeting organization (开会、讨论、多方意见) → meeting_chair',
+    '- workflow design (工作流、流程、自动化步骤) → workflow_designer',
+    '- code/output review (审查、检查、review) → reviewer',
+    '- system architecture (组织架构、系统设计、搭建体系) → organize',
+    '- custom agent creation (创建agent、定义角色) → agent_creator',
+    '',
     'Session start:',
     '- Check short-term memory for a "session_brief". If present, present it as a context summary.',
     '',
@@ -108,7 +116,7 @@ export const SECRETARY_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'default',
-  model: 'claude-sonnet-4-6',
+  model: 'default',
   temperature: 0.5,
   allowedTools: [
     // Read tools
@@ -144,7 +152,7 @@ export const SECRETARY_ROLE: AgentRole = {
     // intentionally excluded — they belong in workflow humanApproval nodes.
   ],
   contextBudget: 0.5,
-  maxSteps: 30,
+  maxSteps: 50,
 };
 
 export const DECISION_ANALYST_ROLE: AgentRole = {
@@ -173,7 +181,7 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
     'Be specific. Numbers and concrete trade-offs beat vague adjectives.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'claude-haiku-4-5',
+  model: 'fast_execution',
   temperature: 0.3,
   maxResponseTokens: 4000,
   allowedTools: [
@@ -196,7 +204,7 @@ export const DECISION_ANALYST_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.35,
-  maxSteps: 10,
+  maxSteps: 50,
   upgradeModelTier: 'deep_reasoning',
 };
 
@@ -211,7 +219,7 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
     'Your role:',
     '1. Parse the user intent and identify what perspectives are needed for this topic.',
     '2. From the available analysis perspectives, select the most relevant ones. Specify what each should focus on.',
-    '3. Construct a structured analysis Brief (topic, objective, selected perspectives with focus areas, project context) and call start_meeting.',
+    '3. Construct a structured analysis Brief (topic, objective, selected perspectives with focus areas, project context) and call start_meeting with the `brief` parameter.',
     '4. When you receive Reviewer feedback, parse which issues belong to which perspective. Construct a precise revision Brief.',
     '5. When the analysis passes review, generate a deliverable document summarizing findings for the Captain.',
     '',
@@ -227,7 +235,7 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'claude-haiku-4-5',
+  model: 'fast_execution',
   temperature: 0.4,
   maxResponseTokens: 4000,
   allowedTools: [
@@ -247,7 +255,7 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.4,
-  maxSteps: 15,
+  maxSteps: 50,
 };
 
 export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
@@ -297,7 +305,7 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'deep_reasoning',
-  model: 'claude-sonnet-4-6',
+  model: 'deep_reasoning',
   temperature: 0.3,
   maxResponseTokens: 6000,
   allowedTools: [
@@ -325,7 +333,7 @@ export const WORKFLOW_DESIGNER_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.4,
-  maxSteps: 50,
+  maxSteps: 150,
   downgradeModelTier: 'fast_execution',
 };
 
@@ -355,7 +363,7 @@ export const CURATOR_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'claude-haiku-4-5',
+  model: 'fast_execution',
   temperature: 0.2,
   maxResponseTokens: 4000,
   allowedTools: [
@@ -380,7 +388,7 @@ export const CURATOR_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.4,
-  maxSteps: 15,
+  maxSteps: 50,
 };
 
 export const AGENT_CREATOR_ROLE: AgentRole = {
@@ -450,7 +458,7 @@ export const AGENT_CREATOR_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.3,
-  maxSteps: 15,
+  maxSteps: 50,
 };
 
 export const REVIEWER_ROLE: AgentRole = {
@@ -514,7 +522,7 @@ export const REVIEWER_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.35,
-  maxSteps: 8,
+  maxSteps: 50,
   upgradeModelTier: 'default',
 };
 
@@ -592,6 +600,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     '{"goal": "...", "agents": {"reuse": [...], "create": [...]}, "workflow": {...}, "qualityGates": [...], "authorization": {...}, "designDecisions": [...]}',
     '',
     '## Guidelines',
+    '- You are both the architect and the implementer. Default to direct implementation using register_agent and create_workflow. Only invoke other agents (via invokeAgent) when a component requires specialized optimization beyond your expertise.',
     '- Prefer reusing existing agents over creating new ones. Use list_agents before register_agent.',
     '- Default model: fast for routine, reasoning for complex analysis.',
     '- Keep workflows to 4-8 steps. Split larger processes.',
@@ -636,7 +645,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     'get_system_knowledge',
   ],
   contextBudget: 0.5,
-  maxSteps: 40,
+  maxSteps: 150,
 };
 
 // ── Role Registry ──────────────────────────────────────────────

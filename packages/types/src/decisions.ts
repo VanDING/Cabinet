@@ -73,6 +73,7 @@ export interface Decision {
   options: DecisionOption[];
   chosenOptionId?: string;
   captainId?: string;
+  analysis?: string;
   createdAt: Date;
   resolvedAt?: Date;
 }

@@ -1,4 +1,4 @@
-import { cpSync, rmSync, mkdirSync, existsSync, readdirSync, readFileSync } from 'node:fs';
+import { cpSync, rmSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -29,8 +29,13 @@ if (!existsSync(bundlePath)) {
   console.error('ERROR: bundle/main.cjs not found. Run "pnpm --filter @cabinet/server bundle" first.');
   process.exit(1);
 }
-cpSync(bundlePath, join(dest, 'main.cjs'));
-console.log('  bundle/main.cjs copied');
+
+// Prepend bundler overrides so pino/thread-stream worker threads find their files
+// inside node_modules instead of the flattened __dirname paths.
+const bundleContent = readFileSync(bundlePath, 'utf-8');
+const banner = `const { join: __join } = require('path'); const __dir = __dirname; globalThis.__bundlerPathsOverrides = { 'pino-worker': __join(__dir, 'node_modules', 'pino', 'lib', 'worker.js'), 'thread-stream-worker': __join(__dir, 'node_modules', 'thread-stream', 'lib', 'worker.js') };\n`;
+writeFileSync(join(dest, 'main.cjs'), banner + bundleContent);
+console.log('  bundle/main.cjs copied (with bundler overrides)');
 
 // 2. Copy externalised packages and their transitive dependencies.
 const serverRequire = createRequire(join(serverSrc, 'package.json'));
@@ -39,10 +44,6 @@ mkdirSync(destNm, { recursive: true });
 
 const copied = new Set();
 
-/** Derive the pnpm store directory name from a resolved entry path.
- *  e.g. ".../node_modules/.pnpm/better-sqlite3@11.7.0/node_modules/better-sqlite3/lib/index.js"
- *       → "better-sqlite3@11.7.0"
- */
 /** Derive the pnpm store directory name from a resolved entry path.
  *  e.g. ".../node_modules/.pnpm/better-sqlite3@11.7.0/node_modules/better-sqlite3/lib/index.js"
  *       → "better-sqlite3@11.7.0"
@@ -83,18 +84,16 @@ function copyPackage(packageName, resolvedEntry) {
   const pjPath = join(pkgRoot, 'package.json');
   cpSync(pjPath, join(pkgDest, 'package.json'));
 
-  // Copy common subdirectories (only those that exist)
-  for (const sub of ['lib', 'dist', 'build', 'src']) {
-    const s = join(pkgRoot, sub);
-    if (existsSync(s)) {
-      cpSync(s, join(pkgDest, sub), { recursive: true, dereference: true });
-    }
-  }
-
-  // Copy root-level JS/MJS/CJS files
+  // Copy the entire package except node_modules (pnpm isolates deps in the store)
   for (const f of readdirSync(pkgRoot)) {
-    if (/\.(m?js|cjs)$/.test(f)) {
-      cpSync(join(pkgRoot, f), join(pkgDest, f));
+    if (f === 'node_modules' || f === 'package.json') continue;
+    const srcPath = join(pkgRoot, f);
+    const dstPath = join(pkgDest, f);
+    const stat = statSync(srcPath);
+    if (stat.isDirectory()) {
+      cpSync(srcPath, dstPath, { recursive: true, dereference: true });
+    } else {
+      cpSync(srcPath, dstPath);
     }
   }
 
@@ -121,6 +120,43 @@ function copyPackage(packageName, resolvedEntry) {
 // Seed with better-sqlite3 (the sole native module kept external by esbuild)
 const bsql3Entry = serverRequire.resolve('better-sqlite3');
 copyPackage('better-sqlite3', bsql3Entry);
+
+// Copy pino, thread-stream and their deps (needed by pino worker threads)
+const storagePkgPath = join(workspaceRoot, 'packages', 'storage', 'package.json');
+const storageRequire = createRequire(storagePkgPath);
+
+try {
+  const pinoEntry = storageRequire.resolve('pino');
+  copyPackage('pino', pinoEntry);
+} catch (e) {
+  console.warn('pino not found, skipping copy');
+}
+
+try {
+  const tsEntry = storageRequire.resolve('thread-stream');
+  copyPackage('thread-stream', tsEntry);
+} catch (e) {
+  console.warn('thread-stream not found, skipping copy');
+}
+
+// Copy pino-roll and pino-pretty (dynamically resolved by pino for worker-thread transport)
+try {
+  const storagePkgPath = join(workspaceRoot, 'packages', 'storage', 'package.json');
+  const storageRequire = createRequire(storagePkgPath);
+  const pinoRollEntry = storageRequire.resolve('pino-roll');
+  copyPackage('pino-roll', pinoRollEntry);
+} catch (e) {
+  console.warn('pino-roll not found, skipping copy');
+}
+
+try {
+  const storagePkgPath = join(workspaceRoot, 'packages', 'storage', 'package.json');
+  const storageRequire = createRequire(storagePkgPath);
+  const pinoPrettyEntry = storageRequire.resolve('pino-pretty');
+  copyPackage('pino-pretty', pinoPrettyEntry);
+} catch (e) {
+  console.warn('pino-pretty not found, skipping copy');
+}
 
 // Also copy hnswlib-node (externalized by esbuild since v3.0.0)
 try {

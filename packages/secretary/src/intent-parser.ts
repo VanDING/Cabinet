@@ -19,6 +19,7 @@ export type ParsedIntent =
   | { kind: 'workflow_request'; topic: string; context: string; suggestedDimensions: string[] }
   | { kind: 'review_request'; target: string; context: string }
   | { kind: 'organize_request'; topic: string; context: string }
+  | { kind: 'agent_creator_request'; topic: string; context: string }
   | { kind: 'schedule_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
@@ -242,6 +243,13 @@ export class IntentParser {
       return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
     }
 
+    // Agent creator request
+    const hasCreateAgent = lower.includes('创建') && (lower.includes('agent') || lower.includes('智能体'));
+    const hasDefineAgent = lower.includes('定义') && lower.includes('角色');
+    if ((hasCreateAgent || hasDefineAgent) && !this.hasNegation(lower, 'agent_creator')) {
+      return { kind: 'agent_creator_request', topic: message.slice(0, 100), context: message };
+    }
+
     // Workflow request: "流程" alone catches too much (e.g. "业务流程" in casual chat).
     // Require explicit workflow-related keywords or creation intent.
     const hasWorkflowKeyword = lower.includes('工作流') || lower.includes('workflow');
@@ -445,36 +453,105 @@ Message: "${message}"`;
       }
     }
 
-    // Embedding semantic match
+    // Fast path: high-confidence explicit action intents from keyword parsing
+    const highConfidenceIntents = new Set(['decision_request', 'meeting_request', 'workflow_request', 'organize_request', 'review_request']);
+    if (highConfidenceIntents.has(fastIntent.kind)) {
+      return this.fallbackRoute(fastIntent, message);
+    }
+
+    // ── Unified scoring phase ──
+    interface RouteCandidate {
+      agent: AgentRoleType;
+      score: number;
+      sources: { keyword?: number; embedding?: number; llm?: number };
+      reasoning: string;
+      intent: ParsedIntent;
+    }
+
+    const candidates: RouteCandidate[] = [];
+
+    // Keyword layer
+    if (fastIntent.kind !== 'unknown') {
+      const keywordRoute = this.fallbackRoute(fastIntent, message);
+      candidates.push({
+        agent: keywordRoute.targetAgent,
+        score: 0.5,
+        sources: { keyword: 0.5 },
+        reasoning: keywordRoute.reasoning,
+        intent: fastIntent,
+      });
+    }
+
+    // Embedding layer
     const embeddingMatch = await this.matchIntentByEmbedding(message);
-    if (embeddingMatch && embeddingMatch.confidence > 0.75) {
-      const intent = this.buildIntentFromMatch(embeddingMatch, message);
-      const route = this.fallbackRoute(intent, message);
-      route.confidence = embeddingMatch.confidence;
-      route.reasoning = `Embedding semantic match: "${embeddingMatch.topExample}" (confidence: ${(embeddingMatch.confidence * 100).toFixed(0)}%)`;
-      return route;
+    if (embeddingMatch) {
+      const embIntent = this.buildIntentFromMatch(embeddingMatch, message);
+      const embRoute = this.fallbackRoute(embIntent, message);
+      candidates.push({
+        agent: embRoute.targetAgent,
+        score: embeddingMatch.confidence,
+        sources: { embedding: embeddingMatch.confidence },
+        reasoning: `Embedding semantic match: "${embeddingMatch.topExample}" (confidence: ${(embeddingMatch.confidence * 100).toFixed(0)}%)`,
+        intent: embIntent,
+      });
+      // High-confidence embedding match can short-circuit
+      if (embeddingMatch.confidence > 0.75) {
+        return {
+          targetAgent: embRoute.targetAgent,
+          confidence: embeddingMatch.confidence,
+          reasoning: `Embedding semantic match: "${embeddingMatch.topExample}" (confidence: ${(embeddingMatch.confidence * 100).toFixed(0)}%)`,
+          intent: embIntent,
+        };
+      }
     }
 
-    // For simple intents (knowledge_query, follow_up, casual chat), skip LLM routing.
-    const needsLLM =
-      fastIntent.kind === 'unknown' ||
-      fastIntent.kind === 'decision_request' ||
-      fastIntent.kind === 'meeting_request' ||
-      fastIntent.kind === 'workflow_request' ||
-      fastIntent.kind === 'review_request' ||
-      fastIntent.kind === 'organize_request';
-
-    if (!needsLLM) {
-      return this.fallbackRoute(fastIntent, message);
+    // If best non-LLM score is already decent, skip LLM
+    const bestNonLLM = candidates.length > 0
+      ? candidates.reduce((best, c) => c.score > best.score ? c : best)
+      : null;
+    if (bestNonLLM && bestNonLLM.score >= 0.6) {
+      return {
+        targetAgent: bestNonLLM.agent,
+        confidence: bestNonLLM.score,
+        reasoning: `${bestNonLLM.reasoning} [sources: ${Object.keys(bestNonLLM.sources).join(', ')}]`,
+        intent: bestNonLLM.intent,
+      };
     }
 
-    // LLM fallback for complex/uncertain messages
+    // LLM layer
     try {
-      const intent = await this.parseWithLLM(message, conversationContext);
-      return await this.routeWithLLM(message, intent, conversationContext, embeddingMatch);
+      const llmIntent = await this.parseWithLLM(message, conversationContext);
+      const llmRoute = await this.routeWithLLM(message, llmIntent, conversationContext, embeddingMatch);
+      candidates.push({
+        agent: llmRoute.targetAgent,
+        score: llmRoute.confidence,
+        sources: { llm: llmRoute.confidence, ...(llmRoute.topicContinuity ? { embedding: embeddingMatch?.confidence } : {}) },
+        reasoning: llmRoute.reasoning,
+        intent: llmIntent,
+      });
     } catch {
+      // LLM failure is non-fatal — fall through to best available candidate
+    }
+
+    // ── Decision phase ──
+    if (candidates.length === 0) {
       return this.fallbackRoute(fastIntent, message);
     }
+
+    const best = candidates.reduce((a, b) => (a.score >= b.score ? a : b));
+
+    const result: AgentRouteResult = {
+      targetAgent: best.agent,
+      confidence: best.score,
+      reasoning: `${best.reasoning} [scored: keyword=${best.sources.keyword ?? 'N/A'}, embedding=${best.sources.embedding ?? 'N/A'}, llm=${best.sources.llm ?? 'N/A'}]`,
+      intent: best.intent,
+    };
+
+    if (best.score < 0.5) {
+      result.suggestion = 'The request is unclear. Try rephrasing with more specific keywords (e.g., "decide", "workflow", "review").'
+    }
+
+    return result;
   }
 
   /** LLM-powered agent routing (separated from routeToAgent for clarity). */
@@ -628,8 +705,8 @@ Message: "${message}"`;
         reasoning = 'Meeting/discussion request routed to Meeting Chair.';
         break;
       case 'status_query':
-        targetAgent = 'curator';
-        reasoning = 'Status query routed to Curator.';
+        targetAgent = 'secretary';
+        reasoning = 'Status query handled by Secretary.';
         break;
       case 'knowledge_query':
         targetAgent = 'secretary';
@@ -650,6 +727,10 @@ Message: "${message}"`;
       case 'review_request':
         targetAgent = 'reviewer';
         reasoning = 'Review/audit request routed to Reviewer.';
+        break;
+      case 'agent_creator_request':
+        targetAgent = 'agent_creator';
+        reasoning = 'Custom agent creation request routed to Agent Creator.';
         break;
       case 'follow_up':
         targetAgent = 'secretary';

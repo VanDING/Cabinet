@@ -39,8 +39,8 @@ try {
 } catch { /* directory exists or read-only */ }
 
 // Resolve pino-roll path for worker-thread transport (pnpm-safe)
-const require = createRequire(import.meta.url);
-const pinoRollPath = require.resolve('pino-roll');
+const req = typeof require !== 'undefined' ? require : createRequire(import.meta.url);
+const pinoRollPath = req.resolve('pino-roll');
 
 const rootPino = pino({
   level: pinoLevel,

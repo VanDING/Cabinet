@@ -4,9 +4,13 @@ export interface ToolResult {
   error?: string;
 }
 
+export interface ToolContext {
+  sessionId?: string;
+}
+
 export interface ToolDefinition {
   name: string;
-  execute(args: Record<string, unknown>): Promise<unknown>;
+  execute(args: Record<string, unknown>, context?: ToolContext): Promise<unknown>;
   /** Human-readable description of what the tool does (used for AI SDK tool registration). */
   description?: string;
   /** JSON Schema for the tool's input parameters. */
@@ -20,7 +24,7 @@ export interface ToolDescriptor {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
-  execute(args: Record<string, unknown>): Promise<unknown>;
+  execute(args: Record<string, unknown>, context?: ToolContext): Promise<unknown>;
   /** Per-tool timeout in ms. Falls back to AgentLoop's toolTimeoutMs. */
   timeoutMs?: number;
 }
@@ -50,6 +54,7 @@ export class ToolExecutor {
     name: string,
     toolCallId: string,
     args: Record<string, unknown>,
+    context?: ToolContext,
   ): Promise<ToolResult> {
     const startTime = Date.now();
     const tool = this.tools.get(name);
@@ -58,7 +63,7 @@ export class ToolExecutor {
       return { toolCallId, output: null, error: `Unknown tool: ${name}` };
     }
     try {
-      const output = await tool.execute(args);
+      const output = await tool.execute(args, context);
       const summarized = this.summarizeToolResult(name, output);
       this.onToolCall?.(name, true, false, Date.now() - startTime);
       return { toolCallId, output: summarized };
