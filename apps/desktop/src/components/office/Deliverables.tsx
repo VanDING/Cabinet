@@ -21,8 +21,8 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
   const [loading, setLoading] = useState(true);
 
   const fetchDeliverables = useCallback(() => {
-    const pid = projectId ?? 'default';
-    apiFetch(`/api/projects/${pid}/deliverables`, { headers: authHeaders() })
+    const url = projectId ? `/api/projects/${projectId}/deliverables` : '/api/deliverables';
+    apiFetch(url, { headers: authHeaders() })
       .then((r) => r.json())
       .then((data) => setItems((data.deliverables ?? []).slice(0, 5)))
       .catch(() => {})

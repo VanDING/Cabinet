@@ -4,6 +4,37 @@ import { broadcast } from '../ws/handler.js';
 
 export const deliverablesRouter = new Hono();
 
+// GET /api/deliverables — global aggregation (office homepage)
+deliverablesRouter.get('/', (c) => {
+  const ctx = getServerContext();
+
+  try {
+    const rows = ctx.db
+      .prepare(
+        `SELECT id, project_id, meeting_id, title, type, file_path, tags, created_at
+         FROM project_deliverables
+         ORDER BY created_at DESC
+         LIMIT 50`,
+      )
+      .all() as any[];
+
+    return c.json({
+      deliverables: rows.map((r: any) => ({
+        id: r.id,
+        projectId: r.project_id,
+        meetingId: r.meeting_id,
+        title: r.title,
+        type: r.type,
+        filePath: r.file_path,
+        tags: JSON.parse(r.tags ?? '[]'),
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 500);
+  }
+});
+
 // GET /:id/deliverables  (mounted at /api/projects)
 deliverablesRouter.get('/:id/deliverables', (c) => {
   const projectId = c.req.param('id');
