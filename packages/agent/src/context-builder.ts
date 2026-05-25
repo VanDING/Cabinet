@@ -41,6 +41,9 @@ export interface ContextBuildResult {
 export class ContextBuilder {
   private rulesLoader: RulesLoader | null = null;
   private sessionCache = new Map<string, { projectContext: string; preferences: Record<string, unknown> }>();
+  /** In-memory TTL cache for RAG search results to avoid repeated embedding API calls. */
+  private ragCache = new Map<string, { results: string[]; timestamp: number }>();
+  private readonly RAG_CACHE_TTL_MS = 60_000;
 
   constructor(private readonly memory: MemoryProvider) {}
 
@@ -91,14 +94,25 @@ export class ContextBuilder {
 
     // Retrieve and inject RAG results at the end of system prompt (fixed position)
     if (options.taskDescription) {
-      try {
-        const ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
-        if (ragResults.length > 0) {
-          const trimmed = ragResults.slice(0, 3).map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
-          systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
+      const ragCacheKey = `${options.projectId}:${options.taskDescription}`;
+      const cachedRag = this.ragCache.get(ragCacheKey);
+      const now = Date.now();
+      let ragResults: string[];
+
+      if (cachedRag && now - cachedRag.timestamp < this.RAG_CACHE_TTL_MS) {
+        ragResults = cachedRag.results;
+      } else {
+        try {
+          ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
+          this.ragCache.set(ragCacheKey, { results: ragResults, timestamp: now });
+        } catch {
+          ragResults = [];
         }
-      } catch {
-        // RAG is best-effort; do not fail context build on search errors
+      }
+
+      if (ragResults.length > 0) {
+        const trimmed = ragResults.slice(0, 3).map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
+        systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
       }
     }
 
@@ -126,6 +140,8 @@ export class ContextBuilder {
         this.sessionCache.delete(key);
       }
     }
+    // Evict RAG cache entries that may reference stale session context
+    this.ragCache.clear();
   }
 
   /** Build Tier 1: static role instructions (stable across all calls). */
