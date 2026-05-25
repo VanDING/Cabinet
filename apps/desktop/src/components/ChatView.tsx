@@ -7,6 +7,7 @@ import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
 import { WorkflowRunCard } from './WorkflowRunCard';
 import { TaskPanel } from './TaskPanel';
+import { SubAgentCard } from '@cabinet/ui';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -456,6 +457,17 @@ const MessageRow = memo(function MessageRow({
                   {msg.stepBudget.remaining <= 0
                     ? `步骤预算已耗尽 (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps})，任务可能未完成。`
                     : `步骤预算即将耗尽 (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
+                </div>
+              )}
+              {msg.subAgentActivities && msg.subAgentActivities.length > 0 && (
+                <div className="mt-2">
+                  {msg.subAgentActivities.map((activity, idx) => (
+                    <SubAgentCard
+                      key={`${msg.id}_sub_${idx}`}
+                      activity={activity}
+                      visibility="detailed"
+                    />
+                  ))}
                 </div>
               )}
               {msg.thinking && (() => {

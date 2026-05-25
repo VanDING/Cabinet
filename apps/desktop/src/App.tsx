@@ -14,6 +14,7 @@ import { MobileNav } from './components/MobileNav';
 import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
 import { addToEventBuffer } from './utils/eventBuffer.js';
 import type { MeetingData } from './components/MeetingCard';
+import type { SubAgentActivity } from '@cabinet/ui';
 import { readSSEStream } from './utils/streaming.js';
 import { ProjectExplorer } from './components/ProjectExplorer';
 import { FileViewer } from './components/FileViewer';
@@ -349,6 +350,13 @@ export function App() {
           let thinkingStart: number | undefined;
           const streamStart = Date.now();
 
+          const subAgentMap = new Map<string, SubAgentActivity>();
+          const flushSubAgents = () => {
+            updateMessage(sessionId, streamId, {
+              subAgentActivities: Array.from(subAgentMap.values()),
+            });
+          };
+
           const AGENT_DISPLAY: Record<string, string> = {
             secretary: 'Secretary',
             meeting_chair: 'Meeting Chair',
@@ -452,9 +460,55 @@ export function App() {
                 toolCalls: toolCallsAccumulated,
               });
             },
+            onSubAgentStart(agentName, taskDescription) {
+              subAgentMap.set(agentName, {
+                agentName,
+                status: 'running',
+                taskDescription,
+                startedAt: new Date(),
+              });
+              flushSubAgents();
+            },
+            onSubAgentThinking(agentName, content) {
+              const existing = subAgentMap.get(agentName);
+              if (existing) {
+                existing.thinking = [...(existing.thinking ?? []), content];
+                flushSubAgents();
+              }
+            },
+            onSubAgentToolCall(agentName, toolName, args) {
+              const existing = subAgentMap.get(agentName);
+              if (existing) {
+                existing.toolCalls = [
+                  ...(existing.toolCalls ?? []),
+                  { name: toolName, args: args as Record<string, unknown> },
+                ];
+                flushSubAgents();
+              }
+            },
+            onSubAgentDone(agentName, result) {
+              const existing = subAgentMap.get(agentName);
+              if (existing) {
+                existing.status = 'completed';
+                existing.result = result;
+                existing.completedAt = new Date();
+                flushSubAgents();
+              }
+            },
+            onSubAgentError(agentName, error) {
+              const existing = subAgentMap.get(agentName);
+              if (existing) {
+                existing.status = 'error';
+                existing.error = error;
+                existing.completedAt = new Date();
+                flushSubAgents();
+              }
+            },
             onDone(fullContent, event) {
               if (event?.meeting) meetingData = event.meeting as MeetingData;
               if ((event as any)?.targetAgent) streamAgent = (event as any).targetAgent;
+              flushSubAgents();
+              subAgentMap.clear();
               updateMessage(sessionId, streamId, {
                 content: fullContent,
                 isStreaming: false,
@@ -465,6 +519,8 @@ export function App() {
               });
             },
             onError(error) {
+              flushSubAgents();
+              subAgentMap.clear();
               updateMessage(sessionId, streamId, {
                 content: `Error: ${error}`,
                 isStreaming: false,

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import type { SubAgentActivity } from '@cabinet/ui';
 
 export interface AttachedFile {
   id: string;
@@ -36,6 +37,7 @@ export interface ChatMessage {
   tasks?: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>;
   semanticTasks?: Array<{ id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; steps?: number }>;
   stepBudget?: { remaining: number; maxSteps: number };
+  subAgentActivities?: SubAgentActivity[];
 }
 
 export interface Session {
