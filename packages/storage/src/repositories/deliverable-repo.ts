@@ -21,6 +21,15 @@ export class DeliverableRepository {
     return rows.map((r) => this.rowToDeliverable(r));
   }
 
+  findAll(opts?: { orderBy?: string; limit?: number }): DeliverableRow[] {
+    let sql = 'SELECT * FROM project_deliverables';
+    if (opts?.orderBy) sql += ` ORDER BY ${opts.orderBy}`;
+    else sql += ' ORDER BY created_at DESC';
+    if (opts?.limit) sql += ` LIMIT ${opts.limit}`;
+    const rows = this.db.prepare(sql).all() as Record<string, unknown>[];
+    return rows.map((r) => this.rowToDeliverable(r));
+  }
+
   findByType(type: string, opts?: { limit?: number; offset?: number }): DeliverableRow[] {
     const rows = this.db
       .prepare(
