@@ -27,6 +27,14 @@ export class ProjectRepository {
     return this.rowToProject(row);
   }
 
+  findByName(name: string): Project | null {
+    const row = this.db.prepare('SELECT * FROM projects WHERE name = ?').get(name) as
+      | Record<string, unknown>
+      | undefined;
+    if (!row) return null;
+    return this.rowToProject(row);
+  }
+
   listAll(opts?: { limit?: number; offset?: number }): Project[] {
     const rows = this.db
       .prepare('SELECT * FROM projects ORDER BY created_at DESC LIMIT ? OFFSET ?')
