@@ -45,7 +45,7 @@ export {
   type DispatchResult,
   type PipelineStep,
 } from './dispatcher.js';
-export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback, type StreamingCallback } from './agent-loop.js';
+export { AgentLoop, type AgentLoopOptions, type AgentResult, type AgentSessionSummary, type SessionCompleteCallback, type StreamingCallback, type TrustLevel } from './agent-loop.js';
 export { ProjectSnapshot, type Snapshot } from './project-snapshot.js';
 export { SkillExtractor, type ExtractedSkill } from './skill-extractor.js';
 export { TaskTracker, type AgentTask, type TaskStatus } from './task-tracker.js';
