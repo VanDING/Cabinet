@@ -247,7 +247,8 @@ export class AgentLoop {
         captainId: this.options.captainId,
         roleSystemPrompt: this.options.systemPrompt,
         activeFiles: this.options.activeFiles,
-        taskDescription: this.options.taskDescription,
+        // RAG is only useful on the first step; tool-result steps reuse context
+        taskDescription: steps === 0 ? this.options.taskDescription : undefined,
         memorySessionId: this.options.memorySessionId,
       });
 
