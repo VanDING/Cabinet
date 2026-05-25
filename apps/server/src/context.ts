@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
+import { startSkillWatcher, startAgentWatcher } from './watchers.js';
 import {
   createConnection,
   runMigrations,
@@ -1580,6 +1581,10 @@ export function getServerContext(): ServerContext {
   // Workflow approval polling (30s fallback for missed WebSocket events)
   startApprovalPolling(30_000);
   logger.info('Workflow approval polling started (30s)');
+
+  // Start filesystem watchers for skills and agents (hot-reload)
+  startSkillWatcher(dataDir, { skillRegistry, skillRepo, agentRegistry, agentRoleRepo, logger });
+  startAgentWatcher(dataDir, { skillRegistry, skillRepo, agentRegistry, agentRoleRepo, logger });
 
   const shutdown = () => {
     logger.info('Shutting down server context...');

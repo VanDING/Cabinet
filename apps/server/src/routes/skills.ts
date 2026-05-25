@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, cpSync } from 'node:fs';
 import AdmZip from 'adm-zip';
 import { getServerContext } from '../context.js';
+import { broadcast } from '../ws/handler.js';
 import { importSkillFromMarkdown, exportSkillToMarkdown } from '@cabinet/agent';
 import type { SkillEntry } from '@cabinet/agent';
 import { CABINET_DIR } from '@cabinet/storage';
@@ -172,28 +173,42 @@ skillsRouter.post('/', async (c) => {
     metadata: {},
   });
 
+  broadcast('skill_created', { id, name: d.name });
   logger.info('Skill registered', { id, name: d.name });
   return c.json({ id, status: 'registered', name: d.name, path: join(dir, 'SKILL.md') }, 201);
 });
 
 // ── PUT /api/skills/:id ──
 skillsRouter.put('/:id', async (c) => {
-  const { skillRepo, logger } = getServerContext();
+  const { skillRepo, skillRegistry, logger } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
   const existing = skillRepo.findById(id);
   if (!existing) return c.json({ error: 'Skill not found' }, 404);
 
   const newVersion = existing.version + 1;
+  const name = body.name ?? existing.name;
   skillRepo.update(id, {
-    name: body.name ?? existing.name,
+    name,
     description: body.description ?? existing.description,
     version: newVersion,
     metadata: JSON.stringify(body.metadata ?? JSON.parse(existing.metadata ?? '{}')),
   });
 
+  // Update runtime registry
+  const regSkill = skillRegistry.load(existing.name);
+  if (regSkill) {
+    skillRegistry.register({
+      ...regSkill,
+      name,
+      description: body.description ?? existing.description,
+      version: newVersion,
+      promptTemplate: body.promptTemplate ?? existing.prompt_template ?? regSkill.promptTemplate,
+      metadata: body.metadata ?? regSkill.metadata ?? {},
+    });
+  }
+
   // Update SKILL.md
-  const name = body.name ?? existing.name;
   const dir = ensureSkillDir(name);
   const skillMd = [
     '---',
@@ -208,6 +223,7 @@ skillsRouter.put('/:id', async (c) => {
   ].join('\n');
   writeFileSync(join(dir, 'SKILL.md'), skillMd, 'utf-8');
 
+  broadcast('skill_updated', { id, name });
   logger.info('Skill updated', { id, name });
   return c.json({ id, status: 'updated', version: newVersion });
 });
@@ -226,6 +242,7 @@ skillsRouter.delete('/:id', (c) => {
     skillRegistry.unregister(row.name);
     // Remove from DB
     skillRepo.delete(id);
+    broadcast('skill_deleted', { id, name: row.name });
     logger.info('Skill deleted', { id, name: row.name });
   }
   return c.json({ status: 'deleted' });
@@ -301,6 +318,7 @@ skillsRouter.post('/import', async (c) => {
     persistSkillToDb(skillRepo, skill);
   }
 
+  broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill imported', { id: result.id, name: result.name });
   return c.json({
     id: result.id,
@@ -385,6 +403,7 @@ skillsRouter.post('/import-zip', async (c) => {
     persistSkillToDb(skillRepo, skill);
   }
 
+  broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill zip imported', { id: result.id, name: result.name });
   return c.json({
     id: result.id,
