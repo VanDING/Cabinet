@@ -68,4 +68,13 @@ describe('Server API', () => {
     });
     expect(res2.status).toBe(409);
   });
+
+  it('POST /api/factory rejects workflow without projectId', async () => {
+    const res = await app.request('/api/factory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'TestWorkflow', definition: {} }),
+    });
+    expect(res.status).toBe(400);
+  });
 });
