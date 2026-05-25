@@ -27,6 +27,28 @@ export function FileViewer({ isDark }: Props) {
   const [tabs, setTabs] = useState<FileTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [width, setWidth] = useState(() => {
+    const saved = localStorage.getItem('fileViewerWidth');
+    return saved ? parseInt(saved, 10) : Math.round(window.innerWidth * 0.4);
+  });
+  const [viewMode, setViewMode] = useState<'source' | 'preview'>('preview');
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = width;
+    const onMove = (ev: MouseEvent) => {
+      const newWidth = Math.min(Math.max(startWidth - (ev.clientX - startX), 320), window.innerWidth * 0.7);
+      setWidth(newWidth);
+      localStorage.setItem('fileViewerWidth', String(newWidth));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   // Listen for custom events from ProjectExplorer or ChatView
   useEffect(() => {
@@ -102,64 +124,109 @@ export function FileViewer({ isDark }: Props) {
 
   const active = tabs.find((t) => t.path === activeTab);
   const isImage = active?.mimeType && IMAGE_MIMES.includes(active.mimeType);
+  const isHtml = active?.name.endsWith('.html') || active?.name.endsWith('.htm');
+  const isPdf = active?.mimeType === 'application/pdf' || active?.name.endsWith('.pdf');
 
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const tabBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
 
-  return (
-    <div className={`flex flex-col border-l ${border} ${bg} w-[40vw] min-w-[320px] max-w-[50vw] flex-shrink-0`}>
-      {/* Tab bar */}
-      <div className={`flex items-center border-b ${border} ${tabBg} h-9 px-1 gap-0.5 overflow-x-auto`}>
-        {tabs.map((tab) => (
-          <div
-            key={tab.path}
-            onClick={() => setActiveTab(tab.path)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-t text-xs cursor-pointer whitespace-nowrap flex-shrink-0 ${
-              activeTab === tab.path
-                ? `${bg} border-l border-r border-t ${border} -mb-px`
-                : `${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
-            }`}
-          >
-            {tab.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileCode size={12} />}
-            <span className="max-w-[120px] truncate">{tab.name}</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); closeTab(tab.path); }}
-              className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-300'}`}
-            >
-              <X size={10} />
-            </button>
-          </div>
-        ))}
-        <button onClick={closeAll} className={`ml-auto mr-2 p-1 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`} title="Close all">
-          <X size={14} />
-        </button>
-      </div>
+  const htmlContent = isHtml && active
+    ? (active.content.includes('<base')
+        ? active.content
+        : active.content.replace('<head>', `<head><base href="file://${active.path.substring(0, active.path.lastIndexOf('/') + 1)}">`))
+    : '';
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
-        {active ? (
-          isImage ? (
-            <div className="flex items-center justify-center h-full p-4">
-              <img
-                src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : safeBtoa(active.content)}`}
-                alt={active.name}
-                className="max-w-full max-h-full object-contain"
+  return (
+    <div className="relative flex flex-shrink-0" style={{ width }}>
+      {/* Drag handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10 ${isDark ? 'hover:bg-blue-500' : 'hover:bg-blue-400'}`}
+      />
+      <div className={`flex flex-col border-l ${border} ${bg} flex-1 min-w-0`}>
+        {/* Tab bar */}
+        <div className={`flex items-center border-b ${border} ${tabBg} h-9 px-1 gap-0.5 overflow-x-auto`}>
+          {tabs.map((tab) => (
+            <div
+              key={tab.path}
+              onClick={() => { setActiveTab(tab.path); setViewMode('preview'); }}
+              className={`flex items-center gap-1 px-2 py-1 rounded-t text-xs cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                activeTab === tab.path
+                  ? `${bg} border-l border-r border-t ${border} -mb-px`
+                  : `${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+              }`}
+            >
+              {tab.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileCode size={12} />}
+              <span className="max-w-[120px] truncate">{tab.name}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); closeTab(tab.path); }}
+                className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-300'}`}
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ))}
+          {/* View mode toggle for HTML */}
+          {isHtml && (
+            <div className="flex items-center gap-1 ml-2 text-xs">
+              <button
+                onClick={() => setViewMode('preview')}
+                className={`px-2 py-0.5 rounded ${viewMode === 'preview' ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white') : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')}`}
+              >
+                Preview
+              </button>
+              <button
+                onClick={() => setViewMode('source')}
+                className={`px-2 py-0.5 rounded ${viewMode === 'source' ? (isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white') : (isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700')}`}
+              >
+                Source
+              </button>
+            </div>
+          )}
+          <button onClick={closeAll} className={`ml-auto mr-2 p-1 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`} title="Close all">
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto">
+          {active ? (
+            isImage ? (
+              <div className="flex items-center justify-center h-full p-4">
+                <img
+                  src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : safeBtoa(active.content)}`}
+                  alt={active.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            ) : isHtml && viewMode === 'preview' ? (
+              <iframe
+                sandbox="allow-scripts"
+                srcDoc={htmlContent}
+                className="w-full h-full border-0"
+                title={active.name}
               />
-            </div>
+            ) : isPdf ? (
+              <iframe
+                src={URL.createObjectURL(new Blob([active.content], { type: 'application/pdf' }))}
+                className="w-full h-full border-0"
+                title={active.name}
+              />
+            ) : (
+              <pre className={`p-4 text-sm font-mono whitespace-pre-wrap break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                {active.content || '(empty)'}
+              </pre>
+            )
           ) : (
-            <pre className={`p-4 text-sm font-mono whitespace-pre-wrap break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-              {active.content || '(empty)'}
-            </pre>
-          )
-        ) : (
-          <div className={`flex items-center justify-center h-full ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            <div className="text-center">
-              <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Click a file in Project Explorer to preview</p>
+            <div className={`flex items-center justify-center h-full ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              <div className="text-center">
+                <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Click a file in Project Explorer to preview</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
