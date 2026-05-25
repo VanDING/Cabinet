@@ -7,6 +7,11 @@ export interface MemoryProvider {
   searchLongTerm(query: string, projectId: string): Promise<string[]>;
 }
 
+export interface PrebuiltContext {
+  projectContext: string;
+  rules: { path: string; content: string }[];
+}
+
 export interface ContextBuilderOptions {
   sessionId: string;
   projectId: string;
@@ -29,6 +34,8 @@ export interface ContextBuilderOptions {
   taskDescription?: string;
   /** Override sessionId for memory lookups (allows agents to share conversation context). */
   memorySessionId?: string;
+  /** Pre-built context for strict consistency (skips self-collection). */
+  prebuiltContext?: PrebuiltContext;
 }
 
 export interface ContextBuildResult {
@@ -61,6 +68,7 @@ export class ContextBuilder {
   }
 
   async build(options: ContextBuilderOptions): Promise<ContextBuildResult> {
+    const now = Date.now();
     const cacheKey = `${options.sessionId}:${options.projectId}`;
     const cached = this.sessionCache.get(cacheKey);
 
@@ -77,25 +85,29 @@ export class ContextBuilder {
       this.sessionCache.set(cacheKey, { projectContext: '', preferences: preferences as Record<string, unknown> });
     }
 
-    // Request-level cache for project context + rules (shared across sessions for same project)
-    const ctxCacheKey = options.projectId;
-    const ctxCached = this.contextCache.get(ctxCacheKey);
-    const now = Date.now();
-
     let projectContext: string;
     let rules: { path: string; content: string }[];
 
-    if (ctxCached && now - ctxCached.timestamp < this.CONTEXT_CACHE_TTL_MS) {
-      projectContext = ctxCached.projectContext;
-      rules = ctxCached.rules;
+    if (options.prebuiltContext) {
+      projectContext = options.prebuiltContext.projectContext;
+      rules = options.prebuiltContext.rules;
     } else {
-      projectContext = await this.memory.getProjectContext(options.projectId);
-      const rulesContext: RulesContext = {
-        activeFiles: options.activeFiles ?? [],
-        taskDescription: options.taskDescription,
-      };
-      rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
-      this.contextCache.set(ctxCacheKey, { projectContext, rules, timestamp: now });
+      // Request-level cache for project context + rules (shared across sessions for same project)
+      const ctxCacheKey = options.projectId;
+      const ctxCached = this.contextCache.get(ctxCacheKey);
+
+      if (ctxCached && now - ctxCached.timestamp < this.CONTEXT_CACHE_TTL_MS) {
+        projectContext = ctxCached.projectContext;
+        rules = ctxCached.rules;
+      } else {
+        projectContext = await this.memory.getProjectContext(options.projectId);
+        const rulesContext: RulesContext = {
+          activeFiles: options.activeFiles ?? [],
+          taskDescription: options.taskDescription,
+        };
+        rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
+        this.contextCache.set(ctxCacheKey, { projectContext, rules, timestamp: now });
+      }
     }
 
     // Update session cache with resolved project context
