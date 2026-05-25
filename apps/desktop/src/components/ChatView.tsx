@@ -470,7 +470,6 @@ const MessageRow = memo(function MessageRow({
                   ))}
                 </div>
               )}
-              <MarkdownContent content={msg.content} />
               {msg.thinking && (() => {
                 const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
                 return (
@@ -480,6 +479,7 @@ const MessageRow = memo(function MessageRow({
                   </details>
                 );
               })()}
+              <MarkdownContent content={msg.content} />
               {msg.toolCalls && msg.toolCalls.length > 0 && (
                 <ToolCallSummary toolCalls={msg.toolCalls} isStreaming={msg.isStreaming} />
               )}

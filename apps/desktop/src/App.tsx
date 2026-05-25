@@ -117,6 +117,12 @@ export function App() {
       if (type === 'quality_alert') addNotification('system', `Quality review — score ${data.data?.score ?? 'N/A'}`, data.data?.topIssue ?? 'Review issues detected');
       if (type === 'subconscious_insight') addNotification('system', 'Insight', data.data?.text ?? 'A new insight surfaced');
       if (type === 'memory_contradiction') addNotification('system', 'Memory contradiction', data.data?.message ?? 'A memory conflict was detected');
+      if (type === 'skill_created') addNotification('system', 'Skill imported', data.data?.name ?? 'New skill');
+      if (type === 'skill_updated') addNotification('system', 'Skill updated', data.data?.name ?? 'Skill');
+      if (type === 'skill_deleted') addNotification('system', 'Skill deleted', data.data?.name ?? 'Skill');
+      if (type === 'agent_created') addNotification('system', 'Agent imported', data.data?.name ?? 'New agent');
+      if (type === 'agent_updated') addNotification('system', 'Agent updated', data.data?.name ?? 'Agent');
+      if (type === 'agent_deleted') addNotification('system', 'Agent deleted', data.data?.name ?? 'Agent');
     });
   });
 
