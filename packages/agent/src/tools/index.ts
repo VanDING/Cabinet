@@ -343,8 +343,11 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     {
       name: 'create_workflow',
       execute: async (args: Record<string, unknown>) => {
+        const projectId = args.projectId as string;
+        if (!projectId) {
+          return { error: 'projectId is required' };
+        }
         const name = (args.name as string) ?? 'Untitled Workflow';
-        const projectId = (args.projectId as string) ?? 'default';
         const definition = (args.definition as unknown) ?? { nodes: [], edges: [] };
         const result = deps.createWorkflow({ name, projectId, definition });
         return { created: true, workflowId: result.id, name, projectId };
