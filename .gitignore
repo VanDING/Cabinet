@@ -38,3 +38,4 @@ apps/desktop/src-tauri/resources/node-portable.exe
 # Test artifacts
 test-results/
 apps/server/bundle/
+.worktrees/
