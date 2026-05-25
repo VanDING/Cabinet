@@ -39,3 +39,5 @@ apps/desktop/src-tauri/resources/node-portable.exe
 test-results/
 apps/server/bundle/
 .worktrees/
+/worktrees/
+/.worktrees/
