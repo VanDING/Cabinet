@@ -755,10 +755,13 @@ workflowsRouter.get('/', (c) => {
 workflowsRouter.post('/', async (c) => {
   const { workflowRepo } = getServerContext();
   const body = await c.req.json();
+  if (!body.projectId) {
+    return c.json({ error: 'projectId is required' }, 400);
+  }
   const id = `wf_${Date.now()}`;
   const definition = body.definition ?? { nodes: body.nodes ?? [], edges: body.edges ?? [] };
   try {
-    workflowRepo.create(id, body.projectId ?? 'default', body.name ?? 'Untitled', JSON.stringify(definition), 'draft');
+    workflowRepo.create(id, body.projectId, body.name ?? 'Untitled', JSON.stringify(definition), 'draft');
     return c.json({ id, status: 'created' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
