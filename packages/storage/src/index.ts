@@ -14,6 +14,7 @@ export { runMigration009 } from './migrations/009_checkpoints.js';
 export { runMigration010 } from './migrations/010_runtime_tables.js';
 export { runMigration011 } from './migrations/011_memory_metadata_index.js';
 export { runMigration015 } from './migrations/015_memory_graph.js';
+export { runMigration019 } from './migrations/019_project_name_unique.js';
 export { runMigrations, MIGRATIONS, type MigrationEntry } from './migrations/runner.js';
 // Repositories
 export { EventLogRepository } from './repositories/event-log.js';
