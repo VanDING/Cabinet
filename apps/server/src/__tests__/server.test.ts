@@ -51,4 +51,21 @@ describe('Server API', () => {
     expect(body).toHaveProperty('pendingDecisions');
     expect(body).toHaveProperty('todayCost');
   });
+
+  it('POST /api/projects rejects duplicate name with 409', async () => {
+    const name = `DupTest_${Date.now()}`;
+    const res1 = await app.request('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    expect(res1.status).toBe(201);
+
+    const res2 = await app.request('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    expect(res2.status).toBe(409);
+  });
 });

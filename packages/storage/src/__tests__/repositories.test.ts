@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createConnection, closeConnection, getConnection } from '../connection';
 import { runMigration001 } from '../migrations/001_initial';
 import { runMigration002 } from '../migrations/002_projects';
+import { runMigration019 } from '../migrations/019_project_name_unique';
 import { ProjectRepository } from '../repositories/project';
 import { EventLogRepository } from '../repositories/event-log';
 import { MessageType } from '@cabinet/types';
@@ -16,6 +17,7 @@ function setupDb(tmpDir: string) {
   createConnection(join(tmpDir, 'test.db'));
   runMigration001(getConnection());
   runMigration002(getConnection());
+  runMigration019(getConnection());
 }
 
 describe('ProjectRepository', () => {
@@ -77,6 +79,43 @@ describe('ProjectRepository', () => {
     projRepo.update('proj-u', { status: ProjectStatus.Archived });
     const updated = projRepo.findById('proj-u');
     expect(updated!.status).toBe('archived');
+  });
+
+  it('finds project by name', () => {
+    projRepo.create({
+      id: 'proj-n',
+      name: 'NamedProject',
+      description: '',
+      status: ProjectStatus.Active,
+      createdAt: new Date(),
+    });
+    const found = projRepo.findByName('NamedProject');
+    expect(found).not.toBeNull();
+    expect(found!.name).toBe('NamedProject');
+  });
+
+  it('returns null when project name not found', () => {
+    const found = projRepo.findByName('NonExistent');
+    expect(found).toBeNull();
+  });
+
+  it('enforces unique name constraint', () => {
+    projRepo.create({
+      id: 'proj-x1',
+      name: 'UniqueName',
+      description: '',
+      status: ProjectStatus.Active,
+      createdAt: new Date(),
+    });
+    expect(() =>
+      projRepo.create({
+        id: 'proj-x2',
+        name: 'UniqueName',
+        description: '',
+        status: ProjectStatus.Active,
+        createdAt: new Date(),
+      })
+    ).toThrow();
   });
 });
 
