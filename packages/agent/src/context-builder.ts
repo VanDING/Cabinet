@@ -44,6 +44,13 @@ export class ContextBuilder {
   /** In-memory TTL cache for RAG search results to avoid repeated embedding API calls. */
   private ragCache = new Map<string, { results: string[]; timestamp: number }>();
   private readonly RAG_CACHE_TTL_MS = 60_000;
+  /** Request-level cache for project context + rules across sessions (TTL 5s). */
+  private contextCache = new Map<string, {
+    projectContext: string;
+    rules: { path: string; content: string }[];
+    timestamp: number;
+  }>();
+  private readonly CONTEXT_CACHE_TTL_MS = 5_000;
 
   constructor(private readonly memory: MemoryProvider) {}
 
@@ -61,22 +68,39 @@ export class ContextBuilder {
     // Use memorySessionId if provided so specialist agents can share the base session context.
     // Project context and preferences are session-stable, so use cache when available.
     const memorySid = options.memorySessionId ?? options.sessionId;
-    const [shortTerm, projectContext, preferences] = await Promise.all([
+    const [shortTerm, preferences] = await Promise.all([
       this.memory.getShortTerm(memorySid),
-      cached ? Promise.resolve(cached.projectContext) : this.memory.getProjectContext(options.projectId),
       cached ? Promise.resolve(cached.preferences) : this.memory.getEntityPreferences(options.captainId),
     ]);
 
     if (!cached) {
-      this.sessionCache.set(cacheKey, { projectContext: projectContext as string, preferences: preferences as Record<string, unknown> });
+      this.sessionCache.set(cacheKey, { projectContext: '', preferences: preferences as Record<string, unknown> });
     }
 
-    // Load matching rules
-    const rulesContext: RulesContext = {
-      activeFiles: options.activeFiles ?? [],
-      taskDescription: options.taskDescription,
-    };
-    const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
+    // Request-level cache for project context + rules (shared across sessions for same project)
+    const ctxCacheKey = options.projectId;
+    const ctxCached = this.contextCache.get(ctxCacheKey);
+    const now = Date.now();
+
+    let projectContext: string;
+    let rules: { path: string; content: string }[];
+
+    if (ctxCached && now - ctxCached.timestamp < this.CONTEXT_CACHE_TTL_MS) {
+      projectContext = ctxCached.projectContext;
+      rules = ctxCached.rules;
+    } else {
+      projectContext = await this.memory.getProjectContext(options.projectId);
+      const rulesContext: RulesContext = {
+        activeFiles: options.activeFiles ?? [],
+        taskDescription: options.taskDescription,
+      };
+      rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
+      this.contextCache.set(ctxCacheKey, { projectContext, rules, timestamp: now });
+    }
+
+    // Update session cache with resolved project context
+    this.sessionCache.set(cacheKey, { projectContext, preferences: preferences as Record<string, unknown> });
+
     // rulesSummary is computed on-demand via getOnDemandRules(); including it here
     // caused a second full disk traversal via summarize()->loadAll().
     const rulesSummary = '';
@@ -98,7 +122,6 @@ export class ContextBuilder {
     if (options.taskDescription) {
       const ragCacheKey = `${options.projectId}:${options.taskDescription}`;
       const cachedRag = this.ragCache.get(ragCacheKey);
-      const now = Date.now();
       let ragResults: string[];
 
       if (cachedRag && now - cachedRag.timestamp < this.RAG_CACHE_TTL_MS) {
@@ -136,11 +159,14 @@ export class ContextBuilder {
   }
 
   /** Clear cached project context and preferences for a session. */
-  clearSessionCache(sessionId: string): void {
+  clearSessionCache(sessionId: string, projectId?: string): void {
     for (const key of this.sessionCache.keys()) {
       if (key.startsWith(sessionId + ':')) {
         this.sessionCache.delete(key);
       }
+    }
+    if (projectId) {
+      this.contextCache.delete(projectId);
     }
     // Evict RAG cache entries that may reference stale session context
     this.ragCache.clear();
