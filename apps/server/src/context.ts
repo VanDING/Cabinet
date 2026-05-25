@@ -66,14 +66,11 @@ import {
   SkillRegistry,
   importSkillFromMarkdown,
   AgentLoop,
-  ToolExecutor,
   SafetyChecker,
   CheckpointManager,
-  registerCabinetTools,
-  registerSkillTools,
-  registerMCPTools,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
+import { createStandardToolExecutor } from './agent-factory.js';
 import { SkillExtractor } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
 import { TaskScheduler } from './scheduler.js';
@@ -426,7 +423,7 @@ export function getServerContext(): ServerContext {
     anthropic: { deep_reasoning: 'anthropic/claude-opus-4-7', default: 'anthropic/claude-sonnet-4-6', fast_execution: 'anthropic/claude-haiku-4-5' },
     openai:    { deep_reasoning: 'openai/gpt-4o',             default: 'openai/gpt-4o',              fast_execution: 'openai/gpt-4o-mini' },
     google:    { deep_reasoning: 'google/gemini-2.5-pro',     default: 'google/gemini-2.5-pro',      fast_execution: 'google/gemini-2.5-flash' },
-    deepseek:  { deep_reasoning: 'deepseek/deepseek-v4-pro',  default: 'deepseek/deepseek-v4-pro',   fast_execution: 'deepseek/deepseek-v4-flash' },
+    deepseek:  { deep_reasoning: 'deepseek/deepseek-v4-pro',  default: 'deepseek/deepseek-v4-flash', fast_execution: 'deepseek/deepseek-v4-flash' },
     qwen:      { deep_reasoning: 'qwen/qwen-max',             default: 'qwen/qwen-plus',             fast_execution: 'qwen/qwen-turbo' },
     moonshot:  { deep_reasoning: 'moonshot/moonshot-v1-128k', default: 'moonshot/moonshot-v1-32k',   fast_execution: 'moonshot/moonshot-v1-8k' },
     zhipu:     { deep_reasoning: 'zhipu/glm-4',               default: 'zhipu/glm-4',                fast_execution: 'zhipu/glm-4-flash' },
@@ -568,8 +565,6 @@ export function getServerContext(): ServerContext {
     const role = agentRegistry.get('curator');
     if (!role) return null;
 
-    const executor = new ToolExecutor();
-
     // Build tool dependencies focused on Curator's needs (memory, decisions, events, project)
     const curatorDeps: ToolDependencies = {
       decisionStore: decisionRepo,
@@ -667,17 +662,7 @@ export function getServerContext(): ServerContext {
       getSystemKnowledge: async () => null,
     };
 
-    registerCabinetTools(executor, curatorDeps);
-    registerSkillTools(executor);
-
-    // Restrict to Curator's allowed tools
-    if (role.allowedTools.length > 0) {
-      for (const toolName of executor.listTools()) {
-        if (!role.allowedTools.includes(toolName)) {
-          executor.unregister(toolName);
-        }
-      }
-    }
+    const executor = createStandardToolExecutor(ctx!, curatorDeps, role.allowedTools);
 
     const checkpointManager = new CheckpointManager(db);
     return new AgentLoop({

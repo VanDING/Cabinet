@@ -5,6 +5,19 @@ import type { DelegationTier } from '@cabinet/types';
 import { IntentParser, type ParsedIntent, type AgentRouteResult } from './intent-parser.js';
 import { SessionManager } from './session-manager.js';
 
+export interface RouteFeedback {
+  message: string;
+  routedAgent: string;
+  correct: boolean;
+  timestamp: Date;
+  previousRoute?: string;
+}
+
+export interface FeedbackStore {
+  store(feedback: RouteFeedback): Promise<void>;
+  query(previousRoute: string, correct: boolean, limit?: number): Promise<{ targetAgent: string; count: number }[]>;
+}
+
 export class SecretaryAgent {
   private readonly intentParser: IntentParser;
   private lastRoutedAgent: string | null = null;
@@ -21,13 +34,8 @@ export class SecretaryAgent {
       sessionId: string,
       callback: StreamingCallback,
     ) => Promise<void>,
-    /** Callback to store routing feedback into long-term memory. */
-    private readonly storeFeedback?: (feedback: {
-      message: string;
-      routedAgent: string;
-      correct: boolean;
-      timestamp: Date;
-    }) => Promise<void>,
+    /** Feedback store for route learning (store + query). */
+    private readonly feedbackStore?: FeedbackStore,
   ) {
     this.intentParser = intentParser;
   }
@@ -69,7 +77,8 @@ export class SecretaryAgent {
 
     // Handle explicit negative feedback: re-route if user says "不对"/"换个人"
     if (feedback === 'negative' && routingState?.lastRoute) {
-      routeResult.targetAgent = this.suggestAlternativeAgent(routingState.lastRoute) as AgentRoleType;
+      await this.storeRouteFeedback(message, routingState.lastRoute, false, routingState.lastRoute);
+      routeResult.targetAgent = (await this.suggestAlternativeAgent(message, routingState.lastRoute)) as AgentRoleType;
       routeResult.confidence = 0.5;
       routeResult.reasoning = 'Re-routed due to user negative feedback.';
     }
@@ -112,13 +121,11 @@ export class SecretaryAgent {
       const verified = await this.verifyRoute(message, response, targetAgent);
       if (!verified.matches && verified.correctAgent && verified.correctAgent !== targetAgent) {
         // Store negative feedback for learning
-        await this.storeRouteFeedback(message, targetAgent, false);
-        // Re-route to the correct agent
-        const retryResponse = await this.retryWithAgent(sessionId, message, verified.correctAgent);
-        response = `[Auto-corrected route] ${retryResponse}`;
-        routeResult.targetAgent = verified.correctAgent as AgentRoleType;
+        await this.storeRouteFeedback(message, targetAgent, false, routingState?.lastRoute);
+        // Append routing hint instead of silently re-routing
+        response = `${response}\n\n---\n[系统提示：${targetAgent} 的输出可能未完全匹配您的请求。${verified.correctAgent} 可能更适合。如需要，请告诉我切换。]`;
       } else if (feedback === 'positive') {
-        await this.storeRouteFeedback(message, targetAgent, true);
+        await this.storeRouteFeedback(message, targetAgent, true, routingState?.lastRoute);
       }
 
       // Synthesize through secretary
@@ -159,7 +166,7 @@ export class SecretaryAgent {
     await this.updateRoutingState(sessionId, routeResult, message);
 
     if (feedback === 'negative' && routingState?.lastRoute) {
-      routeResult.targetAgent = this.suggestAlternativeAgent(routingState.lastRoute) as AgentRoleType;
+      routeResult.targetAgent = (await this.suggestAlternativeAgent(message, routingState.lastRoute)) as AgentRoleType;
       routeResult.confidence = 0.5;
       routeResult.reasoning = 'Re-routed due to user negative feedback.';
     }
@@ -210,6 +217,9 @@ export class SecretaryAgent {
           callback.onSubAgentToolCall?.(targetAgent, `${name}_result`, { result });
         },
         onUsage(usage) { callback.onUsage?.(usage); },
+        onQualityReview(result) {
+          callback.onQualityReview?.(result);
+        },
         onDone() {
           callback.onSubAgentDone?.(targetAgent, streamedContent);
         },
@@ -220,7 +230,7 @@ export class SecretaryAgent {
       response = streamedContent;
 
       if (feedback === 'positive') {
-        await this.storeRouteFeedback(message, targetAgent, true);
+        await this.storeRouteFeedback(message, targetAgent, true, routingState?.lastRoute);
       }
 
       // Secretary synthesizes specialist output for the Captain
@@ -296,21 +306,6 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     }
   }
 
-  private async retryWithAgent(
-    sessionId: string,
-    message: string,
-    agent: string,
-  ): Promise<string> {
-    if (!this.dispatchToRole) return 'No dispatch handler available.';
-    let collected = '';
-    await this.dispatchToRole(agent as AgentRoleType, message, sessionId, {
-      onChunk(content) { collected += content; },
-      onDone() {},
-      onError(err) { collected = err; },
-    });
-    return collected || `Dispatched to ${agent}.`;
-  }
-
   // ── Orchestrator helpers ────────────────────────────────────
 
   private async runSpecialist(
@@ -362,27 +357,62 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     message: string,
     routedAgent: string,
     correct: boolean,
+    previousRoute?: string,
   ): Promise<void> {
-    if (this.storeFeedback) {
-      await this.storeFeedback({
+    if (this.feedbackStore) {
+      await this.feedbackStore.store({
         message: message.slice(0, 500),
         routedAgent,
         correct,
         timestamp: new Date(),
+        previousRoute,
       });
     }
   }
 
-  private suggestAlternativeAgent(lastRoute: string): string {
-    const alternatives: Record<string, string> = {
-      secretary: 'curator',
-      decision_analyst: 'meeting_chair',
-      meeting_chair: 'decision_analyst',
-      workflow_designer: 'organize',
-      curator: 'secretary',
-      reviewer: 'secretary',
-      organize: 'workflow_designer',
+  private async suggestAlternativeAgent(message: string, lastRoute: string): Promise<string> {
+    // Query feedback history for successful re-routes from this previous route
+    if (this.feedbackStore) {
+      try {
+        const history = await this.feedbackStore.query(lastRoute, true, 10);
+        if (history && history.length > 0) {
+          // Pick the most common successful alternative
+          const alt = history[0];
+          if (alt) return alt.targetAgent;
+        }
+      } catch {
+        // Feedback query failure is non-fatal
+      }
+    }
+
+    // Fallback: intent-based heuristic
+    const lower = message.toLowerCase();
+    let detectedIntent: string | null = null;
+    if (lower.includes('决策') || lower.includes('选择') || lower.includes('对比') || lower.includes('分析')) {
+      detectedIntent = 'decision_request';
+    } else if (lower.includes('会议') || lower.includes('讨论') || lower.includes('顾问')) {
+      detectedIntent = 'meeting_request';
+    } else if (lower.includes('流程') || lower.includes('workflow') || lower.includes('步骤')) {
+      detectedIntent = 'workflow_request';
+    } else if (lower.includes('组织') || lower.includes('设计') || lower.includes('架构')) {
+      detectedIntent = 'organize_request';
+    } else if (lower.includes('审查') || lower.includes('检查') || lower.includes('review')) {
+      detectedIntent = 'review_request';
+    }
+
+    const intentBased: Record<string, string> = {
+      decision_request: 'meeting_chair',
+      meeting_request: 'decision_analyst',
+      workflow_request: 'organize',
+      organize_request: 'workflow_designer',
+      review_request: 'secretary',
+      status_query: 'secretary',
     };
-    return alternatives[lastRoute] ?? 'secretary';
+    if (detectedIntent) {
+      const alt = intentBased[detectedIntent];
+      if (alt) return alt;
+    }
+
+    return 'secretary';
   }
 }

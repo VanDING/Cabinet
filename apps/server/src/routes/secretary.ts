@@ -6,16 +6,13 @@ import { DEFAULT_CAPTAIN_ID, MessageType, type DelegationTier } from '@cabinet/t
 import {
   AgentLoop,
   AgentDispatcher,
-  ToolExecutor,
   SafetyChecker,
   CheckpointManager,
-  registerCabinetTools,
-  registerSkillTools,
-  registerMCPTools,
   AgentRoleRegistry,
+  RulesLoader,
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
-import { SecretaryAgent, IntentParser, GreetingService } from '@cabinet/secretary';
+import { SecretaryAgent, IntentParser, GreetingService, type FeedbackStore } from '@cabinet/secretary';
 import {
   buildChairPrompt, parseChairResponse,
   buildAdvisorPrompt, parseAdvisorResponse,
@@ -24,8 +21,8 @@ import {
   generateSynthesis,
   type AdvisorFinding,
 } from '@cabinet/meeting';
-import { ProjectIsolatedMemory } from '@cabinet/memory';
 import { broadcast } from '../ws/handler.js';
+import { createStandardToolExecutor, createStandardMemoryProvider } from '../agent-factory.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { buildEnvironmentSection, createSystemKnowledgeCapabilities } from '../capabilities.js';
@@ -35,12 +32,11 @@ import { CABINET_DIR, DocumentChunkRepository, EvaluationResultRepository } from
 import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
-
-const RAG_LONGTERM_TOP_K = 5;
 
 /** Roles that need the system environment section in their prompt. */
 const ROLES_NEEDING_ENV = new Set([
@@ -331,8 +327,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
 
     // ── Meeting write callback ──
-    async startMeeting(topic, advisorIds, projectId) {
-      return runMeeting(topic, advisorIds, projectId, ctx);
+    async startMeeting(topic, advisorIds, projectId, chairBrief) {
+      return runMeeting(topic, advisorIds, projectId, ctx, chairBrief);
     },
 
     // ── Memory write callbacks ──
@@ -388,7 +384,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           name: input.name,
           description: input.description ?? '',
           system_prompt: input.systemPrompt ?? '',
-          model: input.model ?? 'claude-sonnet-4-6',
+          model: input.model ?? 'default',
           model_tier: 'default',
           temperature: input.temperature ?? 0.3,
           max_response_tokens: input.maxResponseTokens ?? 4000,
@@ -443,20 +439,31 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         builtIn: r.type !== 'custom',
       }));
     },
-    async invokeAgent(agentName, message) {
+    async invokeAgent(agentName, message, callerSessionId) {
       const registry = ctx.agentRegistry;
       const role = registry.get(agentName);
       if (!role) throw new Error(`Agent not found: ${agentName}`);
       const loop = getAgentLoopForRole(
         role.type as AgentRoleType,
-        `invoke_${Date.now()}`,
+        `${callerSessionId ?? 'invoke'}_${Date.now()}`,
         'global',
         DEFAULT_CAPTAIN_ID,
         undefined,
         resolveModel({ modelTier: 'default', model: 'claude-sonnet-4-6' }),
+        callerSessionId,
       );
       if (!loop) throw new Error(`Cannot invoke ${agentName}: no LLM gateway available`);
-      const result = await loop.run(message);
+      // Inject recent conversation context from caller session
+      let augmentedMessage = message;
+      if (callerSessionId) {
+        const session = ctx.sessionManager.get(callerSessionId);
+        if (session && session.messages.length > 0) {
+          const recent = session.messages.slice(-5);
+          const history = recent.map((m) => `${m.role}: ${m.content.slice(0, 200)}`).join('\n');
+          augmentedMessage = `[Context from previous conversation]:\n${history}\n\n[Current task]: ${message}`;
+        }
+      }
+      const result = await loop.run(augmentedMessage);
       return { agentName: role.name, response: result.content };
     },
 
@@ -1183,8 +1190,42 @@ async function executeWorkflowById(
       case 'wait':
         output = `Waited ${d.duration ?? '5s'}`;
         break;
+      case 'skill':
+        if (ctx.skillRegistry) {
+          try {
+            const skill = ctx.skillRegistry.load(d.skillName ?? nodeId);
+            if (skill) {
+              const skillResult = await ctx.skillRegistry.executeSkill(skill, d.input ?? {});
+              output = JSON.stringify(skillResult);
+            } else {
+              output = `Skill not found: ${d.skillName ?? nodeId}`;
+            }
+          } catch (e: any) {
+            output = `Skill error: ${e.message}`;
+          }
+        } else {
+          output = 'No skill registry available';
+        }
+        break;
+      case 'parallel': {
+        const branches = graph.get(nodeId) ?? [];
+        const branchResults: string[] = [];
+        for (const child of branches) {
+          await executeNode(child);
+          const childResult = results.find((r) => r.nodeId === child);
+          branchResults.push(childResult?.output ?? '');
+        }
+        output = `Parallel branches completed: ${branchResults.length}`;
+        break;
+      }
+      case 'human':
+        output = `Human input required at: ${d.label ?? nodeId}`;
+        ctx.workflowRepo.updateStatus(workflowId, 'awaiting_approval');
+        broadcast('workflow_human_input_needed', { workflowId, runId, nodeId, label: d.label });
+        break;
       default:
-        output = 'Unknown node type';
+        output = `Unknown node type: ${node.type}`;
+        break;
     }
 
     results.push({ nodeId, type: node.type ?? 'unknown', output });
@@ -1247,6 +1288,7 @@ async function runMeeting(
   advisorIds: string[] | undefined,
   projectId: string | undefined,
   ctx: ServerContext,
+  chairBrief?: string,
 ): Promise<{
   meetingId: string;
   topic: string;
@@ -1287,21 +1329,25 @@ async function runMeeting(
   const model = 'claude-haiku-4-5';
 
   // Phase 1: MeetingChair dynamically generates analysis perspectives based on the topic.
-  // If the user specified advisor names, they are included as mandatory perspectives.
+  // If chairBrief is provided (from MeetingChair AgentLoop), skip the chair prompt.
   let analysisBrief: string;
-  try {
-    const chairPrompt = buildChairPrompt(topic, advisorIds);
-    const chairResponse = await ctx.gateway!.generateText({
-      model,
-      messages: [{ role: 'user', content: chairPrompt }],
-      maxTokens: 1200,
-      temperature: 0.3,
-    });
-    const brief = parseChairResponse(chairResponse.content, topic);
-    analysisBrief = JSON.stringify(brief);
-    ctx.metrics.increment('llm_call', { model, purpose: 'meeting_chair_brief' });
-  } catch {
-    analysisBrief = JSON.stringify(parseChairResponse('', topic));
+  if (chairBrief) {
+    analysisBrief = chairBrief;
+  } else {
+    try {
+      const chairPrompt = buildChairPrompt(topic, advisorIds);
+      const chairResponse = await ctx.gateway!.generateText({
+        model,
+        messages: [{ role: 'user', content: chairPrompt }],
+        maxTokens: 1200,
+        temperature: 0.3,
+      });
+      const brief = parseChairResponse(chairResponse.content, topic);
+      analysisBrief = JSON.stringify(brief);
+      ctx.metrics.increment('llm_call', { model, purpose: 'meeting_chair_brief' });
+    } catch {
+      analysisBrief = JSON.stringify(parseChairResponse('', topic));
+    }
   }
 
   // Phase 2: Advisor multi-perspective analysis (1 LLM call)
@@ -1465,6 +1511,30 @@ async function runMeeting(
   return result;
 }
 
+// ── In-memory feedback store for route learning (cross-session) ──
+const routeFeedbackStore: { message: string; routedAgent: string; correct: boolean; timestamp: Date; previousRoute?: string }[] = [];
+
+const feedbackStore: FeedbackStore = {
+  async store(feedback) {
+    routeFeedbackStore.push(feedback);
+    if (routeFeedbackStore.length > 1000) {
+      routeFeedbackStore.shift();
+    }
+  },
+  async query(previousRoute, correct, limit = 10) {
+    const matches = routeFeedbackStore
+      .filter((f) => f.previousRoute === previousRoute && f.correct === correct)
+      .reduce((acc, f) => {
+        acc[f.routedAgent] = (acc[f.routedAgent] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+    return Object.entries(matches)
+      .map(([targetAgent, count]) => ({ targetAgent, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  },
+};
+
 // ── Multi-agent cache (keyed by sessionId:roleType) ──
 const agentLoopCache = new Map<string, AgentLoop>();
 const MAX_CACHE_SIZE = 100;
@@ -1485,95 +1555,16 @@ onTierChange((tier: DelegationTier) => {
   }
 });
 
-function buildMemoryProvider(ctx: ServerContext, projectId?: string) {
-  const useIsolation = projectId && projectId !== 'global';
-  const isolated = useIsolation
-    ? new ProjectIsolatedMemory(projectId!, ctx.shortTerm, ctx.longTerm, ctx.entity, ctx.project)
-    : null;
-
-  return {
-    async getShortTerm(sid: string) {
-      const items: { role: 'user' | 'assistant'; content: string }[] = [];
-
-      // Include conversation history from SessionManager
-      const session = ctx.sessionManager.get(sid);
-      if (session && session.messages.length > 0) {
-        // Exclude last message if it's a user message (will be re-added by AgentLoop)
-        const last = session.messages[session.messages.length - 1]!;
-        const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
-        const start = Math.max(0, end - 20);
-
-        if (end > 20) {
-          // Keep the most recent 15 messages as-is
-          const recentStart = end - 15;
-          for (let i = recentStart; i < end; i++) {
-            const m = session.messages[i]!;
-            items.push({ role: m.role, content: m.content });
-          }
-          // Compress older messages (from start to recentStart) into a summary
-          const olderParts: string[] = [];
-          for (let i = start; i < recentStart; i++) {
-            const m = session.messages[i]!;
-            olderParts.push(m.content.slice(0, 100));
-          }
-          if (olderParts.length > 0) {
-            items.unshift({ role: 'user', content: '[Earlier context summary]: ' + olderParts.join(' | ') });
-          }
-        } else {
-          for (let i = start; i < end; i++) {
-            const m = session.messages[i]!;
-            items.push({ role: m.role, content: m.content });
-          }
-        }
-      }
-
-      // Append short-term KV data as additional context (scoped per project if isolated)
-      const scopedSid = isolated ? `${projectId}:${sid}` : sid;
-      const kv = ctx.shortTerm.getAll(scopedSid);
-      for (const [k, v] of Object.entries(kv)) {
-        if (typeof v === 'string' && v.length > 0) {
-          items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
-        }
-      }
-
-      return items;
-    },
-    async getProjectContext(_pid: string) {
-      const pid = _pid === 'global' ? _pid : (_pid || projectId || 'global');
-      if (pid === 'global') return 'No project selected. Use list_projects to see available projects.';
-      const projCtx = isolated ? isolated.getProjectContext() : ctx.project.get(pid);
-      let contextStr = '';
-      // Include project root path so the agent knows where the project files are
-      try {
-        const projRow = ctx.projectRepo.findById(pid);
-        if (projRow?.rootPath && existsSync(projRow.rootPath)) {
-          contextStr = `Active project files at: ${projRow.rootPath}\n`;
-        }
-      } catch { /* root_path lookup is best-effort */ }
-      if (!projCtx) {
-        contextStr += `Project "${pid}" has no context yet. Use set_project_context to add details.`;
-      } else {
-        contextStr += `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
-      }
-
-      return contextStr;
-    },
-    async getEntityPreferences(_captainId: string) {
-      const prefs = ctx.entity.getPreferences(_captainId);
-      return prefs?.preferences ?? {};
-    },
-    async searchLongTerm(query: string, _pid: string) {
-      let queryEmbedding: number[] | undefined;
-      if (ctx.gateway) {
-        try {
-          const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
-          queryEmbedding = er.embeddings[0];
-        } catch { /* fall back to text search */ }
-      }
-      const results = await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
-      return results.map((r) => `[Memory] ${r.content}`);
-    },
-  };
+function buildRulesLoader(projectRootPath?: string) {
+  const dirs: string[] = [];
+  const homeRules = join(homedir(), '.cabinet', 'rules');
+  if (existsSync(homeRules)) dirs.push(homeRules);
+  if (projectRootPath) {
+    const projectRules = join(projectRootPath, '.cabinet', 'rules');
+    if (existsSync(projectRules)) dirs.push(projectRules);
+  }
+  const globalFile = join(homedir(), '.cabinet', 'CABINET.md');
+  return new RulesLoader(dirs, existsSync(globalFile) ? globalFile : undefined);
 }
 
 /** Resolve a role's modelTier to the actual model via user-configured modelMapping. */
@@ -1594,6 +1585,7 @@ function getAgentLoopForRole(
   captainId: string,
   thinkingBudget?: number,
   model?: string,
+  memorySessionId?: string,
 ): AgentLoop | null {
   const ctx = getServerContext();
   if (!ctx.gateway) return null;
@@ -1607,26 +1599,7 @@ function getAgentLoopForRole(
   const role = registry.get(roleType);
   if (!role) return null;
 
-  const executor = new ToolExecutor();
-  registerCabinetTools(executor, buildToolDependencies(ctx));
-  registerSkillTools(executor);
-  const mcpCtx = getServerContext();
-  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
-
-  // Wire observability: track tool calls
-  executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
-    getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
-  });
-
-  // Apply role's tool restrictions
-  if (role.allowedTools.length > 0) {
-    const allTools = executor.listTools();
-    for (const toolName of allTools) {
-      if (!role.allowedTools.includes(toolName)) {
-        executor.unregister(toolName);
-      }
-    }
-  }
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx), role.allowedTools);
 
   // Look up project root path for the system prompt
   let projectRootPath: string | undefined;
@@ -1638,14 +1611,16 @@ function getAgentLoopForRole(
   } catch { /* best-effort */ }
 
   const checkpointManager = new CheckpointManager(ctx.db);
+  const rulesLoader = buildRulesLoader(projectRootPath);
   const loop = new AgentLoop({
     gateway: ctx.gateway,
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
     checkpointManager,
-    memoryProvider: buildMemoryProvider(ctx, projectId),
+    memoryProvider: createStandardMemoryProvider(ctx, projectId),
+    rulesLoader,
     sessionId: `${sessionId}-${role.type}`,
-    memorySessionId: sessionId,
+    memorySessionId: memorySessionId ?? sessionId,
     projectId,
     captainId,
     systemPrompt: buildSystemPrompt(role.type, role.systemPrompt, projectRootPath),
@@ -1710,28 +1685,17 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
   const cached = reviewerLoopCache.get(cacheKey);
   if (cached) return cached;
 
-  const executor = new ToolExecutor();
-  registerCabinetTools(executor, buildToolDependencies(ctx));
-  registerSkillTools(executor);
-  const mcpCtx = getServerContext();
-  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
-
-  // Restrict to Reviewer's allowed tools
-  if (role.allowedTools.length > 0) {
-    for (const toolName of executor.listTools()) {
-      if (!role.allowedTools.includes(toolName)) {
-        executor.unregister(toolName);
-      }
-    }
-  }
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx), role.allowedTools);
 
   const checkpointManager = new CheckpointManager(ctx.db);
+  const rulesLoader = buildRulesLoader();
   const loop = new AgentLoop({
     gateway: ctx.gateway,
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
     checkpointManager,
-    memoryProvider: buildMemoryProvider(ctx, 'default'),
+    memoryProvider: createStandardMemoryProvider(ctx, 'default'),
+    rulesLoader,
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
     captainId: DEFAULT_CAPTAIN_ID,
@@ -1804,6 +1768,10 @@ async function dispatchToSpecialist(
         ? output.slice(0, 4000) + '\n\n[...output truncated, total length: ' + output.length + ' chars...]\n\n' + output.slice(-4000)
         : output;
 
+      const toolCallSummary = result.toolCalls.length > 0
+        ? `\nTool calls made by ${roleType} during execution:\n${result.toolCalls.map((t) => `- ${t.name}(${JSON.stringify(t.args).slice(0, 100)}): ${JSON.stringify(t.result).slice(0, 100)}`).join('\n')}`
+        : '';
+
       const reviewTask = [
         `## Quality Review Task`,
         '',
@@ -1812,6 +1780,7 @@ async function dispatchToSpecialist(
         '',
         `Agent output to review:`,
         reviewContent,
+        toolCallSummary,
         '',
         `Review for: logical completeness, evidence quality, risk assessment, factual errors.`,
         `Use available tools (search_memory, search_documents, read_file) to verify claims if possible.`,
@@ -1887,9 +1856,61 @@ async function dispatchToSpecialistStreaming(
 
   try {
     const result = await loop.runStreaming(message, callback);
-    // Note: Quality gate (Reviewer) is skipped for streaming — it would delay the stream.
-    // The non-streaming dispatchToSpecialist still runs the reviewer for blocking calls.
-    void result;
+    // Async quality review after streaming completes (does not block the stream)
+    if (roleType !== 'secretary' && roleType !== 'reviewer') {
+      const reviewerLoop = createReviewerLoop(ctx);
+      if (reviewerLoop) {
+        const reviewContent = result.content.length > 8000
+          ? result.content.slice(0, 4000) + '\n\n[...output truncated, total length: ' + result.content.length + ' chars...]\n\n' + result.content.slice(-4000)
+          : result.content;
+        const reviewTask = [
+          `## Quality Review Task`,
+          '',
+          `Review the following output produced by the "${roleType}" agent.`,
+          `The original user message was: "${message.slice(0, 500)}"`,
+          '',
+          `Agent output to review:`,
+          reviewContent,
+          '',
+          `Review for: logical completeness, evidence quality, risk assessment, factual errors.`,
+          `Use available tools (search_memory, search_documents, read_file) to verify claims if possible.`,
+          '',
+          `After review, output ONLY a JSON object:`,
+          `{"pass": true/false, "score": 0.0-1.0, "issues": [...], "suggestion": {...}}`,
+        ].join('\n');
+        reviewerLoop.run(reviewTask).then((reviewResult) => {
+          const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
+          const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, score: 1.0, issues: [] };
+          persistReviewResult(ctx, roleType, sessionId, review);
+          callback.onQualityReview?.({
+            pass: !!review.pass,
+            score: typeof review.score === 'number' ? review.score : 1.0,
+            issues: Array.isArray(review.issues) ? review.issues : [],
+          });
+          if (review.pass !== true && review.issues?.length > 0 && ctx.eventBus) {
+            ctx.eventBus.publish({
+              messageId: `quality_alert_${Date.now()}`,
+              correlationId: sessionId,
+              causationId: null,
+              timestamp: new Date(),
+              messageType: MessageType.QualityAlert,
+              payload: {
+                type: 'review_quality',
+                message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
+                severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
+              },
+            }).catch(() => {});
+            broadcast('quality_alert', {
+              source: roleType,
+              sessionId,
+              score: review.score,
+              issueCount: review.issues?.length ?? 0,
+              topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+            });
+          }
+        }).catch(() => { /* Review failure is non-fatal */ });
+      }
+    }
   } catch (e: any) {
     callback.onError?.(e.message ?? 'Unknown error');
     callback.onDone('');
@@ -1935,16 +1956,8 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
   }
 
   // Secretary's own executor (all tools)
-  const executor = new ToolExecutor();
-  registerCabinetTools(executor, buildToolDependencies(ctx));
-  registerSkillTools(executor);
-  const mcpCtx = getServerContext();
-  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
-  executor.setToolCallCallback((toolName, success, blocked, durationMs) => {
-    getServerContext().observability.recordToolCall(toolName, success, blocked, durationMs);
-  });
-
-  const memoryProvider = buildMemoryProvider(ctx, projectId);
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx));
+  const memoryProvider = createStandardMemoryProvider(ctx, projectId);
 
   // Load secretary role for temperature and system prompt
   const secretaryRole = ctx.agentRegistry.get('secretary');
@@ -1963,12 +1976,14 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     } catch { /* best-effort */ }
 
     const checkpointManager = new CheckpointManager(ctx.db);
+    const rulesLoader = buildRulesLoader(projectRootPath);
     secretaryLoop = new AgentLoop({
       gateway: ctx.gateway!,
       toolExecutor: executor,
       safetyChecker: new SafetyChecker(ctx.delegationTier),
       checkpointManager,
       memoryProvider,
+      rulesLoader,
       sessionId,
       projectId,
       captainId,
@@ -2042,6 +2057,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     async (roleType: AgentRoleType, msg: string, sid: string, callback: import('@cabinet/agent').StreamingCallback) => {
       await dispatchToSpecialistStreaming(roleType, msg, sid, projectId, captainId, callback, thinkingBudget, model ?? undefined);
     },
+    feedbackStore,
   );
 
   // FIFO eviction for secretary cache
@@ -2164,11 +2180,7 @@ secretaryRouter.post('/chat', async (c) => {
     if (ctx.gateway) {
       // ── Dispatch mode: pipeline or parallel ──
       if (dispatchMode === 'pipeline' || dispatchMode === 'parallel') {
-        const executor = new ToolExecutor();
-        registerCabinetTools(executor, buildToolDependencies(ctx));
-  registerSkillTools(executor);
-  const mcpCtx = getServerContext();
-  registerMCPTools(executor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
+        const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx));
 
         const rateLimitTracker = (ctx.gateway as any)?.getRateLimitTracker?.();
         const dispatcher = new AgentDispatcher(
@@ -2259,6 +2271,13 @@ secretaryRouter.post('/chat', async (c) => {
         const sseStream = new ReadableStream({
           async start(controller) {
             const store = { result: null as MeetingResult | null };
+
+            // Quality review tracking — keeps SSE open until review completes or times out
+            let resolveQualityReview: (() => void) | null = null;
+            const qualityReviewPromise = new Promise<void>((resolve) => {
+              resolveQualityReview = resolve;
+            });
+
             await meetingResultStore.run(store, async () => {
               const encoder = new TextEncoder();
               function emit(type: string, data: Record<string, unknown>) {
@@ -2324,6 +2343,10 @@ secretaryRouter.post('/chat', async (c) => {
                       streamedContent = fullContent;
                       // Done event is emitted after routing below
                     },
+                    onQualityReview(result) {
+                      emit('quality_review', { pass: result.pass, score: result.score, issues: result.issues });
+                      resolveQualityReview?.();
+                    },
                     onError(error) {
                       emit('error', { message: error });
                     },
@@ -2368,6 +2391,11 @@ secretaryRouter.post('/chat', async (c) => {
               } catch (e: any) {
                 emit('error', { message: e.message ?? 'Unknown error' });
               } finally {
+                // Wait for async quality review before closing (max 5s)
+                await Promise.race([
+                  qualityReviewPromise,
+                  new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+                ]);
                 controller.close();
               }
             });

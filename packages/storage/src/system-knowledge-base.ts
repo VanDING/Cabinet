@@ -95,6 +95,29 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
 - **项目**：get_project_context, update_project_summary
 - **系统知识查询**：query_system_knowledge, get_system_knowledge`,
   },
+  {
+    id: 'workflow_node_types',
+    topic: 'Workflow 节点类型',
+    category: 'capability',
+    version: 1,
+    content: `## Workflow 支持的节点类型
+Workflow 由节点（node）和边（edge）组成。节点类型必须是以下之一，不能使用自定义类型：
+
+- **start** — 流程起点，无实际操作
+- **end** — 流程终点，无实际操作
+- **aiAgent** — 调用指定 Agent 执行一段任务。可设置 agent 字段指定角色名
+- **llmCall** — 直接调用 LLM 生成内容
+- **skill** — 调用已注册的技能（Skill）
+- **condition** — 条件分支，根据上游输出决定走哪条边
+- **parallel** — 并行分支，同时执行多个下游节点
+- **human** — 暂停流程，等待用户输入
+- **humanApproval** — 暂停流程，等待用户审批
+- **dataQuery** — 执行数据查询
+- **notification** — 发送通知（WebSocket 广播）
+- **wait** — 等待指定时长
+
+**Segment（执行段）**：连续的 aiAgent / llmCall 节点且 agent 字段相同，会被自动合并为一个 Segment，由同一个 AgentLoop 执行，保持上下文连贯。`,
+  },
 ];
 
 import { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';

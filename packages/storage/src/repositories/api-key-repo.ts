@@ -29,6 +29,14 @@ export class ApiKeyRepository {
     return this.rowToApiKey(row);
   }
 
+  findById(id: string): ApiKeyRow | null {
+    const row = this.db
+      .prepare('SELECT * FROM api_keys WHERE id = ?')
+      .get(id) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    return this.rowToApiKey(row);
+  }
+
   insert(key: ApiKeyRow): void {
     this.db
       .prepare(

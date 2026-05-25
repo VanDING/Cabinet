@@ -9,12 +9,13 @@ export const employeesRouter = new Hono();
 
 // GET /api/employees — includes both employees and agent_roles
 employeesRouter.get('/', (c) => {
-  const { employeeRepo, agentRoleRepo } = getServerContext();
+  const { employeeRepo, agentRoleRepo, agentRegistry } = getServerContext();
   const empRows = employeeRepo.findAll();
   const employees = empRows.map(rowToEmployee);
 
   // Also include custom agents from agent_roles table
   const agentRows = agentRoleRepo.findCustom();
+  const dbAgentNames = new Set(agentRows.map((r) => r.name));
   const agentsFromRoles = agentRows.map((r) => ({
     id: `agent_${r.name}`,
     name: r.name,
@@ -27,7 +28,23 @@ employeesRouter.get('/', (c) => {
     projectId: 'default',
   }));
 
-  return c.json({ employees: [...employees, ...agentsFromRoles] });
+  // Fallback: include runtime-registered agents that may not yet be in DB
+  const runtimeAgents = agentRegistry
+    .list()
+    .filter((r) => r.type === 'custom' && !dbAgentNames.has(r.name))
+    .map((r) => ({
+      id: `agent_${r.name}`,
+      name: r.name,
+      role: r.type,
+      kind: 'ai' as const,
+      model: r.model ?? undefined,
+      expertise: r.allowedTools ?? [],
+      permissionLevel: 'read',
+      status: 'active',
+      projectId: 'default',
+    }));
+
+  return c.json({ employees: [...employees, ...agentsFromRoles, ...runtimeAgents] });
 });
 
 // POST /api/employees

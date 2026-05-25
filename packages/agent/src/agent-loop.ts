@@ -6,6 +6,7 @@ import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
 import { CheckpointManager, type CheckpointState } from './checkpoint.js';
 import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './context-builder.js';
+import type { RulesLoader } from './rules-loader.js';
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
 import { TaskTracker, type AgentTask, SemanticTaskTracker } from './task-tracker.js';
@@ -49,6 +50,7 @@ export interface StreamingCallback {
   onSubAgentThinking?(agentName: string, content: string): void;
   onSubAgentDone?(agentName: string, result: string): void;
   onSubAgentError?(agentName: string, error: string): void;
+  onQualityReview?(result: { pass: boolean; score: number; issues: any[] }): void;
   onDone(fullContent: string): void;
   onError?(error: string): void;
 }
@@ -84,6 +86,8 @@ export interface AgentLoopOptions {
   thinkingBudget?: number;
   /** Project root directory for snapshot caching (defaults to process.cwd()). */
   projectRoot?: string;
+  /** Optional rules loader for hierarchical rule injection. */
+  rulesLoader?: RulesLoader;
 }
 
 export interface AgentResult {
@@ -172,6 +176,9 @@ export class AgentLoop {
     this.safetyChecker = options.safetyChecker;
     this.checkpointManager = options.checkpointManager;
     this.contextBuilder = new ContextBuilder(options.memoryProvider);
+    if (options.rulesLoader) {
+      this.contextBuilder.withRules(options.rulesLoader);
+    }
     this.contextMonitor = options.eventBus
       ? ContextMonitor.forModel(options.model ?? 'claude-sonnet-4-6', options.eventBus, options.contextBudget)
       : null;
@@ -231,13 +238,14 @@ export class AgentLoop {
     }
     const handoff = this.sessionHandoff;
 
+    let warnedThreshold = false;
     while (steps < maxSteps) {
       // Build context (reload short-term memory each iteration)
       const ctx: ContextBuildResult = await this.contextBuilder.build({
         sessionId: this.options.sessionId,
         projectId: this.options.projectId,
         captainId: this.options.captainId,
-        systemPrompt: this.options.systemPrompt,
+        roleSystemPrompt: this.options.systemPrompt,
         activeFiles: this.options.activeFiles,
         taskDescription: this.options.taskDescription,
         memorySessionId: this.options.memorySessionId,
@@ -367,7 +375,12 @@ export class AgentLoop {
 
       // No tool calls — agent is done
       if (!response.toolCalls || response.toolCalls.length === 0) {
-        messages.push({ role: 'assistant', content: response.content });
+        let finalContent = response.content;
+        if (!warnedThreshold && steps >= maxSteps * 0.8) {
+          warnedThreshold = true;
+          finalContent += `\n\n[注意：已运行 ${steps + 1}/${maxSteps} 步，任务可能未完成。如需继续，请告知。]`;
+        }
+        messages.push({ role: 'assistant', content: finalContent });
         handoff.recordStep(`Step ${steps + 1}: Agent completed with final response (${this.contextMonitor ? this.contextMonitor.current?.zone ?? 'unknown' : 'unknown'} zone)`);
         handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
         this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
@@ -376,11 +389,11 @@ export class AgentLoop {
         this.checkpointManager.delete(this.options.sessionId);
         this.pendingCheckpoint = null;
         return {
-          content: response.content,
+          content: finalContent,
           steps: steps + 1,
           toolCalls: executedToolCalls,
           usage: { promptTokens: totalPromptTokens, completionTokens: totalCompletionTokens },
-          structuredOutput: parseStructuredOutput(response.content),
+          structuredOutput: parseStructuredOutput(finalContent),
         };
       }
 
@@ -467,7 +480,7 @@ export class AgentLoop {
         let result: { toolCallId: string; output: unknown; error?: string };
         try {
           result = await Promise.race([
-            this.toolExecutor.execute(tc.name, tc.id, tc.arguments),
+            this.toolExecutor.execute(tc.name, tc.id, tc.arguments, { sessionId: this.options.sessionId }),
             new Promise<never>((_, reject) =>
               setTimeout(
                 () => reject(new Error(`Tool '${tc.name}' timed out after ${toolTimeoutMs}ms`)),
@@ -546,13 +559,18 @@ export class AgentLoop {
       }
     }
 
+    let finalContent = `Agent reached max steps (${maxSteps}) without final response.`;
+    if (!warnedThreshold && steps >= maxSteps * 0.8) {
+      warnedThreshold = true;
+      finalContent += `\n\n[注意：已运行 ${steps}/${maxSteps} 步，任务可能未完成。如需继续，请告知。]`;
+    }
     this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
       zoneCounts, handoffCount, errorCounts, toolCounts, false);
     this.flushCheckpoint();
     this.checkpointManager.delete(this.options.sessionId);
     this.pendingCheckpoint = null;
     return {
-      content: `Agent reached max steps (${maxSteps}) without final response.`,
+      content: finalContent,
       steps,
       toolCalls: executedToolCalls,
     };
@@ -630,7 +648,7 @@ export class AgentLoop {
       sessionId: this.options.sessionId,
       projectId: this.options.projectId,
       captainId: this.options.captainId,
-      systemPrompt: this.options.systemPrompt,
+      roleSystemPrompt: this.options.systemPrompt,
       activeFiles: this.options.activeFiles,
       taskDescription: this.options.taskDescription,
       memorySessionId: this.options.memorySessionId,
@@ -663,7 +681,7 @@ export class AgentLoop {
         toolCounts.total++;
         const start = Date.now();
         try {
-          const result = await this.toolExecutor.execute(td.name, `stream_${Date.now()}`, args);
+          const result = await this.toolExecutor.execute(td.name, `stream_${Date.now()}`, args, { sessionId: this.options.sessionId });
           if (result.error) {
             toolCounts.failed++;
           } else {

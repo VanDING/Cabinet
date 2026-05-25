@@ -158,10 +158,6 @@ function detectDangerousCommand(command: string): string | null {
   // Pipeline to interpreter execution (curl/wget | sh/bash)
   if (/(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/.test(lower)) return 'pipe to shell';
 
-  // Interpreter one-liners that can execute arbitrary code
-  if (/\b(python|python3|py)\b.*-c\b/.test(lower)) return 'python one-liner';
-  if (/\b(node|nodejs)\b.*-e\b/.test(lower)) return 'node one-liner';
-  if (/\b(perl|ruby|php)\b.*-e\b/.test(lower)) return 'interpreter one-liner';
   if (/\bpowershell\b.*-encodedcommand/.test(lower)) return 'encoded powershell';
 
   // Persistence vectors

@@ -7,6 +7,7 @@ import { config } from '../config.js';
 import { DelegationTier } from '@cabinet/types';
 import { CABINET_DIR } from '@cabinet/storage';
 import { broadcast } from '../ws/handler.js';
+import { AISDKAdapter } from '@cabinet/gateway';
 
 const MASTER_PW = config.masterPassword;
 const SETTINGS_PATH = join(CABINET_DIR, 'settings.json');
@@ -153,6 +154,51 @@ settingsRouter.delete('/api-keys/:id', (c) => {
     return c.json({ status: 'deleted' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
+  }
+});
+
+settingsRouter.post('/api-keys/:id/test', async (c) => {
+  const { apiKeyRepo } = getServerContext();
+  const id = c.req.param('id');
+  const row = apiKeyRepo.findById(id);
+  if (!row) {
+    return c.json({ status: 'error', message: 'API key not found' }, 404);
+  }
+
+  let decryptedKey: string;
+  try {
+    decryptedKey = decryptApiKey(row.encrypted_key, MASTER_PW);
+  } catch {
+    return c.json({ status: 'error', message: 'Failed to decrypt API key' }, 500);
+  }
+
+  const provider = row.provider;
+  const baseUrl = row.base_url ?? undefined;
+
+  // Build a temporary adapter with only this provider
+  const providerConfigs: Record<string, { apiKey: string; baseUrl?: string }> = {
+    [provider]: { apiKey: decryptedKey, ...(baseUrl ? { baseUrl } : {}) },
+  };
+
+  const defaultMapping: Record<string, string> = {
+    deep_reasoning: `${provider}/default`,
+    default: `${provider}/default`,
+    fast_execution: `${provider}/default`,
+  };
+
+  const tempAdapter = new AISDKAdapter(providerConfigs as any, defaultMapping);
+
+  const start = Date.now();
+  try {
+    const result = await tempAdapter.generateText({
+      model: 'default',
+      messages: [{ role: 'user', content: 'Reply with just "OK".' }],
+      maxTokens: 10,
+    });
+    const latency = Date.now() - start;
+    return c.json({ status: 'ok', latency_ms: latency, model: result.model });
+  } catch (e: any) {
+    return c.json({ status: 'error', message: e.message ?? 'Connection failed' }, 503);
   }
 });
 

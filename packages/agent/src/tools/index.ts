@@ -56,6 +56,7 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
     topic: string,
     advisorIds?: string[],
     projectId?: string,
+    chairBrief?: string,
   ) => Promise<{
     meetingId: string;
     topic: string;
@@ -79,7 +80,7 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   updateAgent: (name: string, updates: Record<string, unknown>) => void;
   deleteAgent: (name: string) => void;
   listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
-  invokeAgent: (agentName: string, message: string) => Promise<{ agentName: string; response: string }>;
+  invokeAgent: (agentName: string, message: string, callerSessionId?: string) => Promise<{ agentName: string; response: string }>;
 
   // Project tools
   setProjectContext: (projectId: string) => { id: string; name: string };
@@ -98,6 +99,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       execute: async (args: Record<string, unknown>) => {
         const status = (args.status as string) ?? 'pending';
         const projectId = args.projectId as string | undefined;
+        const chairBrief = args.brief as string | undefined;
         if (projectId) {
           return deps.decisionStore
             .listByProject(projectId)
@@ -263,6 +265,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       name: 'get_project_context',
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
+        const chairBrief = args.brief as string | undefined;
         const ctx = deps.project.get(projectId);
         if (!ctx) return { error: `Project not found: ${projectId}` };
         return {
@@ -387,7 +390,8 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         if (!topic) return { error: 'topic is required' };
         const advisorIds = (args.advisors as string[]) ?? undefined;
         const projectId = args.projectId as string | undefined;
-const result = await deps.startMeeting(topic, advisorIds, projectId);
+        const chairBrief = args.brief as string | undefined;
+const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief);
         return {
           meetingId: result.meetingId,
           topic: result.topic,
@@ -479,12 +483,12 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
     },
     {
       name: 'invoke_agent',
-      execute: async (args: Record<string, unknown>) => {
+      execute: async (args: Record<string, unknown>, context) => {
         const agentName = args.agentName as string;
         const message = args.message as string;
         if (!agentName) return { error: 'agentName is required' };
         if (!message) return { error: 'message is required' };
-        return deps.invokeAgent(agentName, message);
+        return deps.invokeAgent(agentName, message, context?.sessionId);
       },
     },
 
@@ -495,6 +499,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
       name: 'set_project_context',
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
+        const chairBrief = args.brief as string | undefined;
         if (!projectId) return { error: 'projectId is required' };
         const result = deps.setProjectContext(projectId);
         return { activeProject: result };
@@ -523,6 +528,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId);
       name: 'get_project_context',
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
+        const chairBrief = args.brief as string | undefined;
         if (!projectId) return { error: 'projectId is required' };
         return { context: deps.getProjectContext(projectId) };
       },

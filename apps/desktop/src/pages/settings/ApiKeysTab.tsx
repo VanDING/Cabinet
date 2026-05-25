@@ -151,35 +151,190 @@ export function ApiKeysTab() {
       ) : (
         <div className="space-y-2">
           {keys.map((k) => (
-            <div
-              key={k.id}
-              className="flex items-center justify-between rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
-                    {k.provider}
-                  </span>
-                  {k.model && <span className="font-mono text-xs text-gray-400">{k.model}</span>}
-                </div>
-                <p className="mt-0.5 font-mono text-xs text-gray-400">{k.keyPreview}</p>
-              </div>
-              <button
-                onClick={() => handleRemove(k.id)}
-                className="text-xs text-red-500 hover:underline"
-              >
-                Remove
-              </button>
-            </div>
+            <ApiKeyRow key={k.id} item={k} onRemove={handleRemove} />
           ))}
         </div>
       )}
 
-      {/* Test Connection */}
-      {keys.length > 0 && <TestConnectionButton />}
+      {/* Model Mapping Section */}
+      <ModelMappingSection />
 
       {/* Budget Section */}
       <BudgetSection />
+    </div>
+  );
+}
+
+function ApiKeyRow({
+  item,
+  onRemove,
+}: {
+  item: ApiKeyItem;
+  onRemove: (id: string) => void;
+}) {
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [testResult, setTestResult] = useState<{ latencyMs?: number; model?: string; message?: string } | null>(null);
+
+  const handleTest = async () => {
+    setTestStatus('testing');
+    setTestResult(null);
+    try {
+      const res = await apiFetch(`/api/settings/api-keys/${item.id}/test`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setTestResult({ latencyMs: data.latency_ms, model: data.model });
+        setTestStatus('ok');
+      } else {
+        setTestResult({ message: data.message ?? 'Connection failed' });
+        setTestStatus('error');
+      }
+    } catch (e) {
+      setTestResult({ message: (e as Error).message });
+      setTestStatus('error');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
+            {item.provider}
+          </span>
+          {item.model && <span className="font-mono text-xs text-gray-400">{item.model}</span>}
+        </div>
+        <p className="mt-0.5 font-mono text-xs text-gray-400">{item.keyPreview}</p>
+        {testStatus === 'ok' && testResult && (
+          <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+            OK — {testResult.latencyMs}ms · {testResult.model}
+          </p>
+        )}
+        {testStatus === 'error' && testResult && (
+          <p className="mt-1 text-xs text-red-500">{testResult.message}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleTest}
+          disabled={testStatus === 'testing'}
+          className="rounded border px-2 py-1 text-xs transition-colors hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
+        >
+          {testStatus === 'testing' ? 'Testing...' : 'Test'}
+        </button>
+        <button
+          onClick={() => onRemove(item.id)}
+          className="text-xs text-red-500 hover:underline"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ModelMappingSection() {
+  const { addToast } = useToast();
+  const [mapping, setMapping] = useState({
+    default: '',
+    deep_reasoning: '',
+    fast_execution: '',
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/settings/model-config', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => {
+        const m = d.modelMapping ?? {};
+        setMapping({
+          default: m.default ?? '',
+          deep_reasoning: m.deep_reasoning ?? '',
+          fast_execution: m.fast_execution ?? '',
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    const payload: Record<string, string> = {};
+    if (mapping.default.trim()) payload.default = mapping.default.trim();
+    if (mapping.deep_reasoning.trim()) payload.deep_reasoning = mapping.deep_reasoning.trim();
+    if (mapping.fast_execution.trim()) payload.fast_execution = mapping.fast_execution.trim();
+
+    try {
+      const res = await apiFetch('/api/settings/model-config', {
+        method: 'PUT',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ modelMapping: payload }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Failed to save' }));
+        addToast('error', err.message ?? 'Failed to save model mapping');
+        return;
+      }
+      addToast('success', 'Model mapping saved');
+      window.dispatchEvent(new CustomEvent('apikeys_changed'));
+    } catch (e) {
+      addToast('error', `Failed to save model mapping: ${(e as Error).message}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mt-6 border-t pt-6 dark:border-gray-700">
+        <p className="text-sm text-gray-400">Loading model configuration...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 border-t pt-6 dark:border-gray-700">
+      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Model Mapping</h3>
+      <p className="mb-3 text-xs text-gray-500">
+        Leave empty to use automatic inference. Cross-provider mixing is supported, e.g. openai/gpt-4o, deepseek/deepseek-v4-flash.
+      </p>
+      <div className="space-y-3 max-w-lg">
+        <div>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Default Model (default)</label>
+          <input
+            type="text"
+            placeholder="e.g. openai/gpt-4o"
+            value={mapping.default}
+            onChange={(e) => setMapping((p) => ({ ...p, default: e.target.value }))}
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Deep Reasoning Model (deep_reasoning)</label>
+          <input
+            type="text"
+            placeholder="e.g. anthropic/claude-opus-4-7"
+            value={mapping.deep_reasoning}
+            onChange={(e) => setMapping((p) => ({ ...p, deep_reasoning: e.target.value }))}
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Fast Execution Model (fast_execution)</label>
+          <input
+            type="text"
+            placeholder="e.g. anthropic/claude-haiku-4-5"
+            value={mapping.fast_execution}
+            onChange={(e) => setMapping((p) => ({ ...p, fast_execution: e.target.value }))}
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          />
+        </div>
+      </div>
+      <button
+        onClick={handleSave}
+        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+      >
+        Save Model Mapping
+      </button>
     </div>
   );
 }
@@ -239,55 +394,6 @@ function BudgetSection() {
       >
         Save Budget
       </button>
-    </div>
-  );
-}
-
-function TestConnectionButton() {
-  const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
-  const [result, setResult] = useState<{ latencyMs: number; model: string; tokens: any } | null>(
-    null,
-  );
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const handleTest = async () => {
-    setStatus('testing');
-    setResult(null);
-    setErrorMsg('');
-    try {
-      const res = await apiFetch('/api/secretary/verify', { headers: authHeaders() });
-      const data = await res.json();
-      if (data.status === 'ok') {
-        setResult({ latencyMs: data.latency_ms, model: data.model, tokens: data.tokens });
-        setStatus('ok');
-      } else {
-        setErrorMsg(data.message ?? 'Connection failed');
-        setStatus('error');
-      }
-    } catch (e) {
-      setErrorMsg((e as Error).message);
-      setStatus('error');
-    }
-  };
-
-  return (
-    <div className="mt-4 border-t pt-4 dark:border-gray-700">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleTest}
-          disabled={status === 'testing'}
-          className="rounded-lg border px-3 py-1.5 text-sm transition-colors hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-800"
-        >
-          {status === 'testing' ? 'Testing...' : 'Test Connection'}
-        </button>
-        {status === 'ok' && result && (
-          <span className="text-sm text-green-600 dark:text-green-400">
-            OK — {result.latencyMs}ms · {result.model} ·{' '}
-            {(result.tokens?.promptTokens ?? 0) + (result.tokens?.completionTokens ?? 0)} tokens
-          </span>
-        )}
-        {status === 'error' && <span className="text-sm text-red-500">{errorMsg}</span>}
-      </div>
     </div>
   );
 }

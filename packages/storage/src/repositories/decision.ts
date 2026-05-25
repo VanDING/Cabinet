@@ -21,6 +21,7 @@ function rowToDecision(row: Record<string, unknown>): Decision {
     options,
     chosenOptionId: row.chosen_option_id as string | undefined,
     captainId: row.captain_id as string | undefined,
+    analysis: row.analysis as string | undefined,
     createdAt: new Date(row.created_at as string),
     resolvedAt: row.resolved_at ? new Date(row.resolved_at as string) : undefined,
   };
@@ -32,8 +33,8 @@ export class DecisionRepository {
   save(decision: Decision): void {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO decisions (id, project_id, type, level, status, title, description, options, chosen_option_id, captain_id, created_at, resolved_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO decisions (id, project_id, type, level, status, title, description, options, chosen_option_id, captain_id, analysis, created_at, resolved_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         decision.id,
@@ -46,6 +47,7 @@ export class DecisionRepository {
         JSON.stringify(decision.options),
         decision.chosenOptionId ?? null,
         decision.captainId ?? null,
+        decision.analysis ?? null,
         decision.createdAt.toISOString(),
         decision.resolvedAt?.toISOString() ?? null,
       );
