@@ -470,10 +470,11 @@ const MessageRow = memo(function MessageRow({
                   ))}
                 </div>
               )}
+              <MarkdownContent content={msg.content} />
               {msg.thinking && (() => {
                 const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
                 return (
-                  <details className="thinking-block">
+                  <details className="thinking-block mb-2" open>
                     <summary className="thinking-summary">{t('chat.thinking')} {duration}</summary>
                     <pre className="thinking-content">{msg.thinking.replace(/\n?<!--segment-->\n?/g, '\n')}</pre>
                   </details>
@@ -482,7 +483,6 @@ const MessageRow = memo(function MessageRow({
               {msg.toolCalls && msg.toolCalls.length > 0 && (
                 <ToolCallSummary toolCalls={msg.toolCalls} isStreaming={msg.isStreaming} />
               )}
-              <MarkdownContent content={msg.content} />
               {msg.content.includes('[INCOMPLETE: max_steps_reached]') && onContinue && (
                 <button
                   onClick={() => onContinue(msg.id)}

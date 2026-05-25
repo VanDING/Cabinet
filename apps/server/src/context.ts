@@ -73,7 +73,7 @@ import type { ToolDependencies } from '@cabinet/agent';
 import { createStandardToolExecutor } from './agent-factory.js';
 import { SkillExtractor } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
-import { TaskScheduler } from './scheduler.js';
+import { TaskScheduler, setSchedulerBroadcast } from './scheduler.js';
 import { startApprovalPolling, stopApprovalPolling } from './routes/workflows.js';
 import {
   ObservabilityCollector,
@@ -1608,6 +1608,7 @@ export function getServerContext(): ServerContext {
 
   // Task scheduler
   const taskScheduler = new TaskScheduler(new ScheduledTaskRepository(db), decisionRepo, logger);
+  setSchedulerBroadcast((event, payload) => broadcast(event as any, payload as any));
   taskScheduler.start();
 
   // Memory maintenance: decay cycle every hour, index rebuild weekly on Sunday 3 AM

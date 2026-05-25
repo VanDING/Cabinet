@@ -75,7 +75,17 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
           <p className={sub}>No deliverables yet. They are auto-created when meetings or workflows complete.</p>
         ) : (
           filtered.map((d) => (
-            <div key={d.id} className={`rounded-lg border ${border} ${isDark ? 'bg-gray-800' : 'bg-gray-50'} p-3`}>
+            <div
+              key={d.id}
+              className={`rounded-lg border ${border} ${isDark ? 'bg-gray-800' : 'bg-gray-50'} p-3 cursor-pointer hover:opacity-90`}
+              onClick={() => {
+                if (d.filePath) {
+                  window.dispatchEvent(new CustomEvent('open-file-viewer', {
+                    detail: { path: d.filePath, name: d.title, mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined, projectId: d.projectId },
+                  }));
+                }
+              }}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-2">
                   <FileText size={16} className="flex-shrink-0 mt-0.5" />
@@ -84,7 +94,10 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
                     <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${typeColors[d.type] ?? 'bg-gray-100 text-gray-600'}`}>{d.type.replace('_', ' ')}</span>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(d.id)} className={`p-1 rounded ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} text-red-500`}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
+                  className={`p-1 rounded ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} text-red-500`}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>

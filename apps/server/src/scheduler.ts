@@ -3,6 +3,12 @@ import { CronExpressionParser } from 'cron-parser';
 import cron from 'node-cron';
 import type { ScheduledTaskRepository, DecisionRepository } from '@cabinet/storage';
 
+// Broadcast is injected lazily to avoid circular dependencies
+let broadcastFn: ((event: string, payload: unknown) => void) | null = null;
+export function setSchedulerBroadcast(fn: (event: string, payload: unknown) => void): void {
+  broadcastFn = fn;
+}
+
 export interface SchedulerLogger {
   info(msg: string, meta?: Record<string, unknown>): void;
   warn(msg: string, meta?: Record<string, unknown>): void;
@@ -156,6 +162,7 @@ export class TaskScheduler {
       if (this.executor) {
         await this.executor(task);
       }
+      broadcastFn?.('task_executed', { taskId: task.id, name: task.name, executedAt: now });
     } catch (err) {
       this.logger.error('Task execution error', { id: task.id, error: (err as Error).message });
     }
