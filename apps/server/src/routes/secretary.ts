@@ -1545,6 +1545,17 @@ const reviewerLoopCache = new Map<string, AgentLoop>();
 const REVIEWER_CACHE_SIZE = 20;
 let lastGatewayCheck = false;
 
+// Per-session trust level overrides (detected from natural language)
+const sessionTrustLevel = new Map<string, import('@cabinet/agent').TrustLevel>();
+
+function detectTrustLevelOverride(msg: string): import('@cabinet/agent').TrustLevel | null {
+  const lower = msg.toLowerCase();
+  if (lower.includes('允许你多尝试几次') || lower.includes('放手去做') || lower.includes('大胆尝试')) return 'T2';
+  if (lower.includes('谨慎处理') || lower.includes('不要擅自') || lower.includes('小心')) return 'T0';
+  if (lower.includes('完全信任') || lower.includes('调试模式') || lower.includes('debug')) return 'T3';
+  return null;
+}
+
 // Keep cached agent loops in sync with delegation tier changes from the UI
 onTierChange((tier: DelegationTier) => {
   for (const loop of agentLoopCache.values()) {
@@ -1630,6 +1641,7 @@ function getAgentLoopForRole(
     temperature: role.temperature,
     contextBudget: role.contextBudget,
     thinkingBudget,
+    trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
   });
 
   // FIFO eviction
@@ -1994,6 +2006,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       temperature: secretaryRole?.temperature ?? 0.5,
       contextBudget: secretaryRole?.contextBudget,
       thinkingBudget,
+      trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
     });
     secretaryLoop.onSessionComplete = (summary) => {
       const obs = getServerContext().observability;
@@ -2105,6 +2118,13 @@ secretaryRouter.post('/chat', async (c) => {
   const stream = parsed.data.stream ?? false;
   const dispatchMode: DispatchMode = parsed.data.dispatchMode ?? 'single';
   const thinkingBudget = parsed.data.thinkingBudget ?? undefined;
+
+  // Detect trust level override from natural language
+  const trustOverride = detectTrustLevelOverride(message);
+  if (trustOverride) {
+    sessionTrustLevel.set(sessionId, trustOverride);
+    ctx.logger.info('Trust level overridden via chat', { sessionId, trustLevel: trustOverride });
+  }
 
   // Use 'global' as sentinel when no project is selected (no auto-creation)
   if (!projectId) {
