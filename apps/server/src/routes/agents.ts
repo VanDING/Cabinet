@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { getServerContext } from '../context.js';
+import { broadcast } from '../ws/handler.js';
 import { A2AClient } from '../a2a/a2a-client.js';
 import { CABINET_DIR } from '@cabinet/storage';
 
@@ -146,6 +147,7 @@ agentsRouter.post('/import', async (c) => {
       created_at: new Date().toISOString(),
     });
 
+    broadcast('agent_created', { name });
     logger.info('Agent imported from JSON', { name });
     return c.json({ name, status: 'imported', path: join(dir, 'agent.json') }, 201);
   }
@@ -192,6 +194,7 @@ agentsRouter.post('/import', async (c) => {
     created_at: new Date().toISOString(),
   });
 
+  broadcast('agent_created', { name });
   logger.info('Agent imported from .md', { name });
   return c.json({ name, status: 'imported', path: join(dir, 'agent.json'), mdPath: join(dir, 'agent.md') }, 201);
 });
@@ -213,6 +216,7 @@ agentsRouter.delete('/:type', (c) => {
   const agentDir = join(AGENTS_DIR, agent.name);
   try { rmSync(agentDir, { recursive: true, force: true }); } catch { /* ok */ }
 
+  broadcast('agent_deleted', { name: agent.name });
   logger.info('Custom agent deleted', { type, name: agent.name });
   return c.json({ status: 'deleted', type });
 });

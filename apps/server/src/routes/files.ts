@@ -128,7 +128,7 @@ filesRouter.get('/read', async (c) => {
       'md': 'text/markdown', 'html': 'text/html', 'css': 'text/css', 'js': 'text/javascript',
       'ts': 'text/typescript', 'tsx': 'text/typescript', 'jsx': 'text/javascript',
     };
-    return c.json({ path: filePath, content, size: content.length, encoding: 'utf-8', mimeType: mimeMap[ext] ?? 'text/plain' });
+    return c.json({ path: filePath, content, size: content.length, encoding: 'utf-8', mimeType: mimeMap[ext] ?? 'text/plain', absolutePath: fullPath });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 404);
   }
