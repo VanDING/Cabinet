@@ -77,7 +77,9 @@ export class ContextBuilder {
       taskDescription: options.taskDescription,
     };
     const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
-    const rulesSummary = this.rulesLoader?.summarize() ?? '';
+    // rulesSummary is computed on-demand via getOnDemandRules(); including it here
+    // caused a second full disk traversal via summarize()->loadAll().
+    const rulesSummary = '';
 
     let systemPrompt: string;
     if (options.systemPrompt && !options.roleSystemPrompt) {
