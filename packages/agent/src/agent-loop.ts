@@ -5,7 +5,7 @@ import { ToolExecutor } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
 import { CheckpointManager, type CheckpointState } from './checkpoint.js';
-import { ContextBuilder, type MemoryProvider, type ContextBuildResult } from './context-builder.js';
+import { ContextBuilder, type MemoryProvider, type ContextBuildResult, type PrebuiltContext } from './context-builder.js';
 import type { RulesLoader } from './rules-loader.js';
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
@@ -88,6 +88,8 @@ export interface AgentLoopOptions {
   projectRoot?: string;
   /** Optional rules loader for hierarchical rule injection. */
   rulesLoader?: RulesLoader;
+  /** Pre-built context for strict consistency (skips self-collection in ContextBuilder). */
+  prebuiltContext?: PrebuiltContext;
 }
 
 export interface AgentResult {
@@ -250,6 +252,7 @@ export class AgentLoop {
         // RAG is only useful on the first step; tool-result steps reuse context
         taskDescription: steps === 0 ? this.options.taskDescription : undefined,
         memorySessionId: this.options.memorySessionId,
+        prebuiltContext: this.options.prebuiltContext,
       });
 
       // ── Project snapshot injection ──
@@ -654,6 +657,7 @@ export class AgentLoop {
       activeFiles: this.options.activeFiles,
       taskDescription: this.options.taskDescription,
       memorySessionId: this.options.memorySessionId,
+      prebuiltContext: this.options.prebuiltContext,
     });
 
     // Inject project snapshot into system prompt for streaming too
