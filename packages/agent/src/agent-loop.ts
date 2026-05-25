@@ -254,10 +254,11 @@ export class AgentLoop {
 
       // ── Project snapshot injection ──
       let systemPrompt = ctx.systemPrompt;
-      const snapshot = ProjectSnapshot.getCached(this.options.sessionId)
+      const projectRoot = this.options.projectRoot ?? process.cwd();
+      const snapshot = ProjectSnapshot.getCached(projectRoot)
         ?? (() => {
-          const captured = ProjectSnapshot.capture(this.options.projectRoot ?? process.cwd());
-          ProjectSnapshot.store(this.options.sessionId, captured);
+          const captured = ProjectSnapshot.capture(projectRoot);
+          ProjectSnapshot.store(projectRoot, captured);
           return captured;
         })();
       if (snapshot && !this.options.systemPrompt) {
@@ -657,7 +658,8 @@ export class AgentLoop {
 
     // Inject project snapshot into system prompt for streaming too
     let streamingSystemPrompt = ctx.systemPrompt;
-    const snap = ProjectSnapshot.getCached(this.options.sessionId);
+    const streamingRoot = this.options.projectRoot ?? process.cwd();
+    const snap = ProjectSnapshot.getCached(streamingRoot);
     if (snap && !this.options.systemPrompt) {
       streamingSystemPrompt = `${streamingSystemPrompt}\n\n## Project Structure\n${snap.summary}\n\nKey directories:\n${snap.tree.slice(0, 20).join('\n')}`;
     }
