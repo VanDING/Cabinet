@@ -173,21 +173,25 @@ export function OfficePage() {
     window.addEventListener('ws:decision_updated', refreshStats);
     window.addEventListener('ws:meeting_created', refreshStats);
     window.addEventListener('ws:project_created', refreshStats);
+    window.addEventListener('ws:project_updated', refreshStats);
     window.addEventListener('ws:project_deleted', refreshStats);
     window.addEventListener('ws:workflow_started', refreshStats);
     window.addEventListener('ws:workflow_completed', refreshStats);
     window.addEventListener('ws:cost_updated', refreshStats);
     window.addEventListener('ws:task_updated', refreshStats);
+    window.addEventListener('ws:task_executed', refreshStats);
     return () => {
       window.removeEventListener('ws:decision_created', refreshStats);
       window.removeEventListener('ws:decision_updated', refreshStats);
       window.removeEventListener('ws:meeting_created', refreshStats);
       window.removeEventListener('ws:project_created', refreshStats);
+      window.removeEventListener('ws:project_updated', refreshStats);
       window.removeEventListener('ws:project_deleted', refreshStats);
       window.removeEventListener('ws:workflow_started', refreshStats);
       window.removeEventListener('ws:workflow_completed', refreshStats);
       window.removeEventListener('ws:cost_updated', refreshStats);
       window.removeEventListener('ws:task_updated', refreshStats);
+      window.removeEventListener('ws:task_executed', refreshStats);
     };
   }, [refreshStats]);
 
