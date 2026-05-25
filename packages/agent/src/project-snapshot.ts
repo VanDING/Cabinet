@@ -90,14 +90,14 @@ export class ProjectSnapshot {
     return snapshot;
   }
 
-  /** Retrieve a cached snapshot for a session. */
-  static getCached(sessionId: string): Snapshot | null {
-    return snapshotCache.get(sessionId) ?? null;
+  /** Retrieve a cached snapshot for a project root. */
+  static getCached(projectRoot: string): Snapshot | null {
+    return snapshotCache.get(projectRoot) ?? null;
   }
 
-  /** Store a snapshot into the session cache. */
-  static store(sessionId: string, snapshot: Snapshot): void {
-    snapshotCache.set(sessionId, snapshot);
+  /** Store a snapshot keyed by project root (shared across sessions). */
+  static store(projectRoot: string, snapshot: Snapshot): void {
+    snapshotCache.set(projectRoot, snapshot);
   }
 
   /** Build a concise human-readable summary from discovered key files. */
