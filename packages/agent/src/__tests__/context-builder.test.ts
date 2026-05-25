@@ -5,11 +5,13 @@ import { RulesLoader } from '../rules-loader.js';
 
 class SpyMemoryProvider implements MemoryProvider {
   calls: { method: string; args: unknown[] }[] = [];
+  projectCallCount = 0;
 
   async getShortTerm(_sessionId: string) {
     return [];
   }
   async getProjectContext(_projectId: string) {
+    this.projectCallCount++;
     return 'Test project';
   }
   async getEntityPreferences(_captainId: string) {
@@ -59,6 +61,59 @@ describe('ContextBuilder RAG cache', () => {
   it('does not cache when taskDescription is absent', async () => {
     await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
     expect(memory.calls).toHaveLength(0);
+  });
+});
+
+describe('ContextBuilder context cache', () => {
+  let memory: SpyMemoryProvider;
+  let builder: ContextBuilder;
+
+  beforeEach(() => {
+    memory = new SpyMemoryProvider();
+    builder = new ContextBuilder(memory);
+  });
+
+  it('reuses cached project context and rules within 5s for same projectId across sessions', async () => {
+    const loader = new RulesLoader([]);
+    let loadMatchingCalls = 0;
+    const orig = loader.loadMatching.bind(loader);
+    loader.loadMatching = (ctx) => { loadMatchingCalls++; return orig(ctx); };
+    builder.withRules(loader);
+
+    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(1);
+    expect(loadMatchingCalls).toBe(1);
+
+    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(1); // cached
+    expect(loadMatchingCalls).toBe(1); // cached
+  });
+
+  it('refreshes context cache after TTL expires', async () => {
+    vi.useFakeTimers();
+    const loader = new RulesLoader([]);
+    let loadMatchingCalls = 0;
+    const orig = loader.loadMatching.bind(loader);
+    loader.loadMatching = (ctx) => { loadMatchingCalls++; return orig(ctx); };
+    builder.withRules(loader);
+
+    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(1);
+
+    vi.advanceTimersByTime(6_000);
+    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(2);
+    expect(loadMatchingCalls).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it('clears context cache by projectId', async () => {
+    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(1);
+
+    builder.clearSessionCache('s1', 'p1');
+    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBe(2);
   });
 });
 
