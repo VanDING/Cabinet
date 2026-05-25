@@ -59,7 +59,7 @@ export class BlueprintDeployer {
             name: agent.name,
             description: `Agent created from Organize blueprint: ${blueprint.meta?.goal ?? 'no goal'}`,
             systemPrompt: agent.prompt ?? `You are ${agent.name}. Execute your designated tasks.`,
-            model: 'claude-haiku-4-5',
+            model: 'fast_execution',
             temperature: 0.3,
             maxResponseTokens: 4000,
             allowedTools: [],

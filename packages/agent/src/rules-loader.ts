@@ -23,6 +23,7 @@
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -75,8 +76,12 @@ function globMatch(pattern: string, filepath: string): boolean {
 export class RulesLoader {
   private cache: Map<string, LoadedRule[]> = new Map();
   private fileTimestamps: Map<string, number> = new Map();
+  private globalFileTimestamp = 0;
 
-  constructor(private readonly rulesDirs: string[]) {}
+  constructor(
+    private readonly rulesDirs: string[],
+    private readonly globalFile?: string,
+  ) {}
 
   /** Create a loader scanning the default locations. */
   static default(): RulesLoader {
@@ -87,10 +92,12 @@ export class RulesLoader {
     const projectRules = join(cwd, '.cabinet', 'rules');
     if (existsSync(projectRules)) dirs.push(projectRules);
 
-    // Project-level CABINET.md (as index)
-    // CABINET.md itself is read separately; rules/ contains sub-documents
+    // Global .cabinet/rules/
+    const homeRules = join(homedir(), '.cabinet', 'rules');
+    if (existsSync(homeRules)) dirs.push(homeRules);
 
-    return new RulesLoader(dirs);
+    const globalFile = join(homedir(), '.cabinet', 'CABINET.md');
+    return new RulesLoader(dirs, existsSync(globalFile) ? globalFile : undefined);
   }
 
   /** Create a loader for a specific project (used when Cabinet manages agents for a project). */
@@ -98,12 +105,24 @@ export class RulesLoader {
     const dirs: string[] = [];
     const cabinetRules = join(projectRoot, '.cabinet', 'rules');
     if (existsSync(cabinetRules)) dirs.push(cabinetRules);
-    return new RulesLoader(dirs);
+
+    // Global .cabinet/rules/
+    const homeRules = join(homedir(), '.cabinet', 'rules');
+    if (existsSync(homeRules)) dirs.push(homeRules);
+
+    const globalFile = join(homedir(), '.cabinet', 'CABINET.md');
+    return new RulesLoader(dirs, existsSync(globalFile) ? globalFile : undefined);
   }
 
   /** Load all rules, optionally filtered by context. */
   loadAll(ctx?: RulesContext): LoadedRule[] {
     const allRules: LoadedRule[] = [];
+
+    // Global file rules are loaded first (highest precedence: constitution)
+    if (this.globalFile) {
+      const globalRule = this.loadGlobalFile();
+      if (globalRule) allRules.push(globalRule);
+    }
 
     for (const dir of this.rulesDirs) {
       const dirRules = this.loadDirectory(dir);
@@ -142,9 +161,35 @@ export class RulesLoader {
   reload(): void {
     this.cache.clear();
     this.fileTimestamps.clear();
+    this.globalFileTimestamp = 0;
   }
 
   // ── Private ────────────────────────────────────────────────
+
+  private loadGlobalFile(): LoadedRule | null {
+    if (!this.globalFile || !existsSync(this.globalFile)) return null;
+
+    const mtime = statSync(this.globalFile).mtimeMs;
+    if (mtime === this.globalFileTimestamp) {
+      // Return cached global rule if present
+      const cached = this.cache.get('__global__');
+      if (cached && cached.length > 0) return cached[0]!;
+    }
+    this.globalFileTimestamp = mtime;
+
+    try {
+      const parsed = this.parseRuleFile(this.globalFile, '');
+      if (parsed) {
+        // Force global file to always mode regardless of frontmatter
+        const globalRule: LoadedRule = { ...parsed, mode: 'always' };
+        this.cache.set('__global__', [globalRule]);
+        return globalRule;
+      }
+    } catch {
+      // skip unparseable file
+    }
+    return null;
+  }
 
   private loadDirectory(dir: string): LoadedRule[] {
     // Check cache freshness

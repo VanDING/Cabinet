@@ -1,10 +1,19 @@
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import type { HierarchicalNSW as HierarchicalNSWType } from 'hnswlib-node';
-import hnswlib from 'hnswlib-node';
-const HierarchicalNSW = (hnswlib as any).HierarchicalNSW as typeof HierarchicalNSWType;
 import { LongTermMemoryRepository, type Database } from '@cabinet/storage';
+
+const req = typeof require !== 'undefined' ? require : createRequire(import.meta.url);
+
+let HierarchicalNSW: typeof HierarchicalNSWType | null = null;
+try {
+  const hnswlib = req('hnswlib-node');
+  HierarchicalNSW = hnswlib.HierarchicalNSW as typeof HierarchicalNSWType;
+} catch {
+  // Native addon not available — vector search disabled
+}
 import type { KnowledgeGraph } from './knowledge-graph.js';
 
 export interface LongTermEntry {
@@ -72,6 +81,10 @@ export class LongTermMemory {
     const indexDir = dirname(this.indexPath);
     if (!existsSync(indexDir)) {
       mkdirSync(indexDir, { recursive: true });
+    }
+
+    if (!HierarchicalNSW) {
+      return;
     }
 
     try {
@@ -415,7 +428,7 @@ export class LongTermMemory {
 
   /** Rebuild HNSW index from SQLite (e.g., after corruption or version mismatch). */
   async rebuildIndex(): Promise<void> {
-    if (!this.hnsw) return;
+    if (!this.hnsw || !HierarchicalNSW) return;
     this.hnsw = new HierarchicalNSW('cosine', this.dimension);
     this.hnsw.initIndex(INITIAL_MAX_ELEMENTS, 16, 200);
     this.nextLabel = 0;

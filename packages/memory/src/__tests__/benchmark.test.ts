@@ -6,6 +6,15 @@ import { ShortTermMemory } from '../short-term.js';
 import { EntityMemory } from '../entity.js';
 import { ProjectMemory } from '../project.js';
 
+const hnswAvailable = (() => {
+  try {
+    require('hnswlib-node');
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 function randomVec(dim: number): number[] {
   return Array.from({ length: dim }, () => Math.random());
 }
@@ -93,7 +102,7 @@ describe('Benchmark: Retrieval Performance', () => {
     try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
   });
 
-  it('semantic search p95 < 100ms (10000 entries)', async () => {
+  (hnswAvailable ? it : it.skip)('semantic search p95 < 100ms (10000 entries)', async () => {
     const times: number[] = [];
     for (let i = 0; i < 50; i++) {
       const q = randomVec(DIM);
@@ -170,7 +179,7 @@ describe('Benchmark: Semantic Search Accuracy', () => {
     try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
   });
 
-  it('top-5 recall rate > 85% for cluster queries', async () => {
+  (hnswAvailable ? it : it.skip)('top-5 recall rate > 85% for cluster queries', async () => {
     const queries = [
       { vec: Array.from({ length: DIM }, (_, d) => (d >= 0 && d < 42) ? 0.9 : 0.1), expectedCluster: 'react' },
       { vec: Array.from({ length: DIM }, (_, d) => (d >= 42 && d < 84) ? 0.9 : 0.1), expectedCluster: 'vue' },

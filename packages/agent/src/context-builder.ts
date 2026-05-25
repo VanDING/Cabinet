@@ -11,7 +11,18 @@ export interface ContextBuilderOptions {
   sessionId: string;
   projectId: string;
   captainId: string;
+  /**
+   * Legacy full-override mode. When provided, bypasses all tiered assembly
+   * (Tier 1 + Tier 2 + rules + RAG) and returns this string directly.
+   * Prefer `roleSystemPrompt` for normal use to preserve rule injection.
+   */
   systemPrompt?: string;
+  /**
+   * Role-specific instructions that replace the hardcoded Tier 1 text,
+   * while still assembling Tier 2 (project context + preferences + rules)
+   * and Tier 3 (RAG). Use this for normal agent construction.
+   */
+  roleSystemPrompt?: string;
   /** Files currently active in the session (for rule glob matching). */
   activeFiles?: string[];
   /** Current task description (for semantic rule matching). */
@@ -65,8 +76,18 @@ export class ContextBuilder {
     const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
     const rulesSummary = this.rulesLoader?.summarize() ?? '';
 
-    let systemPrompt =
-      options.systemPrompt ?? this.buildDefaultSystemPrompt(projectContext, preferences, rules);
+    let systemPrompt: string;
+    if (options.systemPrompt && !options.roleSystemPrompt) {
+      // Legacy full-override mode: skip all tiered assembly
+      systemPrompt = options.systemPrompt;
+    } else {
+      systemPrompt = this.buildDefaultSystemPrompt(
+        projectContext,
+        preferences,
+        rules,
+        options.roleSystemPrompt,
+      );
+    }
 
     // Retrieve and inject RAG results at the end of system prompt (fixed position)
     if (options.taskDescription) {
@@ -108,7 +129,10 @@ export class ContextBuilder {
   }
 
   /** Build Tier 1: static role instructions (stable across all calls). */
-  private buildTier1Prompt(): string {
+  private buildTier1Prompt(roleSystemPrompt?: string): string {
+    if (roleSystemPrompt) {
+      return roleSystemPrompt;
+    }
     return [
       'You are a Cabinet AI assistant (Secretary).',
       'You have access to file system tools (read_file, write_file, edit_file, apply_patch, move_file, copy_file, make_directory, file_info, list_directory, glob, grep, delete_file), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
@@ -163,8 +187,9 @@ export class ContextBuilder {
     projectContext: string,
     preferences: Record<string, unknown>,
     rules: { path: string; content: string }[],
+    roleSystemPrompt?: string,
   ): string {
-    const tier1 = this.buildTier1Prompt();
+    const tier1 = this.buildTier1Prompt(roleSystemPrompt);
     const tier2 = this.buildTier2Prompt(projectContext, preferences, rules);
     return [tier1, tier2].join('\n\n');
   }
@@ -173,8 +198,9 @@ export class ContextBuilder {
     projectContext: string,
     preferences: Record<string, unknown>,
     rules: { path: string; content: string }[],
+    roleSystemPrompt?: string,
   ): string {
-    const cached = this.buildCachedSystemPrompt(projectContext, preferences, rules);
+    const cached = this.buildCachedSystemPrompt(projectContext, preferences, rules, roleSystemPrompt);
     return [cached, 'Help the Captain make decisions. Present options clearly with impact analysis.'].join('\n\n');
   }
 }

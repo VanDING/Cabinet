@@ -14,6 +14,7 @@ import { runMigration011 } from './011_memory_metadata_index.js';
 import { runMigration015 } from './015_memory_graph.js';
 import { runMigration016 } from './016_workflow_run_steps.js';
 import { runMigration017 } from './017_api_keys_columns.js';
+import { runMigration018 } from './018_decision_analysis.js';
 
 export interface MigrationEntry {
   version: number;
@@ -37,6 +38,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 15, name: '015_memory_graph', up: runMigration015 },
   { version: 16, name: '016_workflow_run_steps', up: runMigration016 },
   { version: 17, name: '017_api_keys_columns', up: runMigration017 },
+  { version: 18, name: '018_decision_analysis', up: runMigration018 },
 ];
 
 /**
