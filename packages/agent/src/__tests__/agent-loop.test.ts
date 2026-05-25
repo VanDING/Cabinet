@@ -187,3 +187,83 @@ describe('AgentLoop', () => {
     expect(loaded!.step).toBe(3);
   });
 });
+
+class CountingMemoryProvider implements MemoryProvider {
+  searchLongTermCalls = 0;
+
+  async getShortTerm(_sessionId: string) {
+    return [];
+  }
+  async getProjectContext(_projectId: string) {
+    return 'Test project';
+  }
+  async getEntityPreferences(_captainId: string) {
+    return {};
+  }
+  async searchLongTerm(_query: string, _projectId: string) {
+    this.searchLongTermCalls++;
+    return ['memory result'];
+  }
+}
+
+describe('AgentLoop RAG step optimization', () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it('calls searchLongTerm only on step 0, not on tool-result steps', async () => {
+    let callCount = 0;
+    const memory = new CountingMemoryProvider();
+    const mockGateway: LLMGateway = {
+      async generateText(_options: LLMCallOptions): Promise<LLMResponse> {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            content: '',
+            toolCalls: [{ id: 'tc1', name: 'echo', arguments: { message: 'test' } }],
+            usage: { promptTokens: 10, completionTokens: 5 },
+            model: 'test-model',
+          };
+        }
+        return {
+          content: 'Done.',
+          usage: { promptTokens: 10, completionTokens: 5 },
+          model: 'test-model',
+        };
+      },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
+      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
+        return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
+      },
+    };
+
+    const toolExecutor = new ToolExecutor();
+    toolExecutor.register({
+      name: 'echo',
+      execute: async (args) => args.message,
+    });
+
+    const loop = new AgentLoop({
+      gateway: mockGateway,
+      toolExecutor,
+      safetyChecker: new SafetyChecker(),
+      checkpointManager: new CheckpointManager(db),
+      memoryProvider: memory,
+      sessionId: 'sess-rag',
+      projectId: 'proj-rag',
+      captainId: 'captain-1',
+      taskDescription: 'analyze codebase',
+      maxSteps: 5,
+    });
+
+    await loop.run('Hello');
+    expect(memory.searchLongTermCalls).toBe(1);
+  });
+});
