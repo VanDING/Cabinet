@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
-import { readdirSync, statSync, existsSync, writeFileSync, unlinkSync, readFileSync } from 'node:fs';
+import { readdirSync, statSync, existsSync, writeFileSync, unlinkSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, relative, basename, extname } from 'node:path';
 import { CABINET_DIR } from '@cabinet/storage';
 
@@ -91,6 +91,13 @@ projectsRouter.post('/', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
 
   const d = parsed.data;
+
+  // Name uniqueness check
+  const existing = projectRepo.findByName(d.name);
+  if (existing) {
+    return c.json({ error: 'Project name already exists' }, 409);
+  }
+
   const id = `proj_${Date.now()}`;
 
   projectRepo.create({
@@ -101,6 +108,27 @@ projectsRouter.post('/', async (c) => {
     rootPath: d.rootPath ?? '',
     createdAt: new Date(),
   });
+
+  // Initialize physical project directory
+  const projectDir = join(CABINET_DIR, 'projects', d.name);
+  if (!existsSync(projectDir)) {
+    mkdirSync(projectDir, { recursive: true });
+    mkdirSync(join(projectDir, '.cabinet', 'rules'), { recursive: true });
+    mkdirSync(join(projectDir, '.cabinet', 'skills'), { recursive: true });
+    mkdirSync(join(projectDir, '.cabinet', 'mcp'), { recursive: true });
+    mkdirSync(join(projectDir, 'deliverables'), { recursive: true });
+  } else {
+    // Reuse existing folder but clean old data (preserve .cabinet/ config)
+    const entries = readdirSync(projectDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === '.cabinet') continue;
+      const fullPath = join(projectDir, entry.name);
+      rmSync(fullPath, { recursive: true, force: true });
+    }
+  }
+
+  // Update rootPath to the initialized directory
+  projectRepo.update(id, { rootPath: projectDir });
 
   // Create project_context entry
   projectContextRepo.insert({
@@ -139,7 +167,7 @@ projectsRouter.post('/', async (c) => {
 
   // Write project index file
   writeProjectIndex({
-    id, name: d.name, description: d.description, rootPath: d.rootPath,
+    id, name: d.name, description: d.description, rootPath: projectDir,
   });
 
   logger.info('Project created', { id, name: d.name });
