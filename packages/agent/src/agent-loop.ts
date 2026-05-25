@@ -55,6 +55,15 @@ export interface StreamingCallback {
   onError?(error: string): void;
 }
 
+export type TrustLevel = 'T0' | 'T1' | 'T2' | 'T3';
+
+const TRUST_THRESHOLDS: Record<TrustLevel, { maxConsecutiveErrors: number; maxProbeTools: number }> = {
+  T0: { maxConsecutiveErrors: 2, maxProbeTools: 3 },
+  T1: { maxConsecutiveErrors: 3, maxProbeTools: 5 },
+  T2: { maxConsecutiveErrors: 5, maxProbeTools: 10 },
+  T3: { maxConsecutiveErrors: 10, maxProbeTools: Infinity },
+};
+
 export interface AgentLoopOptions {
   gateway: LLMGateway;
   toolExecutor: ToolExecutor;
@@ -90,6 +99,8 @@ export interface AgentLoopOptions {
   rulesLoader?: RulesLoader;
   /** Pre-built context for strict consistency (skips self-collection in ContextBuilder). */
   prebuiltContext?: PrebuiltContext;
+  /** User-configurable trust level (T0-T3) for error tolerance and tool limits. */
+  trustLevel?: TrustLevel;
 }
 
 export interface AgentResult {
@@ -241,7 +252,19 @@ export class AgentLoop {
     const handoff = this.sessionHandoff;
 
     let warnedThreshold = false;
+    let consecutiveErrors = 0;
+    const trust = TRUST_THRESHOLDS[this.options.trustLevel ?? 'T1'];
     while (steps < maxSteps) {
+      if (consecutiveErrors >= trust.maxConsecutiveErrors) {
+        const msg = `Agent stopped after ${consecutiveErrors} consecutive errors (trust level: ${this.options.trustLevel ?? 'T1'}).`;
+        this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
+          zoneCounts, handoffCount, errorCounts, toolCounts, false);
+        this.flushCheckpoint();
+        this.checkpointManager.delete(this.options.sessionId);
+        this.pendingCheckpoint = null;
+        return { content: msg, steps, toolCalls: executedToolCalls };
+      }
+
       // Build context (reload short-term memory each iteration)
       const ctx: ContextBuildResult = await this.contextBuilder.build({
         sessionId: this.options.sessionId,
@@ -508,8 +531,10 @@ export class AgentLoop {
 
         if (result.error) {
           toolCounts.failed++;
+          consecutiveErrors++;
         } else {
           toolCounts.succeeded++;
+          consecutiveErrors = 0;
         }
         executedToolCalls.push({
           name: tc.name,
