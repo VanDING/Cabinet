@@ -543,6 +543,16 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       return ctx.taskTracker.listActive().map((t) => ({ id: t.id, name: t.name, status: t.status }));
     },
 
+    getDecisionAudit(decisionId) {
+      const rows = ctx.auditLogRepo.findByEntity('decision', decisionId);
+      return rows.map((r) => ({
+        action: r.action,
+        actor: r.actor,
+        changes: (() => { try { return JSON.parse(r.changes ?? '{}'); } catch { return {}; } })(),
+        timestamp: r.timestamp,
+      }));
+    },
+
     // ── File system callbacks ──
     readFile: async (filePath, offset, limit) => {
       const safePath = await resolveSafePath(filePath);
