@@ -214,6 +214,12 @@ describe('Cabinet Tools', () => {
           timestamp: '2026-05-27T10:05:00Z',
         },
       ],
+      getSystemMetrics: () => ({
+        totalLLMCalls: 42,
+        totalTokens: 2100,
+        totalDecisions: 7,
+        errors: 0,
+      }),
       delegateTask: (name) => `task_${name}_test`,
       getTaskStatus: (taskId) => ({ id: taskId, name: 'Test Task', status: 'running', startTime: Date.now() }),
       listActiveTasks: () => [{ id: 'task_1', name: 'Task One', status: 'running' }],
@@ -253,7 +259,15 @@ describe('Cabinet Tools', () => {
 
   it('get_status returns operational', async () => {
     const r = await executor.execute('get_status', 'tc5', {});
-    expect((r.output as any).status).toBe('operational');
+    const out = r.output as any;
+    expect(out.status).toBe('operational');
+    expect(out.toolsAvailable).toBe(40);
+    expect(out.metrics).toEqual({
+      totalLLMCalls: 42,
+      totalTokens: 2100,
+      totalDecisions: 7,
+      errors: 0,
+    });
   });
 
   it('search_memory finds stored entries', async () => {

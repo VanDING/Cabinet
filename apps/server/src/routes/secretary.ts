@@ -553,6 +553,10 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       }));
     },
 
+    getSystemMetrics() {
+      return ctx.metrics.getSummary();
+    },
+
     // ── File system callbacks ──
     readFile: async (filePath, offset, limit) => {
       const safePath = await resolveSafePath(filePath);

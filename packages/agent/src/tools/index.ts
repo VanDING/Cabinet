@@ -110,6 +110,13 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
     changes: Record<string, unknown>;
     timestamp: string;
   }>;
+
+  getSystemMetrics: () => {
+    totalLLMCalls: number;
+    totalTokens: number;
+    totalDecisions: number;
+    errors: number;
+  };
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -596,10 +603,12 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
     {
       name: 'get_status',
       execute: async (_args: Record<string, unknown>) => {
+        const metrics = deps.getSystemMetrics();
         return {
           status: 'operational',
           timestamp: new Date().toISOString(),
-          toolsAvailable: 49,
+          toolsAvailable: 40,
+          metrics,
         };
       },
     },
