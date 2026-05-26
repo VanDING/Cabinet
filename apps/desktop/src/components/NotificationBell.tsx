@@ -29,6 +29,7 @@ interface Props {
 
 export function NotificationBell({ isDark }: Props) {
   const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
 
@@ -91,10 +92,15 @@ export function NotificationBell({ isDark }: Props) {
             ) : (
               notifications.map((n) => {
                 const icon = TYPE_ICONS[n.type] ?? TYPE_ICONS.system;
+                const isExpanded = expandedId === n.id;
+                const isLong = n.message.length > 100;
                 return (
                   <button
                     key={n.id}
-                    onClick={() => { markRead(n.id); }}
+                    onClick={() => {
+                      if (!n.read) markRead(n.id);
+                      setExpandedId(isExpanded ? null : n.id);
+                    }}
                     className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHover} ${borderClass} ${n.read ? 'opacity-60' : ''}`}
                   >
                     <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${icon.color}`}>
@@ -105,7 +111,14 @@ export function NotificationBell({ isDark }: Props) {
                         <p className={`truncate text-xs font-medium ${textClass}`}>{n.title}</p>
                         <span className={`flex-shrink-0 text-[10px] ${subtextClass}`}>{timeAgo(n.timestamp)}</span>
                       </div>
-                      <p className={`mt-0.5 truncate text-[11px] ${subtextClass}`}>{n.message}</p>
+                      <p className={`mt-0.5 text-[11px] ${subtextClass} ${isExpanded ? 'whitespace-pre-wrap' : 'truncate'}`}>
+                        {n.message}
+                      </p>
+                      {isLong && (
+                        <p className={`mt-1 text-[10px] ${subtextClass}`}>
+                          {isExpanded ? '▲ collapse' : '▼ expand'}
+                        </p>
+                      )}
                     </div>
                     {!n.read && (
                       <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
