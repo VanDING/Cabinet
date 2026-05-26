@@ -223,6 +223,30 @@ describe('Cabinet Tools', () => {
       delegateTask: (name) => `task_${name}_test`,
       getTaskStatus: (taskId) => ({ id: taskId, name: 'Test Task', status: 'running', startTime: Date.now() }),
       listActiveTasks: () => [{ id: 'task_1', name: 'Task One', status: 'running' }],
+      getWorkflowRun: (runId) => ({
+        runId,
+        workflowId: 'wf_test',
+        status: 'completed',
+        steps: [{ nodeId: 'n1', type: 'start', output: 'started' }],
+        startedAt: '2026-05-27T10:00:00Z',
+        updatedAt: '2026-05-27T10:05:00Z',
+      }),
+      listWorkflowRuns: (workflowId) => [
+        {
+          runId: 'run_1',
+          workflowId,
+          status: 'completed',
+          startedAt: '2026-05-27T10:00:00Z',
+          updatedAt: '2026-05-27T10:05:00Z',
+        },
+        {
+          runId: 'run_2',
+          workflowId,
+          status: 'failed',
+          startedAt: '2026-05-27T11:00:00Z',
+          updatedAt: '2026-05-27T11:02:00Z',
+        },
+      ],
     };
 
     const tools = createCabinetTools(deps);
@@ -231,8 +255,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 40 tools', () => {
-    expect(executor.listTools()).toHaveLength(73);
+  it('registers 42 tools', () => {
+    expect(executor.listTools()).toHaveLength(75);
   });
 
   it('remember and recall work together', async () => {
@@ -261,7 +285,7 @@ describe('Cabinet Tools', () => {
     const r = await executor.execute('get_status', 'tc5', {});
     const out = r.output as any;
     expect(out.status).toBe('operational');
-    expect(out.toolsAvailable).toBe(40);
+    expect(out.toolsAvailable).toBe(42);
     expect(out.metrics).toEqual({
       totalLLMCalls: 42,
       totalTokens: 2100,
@@ -312,6 +336,29 @@ describe('Cabinet Tools', () => {
     expect(out.tasks[0].id).toBe('task_1');
     expect(out.tasks[0].name).toBe('Task One');
     expect(out.tasks[0].status).toBe('running');
+  });
+
+  it('get_workflow_run returns run details', async () => {
+    const r = await executor.execute('get_workflow_run', 'tc_wfrun', { runId: 'run_123' });
+    const out = r.output as any;
+    expect(out.runId).toBe('run_123');
+    expect(out.workflowId).toBe('wf_test');
+    expect(out.status).toBe('completed');
+    expect(Array.isArray(out.steps)).toBe(true);
+    expect(out.steps).toHaveLength(1);
+    expect(out.startedAt).toBe('2026-05-27T10:00:00Z');
+    expect(out.updatedAt).toBe('2026-05-27T10:05:00Z');
+  });
+
+  it('list_workflow_runs returns runs for workflow', async () => {
+    const r = await executor.execute('list_workflow_runs', 'tc_wfruns', { workflowId: 'wf_abc' });
+    const out = r.output as any;
+    expect(Array.isArray(out.runs)).toBe(true);
+    expect(out.runs).toHaveLength(2);
+    expect(out.runs[0].runId).toBe('run_1');
+    expect(out.runs[0].status).toBe('completed');
+    expect(out.runs[1].runId).toBe('run_2');
+    expect(out.runs[1].status).toBe('failed');
   });
 
   // ── Write tool tests ──
