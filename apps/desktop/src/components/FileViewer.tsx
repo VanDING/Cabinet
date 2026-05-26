@@ -122,8 +122,8 @@ export function FileViewer({ isDark }: Props) {
     setVisible(false);
   };
 
-  if (!visible) return null;
-
+  // Compute derived state BEFORE any conditional return so hooks are always
+  // called in the same order on every render.
   const active = tabs.find((t) => t.path === activeTab);
   const isImage = active?.mimeType && IMAGE_MIMES.includes(active.mimeType);
   const isHtml = active?.name.endsWith('.html') || active?.name.endsWith('.htm');
@@ -143,6 +143,8 @@ export function FileViewer({ isDark }: Props) {
       }
     };
   }, [htmlBlobUrl]);
+
+  if (!visible) return null;
 
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
