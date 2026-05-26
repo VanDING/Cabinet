@@ -161,6 +161,17 @@ describe('Cabinet Tools', () => {
       createProject: (input) => ({ id: 'proj_test', name: input.name }),
       listProjects: () => [{ id: 'proj-1', name: 'Test Project' }],
       getProjectContext: (projectId) => projectId === 'unknown' ? null : { id: projectId, name: 'Test' },
+      getDashboardStats: () => ({
+        pendingDecisions: 3,
+        activeWorkflows: 2,
+        activeProjects: 1,
+        todayCost: 0.42,
+        totalLLMCalls: 100,
+        totalTokens: 50000,
+        totalDecisions: 25,
+        errors: 1,
+        recentEvents: [{ message: 'Event A', time: '2026-05-27T10:00:00Z' }],
+      }),
     };
 
     const tools = createCabinetTools(deps);
@@ -169,8 +180,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 33 tools', () => {
-    expect(executor.listTools()).toHaveLength(66);
+  it('registers 34 tools', () => {
+    expect(executor.listTools()).toHaveLength(67);
   });
 
   it('remember and recall work together', async () => {
@@ -318,5 +329,20 @@ describe('Cabinet Tools', () => {
       kind: 'ai',
     });
     expect((r.output as any).created).toBe(true);
+  });
+
+  it('get_dashboard_stats returns dashboard data', async () => {
+    const r = await executor.execute('get_dashboard_stats', 'tc19', {});
+    const out = r.output as any;
+    expect(out.pendingDecisions).toBe(3);
+    expect(out.activeWorkflows).toBe(2);
+    expect(out.activeProjects).toBe(1);
+    expect(out.todayCost).toBe(0.42);
+    expect(out.totalLLMCalls).toBe(100);
+    expect(out.totalTokens).toBe(50000);
+    expect(out.totalDecisions).toBe(25);
+    expect(out.errors).toBe(1);
+    expect(out.recentEvents).toHaveLength(1);
+    expect(out.recentEvents[0].message).toBe('Event A');
   });
 });
