@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { SubAgentActivity } from '@cabinet/ui';
+import { apiFetch, authHeaders } from '../utils/pin.js';
 
 export interface AttachedFile {
   id: string;
@@ -145,6 +146,8 @@ export function useSessions() {
 
   const closeSession = useCallback(
     (id: string) => {
+      // Notify backend to trigger Curator consolidation on session close
+      apiFetch(`/api/secretary/sessions/${id}/close`, { method: 'POST', headers: authHeaders() }).catch(() => {});
       setSessions((prev) => {
         const session = prev.find((s) => s.id === id);
         if (session && session.messages.length > 0) {
