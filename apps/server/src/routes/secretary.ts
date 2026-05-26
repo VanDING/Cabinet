@@ -325,6 +325,32 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     async runWorkflow(id) {
       return executeWorkflowById(id, ctx);
     },
+    getWorkflowRun(runId) {
+      const row = ctx.workflowRepo.findRunById(runId);
+      if (!row) return null;
+      let steps: unknown[] = [];
+      try {
+        steps = ctx.workflowRepo.findStepsByRunId(runId);
+      } catch { /* non-fatal */ }
+      return {
+        runId: row.run_id,
+        workflowId: row.workflow_id,
+        status: row.status,
+        steps,
+        startedAt: row.started_at,
+        updatedAt: row.updated_at,
+      };
+    },
+    listWorkflowRuns(workflowId) {
+      const rows = ctx.workflowRepo.findRunsByWorkflow(workflowId);
+      return rows.map((r) => ({
+        runId: r.run_id,
+        workflowId: r.workflow_id,
+        status: r.status,
+        startedAt: r.started_at,
+        updatedAt: r.updated_at,
+      }));
+    },
 
     // ── Meeting write callback ──
     async startMeeting(topic, advisorIds, projectId, chairBrief) {
