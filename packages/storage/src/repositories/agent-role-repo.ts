@@ -5,7 +5,7 @@ export interface AgentRoleRow {
   name: string;
   description: string;
   system_prompt: string;
-  model: string;
+  model?: string;
   model_tier?: string;
   temperature: number;
   max_response_tokens: number;
@@ -66,7 +66,7 @@ export class AgentRoleRepository {
         role.name,
         role.description,
         role.system_prompt,
-        role.model,
+        role.model ?? 'default',
         role.model_tier ?? null,
         role.temperature,
         role.max_response_tokens,

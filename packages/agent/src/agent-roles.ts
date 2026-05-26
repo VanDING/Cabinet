@@ -32,8 +32,6 @@ export interface AgentRole {
   systemPrompt: string;
   /** Model tier for routing to user-configured models. */
   modelTier: ModelTier;
-  /** Fallback model if no model mapping is configured. */
-  model: string;
   /** Temperature (0 = deterministic, 1 = creative). */
   temperature: number;
   /** Max tokens for LLM response (undefined = model default, no artificial limit). */
@@ -120,7 +118,6 @@ export const SECRETARY_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'default',
-  model: 'default',
   temperature: 0.5,
   allowedTools: [
     // Read tools
@@ -186,7 +183,6 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'fast_execution',
   temperature: 0.4,
   maxResponseTokens: 4000,
   allowedTools: [
@@ -235,7 +231,6 @@ export const CURATOR_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'fast_execution',
   temperature: 0.2,
   maxResponseTokens: 4000,
   allowedTools: [
@@ -304,7 +299,6 @@ export const REVIEWER_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'fast_execution',
-  model: 'claude-haiku-4-5',
   temperature: 0.1,
   allowedTools: [
     'read_file',
@@ -421,7 +415,6 @@ export const ORGANIZE_ROLE: AgentRole = {
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
   modelTier: 'deep_reasoning',
-  model: 'claude-sonnet-4-6',
   temperature: 0.4,
   allowedTools: [
     'list_agents',
