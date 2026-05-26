@@ -99,6 +99,10 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
     errors: number;
     recentEvents: { message: string; time: string }[];
   };
+
+  delegateTask: (name: string, agentName?: string, description?: string) => string;
+  getTaskStatus: (taskId: string) => { id: string; name: string; status: string; startTime?: number; endTime?: number } | null;
+  listActiveTasks: () => { id: string; name: string; status: string }[];
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -566,6 +570,37 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
       name: 'get_dashboard_stats',
       execute: async (_args: Record<string, unknown>) => {
         return deps.getDashboardStats();
+      },
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // Task Delegation / Tracking Tools
+    // ═══════════════════════════════════════════════════════════
+    {
+      name: 'delegate_task',
+      execute: async (args: Record<string, unknown>) => {
+        const name = args.name as string;
+        const agentName = args.agentName as string | undefined;
+        const description = args.description as string | undefined;
+        if (!name) return { error: 'name is required' };
+        const taskId = deps.delegateTask(name, agentName, description);
+        return { taskId, name, agentName, status: 'running' };
+      },
+    },
+    {
+      name: 'get_task_status',
+      execute: async (args: Record<string, unknown>) => {
+        const taskId = args.taskId as string;
+        if (!taskId) return { error: 'taskId is required' };
+        const task = deps.getTaskStatus(taskId);
+        if (!task) return { error: `Task not found: ${taskId}` };
+        return task;
+      },
+    },
+    {
+      name: 'list_active_tasks',
+      execute: async (_args: Record<string, unknown>) => {
+        return { tasks: deps.listActiveTasks() };
       },
     },
 
