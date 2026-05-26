@@ -87,6 +87,18 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   createProject: (input: { name: string; description?: string; rootPath?: string }) => { id: string; name: string };
   listProjects: () => { id: string; name: string; lastActivityAt?: string; activeWorkflowCount?: number }[];
   getProjectContext: (projectId: string) => Record<string, unknown> | null;
+
+  getDashboardStats: () => {
+    pendingDecisions: number;
+    activeWorkflows: number;
+    activeProjects: number;
+    todayCost: number;
+    totalLLMCalls: number;
+    totalTokens: number;
+    totalDecisions: number;
+    errors: number;
+    recentEvents: { message: string; time: string }[];
+  };
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -548,6 +560,12 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
           timestamp: new Date().toISOString(),
           toolsAvailable: 49,
         };
+      },
+    },
+    {
+      name: 'get_dashboard_stats',
+      execute: async (_args: Record<string, unknown>) => {
+        return deps.getDashboardStats();
       },
     },
 
