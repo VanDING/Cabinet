@@ -20,7 +20,7 @@
 //
 
 import { existsSync, readdirSync, statSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { extname, join, relative } from 'node:path';
 import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
 
@@ -90,6 +90,7 @@ export class GarbageCollector {
         'dist',
         '.git',
         'target',
+        '.fingerprint',
         '.claude',
         '.cabinet',
       ],
@@ -365,8 +366,17 @@ export class GarbageCollector {
     const issues: GCIssue[] = [];
     const hashToFiles = new Map<string, string[]>();
 
-    // Simple hash: file size + first 100 chars
+    // Only check source files — build artifacts and config files produce false
+    // positives because they share similar structure (e.g. Cargo fingerprint JSON).
+    const sourceExts = new Set([
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.rs', '.py', '.go', '.java', '.kt', '.swift',
+      '.cpp', '.c', '.h', '.hpp',
+    ]);
+
     for (const file of files) {
+      if (!sourceExts.has(extname(file).toLowerCase())) continue;
+
       try {
         const stat = statSync(file);
         if (stat.size < 100) continue; // skip tiny files
