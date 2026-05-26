@@ -289,6 +289,27 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         return { stored: true, id, preview: content.slice(0, 200) };
       },
     },
+    {
+      name: 'update_memory',
+      execute: async (args: Record<string, unknown>) => {
+        const memoryId = args.memoryId as string;
+        const status = args.status as string | undefined;
+        const importance = args.importance as number | undefined;
+        const confidence = args.confidence as number | undefined;
+        if (!memoryId) return { error: 'memoryId is required' };
+        const success = await deps.longTerm.updateMemory(memoryId, { status, importance, confidence });
+        return { updated: success, memoryId };
+      },
+    },
+    {
+      name: 'delete_memory',
+      execute: async (args: Record<string, unknown>) => {
+        const memoryId = args.memoryId as string;
+        if (!memoryId) return { error: 'memoryId is required' };
+        const success = await deps.longTerm.delete(memoryId);
+        return { deleted: success, memoryId };
+      },
+    },
 
     // ═══════════════════════════════════════════════════════════
     // Project Tools (read + write)

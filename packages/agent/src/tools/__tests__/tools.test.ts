@@ -60,6 +60,27 @@ describe('Cabinet Tools', () => {
             },
           };
         }
+        // For UPDATE
+        if (sql.startsWith('UPDATE')) {
+          return {
+            run: (...args: any[]) => {
+              // UPDATE memory_embeddings SET metadata = ? WHERE id = ?
+              const id = args[args.length - 1];
+              const r = rows.find((row) => row.id === id);
+              if (r && sql.includes('metadata')) {
+                r.metadata = args[0];
+              }
+              return { changes: r ? 1 : 0 };
+            },
+          };
+        }
+        // For SELECT COUNT(*)
+        if (sql.includes('COUNT(*)')) {
+          return {
+            get: () => ({ count: rows.length }),
+            all: () => [{ count: rows.length }],
+          };
+        }
         // For SELECT rowid
         if (sql.includes('rowid')) {
           return {
@@ -68,6 +89,13 @@ describe('Cabinet Tools', () => {
               const r = rows.find((row) => row.id === key);
               return r ? { rowid: rows.indexOf(r) + 1 } : null;
             },
+          };
+        }
+        // For SELECT ... WHERE id IN (...)
+        if (sql.includes('id IN')) {
+          return {
+            all: (...args: any[]) => rows.filter((r) => args.includes(r.id)),
+            get: () => null,
           };
         }
         // For SELECT (search)
@@ -197,8 +225,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 38 tools', () => {
-    expect(executor.listTools()).toHaveLength(71);
+  it('registers 40 tools', () => {
+    expect(executor.listTools()).toHaveLength(73);
   });
 
   it('remember and recall work together', async () => {
@@ -401,5 +429,24 @@ describe('Cabinet Tools', () => {
     expect(out.entries[1].actor).toBe('captain_1');
     expect(out.entries[1].changes).toEqual({ status: 'approved' });
     expect(out.entries[1].timestamp).toBe('2026-05-27T10:05:00Z');
+  });
+
+  it('update_memory updates memory metadata', async () => {
+    const id = await deps.longTerm.store({ content: 'Test memory', metadata: {}, timestamp: new Date() });
+    const r = await executor.execute('update_memory', 'tc_update_mem', {
+      memoryId: id,
+      status: 'archived',
+      importance: 5,
+      confidence: 0.9,
+    });
+    expect((r.output as any).updated).toBe(true);
+    expect((r.output as any).memoryId).toBe(id);
+  });
+
+  it('delete_memory removes memory', async () => {
+    const id = await deps.longTerm.store({ content: 'Test memory to delete', metadata: {}, timestamp: new Date() });
+    const r = await executor.execute('delete_memory', 'tc_delete_mem', { memoryId: id });
+    expect((r.output as any).deleted).toBe(true);
+    expect((r.output as any).memoryId).toBe(id);
   });
 });
