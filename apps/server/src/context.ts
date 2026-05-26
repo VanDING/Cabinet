@@ -130,6 +130,8 @@ export interface ServerContext {
   sessionManager: SessionManager;
   // File tracking (per-session, auto-populated by tool callbacks)
   fileTracker: FileAccessTracker;
+  // Task tracking
+  taskTracker: TaskTracker;
   // Permissions
   delegationTier: DelegationTier;
   // Agent registry (shared across all requests — custom roles persist here)
@@ -188,6 +190,32 @@ export class FileAccessTracker {
 
   clear(sessionId: string): void {
     this.entries.delete(sessionId);
+  }
+}
+
+export class TaskTracker {
+  private tasks: Array<{ id: string; name: string; agentName?: string; description?: string; status: string; startTime: number; endTime?: number }> = [];
+
+  addTask(name: string, agentName?: string, description?: string): string {
+    const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    this.tasks.push({ id, name, agentName, description, status: 'running', startTime: Date.now() });
+    return id;
+  }
+
+  completeTask(id: string, success = true) {
+    const task = this.tasks.find((t) => t.id === id);
+    if (task) {
+      task.status = success ? 'done' : 'error';
+      task.endTime = Date.now();
+    }
+  }
+
+  getTask(id: string) {
+    return this.tasks.find((t) => t.id === id) ?? null;
+  }
+
+  listActive() {
+    return this.tasks.filter((t) => t.status === 'running');
   }
 }
 
@@ -1676,6 +1704,7 @@ export function getServerContext(): ServerContext {
   });
 
   const fileTracker = new FileAccessTracker();
+  const taskTracker = new TaskTracker();
 
   ctx = {
     db,
@@ -1706,6 +1735,7 @@ export function getServerContext(): ServerContext {
     budgetGuard,
     sessionManager,
     fileTracker,
+    taskTracker,
     delegationTier: currentTier,
     agentRegistry,
     skillRegistry,

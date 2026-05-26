@@ -531,6 +531,18 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       };
     },
 
+    delegateTask(name, agentName, description) {
+      return ctx.taskTracker.addTask(name, agentName, description);
+    },
+    getTaskStatus(taskId) {
+      const task = ctx.taskTracker.getTask(taskId);
+      if (!task) return null;
+      return { id: task.id, name: task.name, status: task.status, startTime: task.startTime, endTime: task.endTime };
+    },
+    listActiveTasks() {
+      return ctx.taskTracker.listActive().map((t) => ({ id: t.id, name: t.name, status: t.status }));
+    },
+
     // ── File system callbacks ──
     readFile: async (filePath, offset, limit) => {
       const safePath = await resolveSafePath(filePath);
