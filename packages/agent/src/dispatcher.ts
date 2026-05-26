@@ -305,15 +305,9 @@ export class AgentDispatcher {
   }
 
   /** Infer a provider name from the first role's model configuration. */
-  private inferProviderFromModel(roleType: string): string {
-    const role = this.registry.get(roleType);
-    const model = role?.model ?? '';
-    if (model.includes('/')) return model.split('/')[0]!;
-    if (model.toLowerCase().startsWith('claude')) return 'anthropic';
-    if (model.toLowerCase().startsWith('gpt')) return 'openai';
-    if (model.toLowerCase().startsWith('gemini')) return 'google';
-    if (model.toLowerCase().startsWith('deepseek')) return 'deepseek';
-    return 'anthropic';
+  private inferProviderFromModel(_roleType: string): string {
+    // Model is resolved at runtime via gateway; default to 'default' for rate-limit checks.
+    return 'default';
   }
 
   // ── Agent Step Runner ─────────────────────────────────────
@@ -344,7 +338,7 @@ export class AgentDispatcher {
         projectId: options.projectId,
         captainId: options.captainId,
         systemPrompt: role.systemPrompt,
-        model: role.model,
+        model: (this.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
         maxSteps: options.maxStepsPerAgent ?? role.maxSteps ?? this.baseOptions.maxSteps,
         eventBus: this.eventBus,
         taskDescription: input,

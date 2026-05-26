@@ -37,7 +37,7 @@ employeesRouter.get('/', (c) => {
       name: r.name,
       role: r.type,
       kind: 'ai' as const,
-      model: r.model ?? undefined,
+      model: r.modelTier ?? undefined,
       expertise: r.allowedTools ?? [],
       permissionLevel: 'read',
       status: 'active',

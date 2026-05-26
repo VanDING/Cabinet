@@ -396,7 +396,6 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         description: input.description,
         systemPrompt: input.systemPrompt,
         modelTier: ((input as any).modelTier as string) || 'default',
-        model: input.model,
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
         allowedTools: input.allowedTools,
@@ -410,8 +409,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           name: input.name,
           description: input.description ?? '',
           system_prompt: input.systemPrompt ?? '',
-          model: input.model ?? 'default',
-          model_tier: 'default',
+          model_tier: ((input as any).modelTier as string) || 'default',
           temperature: input.temperature ?? 0.3,
           max_response_tokens: input.maxResponseTokens ?? 4000,
           allowed_tools: JSON.stringify(input.allowedTools ?? []),
@@ -475,7 +473,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         'global',
         DEFAULT_CAPTAIN_ID,
         undefined,
-        resolveModel({ modelTier: 'default', model: 'claude-sonnet-4-6' }),
+        resolveModel({ modelTier: 'default' }),
         callerSessionId,
       );
       if (!loop) throw new Error(`Cannot invoke ${agentName}: no LLM gateway available`);
@@ -1654,13 +1652,13 @@ function buildRulesLoader(projectRootPath?: string) {
 }
 
 /** Resolve a role's modelTier to the actual model via user-configured modelMapping. */
-function resolveModel(role: { modelTier?: string; model: string }): string {
+function resolveModel(role: { modelTier: string }): string {
   const ctx = getServerContext();
   const adapter = ctx.gateway as any;
-  if (adapter?.resolveModelString && role.modelTier) {
+  if (adapter?.resolveModelString) {
     return adapter.resolveModelString(role.modelTier);
   }
-  return role.model;
+  return role.modelTier;
 }
 
 /** Get or create an AgentLoop for a specific role. */
@@ -1825,7 +1823,7 @@ async function dispatchToSpecialist(
       const needsUpgrade =
         (roleType === 'reviewer' && (message.includes('L3') || message.includes('安全关键') || message.length > 2000));
       if (needsUpgrade) {
-        effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier, model: roleDef.model });
+        effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier });
       }
     }
 
@@ -1834,7 +1832,7 @@ async function dispatchToSpecialist(
       // No built-in roles currently use downgrade; custom agents may opt in.
       const needsDowngrade = false;
       if (needsDowngrade) {
-        effectiveModel = resolveModel({ modelTier: roleDef.downgradeModelTier, model: roleDef.model });
+        effectiveModel = resolveModel({ modelTier: roleDef.downgradeModelTier });
       }
     }
   }
@@ -2074,7 +2072,7 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       projectId,
       captainId,
       systemPrompt: buildSystemPrompt('secretary', secretaryRole?.systemPrompt ?? '', projectRootPath),
-      model: model ?? resolveModel(secretaryRole ?? { model: 'claude-sonnet-4-6' }),
+      model: model ?? resolveModel(secretaryRole ?? { modelTier: 'default' }),
       maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
       temperature: secretaryRole?.temperature ?? 0.5,
@@ -2729,7 +2727,7 @@ secretaryRouter.get('/verify', async (c) => {
   }
   try {
     const start = Date.now();
-    const testModel = resolveModel({ modelTier: 'default', model: 'claude-haiku-4-5' });
+    const testModel = resolveModel({ modelTier: 'default' });
     const response = await gateway.generateText({
       model: testModel,
       messages: [{ role: 'user', content: 'Reply with just "OK".' }],
