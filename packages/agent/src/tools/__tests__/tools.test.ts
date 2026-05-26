@@ -172,6 +172,20 @@ describe('Cabinet Tools', () => {
         errors: 1,
         recentEvents: [{ message: 'Event A', time: '2026-05-27T10:00:00Z' }],
       }),
+      getDecisionAudit: (decisionId) => [
+        {
+          action: 'create',
+          actor: 'system',
+          changes: { title: 'Test Decision' },
+          timestamp: '2026-05-27T10:00:00Z',
+        },
+        {
+          action: 'approve',
+          actor: 'captain_1',
+          changes: { status: 'approved' },
+          timestamp: '2026-05-27T10:05:00Z',
+        },
+      ],
       delegateTask: (name) => `task_${name}_test`,
       getTaskStatus: (taskId) => ({ id: taskId, name: 'Test Task', status: 'running', startTime: Date.now() }),
       listActiveTasks: () => [{ id: 'task_1', name: 'Task One', status: 'running' }],
@@ -183,8 +197,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 37 tools', () => {
-    expect(executor.listTools()).toHaveLength(70);
+  it('registers 38 tools', () => {
+    expect(executor.listTools()).toHaveLength(71);
   });
 
   it('remember and recall work together', async () => {
@@ -371,5 +385,21 @@ describe('Cabinet Tools', () => {
     expect(out.errors).toBe(1);
     expect(out.recentEvents).toHaveLength(1);
     expect(out.recentEvents[0].message).toBe('Event A');
+  });
+
+  it('get_decision_audit returns audit entries', async () => {
+    const r = await executor.execute('get_decision_audit', 'tc_audit', { decisionId: 'dec_123' });
+    const out = r.output as any;
+    expect(out.decisionId).toBe('dec_123');
+    expect(Array.isArray(out.entries)).toBe(true);
+    expect(out.entries).toHaveLength(2);
+    expect(out.entries[0].action).toBe('create');
+    expect(out.entries[0].actor).toBe('system');
+    expect(out.entries[0].changes).toEqual({ title: 'Test Decision' });
+    expect(out.entries[0].timestamp).toBe('2026-05-27T10:00:00Z');
+    expect(out.entries[1].action).toBe('approve');
+    expect(out.entries[1].actor).toBe('captain_1');
+    expect(out.entries[1].changes).toEqual({ status: 'approved' });
+    expect(out.entries[1].timestamp).toBe('2026-05-27T10:05:00Z');
   });
 });
