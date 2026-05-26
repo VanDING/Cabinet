@@ -103,6 +103,13 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   delegateTask: (name: string, agentName?: string, description?: string) => string;
   getTaskStatus: (taskId: string) => { id: string; name: string; status: string; startTime?: number; endTime?: number } | null;
   listActiveTasks: () => { id: string; name: string; status: string }[];
+
+  getDecisionAudit: (decisionId: string) => Array<{
+    action: string;
+    actor: string;
+    changes: Record<string, unknown>;
+    timestamp: string;
+  }>;
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -131,6 +138,15 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const decision = deps.decisionStore.get(id);
         if (!decision) return { error: `Decision not found: ${id}` };
         return decision;
+      },
+    },
+    {
+      name: 'get_decision_audit',
+      execute: async (args: Record<string, unknown>) => {
+        const decisionId = args.decisionId as string;
+        if (!decisionId) return { error: 'decisionId is required' };
+        const entries = deps.getDecisionAudit(decisionId);
+        return { decisionId, entries };
       },
     },
 
