@@ -1,0 +1,97 @@
+import { describe, it, expect, vi } from 'vitest';
+import { createStandardToolExecutor } from '../agent-factory.js';
+import type { ServerContext } from '../context.js';
+
+describe('createStandardToolExecutor', () => {
+  it('should include built-in skill tools', () => {
+    const mockCtx = {
+      mcpManager: { callTool: vi.fn(), listTools: vi.fn(() => []) },
+      observability: { recordToolCall: vi.fn() },
+    } as unknown as ServerContext;
+
+    const deps = {
+      readFile: vi.fn(),
+      writeFile: vi.fn(),
+      editFile: vi.fn(),
+      applyPatch: vi.fn(),
+      moveFile: vi.fn(),
+      copyFile: vi.fn(),
+      makeDirectory: vi.fn(),
+      fileInfo: vi.fn(),
+      listDirectory: vi.fn(),
+      searchFiles: vi.fn(),
+      searchContent: vi.fn(),
+      deleteFile: vi.fn(),
+      recentFiles: vi.fn(),
+      watchFile: vi.fn(),
+      indexProject: vi.fn(),
+      webFetch: vi.fn(),
+      httpRequest: vi.fn(),
+      githubApiFetch: vi.fn(),
+      execCommand: vi.fn(),
+      scheduleTask: vi.fn(),
+      listScheduledTasks: vi.fn(),
+      cancelScheduledTask: vi.fn(),
+      indexDocument: vi.fn(),
+      searchDocuments: vi.fn(),
+      clearDocumentIndex: vi.fn(),
+      evaluateOutput: vi.fn(),
+      workspaceSymbols: vi.fn(),
+      goToDefinition: vi.fn(),
+      findReferences: vi.fn(),
+      diagnostics: vi.fn(),
+      querySystemKnowledge: vi.fn(),
+      getSystemKnowledge: vi.fn(),
+      decisionStore: {} as any,
+      eventBus: {} as any,
+      shortTerm: {} as any,
+      longTerm: {} as any,
+      entity: {} as any,
+      project: {} as any,
+      createDecision: vi.fn(),
+      approveDecision: vi.fn(),
+      rejectDecision: vi.fn(),
+      queryDecisions: vi.fn(),
+      getDecision: vi.fn(),
+      listWorkflows: vi.fn(),
+      getWorkflow: vi.fn(),
+      createWorkflow: vi.fn(),
+      updateWorkflow: vi.fn(),
+      runWorkflow: vi.fn(),
+      deleteWorkflow: vi.fn(),
+      listAgents: vi.fn(),
+      registerAgent: vi.fn(),
+      updateAgent: vi.fn(),
+      deleteAgent: vi.fn(),
+      invokeAgent: vi.fn(),
+      startMeeting: vi.fn(),
+      getCaptainPreferences: vi.fn(),
+      setCaptainPreferences: vi.fn(),
+      getStatus: vi.fn(),
+      getRecentEvents: vi.fn(),
+      getWorkflowRuns: vi.fn(),
+      evaluate: vi.fn(),
+      addMilestone: vi.fn(),
+      updateProjectSummary: vi.fn(),
+      searchMemory: vi.fn(),
+      remember: vi.fn(),
+      recall: vi.fn(),
+      getProjectContext: vi.fn(),
+      publishNotification: vi.fn(),
+      glob: vi.fn(),
+      grep: vi.fn(),
+      createEmployee: vi.fn(),
+      writeLongTermMemory: vi.fn(),
+      setProjectContext: vi.fn(),
+      createProject: vi.fn(),
+      listProjects: vi.fn(),
+    };
+
+    const executor = createStandardToolExecutor(mockCtx, deps);
+    const tools = executor.listTools();
+    expect(tools).toContain('use_skill__workflowDesigner');
+    expect(tools).toContain('use_skill__agentCreator');
+    expect(tools).toContain('use_skill__skillCreator');
+    expect(tools).toContain('use_skill__mcpBuilder');
+  });
+});

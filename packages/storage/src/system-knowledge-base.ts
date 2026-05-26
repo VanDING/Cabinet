@@ -51,19 +51,17 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'agent_responsibilities',
     topic: 'Agent 分工',
     category: 'agent',
-    version: 1,
+    version: 2,
     content: `## Agent 职责边界
 - **secretary** — 入口路由、通用对话、意图识别、工具分发
-- **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow 蓝图。统筹设计，不直接执行具体流程。
-- **workflow_designer** — 流程设计师。设计多步骤自动化流程（WorkflowDefinition JSON）。不负责创建新 Agent。
+- **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow + Skill + MCP 蓝图。统筹设计所有体系化工作（工作流、Agent、Skill、MCP）。不直接执行具体流程。
 - **curator** — 记忆管理员。会话总结、知识固化、模式提取、项目进度跟踪。
 - **decision_analyst** — 决策分析师。结构化分析、选项评估、风险权衡。
 - **meeting_chair** — 会议主持人。多视角辩论、共识合成。
 - **reviewer** — 质量审查员。逻辑、证据、完整性检查。
 
 **路由原则**：
-- 涉及"设计体系/创建 Agent/组织架构" → organize
-- 涉及"设计流程/步骤自动化" → workflow_designer
+- 涉及"设计体系/创建 Agent/组织架构/写 Skill/搭 MCP" → organize
 - 涉及"总结/记忆/进度" → curator
 - 不确定 → secretary`,
   },

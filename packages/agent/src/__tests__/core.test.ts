@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { classifyError, withRetry } from '../retry.js';
+import { AgentRoleRegistry } from '../agent-roles.js';
 
 describe('ToolExecutor', () => {
   let executor: ToolExecutor;
@@ -126,5 +127,17 @@ describe('withRetry', () => {
     };
     await expect(withRetry(fn, new Error('fatal error'))).rejects.toThrow('fatal error');
     expect(attempts).toBe(1);
+  });
+});
+
+describe('AgentRoleRegistry', () => {
+  it('should not contain workflow_designer or agent_creator', () => {
+    const registry = new AgentRoleRegistry();
+    const builtIn = registry.listBuiltIn();
+    const types = builtIn.map((r) => r.type);
+    expect(types).not.toContain('workflow_designer');
+    expect(types).not.toContain('agent_creator');
+    expect(types).toContain('secretary');
+    expect(types).toContain('organize');
   });
 });

@@ -1757,8 +1757,8 @@ async function dispatchToSpecialist(
 
     // Downgrade: simple modifications don't need reasoning models
     if (!effectiveModel && roleDef?.downgradeModelTier) {
-      const needsDowngrade =
-        (roleType === 'workflow_designer' && (message.includes('修改') || message.includes('更新') || message.includes('调整') || message.includes('改一下')) && !message.includes('创建') && !message.includes('新建') && !message.includes('设计'));
+      // No built-in roles currently use downgrade; custom agents may opt in.
+      const needsDowngrade = false;
       if (needsDowngrade) {
         effectiveModel = resolveModel({ modelTier: roleDef.downgradeModelTier, model: roleDef.model });
       }
