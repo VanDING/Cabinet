@@ -340,6 +340,7 @@ export function App() {
             ...(activeSession?.projectId ?? activeProjectId ? { projectId: activeSession?.projectId ?? activeProjectId } : {}),
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
             ...(model ? { model } : {}),
+            ...(activeAgent !== 'secretary' ? { targetAgent: activeAgent } : {}),
           }),
         });
 
@@ -366,12 +367,7 @@ export function App() {
           const AGENT_DISPLAY: Record<string, string> = {
             secretary: 'Secretary',
             meeting_chair: 'Meeting Chair',
-            workflow_designer: 'Workflow Designer',
-            decision_analyst: 'Decision Analyst',
-            agent_creator: 'Agent Creator',
-            reviewer: 'Reviewer',
-            organize: 'Organizer',
-            curator: 'Curator',
+            organize: 'Organize',
           };
 
           // Create skeleton message once; update incrementally during streaming
@@ -389,7 +385,6 @@ export function App() {
               const sourceDisplay = AGENT_DISPLAY[streamAgent] || streamAgent;
               const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
               streamAgent = targetAgent;
-              setActiveAgent(targetAgent);
               updateMessage(sessionId, streamId, {
                 routing: { from: sourceDisplay, to: targetDisplay },
               });
@@ -536,7 +531,6 @@ export function App() {
             },
             onRouting(targetAgent) {
               streamAgent = targetAgent;
-              setActiveAgent(targetAgent);
               // routing_start already emitted prefix; no message update needed here
             },
           }, controller.signal);

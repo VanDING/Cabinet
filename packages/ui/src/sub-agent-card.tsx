@@ -100,13 +100,10 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400">思考过程</div>
-              <div className="mt-1 space-y-1">
-                {activity.thinking.slice(-3).map((t, i) => (
-                  <p key={i} className="text-xs text-gray-600 dark:text-gray-300">
-                    {t.slice(0, 300)}
-                    {t.length > 300 ? '…' : ''}
-                  </p>
-                ))}
+              <div className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+                <p className="text-xs text-gray-600 dark:text-gray-300">
+                  {activity.thinking.join('')}
+                </p>
               </div>
             </div>
           )}

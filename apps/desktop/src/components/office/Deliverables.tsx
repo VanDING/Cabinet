@@ -5,8 +5,12 @@ import { FileText } from 'lucide-react';
 
 interface Deliverable {
   id: string;
+  projectId: string;
   title: string;
   type: string;
+  filePath?: string;
+  meetingId?: string;
+  tags: string[];
   createdAt: string;
 }
 
@@ -28,6 +32,18 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  const handleOpenDeliverable = (d: Deliverable) => {
+    if (d.filePath) {
+      window.dispatchEvent(new CustomEvent('open-file-viewer', {
+        detail: { path: d.filePath, name: d.title, mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined, projectId: d.projectId },
+      }));
+    } else if (d.meetingId) {
+      window.dispatchEvent(new CustomEvent('open-file-viewer', {
+        detail: { path: `meeting:${d.meetingId}`, name: d.title, mimeType: 'text/markdown', projectId: d.projectId },
+      }));
+    }
+  };
 
   useEffect(() => {
     fetchDeliverables();
@@ -76,7 +92,11 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
       ) : (
         <div className="flex-1 space-y-1.5 overflow-auto">
           {items.map((d) => (
-            <div key={d.id} className="flex items-center gap-2 text-xs">
+            <div
+              key={d.id}
+              className={`flex items-center gap-2 text-xs cursor-pointer ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
+              onClick={() => handleOpenDeliverable(d)}
+            >
               <FileText size={12} className="flex-shrink-0 text-gray-400" />
               <span className={`truncate ${text}`}>{d.title}</span>
               <span className={`flex-shrink-0 ml-auto ${sub}`}>
