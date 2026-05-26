@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, ChevronRight, File, Image, FileCode } from 'lucide-react';
 import { apiFetch } from '../utils/pin.js';
 
@@ -127,22 +127,6 @@ export function FileViewer({ isDark }: Props) {
   const active = tabs.find((t) => t.path === activeTab);
   const isImage = active?.mimeType && IMAGE_MIMES.includes(active.mimeType);
   const isHtml = active?.name.endsWith('.html') || active?.name.endsWith('.htm');
-  const isPdf = active?.mimeType === 'application/pdf' || active?.name.endsWith('.pdf');
-
-  const htmlBlobUrl = useMemo(() => {
-    if (isHtml && active?.content) {
-      return URL.createObjectURL(new Blob([active.content], { type: 'text/html' }));
-    }
-    return null;
-  }, [isHtml, active?.content]);
-
-  useEffect(() => {
-    return () => {
-      if (htmlBlobUrl) {
-        URL.revokeObjectURL(htmlBlobUrl);
-      }
-    };
-  }, [htmlBlobUrl]);
 
   if (!visible) return null;
 
@@ -214,18 +198,6 @@ export function FileViewer({ isDark }: Props) {
                   className="max-w-full max-h-full object-contain"
                 />
               </div>
-            ) : isHtml && viewMode === 'preview' ? (
-              <iframe
-                src={htmlBlobUrl ?? ''}
-                className="w-full h-full border-0"
-                title={active.name}
-              />
-            ) : isPdf ? (
-              <iframe
-                src={URL.createObjectURL(new Blob([active.content], { type: 'application/pdf' }))}
-                className="w-full h-full border-0"
-                title={active.name}
-              />
             ) : (
               <pre className={`p-4 text-sm font-mono whitespace-pre-wrap break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                 {active.content || '(empty)'}

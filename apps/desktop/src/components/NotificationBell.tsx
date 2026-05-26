@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotifications, type AppNotification } from './NotificationContext';
-import { useOutsideClick } from '../hooks/useOutsideClick';
 
 const TYPE_ICONS: Record<AppNotification['type'], { label: string; color: string }> = {
   decision: { label: 'D', color: 'bg-blue-500' },
@@ -31,9 +30,25 @@ export function NotificationBell({ isDark }: Props) {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
 
-  useOutsideClick(btnRef, () => setOpen(false), open);
+  // Close panel when clicking outside both the bell button and the panel
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        btnRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
 
   const bgClass = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
   const itemHover = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
@@ -61,8 +76,8 @@ export function NotificationBell({ isDark }: Props) {
 
       {open && (
         <div
+          ref={panelRef}
           className={`absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border shadow-xl ${bgClass}`}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           <div className={`flex items-center justify-between border-b px-3 py-2 ${borderClass}`}>
             <span className={`text-xs font-semibold ${textClass}`}>Notifications</span>
