@@ -109,7 +109,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 - Default to fast model unless the task genuinely needs reasoning-level capability.
 - Restrict tools to what the agent actually needs. An agent that only analyzes does not need write tools.
 - If the user is unsure about details, make reasonable suggestions and ask for confirmation.
-- Never delete built-in agents (secretary, decision_analyst, meeting_chair, reviewer, curator, organize).`,
+- Never delete built-in agents (secretary, meeting_chair, reviewer, curator, organize).`,
   inputSchema: {},
   outputSchema: {},
 };

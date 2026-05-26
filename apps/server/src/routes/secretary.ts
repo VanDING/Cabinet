@@ -40,8 +40,8 @@ const execAsync = promisify(exec);
 
 /** Roles that need the system environment section in their prompt. */
 const ROLES_NEEDING_ENV = new Set([
-  'secretary', 'workflow_designer', 'organize', 'curator',
-  'decision_analyst', 'meeting_chair', 'reviewer', 'agent_creator',
+  'secretary', 'organize', 'curator',
+  'meeting_chair', 'reviewer',
 ]);
 
 function buildSystemPrompt(roleType: string, roleSystemPrompt: string, projectRootPath?: string): string {
@@ -1748,7 +1748,6 @@ async function dispatchToSpecialist(
     // Upgrade: complex tasks need better models
     if (roleDef?.upgradeModelTier) {
       const needsUpgrade =
-        (roleType === 'decision_analyst' && (message.includes('架构') || message.includes('安全') || message.includes('预算') || message.includes('战略') || message.includes('迁移') || message.length > 500)) ||
         (roleType === 'reviewer' && (message.includes('L3') || message.includes('安全关键') || message.length > 2000));
       if (needsUpgrade) {
         effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier, model: roleDef.model });
@@ -2102,6 +2101,7 @@ const chatSchema = z.object({
   stream: z.boolean().optional(),
   dispatchMode: z.enum(['single', 'pipeline', 'parallel']).optional(),
   thinkingBudget: z.number().min(1024).max(128000).nullable().optional(),
+  targetAgent: z.string().optional(),
 });
 
 secretaryRouter.post('/chat', async (c) => {
@@ -2197,6 +2197,18 @@ secretaryRouter.post('/chat', async (c) => {
       augmentedMessage = `${message}\n\n[Attached files]\n${fileLines.join('\n')}`;
     }
 
+    // Direct skill invocation: if message starts with /skillName, load and inject skill prompt
+    const skillMatch = augmentedMessage.trim().match(/^\/([a-zA-Z0-9_-]+)\b/);
+    if (skillMatch) {
+      const skillName = skillMatch[1];
+      if (!skillName) return;
+      const skill = ctx.skillRegistry.load(skillName);
+      if (skill) {
+        const skillResult = await ctx.skillRegistry.executeSkill(skill, {});
+        augmentedMessage = `${skillResult.output}\n\n[User request]\n${augmentedMessage.slice(skillMatch[0].length).trim()}`;
+      }
+    }
+
     if (ctx.gateway) {
       // ── Dispatch mode: pipeline or parallel ──
       if (dispatchMode === 'pipeline' || dispatchMode === 'parallel') {
@@ -2288,6 +2300,88 @@ secretaryRouter.post('/chat', async (c) => {
       // ── Single mode (default) ──
       // SSE streaming path — true token-level streaming via gateway.streamText()
       if (stream) {
+        const targetAgent = parsed.data.targetAgent;
+        if (targetAgent && targetAgent !== 'secretary') {
+          const sseStream = new ReadableStream({
+            async start(controller) {
+              const encoder = new TextEncoder();
+              function emit(type: string, data: Record<string, unknown>) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}
+
+`));
+              }
+              let streamedContent = '';
+              try {
+                ctx.sessionManager.addMessage(sessionId, 'user', message);
+                emit('status', { message: 'Thinking...' });
+                await dispatchToSpecialistStreaming(
+                  targetAgent as AgentRoleType,
+                  augmentedMessage,
+                  sessionId,
+                  projectId,
+                  captainId,
+                  {
+                    onChunk(content) {
+                      streamedContent += content;
+                      emit('chunk', { content });
+                    },
+                    onThinking(content) {
+                      emit('thinking', { content });
+                    },
+                    onThinkingDone() {
+                      emit('thinking_done', {});
+                    },
+                    onToolCall(name, args) {
+                      emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
+                    },
+                    onToolResult(name, result) {
+                      emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
+                    },
+                    onUsage(usage) {
+                      ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
+                      emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
+                    },
+                    onDone() {},
+                    onError(error) {
+                      emit('error', { message: error });
+                    },
+                  },
+                  thinkingBudget,
+                  model ?? undefined,
+                );
+                ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+                broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+                try {
+                  broadcast('cost_updated', {
+                    daily: ctx.costTracker.getDailyCost(),
+                    model: model ?? 'claude-sonnet-4-6',
+                    timestamp: new Date().toISOString(),
+                  });
+                } catch { /* non-fatal */ }
+                ctx.sessionManager.addMessage(sessionId, 'assistant', streamedContent);
+                emit('done', {
+                  sessionId,
+                  agentName: targetAgent,
+                  content: streamedContent,
+                  routed: false,
+                });
+              } catch (e: any) {
+                emit('error', { message: e.message ?? 'Unknown error' });
+              } finally {
+                controller.close();
+              }
+            },
+          });
+          return new Response(sseStream, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              Connection: 'keep-alive',
+              'X-Accel-Buffering': 'no',
+            },
+          });
+        }
+
         const sseStream = new ReadableStream({
           async start(controller) {
             const store = { result: null as MeetingResult | null };
@@ -2432,6 +2526,41 @@ secretaryRouter.post('/chat', async (c) => {
         });
       }
 
+      // ── Direct agent dispatch (non-streaming) ──
+      const targetAgent = parsed.data.targetAgent;
+      if (targetAgent && targetAgent !== 'secretary') {
+        ctx.sessionManager.addMessage(sessionId, 'user', message);
+        const output = await dispatchToSpecialist(
+          targetAgent as AgentRoleType,
+          augmentedMessage,
+          sessionId,
+          projectId,
+          captainId,
+          thinkingBudget,
+          model ?? undefined,
+        );
+        ctx.sessionManager.addMessage(sessionId, 'assistant', output);
+        ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+        broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
+        try {
+          broadcast('cost_updated', {
+            daily: ctx.costTracker.getDailyCost(),
+            model: model ?? 'claude-sonnet-4-6',
+            timestamp: new Date().toISOString(),
+          });
+        } catch { /* non-fatal */ }
+        return c.json({
+          sessionId,
+          projectId,
+          captainId,
+          response: output,
+          mode: 'single',
+          dispatchMode: 'single',
+          model: model ?? 'claude-sonnet-4-6',
+          agentName: targetAgent,
+        });
+      }
+
       // ── Non-streaming single mode ──
       const store = { result: null as MeetingResult | null };
       const result = await meetingResultStore.run(store, () =>
@@ -2569,6 +2698,16 @@ secretaryRouter.get('/sessions', (c) => {
       updatedAt: s.updatedAt,
     })),
   });
+});
+
+// ── POST /sessions/:id/close ──
+secretaryRouter.post('/sessions/:id/close', (c) => {
+  const sessionId = c.req.param('id');
+  const ctx = getServerContext();
+  const session = ctx.sessionManager.get(sessionId);
+  if (!session) return c.json({ closed: false, reason: 'Session not found' }, 404);
+  ctx.sessionManager.close(sessionId);
+  return c.json({ closed: true, id: sessionId });
 });
 
 // ── GET /context ──
