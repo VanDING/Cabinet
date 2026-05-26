@@ -32,13 +32,30 @@
 
 ---
 
-## Phase 1: 项目数据层
+## 执行状态总览
 
-**依赖:** 无前置依赖，可独立实施。
+> **2026-05-26 更新**：在准备执行前拉取了远程最新代码（`9f14d4a`），发现本计划中 **90% 以上的内容已由远程代码实现**。以下标注各 Task 的当前状态。
+
+| Task | 状态 | 说明 |
+|------|------|------|
+| Task 1-5 | ✅ 已完成 | 数据层全部已由远程实现 |
+| Task 6-7 | ✅ 已完成 | ContextBuilder 缓存与 prebuiltContext 已存在 |
+| Task 8 | ⚠️ 待确认 | `secretary.ts` 中未见 decisionanalysis 路由调用，但需在 `SecretaryAgent` 内部二次确认 |
+| Task 9-10 | ✅ 已完成 | Scheduler 默认启用、T0-T3 授权已存在 |
+| Task 11 | ✅ 已完成 | FileViewer iframe 预览与拖拽宽度已实现 |
+| Task 12 | ⚠️ 部分实现 | thinking 已在 toolCalls 上方，但 `ToolCallSummary` 默认折叠状态需确认 |
+| Task 13-14 | ✅ 已完成 | WebSocket 事件监听已补全、DeliverablesPanel 已可点击 |
 
 ---
 
-### Task 1: 项目名唯一性约束
+## Phase 1: 项目数据层
+
+**依赖:** 无前置依赖，可独立实施。  
+**状态:** ✅ 已全部由远程代码实现，无需执行。
+
+---
+
+### Task 1: 项目名唯一性约束 ✅ 已完成
 
 **Files:**
 - Create: `packages/storage/src/migrations/003_project_name_unique.ts`
@@ -82,7 +99,7 @@
 
 ---
 
-### Task 2: 项目创建时初始化物理目录
+### Task 2: 项目创建时初始化物理目录 ✅ 已完成
 
 **Files:**
 - Modify: `apps/server/src/routes/projects.ts`
@@ -177,7 +194,7 @@
 
 ---
 
-### Task 3: create_workflow projectId 透传（服务端）
+### Task 3: create_workflow projectId 透传（服务端） ✅ 已完成
 
 **Files:**
 - Modify: `apps/server/src/routes/workflows.ts`
@@ -226,7 +243,7 @@
 
 ---
 
-### Task 4: create_workflow tool projectId 必填（Agent 层）
+### Task 4: create_workflow tool projectId 必填（Agent 层） ✅ 已完成
 
 **Files:**
 - Modify: `packages/agent/src/tools/index.ts`
@@ -261,7 +278,7 @@
 
 ---
 
-### Task 5: 交付物聚合 API
+### Task 5: 交付物聚合 API ✅ 已完成
 
 **Files:**
 - Modify/Create: `apps/server/src/routes/deliverables.ts`
@@ -318,11 +335,12 @@
 
 ## Phase 2: Agent 执行层
 
-**依赖:** Phase 1 完成后实施，尤其依赖 `projectId` 透传正确，以确保缓存 key 有效。
+**依赖:** Phase 1 完成后实施，尤其依赖 `projectId` 透传正确，以确保缓存 key 有效。  
+**状态:** ✅ Task 6-7、9-10 已由远程代码实现；Task 8 需二次确认。
 
 ---
 
-### Task 6: ContextBuilder 请求级缓存
+### Task 6: ContextBuilder 请求级缓存 ✅ 已完成
 
 **Files:**
 - Modify: `packages/agent/src/context-builder.ts`
@@ -439,7 +457,7 @@
 
 ---
 
-### Task 7: AgentLoop prebuiltContext 透传
+### Task 7: AgentLoop prebuiltContext 透传 ✅ 已完成
 
 **Files:**
 - Modify: `packages/agent/src/agent-loop.ts`
@@ -485,7 +503,7 @@
 
 ---
 
-### Task 8: Secretary 路由优化
+### Task 8: Secretary 路由优化 ⚠️ 待确认
 
 **Files:**
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -571,7 +589,7 @@
 
 ---
 
-### Task 10: 用户授权级别 T0-T3
+### Task 10: 用户授权级别 T0-T3 ✅ 已完成
 
 **Files:**
 - Modify: `packages/agent/src/agent-loop.ts`
@@ -622,11 +640,12 @@
 
 ## Phase 3: UI/交互层
 
-**依赖:** Phase 1 和 Phase 2 完成后实施，依赖正确的交付物 API 和 Agent 行为。
+**依赖:** Phase 1 和 Phase 2 完成后实施，依赖正确的交付物 API 和 Agent 行为。  
+**状态:** ✅ Task 11、13-14 已由远程代码实现；Task 12 需二次确认。
 
 ---
 
-### Task 11: FileViewer 增强（iframe 预览 + 拖拽宽度）
+### Task 11: FileViewer 增强（iframe 预览 + 拖拽宽度） ✅ 已完成
 
 **Files:**
 - Modify: `apps/desktop/src/components/FileViewer.tsx`
@@ -712,7 +731,7 @@
 
 ---
 
-### Task 12: 消息流视觉权重调整
+### Task 12: 消息流视觉权重调整 ⚠️ 部分实现（需确认 ToolCallSummary 默认折叠状态）
 
 **Files:**
 - Modify: `apps/desktop/src/components/ChatView.tsx`（或 `MessageRow.tsx`）
@@ -763,7 +782,7 @@
 
 ---
 
-### Task 13: WebSocket 事件补全
+### Task 13: WebSocket 事件补全 ✅ 已完成
 
 **Files:**
 - Modify: `apps/server/src/routes/ws.ts`（或广播逻辑所在文件）
@@ -815,7 +834,7 @@
 
 ---
 
-### Task 14: DeliverablesPanel 点击修复
+### Task 14: DeliverablesPanel 点击修复 ✅ 已完成
 
 **Files:**
 - Modify: `apps/desktop/src/components/office/DeliverablesPanel.tsx`
