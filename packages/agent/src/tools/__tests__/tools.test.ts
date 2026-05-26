@@ -172,6 +172,9 @@ describe('Cabinet Tools', () => {
         errors: 1,
         recentEvents: [{ message: 'Event A', time: '2026-05-27T10:00:00Z' }],
       }),
+      delegateTask: (name) => `task_${name}_test`,
+      getTaskStatus: (taskId) => ({ id: taskId, name: 'Test Task', status: 'running', startTime: Date.now() }),
+      listActiveTasks: () => [{ id: 'task_1', name: 'Task One', status: 'running' }],
     };
 
     const tools = createCabinetTools(deps);
@@ -180,8 +183,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 34 tools', () => {
-    expect(executor.listTools()).toHaveLength(67);
+  it('registers 37 tools', () => {
+    expect(executor.listTools()).toHaveLength(70);
   });
 
   it('remember and recall work together', async () => {
@@ -229,6 +232,30 @@ describe('Cabinet Tools', () => {
   it('get_captain_preferences returns defaults', async () => {
     const r = await executor.execute('get_captain_preferences', 'tc8', { captainId: 'c1' });
     expect((r.output as any).preferences).toEqual({});
+  });
+
+  it('delegate_task returns task id', async () => {
+    const r = await executor.execute('delegate_task', 'tc_delegate', { name: 'Analyze data' });
+    expect((r.output as any).taskId).toBe('task_Analyze data_test');
+  });
+
+  it('get_task_status returns task info', async () => {
+    const r = await executor.execute('get_task_status', 'tc_status', { taskId: 'task_123' });
+    const out = r.output as any;
+    expect(out.id).toBe('task_123');
+    expect(out.name).toBe('Test Task');
+    expect(out.status).toBe('running');
+    expect(out.startTime).toBeDefined();
+  });
+
+  it('list_active_tasks returns active tasks', async () => {
+    const r = await executor.execute('list_active_tasks', 'tc_list', {});
+    const out = r.output as any;
+    expect(Array.isArray(out.tasks)).toBe(true);
+    expect(out.tasks).toHaveLength(1);
+    expect(out.tasks[0].id).toBe('task_1');
+    expect(out.tasks[0].name).toBe('Task One');
+    expect(out.tasks[0].status).toBe('running');
   });
 
   // ── Write tool tests ──
