@@ -16,10 +16,10 @@ export type ParsedIntent =
       filters: Record<string, string>;
     }
   | { kind: 'knowledge_query'; question: string; scope: 'short_term' | 'long_term' | 'both' }
-  | { kind: 'workflow_request'; topic: string; context: string; suggestedDimensions: string[] }
   | { kind: 'review_request'; target: string; context: string }
   | { kind: 'organize_request'; topic: string; context: string }
-  | { kind: 'agent_creator_request'; topic: string; context: string }
+  | { kind: 'skill_request'; topic: string; context: string }
+  | { kind: 'mcp_request'; topic: string; context: string }
   | { kind: 'schedule_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
@@ -72,9 +72,14 @@ const INTENT_EXAMPLES: IntentExample[] = [
     excludeWords: [],
   },
   {
-    intent: 'workflow_request',
-    examples: ['创建工作流', '设计流程', '自动化步骤', '修改workflow', '定义流程', '建立工作流', '跑个流程'],
-    excludeWords: ['不要创建', '不用工作流'],
+    intent: 'skill_request',
+    examples: ['创建skill', '写skill', 'skill', 'SKILL.md', '优化skill', 'skill文件'],
+    excludeWords: ['不要创建skill'],
+  },
+  {
+    intent: 'mcp_request',
+    examples: ['MCP', 'mcp server', 'model context protocol', '搭建mcp'],
+    excludeWords: [],
   },
   {
     intent: 'review_request',
@@ -119,7 +124,7 @@ export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
     'secretary', 'decision_analyst', 'meeting_chair',
-    'workflow_designer', 'curator', 'agent_creator', 'reviewer', 'organize',
+    'curator', 'reviewer', 'organize',
   ]);
   private customAgents: Map<string, string> = new Map(); // name -> description
   private exampleEmbeddingsWarmed = false;
@@ -243,28 +248,20 @@ export class IntentParser {
       return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
     }
 
-    // Agent creator request
-    const hasCreateAgent = lower.includes('创建') && (lower.includes('agent') || lower.includes('智能体'));
-    const hasDefineAgent = lower.includes('定义') && lower.includes('角色');
-    if ((hasCreateAgent || hasDefineAgent) && !this.hasNegation(lower, 'agent_creator')) {
-      return { kind: 'agent_creator_request', topic: message.slice(0, 100), context: message };
+    // Skill request
+    const hasSkillKeyword = lower.includes('skill') || lower.includes('skil');
+    const hasCreateSkill = lower.includes('创建') && hasSkillKeyword;
+    const hasWriteSkill = (lower.includes('写') || lower.includes('编写')) && hasSkillKeyword;
+    const hasSkillMd = lower.includes('skill.md') || lower.includes('skil.md');
+    if ((hasCreateSkill || hasWriteSkill || hasSkillMd) && !this.hasNegation(lower, 'skill_request')) {
+      return { kind: 'skill_request', topic: message.slice(0, 100), context: message };
     }
 
-    // Workflow request: "流程" alone catches too much (e.g. "业务流程" in casual chat).
-    // Require explicit workflow-related keywords or creation intent.
-    const hasWorkflowKeyword = lower.includes('工作流') || lower.includes('workflow');
-    const hasCreateAutomation = lower.includes('创建') && (lower.includes('步骤') || lower.includes('自动'));
-    const hasModifyWorkflow = lower.includes('修改') && lower.includes('workflow');
-    const hasDesignFlow = lower.includes('流程') && (
-      lower.includes('创建') || lower.includes('设计') || lower.includes('定义') || lower.includes('自动化')
-    );
-    if ((hasWorkflowKeyword || hasCreateAutomation || hasModifyWorkflow || hasDesignFlow) && !this.hasNegation(lower, 'workflow_request')) {
-      return {
-        kind: 'workflow_request',
-        topic: message.slice(0, 100),
-        context: message,
-        suggestedDimensions: [],
-      };
+    // MCP request
+    const hasMcpKeyword = lower.includes('mcp') || lower.includes('model context protocol');
+    const hasMcpServer = lower.includes('mcp server') || lower.includes('mcpserver');
+    if ((hasMcpKeyword || hasMcpServer) && !this.hasNegation(lower, 'mcp_request')) {
+      return { kind: 'mcp_request', topic: message.slice(0, 100), context: message };
     }
 
     if (
@@ -365,15 +362,19 @@ Examples:
 4. Message: "什么是我们的核心竞争优势"
    → {"kind": "knowledge_query", "question": "什么是我们的核心竞争优势", "scope": "both"}
 5. Message: "帮我设计一个自动化的数据处理工作流"
-   → {"kind": "workflow_request", "topic": "数据处理工作流", "context": "...", "suggestedDimensions": []}
+   → {"kind": "organize_request", "topic": "数据处理工作流", "context": "..."}
 6. Message: "review一下这个方案的质量"
    → {"kind": "review_request", "target": "方案", "context": "review一下这个方案的质量"}
 7. Message: "搭建一个市场营销体系"
    → {"kind": "organize_request", "topic": "市场营销体系", "context": "..."}
 8. Message: "帮我设置一个每天执行的任务"
    → {"kind": "schedule_request", "topic": "每天执行的任务", "context": "..."}
-9. Message: "继续"
-   → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
+9. Message: "帮我写一个skill"
+   → {"kind": "skill_request", "topic": "写一个skill", "context": "..."}
+10. Message: "搭一个mcp server"
+    → {"kind": "mcp_request", "topic": "搭一个mcp server", "context": "..."}
+11. Message: "继续"
+    → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
 
       const historyConstraint = conversationContext?.lastIntent
         ? `\nHistory context: The previous message was classified as "${conversationContext.lastIntent}". If this message is a continuation of the same topic (same entities, task, or files), prefer the same intent unless the user explicitly switches topics.`
@@ -386,7 +387,9 @@ Examples:
 - status_query: user asks about project/decision/workflow status
 - knowledge_query: user asks a general question
 - review_request: user wants to review/audit/check quality of something
-- organize_request: user wants to design/build/architect an organization or system
+- organize_request: user wants to design/build/architect an organization, system, workflow, or agent
+- skill_request: user wants to create/edit/optimize a skill or SKILL.md
+- mcp_request: user wants to build an MCP server
 - schedule_request: user wants to create a scheduled/recurring task
 - follow_up: user is continuing or elaborating on a previous topic
 - unknown: none of the above
@@ -567,10 +570,9 @@ Message: "${message}"`;
         '- secretary: General conversation and intent routing',
         '- decision_analyst: Structured decision analysis and option evaluation',
         '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
-        '- workflow_designer: Workflow creation, modification, and execution',
         '- curator: Memory consolidation, progress summaries, pattern extraction',
         '- reviewer: Quality review — checks outputs for logic, evidence, and completeness',
-        '- organize: Organization design — translates business goals into agent+workflow blueprints',
+        '- organize: Organization design — translates business goals into agent+workflow blueprints, and handles skill/MCP creation',
       ].join('\n');
 
     const prefsLine = this.captainPrefsContext
@@ -640,8 +642,10 @@ Message: "${message}"`;
         return { kind: 'status_query', target: 'project', filters: { query: message } };
       case 'knowledge_query':
         return { kind: 'knowledge_query', question: message, scope: 'both' };
-      case 'workflow_request':
-        return { kind: 'workflow_request', ...base, suggestedDimensions: [] };
+      case 'skill_request':
+        return { kind: 'skill_request', ...base };
+      case 'mcp_request':
+        return { kind: 'mcp_request', ...base };
       case 'review_request':
         return { kind: 'review_request', target: message.slice(0, 100), context: message };
       case 'organize_request':
@@ -712,13 +716,11 @@ Message: "${message}"`;
         targetAgent = 'secretary';
         reasoning = 'Knowledge query handled by Secretary.';
         break;
-      case 'workflow_request':
-        targetAgent = 'workflow_designer';
-        reasoning = 'Workflow creation/modification request routed to Workflow Designer.';
-        break;
       case 'organize_request':
+      case 'skill_request':
+      case 'mcp_request':
         targetAgent = 'organize';
-        reasoning = 'Organization design request routed to Organize Agent.';
+        reasoning = 'Creation/design request routed to Organize Agent.';
         break;
       case 'schedule_request':
         targetAgent = 'secretary';
@@ -727,10 +729,6 @@ Message: "${message}"`;
       case 'review_request':
         targetAgent = 'reviewer';
         reasoning = 'Review/audit request routed to Reviewer.';
-        break;
-      case 'agent_creator_request':
-        targetAgent = 'agent_creator';
-        reasoning = 'Custom agent creation request routed to Agent Creator.';
         break;
       case 'follow_up':
         targetAgent = 'secretary';

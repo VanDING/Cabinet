@@ -29,6 +29,38 @@ describe('IntentParser', () => {
     expect(result.kind).toBe('unknown');
   });
 
+  it('routes workflow design to organize_request', () => {
+    const result = parser.parse('帮我设计一个审批工作流');
+    expect(result.kind).toBe('organize_request');
+  });
+
+  it('routes agent creation to organize_request', () => {
+    const result = parser.parse('创建一个代码审查agent');
+    expect(result.kind).toBe('organize_request');
+  });
+
+  it('detects skill_request', () => {
+    const result = parser.parse('帮我写一个skill');
+    expect(result.kind).toBe('skill_request');
+  });
+
+  it('detects mcp_request', () => {
+    const result = parser.parse('搭一个mcp server');
+    expect(result.kind).toBe('mcp_request');
+  });
+
+  describe('fallbackRoute', () => {
+    it('routes skill_request to organize', async () => {
+      const route = await parser.routeToAgent('帮我写一个skill');
+      expect(route.targetAgent).toBe('organize');
+    });
+
+    it('routes mcp_request to organize', async () => {
+      const route = await parser.routeToAgent('搭一个mcp server');
+      expect(route.targetAgent).toBe('organize');
+    });
+  });
+
   describe('LLM-powered parsing', () => {
     const mockGateway = {
       async generateText() {

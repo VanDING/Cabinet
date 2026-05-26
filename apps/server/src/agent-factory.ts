@@ -3,6 +3,7 @@ import {
   registerCabinetTools,
   registerSkillTools,
   registerMCPTools,
+  registerBuiltInSkills,
 } from '@cabinet/agent';
 import type { ToolDependencies, MemoryProvider } from '@cabinet/agent';
 import { ProjectIsolatedMemory } from '@cabinet/memory';
@@ -18,6 +19,7 @@ export function createStandardToolExecutor(
 ): ToolExecutor {
   const executor = new ToolExecutor();
   registerCabinetTools(executor, deps);
+  registerBuiltInSkills();
   registerSkillTools(executor);
 
   registerMCPTools(
