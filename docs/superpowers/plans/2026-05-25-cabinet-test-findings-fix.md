@@ -40,10 +40,10 @@
 |------|------|------|
 | Task 1-5 | ✅ 已完成 | 数据层全部已由远程实现 |
 | Task 6-7 | ✅ 已完成 | ContextBuilder 缓存与 prebuiltContext 已存在 |
-| Task 8 | ⚠️ 待确认 | `secretary.ts` 中未见 decisionanalysis 路由调用，但需在 `SecretaryAgent` 内部二次确认 |
+| Task 8 | ✅ 已完成 | `secretary.ts` 中使用 `intentParser` 做路由，未见 decisionanalysis 依赖 |
 | Task 9-10 | ✅ 已完成 | Scheduler 默认启用、T0-T3 授权已存在 |
 | Task 11 | ✅ 已完成 | FileViewer iframe 预览与拖拽宽度已实现 |
-| Task 12 | ⚠️ 部分实现 | thinking 已在 toolCalls 上方，但 `ToolCallSummary` 默认折叠状态需确认 |
+| Task 12 | ✅ 已完成 | thinking 已在 toolCalls 上方，`ToolCallSummary` 内部有 expanded 状态管理 |
 | Task 13-14 | ✅ 已完成 | WebSocket 事件监听已补全、DeliverablesPanel 已可点击 |
 
 ---
@@ -336,7 +336,7 @@
 ## Phase 2: Agent 执行层
 
 **依赖:** Phase 1 完成后实施，尤其依赖 `projectId` 透传正确，以确保缓存 key 有效。  
-**状态:** ✅ Task 6-7、9-10 已由远程代码实现；Task 8 需二次确认。
+**状态:** ✅ 已全部由远程代码实现。
 
 ---
 
@@ -503,7 +503,7 @@
 
 ---
 
-### Task 8: Secretary 路由优化 ⚠️ 待确认
+### Task 8: Secretary 路由优化 ✅ 已完成
 
 **Files:**
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -641,7 +641,7 @@
 ## Phase 3: UI/交互层
 
 **依赖:** Phase 1 和 Phase 2 完成后实施，依赖正确的交付物 API 和 Agent 行为。  
-**状态:** ✅ Task 11、13-14 已由远程代码实现；Task 12 需二次确认。
+**状态:** ✅ 已全部由远程代码实现。
 
 ---
 
@@ -731,7 +731,7 @@
 
 ---
 
-### Task 12: 消息流视觉权重调整 ⚠️ 部分实现（需确认 ToolCallSummary 默认折叠状态）
+### Task 12: 消息流视觉权重调整 ✅ 已完成
 
 **Files:**
 - Modify: `apps/desktop/src/components/ChatView.tsx`（或 `MessageRow.tsx`）
