@@ -60,7 +60,10 @@ export function NotificationBell({ isDark }: Props) {
       </button>
 
       {open && (
-        <div className={`absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border shadow-xl ${bgClass}`}>
+        <div
+          className={`absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border shadow-xl ${bgClass}`}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <div className={`flex items-center justify-between border-b px-3 py-2 ${borderClass}`}>
             <span className={`text-xs font-semibold ${textClass}`}>Notifications</span>
             <div className="flex gap-1">
