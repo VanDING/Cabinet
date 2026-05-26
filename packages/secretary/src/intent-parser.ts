@@ -123,8 +123,8 @@ interface EmbeddingMatch {
 export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
-    'secretary', 'decision_analyst', 'meeting_chair',
-    'curator', 'reviewer', 'organize',
+    'secretary', 'meeting_chair',
+    'reviewer', 'organize',
   ]);
   private customAgents: Map<string, string> = new Map(); // name -> description
   private exampleEmbeddingsWarmed = false;
@@ -567,10 +567,8 @@ Message: "${message}"`;
     const agentList =
       this.availableAgentsDesc ||
       [
-        '- secretary: General conversation and intent routing',
-        '- decision_analyst: Structured decision analysis and option evaluation',
+        '- secretary: General conversation, decision analysis, and intent routing',
         '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
-        '- curator: Memory consolidation, progress summaries, pattern extraction',
         '- reviewer: Quality review — checks outputs for logic, evidence, and completeness',
         '- organize: Organization design — translates business goals into agent+workflow blueprints, and handles skill/MCP creation',
       ].join('\n');
@@ -595,11 +593,9 @@ Available agents:
 ${agentList}
 ${prefsLine}
 Routing guidelines:
-- secretary: General questions, casual conversation, simple information retrieval
-- decision_analyst: The user is facing a choice, evaluating options, or making a decision
+- secretary: General questions, casual conversation, simple information retrieval, or decision analysis
 - meeting_chair: The topic needs multiple perspectives, expert opinions, or debate
 - workflow_designer: The user wants to create/design/run a multi-step process
-- curator: The user asks about past events, project status, progress, or patterns
 - reviewer: The user wants to review/audit/check the quality or correctness of something
 - organize: The user wants to design/build/architect an organization, system, or capability
 ${historyLine}${embeddingHint}
@@ -701,8 +697,8 @@ Message: "${message}"`;
 
     switch (intent.kind) {
       case 'decision_request':
-        targetAgent = 'decision_analyst';
-        reasoning = 'Decision-related request routed to Decision Analyst.';
+        targetAgent = 'secretary';
+        reasoning = 'Decision-related request handled by Secretary.';
         break;
       case 'meeting_request':
         targetAgent = 'meeting_chair';

@@ -282,7 +282,7 @@ export class SecretaryAgent {
       const prompt = `Original user request: "${message.slice(0, 300)}"
 Agent (${targetAgent}) responded: "${response.slice(0, 500)}"
 Does this response directly and appropriately address the user's original request?
-If not, which single agent type would be more appropriate: secretary, decision_analyst, meeting_chair, curator, reviewer, or organize?
+If not, which single agent type would be more appropriate: secretary, meeting_chair, reviewer, or organize?
 
 Respond with ONLY a JSON object (no markdown, no backticks):
 {"matches": true or false, "correctAgent": "agentType or null"}`;
@@ -401,8 +401,8 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     }
 
     const intentBased: Record<string, string> = {
-      decision_request: 'meeting_chair',
-      meeting_request: 'decision_analyst',
+      decision_request: 'secretary',
+      meeting_request: 'secretary',
       workflow_request: 'organize',
       organize_request: 'organize',
       review_request: 'secretary',

@@ -16,7 +16,6 @@
 
 export type AgentRoleType =
   | 'secretary'
-  | 'decision_analyst'
   | 'meeting_chair'
   | 'reviewer'
   | 'curator'
@@ -69,15 +68,23 @@ export const SECRETARY_ROLE: AgentRole = {
     '',
     'Core responsibilities:',
     '1. Understand the Captain\'s intent. Handle general questions directly.',
-    '2. For specialized tasks, route to the appropriate cabinet member (DecisionAnalyst, MeetingChair, Curator, Reviewer, Organize, or any custom agent).',
+    '2. For specialized tasks, route to the appropriate cabinet member (MeetingChair, Reviewer, Organize, or any custom agent).',
     '3. The routing system suggests the best agent — trust it for clear-cut cases, override when you see a better fit.',
     '',
     'When you identify the following intents, you MUST route to the corresponding specialist and MUST NOT handle them yourself:',
-    '- decision analysis (权衡、选择、决策) → decision_analyst',
     '- meeting organization (开会、讨论、多方意见) → meeting_chair',
     '- workflow design / agent creation / skill writing / mcp building (工作流、agent、skill、MCP) → organize',
     '- code/output review (审查、检查、review) → reviewer',
     '- system architecture (组织架构、系统设计、搭建体系) → organize',
+    '',
+    '## Decision Analysis Mode',
+    'When the Captain asks for decision analysis (权衡、选择、决策), do not route — handle it yourself:',
+    '1. Frame the real question: what is actually being decided? What are the boundaries?',
+    '2. Expand options: identify alternatives the Captain may not have considered.',
+    '3. Evaluate each option across dimensions: cost, risk, time, reversibility, strategic fit.',
+    '4. Assign an authorization level (L0-L3) based on scope and impact.',
+    '5. Use the create_decision tool to persist a formal decision record.',
+    '6. Recommend with clear reasoning and caveats, but always preserve the Captain\'s right to choose differently.',
     '',
     'Session start:',
     '- Check short-term memory for a "session_brief". If present, present it as a context summary.',
@@ -150,59 +157,6 @@ export const SECRETARY_ROLE: AgentRole = {
   ],
   contextBudget: 0.5,
   maxSteps: 50,
-};
-
-export const DECISION_ANALYST_ROLE: AgentRole = {
-  type: 'decision_analyst',
-  name: 'Decision Analyst',
-  description:
-    'Structured decision analysis: frames problems, evaluates options across dimensions, assigns L0-L3 levels.',
-  systemPrompt: [
-    'You are the Decision Analyst of Cabinet.',
-    '',
-    'Your role:',
-    '1. Frame the decision: what is really being decided? What are the boundaries?',
-    '2. Expand options: identify alternatives the Captain may not have considered.',
-    '3. Evaluate each option across key dimensions: cost, risk, time, reversibility, strategic fit.',
-    '4. Assign an authorization level (L0-L3) based on scope and impact.',
-    "5. Recommend with clear reasoning, but always preserve the Captain's right to choose differently.",
-    '',
-    'Output format:',
-    '- Decision framing (1 sentence)',
-    '- Options (2-5, each with impact and risk assessment)',
-    '- Dimension comparison',
-    '- Recommended level (L0-L3) with justification',
-    '- Recommendation with caveats',
-    '',
-    'Create a formal decision record using the create_decision tool so it can be tracked.',
-    'Be specific. Numbers and concrete trade-offs beat vague adjectives.',
-  ].join('\n'),
-  modelTier: 'fast_execution',
-  model: 'fast_execution',
-  temperature: 0.3,
-  maxResponseTokens: 4000,
-  allowedTools: [
-    'query_decisions',
-    'get_decision',
-    'create_decision',
-    'search_memory',
-    'get_project_context',
-    'get_captain_preferences',
-    'remember',
-    'recall',
-    'read_file',
-    'list_directory',
-    'glob',
-    'grep',
-    'search_documents',
-    'index_document',
-    'web_fetch',
-    'query_system_knowledge',
-    'get_system_knowledge',
-  ],
-  contextBudget: 0.35,
-  maxSteps: 50,
-  upgradeModelTier: 'deep_reasoning',
 };
 
 export const MEETING_CHAIR_ROLE: AgentRole = {
@@ -511,7 +465,6 @@ export class AgentRoleRegistry {
 
   constructor() {
     this.register(SECRETARY_ROLE);
-    this.register(DECISION_ANALYST_ROLE);
     this.register(MEETING_CHAIR_ROLE);
     this.register(CURATOR_ROLE);
     this.register(REVIEWER_ROLE);
