@@ -29,9 +29,7 @@ export {
   SECRETARY_ROLE,
   DECISION_ANALYST_ROLE,
   MEETING_CHAIR_ROLE,
-  WORKFLOW_DESIGNER_ROLE,
   CURATOR_ROLE,
-  AGENT_CREATOR_ROLE,
   REVIEWER_ROLE,
   ORGANIZE_ROLE,
   type AgentRole,
@@ -53,3 +51,10 @@ export { createCabinetTools, registerCabinetTools, registerSkillTools, registerM
 export { SkillRegistry, getSkillRegistry, setSkillRegistry, type SkillMetadata, type SkillEntry } from './skill-registry.js';
 export { parseSkillMarkdown, importSkillFromMarkdown, exportSkillToMarkdown } from './skill-loader.js';
 export type { ParsedSkill } from '@cabinet/types';
+export {
+  WORKFLOW_DESIGNER_SKILL,
+  AGENT_CREATOR_SKILL,
+  SKILL_CREATOR_SKILL,
+  MCP_BUILDER_SKILL,
+  registerBuiltInSkills,
+} from './built-in-skills.js';
