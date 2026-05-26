@@ -126,7 +126,6 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
         description: input.description,
         systemPrompt: input.systemPrompt,
         modelTier: ((input as any).modelTier as string || 'default') as any,
-        model: input.model,
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
         allowedTools: input.allowedTools,
@@ -372,7 +371,7 @@ function getEngine(): WorkflowEngine {
         projectId: 'default',
         captainId: DEFAULT_CAPTAIN_ID,
         systemPrompt: buildEnvironmentSection() + '\n\n' + role.systemPrompt,
-        model: role.model,
+        model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
         maxSteps: options.persistent !== false ? 20 : 50,
         maxResponseTokens: role.maxResponseTokens,
         temperature: role.temperature,
@@ -394,7 +393,7 @@ function getEngine(): WorkflowEngine {
       return {
         async run(message: string) {
           const result = await loop.run(message);
-          ctx.metrics.increment('llm_call', { model: role.model, purpose: 'workflow_segment' });
+          ctx.metrics.increment('llm_call', { model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier, purpose: 'workflow_segment' });
           return result.content;
         },
         async dispose() {

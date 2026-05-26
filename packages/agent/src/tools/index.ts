@@ -87,7 +87,7 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
     name: string;
     description: string;
     systemPrompt: string;
-    model: string;
+    modelTier: string;
     temperature: number;
     maxResponseTokens: number;
     allowedTools: string[];
@@ -528,7 +528,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
         const name = args.name as string;
         const description = (args.description as string) ?? '';
         const systemPrompt = (args.systemPrompt as string) ?? '';
-        const model = (args.model as string) ?? 'claude-haiku-4-5';
+        const modelTier = (args.modelTier as string) || 'default';
         const temperature = (args.temperature as number) ?? 0.3;
         const maxResponseTokens = (args.maxResponseTokens as number) ?? 4000;
         const allowedTools = (args.allowedTools as string[]) ?? [];
@@ -544,7 +544,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
           name,
           description,
           systemPrompt,
-          model,
+          modelTier,
           temperature,
           maxResponseTokens,
           allowedTools,
@@ -560,7 +560,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
         const updates: Record<string, unknown> = {};
         if (args.description !== undefined) updates.description = args.description;
         if (args.systemPrompt !== undefined) updates.systemPrompt = args.systemPrompt;
-        if (args.model !== undefined) updates.model = args.model;
+        if (args.modelTier !== undefined) updates.modelTier = args.modelTier;
         if (args.temperature !== undefined) updates.temperature = args.temperature;
         if (args.maxResponseTokens !== undefined) updates.maxResponseTokens = args.maxResponseTokens;
         if (args.allowedTools !== undefined) updates.allowedTools = args.allowedTools;

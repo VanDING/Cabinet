@@ -56,7 +56,7 @@ export const AGENT_CREATOR_SKILL: SkillEntry = {
   id: 'builtin_agent_creator',
   name: 'agentCreator',
   description:
-    'Create, modify, and delete custom Cabinet AI agents. Guides the user through defining a role, system prompt, model, and tool permissions. Use when the user wants to create or manage a custom agent.',
+    'Create, modify, and delete custom Cabinet AI agents. Guides the user through defining a role, system prompt, modelTier, and tool permissions. Use when the user wants to create or manage a custom agent.',
   kind: 'prompt',
   version: 1,
   status: 'active',
@@ -74,7 +74,7 @@ Define the core properties:
 - **Name**: short, descriptive (e.g., "Market Analyst", "Code Reviewer"). 2-64 chars, letters/digits/Chinese/underscores/hyphens/spaces.
 - **Description**: one sentence explaining what it does.
 - **System prompt**: detailed instructions for the agent. Include its role, rules, and output format. 3-5 paragraphs max.
-- **Model**: recommend the fast model for lightweight tasks, the reasoning model for complex ones.
+- **Model Tier**: recommend fast_execution for lightweight tasks, deep_reasoning for complex ones.
 - **Tools**: which cabinet tools should it have access to? Start with the essentials, not everything.
   - Note: skill tools appear as \`use_skill__{skillName}\` in the tool list. If this agent needs to invoke a skill, include the corresponding \`use_skill__xxx\` entry.
 
@@ -106,7 +106,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 
 ### Guidelines
 - Keep system prompts focused and actionable. 3-5 paragraphs max.
-- Default to fast model unless the task genuinely needs reasoning-level capability.
+- Default to fast_execution unless the task genuinely needs reasoning-level capability.
 - Restrict tools to what the agent actually needs. An agent that only analyzes does not need write tools.
 - If the user is unsure about details, make reasonable suggestions and ask for confirmation.
 - Never delete built-in agents (secretary, meeting_chair, reviewer, curator, organize).`,

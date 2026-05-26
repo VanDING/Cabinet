@@ -205,7 +205,6 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
             description: String(agentCard.description ?? ''),
             systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
             modelTier: ((agentCard.modelTier as string) || 'default') as any,
-            model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
             temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
             maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
             allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
@@ -221,7 +220,6 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               name,
               description: role.description,
               system_prompt: role.systemPrompt,
-              model: role.model,
               model_tier: role.modelTier,
               temperature: role.temperature,
               max_response_tokens: role.maxResponseTokens,
@@ -239,13 +237,12 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
           const changed =
             existing.description !== String(agentCard.description ?? '') ||
             existing.systemPrompt !== String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
-            existing.model !== String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6');
+            existing.modelTier !== String(agentCard.modelTier ?? 'default');
 
           if (changed) {
             deps.agentRegistry.update(name, {
               description: String(agentCard.description ?? ''),
               systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
-              model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
               modelTier: ((agentCard.modelTier as string) || 'default') as any,
               temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
               maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
@@ -258,7 +255,6 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               name,
               description: String(agentCard.description ?? ''),
               system_prompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
-              model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
               model_tier: ((agentCard.modelTier as string) || 'default') as any,
               temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
               max_response_tokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),

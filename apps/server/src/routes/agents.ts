@@ -42,7 +42,7 @@ function buildAgentJson(md: Record<string, unknown>, name: string): Record<strin
     name: md.name ?? name,
     description: md.description ?? '',
     systemPrompt: md.systemPrompt ?? md.systemprompt ?? md.instructions ?? '',
-    model: md.model ?? 'claude-sonnet-4-6',
+    modelTier: (md.modelTier as string) || 'default',
     temperature: parseFloat(String(md.temperature ?? '0.7')),
     maxResponseTokens: parseInt(String(md.maxresponsetokens ?? md.maxtokens ?? '4096'), 10),
     allowedTools: Array.isArray(md.allowedtools) ? md.allowedtools : [],
@@ -60,7 +60,7 @@ agentsRouter.get('/agent-card.json', (c) => {
     id: a.type,
     name: a.name,
     description: a.description,
-    tags: [a.type, a.model],
+    tags: [a.type, a.modelTier],
   }));
 
   const registeredSkills = skillRegistry.discover();
@@ -91,7 +91,7 @@ agentsRouter.get('/', (c) => {
     type: a.type,
     name: a.name,
     description: a.description,
-    model: a.model,
+    modelTier: a.modelTier,
     tools: a.allowedTools,
     builtIn: a.type !== 'custom',
   }));
@@ -127,7 +127,6 @@ agentsRouter.post('/import', async (c) => {
       description: String(agentCard.description ?? ''),
       systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
       modelTier: ((agentCard.modelTier as string) || 'default') as any,
-      model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
       temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
       maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
       allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
@@ -138,7 +137,6 @@ agentsRouter.post('/import', async (c) => {
       name,
       description: String(agentCard.description ?? ''),
       system_prompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
-      model: String(agentCard.model ?? agentCard.defaultModel ?? 'claude-sonnet-4-6'),
       temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
       max_response_tokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
       allowed_tools: JSON.stringify(agentCard.allowedTools ?? []),
@@ -174,7 +172,6 @@ agentsRouter.post('/import', async (c) => {
     description: String(agentJson.description),
     systemPrompt: String(agentJson.systemPrompt),
     modelTier: ((agentJson.modelTier as string) || 'default') as any,
-    model: String(agentJson.model),
     temperature: agentJson.temperature as number,
     maxResponseTokens: agentJson.maxResponseTokens as number,
     allowedTools: agentJson.allowedTools as string[],
@@ -185,7 +182,6 @@ agentsRouter.post('/import', async (c) => {
     name,
     description: String(agentJson.description),
     system_prompt: String(agentJson.systemPrompt),
-    model: String(agentJson.model),
     temperature: agentJson.temperature as number,
     max_response_tokens: agentJson.maxResponseTokens as number,
     allowed_tools: JSON.stringify(agentJson.allowedTools),
