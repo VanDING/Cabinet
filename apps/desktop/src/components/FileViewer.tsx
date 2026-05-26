@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, ChevronRight, File, Image, FileCode } from 'lucide-react';
 import { apiFetch } from '../utils/pin.js';
 
@@ -129,6 +129,21 @@ export function FileViewer({ isDark }: Props) {
   const isHtml = active?.name.endsWith('.html') || active?.name.endsWith('.htm');
   const isPdf = active?.mimeType === 'application/pdf' || active?.name.endsWith('.pdf');
 
+  const htmlBlobUrl = useMemo(() => {
+    if (isHtml && active?.content) {
+      return URL.createObjectURL(new Blob([active.content], { type: 'text/html' }));
+    }
+    return null;
+  }, [isHtml, active?.content]);
+
+  useEffect(() => {
+    return () => {
+      if (htmlBlobUrl) {
+        URL.revokeObjectURL(htmlBlobUrl);
+      }
+    };
+  }, [htmlBlobUrl]);
+
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const tabBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
@@ -199,7 +214,7 @@ export function FileViewer({ isDark }: Props) {
               </div>
             ) : isHtml && viewMode === 'preview' ? (
               <iframe
-                srcDoc={active.content}
+                src={htmlBlobUrl ?? ''}
                 className="w-full h-full border-0"
                 title={active.name}
               />

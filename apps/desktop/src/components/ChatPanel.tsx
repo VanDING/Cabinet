@@ -293,10 +293,7 @@ export function ChatPanel({
               {[
                 { id: 'secretary', name: 'Secretary' },
                 { id: 'meeting_chair', name: 'Meeting Chair' },
-                { id: 'workflow_designer', name: 'Workflow Designer' },
                 { id: 'organize', name: 'Organize' },
-                { id: 'agent_creator', name: 'Agent Creator' },
-                { id: 'reviewer', name: 'Reviewer' },
               ].map((a) => (
                 <button
                   key={a.id}
