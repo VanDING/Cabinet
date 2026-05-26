@@ -27,7 +27,6 @@ export { ContextHandoff, type HandoffState, type HandoffResult } from './context
 export {
   AgentRoleRegistry,
   SECRETARY_ROLE,
-  DECISION_ANALYST_ROLE,
   MEETING_CHAIR_ROLE,
   CURATOR_ROLE,
   REVIEWER_ROLE,
