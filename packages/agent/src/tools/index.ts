@@ -52,6 +52,22 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   deleteWorkflow: (id: string) => void;
   runWorkflow: (id: string) => Promise<{ runId: string; status: string; steps?: unknown[] }>;
 
+  getWorkflowRun: (runId: string) => {
+    runId: string;
+    workflowId: string;
+    status: string;
+    steps: unknown[];
+    startedAt: string;
+    updatedAt: string;
+  } | null;
+  listWorkflowRuns: (workflowId: string) => Array<{
+    runId: string;
+    workflowId: string;
+    status: string;
+    startedAt: string;
+    updatedAt: string;
+  }>;
+
   startMeeting: (
     topic: string,
     advisorIds?: string[],
@@ -442,6 +458,24 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         return { deleted: true, workflowId };
       },
     },
+    {
+      name: 'get_workflow_run',
+      execute: async (args: Record<string, unknown>) => {
+        const runId = args.runId as string;
+        if (!runId) return { error: 'runId is required' };
+        const run = deps.getWorkflowRun(runId);
+        if (!run) return { error: `Run not found: ${runId}` };
+        return run;
+      },
+    },
+    {
+      name: 'list_workflow_runs',
+      execute: async (args: Record<string, unknown>) => {
+        const workflowId = args.workflowId as string;
+        if (!workflowId) return { error: 'workflowId is required' };
+        return { runs: deps.listWorkflowRuns(workflowId) };
+      },
+    },
 
     // ═══════════════════════════════════════════════════════════
     // Meeting Tools
@@ -607,7 +641,7 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
         return {
           status: 'operational',
           timestamp: new Date().toISOString(),
-          toolsAvailable: 40,
+          toolsAvailable: 42,
           metrics,
         };
       },
