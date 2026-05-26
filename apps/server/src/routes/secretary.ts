@@ -508,6 +508,29 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       };
     },
 
+    getDashboardStats() {
+      const pendingDecisions = ctx.decisionRepo.listAllPending().length;
+      const activeWorkflows = ctx.workflowRepo.countByStatus(['running']);
+      const activeProjects = ctx.projectRepo.listAll().filter((p) => !p.archived).length;
+      const todayCost = ctx.costTracker.getDailyCost();
+      const metrics = ctx.metrics.getSummary();
+      const recentEvents = ctx.eventRepo.findAll().slice(-10).map((e) => ({
+        message: e.message,
+        time: e.timestamp instanceof Date ? e.timestamp.toISOString() : String(e.timestamp),
+      }));
+      return {
+        pendingDecisions,
+        activeWorkflows,
+        activeProjects,
+        todayCost,
+        totalLLMCalls: metrics.totalLLMCalls,
+        totalTokens: metrics.totalTokens,
+        totalDecisions: metrics.totalDecisions,
+        errors: metrics.errors,
+        recentEvents,
+      };
+    },
+
     // ── File system callbacks ──
     readFile: async (filePath, offset, limit) => {
       const safePath = await resolveSafePath(filePath);
