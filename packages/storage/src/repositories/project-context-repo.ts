@@ -24,9 +24,10 @@ export class ProjectContextRepository {
   }
 
   findAll(): ProjectContextRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM project_context')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM project_context').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToContext(r));
   }
 
@@ -36,7 +37,16 @@ export class ProjectContextRepository {
         `INSERT INTO project_context (project_id, summary, goals, milestones, constraints, tech_summary, risk_map, key_decisions)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(ctx.project_id, ctx.summary, ctx.goals, ctx.milestones, ctx.constraints, ctx.tech_summary, ctx.risk_map, ctx.key_decisions);
+      .run(
+        ctx.project_id,
+        ctx.summary,
+        ctx.goals,
+        ctx.milestones,
+        ctx.constraints,
+        ctx.tech_summary,
+        ctx.risk_map,
+        ctx.key_decisions,
+      );
   }
 
   upsert(ctx: ProjectContextRow): void {
@@ -45,19 +55,42 @@ export class ProjectContextRepository {
         `INSERT OR REPLACE INTO project_context (project_id, summary, goals, milestones, constraints, tech_summary, risk_map, key_decisions, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       )
-      .run(ctx.project_id, ctx.summary, ctx.goals, ctx.milestones, ctx.constraints, ctx.tech_summary, ctx.risk_map, ctx.key_decisions);
+      .run(
+        ctx.project_id,
+        ctx.summary,
+        ctx.goals,
+        ctx.milestones,
+        ctx.constraints,
+        ctx.tech_summary,
+        ctx.risk_map,
+        ctx.key_decisions,
+      );
   }
 
-  update(projectId: string, changes: { summary?: string; goals?: string; tech_summary?: string }): void {
+  update(
+    projectId: string,
+    changes: { summary?: string; goals?: string; tech_summary?: string },
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
-    if (changes.summary !== undefined) { sets.push('summary = ?'); values.push(changes.summary); }
-    if (changes.goals !== undefined) { sets.push('goals = ?'); values.push(changes.goals); }
-    if (changes.tech_summary !== undefined) { sets.push('tech_summary = ?'); values.push(changes.tech_summary); }
+    if (changes.summary !== undefined) {
+      sets.push('summary = ?');
+      values.push(changes.summary);
+    }
+    if (changes.goals !== undefined) {
+      sets.push('goals = ?');
+      values.push(changes.goals);
+    }
+    if (changes.tech_summary !== undefined) {
+      sets.push('tech_summary = ?');
+      values.push(changes.tech_summary);
+    }
     if (sets.length === 0) return;
     sets.push("updated_at = datetime('now')");
     values.push(projectId);
-    this.db.prepare(`UPDATE project_context SET ${sets.join(', ')} WHERE project_id = ?`).run(...values);
+    this.db
+      .prepare(`UPDATE project_context SET ${sets.join(', ')} WHERE project_id = ?`)
+      .run(...values);
   }
 
   delete(projectId: string): void {

@@ -52,14 +52,17 @@ export class ProjectRepository {
   searchByName(query: string, opts?: { limit?: number; offset?: number }): Project[] {
     const escaped = query.replace(/[%_\\]/g, '\\$&');
     const rows = this.db
-      .prepare(
-        'SELECT * FROM projects WHERE name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      )
+      .prepare('SELECT * FROM projects WHERE name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(`%${escaped}%`, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
     return rows.map((r) => this.rowToProject(r));
   }
 
-  update(id: string, changes: Partial<Pick<Project, 'name' | 'description' | 'status' | 'rootPath'>> & { icon?: string }): void {
+  update(
+    id: string,
+    changes: Partial<Pick<Project, 'name' | 'description' | 'status' | 'rootPath'>> & {
+      icon?: string;
+    },
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
 

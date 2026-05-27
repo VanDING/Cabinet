@@ -47,16 +47,22 @@ export interface ContextBuildResult {
 
 export class ContextBuilder {
   private rulesLoader: RulesLoader | null = null;
-  private sessionCache = new Map<string, { projectContext: string; preferences: Record<string, unknown> }>();
+  private sessionCache = new Map<
+    string,
+    { projectContext: string; preferences: Record<string, unknown> }
+  >();
   /** In-memory TTL cache for RAG search results to avoid repeated embedding API calls. */
   private ragCache = new Map<string, { results: string[]; timestamp: number }>();
   private readonly RAG_CACHE_TTL_MS = 60_000;
   /** Request-level cache for project context + rules across sessions (TTL 5s). */
-  private contextCache = new Map<string, {
-    projectContext: string;
-    rules: { path: string; content: string }[];
-    timestamp: number;
-  }>();
+  private contextCache = new Map<
+    string,
+    {
+      projectContext: string;
+      rules: { path: string; content: string }[];
+      timestamp: number;
+    }
+  >();
   private readonly CONTEXT_CACHE_TTL_MS = 5_000;
 
   constructor(private readonly memory: MemoryProvider) {}
@@ -78,11 +84,16 @@ export class ContextBuilder {
     const memorySid = options.memorySessionId ?? options.sessionId;
     const [shortTerm, preferences] = await Promise.all([
       this.memory.getShortTerm(memorySid),
-      cached ? Promise.resolve(cached.preferences) : this.memory.getEntityPreferences(options.captainId),
+      cached
+        ? Promise.resolve(cached.preferences)
+        : this.memory.getEntityPreferences(options.captainId),
     ]);
 
     if (!cached) {
-      this.sessionCache.set(cacheKey, { projectContext: '', preferences: preferences as Record<string, unknown> });
+      this.sessionCache.set(cacheKey, {
+        projectContext: '',
+        preferences: preferences as Record<string, unknown>,
+      });
     }
 
     let projectContext: string;
@@ -111,7 +122,10 @@ export class ContextBuilder {
     }
 
     // Update session cache with resolved project context
-    this.sessionCache.set(cacheKey, { projectContext, preferences: preferences as Record<string, unknown> });
+    this.sessionCache.set(cacheKey, {
+      projectContext,
+      preferences: preferences as Record<string, unknown>,
+    });
 
     // rulesSummary is computed on-demand via getOnDemandRules(); including it here
     // caused a second full disk traversal via summarize()->loadAll().
@@ -148,7 +162,9 @@ export class ContextBuilder {
       }
 
       if (ragResults.length > 0) {
-        const trimmed = ragResults.slice(0, 3).map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
+        const trimmed = ragResults
+          .slice(0, 3)
+          .map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
         systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
       }
     }
@@ -256,7 +272,15 @@ export class ContextBuilder {
     rules: { path: string; content: string }[],
     roleSystemPrompt?: string,
   ): string {
-    const cached = this.buildCachedSystemPrompt(projectContext, preferences, rules, roleSystemPrompt);
-    return [cached, 'Help the Captain make decisions. Present options clearly with impact analysis.'].join('\n\n');
+    const cached = this.buildCachedSystemPrompt(
+      projectContext,
+      preferences,
+      rules,
+      roleSystemPrompt,
+    );
+    return [
+      cached,
+      'Help the Captain make decisions. Present options clearly with impact analysis.',
+    ].join('\n\n');
   }
 }

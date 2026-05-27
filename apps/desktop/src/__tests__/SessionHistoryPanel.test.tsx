@@ -9,7 +9,12 @@ const mockSessions: Session[] = [
     title: 'Market Analysis',
     messages: [
       { id: 'm1', role: 'user' as const, content: 'Analyze Q3', timestamp: new Date() },
-      { id: 'm2', role: 'assistant' as const, content: 'Here is the analysis...', timestamp: new Date() },
+      {
+        id: 'm2',
+        role: 'assistant' as const,
+        content: 'Here is the analysis...',
+        timestamp: new Date(),
+      },
     ],
     attachedFiles: [],
     createdAt: new Date('2026-05-01'),

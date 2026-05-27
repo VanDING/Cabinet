@@ -15,7 +15,13 @@ interface ReferenceResult extends TSServiceResult {
 }
 
 interface DiagnosticResult extends TSServiceResult {
-  diagnostics?: { file: string; line: number; column: number; message: string; category: 'error' | 'warning' | 'suggestion' }[];
+  diagnostics?: {
+    file: string;
+    line: number;
+    column: number;
+    message: string;
+    category: 'error' | 'warning' | 'suggestion';
+  }[];
 }
 
 let tsModule: any = null;
@@ -36,10 +42,7 @@ function resolveTSPackage(): string | null {
 
 function findTSConfig(): string | null {
   const cwd = process.cwd();
-  const candidates = [
-    join(cwd, 'tsconfig.json'),
-    join(cwd, 'jsconfig.json'),
-  ];
+  const candidates = [join(cwd, 'tsconfig.json'), join(cwd, 'jsconfig.json')];
   for (const c of candidates) {
     if (existsSync(c)) return c;
   }
@@ -50,18 +53,27 @@ export function initTSService(): TSServiceResult {
   if (tsService) return { available: true };
 
   const tsPath = resolveTSPackage();
-  if (!tsPath) return { available: false, error: 'TypeScript not found in project. Install typescript as a dev dependency.' };
+  if (!tsPath)
+    return {
+      available: false,
+      error: 'TypeScript not found in project. Install typescript as a dev dependency.',
+    };
 
   const tsconfigPath = findTSConfig();
-  if (!tsconfigPath) return { available: false, error: 'No tsconfig.json or jsconfig.json found in project root.' };
+  if (!tsconfigPath)
+    return { available: false, error: 'No tsconfig.json or jsconfig.json found in project root.' };
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     tsModule = require(tsPath);
     projectRoot = dirname(tsconfigPath);
 
     const configFile = tsModule.readConfigFile(tsconfigPath, tsModule.sys.readFile);
     if (configFile.error) {
-      return { available: false, error: tsModule.flattenDiagnosticMessageText(configFile.error.messageText, '\n') };
+      return {
+        available: false,
+        error: tsModule.flattenDiagnosticMessageText(configFile.error.messageText, '\n'),
+      };
     }
 
     const parsed = tsModule.parseJsonConfigFileContent(
@@ -74,7 +86,7 @@ export function initTSService(): TSServiceResult {
 
     const host = tsModule.createCompilerHost(compilerOptions);
     const originalGetScriptFileNames = host.getScriptFileNames;
-    let trackedFiles: string[] = [...rootFiles];
+    const trackedFiles: string[] = [...rootFiles];
 
     const documentRegistry = tsModule.createDocumentRegistry();
     tsService = tsModule.createLanguageService(
@@ -94,7 +106,11 @@ export function initTSService(): TSServiceResult {
         getDefaultLibFileName: (options: any) => tsModule.getDefaultLibFilePath(options),
         fileExists: (fileName: string) => existsSync(fileName),
         readFile: (fileName: string) => {
-          try { return readFileSync(fileName, 'utf-8'); } catch { return undefined; }
+          try {
+            return readFileSync(fileName, 'utf-8');
+          } catch {
+            return undefined;
+          }
         },
         readDirectory: tsModule.sys.readDirectory,
         directoryExists: tsModule.sys.directoryExists,
@@ -105,7 +121,10 @@ export function initTSService(): TSServiceResult {
 
     return { available: true };
   } catch (e) {
-    return { available: false, error: `Failed to initialize TypeScript service: ${(e as Error).message}` };
+    return {
+      available: false,
+      error: `Failed to initialize TypeScript service: ${(e as Error).message}`,
+    };
   }
 }
 
@@ -119,14 +138,18 @@ export function getWorkspaceSymbols(query: string): SymbolResult {
       name: item.name,
       kind: item.kind,
       file: item.fileName,
-      line: item.textSpan ? tsModule.getLineAndCharacterOfPosition(
-        tsService.getProgram()?.getSourceFile(item.fileName),
-        item.textSpan.start,
-      ).line + 1 : 0,
-      column: item.textSpan ? tsModule.getLineAndCharacterOfPosition(
-        tsService.getProgram()?.getSourceFile(item.fileName),
-        item.textSpan.start,
-      ).character + 1 : 0,
+      line: item.textSpan
+        ? tsModule.getLineAndCharacterOfPosition(
+            tsService.getProgram()?.getSourceFile(item.fileName),
+            item.textSpan.start,
+          ).line + 1
+        : 0,
+      column: item.textSpan
+        ? tsModule.getLineAndCharacterOfPosition(
+            tsService.getProgram()?.getSourceFile(item.fileName),
+            item.textSpan.start,
+          ).character + 1
+        : 0,
     }));
     return { available: true, symbols };
   } catch (e) {
@@ -155,7 +178,9 @@ export function getDefinition(fileName: string, line: number, column: number): S
 
     const symbols = defs.map((d: any) => {
       const sf = tsService.getProgram()?.getSourceFile(d.fileName);
-      const lc = sf ? tsModule.getLineAndCharacterOfPosition(sf, d.textSpan.start) : { line: 0, character: 0 };
+      const lc = sf
+        ? tsModule.getLineAndCharacterOfPosition(sf, d.textSpan.start)
+        : { line: 0, character: 0 };
       return {
         name: d.fileName,
         kind: 'definition',
@@ -181,10 +206,14 @@ export function getReferences(fileName: string, line: number, column: number): R
 
     const references = refs.slice(0, 50).map((r: any) => {
       const sf = tsService.getProgram()?.getSourceFile(r.fileName);
-      const lc = sf ? tsModule.getLineAndCharacterOfPosition(sf, r.textSpan.start) : { line: 0, character: 0 };
+      const lc = sf
+        ? tsModule.getLineAndCharacterOfPosition(sf, r.textSpan.start)
+        : { line: 0, character: 0 };
       const lineStart = sf ? tsModule.getPositionOfLineAndCharacter(sf, lc.line, 0) : 0;
       const lineEnd = sf ? sf.text.indexOf('\n', lineStart) : -1;
-      const lineText = sf ? sf.text.slice(lineStart, lineEnd === -1 ? sf.text.length : lineEnd).trim() : '';
+      const lineText = sf
+        ? sf.text.slice(lineStart, lineEnd === -1 ? sf.text.length : lineEnd).trim()
+        : '';
       return {
         file: r.fileName,
         line: lc.line + 1,
@@ -210,15 +239,20 @@ export function getDiagnostics(fileName?: string): DiagnosticResult {
       const all = [...syntactic, ...semantic, ...suggestion];
       const diagnostics = all.slice(0, 50).map((d: any) => {
         const sf = tsService.getProgram()?.getSourceFile(d.file?.fileName ?? fileName);
-        const lc = sf ? tsModule.getLineAndCharacterOfPosition(sf, d.start ?? 0) : { line: 0, character: 0 };
+        const lc = sf
+          ? tsModule.getLineAndCharacterOfPosition(sf, d.start ?? 0)
+          : { line: 0, character: 0 };
         return {
           file: d.file?.fileName ?? fileName,
           line: lc.line + 1,
           column: lc.character + 1,
           message: tsModule.flattenDiagnosticMessageText(d.messageText, '\n'),
-          category: d.category === tsModule.DiagnosticCategory.Error ? 'error' as const
-            : d.category === tsModule.DiagnosticCategory.Warning ? 'warning' as const
-            : 'suggestion' as const,
+          category:
+            d.category === tsModule.DiagnosticCategory.Error
+              ? ('error' as const)
+              : d.category === tsModule.DiagnosticCategory.Warning
+                ? ('warning' as const)
+                : ('suggestion' as const),
         };
       });
       return { available: true, diagnostics };
@@ -239,7 +273,10 @@ export function getDiagnostics(fileName?: string): DiagnosticResult {
           line: lc.line + 1,
           column: lc.character + 1,
           message: tsModule.flattenDiagnosticMessageText(d.messageText, '\n'),
-          category: d.category === tsModule.DiagnosticCategory.Error ? 'error' as const : 'warning' as const,
+          category:
+            d.category === tsModule.DiagnosticCategory.Error
+              ? ('error' as const)
+              : ('warning' as const),
         });
       }
     }

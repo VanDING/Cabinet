@@ -34,8 +34,16 @@ export function getConnection(): Database.Database {
  */
 export function closeConnection(): void {
   if (db) {
-    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* best-effort */ }
-    try { db.pragma('optimize'); } catch { /* best-effort */ }
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch {
+      /* best-effort */
+    }
+    try {
+      db.pragma('optimize');
+    } catch {
+      /* best-effort */
+    }
     db.close();
     db = null;
   }

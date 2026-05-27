@@ -1,4 +1,13 @@
-import { cpSync, rmSync, mkdirSync, existsSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import {
+  cpSync,
+  rmSync,
+  mkdirSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  statSync,
+} from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -17,16 +26,24 @@ try {
   try {
     for (const entry of readdirSync(dest)) {
       const full = join(dest, entry);
-      try { rmSync(full, { recursive: true, force: true }); } catch { /* ignore locked files */ }
+      try {
+        rmSync(full, { recursive: true, force: true });
+      } catch {
+        /* ignore locked files */
+      }
     }
-  } catch { /* dest may not exist */ }
+  } catch {
+    /* dest may not exist */
+  }
 }
 mkdirSync(dest, { recursive: true });
 
 // 1. Copy the esbuild bundle (CJS format)
 const bundlePath = join(serverSrc, 'bundle', 'main.cjs');
 if (!existsSync(bundlePath)) {
-  console.error('ERROR: bundle/main.cjs not found. Run "pnpm --filter @cabinet/server bundle" first.');
+  console.error(
+    'ERROR: bundle/main.cjs not found. Run "pnpm --filter @cabinet/server bundle" first.',
+  );
   process.exit(1);
 }
 
@@ -101,7 +118,9 @@ function copyPackage(packageName, resolvedEntry) {
   let deps;
   try {
     deps = JSON.parse(readFileSync(pjPath, 'utf-8')).dependencies;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (deps) {
     const pkgRequire = createRequire(join(pkgRoot, 'noop.js'));
     for (const depName of Object.keys(deps)) {

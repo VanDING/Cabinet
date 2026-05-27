@@ -35,13 +35,27 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
 
   const handleOpenDeliverable = (d: Deliverable) => {
     if (d.filePath) {
-      window.dispatchEvent(new CustomEvent('open-file-viewer', {
-        detail: { path: d.filePath, name: d.title, mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined, projectId: d.projectId },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('open-file-viewer', {
+          detail: {
+            path: d.filePath,
+            name: d.title,
+            mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined,
+            projectId: d.projectId,
+          },
+        }),
+      );
     } else if (d.meetingId) {
-      window.dispatchEvent(new CustomEvent('open-file-viewer', {
-        detail: { path: `meeting:${d.meetingId}`, name: d.title, mimeType: 'text/markdown', projectId: d.projectId },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('open-file-viewer', {
+          detail: {
+            path: `meeting:${d.meetingId}`,
+            name: d.title,
+            mimeType: 'text/markdown',
+            projectId: d.projectId,
+          },
+        }),
+      );
     }
   };
 
@@ -58,7 +72,8 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
     // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
     const hasRelevant = buffered.some((e) =>
-      ['deliverable_created', 'workflow_completed', 'meeting_created'].includes(e.type));
+      ['deliverable_created', 'workflow_completed', 'meeting_created'].includes(e.type),
+    );
     if (hasRelevant) fetchDeliverables();
 
     return () => {
@@ -73,33 +88,34 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
-      <div
-        className="mb-3 flex items-center justify-between cursor-pointer"
-        onClick={onExpand}
-      >
+      <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Deliverables</span>
         {items.length > 0 && (
           <span className="text-xs text-blue-500 hover:underline">View all</span>
         )}
       </div>
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-gray-400">Loading...</div>
+        <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
+          Loading...
+        </div>
       ) : items.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
           No deliverables yet
-          <span className="mt-1 block text-[10px] text-gray-400">Meeting reports and workflow outputs appear here</span>
+          <span className="mt-1 block text-[10px] text-gray-400">
+            Meeting reports and workflow outputs appear here
+          </span>
         </div>
       ) : (
         <div className="flex-1 space-y-1.5 overflow-auto">
           {items.map((d) => (
             <div
               key={d.id}
-              className={`flex items-center gap-2 text-xs cursor-pointer ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
+              className={`flex cursor-pointer items-center gap-2 text-xs ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
               onClick={() => handleOpenDeliverable(d)}
             >
               <FileText size={12} className="flex-shrink-0 text-gray-400" />
               <span className={`truncate ${text}`}>{d.title}</span>
-              <span className={`flex-shrink-0 ml-auto ${sub}`}>
+              <span className={`ml-auto flex-shrink-0 ${sub}`}>
                 {new Date(d.createdAt).toLocaleDateString()}
               </span>
             </div>

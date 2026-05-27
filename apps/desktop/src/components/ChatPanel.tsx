@@ -96,7 +96,9 @@ export function ChatPanel({
   useEffect(() => {
     apiFetch('/api/settings/delegation-tier', { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => { if (d.tier) setDelegationTier(d.tier); })
+      .then((d) => {
+        if (d.tier) setDelegationTier(d.tier);
+      })
       .catch(() => {});
   }, []);
   const [isTauri, setIsTauri] = useState(false);
@@ -270,421 +272,459 @@ export function ChatPanel({
     : 'text-gray-500 hover:bg-gray-200';
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 pointer-events-none z-10 flex justify-center">
-      <div className={`rounded-2xl shadow-2xl border ${borderClass} ${bgClass} pointer-events-auto max-w-[1080px] w-full mb-4`}>
-      {/* Tab bar */}
-      <div className={`flex h-8 items-center gap-1 border-b px-2 rounded-t-2xl ${borderClass} ${tabBgClass}`}>
-        {/* Fixed @agent label */}
-        <div className="relative flex-shrink-0">
-          <button
-            ref={agentBtnRef}
-            onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
-              isDark ? 'bg-blue-900/40 text-blue-300 hover:bg-blue-900/60' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            }`}
-            title="Switch agent"
-          >
-            @{activeAgent}
-            <span className="text-[10px]">▼</span>
-          </button>
-          {agentMenuOpen && (
-            <div className={`absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className={`px-3 py-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>Switch Agent</div>
-              {[
-                { id: 'secretary', name: 'Secretary' },
-                { id: 'meeting_chair', name: 'Meeting Chair' },
-                { id: 'organize', name: 'Organize' },
-              ].map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => { onAgentChange?.(a.id); setAgentMenuOpen(false); }}
-                  className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
-                    activeAgent === a.id
-                      ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600')
-                      : (isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100')
-                  }`}
-                >
-                  @{a.id}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {/* Project selector */}
-        <div className="relative flex-shrink-0">
-          <button
-            ref={projectBtnRef}
-            onClick={() => setProjectMenuOpen(!projectMenuOpen)}
-            className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
-              activeProjectId
-                ? isDark
-                  ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200'
-                : isDark
-                  ? 'text-gray-400 hover:bg-gray-700'
-                  : 'text-gray-500 hover:bg-gray-200'
-            }`}
-            title="Select project"
-          >
-            @{activeProjectId ? (projects.find((p) => p.id === activeProjectId)?.name ?? 'Project') : 'no project'}
-            <span className="text-[10px]">▼</span>
-          </button>
-          {projectMenuOpen && (
-            <div
-              className={`absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
-            >
-              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
-                Switch Project
-              </div>
-              <button
-                onClick={() => { onSwitchProject?.(null); setProjectMenuOpen(false); }}
-                className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600') : dropdownItemClass}`}
-              >
-                Global (no project)
-              </button>
-              {projects.filter((p) => !p.archived).map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => { onSwitchProject?.(p.id); setProjectMenuOpen(false); }}
-                  className={`w-full px-3 py-1.5 text-left text-xs ${
-                    activeProjectId === p.id
-                      ? isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'
-                      : dropdownItemClass
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-              <div className={`border-t mt-1 pt-1 ${borderClass}`}>
-                <button
-                  onClick={() => { setProjectMenuOpen(false); onNewProject?.(); }}
-                  className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
-                >
-                  + New Project
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          {sessions
-            .filter((s) => !activeProjectId || s.projectId === activeProjectId)
-            .map((session) => {
-            const isActive = session.id === active?.id;
-            const hasActivity = isSessionActive(session.id);
-            return (
-              <div
-                key={session.id}
-                onClick={() => onSwitchSession(session.id)}
-                className={`group flex min-w-[60px] max-w-[140px] flex-shrink cursor-pointer items-center gap-1 rounded border-b-2 px-2 py-0.5 text-xs transition-colors ${
-                  isActive
-                    ? activeTabClass + ' border-b-2'
-                    : `${inactiveTabClass} border-b-2 border-transparent`
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                    hasActivity
-                      ? 'animate-pulse bg-blue-500'
-                      : `border ${isDark ? 'border-gray-500' : 'border-gray-400'}`
-                  }`}
-                />
-                <span className="flex-1 truncate">{session.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseSession(session.id);
-                  }}
-                  className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded text-gray-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                >
-                  &times;
-                </button>
-              </div>
-            );
-          })}
-          {activeProjectId && sessions.filter((s) => s.projectId === activeProjectId).length === 0 && (
-            <span className="px-2 text-[10px] text-gray-400">No sessions in this project</span>
-          )}
-        </div>
-
-        <div className="flex flex-shrink-0 items-center gap-0.5">
-          <div className="relative">
-            <button
-              ref={historyBtnRef}
-              onClick={() => setHistoryOpen(!historyOpen)}
-              className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
-              aria-label="Session history"
-            >
-              <Clock size={14} />
-            </button>
-            <SessionHistoryPanel
-              isOpen={historyOpen}
-              onClose={() => setHistoryOpen(false)}
-              history={history}
-              onReopen={(session) => {
-                onReopenSession(session);
-                setHistoryOpen(false);
-              }}
-              onDelete={(id) => onDeleteHistorySession(id)}
-            />
-          </div>
-
-          <button
-            onClick={handleCreateSession}
-            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
-            aria-label="New session"
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-      </div>
-
-      {/* File attachment area */}
-      {attachedFiles.length > 0 && (
+    <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
+      <div
+        className={`rounded-2xl border shadow-2xl ${borderClass} ${bgClass} pointer-events-auto mb-4 w-full max-w-[1080px]`}
+      >
+        {/* Tab bar */}
         <div
-          className={`flex flex-wrap items-center gap-1.5 border-b px-3 py-1.5 ${borderClass} ${tabBgClass}`}
+          className={`flex h-8 items-center gap-1 rounded-t-2xl border-b px-2 ${borderClass} ${tabBgClass}`}
         >
-          {attachedFiles.map((file) => (
-            <span
-              key={file.id}
-              className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+          {/* Fixed @agent label */}
+          <div className="relative flex-shrink-0">
+            <button
+              ref={agentBtnRef}
+              onClick={() => setAgentMenuOpen(!agentMenuOpen)}
+              className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
+                isDark
+                  ? 'bg-blue-900/40 text-blue-300 hover:bg-blue-900/60'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              }`}
+              title="Switch agent"
             >
-              <span className="max-w-[160px] truncate" title={file.path}>
-                {file.type === 'project' ? file.path : file.name}
-              </span>
-              <button
-                onClick={() => {
-                  if (active) onRemoveFile(active.id, file.id);
-                }}
-                className="text-blue-500 hover:text-red-500"
+              @{activeAgent}
+              <span className="text-[10px]">▼</span>
+            </button>
+            {agentMenuOpen && (
+              <div
+                className={`absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
               >
-                &times;
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Input area */}
-      <div className="px-3 pt-2">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
-          disabled={isProcessing}
-          rows={2}
-          className={`w-full resize-none border-0 bg-transparent text-sm placeholder-gray-400 focus:outline-none disabled:opacity-50 ${textClass}`}
-          style={{ minHeight: '40px', maxHeight: '200px' }}
-        />
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex h-8 items-center gap-1 px-3 pb-2">
-        {/* + Add button */}
-        <div className="relative">
-          <button
-            ref={addBtnRef}
-            onClick={() => setAddMenuOpen(!addMenuOpen)}
-            className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
-          >
-            <Plus size={14} />
-            Add
-          </button>
-          {addMenuOpen && (
-            <div
-              className={`absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
-            >
-              <button
-                onClick={handleAddLocalFile}
-                className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
-              >
-                Local file
-              </button>
-              <button
-                onClick={handleAddProjectFile}
-                className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
-              >
-                Project file
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* / Skills button */}
-        <div className="relative">
-          <button
-            ref={skillBtnRef}
-            onClick={() => setSkillMenuOpen(!skillMenuOpen)}
-            className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
-          >
-            <CheckCircle size={14} />/ Skill
-          </button>
-          {skillMenuOpen && (
-            <div
-              className={`absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
-            >
-              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
-                Select a skill
-              </div>
-              {skills.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-gray-400">
-                  No skills registered.
-                </div>
-              ) : (
-                skills.map((skill) => (
-                  <button
-                    key={skill.id}
-                    onClick={() => handleSelectSkill(skill.name)}
-                    className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
-                  >
-                    <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
-                      /
-                    </span>
-                    {skill.name}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Delegation Tier selector */}
-        <div className="relative">
-          <button
-            ref={tierBtnRef}
-            onClick={() => setTierMenuOpen(!tierMenuOpen)}
-            className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
-            title="Delegation tier"
-          >
-            <Shield size={14} />
-            {delegationTier}
-          </button>
-          {tierMenuOpen && (
-            <div
-              className={`absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
-            >
-              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
-                Delegation Tier
-              </div>
-              {TIERS.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setDelegationTier(t.id);
-                    setTierMenuOpen(false);
-                    apiFetch('/api/settings/delegation-tier', {
-                      method: 'PUT',
-                      headers: authJsonHeaders(),
-                      body: JSON.stringify({ tier: t.id }),
-                    }).catch(() => {});
-                  }}
-                  className={`w-full px-4 py-1.5 text-left transition-colors ${
-                    delegationTier === t.id
-                      ? isDark
-                        ? 'bg-blue-900/30 text-blue-400'
-                        : 'bg-blue-50 text-blue-600'
-                      : dropdownItemClass
-                  }`}
+                <div
+                  className={`px-3 py-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
                 >
-                  <div className="text-xs font-medium">{t.id} — {t.label}</div>
-                  <div className="text-[10px] text-gray-400">{t.desc}</div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Model switcher */}
-        <div className="relative">
-          <button
-            ref={modelBtnRef}
-            onClick={() => setModelMenuOpen(!modelMenuOpen)}
-            className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
-            title="Switch model"
-          >
-            <Terminal size={14} />
-            {selectedModel}
-          </button>
-          {modelMenuOpen && (
-            <div
-              className={`absolute bottom-full right-0 z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
-            >
-              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
-                Select model
+                  Switch Agent
+                </div>
+                {[
+                  { id: 'secretary', name: 'Secretary' },
+                  { id: 'meeting_chair', name: 'Meeting Chair' },
+                  { id: 'organize', name: 'Organize' },
+                ].map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      onAgentChange?.(a.id);
+                      setAgentMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
+                      activeAgent === a.id
+                        ? isDark
+                          ? 'bg-blue-900/30 text-blue-400'
+                          : 'bg-blue-50 text-blue-600'
+                        : isDark
+                          ? 'text-gray-300 hover:bg-gray-700'
+                          : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    @{a.id}
+                  </button>
+                ))}
               </div>
-              {availableModels.map(({ provider, models }) => (
-                <div key={provider}>
-                  <div className={`px-3 py-1 text-xs font-medium capitalize ${subtextClass}`}>
-                    {provider}
-                  </div>
-                  {models.map((model) => (
+            )}
+          </div>
+          {/* Project selector */}
+          <div className="relative flex-shrink-0">
+            <button
+              ref={projectBtnRef}
+              onClick={() => setProjectMenuOpen(!projectMenuOpen)}
+              className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
+                activeProjectId
+                  ? isDark
+                    ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : isDark
+                    ? 'text-gray-400 hover:bg-gray-700'
+                    : 'text-gray-500 hover:bg-gray-200'
+              }`}
+              title="Select project"
+            >
+              @
+              {activeProjectId
+                ? (projects.find((p) => p.id === activeProjectId)?.name ?? 'Project')
+                : 'no project'}
+              <span className="text-[10px]">▼</span>
+            </button>
+            {projectMenuOpen && (
+              <div
+                className={`absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+              >
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                  Switch Project
+                </div>
+                <button
+                  onClick={() => {
+                    onSwitchProject?.(null);
+                    setProjectMenuOpen(false);
+                  }}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600') : dropdownItemClass}`}
+                >
+                  Global (no project)
+                </button>
+                {projects
+                  .filter((p) => !p.archived)
+                  .map((p) => (
                     <button
-                      key={model}
+                      key={p.id}
                       onClick={() => {
-                        setSelectedModel(model);
-                        setModelMenuOpen(false);
+                        onSwitchProject?.(p.id);
+                        setProjectMenuOpen(false);
                       }}
-                      className={`w-full px-5 py-1 text-left font-mono text-xs transition-colors ${
-                        selectedModel === model
+                      className={`w-full px-3 py-1.5 text-left text-xs ${
+                        activeProjectId === p.id
                           ? isDark
                             ? 'bg-blue-900/30 text-blue-400'
                             : 'bg-blue-50 text-blue-600'
                           : dropdownItemClass
                       }`}
                     >
-                      {model}
+                      {p.name}
                     </button>
                   ))}
+                <div className={`mt-1 border-t pt-1 ${borderClass}`}>
+                  <button
+                    onClick={() => {
+                      setProjectMenuOpen(false);
+                      onNewProject?.();
+                    }}
+                    className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
+                  >
+                    + New Project
+                  </button>
                 </div>
-              ))}
+              </div>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            {sessions
+              .filter((s) => !activeProjectId || s.projectId === activeProjectId)
+              .map((session) => {
+                const isActive = session.id === active?.id;
+                const hasActivity = isSessionActive(session.id);
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => onSwitchSession(session.id)}
+                    className={`group flex min-w-[60px] max-w-[140px] flex-shrink cursor-pointer items-center gap-1 rounded border-b-2 px-2 py-0.5 text-xs transition-colors ${
+                      isActive
+                        ? activeTabClass + ' border-b-2'
+                        : `${inactiveTabClass} border-b-2 border-transparent`
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                        hasActivity
+                          ? 'animate-pulse bg-blue-500'
+                          : `border ${isDark ? 'border-gray-500' : 'border-gray-400'}`
+                      }`}
+                    />
+                    <span className="flex-1 truncate">{session.title}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseSession(session.id);
+                      }}
+                      className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded text-gray-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                );
+              })}
+            {activeProjectId &&
+              sessions.filter((s) => s.projectId === activeProjectId).length === 0 && (
+                <span className="px-2 text-[10px] text-gray-400">No sessions in this project</span>
+              )}
+          </div>
+
+          <div className="flex flex-shrink-0 items-center gap-0.5">
+            <div className="relative">
+              <button
+                ref={historyBtnRef}
+                onClick={() => setHistoryOpen(!historyOpen)}
+                className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
+                aria-label="Session history"
+              >
+                <Clock size={14} />
+              </button>
+              <SessionHistoryPanel
+                isOpen={historyOpen}
+                onClose={() => setHistoryOpen(false)}
+                history={history}
+                onReopen={(session) => {
+                  onReopenSession(session);
+                  setHistoryOpen(false);
+                }}
+                onDelete={(id) => onDeleteHistorySession(id)}
+              />
             </div>
-          )}
+
+            <button
+              onClick={handleCreateSession}
+              className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
+              aria-label="New session"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </div>
 
-        {/* Context status */}
-        <ContextButton
-          sessionId={active?.id ?? 'default'}
-          isDark={isDark}
-          btnBaseClass={btnBaseClass}
-          hoverClass={hoverClass}
-          dropdownBgClass={dropdownBgClass}
+        {/* File attachment area */}
+        {attachedFiles.length > 0 && (
+          <div
+            className={`flex flex-wrap items-center gap-1.5 border-b px-3 py-1.5 ${borderClass} ${tabBgClass}`}
+          >
+            {attachedFiles.map((file) => (
+              <span
+                key={file.id}
+                className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+              >
+                <span className="max-w-[160px] truncate" title={file.path}>
+                  {file.type === 'project' ? file.path : file.name}
+                </span>
+                <button
+                  onClick={() => {
+                    if (active) onRemoveFile(active.id, file.id);
+                  }}
+                  className="text-blue-500 hover:text-red-500"
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Input area */}
+        <div className="px-3 pt-2">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
+            disabled={isProcessing}
+            rows={2}
+            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-gray-400 focus:outline-none disabled:opacity-50 ${textClass}`}
+            style={{ minHeight: '40px', maxHeight: '200px' }}
+          />
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex h-8 items-center gap-1 px-3 pb-2">
+          {/* + Add button */}
+          <div className="relative">
+            <button
+              ref={addBtnRef}
+              onClick={() => setAddMenuOpen(!addMenuOpen)}
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+            >
+              <Plus size={14} />
+              Add
+            </button>
+            {addMenuOpen && (
+              <div
+                className={`absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+              >
+                <button
+                  onClick={handleAddLocalFile}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
+                >
+                  Local file
+                </button>
+                <button
+                  onClick={handleAddProjectFile}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${dropdownItemClass}`}
+                >
+                  Project file
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* / Skills button */}
+          <div className="relative">
+            <button
+              ref={skillBtnRef}
+              onClick={() => setSkillMenuOpen(!skillMenuOpen)}
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+            >
+              <CheckCircle size={14} />/ Skill
+            </button>
+            {skillMenuOpen && (
+              <div
+                className={`absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+              >
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                  Select a skill
+                </div>
+                {skills.length === 0 ? (
+                  <div className="px-3 py-3 text-center text-xs text-gray-400">
+                    No skills registered.
+                  </div>
+                ) : (
+                  skills.map((skill) => (
+                    <button
+                      key={skill.id}
+                      onClick={() => handleSelectSkill(skill.name)}
+                      className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
+                    >
+                      <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+                        /
+                      </span>
+                      {skill.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Delegation Tier selector */}
+          <div className="relative">
+            <button
+              ref={tierBtnRef}
+              onClick={() => setTierMenuOpen(!tierMenuOpen)}
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+              title="Delegation tier"
+            >
+              <Shield size={14} />
+              {delegationTier}
+            </button>
+            {tierMenuOpen && (
+              <div
+                className={`absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+              >
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                  Delegation Tier
+                </div>
+                {TIERS.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setDelegationTier(t.id);
+                      setTierMenuOpen(false);
+                      apiFetch('/api/settings/delegation-tier', {
+                        method: 'PUT',
+                        headers: authJsonHeaders(),
+                        body: JSON.stringify({ tier: t.id }),
+                      }).catch(() => {});
+                    }}
+                    className={`w-full px-4 py-1.5 text-left transition-colors ${
+                      delegationTier === t.id
+                        ? isDark
+                          ? 'bg-blue-900/30 text-blue-400'
+                          : 'bg-blue-50 text-blue-600'
+                        : dropdownItemClass
+                    }`}
+                  >
+                    <div className="text-xs font-medium">
+                      {t.id} — {t.label}
+                    </div>
+                    <div className="text-[10px] text-gray-400">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Model switcher */}
+          <div className="relative">
+            <button
+              ref={modelBtnRef}
+              onClick={() => setModelMenuOpen(!modelMenuOpen)}
+              className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+              title="Switch model"
+            >
+              <Terminal size={14} />
+              {selectedModel}
+            </button>
+            {modelMenuOpen && (
+              <div
+                className={`absolute bottom-full right-0 z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
+              >
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                  Select model
+                </div>
+                {availableModels.map(({ provider, models }) => (
+                  <div key={provider}>
+                    <div className={`px-3 py-1 text-xs font-medium capitalize ${subtextClass}`}>
+                      {provider}
+                    </div>
+                    {models.map((model) => (
+                      <button
+                        key={model}
+                        onClick={() => {
+                          setSelectedModel(model);
+                          setModelMenuOpen(false);
+                        }}
+                        className={`w-full px-5 py-1 text-left font-mono text-xs transition-colors ${
+                          selectedModel === model
+                            ? isDark
+                              ? 'bg-blue-900/30 text-blue-400'
+                              : 'bg-blue-50 text-blue-600'
+                            : dropdownItemClass
+                        }`}
+                      >
+                        {model}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Context status */}
+          <ContextButton
+            sessionId={active?.id ?? 'default'}
+            isDark={isDark}
+            btnBaseClass={btnBaseClass}
+            hoverClass={hoverClass}
+            dropdownBgClass={dropdownBgClass}
+          />
+
+          {/* Send / Stop button */}
+          <button
+            onClick={() => {
+              if (isProcessing) {
+                onStop?.(active?.id ?? 'default');
+              } else {
+                handleSend();
+              }
+            }}
+            disabled={!isProcessing && !input.trim()}
+            className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
+              isProcessing
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : input.trim()
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'cursor-not-allowed bg-gray-300 text-gray-400 dark:bg-gray-600 dark:text-gray-500'
+            }`}
+            aria-label={isProcessing ? 'Stop' : 'Send'}
+          >
+            {isProcessing ? <Square size={14} /> : <ArrowUp size={16} />}
+          </button>
+        </div>
+
+        {/* File search modal */}
+        <FileSearchPanel
+          isOpen={fileSearchOpen}
+          onClose={() => setFileSearchOpen(false)}
+          onSelect={handleFileSelected}
         />
-
-        {/* Send / Stop button */}
-        <button
-          onClick={() => {
-            if (isProcessing) {
-              onStop?.(active?.id ?? 'default');
-            } else {
-              handleSend();
-            }
-          }}
-          disabled={!isProcessing && !input.trim()}
-          className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-            isProcessing
-              ? 'bg-red-500 text-white hover:bg-red-600'
-              : input.trim()
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-400 cursor-not-allowed dark:bg-gray-600 dark:text-gray-500'
-          }`}
-          aria-label={isProcessing ? 'Stop' : 'Send'}
-        >
-          {isProcessing ? <Square size={14} /> : <ArrowUp size={16} />}
-        </button>
-      </div>
-
-      {/* File search modal */}
-      <FileSearchPanel
-        isOpen={fileSearchOpen}
-        onClose={() => setFileSearchOpen(false)}
-        onSelect={handleFileSelected}
-      />
       </div>
     </div>
   );

@@ -44,7 +44,15 @@ export class DeliverableRepository {
       .prepare(
         'INSERT INTO project_deliverables (id, project_id, meeting_id, title, type, file_path, tags) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(deliverable.id, deliverable.project_id, deliverable.meeting_id, deliverable.title, deliverable.type, deliverable.file_path, deliverable.tags);
+      .run(
+        deliverable.id,
+        deliverable.project_id,
+        deliverable.meeting_id,
+        deliverable.title,
+        deliverable.type,
+        deliverable.file_path,
+        deliverable.tags,
+      );
   }
 
   delete(id: string): void {

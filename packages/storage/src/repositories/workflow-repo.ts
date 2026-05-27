@@ -41,10 +41,7 @@ export class WorkflowRepository {
     return this.rowToWorkflow(row);
   }
 
-  listByProject(
-    projectId: string,
-    opts?: { limit?: number; offset?: number },
-  ): WorkflowRow[] {
+  listByProject(projectId: string, opts?: { limit?: number; offset?: number }): WorkflowRow[] {
     const rows = this.db
       .prepare(
         `SELECT * FROM workflows WHERE project_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
@@ -63,8 +60,14 @@ export class WorkflowRepository {
   updateNameAndDefinition(id: string, name?: string, definition?: string): void {
     const sets: string[] = [];
     const values: unknown[] = [];
-    if (name !== undefined) { sets.push('name = ?'); values.push(name); }
-    if (definition !== undefined) { sets.push('definition = ?'); values.push(definition); }
+    if (name !== undefined) {
+      sets.push('name = ?');
+      values.push(name);
+    }
+    if (definition !== undefined) {
+      sets.push('definition = ?');
+      values.push(definition);
+    }
     if (sets.length === 0) return;
     values.push(id);
     this.db.prepare(`UPDATE workflows SET ${sets.join(', ')} WHERE id = ?`).run(...values);
@@ -109,7 +112,15 @@ export class WorkflowRepository {
         `INSERT OR REPLACE INTO workflow_runs (run_id, workflow_id, status, current_node_id, steps, results, started_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       )
-      .run(run.run_id, run.workflow_id, run.status, run.current_node_id, run.steps, run.results, run.started_at);
+      .run(
+        run.run_id,
+        run.workflow_id,
+        run.status,
+        run.current_node_id,
+        run.steps,
+        run.results,
+        run.started_at,
+      );
   }
 
   findRunById(runId: string): WorkflowRunRow | null {
@@ -145,7 +156,9 @@ export class WorkflowRepository {
 
   failAwaitingRuns(workflowId: string): void {
     this.db
-      .prepare("UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'")
+      .prepare(
+        "UPDATE workflow_runs SET status = 'failed', updated_at = datetime('now') WHERE workflow_id = ? AND status = 'awaiting_approval'",
+      )
       .run(workflowId);
   }
 
@@ -169,7 +182,9 @@ export class WorkflowRepository {
 
   findStepsByRunId(runId: string): Array<{ nodeId: string; type: string; output: string }> {
     const rows = this.db
-      .prepare('SELECT node_id, node_type, output FROM workflow_run_steps WHERE run_id = ? ORDER BY id ASC')
+      .prepare(
+        'SELECT node_id, node_type, output FROM workflow_run_steps WHERE run_id = ? ORDER BY id ASC',
+      )
       .all(runId) as Record<string, unknown>[];
     return rows.map((r) => ({
       nodeId: r.node_id as string,

@@ -5,25 +5,77 @@ import { DocumentChunkRepository } from '@cabinet/storage';
 
 function readTextFileSync(filePath: string): string {
   const buf = readFileSync(filePath);
-  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     return buf.toString('utf-8').slice(1);
   }
   const utf8 = buf.toString('utf-8');
   if (utf8.includes('�')) {
-    try { return new TextDecoder('gbk').decode(buf); } catch { /* fall through */ }
+    try {
+      return new TextDecoder('gbk').decode(buf);
+    } catch {
+      /* fall through */
+    }
   }
   return utf8;
 }
 
 const TEXT_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css', '.scss', '.less',
-  '.html', '.htm', '.vue', '.svelte', '.json', '.yml', '.yaml', '.toml',
-  '.md', '.mdx', '.txt', '.xml', '.ini', '.cfg', '.env', '.gitignore',
-  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift', '.c', '.cpp',
-  '.h', '.hpp', '.cs', '.php', '.sql', '.sh', '.bash', '.zsh',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.scss',
+  '.less',
+  '.html',
+  '.htm',
+  '.vue',
+  '.svelte',
+  '.json',
+  '.yml',
+  '.yaml',
+  '.toml',
+  '.md',
+  '.mdx',
+  '.txt',
+  '.xml',
+  '.ini',
+  '.cfg',
+  '.env',
+  '.gitignore',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.swift',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.cs',
+  '.php',
+  '.sql',
+  '.sh',
+  '.bash',
+  '.zsh',
 ]);
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '__pycache__', '.venv', 'target', '.cabinet']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.next',
+  '.cache',
+  '__pycache__',
+  '.venv',
+  'target',
+  '.cabinet',
+]);
 
 interface IndexerOptions {
   projectId: string;
@@ -63,7 +115,9 @@ async function generateEmbeddings(texts: string[], gateway: any): Promise<number
   }
 }
 
-export async function indexProject(options: IndexerOptions): Promise<{ indexed: number; skipped: number; errors: number }> {
+export async function indexProject(
+  options: IndexerOptions,
+): Promise<{ indexed: number; skipped: number; errors: number }> {
   const { projectId, rootPath, db, gateway, logger, maxFiles = 200, force = false } = options;
 
   if (!existsSync(rootPath)) {
@@ -90,7 +144,11 @@ export async function indexProject(options: IndexerOptions): Promise<{ indexed: 
   async function walk(dir: string, depth: number): Promise<void> {
     if (depth > 10 || sourceFiles.length >= maxFiles) return;
     let entries;
-    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       if (sourceFiles.length >= maxFiles) return;
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;

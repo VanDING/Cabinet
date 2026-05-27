@@ -4,12 +4,12 @@ Multi-provider LLM gateway with cost tracking, budget guarding, and fallback cha
 
 ## Supported Providers
 
-| Provider | Models |
-|---|---|
+| Provider  | Models                                               |
+| --------- | ---------------------------------------------------- |
 | Anthropic | claude-haiku-4-5, claude-sonnet-4-6, claude-opus-4-7 |
-| OpenAI | gpt-4o, gpt-4o-mini, gpt-4-turbo |
-| DeepSeek | deepseek-chat, deepseek-v3, deepseek-r1 |
-| Google | gemini-2.0-flash, gemini-2.0-pro |
+| OpenAI    | gpt-4o, gpt-4o-mini, gpt-4-turbo                     |
+| DeepSeek  | deepseek-chat, deepseek-v3, deepseek-r1              |
+| Google    | gemini-2.0-flash, gemini-2.0-pro                     |
 
 ## Endpoints
 
@@ -22,6 +22,7 @@ List configured API keys (keys are encrypted at rest).
 Add or update an API key.
 
 **Body**:
+
 ```json
 {
   "provider": "anthropic",
@@ -31,6 +32,7 @@ Add or update an API key.
 ```
 
 **Response**:
+
 ```json
 {
   "status": "key_added",
@@ -43,6 +45,7 @@ Add or update an API key.
 ### Model Router
 
 Routes generation requests to the most appropriate model based on:
+
 - Task complexity
 - Cost constraints
 - Latency requirements
@@ -59,6 +62,7 @@ Anthropic → OpenAI → DeepSeek → Error
 ### Cost Tracking
 
 Every LLM call is tracked with per-model cost. Budget limits are configurable:
+
 - Daily budget (default: $5)
 - Weekly budget (default: $25)
 - Monthly budget (default: $100)

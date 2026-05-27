@@ -74,7 +74,10 @@ export function createStandardMemoryProvider(
             olderParts.push(m.content.slice(0, 100));
           }
           if (olderParts.length > 0) {
-            items.unshift({ role: 'user', content: '[Earlier context summary]: ' + olderParts.join(' | ') });
+            items.unshift({
+              role: 'user',
+              content: '[Earlier context summary]: ' + olderParts.join(' | '),
+            });
           }
         } else {
           for (let i = start; i < end; i++) {
@@ -95,8 +98,9 @@ export function createStandardMemoryProvider(
       return items;
     },
     async getProjectContext(_pid: string) {
-      const pid = _pid === 'global' ? _pid : (_pid || projectId || 'global');
-      if (pid === 'global') return 'No project selected. Use list_projects to see available projects.';
+      const pid = _pid === 'global' ? _pid : _pid || projectId || 'global';
+      if (pid === 'global')
+        return 'No project selected. Use list_projects to see available projects.';
       const projCtx = isolated ? isolated.getProjectContext() : ctx.project.get(pid);
       let contextStr = '';
       try {
@@ -104,7 +108,9 @@ export function createStandardMemoryProvider(
         if (projRow?.rootPath && existsSync(projRow.rootPath)) {
           contextStr = `Active project files at: ${projRow.rootPath}\n`;
         }
-      } catch { /* root_path lookup is best-effort */ }
+      } catch {
+        /* root_path lookup is best-effort */
+      }
       if (!projCtx) {
         contextStr += `Project "${pid}" has no context yet. Use set_project_context to add details.`;
       } else {
@@ -123,7 +129,9 @@ export function createStandardMemoryProvider(
         try {
           const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
           queryEmbedding = er.embeddings[0];
-        } catch { /* fall back to text search */ }
+        } catch {
+          /* fall back to text search */
+        }
       }
       const results = await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
       return results.map((r) => `[Memory] ${r.content}`);

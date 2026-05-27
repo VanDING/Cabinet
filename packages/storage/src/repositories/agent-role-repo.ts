@@ -19,9 +19,10 @@ export class AgentRoleRepository {
   constructor(private readonly db: Database.Database) {}
 
   findAll(): AgentRoleRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM agent_roles ORDER BY name ASC')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM agent_roles ORDER BY name ASC').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToRole(r));
   }
 
@@ -48,9 +49,9 @@ export class AgentRoleRepository {
   }
 
   findByType(type: string): AgentRoleRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM agent_roles WHERE type = ?')
-      .get(type) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM agent_roles WHERE type = ?').get(type) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToRole(row);
   }
@@ -77,7 +78,21 @@ export class AgentRoleRepository {
       );
   }
 
-  update(name: string, changes: Partial<Pick<AgentRoleRow, 'system_prompt' | 'model' | 'model_tier' | 'temperature' | 'max_response_tokens' | 'allowed_tools' | 'context_budget'>>): void {
+  update(
+    name: string,
+    changes: Partial<
+      Pick<
+        AgentRoleRow,
+        | 'system_prompt'
+        | 'model'
+        | 'model_tier'
+        | 'temperature'
+        | 'max_response_tokens'
+        | 'allowed_tools'
+        | 'context_budget'
+      >
+    >,
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
     const fieldMap: Record<string, string> = {
@@ -98,7 +113,9 @@ export class AgentRoleRepository {
     }
     if (sets.length === 0) return;
     values.push(name);
-    this.db.prepare(`UPDATE agent_roles SET ${sets.join(', ')} WHERE name = ? AND is_builtin = 0`).run(...values);
+    this.db
+      .prepare(`UPDATE agent_roles SET ${sets.join(', ')} WHERE name = ? AND is_builtin = 0`)
+      .run(...values);
   }
 
   deleteByName(name: string): void {

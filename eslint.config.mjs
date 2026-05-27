@@ -17,6 +17,8 @@ export default tseslint.config(
       '**/.claude/**',
       '**/coverage/**',
       'apps/desktop/src-tauri/target/**',
+      'apps/desktop/src-tauri/resources/server-dist/**',
+      'apps/server/bundle/**',
     ],
   },
   {
@@ -39,6 +41,20 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+  {
+    files: [
+      'tools/**/*.ts',
+      '**/scripts/**/*.mjs',
+      'tests/**/*.ts',
+      '**/__tests__/**/*.{ts,tsx}',
+      '**/__mocks__/**/*.{ts,tsx}',
+      '**/migrations/**/*.ts',
+    ],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 );

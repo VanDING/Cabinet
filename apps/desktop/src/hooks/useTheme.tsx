@@ -25,6 +25,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   const ctx = useContext(ThemeContext);
-  if (ctx) return ctx;
-  return useThemeState();
+  const fallback = useThemeState();
+  return ctx ?? fallback;
 }

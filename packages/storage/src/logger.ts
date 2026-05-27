@@ -25,9 +25,10 @@ export interface LogEntry {
 
 const jsonFormat = process.env.LOG_FORMAT === 'json';
 const minLevelEnv = process.env.LOG_LEVEL as LogLevel | undefined;
-const minLevel: number = minLevelEnv && LOG_LEVEL_PRIORITY[minLevelEnv] !== undefined
-  ? LOG_LEVEL_PRIORITY[minLevelEnv]
-  : LOG_LEVEL_PRIORITY.info;
+const minLevel: number =
+  minLevelEnv && LOG_LEVEL_PRIORITY[minLevelEnv] !== undefined
+    ? LOG_LEVEL_PRIORITY[minLevelEnv]
+    : LOG_LEVEL_PRIORITY.info;
 const pinoLevel = (['debug', 'info', 'warn', 'error'] as LogLevel[])[minLevel];
 
 const LOG_DIR = join(homedir(), '.cabinet', 'logs');
@@ -36,49 +37,58 @@ const LOG_FILE = process.env.LOG_FILE ?? join(LOG_DIR, 'cabinet.log');
 // Ensure log directory exists before pino-roll tries to create files
 try {
   mkdirSync(LOG_DIR, { recursive: true });
-} catch { /* directory exists or read-only */ }
+} catch {
+  /* directory exists or read-only */
+}
 
 // Resolve pino-roll path for worker-thread transport (pnpm-safe)
 const req = typeof require !== 'undefined' ? require : createRequire(import.meta.url);
 const pinoRollPath = req.resolve('pino-roll');
 
-const rootPino = pino({
-  level: pinoLevel,
-  timestamp: pino.stdTimeFunctions.isoTime,
-  redact: {
-    paths: [
-      'apiKey',
-      'password',
-      'token',
-      'secret',
-      '*.apiKey',
-      '*.password',
-      '*.token',
-      '*.secret',
-      'context.apiKey',
-      'context.password',
-      'context.token',
-      'context.secret',
-    ],
-    censor: '[Redacted]',
-  },
-}, pino.transport({
-  targets: [
-    jsonFormat || process.env.NODE_ENV === 'production'
-      ? { target: 'pino/file', level: pinoLevel }
-      : { target: 'pino-pretty', options: { colorize: true, translateTime: true }, level: pinoLevel },
-    {
-      target: pinoRollPath,
-      options: {
-        file: LOG_FILE,
-        size: '10m',
-        limit: { count: 5 },
-        mkdir: true,
-      },
-      level: pinoLevel,
+const rootPino = pino(
+  {
+    level: pinoLevel,
+    timestamp: pino.stdTimeFunctions.isoTime,
+    redact: {
+      paths: [
+        'apiKey',
+        'password',
+        'token',
+        'secret',
+        '*.apiKey',
+        '*.password',
+        '*.token',
+        '*.secret',
+        'context.apiKey',
+        'context.password',
+        'context.token',
+        'context.secret',
+      ],
+      censor: '[Redacted]',
     },
-  ] as any[],
-}));
+  },
+  pino.transport({
+    targets: [
+      jsonFormat || process.env.NODE_ENV === 'production'
+        ? { target: 'pino/file', level: pinoLevel }
+        : {
+            target: 'pino-pretty',
+            options: { colorize: true, translateTime: true },
+            level: pinoLevel,
+          },
+      {
+        target: pinoRollPath,
+        options: {
+          file: LOG_FILE,
+          size: '10m',
+          limit: { count: 5 },
+          mkdir: true,
+        },
+        level: pinoLevel,
+      },
+    ] as any[],
+  }),
+);
 
 let globalTraceId: string | undefined;
 let globalSessionId: string | undefined;
@@ -134,10 +144,18 @@ export class Logger {
     if (sessionId) bindings.sessionId = sessionId;
 
     switch (level) {
-      case 'debug': rootPino.debug(bindings, message); break;
-      case 'warn': rootPino.warn(bindings, message); break;
-      case 'error': rootPino.error(bindings, message); break;
-      default: rootPino.info(bindings, message); break;
+      case 'debug':
+        rootPino.debug(bindings, message);
+        break;
+      case 'warn':
+        rootPino.warn(bindings, message);
+        break;
+      case 'error':
+        rootPino.error(bindings, message);
+        break;
+      default:
+        rootPino.info(bindings, message);
+        break;
     }
   }
 

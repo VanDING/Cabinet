@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-
 export type SubAgentStatus = 'running' | 'completed' | 'error';
 
 export interface SubAgentActivity {
@@ -46,7 +45,9 @@ const statusConfig: Record<
 };
 
 export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: SubAgentCardProps) {
-  const [expanded, setExpanded] = useState(activity.status === 'running' || activity.status === 'error');
+  const [expanded, setExpanded] = useState(
+    activity.status === 'running' || activity.status === 'error',
+  );
   const [toolCallsExpanded, setToolCallsExpanded] = useState(false);
 
   if (visibility === 'hidden') return null;
@@ -61,13 +62,10 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
   return (
     <div
-      className={`mt-2 rounded-lg border ${config.border} ${config.bg} p-3 transition-all dark:border-opacity-30`}
+      className={`mt-2 rounded-lg border ${config.border} ${config.bg} dark:border-opacity-30 p-3 transition-all`}
     >
       {/* Header */}
-      <button
-        onClick={handleToggle}
-        className="flex w-full items-center justify-between text-left"
-      >
+      <button onClick={handleToggle} className="flex w-full items-center justify-between text-left">
         <div className="flex items-center gap-2">
           <span
             className={`text-sm ${isRunning ? 'animate-pulse text-blue-600' : activity.status === 'error' ? 'text-red-600' : 'text-green-600'}`}
@@ -100,7 +98,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400">思考过程</div>
-              <div className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-gray-200 bg-white p-2 whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-xs text-gray-600 dark:text-gray-300">
                   {activity.thinking.join('')}
                 </p>
@@ -113,7 +111,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
                 <button
                   onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
-                  className="inline-flex items-center gap-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 transition-colors"
+                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
                   工具调用 ({activity.toolCalls.length})
@@ -135,8 +133,10 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                 <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/60">
                   {activity.toolCalls.map((tc, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="mt-0.5 font-mono text-gray-700 dark:text-gray-300">{tc.name}</span>
-                      <span className="text-gray-500 dark:text-gray-400 truncate">
+                      <span className="mt-0.5 font-mono text-gray-700 dark:text-gray-300">
+                        {tc.name}
+                      </span>
+                      <span className="truncate text-gray-500 dark:text-gray-400">
                         {Object.entries(tc.args)
                           .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
                           .join(', ')}
@@ -151,7 +151,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           {activity.result && (
             <div>
               <div className="text-xs font-medium text-gray-500 dark:text-gray-400">结果</div>
-              <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs text-gray-700 dark:text-gray-300">
+              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                 {activity.result}
               </p>
             </div>

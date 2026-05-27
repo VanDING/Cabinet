@@ -28,7 +28,7 @@ export class ShortTermMemoryRepository {
   upsert(sessionId: string, key: string, value: string, ttl: number): void {
     this.db
       .prepare(
-        'INSERT OR REPLACE INTO short_term (session_id, key, value, timestamp, ttl) VALUES (?, ?, ?, datetime(\'now\'), ?)',
+        "INSERT OR REPLACE INTO short_term (session_id, key, value, timestamp, ttl) VALUES (?, ?, ?, datetime('now'), ?)",
       )
       .run(sessionId, key, value, ttl);
   }
@@ -49,9 +49,7 @@ export class ShortTermMemoryRepository {
   }
 
   delete(sessionId: string, key: string): void {
-    this.db
-      .prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?')
-      .run(sessionId, key);
+    this.db.prepare('DELETE FROM short_term WHERE session_id = ? AND key = ?').run(sessionId, key);
   }
 
   deleteBySession(sessionId: string): void {

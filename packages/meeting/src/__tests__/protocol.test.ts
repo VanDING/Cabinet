@@ -60,7 +60,12 @@ describe('parseAdvisorResponse', () => {
   it('parses valid findings', () => {
     const json = JSON.stringify({
       findings: [
-        { perspective: 'Market', claim: 'High potential', evidence: 'Data shows...', confidence: 0.8 },
+        {
+          perspective: 'Market',
+          claim: 'High potential',
+          evidence: 'Data shows...',
+          confidence: 0.8,
+        },
       ],
       synthesis: 'Overall positive',
       risks: ['Regulatory risk'],

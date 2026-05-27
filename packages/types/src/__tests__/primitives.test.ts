@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type {
-  Project,
-  Employee,
-  SkillDefinition,
-  WorkflowDefinition,
-} from '../primitives';
+import type { Project, Employee, SkillDefinition, WorkflowDefinition } from '../primitives';
 import {
   ProjectStatus,
   EmployeeKind,
@@ -116,7 +111,11 @@ describe('WorkflowDefinition type', () => {
           title: 'Quality Check',
           description: 'Check if data quality meets threshold',
           type: 'condition',
-          condition: { expression: '{{steps.data_collection.output.confidence}} > 0.7', trueBranch: 'report_gen', falseBranch: 'human_review' },
+          condition: {
+            expression: '{{steps.data_collection.output.confidence}} > 0.7',
+            trueBranch: 'report_gen',
+            falseBranch: 'human_review',
+          },
         },
         {
           id: 'human_review',

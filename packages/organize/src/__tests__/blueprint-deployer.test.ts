@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { BlueprintDeployer, type DeployerDependencies, type DeployResult } from '../blueprint-deployer.js';
+import {
+  BlueprintDeployer,
+  type DeployerDependencies,
+  type DeployResult,
+} from '../blueprint-deployer.js';
 import type { Blueprint } from '@cabinet/types';
 import type { EventBus } from '@cabinet/events';
 

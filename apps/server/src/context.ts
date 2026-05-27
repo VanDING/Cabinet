@@ -1,12 +1,6 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
 import { startSkillWatcher, startAgentWatcher } from './watchers.js';
@@ -60,7 +54,14 @@ import { MemoryEventBus } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
-import { DelegationTier, DEFAULT_DELEGATION_TIER, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, MessageType, DAILY_BUDGET_USD } from '@cabinet/types';
+import {
+  DelegationTier,
+  DEFAULT_DELEGATION_TIER,
+  DEFAULT_CAPTAIN_ID,
+  DEFAULT_CAPTAIN_NAME,
+  MessageType,
+  DAILY_BUDGET_USD,
+} from '@cabinet/types';
 import {
   AgentRoleRegistry,
   CURATOR_ROLE,
@@ -194,7 +195,15 @@ export class FileAccessTracker {
 }
 
 export class TaskTracker {
-  private tasks: Array<{ id: string; name: string; agentName?: string; description?: string; status: string; startTime: number; endTime?: number }> = [];
+  private tasks: Array<{
+    id: string;
+    name: string;
+    agentName?: string;
+    description?: string;
+    status: string;
+    startTime: number;
+    endTime?: number;
+  }> = [];
 
   addTask(name: string, agentName?: string, description?: string): string {
     const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -233,7 +242,11 @@ export function setCurrentTier(tier: DelegationTier): void {
     ctx.delegationTier = tier;
   }
   for (const listener of tierChangeListeners) {
-    try { listener(tier); } catch { /* non-fatal */ }
+    try {
+      listener(tier);
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -264,7 +277,9 @@ export function getServerContext(): ServerContext {
         join(dataDir, 'server-startup.log'),
         `${new Date().toISOString()} | DB: file | path: ${dbPath} | existed: ${dbExists}\n`,
       );
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   } catch (e) {
     logger.error('Failed to initialize file-based SQLite', { error: String(e), path: dbPath });
     // Write diagnostic info before falling back
@@ -272,11 +287,20 @@ export function getServerContext(): ServerContext {
       // appendFileSync not imported; use writeFileSync with existing content fallback
       try {
         const existing = readFileSync(join(dataDir, 'server-startup.log'), 'utf-8');
-        writeFileSync(join(dataDir, 'server-startup.log'), existing + `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`);
+        writeFileSync(
+          join(dataDir, 'server-startup.log'),
+          existing +
+            `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`,
+        );
       } catch {
-        writeFileSync(join(dataDir, 'server-startup.log'), `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`);
+        writeFileSync(
+          join(dataDir, 'server-startup.log'),
+          `${new Date().toISOString()} | DB: FAILED | path: ${dbPath} | error: ${String(e)}\n`,
+        );
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
     try {
       db = createConnection(':memory:');
       runMigrations(db);
@@ -325,8 +349,22 @@ export function getServerContext(): ServerContext {
   const escalation = new EscalationService(eventBus);
 
   // Deferred Curator trigger (createCuratorLoop is defined later, after gateway is ready)
-  let _triggerCuratorDecisionUpdate: ((decisionId: string, action: string, title: string, chosenOptionId: string | undefined, captainId: string | undefined) => void) | null = null;
-  function triggerCuratorPreferenceUpdate(decisionId: string, action: string, title: string, chosenOptionId: string | undefined, captainId: string | undefined): void {
+  let _triggerCuratorDecisionUpdate:
+    | ((
+        decisionId: string,
+        action: string,
+        title: string,
+        chosenOptionId: string | undefined,
+        captainId: string | undefined,
+      ) => void)
+    | null = null;
+  function triggerCuratorPreferenceUpdate(
+    decisionId: string,
+    action: string,
+    title: string,
+    chosenOptionId: string | undefined,
+    captainId: string | undefined,
+  ): void {
     if (_triggerCuratorDecisionUpdate) {
       _triggerCuratorDecisionUpdate(decisionId, action, title, chosenOptionId, captainId);
     }
@@ -354,11 +392,19 @@ export function getServerContext(): ServerContext {
             if (wfId) {
               if (action === 'approved' && chosenOptionId === 'approve_continue') {
                 workflowRepo.updateStatus(wfId, 'completed');
-                auditLogRepo.insert('workflow_approval', decisionId, 'approved', 'system', { ...wfData, status: 'approved', decisionId });
+                auditLogRepo.insert('workflow_approval', decisionId, 'approved', 'system', {
+                  ...wfData,
+                  status: 'approved',
+                  decisionId,
+                });
                 logger.info('Workflow approved via decision', { workflowId: wfId, decisionId });
               } else {
                 workflowRepo.updateStatus(wfId, 'failed');
-                auditLogRepo.insert('workflow_approval', decisionId, 'terminated', 'system', { ...wfData, status: 'terminated', decisionId });
+                auditLogRepo.insert('workflow_approval', decisionId, 'terminated', 'system', {
+                  ...wfData,
+                  status: 'terminated',
+                  decisionId,
+                });
                 logger.info('Workflow terminated via decision', { workflowId: wfId, decisionId });
               }
             }
@@ -418,7 +464,12 @@ export function getServerContext(): ServerContext {
   costHistoryRepo.ensureTable();
   const costTracker = new CostTracker({
     persist: (entry) => {
-      costHistoryRepo.insert(entry.model, entry.promptTokens, entry.completionTokens, entry.costUsd);
+      costHistoryRepo.insert(
+        entry.model,
+        entry.promptTokens,
+        entry.completionTokens,
+        entry.costUsd,
+      );
     },
   });
   // Restore today's entries so daily/weekly/monthly budgets work after restart
@@ -449,22 +500,63 @@ export function getServerContext(): ServerContext {
   // Tier → model mapping per provider. Picks the best available model
   // from the user's configured API keys instead of hardcoding Claude.
   const PROVIDER_TIER_MAP: Record<string, Record<string, string>> = {
-    anthropic: { deep_reasoning: 'anthropic/claude-opus-4-7', default: 'anthropic/claude-sonnet-4-6', fast_execution: 'anthropic/claude-haiku-4-5' },
-    openai:    { deep_reasoning: 'openai/gpt-4o',             default: 'openai/gpt-4o',              fast_execution: 'openai/gpt-4o-mini' },
-    google:    { deep_reasoning: 'google/gemini-2.5-pro',     default: 'google/gemini-2.5-pro',      fast_execution: 'google/gemini-2.5-flash' },
-    deepseek:  { deep_reasoning: 'deepseek/deepseek-v4-pro',  default: 'deepseek/deepseek-v4-flash', fast_execution: 'deepseek/deepseek-v4-flash' },
-    qwen:      { deep_reasoning: 'qwen/qwen-max',             default: 'qwen/qwen-plus',             fast_execution: 'qwen/qwen-turbo' },
-    moonshot:  { deep_reasoning: 'moonshot/moonshot-v1-128k', default: 'moonshot/moonshot-v1-32k',   fast_execution: 'moonshot/moonshot-v1-8k' },
-    zhipu:     { deep_reasoning: 'zhipu/glm-4',               default: 'zhipu/glm-4',                fast_execution: 'zhipu/glm-4-flash' },
-    baichuan:  { deep_reasoning: 'baichuan/baichuan4',        default: 'baichuan/baichuan4',         fast_execution: 'baichuan/baichuan3-turbo' },
+    anthropic: {
+      deep_reasoning: 'anthropic/claude-opus-4-7',
+      default: 'anthropic/claude-sonnet-4-6',
+      fast_execution: 'anthropic/claude-haiku-4-5',
+    },
+    openai: {
+      deep_reasoning: 'openai/gpt-4o',
+      default: 'openai/gpt-4o',
+      fast_execution: 'openai/gpt-4o-mini',
+    },
+    google: {
+      deep_reasoning: 'google/gemini-2.5-pro',
+      default: 'google/gemini-2.5-pro',
+      fast_execution: 'google/gemini-2.5-flash',
+    },
+    deepseek: {
+      deep_reasoning: 'deepseek/deepseek-v4-pro',
+      default: 'deepseek/deepseek-v4-flash',
+      fast_execution: 'deepseek/deepseek-v4-flash',
+    },
+    qwen: {
+      deep_reasoning: 'qwen/qwen-max',
+      default: 'qwen/qwen-plus',
+      fast_execution: 'qwen/qwen-turbo',
+    },
+    moonshot: {
+      deep_reasoning: 'moonshot/moonshot-v1-128k',
+      default: 'moonshot/moonshot-v1-32k',
+      fast_execution: 'moonshot/moonshot-v1-8k',
+    },
+    zhipu: {
+      deep_reasoning: 'zhipu/glm-4',
+      default: 'zhipu/glm-4',
+      fast_execution: 'zhipu/glm-4-flash',
+    },
+    baichuan: {
+      deep_reasoning: 'baichuan/baichuan4',
+      default: 'baichuan/baichuan4',
+      fast_execution: 'baichuan/baichuan3-turbo',
+    },
   };
-  const PROVIDER_PREFERENCE = ['anthropic', 'openai', 'google', 'deepseek', 'qwen', 'moonshot', 'zhipu', 'baichuan'];
+  const PROVIDER_PREFERENCE = [
+    'anthropic',
+    'openai',
+    'google',
+    'deepseek',
+    'qwen',
+    'moonshot',
+    'zhipu',
+    'baichuan',
+  ];
   const FALLBACK_TIER_MAP = PROVIDER_TIER_MAP.anthropic; // when no keys are configured at all
 
   function buildDefaultModelMapping(providers: Record<string, unknown>): ModelMapping {
     const primary = PROVIDER_PREFERENCE.find((p) => providers[p] != null);
     if (!primary) return { ...FALLBACK_TIER_MAP };
-    return { ...PROVIDER_TIER_MAP[primary] ?? FALLBACK_TIER_MAP };
+    return { ...(PROVIDER_TIER_MAP[primary] ?? FALLBACK_TIER_MAP) };
   }
 
   // Gateway — built from .env + database
@@ -503,9 +595,10 @@ export function getServerContext(): ServerContext {
 
     if (Object.keys(providerConfigs).length > 0) {
       // Use user-configured modelMapping if set; otherwise auto-detect from available providers
-      const effectiveMapping = Object.keys(modelMapping).length > 0
-        ? modelMapping
-        : buildDefaultModelMapping(providerConfigs);
+      const effectiveMapping =
+        Object.keys(modelMapping).length > 0
+          ? modelMapping
+          : buildDefaultModelMapping(providerConfigs);
       return new AISDKAdapter(providerConfigs as any, effectiveMapping);
     }
     return null;
@@ -549,10 +642,7 @@ export function getServerContext(): ServerContext {
 
   sessionManager.onSessionCreate((session) => {
     if (gateway) {
-      enqueueCuratorTask(
-        () => runCuratorBrief(session.id),
-        'brief',
-      ).catch((e) =>
+      enqueueCuratorTask(() => runCuratorBrief(session.id), 'brief').catch((e) =>
         logger.warn('Curator on-create brief failed', { error: (e as Error).message }),
       );
     }
@@ -574,10 +664,13 @@ export function getServerContext(): ServerContext {
     });
     backupManager.startAutoBackup();
     // Daily database maintenance (VACUUM) — runs 1 hour after startup, then every 24h
-    setTimeout(() => {
-      backupManager!.runMaintenance();
-      setInterval(() => backupManager!.runMaintenance(), 24 * 60 * 60 * 1000);
-    }, 60 * 60 * 1000);
+    setTimeout(
+      () => {
+        backupManager!.runMaintenance();
+        setInterval(() => backupManager!.runMaintenance(), 24 * 60 * 60 * 1000);
+      },
+      60 * 60 * 1000,
+    );
     logger.info('Backup manager started');
   } catch {
     logger.warn('Backup manager unavailable');
@@ -617,8 +710,7 @@ export function getServerContext(): ServerContext {
       },
       approveDecision: (decisionId, captainId, chosenOptionId) =>
         decisionService.approve(decisionId, captainId, chosenOptionId),
-      rejectDecision: (decisionId, captainId) =>
-        decisionService.reject(decisionId, captainId),
+      rejectDecision: (decisionId, captainId) => decisionService.reject(decisionId, captainId),
       listWorkflows: () => [],
       getWorkflow: () => undefined,
       createWorkflow: () => ({ id: '' }),
@@ -645,10 +737,16 @@ export function getServerContext(): ServerContext {
       },
       updateAgent: () => {},
       deleteAgent: () => {},
-      invokeAgent: async () => { throw new Error('Agent invocation not available for Curator background task'); },
-      listAgents: () => agentRegistry.list().map((r) => ({
-        type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
-      })),
+      invokeAgent: async () => {
+        throw new Error('Agent invocation not available for Curator background task');
+      },
+      listAgents: () =>
+        agentRegistry.list().map((r) => ({
+          type: r.type,
+          name: r.name,
+          description: r.description,
+          builtIn: r.type !== 'custom',
+        })),
       setProjectContext: (pid) => ({ id: pid, name: pid }),
       createProject: (input) => ({ id: `proj_${Date.now()}`, name: input.name }),
       listProjects: () => [],
@@ -656,36 +754,108 @@ export function getServerContext(): ServerContext {
         const p = project.get(pid);
         return p ? { id: pid, name: p.summary } : null;
       },
+      getDashboardStats: () => ({
+        pendingDecisions: 0,
+        activeWorkflows: 0,
+        activeProjects: 0,
+        todayCost: 0,
+        totalLLMCalls: 0,
+        totalTokens: 0,
+        totalDecisions: 0,
+        errors: 0,
+        recentEvents: [],
+      }),
+      delegateTask: () => 'task_stub',
+      getTaskStatus: () => null,
+      listActiveTasks: () => [],
+      getDecisionAudit: () => [],
+      getSystemMetrics: () => ({ totalLLMCalls: 0, totalTokens: 0, totalDecisions: 0, errors: 0 }),
+      getWorkflowRun: () => null,
+      listWorkflowRuns: () => [],
       // File / web / shell / scheduler / knowledge / eval — stubs for curator
-      readFile: async () => { throw new Error('File access not available for Curator background task'); },
-      writeFile: async () => { throw new Error('File write not available'); },
-      editFile: async () => { throw new Error('File edit not available'); },
-      applyPatch: async () => { throw new Error('Patch not available'); },
-      moveFile: async () => { throw new Error('File move not available'); },
-      copyFile: async () => { throw new Error('File copy not available'); },
-      makeDirectory: async () => { throw new Error('Directory creation not available'); },
-      fileInfo: async () => { throw new Error('File info not available'); },
-      listDirectory: async () => { throw new Error('Directory listing not available'); },
-      searchFiles: async () => { throw new Error('File search not available'); },
-      searchContent: async () => { throw new Error('Content search not available'); },
-      deleteFile: async () => { throw new Error('File deletion not available'); },
+      readFile: async () => {
+        throw new Error('File access not available for Curator background task');
+      },
+      writeFile: async () => {
+        throw new Error('File write not available');
+      },
+      editFile: async () => {
+        throw new Error('File edit not available');
+      },
+      applyPatch: async () => {
+        throw new Error('Patch not available');
+      },
+      moveFile: async () => {
+        throw new Error('File move not available');
+      },
+      copyFile: async () => {
+        throw new Error('File copy not available');
+      },
+      makeDirectory: async () => {
+        throw new Error('Directory creation not available');
+      },
+      fileInfo: async () => {
+        throw new Error('File info not available');
+      },
+      listDirectory: async () => {
+        throw new Error('Directory listing not available');
+      },
+      searchFiles: async () => {
+        throw new Error('File search not available');
+      },
+      searchContent: async () => {
+        throw new Error('Content search not available');
+      },
+      deleteFile: async () => {
+        throw new Error('File deletion not available');
+      },
       recentFiles: async () => [],
       watchFile: async () => ({ changed: false, size: 0 }),
       indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
-      webFetch: async () => { throw new Error('Web access not available'); },
-      httpRequest: async () => { throw new Error('HTTP not available'); },
-      execCommand: async () => { throw new Error('Shell not available'); },
-      scheduleTask: async () => { throw new Error('Scheduler not available'); },
+      webFetch: async () => {
+        throw new Error('Web access not available');
+      },
+      httpRequest: async () => {
+        throw new Error('HTTP not available');
+      },
+      execCommand: async () => {
+        throw new Error('Shell not available');
+      },
+      scheduleTask: async () => {
+        throw new Error('Scheduler not available');
+      },
       listScheduledTasks: async () => [],
-      cancelScheduledTask: async () => { throw new Error('Scheduler not available'); },
-      indexDocument: async () => { throw new Error('Indexing not available'); },
-      searchDocuments: async () => { throw new Error('Document search not available'); },
-      clearDocumentIndex: async () => { throw new Error('Index management not available'); },
-      evaluateOutput: async () => { throw new Error('Evaluation not available'); },
-      workspaceSymbols: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
-      goToDefinition: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
-      findReferences: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
-      diagnostics: async () => ({ available: false, error: 'LSP not available for Curator background task' }),
+      cancelScheduledTask: async () => {
+        throw new Error('Scheduler not available');
+      },
+      indexDocument: async () => {
+        throw new Error('Indexing not available');
+      },
+      searchDocuments: async () => {
+        throw new Error('Document search not available');
+      },
+      clearDocumentIndex: async () => {
+        throw new Error('Index management not available');
+      },
+      evaluateOutput: async () => {
+        throw new Error('Evaluation not available');
+      },
+      workspaceSymbols: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      goToDefinition: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      findReferences: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      diagnostics: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
       querySystemKnowledge: async () => [],
       getSystemKnowledge: async () => null,
     };
@@ -732,7 +902,9 @@ export function getServerContext(): ServerContext {
               const er = await gateway.generateEmbeddings({ texts: [query] });
               embedding = er.embeddings[0];
             }
-          } catch { /* fall back to text search */ }
+          } catch {
+            /* fall back to text search */
+          }
           const results = await longTerm.search(query, RAG_CURATOR_TOP_K, embedding);
           return results.map((r) => `[Memory] ${r.content}`);
         },
@@ -773,7 +945,10 @@ export function getServerContext(): ServerContext {
       const next = curatorQueue.shift();
       if (next) {
         enqueueCuratorTask(next.task, next.label).catch((e) =>
-          logger.warn('Curator queued task failed', { label: next.label, error: (e as Error).message }),
+          logger.warn('Curator queued task failed', {
+            label: next.label,
+            error: (e as Error).message,
+          }),
         );
       }
     }
@@ -811,10 +986,7 @@ export function getServerContext(): ServerContext {
     });
   };
 
-  async function runCuratorConsolidation(
-    sessionId: string,
-    transcript: string,
-  ): Promise<void> {
+  async function runCuratorConsolidation(sessionId: string, transcript: string): Promise<void> {
     const loop = createCuratorLoop();
     if (!loop) {
       logger.warn('Curator consolidation skipped — no gateway or role');
@@ -842,7 +1014,12 @@ export function getServerContext(): ServerContext {
           try {
             const resp = await gateway.generateText({
               model: 'claude-haiku-4-5',
-              messages: [{ role: 'user', content: `Summarize this conversation segment in one sentence (in the original language):\n\n${chunks[i]}` }],
+              messages: [
+                {
+                  role: 'user',
+                  content: `Summarize this conversation segment in one sentence (in the original language):\n\n${chunks[i]}`,
+                },
+              ],
               maxTokens: 150,
               temperature: 0.1,
             });
@@ -981,21 +1158,26 @@ export function getServerContext(): ServerContext {
       try {
         const now = new Date();
         const summary = metrics.getSummary();
-        metricRepo.insert('observability_snapshot', JSON.stringify(summary), { date: now.toISOString().slice(0, 10), type: 'daily' });
+        metricRepo.insert('observability_snapshot', JSON.stringify(summary), {
+          date: now.toISOString().slice(0, 10),
+          type: 'daily',
+        });
 
         // Persist recent session metrics to DB
         const { sessions } = observability.export();
         for (const s of sessions) {
           const totalTokens = (s.totalTokens?.prompt ?? 0) + (s.totalTokens?.completion ?? 0);
-          const durationMs = s.startTime && s.endTime
-            ? new Date(s.endTime).getTime() - new Date(s.startTime).getTime()
-            : 0;
-          const success = s.errors
-            ? (s.errors.fatal === 0 ? 1 : 0)
-            : 1;
-          const errorType = s.errors && s.errors.fatal > 0 ? 'fatal'
-            : s.errors && s.errors.recoverable > 0 ? 'recoverable'
-            : null;
+          const durationMs =
+            s.startTime && s.endTime
+              ? new Date(s.endTime).getTime() - new Date(s.startTime).getTime()
+              : 0;
+          const success = s.errors ? (s.errors.fatal === 0 ? 1 : 0) : 1;
+          const errorType =
+            s.errors && s.errors.fatal > 0
+              ? 'fatal'
+              : s.errors && s.errors.recoverable > 0
+                ? 'recoverable'
+                : null;
           sessionMetricsRepo.upsert({
             session_id: s.sessionId,
             project_id: s.projectId ?? null,
@@ -1036,10 +1218,7 @@ export function getServerContext(): ServerContext {
           if (s.messages.length > 0) {
             const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
             if (messages.length > 200) {
-              await enqueueCuratorTask(
-                () => runCuratorConsolidation(s.id, messages),
-                'nudge',
-              );
+              await enqueueCuratorTask(() => runCuratorConsolidation(s.id, messages), 'nudge');
             }
           }
         }
@@ -1058,10 +1237,7 @@ export function getServerContext(): ServerContext {
     async () => {
       if (!gateway) return;
       try {
-        await enqueueCuratorTask(
-          () => runCuratorPatternExtraction(),
-          'pattern',
-        );
+        await enqueueCuratorTask(() => runCuratorPatternExtraction(), 'pattern');
       } catch (e: any) {
         logger.warn('Curator pattern extraction failed', { error: e.message });
         broadcast('background_error', { task: 'curator_pattern', error: e.message });
@@ -1080,28 +1256,46 @@ export function getServerContext(): ServerContext {
     const middleStart = SESSION_KEEP_OLDEST;
     const middleEnd = session.messages.length - SESSION_KEEP_RECENT;
     const middleMessages = session.messages.slice(middleStart, middleEnd);
-    const middleText = middleMessages.map((m) => `${m.role}: ${m.content.slice(0, 200)}`).join('\n');
+    const middleText = middleMessages
+      .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
+      .join('\n');
 
     if (middleText.length > 200) {
-      enqueueCuratorTask(
-        async () => {
-          try {
-            const resp = await gw.generateText({
-              model: 'claude-haiku-4-5',
-              messages: [{ role: 'user', content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}` }],
-              maxTokens: 200,
-              temperature: 0.1,
-            });
-            sessionManager.compactMessages(session.id, resp.content.trim());
-            logger.info('Session compression completed', { sessionId: session.id, msgCount: session.messages.length });
-          } catch (e: any) {
-            // Fallback: simple truncation
-            sessionManager.compactMessages(session.id, `${middleMessages.length} intermediate messages compressed.`);
-            logger.warn('Session compression fell back to truncation', { sessionId: session.id, error: e.message });
-          }
-        },
-        'compress',
-      ).catch((e) => logger.warn('Session compression failed', { sessionId: session.id, error: (e as Error).message }));
+      enqueueCuratorTask(async () => {
+        try {
+          const resp = await gw.generateText({
+            model: 'claude-haiku-4-5',
+            messages: [
+              {
+                role: 'user',
+                content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}`,
+              },
+            ],
+            maxTokens: 200,
+            temperature: 0.1,
+          });
+          sessionManager.compactMessages(session.id, resp.content.trim());
+          logger.info('Session compression completed', {
+            sessionId: session.id,
+            msgCount: session.messages.length,
+          });
+        } catch (e: any) {
+          // Fallback: simple truncation
+          sessionManager.compactMessages(
+            session.id,
+            `${middleMessages.length} intermediate messages compressed.`,
+          );
+          logger.warn('Session compression fell back to truncation', {
+            sessionId: session.id,
+            error: e.message,
+          });
+        }
+      }, 'compress').catch((e) =>
+        logger.warn('Session compression failed', {
+          sessionId: session.id,
+          error: (e as Error).message,
+        }),
+      );
     }
   });
 
@@ -1168,9 +1362,13 @@ export function getServerContext(): ServerContext {
             args: cfg.args ?? [],
             enabled: cfg.enabled ?? true,
           });
-        } catch { /* skip malformed */ }
+        } catch {
+          /* skip malformed */
+        }
       }
-    } catch { /* mcp dir empty */ }
+    } catch {
+      /* mcp dir empty */
+    }
     // Also load from DB settings (merge, file-based take priority)
     try {
       const value = settingsRepo.get('mcp_servers');
@@ -1180,7 +1378,9 @@ export function getServerContext(): ServerContext {
           mcpConfigs.push(dbCfg);
         }
       }
-    } catch { /* db settings not available */ }
+    } catch {
+      /* db settings not available */
+    }
     if (mcpConfigs.length > 0) {
       void mcpManager.initialize(mcpConfigs).catch(() => {
         logger.info('MCP initialization failed — check server configs');
@@ -1195,8 +1395,9 @@ export function getServerContext(): ServerContext {
   {
     const skillsDir = join(dataDir, 'skills');
     try {
-      const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+      const skillDirs = readdirSync(skillsDir, { withFileTypes: true }).filter((d) =>
+        d.isDirectory(),
+      );
       for (const entry of skillDirs) {
         const skillPath = join(skillsDir, entry.name, 'SKILL.md');
         if (!existsSync(skillPath)) continue;
@@ -1226,10 +1427,14 @@ export function getServerContext(): ServerContext {
               }
             }
           }
-        } catch { /* skip malformed skill */ }
+        } catch {
+          /* skip malformed skill */
+        }
       }
       logger.info('Skills scanned from directory', { dir: skillsDir });
-    } catch { /* skills dir empty */ }
+    } catch {
+      /* skills dir empty */
+    }
   }
 
   // ── Directory Scanning: Agents ──
@@ -1237,8 +1442,9 @@ export function getServerContext(): ServerContext {
   {
     const agentsDir = join(dataDir, 'agents');
     try {
-      const agentDirs = readdirSync(agentsDir, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+      const agentDirs = readdirSync(agentsDir, { withFileTypes: true }).filter((d) =>
+        d.isDirectory(),
+      );
       for (const entry of agentDirs) {
         const agentJsonPath = join(agentsDir, entry.name, 'agent.json');
         if (!existsSync(agentJsonPath)) continue;
@@ -1272,10 +1478,14 @@ export function getServerContext(): ServerContext {
               created_at: new Date().toISOString(),
             });
           }
-        } catch { /* skip malformed agent */ }
+        } catch {
+          /* skip malformed agent */
+        }
       }
       logger.info('Agents scanned from directory', { dir: agentsDir });
-    } catch { /* agents dir empty */ }
+    } catch {
+      /* agents dir empty */
+    }
   }
 
   // ── Directory Scanning: Projects ──
@@ -1309,10 +1519,14 @@ export function getServerContext(): ServerContext {
               updated_at: new Date().toISOString(),
             });
           }
-        } catch { /* skip malformed project index */ }
+        } catch {
+          /* skip malformed project index */
+        }
       }
       logger.info('Projects scanned from directory', { dir: projectsDir });
-    } catch { /* projects dir empty */ }
+    } catch {
+      /* projects dir empty */
+    }
   }
 
   // ── Settings.json loading ──
@@ -1336,7 +1550,9 @@ export function getServerContext(): ServerContext {
         }
         logger.info('Settings loaded from file', { path: settingsPath });
       }
-    } catch { /* settings file not present or corrupt */ }
+    } catch {
+      /* settings file not present or corrupt */
+    }
   }
 
   // ── CABINET.md template ──
@@ -1369,7 +1585,9 @@ export function getServerContext(): ServerContext {
       try {
         writeFileSync(cabinetMdPath, template, 'utf-8');
         logger.info('CABINET.md template created', { path: cabinetMdPath });
-      } catch { /* readonly filesystem */ }
+      } catch {
+        /* readonly filesystem */
+      }
     }
   }
 
@@ -1474,26 +1692,28 @@ export function getServerContext(): ServerContext {
       newMemoryId: contradiction.newMemoryId,
     });
     // Publish as system notification so Secretary can surface it
-    eventBus.publish({
-      messageId: `contradiction_${Date.now()}`,
-      correlationId: contradiction.newMemoryId,
-      causationId: null,
-      timestamp: new Date(),
-      messageType: MessageType.SystemNotification,
-      payload: {
-        type: 'memory_contradiction',
-        oldMemoryId: contradiction.oldMemoryId,
-        oldContent: contradiction.oldContent.slice(0, 200),
-        confidence: contradiction.confidence,
-        newMemoryId: contradiction.newMemoryId,
-        message: `A new memory may contradict an existing one (${Math.round(contradiction.confidence * 100)}% confidence).`,
-      } as any,
-    }).catch(() => {});
+    eventBus
+      .publish({
+        messageId: `contradiction_${Date.now()}`,
+        correlationId: contradiction.newMemoryId,
+        causationId: null,
+        timestamp: new Date(),
+        messageType: MessageType.SystemNotification,
+        payload: {
+          type: 'memory_contradiction',
+          oldMemoryId: contradiction.oldMemoryId,
+          oldContent: contradiction.oldContent.slice(0, 200),
+          confidence: contradiction.confidence,
+          newMemoryId: contradiction.newMemoryId,
+          message: `A new memory may contradict an existing one (${Math.round(contradiction.confidence * 100)}% confidence).`,
+        } as any,
+      })
+      .catch(() => {});
   });
 
   // Subscribe to subconscious insights — surface high-relevance ones via broadcast
   eventBus.subscribe(MessageType.SystemNotification, (msg) => {
-    const payload = (msg.payload as unknown) as Record<string, unknown> | undefined;
+    const payload = msg.payload as unknown as Record<string, unknown> | undefined;
     if (payload?.type === 'subconscious_insight') {
       const insight = payload.insight as Record<string, unknown> | undefined;
       if ((insight?.relevance as number) ?? 0 > 0.7) {
@@ -1645,7 +1865,11 @@ export function getServerContext(): ServerContext {
     try {
       const result = await memoryDecay.runDecayCycle();
       if (result.expired > 0 || result.archived > 0) {
-        logger.info('Memory decay cycle completed', { expired: result.expired, archived: result.archived, superseded: result.superseded });
+        logger.info('Memory decay cycle completed', {
+          expired: result.expired,
+          archived: result.archived,
+          superseded: result.superseded,
+        });
       }
     } catch (err) {
       logger.error('Memory decay cycle failed', { error: (err as Error).message });
@@ -1666,20 +1890,39 @@ export function getServerContext(): ServerContext {
   // Wire TaskExecutor so scheduled tasks actually execute
   taskScheduler.setExecutor(async (task) => {
     if (!gateway) {
-      logger.warn('Scheduled task skipped — no LLM gateway available', { taskId: task.id, name: task.name });
+      logger.warn('Scheduled task skipped — no LLM gateway available', {
+        taskId: task.id,
+        name: task.name,
+      });
       return;
     }
     try {
       logger.info('Executing scheduled task', { taskId: task.id, name: task.name });
-      const taskModel = (gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
+      const taskModel =
+        (gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
       const result = await gateway.generateText({
         model: taskModel,
-        systemPrompt: 'You are a proactive Cabinet assistant executing a scheduled task. Be concise and actionable.',
+        systemPrompt:
+          'You are a proactive Cabinet assistant executing a scheduled task. Be concise and actionable.',
         messages: [{ role: 'user', content: task.prompt }],
       });
-      logger.info('Scheduled task completed', { taskId: task.id, name: task.name, preview: result.content.slice(0, 200) });
+      logger.info('Scheduled task completed', {
+        taskId: task.id,
+        name: task.name,
+        preview: result.content.slice(0, 200),
+      });
       // Store result in short-term memory for retrieval
-      shortTerm.set(`system`, `task_result:${task.id}`, { name: task.name, prompt: task.prompt, result: result.content, executedAt: new Date().toISOString() }, 86400000);
+      shortTerm.set(
+        `system`,
+        `task_result:${task.id}`,
+        {
+          name: task.name,
+          prompt: task.prompt,
+          result: result.content,
+          executedAt: new Date().toISOString(),
+        },
+        86400000,
+      );
       // Notify frontend via WebSocket
       broadcast('task_completed', {
         taskId: task.id,
@@ -1693,9 +1936,15 @@ export function getServerContext(): ServerContext {
           model: taskModel,
           timestamp: new Date().toISOString(),
         });
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     } catch (err) {
-      logger.error('Scheduled task failed', { taskId: task.id, name: task.name, error: (err as Error).message });
+      logger.error('Scheduled task failed', {
+        taskId: task.id,
+        name: task.name,
+        error: (err as Error).message,
+      });
     }
   });
 

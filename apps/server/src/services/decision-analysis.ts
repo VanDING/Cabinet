@@ -7,7 +7,7 @@ function buildDecisionAnalysisPrompt(decision: Decision): string {
     `Title: ${decision.title}`,
     `Description: ${decision.description}`,
     `Options:`,
-    ...(decision.options.map((o) => `- ${o.label}: ${o.impact}`)),
+    ...decision.options.map((o) => `- ${o.label}: ${o.impact}`),
     ``,
     `Provide a structured analysis covering: risks, trade-offs, recommendation rationale, and next steps.`,
   ].join('\n');
@@ -21,7 +21,8 @@ export class DecisionAnalysisService {
     if (!this.ctx.gateway) throw new Error('No LLM gateway available');
     const result = await this.ctx.gateway.generateText({
       model: 'claude-sonnet-4-6',
-      systemPrompt: 'You are the Decision Analyst. Provide structured, thorough analysis of decisions covering risks, trade-offs, rationale, and next steps.',
+      systemPrompt:
+        'You are the Decision Analyst. Provide structured, thorough analysis of decisions covering risks, trade-offs, rationale, and next steps.',
       messages: [{ role: 'user', content: prompt }],
       maxTokens: 4000,
       temperature: 0.3,

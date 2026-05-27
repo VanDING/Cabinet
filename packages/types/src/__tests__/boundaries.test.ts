@@ -59,5 +59,4 @@ describe('boundaries', () => {
   it('retry constants have correct hierarchy', () => {
     expect(MAX_RETRY_RECOVERABLE).toBeLessThan(MAX_RETRY_TRANSIENT);
   });
-
 });

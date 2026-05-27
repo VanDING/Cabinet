@@ -21,7 +21,4 @@ export {
   type ExtractionResult,
 } from './protocol.js';
 
-export {
-  generateSynthesis,
-  type SynthesisInput,
-} from './synthesis.js';
+export { generateSynthesis, type SynthesisInput } from './synthesis.js';

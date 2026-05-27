@@ -17,7 +17,9 @@ function loadSettings(): Record<string, unknown> {
     if (existsSync(SETTINGS_PATH)) {
       return JSON.parse(readFileSync(SETTINGS_PATH, 'utf-8'));
     }
-  } catch { /* file missing or corrupt */ }
+  } catch {
+    /* file missing or corrupt */
+  }
   return {};
 }
 
@@ -137,7 +139,11 @@ settingsRouter.post('/api-keys', async (c) => {
       model: body.model ?? '',
     });
     refreshGateway();
-    broadcast('apikeys_changed', { action: 'added', provider: body.provider, timestamp: new Date().toISOString() });
+    broadcast('apikeys_changed', {
+      action: 'added',
+      provider: body.provider,
+      timestamp: new Date().toISOString(),
+    });
     return c.json({ id, status: 'key_added', provider: body.provider });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -300,11 +306,12 @@ settingsRouter.get('/model-config', (c) => {
   const ctx = getServerContext();
   const gateway = ctx.gateway as any;
   const runtimeMapping = gateway?.modelMapping as Record<string, string> | undefined;
-  const effectiveMapping = settings.modelMapping ?? runtimeMapping ?? {
-    deep_reasoning: 'anthropic/claude-opus-4-7',
-    default: 'anthropic/claude-sonnet-4-6',
-    fast_execution: 'anthropic/claude-haiku-4-5',
-  };
+  const effectiveMapping = settings.modelMapping ??
+    runtimeMapping ?? {
+      deep_reasoning: 'anthropic/claude-opus-4-7',
+      default: 'anthropic/claude-sonnet-4-6',
+      fast_execution: 'anthropic/claude-haiku-4-5',
+    };
   return c.json({
     providers: settings.providers ?? {},
     modelMapping: effectiveMapping,
@@ -327,6 +334,9 @@ settingsRouter.put('/model-config', async (c) => {
   if (body.modelMapping !== undefined) updates.modelMapping = body.modelMapping;
   saveSettings(updates);
   refreshGateway();
-  logger.info('Model config updated', { providers: Object.keys(body.providers ?? {}), tiers: Object.keys(body.modelMapping ?? {}) });
+  logger.info('Model config updated', {
+    providers: Object.keys(body.providers ?? {}),
+    tiers: Object.keys(body.modelMapping ?? {}),
+  });
   return c.json({ status: 'updated' });
 });

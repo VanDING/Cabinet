@@ -23,8 +23,18 @@ export function Calendar({ projectId }: Props) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   const fetchMeetingDates = useCallback(() => {
@@ -82,10 +92,8 @@ export function Calendar({ projectId }: Props) {
   }
   if (week.length > 0) weeks.push(week);
 
-  const prevMonth = () =>
-    setViewDate(new Date(year, month - 1, 1));
-  const nextMonth = () =>
-    setViewDate(new Date(year, month + 1, 1));
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-3 dark:border-gray-600 dark:bg-gray-800">
@@ -138,7 +146,9 @@ export function Calendar({ projectId }: Props) {
               {hasMeeting && (
                 <span
                   className={`absolute bottom-0.5 h-1 w-1 rounded-full ${
-                    d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
+                    d === today.getDate() &&
+                    month === today.getMonth() &&
+                    year === today.getFullYear()
                       ? 'bg-white'
                       : 'bg-purple-500'
                   }`}

@@ -88,7 +88,13 @@ describe('ChatPanel', () => {
     const textarea = screen.getByPlaceholderText(/ask anything/i);
     fireEvent.change(textarea, { target: { value: 'Hello' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
-    expect(onSend).toHaveBeenCalledWith('s1', 'Hello', [], undefined, 'anthropic/claude-sonnet-4-6');
+    expect(onSend).toHaveBeenCalledWith(
+      's1',
+      'Hello',
+      [],
+      undefined,
+      'anthropic/claude-sonnet-4-6',
+    );
   });
 
   it('renders without active session gracefully', () => {

@@ -32,7 +32,9 @@ export class EvaluationResultRepository {
 
   findBySource(sourceType: string, sourceId: string): EvaluationResultRow[] {
     const rows = this.db
-      .prepare('SELECT * FROM evaluation_results WHERE source_type = ? AND source_id = ? ORDER BY created_at DESC')
+      .prepare(
+        'SELECT * FROM evaluation_results WHERE source_type = ? AND source_id = ? ORDER BY created_at DESC',
+      )
       .all(sourceType, sourceId) as Record<string, unknown>[];
     return rows.map((r) => this.rowToResult(r));
   }
@@ -43,7 +45,16 @@ export class EvaluationResultRepository {
         `INSERT INTO evaluation_results (project_id, session_id, source_type, source_id, overall_score, dimensions, feedback, evaluator_model)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(result.project_id, result.session_id, result.source_type, result.source_id, result.overall_score, result.dimensions, result.feedback, result.evaluator_model);
+      .run(
+        result.project_id,
+        result.session_id,
+        result.source_type,
+        result.source_id,
+        result.overall_score,
+        result.dimensions,
+        result.feedback,
+        result.evaluator_model,
+      );
   }
 
   private rowToResult(row: Record<string, unknown>): EvaluationResultRow {

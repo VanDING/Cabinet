@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { unlinkSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { ShortTermMemory } from '../short-term.js';
 import { EntityMemory } from '../entity.js';
@@ -9,6 +10,7 @@ import { ProjectIsolatedMemory } from '../project-isolation.js';
 
 const hnswAvailable = (() => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('hnswlib-node');
     return true;
   } catch {
@@ -172,7 +174,7 @@ describe('LongTermMemory', () => {
     mem.close();
     db.close();
     try {
-      require('node:fs').unlinkSync(indexPath);
+      unlinkSync(indexPath);
     } catch {
       /* ignore */
     }
@@ -203,9 +205,24 @@ describe('LongTermMemory', () => {
   });
 
   (hnswAvailable ? it : it.skip)('searches by embedding similarity via HNSW', async () => {
-    await mem.store({ content: 'Apple makes computers', embedding: [1, 0, 0], metadata: {}, timestamp: new Date() });
-    await mem.store({ content: 'Bananas are yellow', embedding: [0, 1, 0], metadata: {}, timestamp: new Date() });
-    await mem.store({ content: 'Microsoft makes software', embedding: [0.9, 0.1, 0], metadata: {}, timestamp: new Date() });
+    await mem.store({
+      content: 'Apple makes computers',
+      embedding: [1, 0, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Bananas are yellow',
+      embedding: [0, 1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Microsoft makes software',
+      embedding: [0.9, 0.1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
 
     const results = await mem.semanticSearch([1, 0, 0], 5);
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -230,22 +247,30 @@ describe('LongTermMemory', () => {
     expect(results[0]!.embedding).toEqual([0.5, 0.5, 0.5]);
   });
 
-  (hnswAvailable ? it : it.skip)('HNSW semantic search is fast (p95 < 100ms for 1000 entries)', async () => {
-    const dim = 3;
-    for (let i = 0; i < 1000; i++) {
-      const vec = [Math.random(), Math.random(), Math.random()];
-      await mem.store({ content: `entry-${i}`, embedding: vec, metadata: {}, timestamp: new Date() });
-    }
-    const times: number[] = [];
-    for (let i = 0; i < 20; i++) {
-      const q = [Math.random(), Math.random(), Math.random()];
-      const start = performance.now();
-      await mem.semanticSearch(q, 5);
-      times.push(performance.now() - start);
-    }
-    const p95 = times.sort((a, b) => a - b)[Math.ceil(times.length * 0.95) - 1];
-    expect(p95).toBeLessThan(100);
-  });
+  (hnswAvailable ? it : it.skip)(
+    'HNSW semantic search is fast (p95 < 100ms for 1000 entries)',
+    async () => {
+      const dim = 3;
+      for (let i = 0; i < 1000; i++) {
+        const vec = [Math.random(), Math.random(), Math.random()];
+        await mem.store({
+          content: `entry-${i}`,
+          embedding: vec,
+          metadata: {},
+          timestamp: new Date(),
+        });
+      }
+      const times: number[] = [];
+      for (let i = 0; i < 20; i++) {
+        const q = [Math.random(), Math.random(), Math.random()];
+        const start = performance.now();
+        await mem.semanticSearch(q, 5);
+        times.push(performance.now() - start);
+      }
+      const p95 = times.sort((a, b) => a - b)[Math.ceil(times.length * 0.95) - 1];
+      expect(p95).toBeLessThan(100);
+    },
+  );
 });
 
 // ── ProjectIsolatedMemory ─────────────────────────────────────
@@ -264,15 +289,27 @@ describe('ProjectIsolatedMemory', () => {
     const shortTerm = new ShortTermMemory(db);
     const entity = new EntityMemory(db);
     const project = new ProjectMemory(db);
-    isolatedA = new ProjectIsolatedMemory('proj-a', shortTerm, new LongTermMemory(db, 3, indexPathA), entity, project);
-    isolatedB = new ProjectIsolatedMemory('proj-b', shortTerm, new LongTermMemory(db, 3, indexPathB), entity, project);
+    isolatedA = new ProjectIsolatedMemory(
+      'proj-a',
+      shortTerm,
+      new LongTermMemory(db, 3, indexPathA),
+      entity,
+      project,
+    );
+    isolatedB = new ProjectIsolatedMemory(
+      'proj-b',
+      shortTerm,
+      new LongTermMemory(db, 3, indexPathB),
+      entity,
+      project,
+    );
   });
 
   afterEach(() => {
     db.close();
     [indexPathA, indexPathB].forEach((p) => {
       try {
-        require('node:fs').unlinkSync(p);
+        unlinkSync(p);
       } catch {
         /* ignore */
       }
@@ -298,11 +335,19 @@ describe('ProjectIsolatedMemory', () => {
 describe('ConsolidationService', () => {
   it('migrates long content to long-term memory and deletes only migrated keys', async () => {
     const short = new ShortTermMemory();
-    const long = new LongTermMemory(new Database(':memory:'), 3, `/tmp/cabinet-consolidation-${Date.now()}.hnsw.index`);
+    const long = new LongTermMemory(
+      new Database(':memory:'),
+      3,
+      `/tmp/cabinet-consolidation-${Date.now()}.hnsw.index`,
+    );
     const svc = new ConsolidationService(short, long);
     svc.preserveRecentMs = 0; // disable freshness gate for testing
 
-    short.set('sess-1', 'insight', 'This is a very important insight that should be stored in long-term memory for future reference.');
+    short.set(
+      'sess-1',
+      'insight',
+      'This is a very important insight that should be stored in long-term memory for future reference.',
+    );
     short.set('sess-1', 'brief', 'ok'); // too short, won't migrate
     short.set('sess-1', 'decision_foo', 'small'); // short but decision key, should migrate
     short.set('sess-1', 'fresh', 'This is also important but just written.');

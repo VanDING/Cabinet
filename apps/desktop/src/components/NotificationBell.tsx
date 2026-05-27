@@ -38,10 +38,7 @@ export function NotificationBell({ isDark }: Props) {
     if (!open) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (
-        btnRef.current?.contains(target) ||
-        panelRef.current?.contains(target)
-      ) {
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) {
         return;
       }
       setOpen(false);
@@ -62,13 +59,15 @@ export function NotificationBell({ isDark }: Props) {
         ref={btnRef}
         onClick={() => setOpen(!open)}
         className={`relative flex h-full w-8 items-center justify-center transition-colors ${
-          isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+          isDark
+            ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
         }`}
         aria-label="Notifications"
       >
         <Bell size={14} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-orange-500 px-0.5 text-[9px] font-bold text-white leading-none">
+          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-orange-500 px-0.5 text-[9px] font-bold leading-none text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -121,15 +120,21 @@ export function NotificationBell({ isDark }: Props) {
                     }}
                     className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHover} ${borderClass} ${n.read ? 'opacity-60' : ''}`}
                   >
-                    <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${icon.color}`}>
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${icon.color}`}
+                    >
                       {icon.label}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className={`truncate text-xs font-medium ${textClass}`}>{n.title}</p>
-                        <span className={`flex-shrink-0 text-[10px] ${subtextClass}`}>{timeAgo(n.timestamp)}</span>
+                        <span className={`flex-shrink-0 text-[10px] ${subtextClass}`}>
+                          {timeAgo(n.timestamp)}
+                        </span>
                       </div>
-                      <p className={`mt-0.5 text-[11px] ${subtextClass} ${isExpanded ? 'whitespace-pre-wrap' : 'truncate'}`}>
+                      <p
+                        className={`mt-0.5 text-[11px] ${subtextClass} ${isExpanded ? 'whitespace-pre-wrap' : 'truncate'}`}
+                      >
                         {n.message}
                       </p>
                       {isLong && (

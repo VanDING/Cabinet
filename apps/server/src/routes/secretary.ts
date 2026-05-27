@@ -12,12 +12,21 @@ import {
   RulesLoader,
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
-import { SecretaryAgent, IntentParser, GreetingService, type FeedbackStore } from '@cabinet/secretary';
 import {
-  buildChairPrompt, parseChairResponse,
-  buildAdvisorPrompt, parseAdvisorResponse,
-  buildReviewerTask, parseReviewerResponse,
-  buildExtractionPrompt, parseExtractionResponse,
+  SecretaryAgent,
+  IntentParser,
+  GreetingService,
+  type FeedbackStore,
+} from '@cabinet/secretary';
+import {
+  buildChairPrompt,
+  parseChairResponse,
+  buildAdvisorPrompt,
+  parseAdvisorResponse,
+  buildReviewerTask,
+  parseReviewerResponse,
+  buildExtractionPrompt,
+  parseExtractionResponse,
   generateSynthesis,
   type AdvisorFinding,
 } from '@cabinet/meeting';
@@ -26,10 +35,26 @@ import { createStandardToolExecutor, createStandardMemoryProvider } from '../age
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { buildEnvironmentSection, createSystemKnowledgeCapabilities } from '../capabilities.js';
-import { getWorkspaceSymbols, getDefinition, getReferences, getDiagnostics } from '../lsp/ts-service.js';
+import {
+  getWorkspaceSymbols,
+  getDefinition,
+  getReferences,
+  getDiagnostics,
+} from '../lsp/ts-service.js';
 import { indexProject } from '../lsp/indexer.js';
 import { CABINET_DIR, DocumentChunkRepository, EvaluationResultRepository } from '@cabinet/storage';
-import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
+import {
+  readFile,
+  writeFile,
+  readdir,
+  mkdir,
+  stat,
+  unlink,
+  rmdir,
+  rename,
+  copyFile as fsCopyFile,
+  realpath,
+} from 'node:fs/promises';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -40,11 +65,18 @@ const execAsync = promisify(exec);
 
 /** Roles that need the system environment section in their prompt. */
 const ROLES_NEEDING_ENV = new Set([
-  'secretary', 'organize', 'curator',
-  'meeting_chair', 'reviewer',
+  'secretary',
+  'organize',
+  'curator',
+  'meeting_chair',
+  'reviewer',
 ]);
 
-function buildSystemPrompt(roleType: string, roleSystemPrompt: string, projectRootPath?: string): string {
+function buildSystemPrompt(
+  roleType: string,
+  roleSystemPrompt: string,
+  projectRootPath?: string,
+): string {
   if (ROLES_NEEDING_ENV.has(roleType)) {
     return buildEnvironmentSection(projectRootPath) + '\n\n' + roleSystemPrompt;
   }
@@ -54,12 +86,16 @@ function buildSystemPrompt(roleType: string, roleSystemPrompt: string, projectRo
 /** Read a text file with auto-detected encoding (UTF-8 → GBK fallback). */
 async function readTextFile(filePath: string): Promise<string> {
   const buf = await readFile(filePath);
-  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     return buf.toString('utf-8').slice(1); // strip BOM
   }
   const utf8 = buf.toString('utf-8');
   if (utf8.includes('�')) {
-    try { return new TextDecoder('gbk').decode(buf); } catch { /* fall through */ }
+    try {
+      return new TextDecoder('gbk').decode(buf);
+    } catch {
+      /* fall through */
+    }
   }
   return utf8;
 }
@@ -69,25 +105,79 @@ export const secretaryRouter = new Hono();
 // ── File tool helpers ──
 
 const MIME_MAP: Record<string, string> = {
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
   '.pdf': 'application/pdf',
-  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
-  '.mp4': 'video/mp4', '.webm': 'video/webm',
-  '.zip': 'application/zip', '.tar': 'application/x-tar', '.gz': 'application/gzip',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.zip': 'application/zip',
+  '.tar': 'application/x-tar',
+  '.gz': 'application/gzip',
 };
 
 const TEXT_EXTENSIONS = new Set([
-  '.txt', '.md', '.mdx', '.json', '.xml', '.yml', '.yaml', '.toml', '.ini', '.cfg',
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css', '.scss', '.less',
-  '.html', '.htm', '.vue', '.svelte',
-  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp',
-  '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
-  '.sql', '.graphql', '.proto',
-  '.env', '.gitignore', '.dockerignore', '.editorconfig',
-  '.csv', '.tsv', '.log',
-  '.lock', '.toml',
+  '.txt',
+  '.md',
+  '.mdx',
+  '.json',
+  '.xml',
+  '.yml',
+  '.yaml',
+  '.toml',
+  '.ini',
+  '.cfg',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.scss',
+  '.less',
+  '.html',
+  '.htm',
+  '.vue',
+  '.svelte',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.swift',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.sh',
+  '.bash',
+  '.zsh',
+  '.fish',
+  '.ps1',
+  '.bat',
+  '.cmd',
+  '.sql',
+  '.graphql',
+  '.proto',
+  '.env',
+  '.gitignore',
+  '.dockerignore',
+  '.editorconfig',
+  '.csv',
+  '.tsv',
+  '.log',
+  '.lock',
+  '.toml',
 ]);
 
 function isTextFile(ext: string): boolean {
@@ -125,10 +215,22 @@ function safeRegex(pattern: string): RegExp {
 }
 
 function isInternalIP(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return true;
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0'
+  )
+    return true;
   if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
-  if (hostname === '[::1]' || hostname === '[fe80::]' || hostname.startsWith('[fc') || hostname.startsWith('[fd')) return true;
+  if (
+    hostname === '[::1]' ||
+    hostname === '[fe80::]' ||
+    hostname.startsWith('[fc') ||
+    hostname.startsWith('[fd')
+  )
+    return true;
   return false;
 }
 
@@ -139,14 +241,33 @@ function extractTitle(html: string, contentType: string): string | undefined {
 }
 
 const SAFE_ENV_KEYS = new Set([
-  'PATH', 'HOME', 'USER', 'USERNAME', 'TEMP', 'TMP', 'TMPDIR',
-  'SHELL', 'LANG', 'LC_ALL', 'TERM', 'COLORTERM',
-  'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT',
-  'NODE_ENV', 'NODE_PATH',
-  'DISPLAY', 'WAYLAND_DISPLAY',
+  'PATH',
+  'HOME',
+  'USER',
+  'USERNAME',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'TERM',
+  'COLORTERM',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'WINDIR',
+  'COMSPEC',
+  'PATHEXT',
+  'NODE_ENV',
+  'NODE_PATH',
+  'DISPLAY',
+  'WAYLAND_DISPLAY',
   'SSH_AUTH_SOCK',
-  'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
-  'PNPM_HOME', 'npm_config_cache',
+  'XDG_CACHE_HOME',
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'PNPM_HOME',
+  'npm_config_cache',
 ]);
 
 function buildSafeEnv(): Record<string, string> {
@@ -156,7 +277,11 @@ function buildSafeEnv(): Record<string, string> {
       safe[key] = value;
     }
   }
-  if (!safe.PATH) safe.PATH = process.platform === 'win32' ? 'C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem' : '/usr/local/bin:/usr/bin:/bin';
+  if (!safe.PATH)
+    safe.PATH =
+      process.platform === 'win32'
+        ? 'C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem'
+        : '/usr/local/bin:/usr/bin:/bin';
   if (!safe.HOME) safe.HOME = process.cwd();
   return safe;
 }
@@ -168,7 +293,8 @@ function detectDangerousCommand(command: string): string | null {
   if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
   if (/>\s*\/dev\/sda/.test(lower)) return 'raw device write';
   if (/\bmkfs\./.test(lower)) return 'mkfs';
-  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow')) return 'sensitive system file';
+  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow'))
+    return 'sensitive system file';
   if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
   return null;
 }
@@ -260,7 +386,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Workflow read callbacks ──
     listWorkflows() {
       const rows = ctx.db
-        .prepare('SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC')
+        .prepare(
+          'SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC',
+        )
         .all('default') as any[];
       return rows.map((r: any) => {
         const def = JSON.parse(r.definition ?? '{}');
@@ -277,7 +405,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         .prepare('SELECT id, name, definition, status FROM workflows WHERE id = ?')
         .get(id) as any;
       if (!row) return undefined;
-      return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
+      return {
+        id: row.id,
+        name: row.name,
+        definition: JSON.parse(row.definition ?? '{}'),
+        status: row.status,
+      };
     },
 
     // ── Workflow write callbacks ──
@@ -287,7 +420,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         const activeProjects = ctx.projectRepo.listByStatus('active');
         const fallback = activeProjects[0];
         if (!fallback) {
-          throw new Error('No active project available. Create a project first before creating a workflow.');
+          throw new Error(
+            'No active project available. Create a project first before creating a workflow.',
+          );
         }
         projectId = fallback.id;
       }
@@ -331,7 +466,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       let steps: unknown[] = [];
       try {
         steps = ctx.workflowRepo.findStepsByRunId(runId);
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
       return {
         runId: row.run_id,
         workflowId: row.workflow_id,
@@ -418,19 +555,21 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           created_at: new Date().toISOString(),
         });
       } catch (e) {
-        ctx.logger.warn('Failed to persist custom agent to DB', { name: input.name, error: String(e) });
+        ctx.logger.warn('Failed to persist custom agent to DB', {
+          name: input.name,
+          error: String(e),
+        });
       }
       // Persist to disk (~/.cabinet/agents/<name>/agent.json)
       try {
         const agentsDir = join(CABINET_DIR, 'agents', input.name);
         if (!existsSync(agentsDir)) mkdirSync(agentsDir, { recursive: true });
-        writeFileSync(
-          join(agentsDir, 'agent.json'),
-          JSON.stringify(role, null, 2),
-          'utf-8',
-        );
+        writeFileSync(join(agentsDir, 'agent.json'), JSON.stringify(role, null, 2), 'utf-8');
       } catch (e) {
-        ctx.logger.warn('Failed to persist custom agent to disk', { name: input.name, error: String(e) });
+        ctx.logger.warn('Failed to persist custom agent to disk', {
+          name: input.name,
+          error: String(e),
+        });
       }
       ctx.logger.info('Agent registered via tool', { name: input.name });
       return { type: 'custom', name: input.name };
@@ -499,8 +638,25 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     },
     createProject(input) {
       const id = `proj_${Date.now()}`;
-      ctx.projectRepo.create({ id, name: input.name, description: input.description ?? '', status: 'active' as const, rootPath: input.rootPath ?? '', createdAt: new Date() });
-      ctx.projectContextRepo.insert({ project_id: id, summary: '', goals: '[]', milestones: '[]', constraints: '{}', tech_summary: '', risk_map: '[]', key_decisions: '[]', updated_at: new Date().toISOString() });
+      ctx.projectRepo.create({
+        id,
+        name: input.name,
+        description: input.description ?? '',
+        status: 'active' as const,
+        rootPath: input.rootPath ?? '',
+        createdAt: new Date(),
+      });
+      ctx.projectContextRepo.insert({
+        project_id: id,
+        summary: '',
+        goals: '[]',
+        milestones: '[]',
+        constraints: '{}',
+        tech_summary: '',
+        risk_map: '[]',
+        key_decisions: '[]',
+        updated_at: new Date().toISOString(),
+      });
       // Initialize project memory so context is immediately available to agents
       ctx.project.initialize(id, []);
       ctx.logger.info('Project created via tool', { id, name: input.name });
@@ -538,10 +694,13 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       const activeProjects = ctx.projectRepo.listAll().filter((p) => !p.archived).length;
       const todayCost = ctx.costTracker.getDailyCost();
       const metrics = ctx.metrics.getSummary();
-      const recentEvents = ctx.eventRepo.findAll().slice(-10).map((e) => ({
-        message: e.message,
-        time: e.timestamp instanceof Date ? e.timestamp.toISOString() : String(e.timestamp),
-      }));
+      const recentEvents = ctx.eventRepo
+        .findAll()
+        .slice(-10)
+        .map((e) => ({
+          message: e.messageType,
+          time: e.timestamp instanceof Date ? e.timestamp.toISOString() : String(e.timestamp),
+        }));
       return {
         pendingDecisions,
         activeWorkflows,
@@ -561,10 +720,18 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     getTaskStatus(taskId) {
       const task = ctx.taskTracker.getTask(taskId);
       if (!task) return null;
-      return { id: task.id, name: task.name, status: task.status, startTime: task.startTime, endTime: task.endTime };
+      return {
+        id: task.id,
+        name: task.name,
+        status: task.status,
+        startTime: task.startTime,
+        endTime: task.endTime,
+      };
     },
     listActiveTasks() {
-      return ctx.taskTracker.listActive().map((t) => ({ id: t.id, name: t.name, status: t.status }));
+      return ctx.taskTracker
+        .listActive()
+        .map((t) => ({ id: t.id, name: t.name, status: t.status }));
     },
 
     getDecisionAudit(decisionId) {
@@ -572,7 +739,13 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       return rows.map((r) => ({
         action: r.action,
         actor: r.actor,
-        changes: (() => { try { return JSON.parse(r.changes ?? '{}'); } catch { return {}; } })(),
+        changes: (() => {
+          try {
+            return JSON.parse(r.changes ?? '{}');
+          } catch {
+            return {};
+          }
+        })(),
         timestamp: r.timestamp,
       }));
     },
@@ -596,7 +769,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           const lines = content.split('\n');
           const start = offset ?? 0;
           const end = limit ? start + limit : lines.length;
-          return { content: lines.slice(start, end).join('\n'), size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
+          return {
+            content: lines.slice(start, end).join('\n'),
+            size,
+            encoding: 'utf-8' as const,
+            mimeType: mimeType ?? undefined,
+          };
         }
         return { content, size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
       }
@@ -605,7 +783,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       const buf = await readFile(safePath);
       if (buf.length > 5 * 1024 * 1024) throw new Error('Binary file exceeds 5MB limit');
       const base64 = buf.toString('base64');
-      return { content: base64, size: buf.length, encoding: 'base64' as const, mimeType: mimeType ?? 'application/octet-stream' };
+      return {
+        content: base64,
+        size: buf.length,
+        encoding: 'base64' as const,
+        mimeType: mimeType ?? 'application/octet-stream',
+      };
     },
 
     writeFile: async (filePath, content, overwrite) => {
@@ -645,7 +828,13 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       let i = 0;
       while (i < diffLines.length) {
         const line = diffLines[i];
-        if (!line || line.startsWith('diff ') || line.startsWith('--- ') || line.startsWith('+++ ') || line.startsWith('index ')) {
+        if (
+          !line ||
+          line.startsWith('diff ') ||
+          line.startsWith('--- ') ||
+          line.startsWith('+++ ') ||
+          line.startsWith('index ')
+        ) {
           i++;
           continue;
         }
@@ -657,7 +846,11 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           const newCount = hunkMatch[4] ? parseInt(hunkMatch[4], 10) : 1;
           i++;
           const hunkLines: { type: 'context' | 'add' | 'remove'; content: string }[] = [];
-          while (i < diffLines.length && !diffLines[i]!.startsWith('@@') && !diffLines[i]!.startsWith('diff ')) {
+          while (
+            i < diffLines.length &&
+            !diffLines[i]!.startsWith('@@') &&
+            !diffLines[i]!.startsWith('diff ')
+          ) {
             const hl = diffLines[i]!;
             if (hl.startsWith('+')) hunkLines.push({ type: 'add', content: hl.slice(1) });
             else if (hl.startsWith('-')) hunkLines.push({ type: 'remove', content: hl.slice(1) });
@@ -671,12 +864,18 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           let srcIdx = oldStart;
           for (const hl of hunkLines) {
             if (hl.type === 'context') {
-              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) {
+                mismatch = true;
+                break;
+              }
               result.push(lines[srcIdx]!);
               srcIdx++;
               contextIdx++;
             } else if (hl.type === 'remove') {
-              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) {
+                mismatch = true;
+                break;
+              }
               srcIdx++;
             } else if (hl.type === 'add') {
               result.push(hl.content);
@@ -725,9 +924,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       async function walk(currentDir: string, depth: number) {
         if (depth > 5) return;
         let entries;
-        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        try {
+          entries = await readdir(currentDir, { withFileTypes: true });
+        } catch {
+          return;
+        }
         for (const entry of entries) {
-          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist')
+            continue;
           const entryPath = join(currentDir, entry.name);
           if (entry.isDirectory()) {
             await walk(entryPath, depth + 1);
@@ -749,9 +953,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       async function walk(currentDir: string, depth: number) {
         if (depth > 5 || results.length >= 100) return;
         let entries;
-        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        try {
+          entries = await readdir(currentDir, { withFileTypes: true });
+        } catch {
+          return;
+        }
         for (const entry of entries) {
-          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist')
+            continue;
           const entryPath = join(currentDir, entry.name);
           if (entry.isDirectory()) {
             await walk(entryPath, depth + 1);
@@ -767,7 +976,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
                   results.push({ file: relPath, line: i + 1, content: line.slice(0, 200) });
                 }
               }
-            } catch { /* skip unreadable files */ }
+            } catch {
+              /* skip unreadable files */
+            }
           }
         }
       }
@@ -836,10 +1047,13 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     watchFile: async (filePath, timeoutMs) => {
       const safePath = await resolveSafePath(filePath);
       return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-          unwatchFile(safePath);
-          resolve({ changed: false, size: 0 });
-        }, Math.min(timeoutMs ?? 30000, 120000));
+        const timer = setTimeout(
+          () => {
+            unwatchFile(safePath);
+            resolve({ changed: false, size: 0 });
+          },
+          Math.min(timeoutMs ?? 30000, 120000),
+        );
         try {
           watchFile(safePath, { interval: 500 }, (curr) => {
             clearTimeout(timer);
@@ -856,7 +1070,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Web / HTTP callbacks ──
     webFetch: async (url, maxLength) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
 
       const controller = new AbortController();
@@ -893,7 +1108,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     httpRequest: async (method, url, headers, body) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
       if (body && body.length > 1 * 1024 * 1024) throw new Error('Request body exceeds 1MB limit');
 
@@ -908,9 +1124,15 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           redirect: 'follow',
         });
         const resHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { resHeaders[k] = v; });
+        res.headers.forEach((v, k) => {
+          resHeaders[k] = v;
+        });
         const resBody = await res.text();
-        return { status: res.status, headers: resHeaders, body: resBody.slice(0, 50 * 1024 * 1024) };
+        return {
+          status: res.status,
+          headers: resHeaders,
+          body: resBody.slice(0, 50 * 1024 * 1024),
+        };
       } finally {
         clearTimeout(timer);
       }
@@ -923,13 +1145,23 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       try {
         const res = await fetch(apiUrl, {
           signal: controller.signal,
-          headers: { 'User-Agent': 'Cabinet/2.0', 'Accept': 'application/vnd.github.v3+json' },
+          headers: { 'User-Agent': 'Cabinet/2.0', Accept: 'application/vnd.github.v3+json' },
         });
-        if (!res.ok) return { content: '', error: `GitHub API error: ${res.status} ${res.statusText}` };
+        if (!res.ok)
+          return { content: '', error: `GitHub API error: ${res.status} ${res.statusText}` };
         const data = await res.json();
         if (Array.isArray(data)) {
-          const items = data.map((item: any) => ({ name: item.name, path: item.path, type: item.type }));
-          return { content: `Directory listing for ${path ?? 'root'}:\n` + items.map((i: any) => `- ${i.type}: ${i.name}`).join('\n'), items };
+          const items = data.map((item: any) => ({
+            name: item.name,
+            path: item.path,
+            type: item.type,
+          }));
+          return {
+            content:
+              `Directory listing for ${path ?? 'root'}:\n` +
+              items.map((i: any) => `- ${i.type}: ${i.name}`).join('\n'),
+            items,
+          };
         }
         if (data.content && data.encoding === 'base64') {
           return { content: Buffer.from(data.content, 'base64').toString('utf-8').slice(0, 50000) };
@@ -942,7 +1174,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     cleanWebFetch: async (url, maxLength) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 15000);
@@ -981,7 +1214,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         timeout: timeout ?? 60000,
         maxBuffer: 10 * 1024 * 1024,
         env: buildSafeEnv(),
-        shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
+        shell: process.platform === 'win32' ? process.env.COMSPEC || 'cmd.exe' : '/bin/bash',
       });
       return { stdout, stderr, exitCode: 0 };
     },
@@ -1003,7 +1236,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       let embeddings: number[][] = [];
       if (ctx.gateway) {
         try {
-          const result = await ctx.gateway.generateEmbeddings({ texts: chunks.map((c) => c.content) });
+          const result = await ctx.gateway.generateEmbeddings({
+            texts: chunks.map((c) => c.content),
+          });
           embeddings = result.embeddings;
         } catch {
           // Store without embeddings — text search fallback
@@ -1034,7 +1269,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         try {
           const result = await ctx.gateway.generateEmbeddings({ texts: [query] });
           queryEmbedding = result.embeddings[0];
-        } catch { /* fall back to text search */ }
+        } catch {
+          /* fall back to text search */
+        }
       }
 
       const rows = ctx.db
@@ -1049,7 +1286,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           .map((row: any) => {
             const emb = row.embedding ? (JSON.parse(row.embedding) as number[]) : null;
             const score = emb ? cosineSimilarity(queryEmbedding!, emb) : 0;
-            return { content: row.content as string, sourcePath: row.source_path as string, chunkIndex: row.chunk_index as number, score };
+            return {
+              content: row.content as string,
+              sourcePath: row.source_path as string,
+              chunkIndex: row.chunk_index as number,
+              score,
+            };
           })
           .filter((c) => c.score > 0.25)
           .sort((a, b) => b.score - a.score)
@@ -1144,7 +1386,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
         return { overallScore, dimensions, feedback: parsed.feedback ?? '', evaluatorModel };
       } catch {
-        return { overallScore: 5, dimensions: {}, feedback: 'Evaluation failed — model output unparseable', evaluatorModel };
+        return {
+          overallScore: 5,
+          dimensions: {},
+          feedback: 'Evaluation failed — model output unparseable',
+          evaluatorModel,
+        };
       }
     },
 
@@ -1161,10 +1408,20 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── System knowledge callbacks ──
     querySystemKnowledge: async (query, limit) => {
-      return createSystemKnowledgeCapabilities({ db: ctx.db, gateway: ctx.gateway, logger: ctx.logger, taskScheduler: ctx.taskScheduler }).querySystemKnowledge(query, limit);
+      return createSystemKnowledgeCapabilities({
+        db: ctx.db,
+        gateway: ctx.gateway,
+        logger: ctx.logger,
+        taskScheduler: ctx.taskScheduler,
+      }).querySystemKnowledge(query, limit);
     },
     getSystemKnowledge: async (topic) => {
-      return createSystemKnowledgeCapabilities({ db: ctx.db, gateway: ctx.gateway, logger: ctx.logger, taskScheduler: ctx.taskScheduler }).getSystemKnowledge(topic);
+      return createSystemKnowledgeCapabilities({
+        db: ctx.db,
+        gateway: ctx.gateway,
+        logger: ctx.logger,
+        taskScheduler: ctx.taskScheduler,
+      }).getSystemKnowledge(topic);
     },
   };
 }
@@ -1321,7 +1578,11 @@ async function executeWorkflowById(
       ? 'awaiting_approval'
       : 'completed';
     ctx.workflowRepo.updateStatus(workflowId, finalStatus);
-    ctx.auditLogRepo.insert('workflow', workflowId, 'run', 'system', { status: finalStatus, steps: results, runId });
+    ctx.auditLogRepo.insert('workflow', workflowId, 'run', 'system', {
+      status: finalStatus,
+      steps: results,
+      runId,
+    });
     ctx.logger.info('Workflow executed via tool', {
       workflowId,
       nodes: results.length,
@@ -1452,7 +1713,11 @@ async function runMeeting(
     try {
       const reviewerLoop = createReviewerLoop(ctx);
       if (reviewerLoop) {
-        const reviewerTask = buildReviewerTask(topic, perspectives as AdvisorFinding[], advisorResult.synthesis);
+        const reviewerTask = buildReviewerTask(
+          topic,
+          perspectives as AdvisorFinding[],
+          advisorResult.synthesis,
+        );
         const reviewerResult = await reviewerLoop.run(reviewerTask);
         const review = parseReviewerResponse(reviewerResult.content);
         reviewPassed = review.pass;
@@ -1483,7 +1748,14 @@ async function runMeeting(
     )
     .run(
       meetingId,
-      JSON.stringify({ topic, status: 'completed', synthesis, perspectives, reviewPassed, projectId }),
+      JSON.stringify({
+        topic,
+        status: 'completed',
+        synthesis,
+        perspectives,
+        reviewPassed,
+        projectId,
+      }),
     );
   broadcast('meeting_created', {
     meetingId,
@@ -1505,13 +1777,19 @@ async function runMeeting(
       tags: JSON.stringify(['meeting', 'analysis']),
       created_at: new Date().toISOString(),
     });
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 
   // Phase 4: Auto-extract decision if meeting produced actionable options
   let decisionId: string | null = null;
   if (ctx.gateway && synthesis && synthesis.length > 20) {
     try {
-      const extractionPrompt = buildExtractionPrompt(topic, synthesis, perspectives as AdvisorFinding[]);
+      const extractionPrompt = buildExtractionPrompt(
+        topic,
+        synthesis,
+        perspectives as AdvisorFinding[],
+      );
       const extractionResponse = await ctx.gateway.generateText({
         model: 'claude-haiku-4-5',
         messages: [{ role: 'user', content: extractionPrompt }],
@@ -1520,45 +1798,45 @@ async function runMeeting(
       });
 
       const extracted = parseExtractionResponse(extractionResponse.content);
-        if (extracted.hasDecision && extracted.title) {
-          const decId = `dec_${Date.now()}`;
-          const options = (
-            extracted.options ?? [
-              { label: 'Approve', impact: 'Proceed as recommended' },
-              { label: 'Reject', impact: 'Do not proceed' },
-            ]
-          ).map((o: any, i: number) => ({
-            id: `opt_${i}`,
-            label: o.label,
-            impact: o.impact ?? '',
-          }));
+      if (extracted.hasDecision && extracted.title) {
+        const decId = `dec_${Date.now()}`;
+        const options = (
+          extracted.options ?? [
+            { label: 'Approve', impact: 'Proceed as recommended' },
+            { label: 'Reject', impact: 'Do not proceed' },
+          ]
+        ).map((o: any, i: number) => ({
+          id: `opt_${i}`,
+          label: o.label,
+          impact: o.impact ?? '',
+        }));
 
-          ctx.decisionService.create({
-            id: decId,
-            projectId: projectId ?? 'default',
-            type: 'strategic',
-            title: extracted.title,
-            description: extracted.description ?? `Decision extracted from meeting: ${topic}`,
-            options,
-            classification: {
-              scopeDescription: topic,
-              isCrossSession: false,
-              optionCount: options.length,
-              estimatedCostUsd: 0,
-              involvesFunds: false,
-              involvesPermissions: false,
-              involvesDataDeletion: false,
-              involvesOrgConfig: false,
-            },
-          });
-          decisionId = decId;
-          broadcast('decision_created', {
-            decisionId: decId,
-            title: extracted.title,
-            level: extracted.level ?? 'L1',
-          });
-          ctx.logger.info('Decision auto-extracted from meeting', { meetingId, decisionId: decId });
-        }
+        ctx.decisionService.create({
+          id: decId,
+          projectId: projectId ?? 'default',
+          type: 'strategic',
+          title: extracted.title,
+          description: extracted.description ?? `Decision extracted from meeting: ${topic}`,
+          options,
+          classification: {
+            scopeDescription: topic,
+            isCrossSession: false,
+            optionCount: options.length,
+            estimatedCostUsd: 0,
+            involvesFunds: false,
+            involvesPermissions: false,
+            involvesDataDeletion: false,
+            involvesOrgConfig: false,
+          },
+        });
+        decisionId = decId;
+        broadcast('decision_created', {
+          decisionId: decId,
+          title: extracted.title,
+          level: extracted.level ?? 'L1',
+        });
+        ctx.logger.info('Decision auto-extracted from meeting', { meetingId, decisionId: decId });
+      }
     } catch (e: any) {
       ctx.logger.warn('Meeting decision extraction failed', { error: e.message, meetingId });
     }
@@ -1585,7 +1863,13 @@ async function runMeeting(
 }
 
 // ── In-memory feedback store for route learning (cross-session) ──
-const routeFeedbackStore: { message: string; routedAgent: string; correct: boolean; timestamp: Date; previousRoute?: string }[] = [];
+const routeFeedbackStore: {
+  message: string;
+  routedAgent: string;
+  correct: boolean;
+  timestamp: Date;
+  previousRoute?: string;
+}[] = [];
 
 const feedbackStore: FeedbackStore = {
   async store(feedback) {
@@ -1597,10 +1881,13 @@ const feedbackStore: FeedbackStore = {
   async query(previousRoute, correct, limit = 10) {
     const matches = routeFeedbackStore
       .filter((f) => f.previousRoute === previousRoute && f.correct === correct)
-      .reduce((acc, f) => {
-        acc[f.routedAgent] = (acc[f.routedAgent] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      .reduce(
+        (acc, f) => {
+          acc[f.routedAgent] = (acc[f.routedAgent] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
     return Object.entries(matches)
       .map(([targetAgent, count]) => ({ targetAgent, count }))
       .sort((a, b) => b.count - a.count)
@@ -1623,19 +1910,34 @@ const sessionTrustLevel = new Map<string, import('@cabinet/agent').TrustLevel>()
 
 function detectTrustLevelOverride(msg: string): import('@cabinet/agent').TrustLevel | null {
   const lower = msg.toLowerCase();
-  if (lower.includes('允许你多尝试几次') || lower.includes('放手去做') || lower.includes('大胆尝试')) return 'T2';
-  if (lower.includes('谨慎处理') || lower.includes('不要擅自') || lower.includes('小心')) return 'T0';
-  if (lower.includes('完全信任') || lower.includes('调试模式') || lower.includes('debug')) return 'T3';
+  if (
+    lower.includes('允许你多尝试几次') ||
+    lower.includes('放手去做') ||
+    lower.includes('大胆尝试')
+  )
+    return 'T2';
+  if (lower.includes('谨慎处理') || lower.includes('不要擅自') || lower.includes('小心'))
+    return 'T0';
+  if (lower.includes('完全信任') || lower.includes('调试模式') || lower.includes('debug'))
+    return 'T3';
   return null;
 }
 
 // Keep cached agent loops in sync with delegation tier changes from the UI
 onTierChange((tier: DelegationTier) => {
   for (const loop of agentLoopCache.values()) {
-    try { loop.setDelegationTier(tier); } catch { /* non-fatal */ }
+    try {
+      loop.setDelegationTier(tier);
+    } catch {
+      /* non-fatal */
+    }
   }
   for (const agent of secretaryAgentCache.values()) {
-    try { agent.setDelegationTier(tier); } catch { /* non-fatal */ }
+    try {
+      agent.setDelegationTier(tier);
+    } catch {
+      /* non-fatal */
+    }
   }
 });
 
@@ -1692,7 +1994,9 @@ function getAgentLoopForRole(
     if (projRow?.rootPath && existsSync(projRow.rootPath)) {
       projectRootPath = projRow.rootPath;
     }
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
 
   const checkpointManager = new CheckpointManager(ctx.db);
   const rulesLoader = buildRulesLoader(projectRootPath);
@@ -1745,12 +2049,17 @@ function getAgentLoopForRole(
     });
 
     // Auto-extract skill from successful complex sessions
-    ctx.skillExtractor.extract(summary).then((skill) => {
-      if (skill) {
-        const path = ctx.skillExtractor.save(skill);
-        ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
-      }
-    }).catch(() => { /* best-effort */ });
+    ctx.skillExtractor
+      .extract(summary)
+      .then((skill) => {
+        if (skill) {
+          const path = ctx.skillExtractor.save(skill);
+          ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
+        }
+      })
+      .catch(() => {
+        /* best-effort */
+      });
   };
 
   agentLoopCache.set(cacheKey, loop);
@@ -1821,7 +2130,8 @@ async function dispatchToSpecialist(
     // Upgrade: complex tasks need better models
     if (roleDef?.upgradeModelTier) {
       const needsUpgrade =
-        (roleType === 'reviewer' && (message.includes('L3') || message.includes('安全关键') || message.length > 2000));
+        roleType === 'reviewer' &&
+        (message.includes('L3') || message.includes('安全关键') || message.length > 2000);
       if (needsUpgrade) {
         effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier });
       }
@@ -1837,7 +2147,14 @@ async function dispatchToSpecialist(
     }
   }
 
-  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, effectiveModel);
+  const loop = getAgentLoopForRole(
+    roleType,
+    sessionId,
+    projectId,
+    captainId,
+    thinkingBudget,
+    effectiveModel,
+  );
   if (!loop) return `[No LLM] Cannot dispatch to ${roleType}.`;
 
   const result = await loop.run(message);
@@ -1848,13 +2165,19 @@ async function dispatchToSpecialist(
     const reviewerLoop = createReviewerLoop(ctx);
     if (reviewerLoop) {
       // Segmented review for long outputs: show first 4000 + last 4000 chars with truncation note
-      const reviewContent = output.length > 8000
-        ? output.slice(0, 4000) + '\n\n[...output truncated, total length: ' + output.length + ' chars...]\n\n' + output.slice(-4000)
-        : output;
+      const reviewContent =
+        output.length > 8000
+          ? output.slice(0, 4000) +
+            '\n\n[...output truncated, total length: ' +
+            output.length +
+            ' chars...]\n\n' +
+            output.slice(-4000)
+          : output;
 
-      const toolCallSummary = result.toolCalls.length > 0
-        ? `\nTool calls made by ${roleType} during execution:\n${result.toolCalls.map((t) => `- ${t.name}(${JSON.stringify(t.args).slice(0, 100)}): ${JSON.stringify(t.result).slice(0, 100)}`).join('\n')}`
-        : '';
+      const toolCallSummary =
+        result.toolCalls.length > 0
+          ? `\nTool calls made by ${roleType} during execution:\n${result.toolCalls.map((t) => `- ${t.name}(${JSON.stringify(t.args).slice(0, 100)}): ${JSON.stringify(t.result).slice(0, 100)}`).join('\n')}`
+          : '';
 
       const reviewTask = [
         `## Quality Review Task`,
@@ -1876,7 +2199,9 @@ async function dispatchToSpecialist(
       try {
         const reviewResult = await reviewerLoop.run(reviewTask);
         const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
-        const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, score: 1.0, issues: [] };
+        const review = reviewMatch
+          ? JSON.parse(reviewMatch[0])
+          : { pass: true, score: 1.0, issues: [] };
 
         // Persist review result
         persistReviewResult(ctx, roleType, sessionId, review);
@@ -1884,18 +2209,20 @@ async function dispatchToSpecialist(
         if (review.pass !== true && review.issues?.length > 0) {
           // Publish quality alert for Harness
           if (ctx.eventBus) {
-            ctx.eventBus.publish({
-              messageId: `quality_alert_${Date.now()}`,
-              correlationId: sessionId,
-              causationId: null,
-              timestamp: new Date(),
-              messageType: MessageType.QualityAlert,
-              payload: {
-                type: 'review_quality',
-                message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
-                severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
-              },
-            }).catch(() => {});
+            ctx.eventBus
+              .publish({
+                messageId: `quality_alert_${Date.now()}`,
+                correlationId: sessionId,
+                causationId: null,
+                timestamp: new Date(),
+                messageType: MessageType.QualityAlert,
+                payload: {
+                  type: 'review_quality',
+                  message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
+                  severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
+                },
+              })
+              .catch(() => {});
 
             broadcast('quality_alert', {
               source: roleType,
@@ -1907,7 +2234,9 @@ async function dispatchToSpecialist(
           }
 
           // Append reviewer notes to output
-          const issueNotes = (review.issues as any[]).map((i: any) => `- [${i.severity}] ${i.detail}`).join('\n');
+          const issueNotes = (review.issues as any[])
+            .map((i: any) => `- [${i.severity}] ${i.detail}`)
+            .join('\n');
           output = `${output}\n\n---\n### Reviewer Notes\n${issueNotes}\n\n⚠️ Review score: ${review.score ?? 'N/A'}`;
         }
       } catch {
@@ -1931,7 +2260,14 @@ async function dispatchToSpecialistStreaming(
   model?: string,
 ): Promise<void> {
   const ctx = getServerContext();
-  const loop = getAgentLoopForRole(roleType, sessionId, projectId, captainId, thinkingBudget, model);
+  const loop = getAgentLoopForRole(
+    roleType,
+    sessionId,
+    projectId,
+    captainId,
+    thinkingBudget,
+    model,
+  );
   if (!loop) {
     callback.onError?.(`[No LLM] Cannot dispatch to ${roleType}.`);
     callback.onDone('');
@@ -1944,9 +2280,14 @@ async function dispatchToSpecialistStreaming(
     if (roleType !== 'secretary' && roleType !== 'reviewer') {
       const reviewerLoop = createReviewerLoop(ctx);
       if (reviewerLoop) {
-        const reviewContent = result.content.length > 8000
-          ? result.content.slice(0, 4000) + '\n\n[...output truncated, total length: ' + result.content.length + ' chars...]\n\n' + result.content.slice(-4000)
-          : result.content;
+        const reviewContent =
+          result.content.length > 8000
+            ? result.content.slice(0, 4000) +
+              '\n\n[...output truncated, total length: ' +
+              result.content.length +
+              ' chars...]\n\n' +
+              result.content.slice(-4000)
+            : result.content;
         const reviewTask = [
           `## Quality Review Task`,
           '',
@@ -1962,37 +2303,46 @@ async function dispatchToSpecialistStreaming(
           `After review, output ONLY a JSON object:`,
           `{"pass": true/false, "score": 0.0-1.0, "issues": [...], "suggestion": {...}}`,
         ].join('\n');
-        reviewerLoop.run(reviewTask).then((reviewResult) => {
-          const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
-          const review = reviewMatch ? JSON.parse(reviewMatch[0]) : { pass: true, score: 1.0, issues: [] };
-          persistReviewResult(ctx, roleType, sessionId, review);
-          callback.onQualityReview?.({
-            pass: !!review.pass,
-            score: typeof review.score === 'number' ? review.score : 1.0,
-            issues: Array.isArray(review.issues) ? review.issues : [],
-          });
-          if (review.pass !== true && review.issues?.length > 0 && ctx.eventBus) {
-            ctx.eventBus.publish({
-              messageId: `quality_alert_${Date.now()}`,
-              correlationId: sessionId,
-              causationId: null,
-              timestamp: new Date(),
-              messageType: MessageType.QualityAlert,
-              payload: {
-                type: 'review_quality',
-                message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
-                severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
-              },
-            }).catch(() => {});
-            broadcast('quality_alert', {
-              source: roleType,
-              sessionId,
-              score: review.score,
-              issueCount: review.issues?.length ?? 0,
-              topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+        reviewerLoop
+          .run(reviewTask)
+          .then((reviewResult) => {
+            const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
+            const review = reviewMatch
+              ? JSON.parse(reviewMatch[0])
+              : { pass: true, score: 1.0, issues: [] };
+            persistReviewResult(ctx, roleType, sessionId, review);
+            callback.onQualityReview?.({
+              pass: !!review.pass,
+              score: typeof review.score === 'number' ? review.score : 1.0,
+              issues: Array.isArray(review.issues) ? review.issues : [],
             });
-          }
-        }).catch(() => { /* Review failure is non-fatal */ });
+            if (review.pass !== true && review.issues?.length > 0 && ctx.eventBus) {
+              ctx.eventBus
+                .publish({
+                  messageId: `quality_alert_${Date.now()}`,
+                  correlationId: sessionId,
+                  causationId: null,
+                  timestamp: new Date(),
+                  messageType: MessageType.QualityAlert,
+                  payload: {
+                    type: 'review_quality',
+                    message: `Quality review for ${roleType}: score ${review.score}, ${review.issues?.length ?? 0} issues`,
+                    severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
+                  },
+                })
+                .catch(() => {});
+              broadcast('quality_alert', {
+                source: roleType,
+                sessionId,
+                score: review.score,
+                issueCount: review.issues?.length ?? 0,
+                topIssue: review.issues?.[0]?.detail?.slice(0, 200) ?? null,
+              });
+            }
+          })
+          .catch(() => {
+            /* Review failure is non-fatal */
+          });
       }
     }
   } catch (e: any) {
@@ -2019,10 +2369,18 @@ function persistReviewResult(
       feedback: null,
       evaluator_model: 'claude-haiku-4-5',
     });
-  } catch { /* persistence failure is non-fatal */ }
+  } catch {
+    /* persistence failure is non-fatal */
+  }
 }
 
-function getOrCreateAgent(sessionId: string, projectId: string, captainId: string, model?: string, thinkingBudget?: number) {
+function getOrCreateAgent(
+  sessionId: string,
+  projectId: string,
+  captainId: string,
+  model?: string,
+  thinkingBudget?: number,
+) {
   const ctx = getServerContext();
   const hasGateway = ctx.gateway !== null;
 
@@ -2057,7 +2415,9 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
           projectRootPath = projRow.rootPath;
         }
       }
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
 
     const checkpointManager = new CheckpointManager(ctx.db);
     const rulesLoader = buildRulesLoader(projectRootPath);
@@ -2071,7 +2431,11 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       sessionId,
       projectId,
       captainId,
-      systemPrompt: buildSystemPrompt('secretary', secretaryRole?.systemPrompt ?? '', projectRootPath),
+      systemPrompt: buildSystemPrompt(
+        'secretary',
+        secretaryRole?.systemPrompt ?? '',
+        projectRootPath,
+      ),
       model: model ?? resolveModel(secretaryRole ?? { modelTier: 'default' }),
       maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
@@ -2126,12 +2490,15 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
       if (prefs.riskTolerance) prefLines.push(`- Risk tolerance: ${prefs.riskTolerance}`);
       if (prefs.costSensitivity) prefLines.push(`- Cost sensitivity: ${prefs.costSensitivity}`);
       if (prefs.timeUrgency) prefLines.push(`- Time urgency: ${prefs.timeUrgency}`);
-      if (prefs.preferredDecisionStyle) prefLines.push(`- Decision style: ${prefs.preferredDecisionStyle}`);
+      if (prefs.preferredDecisionStyle)
+        prefLines.push(`- Decision style: ${prefs.preferredDecisionStyle}`);
       if (prefLines.length > 0) {
         intentParser.setCaptainPreferences(prefLines.join('\n'));
       }
     }
-  } catch { /* preferences not available — routing works without */ }
+  } catch {
+    /* preferences not available — routing works without */
+  }
 
   const agent = new SecretaryAgent(
     secretaryLoop ?? (null as any),
@@ -2139,8 +2506,22 @@ function getOrCreateAgent(sessionId: string, projectId: string, captainId: strin
     ctx.sessionManager,
     ctx.gateway ?? undefined,
     // dispatchToRole callback: routes to specialist agents with streaming
-    async (roleType: AgentRoleType, msg: string, sid: string, callback: import('@cabinet/agent').StreamingCallback) => {
-      await dispatchToSpecialistStreaming(roleType, msg, sid, projectId, captainId, callback, thinkingBudget, model ?? undefined);
+    async (
+      roleType: AgentRoleType,
+      msg: string,
+      sid: string,
+      callback: import('@cabinet/agent').StreamingCallback,
+    ) => {
+      await dispatchToSpecialistStreaming(
+        roleType,
+        msg,
+        sid,
+        projectId,
+        captainId,
+        callback,
+        thinkingBudget,
+        model ?? undefined,
+      );
     },
     feedbackStore,
   );
@@ -2206,7 +2587,11 @@ secretaryRouter.post('/chat', async (c) => {
 
   const isNewSession = !ctx.sessionManager.get(sessionId);
   if (isNewSession) {
-    ctx.sessionManager.create(sessionId, `Session ${sessionId.slice(0, 8)}`, projectId === 'global' ? undefined : projectId);
+    ctx.sessionManager.create(
+      sessionId,
+      `Session ${sessionId.slice(0, 8)}`,
+      projectId === 'global' ? undefined : projectId,
+    );
     // Proactive greeting for new sessions — persist as first assistant message
     try {
       const greeter = new GreetingService();
@@ -2214,7 +2599,9 @@ secretaryRouter.post('/chat', async (c) => {
         .prepare("SELECT COUNT(*) as count FROM decisions WHERE status = 'pending'")
         .get() as any;
       const activeWorkflows = ctx.db
-        .prepare("SELECT COUNT(*) as count FROM workflows WHERE status = 'active' OR status = 'running'")
+        .prepare(
+          "SELECT COUNT(*) as count FROM workflows WHERE status = 'active' OR status = 'running'",
+        )
         .get() as any;
       const prefs = ctx.entity.getPreferences(captainId);
       const captainName = prefs?.name ?? 'Captain';
@@ -2227,7 +2614,8 @@ secretaryRouter.post('/chat', async (c) => {
       // Persist greeting as chat message so it appears in the dialog
       let greetingText = greeting.greeting;
       if (greeting.suggestions && greeting.suggestions.length > 0) {
-        greetingText += '\n\n**Suggestions:**\n' + greeting.suggestions.map((s: string) => `- ${s}`).join('\n');
+        greetingText +=
+          '\n\n**Suggestions:**\n' + greeting.suggestions.map((s: string) => `- ${s}`).join('\n');
       }
       // Inject Curator session brief if available
       try {
@@ -2235,7 +2623,9 @@ secretaryRouter.post('/chat', async (c) => {
         if (brief && typeof brief === 'string' && brief.length > 0) {
           greetingText += `\n\n**Context Brief:**\n${brief}`;
         }
-      } catch { /* brief lookup failure is non-fatal */ }
+      } catch {
+        /* brief lookup failure is non-fatal */
+      }
       ctx.sessionManager.addMessage(sessionId, 'assistant', greetingText);
       broadcast('secretary_greeting', { sessionId, greeting });
     } catch {
@@ -2244,7 +2634,13 @@ secretaryRouter.post('/chat', async (c) => {
   }
 
   try {
-    const { agent } = getOrCreateAgent(sessionId, projectId || 'global', captainId, model ?? undefined, thinkingBudget);
+    const { agent } = getOrCreateAgent(
+      sessionId,
+      projectId || 'global',
+      captainId,
+      model ?? undefined,
+      thinkingBudget,
+    );
 
     // Augment message with attached file contents (shared by all modes)
     let augmentedMessage = message;
@@ -2351,7 +2747,9 @@ secretaryRouter.post('/chat', async (c) => {
             model: model ?? 'claude-sonnet-4-6',
             timestamp: new Date().toISOString(),
           });
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
 
         return c.json({
           sessionId,
@@ -2379,9 +2777,11 @@ secretaryRouter.post('/chat', async (c) => {
             async start(controller) {
               const encoder = new TextEncoder();
               function emit(type: string, data: Record<string, unknown>) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type, ...data })}
 
-`));
+`),
+                );
               }
               let streamedContent = '';
               try {
@@ -2405,14 +2805,29 @@ secretaryRouter.post('/chat', async (c) => {
                       emit('thinking_done', {});
                     },
                     onToolCall(name, args) {
-                      emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
+                      emit('tool_status', {
+                        message: `Using tool: ${name}...`,
+                        toolType: 'call',
+                        detail: { name, args },
+                      });
                     },
                     onToolResult(name, result) {
-                      emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
+                      emit('tool_status', {
+                        message: `Tool completed: ${name}`,
+                        toolType: 'result',
+                        detail: { name, result },
+                      });
                     },
                     onUsage(usage) {
-                      ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
-                      emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
+                      ctx.costTracker.record(
+                        model ?? 'claude-sonnet-4-6',
+                        usage.promptTokens,
+                        usage.completionTokens,
+                      );
+                      emit('usage', {
+                        promptTokens: usage.promptTokens,
+                        completionTokens: usage.completionTokens,
+                      });
                     },
                     onDone() {},
                     onError(error) {
@@ -2422,7 +2837,10 @@ secretaryRouter.post('/chat', async (c) => {
                   thinkingBudget,
                   model ?? undefined,
                 );
-                ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+                ctx.metrics.increment('llm_call', {
+                  model: model ?? 'claude-sonnet-4-6',
+                  purpose: 'chat',
+                });
                 broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
                 try {
                   broadcast('cost_updated', {
@@ -2430,7 +2848,9 @@ secretaryRouter.post('/chat', async (c) => {
                     model: model ?? 'claude-sonnet-4-6',
                     timestamp: new Date().toISOString(),
                   });
-                } catch { /* non-fatal */ }
+                } catch {
+                  /* non-fatal */
+                }
                 ctx.sessionManager.addMessage(sessionId, 'assistant', streamedContent);
                 emit('done', {
                   sessionId,
@@ -2468,7 +2888,9 @@ secretaryRouter.post('/chat', async (c) => {
             await meetingResultStore.run(store, async () => {
               const encoder = new TextEncoder();
               function emit(type: string, data: Record<string, unknown>) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`));
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`),
+                );
               }
               try {
                 emit('status', { message: 'Thinking...' });
@@ -2493,10 +2915,18 @@ secretaryRouter.post('/chat', async (c) => {
                       emit('thinking_done', {});
                     },
                     onToolCall(name, args) {
-                      emit('tool_status', { message: `Using tool: ${name}...`, toolType: 'call', detail: { name, args } });
+                      emit('tool_status', {
+                        message: `Using tool: ${name}...`,
+                        toolType: 'call',
+                        detail: { name, args },
+                      });
                     },
                     onToolResult(name, result) {
-                      emit('tool_status', { message: `Tool completed: ${name}`, toolType: 'result', detail: { name, result } });
+                      emit('tool_status', {
+                        message: `Tool completed: ${name}`,
+                        toolType: 'result',
+                        detail: { name, result },
+                      });
                     },
                     onTaskUpdate(tasks) {
                       emit('task_status', { tasks });
@@ -2508,8 +2938,15 @@ secretaryRouter.post('/chat', async (c) => {
                       emit('step_budget_warning', { remaining, maxSteps });
                     },
                     onUsage(usage) {
-                      ctx.costTracker.record(model ?? 'claude-sonnet-4-6', usage.promptTokens, usage.completionTokens);
-                      emit('usage', { promptTokens: usage.promptTokens, completionTokens: usage.completionTokens });
+                      ctx.costTracker.record(
+                        model ?? 'claude-sonnet-4-6',
+                        usage.promptTokens,
+                        usage.completionTokens,
+                      );
+                      emit('usage', {
+                        promptTokens: usage.promptTokens,
+                        completionTokens: usage.completionTokens,
+                      });
                     },
                     onSubAgentStart(agentName, taskDescription) {
                       emit('sub_agent_start', { agentName, taskDescription });
@@ -2531,7 +2968,11 @@ secretaryRouter.post('/chat', async (c) => {
                       // Done event is emitted after routing below
                     },
                     onQualityReview(result) {
-                      emit('quality_review', { pass: result.pass, score: result.score, issues: result.issues });
+                      emit('quality_review', {
+                        pass: result.pass,
+                        score: result.score,
+                        issues: result.issues,
+                      });
                       resolveQualityReview?.();
                     },
                     onError(error) {
@@ -2554,7 +2995,10 @@ secretaryRouter.post('/chat', async (c) => {
 
                 // Emit done last — client stops reading here, so routing must come first
                 const meeting = store.result;
-                ctx.metrics.increment('llm_call', { model: model ?? 'claude-sonnet-4-6', purpose: 'chat' });
+                ctx.metrics.increment('llm_call', {
+                  model: model ?? 'claude-sonnet-4-6',
+                  purpose: 'chat',
+                });
                 broadcast('secretary_message', { sessionId, projectId, captainId, mode: 'single' });
                 try {
                   broadcast('cost_updated', {
@@ -2562,18 +3006,22 @@ secretaryRouter.post('/chat', async (c) => {
                     model: model ?? 'claude-sonnet-4-6',
                     timestamp: new Date().toISOString(),
                   });
-                } catch { /* non-fatal */ }
+                } catch {
+                  /* non-fatal */
+                }
                 emit('done', {
                   sessionId,
                   meeting: meeting ?? undefined,
                   agentName: targetAgent,
                   content: streamedContent,
                   routed: isRouted,
-                  ...(streamResult.routeResult ? {
-                    targetAgent,
-                    confidence: streamResult.routeResult.confidence,
-                    reasoning: streamResult.routeResult.reasoning,
-                  } : {}),
+                  ...(streamResult.routeResult
+                    ? {
+                        targetAgent,
+                        confidence: streamResult.routeResult.confidence,
+                        reasoning: streamResult.routeResult.reasoning,
+                      }
+                    : {}),
                 });
               } catch (e: any) {
                 emit('error', { message: e.message ?? 'Unknown error' });
@@ -2621,7 +3069,9 @@ secretaryRouter.post('/chat', async (c) => {
             model: model ?? 'claude-sonnet-4-6',
             timestamp: new Date().toISOString(),
           });
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
         return c.json({
           sessionId,
           projectId,
@@ -2658,7 +3108,9 @@ secretaryRouter.post('/chat', async (c) => {
           model: model ?? 'claude-sonnet-4-6',
           timestamp: new Date().toISOString(),
         });
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
       return c.json({
         sessionId,
         projectId,
@@ -2828,7 +3280,9 @@ secretaryRouter.post('/compact', async (c) => {
   let lastRole = '';
   for (const m of toSummarize) {
     if (m.role !== lastRole) {
-      summaryParts.push(`${m.role === 'user' ? 'User asked' : 'Assistant responded'} about: ${m.content.slice(0, 200)}`);
+      summaryParts.push(
+        `${m.role === 'user' ? 'User asked' : 'Assistant responded'} about: ${m.content.slice(0, 200)}`,
+      );
       lastRole = m.role;
     }
   }

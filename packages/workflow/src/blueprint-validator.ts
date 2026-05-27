@@ -1,7 +1,4 @@
-export {
-  validateBlueprint,
-  detectCircularDependencies,
-} from '@cabinet/organize';
+export { validateBlueprint, detectCircularDependencies } from '@cabinet/organize';
 
 export type {
   Blueprint,

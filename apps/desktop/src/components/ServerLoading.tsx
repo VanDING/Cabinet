@@ -1,7 +1,14 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 
-type ServerStatus = 'connecting' | 'starting' | 'ready' | 'timeout' | 'crashed' | 'restarting' | 'fatal';
+type ServerStatus =
+  | 'connecting'
+  | 'starting'
+  | 'ready'
+  | 'timeout'
+  | 'crashed'
+  | 'restarting'
+  | 'fatal';
 
 interface StatusPayload {
   status: string;
@@ -28,7 +35,9 @@ export function ServerLoading({ children }: { children: ReactNode }) {
 
     // Quick health check — server may already be running
     fetch('http://localhost:3000/health')
-      .then((r) => { if (r.ok) setStatus('ready'); })
+      .then((r) => {
+        if (r.ok) setStatus('ready');
+      })
       .catch(() => setStatus('starting'));
 
     // Listen for Tauri server-status events
@@ -67,16 +76,23 @@ export function ServerLoading({ children }: { children: ReactNode }) {
           }
         }),
       )
-      .then((fn) => { unlisten = fn; })
+      .then((fn) => {
+        unlisten = fn;
+      })
       .catch(() => {});
 
-    return () => { unlisten?.(); };
+    return () => {
+      unlisten?.();
+    };
   }, []);
 
   if (status === 'ready') return <>{children}</>;
 
-  const isSpinning = status === 'connecting' || status === 'starting' ||
-                     status === 'crashed' || status === 'restarting';
+  const isSpinning =
+    status === 'connecting' ||
+    status === 'starting' ||
+    status === 'crashed' ||
+    status === 'restarting';
 
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-gray-950">
@@ -99,7 +115,9 @@ export function ServerLoading({ children }: { children: ReactNode }) {
               setMessage('Retrying...');
               const check = () => {
                 fetch('http://localhost:3000/health')
-                  .then((r) => { if (r.ok) setStatus('ready'); })
+                  .then((r) => {
+                    if (r.ok) setStatus('ready');
+                  })
                   .catch(() => setTimeout(check, 1000));
               };
               check();

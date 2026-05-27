@@ -4,22 +4,22 @@
 
 Every decision is classified into one of four autonomy levels:
 
-| Level | Name | Behavior | Example |
-|---|---|---|---|
-| **L0** | Auto | Approved immediately | File rename |
-| **L1** | Suggest | Auto-approved within session, few options | Choose model for task |
-| **L2** | Review | Requires Captain confirmation, cross-session impact | Enter new market |
-| **L3** | Escalate | Must be approved — involves funds, permissions, or data | Delete project |
+| Level  | Name     | Behavior                                                | Example               |
+| ------ | -------- | ------------------------------------------------------- | --------------------- |
+| **L0** | Auto     | Approved immediately                                    | File rename           |
+| **L1** | Suggest  | Auto-approved within session, few options               | Choose model for task |
+| **L2** | Review   | Requires Captain confirmation, cross-session impact     | Enter new market      |
+| **L3** | Escalate | Must be approved — involves funds, permissions, or data | Delete project        |
 
 ## Decision Types
 
-| Type | Purpose |
-|---|---|
-| `strategic` | Long-term directional decisions |
-| `action` | Concrete operational decisions |
-| `execution` | Implementation-level decisions |
-| `anomaly` | Decisions triggered by detected anomalies |
-| `evolution` | System self-improvement decisions |
+| Type        | Purpose                                   |
+| ----------- | ----------------------------------------- |
+| `strategic` | Long-term directional decisions           |
+| `action`    | Concrete operational decisions            |
+| `execution` | Implementation-level decisions            |
+| `anomaly`   | Decisions triggered by detected anomalies |
+| `evolution` | System self-improvement decisions         |
 
 ## State Machine
 
@@ -38,6 +38,7 @@ Terminal states: `approved`, `rejected`, `expired`, `archived`. Once in a termin
 ## Audit Trail
 
 Every decision lifecycle event is recorded:
+
 - Creation (who, when, what options)
 - Approval (who, when, chosen option)
 - Rejection (who, when, reason)

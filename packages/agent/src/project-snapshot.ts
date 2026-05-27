@@ -55,7 +55,14 @@ export class ProjectSnapshot {
         return;
       }
       for (const name of entries) {
-        if (name.startsWith('.') || name === 'node_modules' || name === 'dist' || name === 'build' || name === 'target') continue;
+        if (
+          name.startsWith('.') ||
+          name === 'node_modules' ||
+          name === 'dist' ||
+          name === 'build' ||
+          name === 'target'
+        )
+          continue;
         const fullPath = join(dir, name);
         let isDir: boolean;
         try {

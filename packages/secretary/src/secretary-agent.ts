@@ -15,7 +15,11 @@ export interface RouteFeedback {
 
 export interface FeedbackStore {
   store(feedback: RouteFeedback): Promise<void>;
-  query(previousRoute: string, correct: boolean, limit?: number): Promise<{ targetAgent: string; count: number }[]>;
+  query(
+    previousRoute: string,
+    correct: boolean,
+    limit?: number,
+  ): Promise<{ targetAgent: string; count: number }[]>;
 }
 
 export class SecretaryAgent {
@@ -78,7 +82,10 @@ export class SecretaryAgent {
     // Handle explicit negative feedback: re-route if user says "不对"/"换个人"
     if (feedback === 'negative' && routingState?.lastRoute) {
       await this.storeRouteFeedback(message, routingState.lastRoute, false, routingState.lastRoute);
-      routeResult.targetAgent = (await this.suggestAlternativeAgent(message, routingState.lastRoute)) as AgentRoleType;
+      routeResult.targetAgent = (await this.suggestAlternativeAgent(
+        message,
+        routingState.lastRoute,
+      )) as AgentRoleType;
       routeResult.confidence = 0.5;
       routeResult.reasoning = 'Re-routed due to user negative feedback.';
     }
@@ -110,11 +117,7 @@ export class SecretaryAgent {
       }
     } else {
       // Orchestrator mode: run specialist first, then secretary synthesizes
-      const specialistResult = await this.runSpecialist(
-        targetAgent,
-        message,
-        sessionId,
-      );
+      const specialistResult = await this.runSpecialist(targetAgent, message, sessionId);
       response = specialistResult.response;
 
       // Post-route verification: check if specialist output matches the request
@@ -166,7 +169,10 @@ export class SecretaryAgent {
     await this.updateRoutingState(sessionId, routeResult, message);
 
     if (feedback === 'negative' && routingState?.lastRoute) {
-      routeResult.targetAgent = (await this.suggestAlternativeAgent(message, routingState.lastRoute)) as AgentRoleType;
+      routeResult.targetAgent = (await this.suggestAlternativeAgent(
+        message,
+        routingState.lastRoute,
+      )) as AgentRoleType;
       routeResult.confidence = 0.5;
       routeResult.reasoning = 'Re-routed due to user negative feedback.';
     }
@@ -192,7 +198,9 @@ export class SecretaryAgent {
           `[No LLM available]`,
           `Intent: ${routeResult.intent.kind}`,
           `Would route to: ${targetAgent}`,
-        ].filter(Boolean).join('\n');
+        ]
+          .filter(Boolean)
+          .join('\n');
         callback.onChunk(response);
         callback.onDone(response);
       }
@@ -208,7 +216,9 @@ export class SecretaryAgent {
         onThinking(content) {
           callback.onSubAgentThinking?.(targetAgent, content);
         },
-        onThinkingDone() { callback.onThinkingDone?.(); },
+        onThinkingDone() {
+          callback.onThinkingDone?.();
+        },
         onToolCall(name, args) {
           toolCalls.push({ name, args });
           callback.onSubAgentToolCall?.(targetAgent, name, args);
@@ -216,7 +226,9 @@ export class SecretaryAgent {
         onToolResult(name, result) {
           callback.onSubAgentToolCall?.(targetAgent, `${name}_result`, { result });
         },
-        onUsage(usage) { callback.onUsage?.(usage); },
+        onUsage(usage) {
+          callback.onUsage?.(usage);
+        },
         onQualityReview(result) {
           callback.onQualityReview?.(result);
         },
@@ -316,14 +328,22 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     if (!this.dispatchToRole) return { response: `No dispatch handler for ${targetAgent}.` };
     let collected = '';
     await this.dispatchToRole(targetAgent as AgentRoleType, message, sessionId, {
-      onChunk(content) { collected += content; },
+      onChunk(content) {
+        collected += content;
+      },
       onDone() {},
-      onError(err) { collected = err; },
+      onError(err) {
+        collected = err;
+      },
     });
     return { response: collected || `Dispatched to ${targetAgent}.` };
   }
 
-  private buildSynthesisPrompt(agentName: string, originalMessage: string, specialistOutput: string): string {
+  private buildSynthesisPrompt(
+    agentName: string,
+    originalMessage: string,
+    specialistOutput: string,
+  ): string {
     return [
       `The ${agentName} specialist has completed the following task for the Captain.`,
       ``,
@@ -341,12 +361,33 @@ Respond with ONLY a JSON object (no markdown, no backticks):
   private detectFeedback(message: string): 'positive' | 'negative' | 'none' {
     const lower = message.toLowerCase().trim();
     const negativeSignals = [
-      '不对', '不是这个', '换个人', '错了', '不匹配', '不合适', '不好',
-      'no', 'wrong', 'not this', 'not right', 'switch', 'different',
+      '不对',
+      '不是这个',
+      '换个人',
+      '错了',
+      '不匹配',
+      '不合适',
+      '不好',
+      'no',
+      'wrong',
+      'not this',
+      'not right',
+      'switch',
+      'different',
     ];
     const positiveSignals = [
-      '很好', '不错', '对的', '正确', '继续', 'perfect', 'good', 'great',
-      'yes', 'correct', 'exactly', 'thanks',
+      '很好',
+      '不错',
+      '对的',
+      '正确',
+      '继续',
+      'perfect',
+      'good',
+      'great',
+      'yes',
+      'correct',
+      'exactly',
+      'thanks',
     ];
     if (negativeSignals.some((s) => lower.includes(s))) return 'negative';
     if (positiveSignals.some((s) => lower.includes(s))) return 'positive';
@@ -388,7 +429,12 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     // Fallback: intent-based heuristic
     const lower = message.toLowerCase();
     let detectedIntent: string | null = null;
-    if (lower.includes('决策') || lower.includes('选择') || lower.includes('对比') || lower.includes('分析')) {
+    if (
+      lower.includes('决策') ||
+      lower.includes('选择') ||
+      lower.includes('对比') ||
+      lower.includes('分析')
+    ) {
       detectedIntent = 'decision_request';
     } else if (lower.includes('会议') || lower.includes('讨论') || lower.includes('顾问')) {
       detectedIntent = 'meeting_request';

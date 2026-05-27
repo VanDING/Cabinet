@@ -12,19 +12,20 @@
 
 ## File Structure
 
-| File | Role |
-|------|------|
-| `packages/agent/src/tools/index.ts` | Tool definitions (`createCabinetTools`) and `ToolDependencies` interface |
-| `packages/agent/src/tools/__tests__/tools.test.ts` | Unit tests for all tools |
-| `apps/server/src/routes/secretary.ts` | `buildToolDependencies` — binds tools to backend services |
-| `apps/server/src/routes/dashboard.ts` | **Read-only reference** — shows how dashboard data is already aggregated |
-| `packages/storage/src/repositories/workflow-repo.ts` | **Read-only reference** — shows workflow run storage methods |
+| File                                                 | Role                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| `packages/agent/src/tools/index.ts`                  | Tool definitions (`createCabinetTools`) and `ToolDependencies` interface |
+| `packages/agent/src/tools/__tests__/tools.test.ts`   | Unit tests for all tools                                                 |
+| `apps/server/src/routes/secretary.ts`                | `buildToolDependencies` — binds tools to backend services                |
+| `apps/server/src/routes/dashboard.ts`                | **Read-only reference** — shows how dashboard data is already aggregated |
+| `packages/storage/src/repositories/workflow-repo.ts` | **Read-only reference** — shows workflow run storage methods             |
 
 ---
 
 ### Task 1: Add `get_dashboard_stats` tool
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -34,17 +35,21 @@
 In `packages/agent/src/tools/index.ts`, add inside the `ToolDependencies` interface (after `getProjectContext`):
 
 ```typescript
-  getDashboardStats: () => {
-    pendingDecisions: number;
-    activeWorkflows: number;
-    activeProjects: number;
-    todayCost: number;
-    totalLLMCalls: number;
-    totalTokens: number;
-    totalDecisions: number;
-    errors: number;
-    recentEvents: { message: string; time: string }[];
-  };
+getDashboardStats: () => {
+  pendingDecisions: number;
+  activeWorkflows: number;
+  activeProjects: number;
+  todayCost: number;
+  totalLLMCalls: number;
+  totalTokens: number;
+  totalDecisions: number;
+  errors: number;
+  recentEvents: {
+    message: string;
+    time: string;
+  }
+  [];
+};
 ```
 
 - [ ] **Step 2: Add `get_dashboard_stats` tool definition in `createCabinetTools`**
@@ -83,15 +88,15 @@ In `packages/agent/src/tools/__tests__/tools.test.ts`, inside the `beforeEach` b
 Add to `packages/agent/src/tools/__tests__/tools.test.ts`, after the existing `get_status` test:
 
 ```typescript
-  it('get_dashboard_stats returns dashboard data', async () => {
-    const r = await executor.execute('get_dashboard_stats', 'tc_dash_1', {});
-    const out = r.output as any;
-    expect(out.pendingDecisions).toBe(2);
-    expect(out.activeWorkflows).toBe(1);
-    expect(out.todayCost).toBe(0.42);
-    expect(out.totalLLMCalls).toBe(150);
-    expect(out.recentEvents).toHaveLength(1);
-  });
+it('get_dashboard_stats returns dashboard data', async () => {
+  const r = await executor.execute('get_dashboard_stats', 'tc_dash_1', {});
+  const out = r.output as any;
+  expect(out.pendingDecisions).toBe(2);
+  expect(out.activeWorkflows).toBe(1);
+  expect(out.todayCost).toBe(0.42);
+  expect(out.totalLLMCalls).toBe(150);
+  expect(out.recentEvents).toHaveLength(1);
+});
 ```
 
 - [ ] **Step 5: Run test to verify it fails**
@@ -155,6 +160,7 @@ git commit -m "feat(tools): add get_dashboard_stats tool"
 ### Task 2: Add `delegate_task`, `get_task_status`, `list_active_tasks` tools
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -209,7 +215,15 @@ In `apps/server/src/context.ts`, add after the `FileAccessTracker` class definit
 
 ```typescript
 export class TaskTracker {
-  private tasks: Array<{ id: string; name: string; agentName?: string; description?: string; status: string; startTime: number; endTime?: number }> = [];
+  private tasks: Array<{
+    id: string;
+    name: string;
+    agentName?: string;
+    description?: string;
+    status: string;
+    startTime: number;
+    endTime?: number;
+  }> = [];
 
   addTask(name: string, agentName?: string, description?: string): string {
     const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -242,7 +256,7 @@ export class TaskTracker {
 Then instantiate it in `getServerContext` before the `ctx = { ... }` block (around line 1678):
 
 ```typescript
-  const taskTracker = new TaskTracker();
+const taskTracker = new TaskTracker();
 ```
 
 And add `taskTracker` to the `ctx` object.
@@ -295,26 +309,26 @@ In `packages/agent/src/tools/__tests__/tools.test.ts`, add after `getDashboardSt
 Add to `packages/agent/src/tools/__tests__/tools.test.ts`:
 
 ```typescript
-  it('delegate_task returns task id', async () => {
-    const r = await executor.execute('delegate_task', 'tc_task_1', { name: 'Research market' });
-    const out = r.output as any;
-    expect(out.delegated).toBe(true);
-    expect(out.taskId).toContain('Research market');
-  });
+it('delegate_task returns task id', async () => {
+  const r = await executor.execute('delegate_task', 'tc_task_1', { name: 'Research market' });
+  const out = r.output as any;
+  expect(out.delegated).toBe(true);
+  expect(out.taskId).toContain('Research market');
+});
 
-  it('get_task_status returns task info', async () => {
-    const r = await executor.execute('get_task_status', 'tc_task_2', { taskId: 'task_test' });
-    const out = r.output as any;
-    expect(out.id).toBe('task_test');
-    expect(out.status).toBe('running');
-  });
+it('get_task_status returns task info', async () => {
+  const r = await executor.execute('get_task_status', 'tc_task_2', { taskId: 'task_test' });
+  const out = r.output as any;
+  expect(out.id).toBe('task_test');
+  expect(out.status).toBe('running');
+});
 
-  it('list_active_tasks returns active tasks', async () => {
-    const r = await executor.execute('list_active_tasks', 'tc_task_3', {});
-    const out = r.output as any;
-    expect(out.tasks).toHaveLength(1);
-    expect(out.tasks[0].status).toBe('running');
-  });
+it('list_active_tasks returns active tasks', async () => {
+  const r = await executor.execute('list_active_tasks', 'tc_task_3', {});
+  const out = r.output as any;
+  expect(out.tasks).toHaveLength(1);
+  expect(out.tasks[0].status).toBe('running');
+});
 ```
 
 - [ ] **Step 7: Run tests to verify they fail**
@@ -345,6 +359,7 @@ git commit -m "feat(tools): add task delegation and tracking tools"
 ### Task 3: Add `get_decision_audit` tool
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -354,7 +369,8 @@ git commit -m "feat(tools): add task delegation and tracking tools"
 In `packages/agent/src/tools/index.ts`:
 
 ```typescript
-  getDecisionAudit: (decisionId: string) => Array<{
+getDecisionAudit: (decisionId: string) =>
+  Array<{
     action: string;
     actor: string;
     changes: Record<string, unknown>;
@@ -405,13 +421,13 @@ In test file:
 - [ ] **Step 5: Write failing test**
 
 ```typescript
-  it('get_decision_audit returns audit entries', async () => {
-    const r = await executor.execute('get_decision_audit', 'tc_audit_1', { decisionId: 'dec_1' });
-    const out = r.output as any;
-    expect(out.decisionId).toBe('dec_1');
-    expect(out.entries).toHaveLength(1);
-    expect(out.entries[0].action).toBe('created');
-  });
+it('get_decision_audit returns audit entries', async () => {
+  const r = await executor.execute('get_decision_audit', 'tc_audit_1', { decisionId: 'dec_1' });
+  const out = r.output as any;
+  expect(out.decisionId).toBe('dec_1');
+  expect(out.entries).toHaveLength(1);
+  expect(out.entries[0].action).toBe('created');
+});
 ```
 
 - [ ] **Step 6: Run tests**
@@ -434,6 +450,7 @@ git commit -m "feat(tools): add get_decision_audit tool"
 ### Task 4: Add `update_memory` and `delete_memory` tools
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 
@@ -468,20 +485,32 @@ These tools reuse the existing `deps.longTerm` object which already has `updateM
 - [ ] **Step 2: Write failing tests**
 
 ```typescript
-  it('update_memory updates memory metadata', async () => {
-    const storeResult = await deps.longTerm.store({ content: 'Test memory', metadata: {}, timestamp: new Date() });
-    const r = await executor.execute('update_memory', 'tc_upd_1', { memoryId: storeResult, status: 'archived', importance: 0.3 });
-    const out = r.output as any;
-    expect(out.updated).toBe(true);
-    expect(out.memoryId).toBe(storeResult);
+it('update_memory updates memory metadata', async () => {
+  const storeResult = await deps.longTerm.store({
+    content: 'Test memory',
+    metadata: {},
+    timestamp: new Date(),
   });
+  const r = await executor.execute('update_memory', 'tc_upd_1', {
+    memoryId: storeResult,
+    status: 'archived',
+    importance: 0.3,
+  });
+  const out = r.output as any;
+  expect(out.updated).toBe(true);
+  expect(out.memoryId).toBe(storeResult);
+});
 
-  it('delete_memory removes memory', async () => {
-    const storeResult = await deps.longTerm.store({ content: 'Memory to delete', metadata: {}, timestamp: new Date() });
-    const r = await executor.execute('delete_memory', 'tc_del_1', { memoryId: storeResult });
-    const out = r.output as any;
-    expect(out.deleted).toBe(true);
+it('delete_memory removes memory', async () => {
+  const storeResult = await deps.longTerm.store({
+    content: 'Memory to delete',
+    metadata: {},
+    timestamp: new Date(),
   });
+  const r = await executor.execute('delete_memory', 'tc_del_1', { memoryId: storeResult });
+  const out = r.output as any;
+  expect(out.deleted).toBe(true);
+});
 ```
 
 - [ ] **Step 3: Run tests**
@@ -504,6 +533,7 @@ git commit -m "feat(tools): add update_memory and delete_memory tools"
 ### Task 5: Enhance `get_status` with system metrics
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -511,12 +541,12 @@ git commit -m "feat(tools): add update_memory and delete_memory tools"
 - [ ] **Step 1: Add `getSystemMetrics` callback to `ToolDependencies` interface**
 
 ```typescript
-  getSystemMetrics: () => {
-    totalLLMCalls: number;
-    totalTokens: number;
-    totalDecisions: number;
-    errors: number;
-  };
+getSystemMetrics: () => {
+  totalLLMCalls: number;
+  totalTokens: number;
+  totalDecisions: number;
+  errors: number;
+};
 ```
 
 - [ ] **Step 2: Update `get_status` tool definition**
@@ -551,13 +581,13 @@ In test file, add to deps:
 Modify the existing test to also check metrics:
 
 ```typescript
-  it('get_status returns operational with metrics', async () => {
-    const r = await executor.execute('get_status', 'tc5', {});
-    const out = r.output as any;
-    expect(out.status).toBe('operational');
-    expect(out.metrics).toBeDefined();
-    expect(out.metrics.totalLLMCalls).toBe(10);
-  });
+it('get_status returns operational with metrics', async () => {
+  const r = await executor.execute('get_status', 'tc5', {});
+  const out = r.output as any;
+  expect(out.status).toBe('operational');
+  expect(out.metrics).toBeDefined();
+  expect(out.metrics.totalLLMCalls).toBe(10);
+});
 ```
 
 - [ ] **Step 5: Bind in `buildToolDependencies`**
@@ -590,6 +620,7 @@ git commit -m "feat(tools): enhance get_status with system metrics"
 ### Task 6: Add `get_workflow_run` and `list_workflow_runs` tools
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Modify: `packages/agent/src/tools/__tests__/tools.test.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
@@ -689,19 +720,19 @@ In test file:
 - [ ] **Step 5: Write failing tests**
 
 ```typescript
-  it('get_workflow_run returns run details', async () => {
-    const r = await executor.execute('get_workflow_run', 'tc_wfr_1', { runId: 'run_test' });
-    const out = r.output as any;
-    expect(out.runId).toBe('run_test');
-    expect(out.status).toBe('completed');
-  });
+it('get_workflow_run returns run details', async () => {
+  const r = await executor.execute('get_workflow_run', 'tc_wfr_1', { runId: 'run_test' });
+  const out = r.output as any;
+  expect(out.runId).toBe('run_test');
+  expect(out.status).toBe('completed');
+});
 
-  it('list_workflow_runs returns runs for workflow', async () => {
-    const r = await executor.execute('list_workflow_runs', 'tc_wfr_2', { workflowId: 'wf_1' });
-    const out = r.output as any;
-    expect(out.runs).toHaveLength(1);
-    expect(out.runs[0].workflowId).toBe('wf_1');
-  });
+it('list_workflow_runs returns runs for workflow', async () => {
+  const r = await executor.execute('list_workflow_runs', 'tc_wfr_2', { workflowId: 'wf_1' });
+  const out = r.output as any;
+  expect(out.runs).toHaveLength(1);
+  expect(out.runs[0].workflowId).toBe('wf_1');
+});
 ```
 
 - [ ] **Step 6: Run tests**
@@ -725,24 +756,26 @@ git commit -m "feat(tools): add workflow run history tools"
 
 **1. Spec coverage:**
 
-| Gap | Task |
-|-----|------|
-| Dashboard 数据查询 | Task 1: `get_dashboard_stats` |
-| 任务委派与追踪 | Task 2: `delegate_task`, `get_task_status`, `list_active_tasks` |
-| 决策审计查询 | Task 3: `get_decision_audit` |
-| 记忆更新/删除 | Task 4: `update_memory`, `delete_memory` |
-| 系统指标 | Task 5: enhanced `get_status` |
-| 工作流运行历史 | Task 6: `get_workflow_run`, `list_workflow_runs` |
+| Gap                | Task                                                            |
+| ------------------ | --------------------------------------------------------------- |
+| Dashboard 数据查询 | Task 1: `get_dashboard_stats`                                   |
+| 任务委派与追踪     | Task 2: `delegate_task`, `get_task_status`, `list_active_tasks` |
+| 决策审计查询       | Task 3: `get_decision_audit`                                    |
+| 记忆更新/删除      | Task 4: `update_memory`, `delete_memory`                        |
+| 系统指标           | Task 5: enhanced `get_status`                                   |
+| 工作流运行历史     | Task 6: `get_workflow_run`, `list_workflow_runs`                |
 
 All 6 Type-A gaps are covered. No Type-B (new backend service) work is included, consistent with the "wiring only" scope.
 
 **2. Placeholder scan:**
+
 - No "TBD", "TODO", "implement later" found.
 - All test code is complete with actual assertions.
 - All tool definitions include complete `execute` bodies.
 - All server bindings include complete callback implementations.
 
 **3. Type consistency:**
+
 - `ToolDependencies` interface additions use consistent naming (`camelCase` for properties, matching existing style).
 - `getDashboardStats` return type matches the actual aggregated shape from `dashboard.ts`.
 - `getWorkflowRun` return type matches `WorkflowRunRow` from `workflow-repo.ts`.

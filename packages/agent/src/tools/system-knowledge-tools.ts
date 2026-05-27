@@ -1,19 +1,28 @@
 import type { ToolDefinition } from '../tool-executor.js';
 
 export interface SystemKnowledgeToolDeps {
-  querySystemKnowledge: (query: string, limit?: number) => Promise<Array<{ topic: string; content: string; category: string }>>;
-  getSystemKnowledge: (topic: string) => Promise<{ topic: string; content: string; category: string } | null>;
+  querySystemKnowledge: (
+    query: string,
+    limit?: number,
+  ) => Promise<Array<{ topic: string; content: string; category: string }>>;
+  getSystemKnowledge: (
+    topic: string,
+  ) => Promise<{ topic: string; content: string; category: string } | null>;
 }
 
 export function createSystemKnowledgeTools(deps: SystemKnowledgeToolDeps): ToolDefinition[] {
   return [
     {
       name: 'query_system_knowledge',
-      description: 'Search the system knowledge base for information about system capabilities, directory structure, agent roles, or constraints. Use this when you are unsure about how the system works or where data should be stored.',
+      description:
+        'Search the system knowledge base for information about system capabilities, directory structure, agent roles, or constraints. Use this when you are unsure about how the system works or where data should be stored.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Search query, e.g. "skill directory" or "scheduler cron"' },
+          query: {
+            type: 'string',
+            description: 'Search query, e.g. "skill directory" or "scheduler cron"',
+          },
           limit: { type: 'integer', description: 'Max results to return (default 5)', default: 5 },
         },
         required: ['query'],
@@ -32,11 +41,16 @@ export function createSystemKnowledgeTools(deps: SystemKnowledgeToolDeps): ToolD
     },
     {
       name: 'get_system_knowledge',
-      description: 'Retrieve a specific system knowledge entry by its topic identifier. Use this for precise lookups when you know the topic name.',
+      description:
+        'Retrieve a specific system knowledge entry by its topic identifier. Use this for precise lookups when you know the topic name.',
       parameters: {
         type: 'object',
         properties: {
-          topic: { type: 'string', description: 'Exact topic identifier, e.g. "directory_structure" or "scheduler_capabilities"' },
+          topic: {
+            type: 'string',
+            description:
+              'Exact topic identifier, e.g. "directory_structure" or "scheduler_capabilities"',
+          },
         },
         required: ['topic'],
       },

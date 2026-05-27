@@ -67,10 +67,7 @@ export class MemoryDecayService {
   }
 
   /** Compute a retrieval score for a memory entry. Higher = more relevant. */
-  static score(entry: {
-    timestamp: Date;
-    metadata: Record<string, unknown>;
-  }): number {
+  static score(entry: { timestamp: Date; metadata: Record<string, unknown> }): number {
     const importance = (entry.metadata.importance as number) ?? 0.5;
     const confidence = (entry.metadata.confidence as number) ?? 0.5;
     const accessCount = (entry.metadata.accessCount as number) ?? 0;

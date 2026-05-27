@@ -143,8 +143,7 @@ export class AutoAdjuster {
         // Only adjust roles actually experiencing context pressure.
         if (
           roleHealth &&
-          (roleHealth.contextHealth === 'critical' ||
-            roleHealth.contextHealth === 'warning') &&
+          (roleHealth.contextHealth === 'critical' || roleHealth.contextHealth === 'warning') &&
           !roleHealth.insufficientData
         ) {
           const newBudget = Math.round(Math.max(0.15, role.contextBudget - 0.1) * 10) / 10;

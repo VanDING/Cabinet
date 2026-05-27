@@ -27,7 +27,9 @@ export function EmployeesPage() {
     try {
       const raw = localStorage.getItem('cabinet-employees');
       if (raw) return JSON.parse(raw);
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
     return [];
   });
 
@@ -249,7 +251,9 @@ export function EmployeesPage() {
       {employees.length === 0 && !showForm && (
         <div className="rounded-lg border border-dashed p-8 text-center dark:border-gray-700">
           <p className="text-gray-500 dark:text-gray-400">No employees yet.</p>
-          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">Create your first team member to get started.</p>
+          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
+            Create your first team member to get started.
+          </p>
         </div>
       )}
 

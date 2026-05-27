@@ -171,7 +171,9 @@ memoryRouter.get('/graph', (c) => {
   const { knowledgeGraph, logger } = getServerContext();
   try {
     const db = (knowledgeGraph as any).db;
-    const entities = db.prepare('SELECT * FROM memory_entities ORDER BY frequency DESC LIMIT 200').all() as any[];
+    const entities = db
+      .prepare('SELECT * FROM memory_entities ORDER BY frequency DESC LIMIT 200')
+      .all() as any[];
     const relations = db.prepare('SELECT * FROM memory_relations LIMIT 500').all() as any[];
     return c.json({
       entities: entities.map((e) => ({

@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
-import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD, MessageType } from '@cabinet/types';
+import {
+  DAILY_BUDGET_USD,
+  WEEKLY_BUDGET_USD,
+  MONTHLY_BUDGET_USD,
+  MessageType,
+} from '@cabinet/types';
 
 const EVENT_LABELS: Record<string, string> = {
   [MessageType.DecisionRequest]: 'Decision requested',
@@ -25,8 +30,18 @@ const EVENT_LABELS: Record<string, string> = {
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const { decisionRepo, costTracker, budgetGuard, projectRepo, workflowRepo, eventRepo, auditLogRepo, metrics, logger, db } =
-    getServerContext();
+  const {
+    decisionRepo,
+    costTracker,
+    budgetGuard,
+    projectRepo,
+    workflowRepo,
+    eventRepo,
+    auditLogRepo,
+    metrics,
+    logger,
+    db,
+  } = getServerContext();
   const projectId = c.req.query('projectId');
 
   let pendingDecisions = 0,
@@ -35,7 +50,9 @@ dashboardRouter.get('/summary', (c) => {
   const recentEvents: { message: string; type: string; time: Date }[] = [];
 
   try {
-    pendingDecisions = (projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()).length;
+    pendingDecisions = (
+      projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()
+    ).length;
   } catch (err) {
     logger.warn('Failed to load pending decisions', { error: (err as Error).message });
   }
@@ -94,8 +111,13 @@ dashboardRouter.get('/summary', (c) => {
 dashboardRouter.get('/cost-history', (c) => {
   const { costTracker, metricRepo, sessionMetricsRepo } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
-  const history: { date: string; cost: number; calls: number; tokens: number; byModel: Record<string, number> }[] =
-    [];
+  const history: {
+    date: string;
+    cost: number;
+    calls: number;
+    tokens: number;
+    byModel: Record<string, number>;
+  }[] = [];
   let totalCalls = 0;
 
   for (let i = days - 1; i >= 0; i--) {
@@ -130,7 +152,9 @@ dashboardRouter.get('/cost-history', (c) => {
     let tokens = 0;
     try {
       tokens = sessionMetricsRepo.sumTokensByDate(`${dateStr}%`);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     history.push({
       date: dateStr,

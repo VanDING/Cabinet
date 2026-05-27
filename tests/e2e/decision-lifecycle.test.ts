@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createTestApp, headers, createDecision, seedProject, setDefaultProjectId, resetTier } from './test-helpers';
+import {
+  createTestApp,
+  headers,
+  createDecision,
+  seedProject,
+  setDefaultProjectId,
+  resetTier,
+} from './test-helpers';
 
 describe('Decision Lifecycle (E2E)', () => {
   const app = createTestApp();

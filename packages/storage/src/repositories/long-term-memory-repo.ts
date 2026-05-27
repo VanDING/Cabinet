@@ -36,12 +36,16 @@ export class LongTermMemoryRepository {
   }): void {
     this.db
       .prepare(
-        "INSERT INTO memory_embeddings (id, content, embedding, metadata) VALUES (?, ?, ?, ?)",
+        'INSERT INTO memory_embeddings (id, content, embedding, metadata) VALUES (?, ?, ?, ?)',
       )
       .run(entry.id, entry.content, entry.embedding ?? null, entry.metadata ?? '{}');
-    const row = this.db.prepare('SELECT rowid FROM memory_embeddings WHERE id = ?').get(entry.id) as { rowid: number } | undefined;
+    const row = this.db
+      .prepare('SELECT rowid FROM memory_embeddings WHERE id = ?')
+      .get(entry.id) as { rowid: number } | undefined;
     if (row) {
-      this.db.prepare('INSERT INTO memory_fts(rowid, content) VALUES (?, ?)').run(row.rowid, entry.content);
+      this.db
+        .prepare('INSERT INTO memory_fts(rowid, content) VALUES (?, ?)')
+        .run(row.rowid, entry.content);
     }
   }
 
@@ -82,9 +86,9 @@ export class LongTermMemoryRepository {
   }
 
   count(): number {
-    const row = this.db
-      .prepare('SELECT COUNT(*) as count FROM memory_embeddings')
-      .get() as { count: number };
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM memory_embeddings').get() as {
+      count: number;
+    };
     return row.count;
   }
 
@@ -106,7 +110,9 @@ export class LongTermMemoryRepository {
 
   findWithEmbeddingsPaged(limit: number, offset: number): LongTermMemoryRow[] {
     const rows = this.db
-      .prepare('SELECT * FROM memory_embeddings WHERE embedding IS NOT NULL ORDER BY timestamp DESC LIMIT ? OFFSET ?')
+      .prepare(
+        'SELECT * FROM memory_embeddings WHERE embedding IS NOT NULL ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+      )
       .all(limit, offset) as Record<string, unknown>[];
     return rows.map((r) => this.rowToEntry(r));
   }
@@ -121,7 +127,9 @@ export class LongTermMemoryRepository {
   }
 
   delete(id: string): void {
-    const row = this.db.prepare('SELECT rowid FROM memory_embeddings WHERE id = ?').get(id) as { rowid: number } | undefined;
+    const row = this.db.prepare('SELECT rowid FROM memory_embeddings WHERE id = ?').get(id) as
+      | { rowid: number }
+      | undefined;
     if (row) {
       this.db.prepare('DELETE FROM memory_fts WHERE rowid = ?').run(row.rowid);
     }
@@ -129,9 +137,7 @@ export class LongTermMemoryRepository {
   }
 
   updateMetadata(id: string, metadata: string): void {
-    this.db
-      .prepare('UPDATE memory_embeddings SET metadata = ? WHERE id = ?')
-      .run(metadata, id);
+    this.db.prepare('UPDATE memory_embeddings SET metadata = ? WHERE id = ?').run(metadata, id);
   }
 
   private rowToEntry(row: Record<string, unknown>): LongTermMemoryRow {

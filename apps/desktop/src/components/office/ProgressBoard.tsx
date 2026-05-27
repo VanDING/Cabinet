@@ -31,7 +31,9 @@ export function ProgressBoard({ projectId }: Props) {
 
   const fetchProgress = useCallback(() => {
     const pid = projectId ?? 'default';
-    apiFetch(`/api/progress?sessionId=default&projectId=${encodeURIComponent(pid)}`, { headers: authHeaders() })
+    apiFetch(`/api/progress?sessionId=default&projectId=${encodeURIComponent(pid)}`, {
+      headers: authHeaders(),
+    })
       .then((r) => r.json())
       .then((d) => {
         if (!d.error) setData(d);
@@ -51,7 +53,9 @@ export function ProgressBoard({ projectId }: Props) {
 
     // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
-    const hasRelevant = buffered.some((e) => e.type === 'task_updated' || e.type === 'task_created');
+    const hasRelevant = buffered.some(
+      (e) => e.type === 'task_updated' || e.type === 'task_created',
+    );
     if (hasRelevant) fetchProgress();
 
     return () => {

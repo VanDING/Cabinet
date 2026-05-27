@@ -19,31 +19,33 @@ export class SkillRepository {
   constructor(private readonly db: Database.Database) {}
 
   findAll(): SkillRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM skills ORDER BY version DESC')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM skills ORDER BY version DESC').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToSkill(r));
   }
 
   findActive(): SkillRow[] {
-    const rows = this.db
-      .prepare("SELECT * FROM skills WHERE status = 'active'")
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare("SELECT * FROM skills WHERE status = 'active'").all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToSkill(r));
   }
 
   findById(id: string): SkillRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM skills WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM skills WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToSkill(row);
   }
 
   findByName(name: string): { id: string } | null {
-    const row = this.db
-      .prepare('SELECT id FROM skills WHERE name = ?')
-      .get(name) as { id: string } | undefined;
+    const row = this.db.prepare('SELECT id FROM skills WHERE name = ?').get(name) as
+      | { id: string }
+      | undefined;
     return row ?? null;
   }
 
@@ -91,13 +93,28 @@ export class SkillRepository {
       );
   }
 
-  update(id: string, changes: { name?: string; description?: string; version?: number; metadata?: string }): void {
+  update(
+    id: string,
+    changes: { name?: string; description?: string; version?: number; metadata?: string },
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
-    if (changes.name !== undefined) { sets.push('name = ?'); values.push(changes.name); }
-    if (changes.description !== undefined) { sets.push('description = ?'); values.push(changes.description); }
-    if (changes.version !== undefined) { sets.push('version = ?'); values.push(changes.version); }
-    if (changes.metadata !== undefined) { sets.push('metadata = ?'); values.push(changes.metadata); }
+    if (changes.name !== undefined) {
+      sets.push('name = ?');
+      values.push(changes.name);
+    }
+    if (changes.description !== undefined) {
+      sets.push('description = ?');
+      values.push(changes.description);
+    }
+    if (changes.version !== undefined) {
+      sets.push('version = ?');
+      values.push(changes.version);
+    }
+    if (changes.metadata !== undefined) {
+      sets.push('metadata = ?');
+      values.push(changes.metadata);
+    }
     if (sets.length === 0) return;
     values.push(id);
     this.db.prepare(`UPDATE skills SET ${sets.join(', ')} WHERE id = ?`).run(...values);

@@ -14,11 +14,7 @@ export class MetricsCollector {
   private readonly flushIntervalMs: number;
   private readonly maxBatchSize: number;
 
-  constructor(opts?: {
-    repo?: MetricRepository;
-    flushIntervalMs?: number;
-    maxBatchSize?: number;
-  }) {
+  constructor(opts?: { repo?: MetricRepository; flushIntervalMs?: number; maxBatchSize?: number }) {
     this.repo = opts?.repo ?? null;
     this.flushIntervalMs = opts?.flushIntervalMs ?? 30_000;
     this.maxBatchSize = opts?.maxBatchSize ?? 100;
@@ -48,7 +44,9 @@ export class MetricsCollector {
     if (this.repo) {
       try {
         this.repo.insert(name, value, tags);
-      } catch { /* persistence failure is non-fatal */ }
+      } catch {
+        /* persistence failure is non-fatal */
+      }
     }
   }
 

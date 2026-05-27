@@ -33,17 +33,25 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
     try {
       const res = await apiFetch(`/api/projects/${projectId}/documents`);
       if (res.ok) setDocs((await res.json()).documents ?? []);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
-  useEffect(() => { fetchDocs(); }, [projectId]);
+  useEffect(() => {
+    fetchDocs();
+  }, [projectId]);
 
   const fetchChunks = async (path: string) => {
     setSelectedDoc(path);
     try {
-      const res = await apiFetch(`/api/projects/${projectId}/documents/${encodeURIComponent(path)}`);
+      const res = await apiFetch(
+        `/api/projects/${projectId}/documents/${encodeURIComponent(path)}`,
+      );
       if (res.ok) setChunks((await res.json()).chunks ?? []);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleClear = async (path?: string) => {
@@ -51,7 +59,10 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
       ? `/api/projects/${projectId}/documents?path=${encodeURIComponent(path)}`
       : `/api/projects/${projectId}/documents`;
     await apiFetch(url, { method: 'DELETE', headers: authJsonHeaders() });
-    if (path && selectedDoc === path) { setSelectedDoc(null); setChunks([]); }
+    if (path && selectedDoc === path) {
+      setSelectedDoc(null);
+      setChunks([]);
+    }
     fetchDocs();
   };
 
@@ -64,8 +75,11 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
   return (
     <div className="flex h-full">
       {/* Left: Document list */}
-      <div className="w-64 border-r flex-shrink-0 flex flex-col" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
-        <div className="p-3 border-b" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+      <div
+        className="flex w-64 flex-shrink-0 flex-col border-r"
+        style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
+      >
+        <div className="border-b p-3" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
           <input
             className={`w-full rounded border ${border} ${inputBg} px-2 py-1 text-xs`}
             placeholder="Search query..."
@@ -75,21 +89,23 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
         </div>
         <div className="flex-1 overflow-auto">
           {docs.length === 0 ? (
-            <p className={`p-3 text-xs ${sub}`}>No indexed documents. Use chat to index files with the index_document tool.</p>
+            <p className={`p-3 text-xs ${sub}`}>
+              No indexed documents. Use chat to index files with the index_document tool.
+            </p>
           ) : (
             docs.map((d) => (
               <div
                 key={d.path}
                 onClick={() => fetchChunks(d.path)}
-                className={`flex items-center justify-between px-3 py-2 cursor-pointer text-xs ${
+                className={`flex cursor-pointer items-center justify-between px-3 py-2 text-xs ${
                   selectedDoc === d.path ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : ''
                 } ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
                   <FileText size={12} className="flex-shrink-0" />
                   <span className={`truncate ${text}`}>{d.path.split('/').pop()}</span>
                 </div>
-                <span className={`flex-shrink-0 ml-2 ${sub}`}>{d.chunks}c</span>
+                <span className={`ml-2 flex-shrink-0 ${sub}`}>{d.chunks}c</span>
               </div>
             ))
           )}
@@ -103,23 +119,34 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
             <div className="flex items-center justify-between">
               <h3 className={`text-sm font-semibold ${text}`}>{selectedDoc}</h3>
               <div className="flex gap-2">
-                <button onClick={() => handleClear(selectedDoc)} className={`flex items-center gap-1 text-xs ${sub} hover:text-red-500`}>
+                <button
+                  onClick={() => handleClear(selectedDoc)}
+                  className={`flex items-center gap-1 text-xs ${sub} hover:text-red-500`}
+                >
                   <Trash2 size={12} /> Clear
                 </button>
-                <button onClick={() => { setSelectedDoc(selectedDoc); fetchChunks(selectedDoc); }} className={`flex items-center gap-1 text-xs ${sub}`}>
+                <button
+                  onClick={() => {
+                    setSelectedDoc(selectedDoc);
+                    fetchChunks(selectedDoc);
+                  }}
+                  className={`flex items-center gap-1 text-xs ${sub}`}
+                >
                   <RefreshCw size={12} /> Refresh
                 </button>
               </div>
             </div>
             {chunks.map((chunk) => (
               <div key={chunk.id} className={`rounded border ${border} ${bg} p-3`}>
-                <div className={`text-xs mb-1 ${sub}`}>Chunk {chunk.index}</div>
-                <pre className={`text-xs whitespace-pre-wrap font-sans ${text}`}>{chunk.content.slice(0, 1000)}</pre>
+                <div className={`mb-1 text-xs ${sub}`}>Chunk {chunk.index}</div>
+                <pre className={`whitespace-pre-wrap font-sans text-xs ${text}`}>
+                  {chunk.content.slice(0, 1000)}
+                </pre>
               </div>
             ))}
           </div>
         ) : (
-          <div className={`flex items-center justify-center h-full ${sub}`}>
+          <div className={`flex h-full items-center justify-center ${sub}`}>
             <div className="text-center">
               <Search size={24} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">Select a document to view chunks</p>

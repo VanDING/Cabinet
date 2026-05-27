@@ -159,7 +159,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
           </span>
         </div>
         <button
-          onClick={() => activeTab === 'workflows' ? handleNewWorkflow() : setScheduledFormOpen(true)}
+          onClick={() =>
+            activeTab === 'workflows' ? handleNewWorkflow() : setScheduledFormOpen(true)
+          }
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
         >
           {activeTab === 'workflows' ? '+ New Workflow' : '+ New Task'}
@@ -167,10 +169,10 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       </div>
 
       {/* Tab bar */}
-      <div className={`flex gap-4 mb-6 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`mb-6 flex gap-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <button
           onClick={() => setActiveTab('workflows')}
-          className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`border-b-2 pb-2 text-sm font-medium transition-colors ${
             activeTab === 'workflows'
               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
               : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
@@ -180,7 +182,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         </button>
         <button
           onClick={() => setActiveTab('scheduled')}
-          className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`border-b-2 pb-2 text-sm font-medium transition-colors ${
             activeTab === 'scheduled'
               ? 'border-blue-500 text-blue-600 dark:text-blue-400'
               : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
@@ -191,7 +193,11 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       </div>
 
       {activeTab === 'scheduled' ? (
-        <ScheduledTab isDark={isDark} showForm={scheduledFormOpen} onFormClose={() => setScheduledFormOpen(false)} />
+        <ScheduledTab
+          isDark={isDark}
+          showForm={scheduledFormOpen}
+          onFormClose={() => setScheduledFormOpen(false)}
+        />
       ) : workflows.length === 0 ? (
         <div className="py-24 text-center text-gray-400 dark:text-gray-500">
           <p className="text-lg">No workflows yet</p>
@@ -264,7 +270,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                 <div
                   className={`mt-1 rounded-lg border p-4 font-mono text-xs ${borderClass} ${codeBgClass} ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
                 >
-                  <pre className="whitespace-pre-wrap overflow-x-auto">
+                  <pre className="overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(wf.definition, null, 2)}
                   </pre>
                 </div>

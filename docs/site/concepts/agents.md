@@ -11,14 +11,14 @@ Every agent runs the **Think → Act → Observe → React** loop:
 
 ## Built-in Roles
 
-| Role | Responsibility |
-|---|---|
-| **Secretary** | Entry point — parses intent, routes to specialist agents |
-| **Decision Analyst** | Structures options, classifies decisions L0-L3, provides analysis |
-| **Meeting Chair** | Orchestrates multi-agent debates, synthesizes perspectives |
-| **Workflow Designer** | Designs automation pipelines from conversation |
-| **Curator** | Consolidates memory, surfaces relevant context |
-| **Agent Creator** | Creates custom agents from user descriptions |
+| Role                  | Responsibility                                                    |
+| --------------------- | ----------------------------------------------------------------- |
+| **Secretary**         | Entry point — parses intent, routes to specialist agents          |
+| **Decision Analyst**  | Structures options, classifies decisions L0-L3, provides analysis |
+| **Meeting Chair**     | Orchestrates multi-agent debates, synthesizes perspectives        |
+| **Workflow Designer** | Designs automation pipelines from conversation                    |
+| **Curator**           | Consolidates memory, surfaces relevant context                    |
+| **Agent Creator**     | Creates custom agents from user descriptions                      |
 
 ## Custom Agents
 
@@ -32,6 +32,7 @@ Custom agents are defined via the `/api/agents` endpoint or the Employees page i
 ## Agent-to-Agent Communication
 
 Agents communicate through structured handoff documents. The handoff includes:
+
 - What was done
 - Key findings
 - Open questions
