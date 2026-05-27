@@ -15,16 +15,17 @@ export class EmployeeRepository {
   constructor(private readonly db: Database.Database) {}
 
   findAll(): EmployeeRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM employees ORDER BY name ASC')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM employees ORDER BY name ASC').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToEmployee(r));
   }
 
   findById(id: string): EmployeeRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM employees WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToEmployee(row);
   }
@@ -34,16 +35,43 @@ export class EmployeeRepository {
       .prepare(
         'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(emp.id, emp.project_id, emp.name, emp.role, emp.kind, emp.pipeline_config, emp.persona, emp.permission_level);
+      .run(
+        emp.id,
+        emp.project_id,
+        emp.name,
+        emp.role,
+        emp.kind,
+        emp.pipeline_config,
+        emp.persona,
+        emp.permission_level,
+      );
   }
 
-  update(id: string, changes: Partial<Pick<EmployeeRow, 'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level'>>): void {
+  update(
+    id: string,
+    changes: Partial<
+      Pick<
+        EmployeeRow,
+        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level'
+      >
+    >,
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
-    const map: Record<string, string> = { name: 'name', role: 'role', kind: 'kind', pipeline_config: 'pipeline_config', persona: 'persona', permission_level: 'permission_level' };
+    const map: Record<string, string> = {
+      name: 'name',
+      role: 'role',
+      kind: 'kind',
+      pipeline_config: 'pipeline_config',
+      persona: 'persona',
+      permission_level: 'permission_level',
+    };
     for (const [key, col] of Object.entries(map)) {
       const val = (changes as Record<string, unknown>)[key];
-      if (val !== undefined) { sets.push(`${col} = ?`); values.push(val); }
+      if (val !== undefined) {
+        sets.push(`${col} = ?`);
+        values.push(val);
+      }
     }
     if (sets.length === 0) return;
     values.push(id);

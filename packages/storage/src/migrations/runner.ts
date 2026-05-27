@@ -59,9 +59,9 @@ export function runMigrations(db: Database.Database): void {
 
   // Read already-applied versions
   const applied = new Set(
-    (
-      db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>
-    ).map((r) => r.version),
+    (db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>).map(
+      (r) => r.version,
+    ),
   );
 
   let appliedCount = 0;
@@ -81,7 +81,9 @@ export function runMigrations(db: Database.Database): void {
   if (appliedCount > 0) {
     // Use stdout directly so it works even without a logger instance
     console.log(
-      `[storage] Applied ${appliedCount} migration(s): ${MIGRATIONS.filter((m) => !applied.has(m.version))
+      `[storage] Applied ${appliedCount} migration(s): ${MIGRATIONS.filter(
+        (m) => !applied.has(m.version),
+      )
         .map((m) => m.name)
         .join(', ')}`,
     );

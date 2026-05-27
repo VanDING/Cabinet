@@ -62,7 +62,7 @@ describe('DecisionList', () => {
   it('shows heading while fetching', () => {
     mockApiFetch.mockReturnValue(new Promise(() => {})); // never resolves
     renderDecisionList();
-    expect(screen.getByText('Pending Decisions')).toBeInTheDocument();
+    expect(screen.getByText('Decisions')).toBeInTheDocument();
   });
 
   it('renders decisions after fetch', async () => {
@@ -82,7 +82,7 @@ describe('DecisionList', () => {
     });
     renderDecisionList();
     await waitFor(() => {
-      expect(screen.getByText('No pending decisions')).toBeInTheDocument();
+      expect(screen.getByText('No decisions yet')).toBeInTheDocument();
     });
   });
 

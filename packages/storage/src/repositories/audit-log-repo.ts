@@ -36,14 +36,14 @@ export class AuditLogRepository {
       .prepare(
         'SELECT * FROM audit_log WHERE entity_type = ? AND entity_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',
       )
-      .all(entityType, entityId, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
+      .all(entityType, entityId, opts?.limit ?? 100, opts?.offset ?? 0) as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToAuditLog(r));
   }
 
-  findByType(
-    entityType: string,
-    opts?: { limit?: number; offset?: number },
-  ): AuditLogRow[] {
+  findByType(entityType: string, opts?: { limit?: number; offset?: number }): AuditLogRow[] {
     const rows = this.db
       .prepare(
         'SELECT * FROM audit_log WHERE entity_type = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?',

@@ -21,7 +21,12 @@ const mockProgressData = {
     { id: 't1', title: 'Research market', status: 'completed' as const },
     { id: 't2', title: 'Draft proposal', status: 'in_progress' as const },
     { id: 't3', title: 'Review budget', status: 'pending' as const },
-    { id: 't4', title: 'Get approval', status: 'blocked' as const, blockedReason: 'Waiting on legal' },
+    {
+      id: 't4',
+      title: 'Get approval',
+      status: 'blocked' as const,
+      blockedReason: 'Waiting on legal',
+    },
   ],
   nextTask: { id: 't3', title: 'Review budget', status: 'pending' as const },
   notes: ['Prioritize market research'],

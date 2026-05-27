@@ -56,12 +56,14 @@ agentsRouter.get('/agent-card.json', (c) => {
   const { agentRegistry, skillRegistry } = getServerContext();
   const agents = agentRegistry.list();
 
-  const skills: { id: string; name: string; description: string; tags: string[] }[] = agents.map((a) => ({
-    id: a.type,
-    name: a.name,
-    description: a.description,
-    tags: [a.type, a.modelTier],
-  }));
+  const skills: { id: string; name: string; description: string; tags: string[] }[] = agents.map(
+    (a) => ({
+      id: a.type,
+      name: a.name,
+      description: a.description,
+      tags: [a.type, a.modelTier],
+    }),
+  );
 
   const registeredSkills = skillRegistry.discover();
   for (const s of registeredSkills) {
@@ -75,7 +77,8 @@ agentsRouter.get('/agent-card.json', (c) => {
 
   return c.json({
     name: 'Cabinet',
-    description: 'AI collaboration framework with multi-agent deliberation, decision management, and workflow execution',
+    description:
+      'AI collaboration framework with multi-agent deliberation, decision management, and workflow execution',
     version: '2.0.0',
     capabilities: { streaming: true },
     defaultInputModes: ['text/plain', 'application/json'],
@@ -128,9 +131,17 @@ agentsRouter.post('/import', async (c) => {
       systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
       modelTier: ((agentCard.modelTier as string) || 'default') as any,
       temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-      maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
-      allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
-      contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+      maxResponseTokens: parseInt(
+        String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+        10,
+      ),
+      allowedTools: (Array.isArray(agentCard.allowedTools)
+        ? agentCard.allowedTools
+        : []) as string[],
+      contextBudget: parseInt(
+        String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+        10,
+      ),
     });
     agentRoleRepo.upsert({
       type: name,
@@ -138,9 +149,15 @@ agentsRouter.post('/import', async (c) => {
       description: String(agentCard.description ?? ''),
       system_prompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
       temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-      max_response_tokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
+      max_response_tokens: parseInt(
+        String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+        10,
+      ),
       allowed_tools: JSON.stringify(agentCard.allowedTools ?? []),
-      context_budget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+      context_budget: parseInt(
+        String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+        10,
+      ),
       is_builtin: 0,
       created_at: new Date().toISOString(),
     });
@@ -192,7 +209,10 @@ agentsRouter.post('/import', async (c) => {
 
   broadcast('agent_created', { name });
   logger.info('Agent imported from .md', { name });
-  return c.json({ name, status: 'imported', path: join(dir, 'agent.json'), mdPath: join(dir, 'agent.md') }, 201);
+  return c.json(
+    { name, status: 'imported', path: join(dir, 'agent.json'), mdPath: join(dir, 'agent.md') },
+    201,
+  );
 });
 
 // ── DELETE /api/agents/:type — unregister custom agent + remove directory ──
@@ -210,7 +230,11 @@ agentsRouter.delete('/:type', (c) => {
 
   // Remove agent directory
   const agentDir = join(AGENTS_DIR, agent.name);
-  try { rmSync(agentDir, { recursive: true, force: true }); } catch { /* ok */ }
+  try {
+    rmSync(agentDir, { recursive: true, force: true });
+  } catch {
+    /* ok */
+  }
 
   broadcast('agent_deleted', { name: agent.name });
   logger.info('Custom agent deleted', { type, name: agent.name });
@@ -249,7 +273,11 @@ agentsRouter.post('/message/stream', async (c) => {
   const sseStream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content: `Processing: ${message.content.slice(0, 100)}...` })}\n\n`));
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: 'chunk', content: `Processing: ${message.content.slice(0, 100)}...` })}\n\n`,
+        ),
+      );
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
       controller.close();
     },

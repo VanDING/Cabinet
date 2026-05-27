@@ -103,7 +103,9 @@ filesRouter.get('/read', async (c) => {
       if (project?.rootPath) {
         root = resolve(project.rootPath);
       }
-    } catch { /* fall back to default PROJECT_ROOT */ }
+    } catch {
+      /* fall back to default PROJECT_ROOT */
+    }
   }
 
   const fullPath = resolve(root, filePath);
@@ -122,13 +124,30 @@ filesRouter.get('/read', async (c) => {
     const content = await readFile(fullPath, 'utf-8');
     const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
     const mimeMap: Record<string, string> = {
-      'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-      'gif': 'image/gif', 'webp': 'image/webp', 'svg': 'image/svg+xml',
-      'pdf': 'application/pdf', 'json': 'application/json',
-      'md': 'text/markdown', 'html': 'text/html', 'css': 'text/css', 'js': 'text/javascript',
-      'ts': 'text/typescript', 'tsx': 'text/typescript', 'jsx': 'text/javascript',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      svg: 'image/svg+xml',
+      pdf: 'application/pdf',
+      json: 'application/json',
+      md: 'text/markdown',
+      html: 'text/html',
+      css: 'text/css',
+      js: 'text/javascript',
+      ts: 'text/typescript',
+      tsx: 'text/typescript',
+      jsx: 'text/javascript',
     };
-    return c.json({ path: filePath, content, size: content.length, encoding: 'utf-8', mimeType: mimeMap[ext] ?? 'text/plain', absolutePath: fullPath });
+    return c.json({
+      path: filePath,
+      content,
+      size: content.length,
+      encoding: 'utf-8',
+      mimeType: mimeMap[ext] ?? 'text/plain',
+      absolutePath: fullPath,
+    });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 404);
   }

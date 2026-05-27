@@ -2,7 +2,13 @@
 
 export interface BlueprintIssue {
   node: string;
-  type: 'missing_agent' | 'missing_step' | 'invalid_branch' | 'missing_auth' | 'invalid_gate' | 'circular_dependency';
+  type:
+    | 'missing_agent'
+    | 'missing_step'
+    | 'invalid_branch'
+    | 'missing_auth'
+    | 'invalid_gate'
+    | 'circular_dependency';
   detail: string;
 }
 

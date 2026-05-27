@@ -76,7 +76,7 @@ export function Navigation({
       return next;
     });
   };
-  const sidebarW = collapsed ? 'w-12' : (sidebarWidth ? '' : 'w-40');
+  const sidebarW = collapsed ? 'w-12' : sidebarWidth ? '' : 'w-40';
   const sidebarStyle = !collapsed && sidebarWidth ? { width: `${sidebarWidth}px` } : undefined;
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
@@ -95,7 +95,7 @@ export function Navigation({
       {/* Logo */}
       <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>
         <img
-          src={isDark ? "/Cabinet_logo_darkcolor.png" : "/Cabinet_logo_color.png"}
+          src={isDark ? '/Cabinet_logo_darkcolor.png' : '/Cabinet_logo_color.png'}
           alt="Cabinet"
           className={`object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
         />
@@ -191,8 +191,8 @@ export function Navigation({
                         className={`flex flex-1 items-center gap-1 py-1.5 text-left text-xs transition-colors ${
                           activeProjectId === p.id
                             ? isDark
-                              ? 'text-blue-400 font-medium'
-                              : 'text-blue-600 font-medium'
+                              ? 'font-medium text-blue-400'
+                              : 'font-medium text-blue-600'
                             : isDark
                               ? 'text-gray-300 hover:text-white'
                               : 'text-gray-600 hover:text-gray-900'
@@ -200,9 +200,7 @@ export function Navigation({
                       >
                         <span
                           className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                            (p as any).activeWorkflowCount > 0
-                              ? 'bg-green-500'
-                              : 'bg-gray-400'
+                            (p as any).activeWorkflowCount > 0 ? 'bg-green-500' : 'bg-gray-400'
                           }`}
                         />
                         <span className="truncate">{p.name}</span>

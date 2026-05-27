@@ -53,17 +53,46 @@ interface IntentExample {
 const INTENT_EXAMPLES: IntentExample[] = [
   {
     intent: 'decision_request',
-    examples: ['帮我决策', '该不该', 'A和B哪个好', '怎么选择', '权衡利弊', '是否值得', '哪个方案更好', '给我建议', '优缺点对比', '风险评估'],
+    examples: [
+      '帮我决策',
+      '该不该',
+      'A和B哪个好',
+      '怎么选择',
+      '权衡利弊',
+      '是否值得',
+      '哪个方案更好',
+      '给我建议',
+      '优缺点对比',
+      '风险评估',
+    ],
     excludeWords: ['不要决策', '不用决策', '别决策', '不需要决策', '不用分析'],
   },
   {
     intent: 'meeting_request',
-    examples: ['组织会议', '开会讨论', '召集顾问', '启动会议', '安排讨论', '需要多方意见', '开个会', '组织讨论'],
+    examples: [
+      '组织会议',
+      '开会讨论',
+      '召集顾问',
+      '启动会议',
+      '安排讨论',
+      '需要多方意见',
+      '开个会',
+      '组织讨论',
+    ],
     excludeWords: ['不要开会', '不用开会', '别组织会议', '不需要会议', '不用召集'],
   },
   {
     intent: 'status_query',
-    examples: ['查询状态', '项目进度', '工作流状态', '任务执行情况', '现在怎么样了', '完成了吗', '进展如何', '到哪里了'],
+    examples: [
+      '查询状态',
+      '项目进度',
+      '工作流状态',
+      '任务执行情况',
+      '现在怎么样了',
+      '完成了吗',
+      '进展如何',
+      '到哪里了',
+    ],
     excludeWords: ['不要查询'],
   },
   {
@@ -88,12 +117,35 @@ const INTENT_EXAMPLES: IntentExample[] = [
   },
   {
     intent: 'schedule_request',
-    examples: ['定时任务', '每天执行', '周期性运行', '定时触发', 'cron', '每小时', '每周', '自动执行', 'schedule', 'reminder'],
+    examples: [
+      '定时任务',
+      '每天执行',
+      '周期性运行',
+      '定时触发',
+      'cron',
+      '每小时',
+      '每周',
+      '自动执行',
+      'schedule',
+      'reminder',
+    ],
     excludeWords: ['不要定时', '不用定时', '别定时'],
   },
   {
     intent: 'organize_request',
-    examples: ['组织架构', '系统设计', '搭建体系', '设计能力', '组织方案', '构建系统', '规划架构', '创建系统', '设计流程', '构建架构', '组织自动化'],
+    examples: [
+      '组织架构',
+      '系统设计',
+      '搭建体系',
+      '设计能力',
+      '组织方案',
+      '构建系统',
+      '规划架构',
+      '创建系统',
+      '设计流程',
+      '构建架构',
+      '组织自动化',
+    ],
     excludeWords: ['不要组织', '不用组织', '别搭建'],
   },
 ];
@@ -123,8 +175,10 @@ interface EmbeddingMatch {
 export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
-    'secretary', 'meeting_chair',
-    'reviewer', 'organize',
+    'secretary',
+    'meeting_chair',
+    'reviewer',
+    'organize',
   ]);
   private customAgents: Map<string, string> = new Map(); // name -> description
   private exampleEmbeddingsWarmed = false;
@@ -161,8 +215,22 @@ export class IntentParser {
 
     // Follow-up detection: only continuation/elaboration requests (not generic affirmations)
     const followUpPatterns = [
-      '继续', '然后', '接下来', '接着', '下一步', 'go on', 'continue', 'next',
-      '详细', '具体', '展开', '多说', '仔细', 'elaborate', 'explain', 'detail',
+      '继续',
+      '然后',
+      '接下来',
+      '接着',
+      '下一步',
+      'go on',
+      'continue',
+      'next',
+      '详细',
+      '具体',
+      '展开',
+      '多说',
+      '仔细',
+      'elaborate',
+      'explain',
+      'detail',
     ];
     const isShortFollowUp = trimmed.length < 20 && followUpPatterns.some((p) => lower.includes(p));
 
@@ -190,13 +258,23 @@ export class IntentParser {
 
     // Decision analysis: requires decision-oriented keywords.
     // "分析" alone is too broad (e.g. "分析代码") — require pairing with option/comparison words.
-    const hasDecisionKeyword = lower.includes('是否') || lower.includes('该不该') || lower.includes('决策');
-    const hasAnalyticalContext = lower.includes('分析') && (
-      lower.includes('选项') || lower.includes('方案') || lower.includes('选择') ||
-      lower.includes('对比') || lower.includes('比较') || lower.includes('优劣') ||
-      lower.includes('哪个') || lower.includes('怎么选') || lower.includes('权衡')
-    );
-    if ((hasDecisionKeyword || hasAnalyticalContext) && !this.hasNegation(lower, 'decision_request')) {
+    const hasDecisionKeyword =
+      lower.includes('是否') || lower.includes('该不该') || lower.includes('决策');
+    const hasAnalyticalContext =
+      lower.includes('分析') &&
+      (lower.includes('选项') ||
+        lower.includes('方案') ||
+        lower.includes('选择') ||
+        lower.includes('对比') ||
+        lower.includes('比较') ||
+        lower.includes('优劣') ||
+        lower.includes('哪个') ||
+        lower.includes('怎么选') ||
+        lower.includes('权衡'));
+    if (
+      (hasDecisionKeyword || hasAnalyticalContext) &&
+      !this.hasNegation(lower, 'decision_request')
+    ) {
       return {
         kind: 'decision_request',
         topic: message.slice(0, 100),
@@ -206,11 +284,17 @@ export class IntentParser {
     }
 
     // Meeting request: must explicitly ask to organize/schedule a meeting, not just mention one.
-    const hasOrganizeMeeting = (lower.includes('组织') && lower.includes('讨论')) ||
-      lower.includes('开会') || lower.includes('召集') || lower.includes('启动会议');
-    const hasAdvisorIntent = lower.includes('顾问') && (
-      lower.includes('讨论') || lower.includes('分析') || lower.includes('会议') || lower.includes('咨询')
-    );
+    const hasOrganizeMeeting =
+      (lower.includes('组织') && lower.includes('讨论')) ||
+      lower.includes('开会') ||
+      lower.includes('召集') ||
+      lower.includes('启动会议');
+    const hasAdvisorIntent =
+      lower.includes('顾问') &&
+      (lower.includes('讨论') ||
+        lower.includes('分析') ||
+        lower.includes('会议') ||
+        lower.includes('咨询'));
     if ((hasOrganizeMeeting || hasAdvisorIntent) && !this.hasNegation(lower, 'meeting_request')) {
       return {
         kind: 'meeting_request',
@@ -221,11 +305,16 @@ export class IntentParser {
 
     // Status query: "查询" alone is too broad. Require pairing with status/project/workflow context.
     const hasStatusKeyword = lower.includes('状态') || lower.includes('进度');
-    const hasQueryWithContext = lower.includes('查询') && (
-      lower.includes('项目') || lower.includes('工作流') || lower.includes('workflow') ||
-      lower.includes('决策') || lower.includes('状态') || lower.includes('进度') ||
-      lower.includes('任务') || lower.includes('执行')
-    );
+    const hasQueryWithContext =
+      lower.includes('查询') &&
+      (lower.includes('项目') ||
+        lower.includes('工作流') ||
+        lower.includes('workflow') ||
+        lower.includes('决策') ||
+        lower.includes('状态') ||
+        lower.includes('进度') ||
+        lower.includes('任务') ||
+        lower.includes('执行'));
     if ((hasStatusKeyword || hasQueryWithContext) && !this.hasNegation(lower, 'status_query')) {
       return {
         kind: 'status_query',
@@ -235,16 +324,46 @@ export class IntentParser {
     }
 
     // Schedule request: before workflow_request to avoid being swallowed
-    const hasScheduleKeyword = lower.includes('定时') || lower.includes('周期') || lower.includes('cron') || lower.includes('schedule') || lower.includes('reminder');
-    const hasRecurringIntent = lower.includes('每天') || lower.includes('每小时') || lower.includes('每周') || lower.includes('每月') || lower.includes('自动');
-    if ((hasScheduleKeyword || hasRecurringIntent) && !this.hasNegation(lower, 'schedule_request')) {
+    const hasScheduleKeyword =
+      lower.includes('定时') ||
+      lower.includes('周期') ||
+      lower.includes('cron') ||
+      lower.includes('schedule') ||
+      lower.includes('reminder');
+    const hasRecurringIntent =
+      lower.includes('每天') ||
+      lower.includes('每小时') ||
+      lower.includes('每周') ||
+      lower.includes('每月') ||
+      lower.includes('自动');
+    if (
+      (hasScheduleKeyword || hasRecurringIntent) &&
+      !this.hasNegation(lower, 'schedule_request')
+    ) {
       return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
     }
 
     // Organize: higher-level design intent — must be checked before workflow_request
-    const hasCreateOrDesign = lower.includes('创建') || lower.includes('设计') || lower.includes('搭建') || lower.includes('组织') || lower.includes('构建') || lower.includes('规划');
-    const hasSystemOrWorkflowOrAgent = lower.includes('系统') || lower.includes('流程') || lower.includes('agent') || lower.includes('工作流') || lower.includes('自动化') || lower.includes('架构') || lower.includes('方案');
-    if (hasCreateOrDesign && hasSystemOrWorkflowOrAgent && !this.hasNegation(lower, 'organize_request')) {
+    const hasCreateOrDesign =
+      lower.includes('创建') ||
+      lower.includes('设计') ||
+      lower.includes('搭建') ||
+      lower.includes('组织') ||
+      lower.includes('构建') ||
+      lower.includes('规划');
+    const hasSystemOrWorkflowOrAgent =
+      lower.includes('系统') ||
+      lower.includes('流程') ||
+      lower.includes('agent') ||
+      lower.includes('工作流') ||
+      lower.includes('自动化') ||
+      lower.includes('架构') ||
+      lower.includes('方案');
+    if (
+      hasCreateOrDesign &&
+      hasSystemOrWorkflowOrAgent &&
+      !this.hasNegation(lower, 'organize_request')
+    ) {
       return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
     }
 
@@ -253,7 +372,10 @@ export class IntentParser {
     const hasCreateSkill = lower.includes('创建') && hasSkillKeyword;
     const hasWriteSkill = (lower.includes('写') || lower.includes('编写')) && hasSkillKeyword;
     const hasSkillMd = lower.includes('skill.md') || lower.includes('skil.md');
-    if ((hasCreateSkill || hasWriteSkill || hasSkillMd) && !this.hasNegation(lower, 'skill_request')) {
+    if (
+      (hasCreateSkill || hasWriteSkill || hasSkillMd) &&
+      !this.hasNegation(lower, 'skill_request')
+    ) {
       return { kind: 'skill_request', topic: message.slice(0, 100), context: message };
     }
 
@@ -266,10 +388,11 @@ export class IntentParser {
 
     if (
       (lower.includes('审查') ||
-      lower.includes('检查') ||
-      lower.includes('review') ||
-      lower.includes('复核') ||
-      lower.includes('审核')) && !this.hasNegation(lower, 'review_request')
+        lower.includes('检查') ||
+        lower.includes('review') ||
+        lower.includes('复核') ||
+        lower.includes('审核')) &&
+      !this.hasNegation(lower, 'review_request')
     ) {
       return {
         kind: 'review_request',
@@ -347,7 +470,10 @@ export class IntentParser {
 
   // ── LLM-powered Intent Classification ─────────────────────
 
-  async parseWithLLM(message: string, conversationContext?: ConversationContext): Promise<ParsedIntent> {
+  async parseWithLLM(
+    message: string,
+    conversationContext?: ConversationContext,
+  ): Promise<ParsedIntent> {
     if (!this.gateway) return this.parse(message, conversationContext);
 
     try {
@@ -423,7 +549,10 @@ Message: "${message}"`;
 
   // ── LLM-powered Agent Routing ─────────────────────────────
 
-  async routeToAgent(message: string, conversationContext?: ConversationContext): Promise<AgentRouteResult> {
+  async routeToAgent(
+    message: string,
+    conversationContext?: ConversationContext,
+  ): Promise<AgentRouteResult> {
     // Ensure embeddings are warmed up
     await this.warmupEmbeddings();
 
@@ -446,7 +575,11 @@ Message: "${message}"`;
               targetAgent: conversationContext.lastRoute as AgentRoleType,
               confidence: 0.85,
               reasoning: 'Topic continuation detected via semantic similarity.',
-              intent: { kind: 'follow_up', previousKind: conversationContext.lastIntent ?? 'unknown', raw: message },
+              intent: {
+                kind: 'follow_up',
+                previousKind: conversationContext.lastIntent ?? 'unknown',
+                raw: message,
+              },
               topicContinuity: true,
             };
           }
@@ -457,7 +590,13 @@ Message: "${message}"`;
     }
 
     // Fast path: high-confidence explicit action intents from keyword parsing
-    const highConfidenceIntents = new Set(['decision_request', 'meeting_request', 'workflow_request', 'organize_request', 'review_request']);
+    const highConfidenceIntents = new Set([
+      'decision_request',
+      'meeting_request',
+      'workflow_request',
+      'organize_request',
+      'review_request',
+    ]);
     if (highConfidenceIntents.has(fastIntent.kind)) {
       return this.fallbackRoute(fastIntent, message);
     }
@@ -509,9 +648,10 @@ Message: "${message}"`;
     }
 
     // If best non-LLM score is already decent, skip LLM
-    const bestNonLLM = candidates.length > 0
-      ? candidates.reduce((best, c) => c.score > best.score ? c : best)
-      : null;
+    const bestNonLLM =
+      candidates.length > 0
+        ? candidates.reduce((best, c) => (c.score > best.score ? c : best))
+        : null;
     if (bestNonLLM && bestNonLLM.score >= 0.6) {
       return {
         targetAgent: bestNonLLM.agent,
@@ -524,11 +664,19 @@ Message: "${message}"`;
     // LLM layer
     try {
       const llmIntent = await this.parseWithLLM(message, conversationContext);
-      const llmRoute = await this.routeWithLLM(message, llmIntent, conversationContext, embeddingMatch);
+      const llmRoute = await this.routeWithLLM(
+        message,
+        llmIntent,
+        conversationContext,
+        embeddingMatch,
+      );
       candidates.push({
         agent: llmRoute.targetAgent,
         score: llmRoute.confidence,
-        sources: { llm: llmRoute.confidence, ...(llmRoute.topicContinuity ? { embedding: embeddingMatch?.confidence } : {}) },
+        sources: {
+          llm: llmRoute.confidence,
+          ...(llmRoute.topicContinuity ? { embedding: embeddingMatch?.confidence } : {}),
+        },
         reasoning: llmRoute.reasoning,
         intent: llmIntent,
       });
@@ -551,7 +699,8 @@ Message: "${message}"`;
     };
 
     if (best.score < 0.5) {
-      result.suggestion = 'The request is unclear. Try rephrasing with more specific keywords (e.g., "decide", "workflow", "review").'
+      result.suggestion =
+        'The request is unclear. Try rephrasing with more specific keywords (e.g., "decide", "workflow", "review").';
     }
 
     return result;
@@ -583,9 +732,10 @@ Message: "${message}"`;
         `please prefer the SAME targetAgent, unless the user explicitly asks to switch topics.`
       : '';
 
-    const embeddingHint = embeddingMatch && embeddingMatch.confidence >= 0.55
-      ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
-      : '';
+    const embeddingHint =
+      embeddingMatch && embeddingMatch.confidence >= 0.55
+        ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
+        : '';
 
     const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
 
@@ -631,7 +781,11 @@ Message: "${message}"`;
     const base = { topic: message.slice(0, 100), context: message };
     switch (match.intent) {
       case 'decision_request':
-        return { kind: 'decision_request', ...base, suggestedDimensions: ['成本', '风险', '时间', '收益'] };
+        return {
+          kind: 'decision_request',
+          ...base,
+          suggestedDimensions: ['成本', '风险', '时间', '收益'],
+        };
       case 'meeting_request':
         return { kind: 'meeting_request', topic: message, requiredPerspectives: ['general'] };
       case 'status_query':
@@ -660,7 +814,9 @@ Message: "${message}"`;
 
       const parsed = JSON.parse(match[0]);
       return {
-        targetAgent: this.validAgentTypes.has(parsed.targetAgent) ? parsed.targetAgent : 'secretary',
+        targetAgent: this.validAgentTypes.has(parsed.targetAgent)
+          ? parsed.targetAgent
+          : 'secretary',
         confidence:
           typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
         reasoning: parsed.reasoning ?? 'No reasoning provided.',

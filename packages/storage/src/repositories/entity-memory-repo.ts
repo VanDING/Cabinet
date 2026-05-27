@@ -56,7 +56,13 @@ export class EntityMemoryRepository {
 
   // ── Employees ──
 
-  upsertEmployee(employeeId: string, name: string, role: string, persona: string, pipelineConfig: string): void {
+  upsertEmployee(
+    employeeId: string,
+    name: string,
+    role: string,
+    persona: string,
+    pipelineConfig: string,
+  ): void {
     this.db
       .prepare(
         'INSERT OR REPLACE INTO entity_employees (employee_id, name, role, persona, pipeline_config) VALUES (?, ?, ?, ?, ?)',
@@ -73,9 +79,10 @@ export class EntityMemoryRepository {
   }
 
   findAllEmployees(): EntityEmployeeRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM entity_employees')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM entity_employees').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToEmployee(r));
   }
 

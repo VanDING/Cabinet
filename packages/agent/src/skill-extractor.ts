@@ -67,9 +67,13 @@ export class SkillExtractor {
       return {
         name: String(parsed.name ?? 'Untitled Skill'),
         description: String(parsed.description ?? ''),
-        triggerPatterns: Array.isArray(parsed.triggerPatterns) ? parsed.triggerPatterns.map(String) : [],
+        triggerPatterns: Array.isArray(parsed.triggerPatterns)
+          ? parsed.triggerPatterns.map(String)
+          : [],
         steps: Array.isArray(parsed.steps) ? parsed.steps.map(String) : [],
-        requiredTools: Array.isArray(parsed.requiredTools) ? parsed.requiredTools.map(String) : uniqueTools,
+        requiredTools: Array.isArray(parsed.requiredTools)
+          ? parsed.requiredTools.map(String)
+          : uniqueTools,
       };
     } catch {
       return null;
@@ -81,7 +85,10 @@ export class SkillExtractor {
     if (!existsSync(AUTO_SKILL_DIR)) {
       mkdirSync(AUTO_SKILL_DIR, { recursive: true });
     }
-    const slug = skill.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    const slug = skill.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .slice(0, 40);
     const fileName = `${slug}-${Date.now()}.md`;
     const filePath = join(AUTO_SKILL_DIR, fileName);
 

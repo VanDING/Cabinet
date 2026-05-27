@@ -1,6 +1,13 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+  readdirSync,
+} from 'node:fs';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -96,7 +103,9 @@ export class SessionManager {
     this.persist(session);
     // Fire create callbacks asynchronously (non-blocking)
     for (const cb of this.onCreateCallbacks) {
-      Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+      Promise.resolve(cb(session)).catch(() => {
+        /* best-effort */
+      });
     }
     return session;
   }
@@ -116,7 +125,9 @@ export class SessionManager {
       // Trigger compression callback when soft limit exceeded
       if (totalTokens > this.softLimit && totalTokens <= this.hardLimit) {
         for (const cb of this.onCompressionCallbacks) {
-          Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+          Promise.resolve(cb(session)).catch(() => {
+            /* best-effort */
+          });
         }
       }
 
@@ -149,7 +160,11 @@ export class SessionManager {
           if (msg.role === 'user' && msg.content.length > 800) {
             const compressed = this.compressToolResult(msg.content);
             if (compressed.length < msg.content.length) {
-              session.messages[i] = { role: msg.role, content: compressed, timestamp: msg.timestamp };
+              session.messages[i] = {
+                role: msg.role,
+                content: compressed,
+                timestamp: msg.timestamp,
+              };
             }
           }
         }
@@ -160,7 +175,7 @@ export class SessionManager {
           const oldest = session.messages.slice(0, oldestIndex);
           const recent = session.messages.slice(recentIndex);
           const excessTokens = newTotalTokens - estimateMessagesTokens([...oldest, ...recent]);
-          const compactMarker: typeof session.messages[0] = {
+          const compactMarker: (typeof session.messages)[0] = {
             role: 'assistant',
             content: `[context_compact] ~${excessTokens} tokens of intermediate messages compressed due to context budget (${newTotalTokens.toLocaleString()} / ${this.maxTokens.toLocaleString()}).`,
             timestamp: new Date(),
@@ -180,7 +195,9 @@ export class SessionManager {
       this.sessions.delete(sessionId);
       // Fire close callbacks asynchronously (non-blocking)
       for (const cb of this.onCloseCallbacks) {
-        Promise.resolve(cb(session)).catch(() => { /* best-effort */ });
+        Promise.resolve(cb(session)).catch(() => {
+          /* best-effort */
+        });
       }
     }
   }
@@ -188,7 +205,11 @@ export class SessionManager {
   remove(sessionId: string): void {
     this.sessions.delete(sessionId);
     const path = this.sessionPath(sessionId);
-    try { unlinkSync(path); } catch { /* ok */ }
+    try {
+      unlinkSync(path);
+    } catch {
+      /* ok */
+    }
   }
 
   /** Replace middle messages with a compressed summary marker. */
@@ -219,7 +240,7 @@ export class SessionManager {
 
     const oldest = session.messages.slice(0, oldestIndex);
     const recent = session.messages.slice(recentIndex);
-    const compactMarker: typeof session.messages[0] = {
+    const compactMarker: (typeof session.messages)[0] = {
       role: 'assistant',
       content: `[context_compact] ${summary}`,
       timestamp: new Date(),
@@ -267,12 +288,10 @@ export class SessionManager {
       if (!existsSync(SESSIONS_DIR)) {
         mkdirSync(SESSIONS_DIR, { recursive: true });
       }
-      writeFileSync(
-        this.sessionPath(session.id),
-        JSON.stringify(session, null, 2),
-        'utf-8',
-      );
-    } catch { /* readonly filesystem — graceful degradation */ }
+      writeFileSync(this.sessionPath(session.id), JSON.stringify(session, null, 2), 'utf-8');
+    } catch {
+      /* readonly filesystem — graceful degradation */
+    }
   }
 
   /** Restore active sessions from ~/.cabinet/sessions/ on startup */
@@ -294,9 +313,13 @@ export class SessionManager {
           // Skip sessions older than max age
           if (session.updatedAt.getTime() < cutoff) continue;
           this.sessions.set(session.id, session);
-        } catch { /* skip corrupt session file */ }
+        } catch {
+          /* skip corrupt session file */
+        }
       }
-    } catch { /* sessions dir not available */ }
+    } catch {
+      /* sessions dir not available */
+    }
   }
 
   private sessionPath(id: string): string {

@@ -6,9 +6,28 @@ export interface SSEStreamCallbacks {
   onRouting?: (targetAgent: string) => void;
   onThinking?: (content: string) => void;
   onThinkingDone?: () => void;
-  onToolStatus?: (message: string, type: 'call' | 'result' | 'error', detail?: { name: string; args?: unknown; result?: unknown }) => void;
-  onTaskUpdate?: (tasks: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>) => void;
-  onSemanticTaskUpdate?: (tasks: Array<{ id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; steps?: number }>) => void;
+  onToolStatus?: (
+    message: string,
+    type: 'call' | 'result' | 'error',
+    detail?: { name: string; args?: unknown; result?: unknown },
+  ) => void;
+  onTaskUpdate?: (
+    tasks: Array<{
+      id: string;
+      name: string;
+      status: 'pending' | 'running' | 'done' | 'error';
+      startTime?: number;
+      endTime?: number;
+    }>,
+  ) => void;
+  onSemanticTaskUpdate?: (
+    tasks: Array<{
+      id: string;
+      title: string;
+      status: 'pending' | 'running' | 'done' | 'error';
+      steps?: number;
+    }>,
+  ) => void;
   onStepBudgetWarning?: (remaining: number, maxSteps: number) => void;
   onStopped?: () => void;
   onUsage?: (usage: { promptTokens: number; completionTokens: number }) => void;
@@ -94,7 +113,9 @@ export async function readSSEStream(
             const tasks = (parsed.tasks ?? []).map((t: any) => ({
               id: String(t.id ?? ''),
               name: String(t.name ?? ''),
-              status: (['pending', 'running', 'done', 'error'].includes(t.status) ? t.status : 'pending') as 'pending' | 'running' | 'done' | 'error',
+              status: (['pending', 'running', 'done', 'error'].includes(t.status)
+                ? t.status
+                : 'pending') as 'pending' | 'running' | 'done' | 'error',
               startTime: typeof t.startTime === 'number' ? t.startTime : undefined,
               endTime: typeof t.endTime === 'number' ? t.endTime : undefined,
             }));
@@ -105,7 +126,9 @@ export async function readSSEStream(
             const tasks = (parsed.tasks ?? []).map((t: any) => ({
               id: String(t.id ?? ''),
               title: String(t.title ?? ''),
-              status: (['pending', 'running', 'done', 'error'].includes(t.status) ? t.status : 'pending') as 'pending' | 'running' | 'done' | 'error',
+              status: (['pending', 'running', 'done', 'error'].includes(t.status)
+                ? t.status
+                : 'pending') as 'pending' | 'running' | 'done' | 'error',
               steps: typeof t.steps === 'number' ? t.steps : undefined,
             }));
             callbacks.onSemanticTaskUpdate?.(tasks);
@@ -123,7 +146,11 @@ export async function readSSEStream(
             continue;
           }
           if (parsed.type === 'sub_agent_tool_call') {
-            callbacks.onSubAgentToolCall?.(parsed.agentName ?? '', parsed.toolName ?? '', parsed.args);
+            callbacks.onSubAgentToolCall?.(
+              parsed.agentName ?? '',
+              parsed.toolName ?? '',
+              parsed.args,
+            );
             continue;
           }
           if (parsed.type === 'sub_agent_thinking') {

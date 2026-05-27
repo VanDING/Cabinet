@@ -154,14 +154,20 @@ describe('DecisionService tier awareness', () => {
 
   it('creates decision with correct auto-approval at T1', () => {
     const svc = createService(DelegationTier.StrategicGuard);
-    const decision = svc.create({ ...baseInput, classification: { ...baseInput.classification, estimatedCostUsd: 0.05, optionCount: 2 } });
+    const decision = svc.create({
+      ...baseInput,
+      classification: { ...baseInput.classification, estimatedCostUsd: 0.05, optionCount: 2 },
+    });
     expect(decision.status).toBe('approved');
     expect(decision.captainId).toBe('system');
   });
 
   it('creates decision without auto-approval when above tier max', () => {
     const svc = createService(DelegationTier.StrategicGuard);
-    const decision = svc.create({ ...baseInput, classification: { ...baseInput.classification, involvesOrgConfig: true } });
+    const decision = svc.create({
+      ...baseInput,
+      classification: { ...baseInput.classification, involvesOrgConfig: true },
+    });
     expect(decision.status).toBe('pending');
   });
 });

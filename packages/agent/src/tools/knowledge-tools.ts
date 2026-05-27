@@ -1,8 +1,15 @@
 import type { ToolDefinition } from '../tool-executor.js';
 
 export interface KnowledgeToolDeps {
-  indexDocument: (filePath: string, projectId: string) => Promise<{ chunkCount: number; filePath: string }>;
-  searchDocuments: (query: string, projectId: string, limit?: number) => Promise<{
+  indexDocument: (
+    filePath: string,
+    projectId: string,
+  ) => Promise<{ chunkCount: number; filePath: string }>;
+  searchDocuments: (
+    query: string,
+    projectId: string,
+    limit?: number,
+  ) => Promise<{
     chunks: { content: string; sourcePath: string; chunkIndex: number; score: number }[];
   }>;
   clearDocumentIndex: (projectId: string, filePath?: string) => Promise<{ removed: number }>;

@@ -6,9 +6,7 @@ import type { ReactElement } from 'react';
 function AllProviders({ children }: { children: React.ReactNode }) {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        {children}
-      </ToastProvider>
+      <ToastProvider>{children}</ToastProvider>
     </BrowserRouter>
   );
 }

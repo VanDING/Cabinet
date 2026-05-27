@@ -24,7 +24,13 @@ import { SafetyChecker } from './safety.js';
 import { CheckpointManager } from './checkpoint.js';
 import type { Database } from '@cabinet/storage';
 
-import type { DispatchMode, PipelineStep, AgentOutput, PipelineContext, PipelineStepContext } from '@cabinet/types';
+import type {
+  DispatchMode,
+  PipelineStep,
+  AgentOutput,
+  PipelineContext,
+  PipelineStepContext,
+} from '@cabinet/types';
 import type { RateLimitTracker } from '@cabinet/gateway';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -59,14 +65,18 @@ export interface DispatchResult {
 
 class ResultSynthesizer {
   synthesize(outputs: AgentOutput[]): AgentOutput {
-    const summary = outputs.map((o) => o.summary).filter(Boolean).join('\n');
+    const summary = outputs
+      .map((o) => o.summary)
+      .filter(Boolean)
+      .join('\n');
     const allFindings = outputs.flatMap((o) => o.findings ?? []);
     const dedupedFindings = this.deduplicateFindings(allFindings);
     const decisions = outputs.flatMap((o) => o.decisions ?? []);
     const openQuestions = [...new Set(outputs.flatMap((o) => o.openQuestions ?? []))];
-    const avgConfidence = outputs.length > 0
-      ? outputs.reduce((sum, o) => sum + (o.confidence ?? 0.5), 0) / outputs.length
-      : 0.5;
+    const avgConfidence =
+      outputs.length > 0
+        ? outputs.reduce((sum, o) => sum + (o.confidence ?? 0.5), 0) / outputs.length
+        : 0.5;
     const suggestedNextSteps = [...new Set(outputs.flatMap((o) => o.suggestedNextSteps ?? []))];
 
     return {
@@ -91,8 +101,9 @@ class ResultSynthesizer {
     }
     // Sort by severity
     const severityOrder = { high: 0, medium: 1, low: 2 };
-    return result.sort((a, b) =>
-      (severityOrder[a.severity ?? 'low'] ?? 2) - (severityOrder[b.severity ?? 'low'] ?? 2),
+    return result.sort(
+      (a, b) =>
+        (severityOrder[a.severity ?? 'low'] ?? 2) - (severityOrder[b.severity ?? 'low'] ?? 2),
     );
   }
 }
@@ -251,9 +262,7 @@ export class AgentDispatcher {
     }
     const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
 
-    const structuredOutputs = steps
-      .map((s) => s.structuredOutput)
-      .filter(Boolean) as AgentOutput[];
+    const structuredOutputs = steps.map((s) => s.structuredOutput).filter(Boolean) as AgentOutput[];
 
     let finalOutput: string;
     let synthesized: AgentOutput | undefined;
@@ -270,10 +279,11 @@ export class AgentDispatcher {
           : []),
       ].join('\n');
     } else {
-      finalOutput = steps
-        .filter((s) => s.status === 'completed')
-        .map((s) => `[${s.role}] ${s.output}`)
-        .join('\n\n---\n\n') || 'No outputs produced.';
+      finalOutput =
+        steps
+          .filter((s) => s.status === 'completed')
+          .map((s) => `[${s.role}] ${s.output}`)
+          .join('\n\n---\n\n') || 'No outputs produced.';
     }
 
     return {

@@ -72,4 +72,3 @@ export const BACKUP_KEEP_COUNT = 7;
 
 /** Budget period for cost tracking and alerts. */
 export type BudgetPeriod = 'daily' | 'weekly' | 'monthly';
-

@@ -31,7 +31,10 @@ export interface ToolDescriptor {
 
 /** Called after each tool execution with timing and result info. */
 export type ToolCallCallback = (
-  toolName: string, success: boolean, blocked: boolean, durationMs: number,
+  toolName: string,
+  success: boolean,
+  blocked: boolean,
+  durationMs: number,
 ) => void;
 
 export class ToolExecutor {

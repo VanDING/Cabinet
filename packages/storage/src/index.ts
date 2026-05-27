@@ -20,27 +20,60 @@ export { runMigrations, MIGRATIONS, type MigrationEntry } from './migrations/run
 export { EventLogRepository } from './repositories/event-log.js';
 export { ProjectRepository } from './repositories/project.js';
 export { DecisionRepository } from './repositories/decision.js';
-export { WorkflowRepository, type WorkflowRow, type WorkflowRunRow } from './repositories/workflow-repo.js';
+export {
+  WorkflowRepository,
+  type WorkflowRow,
+  type WorkflowRunRow,
+} from './repositories/workflow-repo.js';
 export { AuditLogRepository, type AuditLogRow } from './repositories/audit-log-repo.js';
 export { ApiKeyRepository, type ApiKeyRow } from './repositories/api-key-repo.js';
 export { AgentRoleRepository, type AgentRoleRow } from './repositories/agent-role-repo.js';
 export { SkillRepository, type SkillRow } from './repositories/skill-repo.js';
 export { EmployeeRepository, type EmployeeRow } from './repositories/employee-repo.js';
-export { ProjectContextRepository, type ProjectContextRow } from './repositories/project-context-repo.js';
+export {
+  ProjectContextRepository,
+  type ProjectContextRow,
+} from './repositories/project-context-repo.js';
 export { SettingsRepository } from './repositories/settings-repo.js';
 export { MetricRepository, type MetricRow } from './repositories/metric-repo.js';
-export { ScheduledTaskRepository, type ScheduledTaskRow } from './repositories/scheduled-task-repo.js';
+export {
+  ScheduledTaskRepository,
+  type ScheduledTaskRow,
+} from './repositories/scheduled-task-repo.js';
 export { CostHistoryRepository, type CostHistoryRow } from './repositories/cost-history-repo.js';
-export { SessionMetricsRepository, type SessionMetricRow } from './repositories/session-metrics-repo.js';
-export { DocumentChunkRepository, type DocumentChunkRow } from './repositories/document-chunk-repo.js';
+export {
+  SessionMetricsRepository,
+  type SessionMetricRow,
+} from './repositories/session-metrics-repo.js';
+export {
+  DocumentChunkRepository,
+  type DocumentChunkRow,
+} from './repositories/document-chunk-repo.js';
 export { DeliverableRepository, type DeliverableRow } from './repositories/deliverable-repo.js';
-export { EvaluationResultRepository, type EvaluationResultRow } from './repositories/evaluation-result-repo.js';
-export { ShortTermMemoryRepository, type ShortTermMemoryRow } from './repositories/short-term-memory-repo.js';
-export { LongTermMemoryRepository, type LongTermMemoryRow } from './repositories/long-term-memory-repo.js';
-export { EntityMemoryRepository, type EntityPrefsRow, type EntityEmployeeRow } from './repositories/entity-memory-repo.js';
+export {
+  EvaluationResultRepository,
+  type EvaluationResultRow,
+} from './repositories/evaluation-result-repo.js';
+export {
+  ShortTermMemoryRepository,
+  type ShortTermMemoryRow,
+} from './repositories/short-term-memory-repo.js';
+export {
+  LongTermMemoryRepository,
+  type LongTermMemoryRow,
+} from './repositories/long-term-memory-repo.js';
+export {
+  EntityMemoryRepository,
+  type EntityPrefsRow,
+  type EntityEmployeeRow,
+} from './repositories/entity-memory-repo.js';
 export { CheckpointRepository } from './repositories/checkpoint-repo.js';
 export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
-export { SYSTEM_KNOWLEDGE_BASE, syncSystemKnowledge, type SystemKnowledgeBaseEntry } from './system-knowledge-base.js';
+export {
+  SYSTEM_KNOWLEDGE_BASE,
+  syncSystemKnowledge,
+  type SystemKnowledgeBaseEntry,
+} from './system-knowledge-base.js';
 // Utilities
 export { BackupManager, type BackupConfig, type BackupResult } from './backup.js';
 export { Logger, getLogger, type LogLevel, type LogEntry } from './logger.js';

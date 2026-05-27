@@ -197,12 +197,15 @@ export function OfficePage() {
 
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const handleLayoutChange = useCallback((newLayout: Layout) => {
-    const cloned = newLayout.map((item) => ({ ...item }));
-    setLayout(cloned);
-    clearTimeout(layoutSaveTimer.current);
-    layoutSaveTimer.current = setTimeout(() => saveLayout(cloned, projectId), 300);
-  }, [projectId]);
+  const handleLayoutChange = useCallback(
+    (newLayout: Layout) => {
+      const cloned = newLayout.map((item) => ({ ...item }));
+      setLayout(cloned);
+      clearTimeout(layoutSaveTimer.current);
+      layoutSaveTimer.current = setTimeout(() => saveLayout(cloned, projectId), 300);
+    },
+    [projectId],
+  );
 
   const handleAddWidget = (type: WidgetType) => {
     if (layout.find((item) => item.i === type)) return;
@@ -264,7 +267,10 @@ export function OfficePage() {
             onClick={() => {
               if (stats.pendingDecisions > 0) {
                 // Open the first pending decision
-                apiFetch(`/api/decisions?status=pending${projectId ? `&projectId=${projectId}` : ''}`, { headers: authHeaders() })
+                apiFetch(
+                  `/api/decisions?status=pending${projectId ? `&projectId=${projectId}` : ''}`,
+                  { headers: authHeaders() },
+                )
                   .then((r) => r.json())
                   .then((data) => {
                     if (data.decisions?.[0]) setReviewDecisionId(data.decisions[0].id);
@@ -295,7 +301,9 @@ export function OfficePage() {
       case 'active-workflows':
         return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" />;
       case 'decision-list':
-        return <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />;
+        return (
+          <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />
+        );
       case 'event-timeline':
         return <EventTimeline projectId={projectId} />;
       case 'project-switcher':

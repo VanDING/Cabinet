@@ -60,10 +60,7 @@ export class DecisionRepository {
     return row ? rowToDecision(row) : null;
   }
 
-  listByProject(
-    projectId: string,
-    opts?: { limit?: number; offset?: number },
-  ): Decision[] {
+  listByProject(projectId: string, opts?: { limit?: number; offset?: number }): Decision[] {
     const rows = this.db
       .prepare(
         'SELECT * FROM decisions WHERE project_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
@@ -79,10 +76,7 @@ export class DecisionRepository {
     return rows.map(rowToDecision);
   }
 
-  listPending(
-    projectId: string,
-    opts?: { limit?: number; offset?: number },
-  ): Decision[] {
+  listPending(projectId: string, opts?: { limit?: number; offset?: number }): Decision[] {
     const rows = this.db
       .prepare(
         "SELECT * FROM decisions WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT ? OFFSET ?",
@@ -93,37 +87,45 @@ export class DecisionRepository {
 
   listAllPending(opts?: { limit?: number; offset?: number }): Decision[] {
     const rows = this.db
-      .prepare("SELECT * FROM decisions WHERE status = 'pending' ORDER BY created_at DESC LIMIT ? OFFSET ?")
+      .prepare(
+        "SELECT * FROM decisions WHERE status = 'pending' ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      )
       .all(opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
     return rows.map(rowToDecision);
   }
 
-  listByStatus(
-    status: string,
-    opts?: { limit?: number; offset?: number },
-  ): Decision[] {
+  listByStatus(status: string, opts?: { limit?: number; offset?: number }): Decision[] {
     const rows = this.db
       .prepare('SELECT * FROM decisions WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(status, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
     return rows.map(rowToDecision);
   }
 
-  listByLevel(
-    level: string,
-    opts?: { limit?: number; offset?: number },
-  ): Decision[] {
+  listByLevel(level: string, opts?: { limit?: number; offset?: number }): Decision[] {
     const rows = this.db
       .prepare('SELECT * FROM decisions WHERE level = ? ORDER BY created_at DESC LIMIT ? OFFSET ?')
       .all(level, opts?.limit ?? 100, opts?.offset ?? 0) as Record<string, unknown>[];
     return rows.map(rowToDecision);
   }
 
-  update(id: string, changes: Partial<Pick<Decision, 'status' | 'chosenOptionId' | 'resolvedAt'>>): void {
+  update(
+    id: string,
+    changes: Partial<Pick<Decision, 'status' | 'chosenOptionId' | 'resolvedAt'>>,
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
-    if (changes.status !== undefined) { sets.push('status = ?'); values.push(changes.status); }
-    if (changes.chosenOptionId !== undefined) { sets.push('chosen_option_id = ?'); values.push(changes.chosenOptionId); }
-    if (changes.resolvedAt !== undefined) { sets.push('resolved_at = ?'); values.push(changes.resolvedAt.toISOString()); }
+    if (changes.status !== undefined) {
+      sets.push('status = ?');
+      values.push(changes.status);
+    }
+    if (changes.chosenOptionId !== undefined) {
+      sets.push('chosen_option_id = ?');
+      values.push(changes.chosenOptionId);
+    }
+    if (changes.resolvedAt !== undefined) {
+      sets.push('resolved_at = ?');
+      values.push(changes.resolvedAt.toISOString());
+    }
     if (sets.length === 0) return;
     values.push(id);
     this.db.prepare(`UPDATE decisions SET ${sets.join(', ')} WHERE id = ?`).run(...values);
@@ -138,9 +140,7 @@ export class DecisionRepository {
   }
 
   archiveExpired(): void {
-    this.db
-      .prepare("UPDATE decisions SET status = 'archived' WHERE status = 'expired'")
-      .run();
+    this.db.prepare("UPDATE decisions SET status = 'archived' WHERE status = 'expired'").run();
   }
 
   deleteByProject(projectId: string): void {

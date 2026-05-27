@@ -58,12 +58,14 @@ export class SubconsciousLoop {
     }
   }
 
-  private async sampleRandomMemories(count: number): Promise<Array<{
-    id: string;
-    content: string;
-    metadata: Record<string, unknown>;
-    timestamp: Date;
-  }>> {
+  private async sampleRandomMemories(count: number): Promise<
+    Array<{
+      id: string;
+      content: string;
+      metadata: Record<string, unknown>;
+      timestamp: Date;
+    }>
+  > {
     // SQLite RANDOM() is fast for small tables; limit to active memories
     // Since LongTermMemory doesn't expose raw SQL, we use search with an empty query
     // and rely on the repository to return recent entries, then shuffle.
@@ -99,9 +101,10 @@ export class SubconsciousLoop {
     if (/\?|如何|why|what|how/i.test(content)) relevance += 0.15;
     if (content.length > 200) relevance += 0.1;
 
-    const text = related.length > 0
-      ? `You previously noted: "${content.slice(0, 120)}..." This connects to ${related.join(', ')}.`
-      : `A past memory may be relevant: "${content.slice(0, 120)}..."`;
+    const text =
+      related.length > 0
+        ? `You previously noted: "${content.slice(0, 120)}..." This connects to ${related.join(', ')}.`
+        : `A past memory may be relevant: "${content.slice(0, 120)}..."`;
 
     return {
       relevance: Math.min(relevance, 0.95),

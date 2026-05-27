@@ -1,7 +1,13 @@
 import { ToolExecutor, type ToolDefinition } from '../tool-executor.js';
 import type { EventBus } from '@cabinet/events';
 import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
-import { MessageType, DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME, type DecisionStore, type Decision } from '@cabinet/types';
+import {
+  MessageType,
+  DEFAULT_CAPTAIN_ID,
+  DEFAULT_CAPTAIN_NAME,
+  type DecisionStore,
+  type Decision,
+} from '@cabinet/types';
 import { getSkillRegistry } from '../skill-registry.js';
 import { createFileTools, type FileToolDeps } from './file-tools.js';
 import { createWebTools, type WebToolDeps } from './web-tools.js';
@@ -10,9 +16,21 @@ import { createSchedulerTools, type SchedulerToolDeps } from './scheduler-tools.
 import { createKnowledgeTools, type KnowledgeToolDeps } from './knowledge-tools.js';
 import { createEvaluationTools, type EvaluationToolDeps } from './evaluation-tools.js';
 import { createLSPTools, type LSPToolDeps } from './lsp-tools.js';
-import { createSystemKnowledgeTools, type SystemKnowledgeToolDeps } from './system-knowledge-tools.js';
+import {
+  createSystemKnowledgeTools,
+  type SystemKnowledgeToolDeps,
+} from './system-knowledge-tools.js';
 
-export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDeps, SchedulerToolDeps, KnowledgeToolDeps, EvaluationToolDeps, LSPToolDeps, SystemKnowledgeToolDeps {
+export interface ToolDependencies
+  extends
+    FileToolDeps,
+    WebToolDeps,
+    ShellToolDeps,
+    SchedulerToolDeps,
+    KnowledgeToolDeps,
+    EvaluationToolDeps,
+    LSPToolDeps,
+    SystemKnowledgeToolDeps {
   // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
@@ -44,7 +62,9 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   rejectDecision: (decisionId: string, captainId: string) => Decision;
 
   listWorkflows: () => { id: string; name: string; status: string; stepCount: number }[];
-  getWorkflow: (id: string) => { id: string; name: string; definition: unknown; status: string } | undefined;
+  getWorkflow: (
+    id: string,
+  ) => { id: string; name: string; definition: unknown; status: string } | undefined;
   createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => {
     id: string;
   };
@@ -96,12 +116,24 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   updateAgent: (name: string, updates: Record<string, unknown>) => void;
   deleteAgent: (name: string) => void;
   listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
-  invokeAgent: (agentName: string, message: string, callerSessionId?: string) => Promise<{ agentName: string; response: string }>;
+  invokeAgent: (
+    agentName: string,
+    message: string,
+    callerSessionId?: string,
+  ) => Promise<{ agentName: string; response: string }>;
 
   // Project tools
   setProjectContext: (projectId: string) => { id: string; name: string };
-  createProject: (input: { name: string; description?: string; rootPath?: string }) => { id: string; name: string };
-  listProjects: () => { id: string; name: string; lastActivityAt?: string; activeWorkflowCount?: number }[];
+  createProject: (input: { name: string; description?: string; rootPath?: string }) => {
+    id: string;
+    name: string;
+  };
+  listProjects: () => {
+    id: string;
+    name: string;
+    lastActivityAt?: string;
+    activeWorkflowCount?: number;
+  }[];
   getProjectContext: (projectId: string) => Record<string, unknown> | null;
 
   getDashboardStats: () => {
@@ -117,7 +149,9 @@ export interface ToolDependencies extends FileToolDeps, WebToolDeps, ShellToolDe
   };
 
   delegateTask: (name: string, agentName?: string, description?: string) => string;
-  getTaskStatus: (taskId: string) => { id: string; name: string; status: string; startTime?: number; endTime?: number } | null;
+  getTaskStatus: (
+    taskId: string,
+  ) => { id: string; name: string; status: string; startTime?: number; endTime?: number } | null;
   listActiveTasks: () => { id: string; name: string; status: string }[];
 
   getDecisionAudit: (decisionId: string) => Array<{
@@ -254,7 +288,11 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           causationId: null,
           timestamp: new Date(),
           messageType: MessageType.SystemNotification,
-          payload: { type: 'tool_notification', message: args.message as string, data: { level: (args.level as string) ?? 'info' } },
+          payload: {
+            type: 'tool_notification',
+            message: args.message as string,
+            data: { level: (args.level as string) ?? 'info' },
+          },
         });
         return { published: true, messageId };
       },
@@ -320,7 +358,11 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const importance = args.importance as number | undefined;
         const confidence = args.confidence as number | undefined;
         if (!memoryId) return { error: 'memoryId is required' };
-        const success = await deps.longTerm.updateMemory(memoryId, { status, importance, confidence });
+        const success = await deps.longTerm.updateMemory(memoryId, {
+          status,
+          importance,
+          confidence,
+        });
         return { updated: success, memoryId };
       },
     },
@@ -488,7 +530,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         const advisorIds = (args.advisors as string[]) ?? undefined;
         const projectId = args.projectId as string | undefined;
         const chairBrief = args.brief as string | undefined;
-const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief);
+        const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief);
         return {
           meetingId: result.meetingId,
           topic: result.topic,
@@ -536,7 +578,10 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
 
         if (!name) return { error: 'name is required' };
         if (!/^[\w一-鿿\s-]{2,64}$/.test(name)) {
-          return { error: 'Invalid agent name. Use 2-64 characters: letters, digits, Chinese, underscores, hyphens, spaces.' };
+          return {
+            error:
+              'Invalid agent name. Use 2-64 characters: letters, digits, Chinese, underscores, hyphens, spaces.',
+          };
         }
         if (!systemPrompt) return { error: 'systemPrompt is required' };
 
@@ -562,7 +607,8 @@ const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief)
         if (args.systemPrompt !== undefined) updates.systemPrompt = args.systemPrompt;
         if (args.modelTier !== undefined) updates.modelTier = args.modelTier;
         if (args.temperature !== undefined) updates.temperature = args.temperature;
-        if (args.maxResponseTokens !== undefined) updates.maxResponseTokens = args.maxResponseTokens;
+        if (args.maxResponseTokens !== undefined)
+          updates.maxResponseTokens = args.maxResponseTokens;
         if (args.allowedTools !== undefined) updates.allowedTools = args.allowedTools;
         if (args.contextBudget !== undefined) updates.contextBudget = args.contextBudget;
         deps.updateAgent(name, updates);
@@ -738,7 +784,12 @@ export function registerCabinetTools(executor: ToolExecutor, deps: ToolDependenc
 export function registerMCPTools(
   executor: ToolExecutor,
   mcpCallTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
-  mcpListTools: () => { serverName: string; name: string; description: string; inputSchema: Record<string, unknown> }[],
+  mcpListTools: () => {
+    serverName: string;
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+  }[],
 ): ToolExecutor {
   for (const tool of mcpListTools()) {
     const fullName = `mcp__${tool.name}`;

@@ -4,7 +4,9 @@ import { MessageType } from '@cabinet/types';
 import type { MessageEnvelope } from '@cabinet/types';
 
 function makeEnvelope(
-  overrides: Partial<Pick<MessageEnvelope, 'messageId' | 'correlationId' | 'causationId' | 'timestamp'>> = {},
+  overrides: Partial<
+    Pick<MessageEnvelope, 'messageId' | 'correlationId' | 'causationId' | 'timestamp'>
+  > = {},
 ): MessageEnvelope {
   return {
     messageId: 'msg-1',

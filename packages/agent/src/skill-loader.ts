@@ -30,21 +30,40 @@ export function parseSkillMarkdown(content: string): ParsedSkill | null {
     kind: validateKind(fields['kind']),
     version: typeof fields['version'] === 'number' ? fields['version'] : undefined,
     license: typeof fields['license'] === 'string' ? fields['license'] : undefined,
-    compatibility: typeof fields['compatibility'] === 'string' ? fields['compatibility'] : undefined,
+    compatibility:
+      typeof fields['compatibility'] === 'string' ? fields['compatibility'] : undefined,
     model: typeof fields['model'] === 'string' ? fields['model'] : undefined,
     effort: typeof fields['effort'] === 'string' ? fields['effort'] : undefined,
     context: typeof fields['context'] === 'string' ? fields['context'] : undefined,
     agent: typeof fields['agent'] === 'string' ? fields['agent'] : undefined,
-    userInvocable: typeof fields['user-invocable'] === 'boolean' ? fields['user-invocable']
-      : fields['user_invocable'] !== undefined ? Boolean(fields['user_invocable']) : undefined,
-    disableModelInvocation: typeof fields['disable-model-invocation'] === 'boolean' ? fields['disable-model-invocation']
-      : fields['disable_model_invocation'] !== undefined ? Boolean(fields['disable_model_invocation']) : undefined,
-    argumentHint: typeof fields['argument-hint'] === 'string' ? fields['argument-hint']
-      : typeof fields['argument_hint'] === 'string' ? fields['argument_hint'] : undefined,
-    arguments: typeof fields['arguments'] === 'string' || Array.isArray(fields['arguments'])
-      ? fields['arguments'] as string | string[] : undefined,
-    whenToUse: typeof fields['when_to_use'] === 'string' ? fields['when_to_use']
-      : typeof fields['when-to-use'] === 'string' ? fields['when-to-use'] : undefined,
+    userInvocable:
+      typeof fields['user-invocable'] === 'boolean'
+        ? fields['user-invocable']
+        : fields['user_invocable'] !== undefined
+          ? Boolean(fields['user_invocable'])
+          : undefined,
+    disableModelInvocation:
+      typeof fields['disable-model-invocation'] === 'boolean'
+        ? fields['disable-model-invocation']
+        : fields['disable_model_invocation'] !== undefined
+          ? Boolean(fields['disable_model_invocation'])
+          : undefined,
+    argumentHint:
+      typeof fields['argument-hint'] === 'string'
+        ? fields['argument-hint']
+        : typeof fields['argument_hint'] === 'string'
+          ? fields['argument_hint']
+          : undefined,
+    arguments:
+      typeof fields['arguments'] === 'string' || Array.isArray(fields['arguments'])
+        ? (fields['arguments'] as string | string[])
+        : undefined,
+    whenToUse:
+      typeof fields['when_to_use'] === 'string'
+        ? fields['when_to_use']
+        : typeof fields['when-to-use'] === 'string'
+          ? fields['when-to-use']
+          : undefined,
     allowedTools: extractAllowedTools(fields),
     metadata: extractMetadata(fields),
     body,
@@ -131,11 +150,27 @@ function extractAllowedTools(fields: Record<string, unknown>): string[] | undefi
 
 function extractMetadata(fields: Record<string, unknown>): Record<string, unknown> {
   const known = new Set([
-    'name', 'description', 'kind', 'version', 'license', 'compatibility',
-    'model', 'effort', 'context', 'agent',
-    'user-invocable', 'user_invocable', 'disable-model-invocation', 'disable_model_invocation',
-    'argument-hint', 'argument_hint', 'arguments',
-    'when_to_use', 'when-to-use', 'allowed-tools', 'allowed_tools',
+    'name',
+    'description',
+    'kind',
+    'version',
+    'license',
+    'compatibility',
+    'model',
+    'effort',
+    'context',
+    'agent',
+    'user-invocable',
+    'user_invocable',
+    'disable-model-invocation',
+    'disable_model_invocation',
+    'argument-hint',
+    'argument_hint',
+    'arguments',
+    'when_to_use',
+    'when-to-use',
+    'allowed-tools',
+    'allowed_tools',
   ]);
   const meta: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {

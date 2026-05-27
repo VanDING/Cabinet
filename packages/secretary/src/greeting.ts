@@ -37,7 +37,10 @@ export class GreetingService {
   generateGreeting(captainName: string, pendingDecisions: number, todayCost: number): string {
     // Backward-compatible: returns plain text greeting
     return this.generate({
-      captainName, pendingDecisions, todayCost, activeWorkflows: 0,
+      captainName,
+      pendingDecisions,
+      todayCost,
+      activeWorkflows: 0,
     }).greeting;
   }
 

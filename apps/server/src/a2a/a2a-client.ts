@@ -46,7 +46,10 @@ export class A2AClient {
   }
 
   /** Send a streaming message (returns SSE reader). */
-  async sendStreamingMessage(agentUrl: string, message: A2AMessage): Promise<ReadableStream<Uint8Array> | null> {
+  async sendStreamingMessage(
+    agentUrl: string,
+    message: A2AMessage,
+  ): Promise<ReadableStream<Uint8Array> | null> {
     try {
       const url = `${agentUrl.replace(/\/$/, '')}/api/a2a/message/stream`;
       const res = await fetch(url, {

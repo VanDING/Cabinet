@@ -12,22 +12,23 @@
 
 ## File Map
 
-| File | Responsibility |
-|------|----------------|
-| `packages/agent/src/context-builder.ts` | Assembles system prompt tiers; currently fires `searchLongTerm` (embedding API) on every `build()` with zero caching. |
-| `packages/agent/src/agent-loop.ts` | Main agent loop; rebuilds context every step with `taskDescription`, forcing redundant RAG and re-capturing project snapshots per `sessionId`. |
-| `packages/agent/src/rules-loader.ts` | Loads hierarchical rules; `summarize()` internally calls `loadAll()`, causing a second disk traversal on every context build. |
-| `packages/agent/src/project-snapshot.ts` | Caches project file-tree snapshots keyed by `sessionId`, so every new session re-walks the filesystem even if the project root is identical. |
-| `packages/agent/src/__tests__/context-builder.test.ts` | **Create** — validates RAG embedding cache deduplication and TTL expiry. |
-| `packages/agent/src/__tests__/agent-loop.test.ts` | **Modify** — validates that `searchLongTerm` is only invoked on step 0 across a multi-step run. |
-| `packages/agent/src/__tests__/rules-loader.test.ts` | **Create** — validates that `summarize()` returns cached summary without re-scanning disk when rules are unchanged. |
-| `packages/agent/src/__tests__/project-snapshot.test.ts` | **Create** — validates that snapshots are cached by `projectRoot` and shared across sessions. |
+| File                                                    | Responsibility                                                                                                                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/agent/src/context-builder.ts`                 | Assembles system prompt tiers; currently fires `searchLongTerm` (embedding API) on every `build()` with zero caching.                          |
+| `packages/agent/src/agent-loop.ts`                      | Main agent loop; rebuilds context every step with `taskDescription`, forcing redundant RAG and re-capturing project snapshots per `sessionId`. |
+| `packages/agent/src/rules-loader.ts`                    | Loads hierarchical rules; `summarize()` internally calls `loadAll()`, causing a second disk traversal on every context build.                  |
+| `packages/agent/src/project-snapshot.ts`                | Caches project file-tree snapshots keyed by `sessionId`, so every new session re-walks the filesystem even if the project root is identical.   |
+| `packages/agent/src/__tests__/context-builder.test.ts`  | **Create** — validates RAG embedding cache deduplication and TTL expiry.                                                                       |
+| `packages/agent/src/__tests__/agent-loop.test.ts`       | **Modify** — validates that `searchLongTerm` is only invoked on step 0 across a multi-step run.                                                |
+| `packages/agent/src/__tests__/rules-loader.test.ts`     | **Create** — validates that `summarize()` returns cached summary without re-scanning disk when rules are unchanged.                            |
+| `packages/agent/src/__tests__/project-snapshot.test.ts` | **Create** — validates that snapshots are cached by `projectRoot` and shared across sessions.                                                  |
 
 ---
 
 ### Task 1: Cache RAG Embedding Results in ContextBuilder
 
 **Files:**
+
 - Modify: `packages/agent/src/context-builder.ts:41-129`
 - Test: `packages/agent/src/__tests__/context-builder.test.ts`
 
@@ -83,16 +84,36 @@ describe('ContextBuilder RAG cache', () => {
   });
 
   it('reuses cached RAG result within 60s for identical query', async () => {
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
-    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
+    await builder.build({
+      sessionId: 's2',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     expect(memory.calls).toHaveLength(1);
   });
 
   it('refreshes cache after TTL expires', async () => {
     vi.useFakeTimers();
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     vi.advanceTimersByTime(61_000);
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     expect(memory.calls).toHaveLength(2);
     vi.useRealTimers();
   });
@@ -107,9 +128,11 @@ describe('ContextBuilder RAG cache', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/context-builder.test.ts --reporter=verbose
 ```
+
 Expected: FAIL — `toHaveLength(1)` fails on the second test because the current implementation calls `searchLongTerm` twice.
 
 - [ ] **Step 3: Implement RAG cache in ContextBuilder**
@@ -133,29 +156,31 @@ export class ContextBuilder {
 Replace the RAG block inside `build()` (around lines 92-103) with:
 
 ```ts
-    // Retrieve and inject RAG results at the end of system prompt (fixed position)
-    if (options.taskDescription) {
-      const ragCacheKey = `${options.projectId}:${options.taskDescription}`;
-      const cachedRag = this.ragCache.get(ragCacheKey);
-      const now = Date.now();
-      let ragResults: string[];
+// Retrieve and inject RAG results at the end of system prompt (fixed position)
+if (options.taskDescription) {
+  const ragCacheKey = `${options.projectId}:${options.taskDescription}`;
+  const cachedRag = this.ragCache.get(ragCacheKey);
+  const now = Date.now();
+  let ragResults: string[];
 
-      if (cachedRag && now - cachedRag.timestamp < this.RAG_CACHE_TTL_MS) {
-        ragResults = cachedRag.results;
-      } else {
-        try {
-          ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
-          this.ragCache.set(ragCacheKey, { results: ragResults, timestamp: now });
-        } catch {
-          ragResults = [];
-        }
-      }
-
-      if (ragResults.length > 0) {
-        const trimmed = ragResults.slice(0, 3).map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
-        systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
-      }
+  if (cachedRag && now - cachedRag.timestamp < this.RAG_CACHE_TTL_MS) {
+    ragResults = cachedRag.results;
+  } else {
+    try {
+      ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
+      this.ragCache.set(ragCacheKey, { results: ragResults, timestamp: now });
+    } catch {
+      ragResults = [];
     }
+  }
+
+  if (ragResults.length > 0) {
+    const trimmed = ragResults
+      .slice(0, 3)
+      .map((r) => (r.length > 200 ? `${r.slice(0, 200)}...` : r));
+    systemPrompt += `\n\n## Retrieved Context\n${trimmed.join('\n')}`;
+  }
+}
 ```
 
 Also update `clearSessionCache()` (around line 123) to evict RAG entries scoped to the session's project:
@@ -176,9 +201,11 @@ Also update `clearSessionCache()` (around line 123) to evict RAG entries scoped 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/context-builder.test.ts --reporter=verbose
 ```
+
 Expected: PASS (4/4 tests).
 
 - [ ] **Step 5: Commit**
@@ -196,6 +223,7 @@ taskDescription is used across multiple AgentLoop steps."
 ### Task 2: Skip RAG on Subsequent AgentLoop Steps
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-loop.ts:244-252`
 - Test: `packages/agent/src/__tests__/agent-loop.test.ts`
 
@@ -292,9 +320,11 @@ describe('AgentLoop RAG step optimization', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/agent-loop.test.ts --reporter=verbose
 ```
+
 Expected: FAIL — `searchLongTermCalls` is `2` because the current code passes `taskDescription` on every step.
 
 - [ ] **Step 3: Implement step-gated taskDescription**
@@ -302,38 +332,42 @@ Expected: FAIL — `searchLongTermCalls` is `2` because the current code passes 
 Modify `packages/agent/src/agent-loop.ts` inside the `while` loop (around line 244):
 
 Find:
+
 ```ts
-      const ctx: ContextBuildResult = await this.contextBuilder.build({
-        sessionId: this.options.sessionId,
-        projectId: this.options.projectId,
-        captainId: this.options.captainId,
-        roleSystemPrompt: this.options.systemPrompt,
-        activeFiles: this.options.activeFiles,
-        taskDescription: this.options.taskDescription,
-        memorySessionId: this.options.memorySessionId,
-      });
+const ctx: ContextBuildResult = await this.contextBuilder.build({
+  sessionId: this.options.sessionId,
+  projectId: this.options.projectId,
+  captainId: this.options.captainId,
+  roleSystemPrompt: this.options.systemPrompt,
+  activeFiles: this.options.activeFiles,
+  taskDescription: this.options.taskDescription,
+  memorySessionId: this.options.memorySessionId,
+});
 ```
 
 Replace with:
+
 ```ts
-      const ctx: ContextBuildResult = await this.contextBuilder.build({
-        sessionId: this.options.sessionId,
-        projectId: this.options.projectId,
-        captainId: this.options.captainId,
-        roleSystemPrompt: this.options.systemPrompt,
-        activeFiles: this.options.activeFiles,
-        // RAG is only useful on the first step; tool-result steps reuse context
-        taskDescription: steps === 0 ? this.options.taskDescription : undefined,
-        memorySessionId: this.options.memorySessionId,
-      });
+const ctx: ContextBuildResult = await this.contextBuilder.build({
+  sessionId: this.options.sessionId,
+  projectId: this.options.projectId,
+  captainId: this.options.captainId,
+  roleSystemPrompt: this.options.systemPrompt,
+  activeFiles: this.options.activeFiles,
+  // RAG is only useful on the first step; tool-result steps reuse context
+  taskDescription: steps === 0 ? this.options.taskDescription : undefined,
+  memorySessionId: this.options.memorySessionId,
+});
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/agent-loop.test.ts --reporter=verbose
 ```
+
 Expected: PASS (all existing + new tests).
 
 - [ ] **Step 5: Commit**
@@ -352,6 +386,7 @@ operate on tool outputs, not the original task description."
 ### Task 3: Eliminate Double Rule Traversal
 
 **Files:**
+
 - Modify: `packages/agent/src/context-builder.ts:71-77`
 - Modify: `packages/agent/src/rules-loader.ts:76-165`
 - Test: `packages/agent/src/__tests__/rules-loader.test.ts`
@@ -414,9 +449,11 @@ describe('RulesLoader summarize caching', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/rules-loader.test.ts --reporter=verbose
 ```
+
 Expected: FAIL — the first test may technically pass because `loadAll()` returns the same string, but it does so by re-reading disk. We need to validate the behavior change more directly. The real observable failure is in the **performance** and in `ContextBuilder.build()` doing double work. We will add a stricter assertion after the implementation.
 
 Actually, the first test will PASS even before the fix because `summarize()` returns the same string. We need a more direct test. Let's update the test to spy on internal behavior by exposing a lightweight counter. But we don't want to pollute production code.
@@ -432,10 +469,18 @@ import { RulesLoader } from '../rules-loader.js';
 import type { MemoryProvider } from '../context-builder.js';
 
 class MinimalMemoryProvider implements MemoryProvider {
-  async getShortTerm() { return []; }
-  async getProjectContext() { return 'Test project'; }
-  async getEntityPreferences() { return {}; }
-  async searchLongTerm() { return []; }
+  async getShortTerm() {
+    return [];
+  }
+  async getProjectContext() {
+    return 'Test project';
+  }
+  async getEntityPreferences() {
+    return {};
+  }
+  async searchLongTerm() {
+    return [];
+  }
 }
 
 describe('ContextBuilder rules summary optimization', () => {
@@ -467,6 +512,7 @@ The real validation comes from the `ContextBuilder` test. Let's create a separat
 Actually, the simplest way: in `context-builder.test.ts`, we can test that `build()` does not invoke `summarize()` by creating a custom `RulesLoader` subclass. But that's overkill.
 
 Let's step back. The user asked to eliminate double rule traversal. The concrete code change is:
+
 1. Remove `summarize()` call from `ContextBuilder.build()`
 2. Add `summaryCache` to `RulesLoader` so that any external callers still get fast results
 
@@ -475,17 +521,20 @@ For testing, the most direct observable is: after our change, `ContextBuilder.bu
 Let's add this test to `context-builder.test.ts` (Task 1 file):
 
 ```ts
-  it('does not trigger rules summarize during build', async () => {
-    const loader = new RulesLoader([]);
-    let summarizeCalls = 0;
-    const orig = loader.summarize.bind(loader);
-    loader.summarize = () => { summarizeCalls++; return orig(); };
+it('does not trigger rules summarize during build', async () => {
+  const loader = new RulesLoader([]);
+  let summarizeCalls = 0;
+  const orig = loader.summarize.bind(loader);
+  loader.summarize = () => {
+    summarizeCalls++;
+    return orig();
+  };
 
-    const builder = new ContextBuilder(memory);
-    builder.withRules(loader);
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
-    expect(summarizeCalls).toBe(0);
-  });
+  const builder = new ContextBuilder(memory);
+  builder.withRules(loader);
+  await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
+  expect(summarizeCalls).toBe(0);
+});
 ```
 
 This test will FAIL before the fix and PASS after.
@@ -505,7 +554,10 @@ describe('ContextBuilder rules summary optimization', () => {
     const loader = new RulesLoader([]);
     let summarizeCalls = 0;
     const orig = loader.summarize.bind(loader);
-    loader.summarize = () => { summarizeCalls++; return orig(); };
+    loader.summarize = () => {
+      summarizeCalls++;
+      return orig();
+    };
 
     const builder = new ContextBuilder(memory);
     builder.withRules(loader);
@@ -564,10 +616,13 @@ describe('RulesLoader summarize cache', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/context-builder.test.ts packages/agent/src/__tests__/rules-loader.test.ts --reporter=verbose
 ```
+
 Expected:
+
 - `does not trigger rules summarize during build` FAILS (`summarizeCalls` is 1)
 - `RulesLoader summarize cache` tests PASS (they test behavior that already works by coincidence)
 
@@ -629,25 +684,29 @@ Modify `reload()` (around line 161):
 Now modify `packages/agent/src/context-builder.ts` inside `build()` (around line 76):
 
 Find:
+
 ```ts
-    const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
-    const rulesSummary = this.rulesLoader?.summarize() ?? '';
+const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
+const rulesSummary = this.rulesLoader?.summarize() ?? '';
 ```
 
 Replace with:
+
 ```ts
-    const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
-    // rulesSummary is computed on-demand via getOnDemandRules(); including it here
-    // caused a second full disk traversal via summarize()->loadAll().
-    const rulesSummary = '';
+const rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
+// rulesSummary is computed on-demand via getOnDemandRules(); including it here
+// caused a second full disk traversal via summarize()->loadAll().
+const rulesSummary = '';
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/context-builder.test.ts packages/agent/src/__tests__/rules-loader.test.ts --reporter=verbose
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -666,6 +725,7 @@ rulesSummary (dead code) which previously doubled disk I/O per step."
 ### Task 4: Stabilize ProjectSnapshot Cache Key
 
 **Files:**
+
 - Modify: `packages/agent/src/project-snapshot.ts:93-101`
 - Modify: `packages/agent/src/agent-loop.ts:255-264` and `658-662`
 - Test: `packages/agent/src/__tests__/project-snapshot.test.ts`
@@ -722,9 +782,11 @@ describe('ProjectSnapshot caching', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/project-snapshot.test.ts --reporter=verbose
 ```
+
 Expected: FAIL — `getCached(tempDir)` returns `null` because the current implementation expects a `sessionId` string, and `store` was never called with one.
 
 - [ ] **Step 3: Implement root-based caching**
@@ -748,35 +810,41 @@ Replace `getCached` and `store` (around lines 93-101):
 Modify `packages/agent/src/agent-loop.ts` in `run()` (around line 255):
 
 Find:
+
 ```ts
-      const snapshot = ProjectSnapshot.getCached(this.options.sessionId)
-        ?? (() => {
-            const captured = ProjectSnapshot.capture(this.options.projectRoot ?? process.cwd());
-            ProjectSnapshot.store(this.options.sessionId, captured);
-            return captured;
-          })();
+const snapshot =
+  ProjectSnapshot.getCached(this.options.sessionId) ??
+  (() => {
+    const captured = ProjectSnapshot.capture(this.options.projectRoot ?? process.cwd());
+    ProjectSnapshot.store(this.options.sessionId, captured);
+    return captured;
+  })();
 ```
 
 Replace with:
+
 ```ts
-      const projectRoot = this.options.projectRoot ?? process.cwd();
-      const snapshot = ProjectSnapshot.getCached(projectRoot)
-        ?? (() => {
-            const captured = ProjectSnapshot.capture(projectRoot);
-            ProjectSnapshot.store(projectRoot, captured);
-            return captured;
-          })();
+const projectRoot = this.options.projectRoot ?? process.cwd();
+const snapshot =
+  ProjectSnapshot.getCached(projectRoot) ??
+  (() => {
+    const captured = ProjectSnapshot.capture(projectRoot);
+    ProjectSnapshot.store(projectRoot, captured);
+    return captured;
+  })();
 ```
 
 Modify `packages/agent/src/agent-loop.ts` in `runStreaming()` (around line 658):
 
 Find:
+
 ```ts
     const snap = ProjectSnapshot.getCached(this.options.sessionId);
     if (snap && !this.options.systemPrompt) {
 ```
 
 Replace with:
+
 ```ts
     const streamingRoot = this.options.projectRoot ?? process.cwd();
     const snap = ProjectSnapshot.getCached(streamingRoot);
@@ -786,9 +854,11 @@ Replace with:
 - [ ] **Step 4: Run test to verify it passes**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__/project-snapshot.test.ts --reporter=verbose
 ```
+
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -810,25 +880,31 @@ After all four tasks are committed, run the full `packages/agent` test suite and
 - [ ] **Step 1: Full test suite**
 
 Run:
+
 ```bash
 npx vitest run packages/agent/src/__tests__ --reporter=verbose
 ```
+
 Expected: All tests pass.
 
 - [ ] **Step 2: Type check**
 
 Run:
+
 ```bash
 npx tsc --noEmit -p packages/agent/tsconfig.json
 ```
+
 Expected: No type errors.
 
 - [ ] **Step 3: Lint / format (if configured)**
 
 Run:
+
 ```bash
 pnpm --filter @cabinet/agent lint
 ```
+
 Or if no lint script exists, skip with a note.
 
 Expected: Clean (or skip if script missing).
@@ -844,23 +920,27 @@ git diff --quiet || git commit -am "chore(agent): lint fixes after latency optim
 ## Self-Review Checklist
 
 **1. Spec coverage:**
+
 - RAG embedding cache (Task 1) — covered
 - RAG only on step 0 (Task 2) — covered
 - Eliminate double rule traversal (Task 3) — covered
 - ProjectSnapshot key stabilization (Task 4) — covered
 
 **2. Placeholder scan:**
+
 - No "TBD", "TODO", "implement later" — clean
 - Every step includes exact file paths and code blocks — yes
 - Every test includes exact assertion and expected failure mode — yes
 
 **3. Type consistency:**
+
 - `ContextBuilder.ragCache` key is `string`, value is `{ results: string[]; timestamp: number }` — consistent with `searchLongTerm` return type
 - `RulesLoader.summaryCache` is `string | null` — consistent with `summarize()` return type
 - `ProjectSnapshot.getCached/store` parameter renamed from `sessionId` to `projectRoot` — updated at all call sites in `agent-loop.ts`
 - `ContextBuildResult.rulesSummary` still exists in interface; we changed `build()` to return `''` instead of calling `summarize()` — interface unchanged, safe for consumers
 
 **4. Risk assessment:**
+
 - `rulesSummary = ''` is a behavior change if external code reads `ContextBuildResult.rulesSummary`. No in-repo consumers exist (verified by grep). If external plugins depend on it, they can call `ContextBuilder.getOnDemandRules()` directly.
 - `taskDescription: steps === 0 ? ... : undefined` means tool-result steps lose the task description context. This is intentional: the original user request is already in the conversation history; repeating it in the system prompt adds no value and costs tokens.
 - `ProjectSnapshot` cache now uses absolute `projectRoot` as key. If `process.cwd()` changes between sessions, different roots produce different keys — correct behavior.

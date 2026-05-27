@@ -19,7 +19,13 @@ interface Props {
   activeSessionId?: string;
 }
 
-export function ProjectExplorer({ projectId, projectName, isDark, onAddFile, activeSessionId }: Props) {
+export function ProjectExplorer({
+  projectId,
+  projectName,
+  isDark,
+  onAddFile,
+  activeSessionId,
+}: Props) {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -39,7 +45,9 @@ export function ProjectExplorer({ projectId, projectName, isDark, onAddFile, act
         setFiles(d.files ?? []);
         setRootPath(d.rootPath ?? null);
       })
-      .catch(() => { setFiles([]); })
+      .catch(() => {
+        setFiles([]);
+      })
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -58,9 +66,11 @@ export function ProjectExplorer({ projectId, projectName, isDark, onAddFile, act
       return;
     }
     // Open in FileViewer
-    window.dispatchEvent(new CustomEvent('open-file-viewer', {
-      detail: { path: node.path, name: node.name, projectId },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('open-file-viewer', {
+        detail: { path: node.path, name: node.name, projectId },
+      }),
+    );
     if (activeSessionId) {
       onAddFile(activeSessionId, {
         id: `f_${Date.now()}`,
@@ -104,7 +114,9 @@ export function ProjectExplorer({ projectId, projectName, isDark, onAddFile, act
       <div className={`flex-shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
           <Folder size={14} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-          <span className={`truncate text-xs font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span
+            className={`truncate text-xs font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}
+          >
             {projectName ?? 'Project'}
           </span>
         </div>
@@ -184,22 +196,36 @@ function FileTree({
             >
               {isDir ? (
                 <>
-                  <span className="flex-shrink-0" onClick={(e) => { e.stopPropagation(); onToggle(node.path); }}>
+                  <span
+                    className="flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggle(node.path);
+                    }}
+                  >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder size={12} className={`flex-shrink-0 ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />
+                  <Folder
+                    size={12}
+                    className={`flex-shrink-0 ${isDark ? 'text-amber-500' : 'text-amber-600'}`}
+                  />
                 </>
               ) : (
                 <>
                   <span className="w-3 flex-shrink-0" />
-                  <File size={12} className={`flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <File
+                    size={12}
+                    className={`flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                  />
                 </>
               )}
               <span className={`truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                 {node.name}
               </span>
               {node.size !== undefined && (
-                <span className={`ml-auto flex-shrink-0 text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                <span
+                  className={`ml-auto flex-shrink-0 text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+                >
                   {formatSize(node.size)}
                 </span>
               )}

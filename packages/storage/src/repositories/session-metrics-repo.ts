@@ -29,11 +29,21 @@ export class SessionMetricsRepository {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        metric.session_id, metric.project_id, metric.role, metric.model,
-        metric.total_steps, metric.total_tokens, metric.total_cost,
-        metric.tool_calls_total, metric.tool_calls_failed, metric.tool_calls_blocked,
-        metric.duration_ms, metric.success, metric.error_type,
-        metric.started_at, metric.ended_at,
+        metric.session_id,
+        metric.project_id,
+        metric.role,
+        metric.model,
+        metric.total_steps,
+        metric.total_tokens,
+        metric.total_cost,
+        metric.tool_calls_total,
+        metric.tool_calls_failed,
+        metric.tool_calls_blocked,
+        metric.duration_ms,
+        metric.success,
+        metric.error_type,
+        metric.started_at,
+        metric.ended_at,
       );
   }
 
@@ -45,7 +55,7 @@ export class SessionMetricsRepository {
 
   sumTokensByDate(dateLike: string): number {
     const row = this.db
-      .prepare("SELECT SUM(total_tokens) as tokens FROM session_metrics WHERE started_at LIKE ?")
+      .prepare('SELECT SUM(total_tokens) as tokens FROM session_metrics WHERE started_at LIKE ?')
       .get(dateLike) as { tokens: number } | undefined;
     return row?.tokens ?? 0;
   }

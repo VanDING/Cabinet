@@ -339,11 +339,8 @@ export class ObservabilityCollector {
       }
 
       const successRate = sessions.filter((s) => s.success).length / sessions.length;
-      const avgCost =
-        sessions.reduce((sum, s) => sum + s.totalCost, 0) / sessions.length;
-      const dumbZoneSessions = sessions.filter(
-        (s) => s.contextZoneDistribution.dumb > 0,
-      ).length;
+      const avgCost = sessions.reduce((sum, s) => sum + s.totalCost, 0) / sessions.length;
+      const dumbZoneSessions = sessions.filter((s) => s.contextZoneDistribution.dumb > 0).length;
       const contextHealth: 'healthy' | 'warning' | 'critical' =
         dumbZoneSessions === 0
           ? 'healthy'

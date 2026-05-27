@@ -38,7 +38,11 @@ export class ProjectIsolatedMemory {
     return results.filter((r) => r.metadata?.projectId === this.projectId);
   }
 
-  async longTermStore(content: string, metadata: Record<string, unknown>, embedding?: number[]): Promise<string> {
+  async longTermStore(
+    content: string,
+    metadata: Record<string, unknown>,
+    embedding?: number[],
+  ): Promise<string> {
     return this.longTerm.store({
       content,
       metadata: { ...metadata, projectId: this.projectId },

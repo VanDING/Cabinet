@@ -18,7 +18,7 @@ export async function resetTier(app: ReturnType<typeof createApp>) {
 
 /** Ensure a test project exists. Returns the project ID so decisions/workflows can reference it. */
 export async function seedProject(app: ReturnType<typeof createApp>): Promise<string> {
-  const name = `Test Project ${Date.now()}`;
+  const name = `Test Project ${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const res = await app.request('/api/projects', {
     method: 'POST',
     headers,
@@ -34,8 +34,12 @@ export async function seedProject(app: ReturnType<typeof createApp>): Promise<st
 
 /** Default projectId used by createDecision if none provided. */
 let defaultProjectId: string | null = null;
-export function getDefaultProjectId() { return defaultProjectId; }
-export function setDefaultProjectId(id: string) { defaultProjectId = id; }
+export function getDefaultProjectId() {
+  return defaultProjectId;
+}
+export function setDefaultProjectId(id: string) {
+  defaultProjectId = id;
+}
 
 export interface DecisionInput {
   projectId?: string;
@@ -45,10 +49,7 @@ export interface DecisionInput {
   options?: { id: string; label: string; impact: string }[];
 }
 
-export async function createDecision(
-  app: ReturnType<typeof createApp>,
-  input: DecisionInput,
-) {
+export async function createDecision(app: ReturnType<typeof createApp>, input: DecisionInput) {
   const res = await app.request('/api/decisions', {
     method: 'POST',
     headers,

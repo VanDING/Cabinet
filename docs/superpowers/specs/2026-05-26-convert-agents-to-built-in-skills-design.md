@@ -9,6 +9,7 @@ All four skills are invoked by the `organize` agent rather than being standalone
 ## 2. Scope
 
 ### In Scope
+
 - Delete `WORKFLOW_DESIGNER_ROLE` and `AGENT_CREATOR_ROLE` from `agent-roles.ts`.
 - Remove `workflow_designer` and `agent_creator` from `AgentRoleType`.
 - Create `packages/agent/src/built-in-skills.ts` with 4 hard-coded `SkillEntry` definitions.
@@ -20,6 +21,7 @@ All four skills are invoked by the `organize` agent rather than being standalone
 - Light-weight adaptation of `skill-creator` and `mcp-builder` (core prompt only, no local scripts/references).
 
 ### Out of Scope
+
 - Modifying the `SkillRegistry` API.
 - Changing how skills are executed (still via `use_skill__*` tools).
 - Introducing full Anthropic `scripts/`, `agents/`, or `references/` directories.
@@ -55,6 +57,7 @@ SkillRegistry.executeSkill()  ->  promptTemplate  ->  Organize continues with to
 ### 4.1 workflowDesigner
 
 **Metadata**
+
 - `name`: `workflowDesigner`
 - `description`: `Design and modify Cabinet workflows. Guides step-by-step workflow creation, agent assignment, and validation. Use when the user wants to create, edit, or review a multi-step automated process.`
 - `kind`: `prompt`
@@ -62,12 +65,14 @@ SkillRegistry.executeSkill()  ->  promptTemplate  ->  Organize continues with to
 - `status`: `active`
 
 **PromptTemplate**
+
 ```markdown
 ## Workflow Designer Skill
 
 You are using the Workflow Designer skill. Help the user design and modify Cabinet workflows — multi-step automated processes.
 
 ### Quick Reference
+
 - **Step types**: aiAgent | humanApproval | condition | parallel | notification | wait | llmCall
 - **Connections**: Steps connect via `input.from`: `"trigger"` (first step) or another step id.
 - **Segments**: Consecutive steps with the same agent share context as a "segment".
@@ -79,6 +84,7 @@ You are using the Workflow Designer skill. Help the user design and modify Cabin
 For the full WorkflowDefinition JSON schema, request the on-demand rule "workflow-schema".
 
 ### Creation Process
+
 1. Understand the goal. Ask clarifying questions if steps are ambiguous.
 2. Use `list_agents` to see available roles. Consecutive steps with same agent = shared context segment.
 3. Design step-by-step. If the workflow needs file/web/shell access, ASK the user first.
@@ -86,17 +92,20 @@ For the full WorkflowDefinition JSON schema, request the on-demand rule "workflo
 5. After confirmation, call `create_workflow` to save.
 
 ### Modification Process
+
 1. Use `list_workflows` → `get_workflow` to read the target.
 2. Only modify affected steps. Show before/after diff.
 3. Call `update_workflow` after confirmation.
 
 ### Agent Assignment
+
 - Same agent for consecutive steps = shared context (efficient).
 - Different agent only when: different model, expertise domain, or service boundary.
 - Default: `"secretary"` if no specialized agent fits.
 - Every `aiAgent` step MUST have an `agent` field.
 
 ### Guidelines
+
 - Keep workflows to 4-8 steps. Split larger processes into sub-workflows.
 - Add `humanApproval` before destructive or high-cost actions.
 - Use fast model for routine steps, reasoning model for complex analysis.
@@ -107,6 +116,7 @@ For the full WorkflowDefinition JSON schema, request the on-demand rule "workflo
 ### 4.2 agentCreator
 
 **Metadata**
+
 - `name`: `agentCreator`
 - `description`: `Create, modify, and delete custom Cabinet AI agents. Guides the user through defining a role, system prompt, model, and tool permissions. Use when the user wants to create or manage a custom agent.`
 - `kind`: `prompt`
@@ -114,6 +124,7 @@ For the full WorkflowDefinition JSON schema, request the on-demand rule "workflo
 - `status`: `active`
 
 **PromptTemplate**
+
 ```markdown
 ## Agent Creator Skill
 
@@ -126,6 +137,7 @@ Understand what the user needs. Ask clarifying questions if the purpose is vague
 
 **Step 2: Basic configuration**
 Define the core properties:
+
 - **Name**: short, descriptive (e.g., "Market Analyst", "Code Reviewer"). 2-64 chars, letters/digits/Chinese/underscores/hyphens/spaces.
 - **Description**: one sentence explaining what it does.
 - **System prompt**: detailed instructions for the agent. Include its role, rules, and output format. 3-5 paragraphs max.
@@ -135,17 +147,20 @@ Define the core properties:
 
 **Step 3: Advanced configuration (optional)**
 Ask the user: "Do you want to adjust any advanced settings? (say 'default' to skip)"
+
 - **temperature** (default 0.3): lower = more deterministic, higher = more creative.
 - **maxResponseTokens** (default 4000): maximum response length.
 - **contextBudget** (default 0.3): fraction of context window reserved for this agent.
-If the user says "default" or is unsure, skip this step and use the defaults.
+  If the user says "default" or is unsure, skip this step and use the defaults.
 
 **Step 4: Validate and create**
+
 1. Use `list_agents` to check for duplicates before creating.
 2. Use `register_agent` to save the new agent.
 3. After creation, tell the user the agent is ready. The Secretary will automatically route to it by name.
 
 ### Modification Process
+
 1. Use `list_agents` to show all available agents (built-in and custom).
 2. Ask the user which agent to modify and what to change.
 3. Show the current configuration before asking what to update.
@@ -153,6 +168,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 5. Confirm the changes to the user.
 
 ### Deletion Process
+
 1. Use `list_agents` to show all custom agents.
 2. Ask the user which agent to delete. Only custom agents can be deleted.
 3. **Warn the user this is irreversible** — the agent cannot be recovered.
@@ -160,6 +176,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 5. Use `delete_agent` to remove the agent.
 
 ### Guidelines
+
 - Keep system prompts focused and actionable. 3-5 paragraphs max.
 - Default to fast model unless the task genuinely needs reasoning-level capability.
 - Restrict tools to what the agent actually needs. An agent that only analyzes does not need write tools.
@@ -170,6 +187,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 ### 4.3 skillCreator
 
 **Metadata**
+
 - `name`: `skillCreator`
 - `description`: `Create new Cabinet skills, modify and improve existing skills. Use when users want to create a skill from scratch, edit or optimize an existing skill, or write a SKILL.md file.`
 - `kind`: `prompt`
@@ -177,12 +195,14 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 - `status`: `active`
 
 **PromptTemplate**
+
 ```markdown
 ## Skill Creator
 
 You are using the Skill Creator skill. Help the user create new skills and iteratively improve them.
 
 At a high level, the process goes like this:
+
 - Decide what the skill should do and roughly how it should do it.
 - Write a draft of the skill.
 - Create a few test prompts and run them.
@@ -193,14 +213,17 @@ At a high level, the process goes like this:
 Your job is to figure out where the user is in this process and help them progress through the stages.
 
 ### Communicating with the user
+
 Pay attention to context cues to understand how technical the user is.
+
 - Terms like "evaluation" and "benchmark" are OK for technical users.
 - For "JSON" and "assertion", check that the user understands them before using without explanation.
-It's OK to briefly explain terms if you are in doubt.
+  It's OK to briefly explain terms if you are in doubt.
 
 ### Creating a skill
 
 #### Capture Intent
+
 Start by understanding the user's intent. If the conversation already contains a workflow the user wants to capture, extract answers from history first.
 
 1. What should this skill enable Claude to do?
@@ -209,11 +232,13 @@ Start by understanding the user's intent. If the conversation already contains a
 4. Should we set up test cases? Skills with objectively verifiable outputs (file transforms, data extraction, code generation, fixed workflow steps) benefit from test cases. Skills with subjective outputs (writing style, art) often don't. Suggest the appropriate default, but let the user decide.
 
 #### Interview and Research
+
 Proactively ask questions about edge cases, input/output formats, example files, success criteria, and dependencies. Wait to write test prompts until you've got this part ironed out.
 
 Check available MCPs or search documents if useful for research. Come prepared with context to reduce burden on the user.
 
 #### Write the SKILL.md
+
 Based on the interview, fill in these components:
 
 - **name**: Skill identifier.
@@ -225,15 +250,17 @@ Based on the interview, fill in these components:
 
 #### Anatomy of a Skill
 ```
+
 skill-name/
 ├── SKILL.md (required)
-│   ├── YAML frontmatter (name, description required)
-│   └── Markdown instructions
+│ ├── YAML frontmatter (name, description required)
+│ └── Markdown instructions
 └── Bundled Resources (optional)
-    ├── scripts/    - Executable code for deterministic/repetitive tasks
-    ├── references/ - Docs loaded into context as needed
-    └── assets/     - Files used in output (templates, icons, fonts)
-```
+├── scripts/ - Executable code for deterministic/repetitive tasks
+├── references/ - Docs loaded into context as needed
+└── assets/ - Files used in output (templates, icons, fonts)
+
+````
 
 #### Progressive Disclosure
 Skills use a three-level loading system:
@@ -258,23 +285,28 @@ ALWAYS use this exact template:
 ## Executive summary
 ## Key findings
 ## Recommendations
-```
+````
 
 **Examples pattern** — It's useful to include examples:
+
 ```markdown
 ## Commit message format
+
 **Example 1:**
 Input: Added user authentication with JWT tokens
 Output: feat(auth): implement JWT-based authentication
 ```
 
 #### Writing Style
+
 Try to explain to the model WHY things are important in lieu of heavy-handed MUSTs. Use theory of mind and make the skill general, not super-narrow to specific examples. If you find yourself writing ALWAYS or NEVER in all caps, that's a yellow flag — reframe and explain the reasoning.
 
 #### Principle of Lack of Surprise
+
 Skills must not contain malware, exploit code, or any content that could compromise system security. Don't go along with requests to create misleading skills or skills designed to facilitate unauthorized access, data exfiltration, or other malicious activities.
 
 ### Test Cases
+
 After writing the skill draft, come up with 2-3 realistic test prompts — the kind of thing a real user would actually say. Share them with the user: "Here are a few test cases I'd like to try. Do these look right, or do you want to add more?"
 
 Save test cases to `evals/evals.json`.
@@ -294,11 +326,13 @@ Save test cases to `evals/evals.json`.
 ```
 
 ### Running and evaluating test cases
+
 1. For each test case, read the skill's SKILL.md and follow its instructions to accomplish the test prompt.
 2. Present results directly in the conversation. If the output is a file, save it to the filesystem and tell the user where it is.
 3. Ask for feedback inline: "How does this look? Anything you'd change?"
 
 ### Improving the skill
+
 This is the heart of the loop.
 
 1. **Generalize from the feedback.** We are trying to create skills that can be used a million times across many prompts. The user knows these examples inside out. But if the skill only works for those examples, it's useless. Rather than put in fiddly overfitty changes, try branching out and using different metaphors or recommending different patterns.
@@ -307,18 +341,22 @@ This is the heart of the loop.
 4. **Look for repeated work.** If all test cases resulted in the model writing similar helper scripts or taking the same multi-step approach, that's a strong signal the skill should bundle that script. Write it once, put it in `scripts/`, and tell the skill to use it.
 
 ### The iteration loop
+
 After improving the skill:
+
 1. Apply improvements.
 2. Rerun all test cases.
 3. Ask for feedback.
 4. Read feedback, improve again, repeat.
 
 Keep going until:
+
 - The user says they're happy.
 - The feedback is all empty (everything looks good).
 - You're not making meaningful progress.
 
 ### Description Optimization
+
 After creating or improving a skill, offer to optimize the description for better triggering accuracy.
 
 1. Draft 10-20 realistic trigger eval queries — a mix of should-trigger and should-not-trigger. Focus on edge cases and near-misses.
@@ -327,10 +365,13 @@ After creating or improving a skill, offer to optimize the description for bette
 4. Report before/after and the scores.
 
 ### Updating an existing skill
+
 The user might ask you to update an existing skill, not create a new one. In that case:
+
 - **Preserve the original name.** Use the directory name and `name` frontmatter field unchanged.
 - **Copy to a writable location before editing.** The installed skill path may be read-only. Copy to a working directory, edit there, and save from the copy.
-```
+
+````
 
 ### 4.4 mcpBuilder
 
@@ -509,8 +550,9 @@ Create an XML file with this structure:
     <answer>3</answer>
   </qa_pair>
 </evaluation>
-```
-```
+````
+
+````
 
 ## 5. File Changes
 
@@ -535,9 +577,10 @@ Create an XML file with this structure:
 // AFTER
 | { kind: 'skill_request'; topic: string; context: string }
 | { kind: 'mcp_request'; topic: string; context: string }
-```
+````
 
 Detection keywords:
+
 - `skill_request`: "创建 skill" / "写 skill" / "skill" + "创建/写/优化" / "SKILL.md"
 - `mcp_request`: "MCP" / "mcp server" / "model context protocol"
 
@@ -546,9 +589,11 @@ Both route to `organize` agent.
 ### Secretary Re-Routing
 
 In `secretary-agent.ts` fallback routing, replace:
+
 ```
 workflow_designer, agent_creator
 ```
+
 with nothing — `organize` is already the catch-all for creation tasks.
 
 ## 7. Testing Strategy
@@ -560,9 +605,9 @@ with nothing — `organize` is already the catch-all for creation tasks.
 
 ## 8. Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| `organize` agent's system prompt does not mention skills | Add a line in `ORGANIZE_ROLE.systemPrompt`: "When the user wants to design workflows, create agents, write skills, or build MCP servers, invoke the corresponding built-in skill via `use_skill__*` tools." |
-| Anthropic skill prompts reference tools/scripts Cabinet lacks | Removed those sections in the light-weight adaptation (see §4.3 and §4.4). |
-| Existing saved conversations or memory reference `workflow_designer` / `agent_creator` as agents | These are historical references; the skills serve the same functional purpose. No migration needed because the capabilities are preserved, just the invocation path changes. |
-| Skill prompt length | `skillCreator` and `mcpBuilder` are long. They stay within ~6000 tokens after pruning scripts/refs. Acceptable for reasoning-tier tasks that `organize` already handles. |
+| Risk                                                                                             | Mitigation                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `organize` agent's system prompt does not mention skills                                         | Add a line in `ORGANIZE_ROLE.systemPrompt`: "When the user wants to design workflows, create agents, write skills, or build MCP servers, invoke the corresponding built-in skill via `use_skill__*` tools." |
+| Anthropic skill prompts reference tools/scripts Cabinet lacks                                    | Removed those sections in the light-weight adaptation (see §4.3 and §4.4).                                                                                                                                  |
+| Existing saved conversations or memory reference `workflow_designer` / `agent_creator` as agents | These are historical references; the skills serve the same functional purpose. No migration needed because the capabilities are preserved, just the invocation path changes.                                |
+| Skill prompt length                                                                              | `skillCreator` and `mcpBuilder` are long. They stay within ~6000 tokens after pruning scripts/refs. Acceptable for reasoning-tier tasks that `organize` already handles.                                    |

@@ -15,24 +15,25 @@ export class ApiKeyRepository {
   constructor(private readonly db: Database.Database) {}
 
   findAll(): ApiKeyRow[] {
-    const rows = this.db
-      .prepare('SELECT * FROM api_keys ORDER BY created_at DESC')
-      .all() as Record<string, unknown>[];
+    const rows = this.db.prepare('SELECT * FROM api_keys ORDER BY created_at DESC').all() as Record<
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToApiKey(r));
   }
 
   findByProvider(provider: string): ApiKeyRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM api_keys WHERE provider = ?')
-      .get(provider) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM api_keys WHERE provider = ?').get(provider) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToApiKey(row);
   }
 
   findById(id: string): ApiKeyRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM api_keys WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToApiKey(row);
   }

@@ -60,7 +60,7 @@ export class ShortTermMemory {
 
   get(sessionId: string, key: string): unknown | null {
     const fullKey = `${sessionId}:${key}`;
-    let entry = this.cache.get(fullKey);
+    const entry = this.cache.get(fullKey);
 
     // Check TTL
     if (entry && Date.now() - entry.timestamp.getTime() > entry.ttl) {
@@ -76,7 +76,10 @@ export class ShortTermMemory {
     if (entry) {
       // Move to MRU end
       const idx = this.accessOrder.indexOf(fullKey);
-      if (idx !== -1) { this.accessOrder.splice(idx, 1); this.accessOrder.push(fullKey); }
+      if (idx !== -1) {
+        this.accessOrder.splice(idx, 1);
+        this.accessOrder.push(fullKey);
+      }
       return entry.value;
     }
 
@@ -91,7 +94,9 @@ export class ShortTermMemory {
         }
         const value = JSON.parse(row.value ?? 'null');
         this.cache.set(fullKey, {
-          key, value, sessionId,
+          key,
+          value,
+          sessionId,
           timestamp: new Date(ts),
           ttl: row.ttl ?? this.defaultTtl,
         });

@@ -64,8 +64,16 @@ function tokenize(expr: string): Token[] {
     }
 
     // Parentheses
-    if (ch === '(') { tokens.push({ type: 'paren_open', value: '(' }); i++; continue; }
-    if (ch === ')') { tokens.push({ type: 'paren_close', value: ')' }); i++; continue; }
+    if (ch === '(') {
+      tokens.push({ type: 'paren_open', value: '(' });
+      i++;
+      continue;
+    }
+    if (ch === ')') {
+      tokens.push({ type: 'paren_close', value: ')' });
+      i++;
+      continue;
+    }
 
     // Quoted string
     if (ch === '"' || ch === "'") {
@@ -83,30 +91,42 @@ function tokenize(expr: string): Token[] {
 
     // Multi-char operators
     if (expr.slice(i, i + 8).toUpperCase() === 'CONTAINS') {
-      tokens.push({ type: 'op', value: 'contains' }); i += 8; continue;
+      tokens.push({ type: 'op', value: 'contains' });
+      i += 8;
+      continue;
     }
     if (expr.slice(i, i + 2) === '>=') {
-      tokens.push({ type: 'op', value: '>=' }); i += 2; continue;
+      tokens.push({ type: 'op', value: '>=' });
+      i += 2;
+      continue;
     }
     if (expr.slice(i, i + 2) === '<=') {
-      tokens.push({ type: 'op', value: '<=' }); i += 2; continue;
+      tokens.push({ type: 'op', value: '<=' });
+      i += 2;
+      continue;
     }
     if (expr.slice(i, i + 2) === '==') {
-      tokens.push({ type: 'op', value: '==' }); i += 2; continue;
+      tokens.push({ type: 'op', value: '==' });
+      i += 2;
+      continue;
     }
     if (expr.slice(i, i + 2) === '!=') {
-      tokens.push({ type: 'op', value: '!=' }); i += 2; continue;
+      tokens.push({ type: 'op', value: '!=' });
+      i += 2;
+      continue;
     }
 
     // Single-char operators
     if (ch === '>' || ch === '<') {
-      tokens.push({ type: 'op', value: ch }); i++; continue;
+      tokens.push({ type: 'op', value: ch });
+      i++;
+      continue;
     }
 
     // Words: AND, OR, NOT, true, false, undefined, numbers
-    if (/[a-zA-Z0-9.\-]/.test(ch)) {
+    if (/[a-zA-Z0-9.-]/.test(ch)) {
       let j = i;
-      while (j < expr.length && /[a-zA-Z0-9.\-]/.test(expr[j]!)) j++;
+      while (j < expr.length && /[a-zA-Z0-9.-]/.test(expr[j]!)) j++;
       const word = expr.slice(i, j);
       const upper = word.toUpperCase();
       if (upper === 'AND' || upper === 'OR') {
@@ -132,8 +152,12 @@ function evaluateExpression(expr: string): boolean {
 
   let pos = 0;
 
-  function peek(): Token | undefined { return tokens[pos]; }
-  function consume(): Token { return tokens[pos++]!; }
+  function peek(): Token | undefined {
+    return tokens[pos];
+  }
+  function consume(): Token {
+    return tokens[pos++]!;
+  }
 
   function parseOr(): boolean {
     let left = parseAnd();
@@ -199,7 +223,10 @@ function evaluateExpression(expr: string): boolean {
 
   const result = parseOr();
   if (pos < tokens.length) {
-    const remaining = tokens.slice(pos).map((t) => t.value).join(' ');
+    const remaining = tokens
+      .slice(pos)
+      .map((t) => t.value)
+      .join(' ');
     throw new Error(`Unexpected tokens after expression: "${remaining}"`);
   }
   return result;
@@ -244,22 +271,32 @@ function compare(left: EvalValue, right: EvalValue, op: string): boolean {
   // Numeric comparison when both sides are numbers
   if (typeof left === 'number' && typeof right === 'number') {
     switch (op) {
-      case '==': return left === right;
-      case '!=': return left !== right;
-      case '>': return left > right;
-      case '<': return left < right;
-      case '>=': return left >= right;
-      case '<=': return left <= right;
-      default: throw new Error(`Unknown operator: ${op}`);
+      case '==':
+        return left === right;
+      case '!=':
+        return left !== right;
+      case '>':
+        return left > right;
+      case '<':
+        return left < right;
+      case '>=':
+        return left >= right;
+      case '<=':
+        return left <= right;
+      default:
+        throw new Error(`Unknown operator: ${op}`);
     }
   }
 
   // Boolean comparison
   if (typeof left === 'boolean' && typeof right === 'boolean') {
     switch (op) {
-      case '==': return left === right;
-      case '!=': return left !== right;
-      default: throw new Error(`Operator "${op}" not supported for boolean values`);
+      case '==':
+        return left === right;
+      case '!=':
+        return left !== right;
+      default:
+        throw new Error(`Operator "${op}" not supported for boolean values`);
     }
   }
 
@@ -271,19 +308,30 @@ function compare(left: EvalValue, right: EvalValue, op: string): boolean {
   const rn = Number(rs);
   if (!isNaN(ln) && !isNaN(rn) && op !== '==' && op !== '!=') {
     switch (op) {
-      case '>': return ln > rn;
-      case '<': return ln < rn;
-      case '>=': return ln >= rn;
-      case '<=': return ln <= rn;
+      case '>':
+        return ln > rn;
+      case '<':
+        return ln < rn;
+      case '>=':
+        return ln >= rn;
+      case '<=':
+        return ln <= rn;
     }
   }
   switch (op) {
-    case '==': return ls === rs;
-    case '!=': return ls !== rs;
-    case '>': return ls > rs;
-    case '<': return ls < rs;
-    case '>=': return ls >= rs;
-    case '<=': return ls <= rs;
-    default: throw new Error(`Unknown operator: ${op}`);
+    case '==':
+      return ls === rs;
+    case '!=':
+      return ls !== rs;
+    case '>':
+      return ls > rs;
+    case '<':
+      return ls < rs;
+    case '>=':
+      return ls >= rs;
+    case '<=':
+      return ls <= rs;
+    default:
+      throw new Error(`Unknown operator: ${op}`);
   }
 }

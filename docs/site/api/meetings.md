@@ -11,6 +11,7 @@ List recent meetings.
 **Query params**: `projectId` (default: `"default"`)
 
 **Response**:
+
 ```json
 {
   "meetings": [{ "id": "meeting_...", "topic": "...", "status": "completed" }]
@@ -22,6 +23,7 @@ List recent meetings.
 Create a new multi-agent meeting.
 
 **Body**:
+
 ```json
 {
   "topic": "Q3 Market Entry Strategy",
@@ -31,6 +33,7 @@ Create a new multi-agent meeting.
 ```
 
 **Response**:
+
 ```json
 {
   "meetingId": "meeting_...",

@@ -98,10 +98,15 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
     return data.entities.filter((e) => e.type === selectedType);
   }, [data.entities, selectedType]);
 
-  const filteredEntityIds = useMemo(() => new Set(filteredEntities.map((e) => e.id)), [filteredEntities]);
+  const filteredEntityIds = useMemo(
+    () => new Set(filteredEntities.map((e) => e.id)),
+    [filteredEntities],
+  );
 
   const filteredRelations = useMemo(() => {
-    return data.relations.filter((r) => filteredEntityIds.has(r.from) && filteredEntityIds.has(r.to));
+    return data.relations.filter(
+      (r) => filteredEntityIds.has(r.from) && filteredEntityIds.has(r.to),
+    );
   }, [data.relations, filteredEntityIds]);
 
   const positions = useMemo(() => computeLayout(filteredEntities), [filteredEntities]);
@@ -136,9 +141,13 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
 
       <div className="flex-1 overflow-hidden rounded-lg border dark:border-gray-700">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-gray-400">Loading graph...</div>
+          <div className="flex h-full items-center justify-center text-gray-400">
+            Loading graph...
+          </div>
         ) : filteredEntities.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-gray-400">No entities found.</div>
+          <div className="flex h-full items-center justify-center text-gray-400">
+            No entities found.
+          </div>
         ) : (
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -172,7 +181,11 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
               const color = TYPE_COLORS[e.type] || '#6b7280';
               const isHighlighted = hoveredNode === e.id;
               const hasRelation = hoveredNode
-                ? filteredRelations.some((r) => (r.from === e.id || r.to === e.id) && (r.from === hoveredNode || r.to === hoveredNode))
+                ? filteredRelations.some(
+                    (r) =>
+                      (r.from === e.id || r.to === e.id) &&
+                      (r.from === hoveredNode || r.to === hoveredNode),
+                  )
                 : false;
               const dimmed = hoveredNode && !isHighlighted && !hasRelation;
 
@@ -209,7 +222,10 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: color }}
+            />
             <span className="capitalize">{type}</span>
           </div>
         ))}

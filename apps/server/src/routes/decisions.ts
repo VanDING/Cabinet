@@ -15,8 +15,12 @@ decisionsRouter.get('/', (c) => {
   try {
     const decisions =
       status === 'all'
-        ? (projectId ? decisionRepo.listByProject(projectId) : decisionRepo.listAll())
-        : (projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending());
+        ? projectId
+          ? decisionRepo.listByProject(projectId)
+          : decisionRepo.listAll()
+        : projectId
+          ? decisionRepo.listPending(projectId)
+          : decisionRepo.listAllPending();
     return c.json({ decisions, status, total: decisions.length });
   } catch (err) {
     const { logger } = getServerContext();
@@ -92,8 +96,16 @@ decisionsRouter.post('/', async (c) => {
     });
     // Audit log
     try {
-      getServerContext().auditLogRepo.insert('decision', decision.id, 'create', input.captainId ?? DEFAULT_CAPTAIN_ID, { title: decision.title, level: decision.level });
-    } catch { /* non-critical */ }
+      getServerContext().auditLogRepo.insert(
+        'decision',
+        decision.id,
+        'create',
+        input.captainId ?? DEFAULT_CAPTAIN_ID,
+        { title: decision.title, level: decision.level },
+      );
+    } catch {
+      /* non-critical */
+    }
     return c.json({ decision }, 201);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -111,8 +123,16 @@ decisionsRouter.post('/:id/approve', async (c) => {
     );
     broadcast('decision_updated', { decisionId: decision.id, status: 'approved' });
     try {
-      getServerContext().auditLogRepo.insert('decision', decision.id, 'approve', body.captainId ?? DEFAULT_CAPTAIN_ID, { chosenOptionId: decision.chosenOptionId });
-    } catch { /* non-critical */ }
+      getServerContext().auditLogRepo.insert(
+        'decision',
+        decision.id,
+        'approve',
+        body.captainId ?? DEFAULT_CAPTAIN_ID,
+        { chosenOptionId: decision.chosenOptionId },
+      );
+    } catch {
+      /* non-critical */
+    }
     return c.json({ status: decision.status, chosenOptionId: decision.chosenOptionId, decision });
   } catch (e) {
     const msg = (e as Error).message;
@@ -130,11 +150,22 @@ decisionsRouter.post('/:id/reject', async (c) => {
     /* body is optional */
   }
   try {
-    const decision = decisionService.reject(c.req.param('id'), body.captainId ?? DEFAULT_CAPTAIN_ID);
+    const decision = decisionService.reject(
+      c.req.param('id'),
+      body.captainId ?? DEFAULT_CAPTAIN_ID,
+    );
     broadcast('decision_updated', { decisionId: decision.id, status: 'rejected' });
     try {
-      getServerContext().auditLogRepo.insert('decision', decision.id, 'reject', body.captainId ?? DEFAULT_CAPTAIN_ID, {});
-    } catch { /* non-critical */ }
+      getServerContext().auditLogRepo.insert(
+        'decision',
+        decision.id,
+        'reject',
+        body.captainId ?? DEFAULT_CAPTAIN_ID,
+        {},
+      );
+    } catch {
+      /* non-critical */
+    }
     return c.json({ status: decision.status, decision });
   } catch (e) {
     const msg = (e as Error).message;

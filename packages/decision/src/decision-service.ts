@@ -95,7 +95,11 @@ export class DecisionService {
         entityId: decision.id,
         action: 'auto_approved',
         actor: 'system',
-        changes: { level, status: approvedStatus, reason: `Auto-approved up to ${this.getAutoApproveMaxLevel()}` },
+        changes: {
+          level,
+          status: approvedStatus,
+          reason: `Auto-approved up to ${this.getAutoApproveMaxLevel()}`,
+        },
       });
     }
 

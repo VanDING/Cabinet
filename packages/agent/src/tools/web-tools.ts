@@ -1,7 +1,10 @@
 import type { ToolDefinition } from '../tool-executor.js';
 
 export interface WebToolDeps {
-  webFetch: (url: string, maxLength?: number) => Promise<{
+  webFetch: (
+    url: string,
+    maxLength?: number,
+  ) => Promise<{
     content: string;
     contentType: string;
     status: number;
@@ -13,12 +16,19 @@ export interface WebToolDeps {
     headers?: Record<string, string>,
     body?: string,
   ) => Promise<{ status: number; headers: Record<string, string>; body: string }>;
-  githubApiFetch?: (owner: string, repo: string, path?: string) => Promise<{
+  githubApiFetch?: (
+    owner: string,
+    repo: string,
+    path?: string,
+  ) => Promise<{
     content: string;
     items?: { name: string; path: string; type: string }[];
     error?: string;
   }>;
-  cleanWebFetch?: (url: string, maxLength?: number) => Promise<{
+  cleanWebFetch?: (
+    url: string,
+    maxLength?: number,
+  ) => Promise<{
     content: string;
     title?: string;
     error?: string;
@@ -99,7 +109,8 @@ export function createWebTools(deps: WebToolDeps): ToolDefinition[] {
     },
     {
       name: 'fetch_webpage_clean',
-      description: 'Fetch a webpage and extract clean article text, removing navigation, ads, and clutter.',
+      description:
+        'Fetch a webpage and extract clean article text, removing navigation, ads, and clutter.',
       execute: async (args: Record<string, unknown>) => {
         const url = args.url as string;
         const maxLength = args.max_length as number | undefined;

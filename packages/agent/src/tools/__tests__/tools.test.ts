@@ -188,7 +188,8 @@ describe('Cabinet Tools', () => {
       setProjectContext: (projectId) => ({ id: projectId, name: 'Test Project' }),
       createProject: (input) => ({ id: 'proj_test', name: input.name }),
       listProjects: () => [{ id: 'proj-1', name: 'Test Project' }],
-      getProjectContext: (projectId) => projectId === 'unknown' ? null : { id: projectId, name: 'Test' },
+      getProjectContext: (projectId) =>
+        projectId === 'unknown' ? null : { id: projectId, name: 'Test' },
       getDashboardStats: () => ({
         pendingDecisions: 3,
         activeWorkflows: 2,
@@ -221,7 +222,12 @@ describe('Cabinet Tools', () => {
         errors: 0,
       }),
       delegateTask: (name) => `task_${name}_test`,
-      getTaskStatus: (taskId) => ({ id: taskId, name: 'Test Task', status: 'running', startTime: Date.now() }),
+      getTaskStatus: (taskId) => ({
+        id: taskId,
+        name: 'Test Task',
+        status: 'running',
+        startTime: Date.now(),
+      }),
       listActiveTasks: () => [{ id: 'task_1', name: 'Task One', status: 'running' }],
       getWorkflowRun: (runId) => ({
         runId,
@@ -493,7 +499,11 @@ describe('Cabinet Tools', () => {
   });
 
   it('update_memory updates memory metadata', async () => {
-    const id = await deps.longTerm.store({ content: 'Test memory', metadata: {}, timestamp: new Date() });
+    const id = await deps.longTerm.store({
+      content: 'Test memory',
+      metadata: {},
+      timestamp: new Date(),
+    });
     const r = await executor.execute('update_memory', 'tc_update_mem', {
       memoryId: id,
       status: 'archived',
@@ -505,7 +515,11 @@ describe('Cabinet Tools', () => {
   });
 
   it('delete_memory removes memory', async () => {
-    const id = await deps.longTerm.store({ content: 'Test memory to delete', metadata: {}, timestamp: new Date() });
+    const id = await deps.longTerm.store({
+      content: 'Test memory to delete',
+      metadata: {},
+      timestamp: new Date(),
+    });
     const r = await executor.execute('delete_memory', 'tc_delete_mem', { memoryId: id });
     expect((r.output as any).deleted).toBe(true);
     expect((r.output as any).memoryId).toBe(id);

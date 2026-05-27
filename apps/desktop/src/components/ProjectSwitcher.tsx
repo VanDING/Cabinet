@@ -31,7 +31,9 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
       >
-        <span className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-gray-400'}`} />
+        <span
+          className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-gray-400'}`}
+        />
         <span className="font-medium">{current?.name ?? 'No project'}</span>
         <span className="text-gray-400">&#x25BE;</span>
       </button>

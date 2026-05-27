@@ -19,7 +19,9 @@ export interface BackupResult {
 }
 
 export class BackupManager {
-  private readonly config: Required<Omit<BackupConfig, 'liveConnection'>> & { liveConnection?: Database.Database };
+  private readonly config: Required<Omit<BackupConfig, 'liveConnection'>> & {
+    liveConnection?: Database.Database;
+  };
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: BackupConfig) {
@@ -38,7 +40,9 @@ export class BackupManager {
       if (this.config.liveConnection) {
         try {
           this.config.liveConnection.pragma('wal_checkpoint(TRUNCATE)');
-        } catch { /* non-fatal if live connection is unavailable */ }
+        } catch {
+          /* non-fatal if live connection is unavailable */
+        }
       }
 
       if (!existsSync(this.config.dbPath)) {
@@ -60,8 +64,15 @@ export class BackupManager {
       verifyDb.close();
 
       if (integrity.length !== 1 || integrity[0]!.integrity_check !== 'ok') {
-        try { unlinkSync(destPath); } catch { /* clean up corrupt file */ }
-        return { success: false, error: `Backup integrity check failed: ${JSON.stringify(integrity)}` };
+        try {
+          unlinkSync(destPath);
+        } catch {
+          /* clean up corrupt file */
+        }
+        return {
+          success: false,
+          error: `Backup integrity check failed: ${JSON.stringify(integrity)}`,
+        };
       }
 
       // Rotate old backups

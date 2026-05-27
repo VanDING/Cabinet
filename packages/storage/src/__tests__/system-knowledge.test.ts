@@ -13,18 +13,18 @@ describe('SystemKnowledgeRepository', () => {
     repo = new SystemKnowledgeRepository(db);
     repo.ensureTable();
     // Clean up any default entries from syncSystemKnowledge calls in other tests
-    db.exec("DELETE FROM system_knowledge");
+    db.exec('DELETE FROM system_knowledge');
   });
 
   it('ensureTable creates correct schema', () => {
-    const tables = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='system_knowledge'"
-    ).get() as { name: string } | undefined;
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='system_knowledge'")
+      .get() as { name: string } | undefined;
     expect(tables?.name).toBe('system_knowledge');
 
-    const indices = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='system_knowledge'"
-    ).all() as { name: string }[];
+    const indices = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='system_knowledge'")
+      .all() as { name: string }[];
     const indexNames = indices.map((i) => i.name);
     expect(indexNames).toContain('idx_sk_topic');
     expect(indexNames).toContain('idx_sk_category');
@@ -92,9 +92,30 @@ describe('SystemKnowledgeRepository', () => {
   });
 
   it('findByCategory filters correctly', () => {
-    repo.upsert({ id: 'a', topic: 'A', category: 'capability', content: '...', version: 1, metadata: '{}' });
-    repo.upsert({ id: 'b', topic: 'B', category: 'infrastructure', content: '...', version: 1, metadata: '{}' });
-    repo.upsert({ id: 'c', topic: 'C', category: 'capability', content: '...', version: 1, metadata: '{}' });
+    repo.upsert({
+      id: 'a',
+      topic: 'A',
+      category: 'capability',
+      content: '...',
+      version: 1,
+      metadata: '{}',
+    });
+    repo.upsert({
+      id: 'b',
+      topic: 'B',
+      category: 'infrastructure',
+      content: '...',
+      version: 1,
+      metadata: '{}',
+    });
+    repo.upsert({
+      id: 'c',
+      topic: 'C',
+      category: 'capability',
+      content: '...',
+      version: 1,
+      metadata: '{}',
+    });
 
     const caps = repo.findByCategory('capability');
     expect(caps).toHaveLength(2);

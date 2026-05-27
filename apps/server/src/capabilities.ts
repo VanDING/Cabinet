@@ -1,6 +1,17 @@
 import type { ServerContext } from './context.js';
-import { DocumentChunkRepository } from '@cabinet/storage';
-import { readFile, writeFile, readdir, mkdir, stat, unlink, rmdir, rename, copyFile as fsCopyFile, realpath } from 'node:fs/promises';
+import { DocumentChunkRepository, SystemKnowledgeRepository } from '@cabinet/storage';
+import {
+  readFile,
+  writeFile,
+  readdir,
+  mkdir,
+  stat,
+  unlink,
+  rmdir,
+  rename,
+  copyFile as fsCopyFile,
+  realpath,
+} from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, dirname, extname, resolve, isAbsolute } from 'node:path';
 import { exec } from 'node:child_process';
@@ -12,12 +23,16 @@ const RAG_DEFAULT_TOP_K = 5;
 
 async function readTextFile(filePath: string): Promise<string> {
   const buf = await readFile(filePath);
-  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     return buf.toString('utf-8').slice(1);
   }
   const utf8 = buf.toString('utf-8');
   if (utf8.includes('�')) {
-    try { return new TextDecoder('gbk').decode(buf); } catch { /* fall through */ }
+    try {
+      return new TextDecoder('gbk').decode(buf);
+    } catch {
+      /* fall through */
+    }
   }
   return utf8;
 }
@@ -25,25 +40,79 @@ async function readTextFile(filePath: string): Promise<string> {
 // ── MIME & text detection ──
 
 const MIME_MAP: Record<string, string> = {
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.bmp': 'image/bmp', '.ico': 'image/x-icon',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
   '.pdf': 'application/pdf',
-  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
-  '.mp4': 'video/mp4', '.webm': 'video/webm',
-  '.zip': 'application/zip', '.tar': 'application/x-tar', '.gz': 'application/gzip',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.zip': 'application/zip',
+  '.tar': 'application/x-tar',
+  '.gz': 'application/gzip',
 };
 
 const TEXT_EXTENSIONS = new Set([
-  '.txt', '.md', '.mdx', '.json', '.xml', '.yml', '.yaml', '.toml', '.ini', '.cfg',
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.css', '.scss', '.less',
-  '.html', '.htm', '.vue', '.svelte',
-  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp',
-  '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
-  '.sql', '.graphql', '.proto',
-  '.env', '.gitignore', '.dockerignore', '.editorconfig',
-  '.csv', '.tsv', '.log',
-  '.lock', '.toml',
+  '.txt',
+  '.md',
+  '.mdx',
+  '.json',
+  '.xml',
+  '.yml',
+  '.yaml',
+  '.toml',
+  '.ini',
+  '.cfg',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.scss',
+  '.less',
+  '.html',
+  '.htm',
+  '.vue',
+  '.svelte',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.swift',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.sh',
+  '.bash',
+  '.zsh',
+  '.fish',
+  '.ps1',
+  '.bat',
+  '.cmd',
+  '.sql',
+  '.graphql',
+  '.proto',
+  '.env',
+  '.gitignore',
+  '.dockerignore',
+  '.editorconfig',
+  '.csv',
+  '.tsv',
+  '.log',
+  '.lock',
+  '.toml',
 ]);
 
 function isTextFile(ext: string): boolean {
@@ -87,10 +156,22 @@ function safeRegex(pattern: string): RegExp {
 // ── Network safety ──
 
 function isInternalIP(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return true;
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0'
+  )
+    return true;
   if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
-  if (hostname === '[::1]' || hostname === '[fe80::]' || hostname.startsWith('[fc') || hostname.startsWith('[fd')) return true;
+  if (
+    hostname === '[::1]' ||
+    hostname === '[fe80::]' ||
+    hostname.startsWith('[fc') ||
+    hostname.startsWith('[fd')
+  )
+    return true;
   return false;
 }
 
@@ -103,14 +184,33 @@ function extractTitle(html: string, contentType: string): string | undefined {
 // ── Shell safety ──
 
 const SAFE_ENV_KEYS = new Set([
-  'PATH', 'HOME', 'USER', 'USERNAME', 'TEMP', 'TMP', 'TMPDIR',
-  'SHELL', 'LANG', 'LC_ALL', 'TERM', 'COLORTERM',
-  'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT',
-  'NODE_ENV', 'NODE_PATH',
-  'DISPLAY', 'WAYLAND_DISPLAY',
+  'PATH',
+  'HOME',
+  'USER',
+  'USERNAME',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'TERM',
+  'COLORTERM',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'WINDIR',
+  'COMSPEC',
+  'PATHEXT',
+  'NODE_ENV',
+  'NODE_PATH',
+  'DISPLAY',
+  'WAYLAND_DISPLAY',
   'SSH_AUTH_SOCK',
-  'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
-  'PNPM_HOME', 'npm_config_cache',
+  'XDG_CACHE_HOME',
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'PNPM_HOME',
+  'npm_config_cache',
 ]);
 
 function buildSafeEnv(): Record<string, string> {
@@ -120,7 +220,11 @@ function buildSafeEnv(): Record<string, string> {
       safe[key] = value;
     }
   }
-  if (!safe.PATH) safe.PATH = process.platform === 'win32' ? 'C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem' : '/usr/local/bin:/usr/bin:/bin';
+  if (!safe.PATH)
+    safe.PATH =
+      process.platform === 'win32'
+        ? 'C:\\Windows\\System32;C:\\Windows;C:\\Windows\\System32\\Wbem'
+        : '/usr/local/bin:/usr/bin:/bin';
   if (!safe.HOME) safe.HOME = process.cwd();
   return safe;
 }
@@ -136,10 +240,14 @@ export function buildEnvironmentSection(projectRootPath?: string): string {
   }
   parts.push(`- Working Directory: ${workDir}`);
   if (projectRootPath) {
-    parts.push(`- Note: You are working on a project at the above path. Use it for all file operations.`);
+    parts.push(
+      `- Note: You are working on a project at the above path. Use it for all file operations.`,
+    );
   }
   parts.push(`- Node.js: ${process.version}`);
-  parts.push(`- If you need information about system capabilities, directories, or agent roles, use the query_system_knowledge tool.`);
+  parts.push(
+    `- If you need information about system capabilities, directories, or agent roles, use the query_system_knowledge tool.`,
+  );
   return parts.join('\n');
 }
 
@@ -152,7 +260,8 @@ function detectDangerousCommand(command: string): string | null {
   if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
   if (/>\s*\/dev\/sda/.test(lower)) return 'raw device write';
   if (/\bmkfs\./.test(lower)) return 'mkfs';
-  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow')) return 'sensitive system file';
+  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow'))
+    return 'sensitive system file';
   if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
 
   // Pipeline to interpreter execution (curl/wget | sh/bash)
@@ -161,8 +270,10 @@ function detectDangerousCommand(command: string): string | null {
   if (/\bpowershell\b.*-encodedcommand/.test(lower)) return 'encoded powershell';
 
   // Persistence vectors
-  if (/>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/.test(lower)) return 'shell persistence';
-  if (/\becho\b.*>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile)/.test(lower)) return 'shell persistence';
+  if (/>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/.test(lower))
+    return 'shell persistence';
+  if (/\becho\b.*>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile)/.test(lower))
+    return 'shell persistence';
 
   // Credential harvesting
   if (/\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/.test(lower)) return 'SSH key exfil';
@@ -193,7 +304,9 @@ function chunkText(text: string, chunkSize = 800, overlap = 100): ChunkResult[] 
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0, normA = 0, normB = 0;
+  let dot = 0,
+    normA = 0,
+    normB = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i]! * b[i]!;
     normA += a[i]! * a[i]!;
@@ -228,7 +341,12 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
           const lines = content.split('\n');
           const start = offset ?? 0;
           const end = limit ? start + limit : lines.length;
-          return { content: lines.slice(start, end).join('\n'), size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
+          return {
+            content: lines.slice(start, end).join('\n'),
+            size,
+            encoding: 'utf-8' as const,
+            mimeType: mimeType ?? undefined,
+          };
         }
         return { content, size, encoding: 'utf-8' as const, mimeType: mimeType ?? undefined };
       }
@@ -236,7 +354,12 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       const buf = await readFile(safePath);
       if (buf.length > 50 * 1024 * 1024) throw new Error('Binary file exceeds 50MB limit');
       const base64 = buf.toString('base64');
-      return { content: base64, size: buf.length, encoding: 'base64' as const, mimeType: mimeType ?? 'application/octet-stream' };
+      return {
+        content: base64,
+        size: buf.length,
+        encoding: 'base64' as const,
+        mimeType: mimeType ?? 'application/octet-stream',
+      };
     },
 
     writeFile: async (filePath: string, content: string, overwrite?: boolean) => {
@@ -250,7 +373,12 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       return { written: true, skipped: false };
     },
 
-    editFile: async (filePath: string, oldString: string, newString: string, replaceAll?: boolean) => {
+    editFile: async (
+      filePath: string,
+      oldString: string,
+      newString: string,
+      replaceAll?: boolean,
+    ) => {
       const safePath = await resolveSafePath(filePath);
       const content = await readTextFile(safePath);
       if (!content.includes(oldString)) return { changed: false, occurrences: 0 };
@@ -274,7 +402,13 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       let i = 0;
       while (i < diffLines.length) {
         const line = diffLines[i];
-        if (!line || line.startsWith('diff ') || line.startsWith('--- ') || line.startsWith('+++ ') || line.startsWith('index ')) {
+        if (
+          !line ||
+          line.startsWith('diff ') ||
+          line.startsWith('--- ') ||
+          line.startsWith('+++ ') ||
+          line.startsWith('index ')
+        ) {
           i++;
           continue;
         }
@@ -283,7 +417,11 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
           const oldStart = parseInt(hunkMatch[1]!, 10) - 1;
           i++;
           const hunkLines: { type: 'context' | 'add' | 'remove'; content: string }[] = [];
-          while (i < diffLines.length && !diffLines[i]!.startsWith('@@') && !diffLines[i]!.startsWith('diff ')) {
+          while (
+            i < diffLines.length &&
+            !diffLines[i]!.startsWith('@@') &&
+            !diffLines[i]!.startsWith('diff ')
+          ) {
             const hl = diffLines[i]!;
             if (hl.startsWith('+')) hunkLines.push({ type: 'add', content: hl.slice(1) });
             else if (hl.startsWith('-')) hunkLines.push({ type: 'remove', content: hl.slice(1) });
@@ -295,11 +433,17 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
           const result: string[] = [];
           for (const hl of hunkLines) {
             if (hl.type === 'context') {
-              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) {
+                mismatch = true;
+                break;
+              }
               result.push(lines[srcIdx]!);
               srcIdx++;
             } else if (hl.type === 'remove') {
-              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) { mismatch = true; break; }
+              if (srcIdx < lines.length && lines[srcIdx] !== hl.content) {
+                mismatch = true;
+                break;
+              }
               srcIdx++;
             } else if (hl.type === 'add') {
               result.push(hl.content);
@@ -348,9 +492,14 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       async function walk(currentDir: string, depth: number) {
         if (depth > depthLimit) return;
         let entries;
-        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        try {
+          entries = await readdir(currentDir, { withFileTypes: true });
+        } catch {
+          return;
+        }
         for (const entry of entries) {
-          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist')
+            continue;
           const entryPath = join(currentDir, entry.name);
           if (entry.isDirectory()) {
             await walk(entryPath, depth + 1);
@@ -373,9 +522,14 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       async function walk(currentDir: string, depth: number) {
         if (depth > depthLimit || results.length >= 100) return;
         let entries;
-        try { entries = await readdir(currentDir, { withFileTypes: true }); } catch { return; }
+        try {
+          entries = await readdir(currentDir, { withFileTypes: true });
+        } catch {
+          return;
+        }
         for (const entry of entries) {
-          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+          if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist')
+            continue;
           const entryPath = join(currentDir, entry.name);
           if (entry.isDirectory()) {
             await walk(entryPath, depth + 1);
@@ -391,7 +545,9 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
                   results.push({ file: relPath, line: i + 1, content: line.slice(0, 200) });
                 }
               }
-            } catch { /* skip unreadable files */ }
+            } catch {
+              /* skip unreadable files */
+            }
           }
         }
       }
@@ -446,13 +602,13 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
 }
 
 function extractTextFromHtml(html: string): string {
-  let cleaned = html
-    .replace(new RegExp('<script[\s\S]*?</script>', 'gi'), '')
-    .replace(new RegExp('<style[\s\S]*?</style>', 'gi'), '')
-    .replace(new RegExp('<nav[\s\S]*?</nav>', 'gi'), '')
-    .replace(new RegExp('<footer[\s\S]*?</footer>', 'gi'), '')
-    .replace(new RegExp('<header[\s\S]*?</header>', 'gi'), '')
-    .replace(new RegExp('<aside[\s\S]*?</aside>', 'gi'), '')
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<aside[\s\S]*?<\/aside>/gi, '')
     .replace(new RegExp('</?.[^>]*>', 'g'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -463,7 +619,8 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
   return {
     webFetch: async (url: string, maxLength?: number) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
 
       const controller = new AbortController();
@@ -490,9 +647,15 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
       }
     },
 
-    httpRequest: async (method: string, url: string, headers?: Record<string, string>, body?: string) => {
+    httpRequest: async (
+      method: string,
+      url: string,
+      headers?: Record<string, string>,
+      body?: string,
+    ) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
       if (body && body.length > 1 * 1024 * 1024) throw new Error('Request body exceeds 1MB limit');
 
@@ -507,9 +670,15 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
           redirect: 'follow',
         });
         const resHeaders: Record<string, string> = {};
-        res.headers.forEach((v, k) => { resHeaders[k] = v; });
+        res.headers.forEach((v, k) => {
+          resHeaders[k] = v;
+        });
         const resBody = await res.text();
-        return { status: res.status, headers: resHeaders, body: resBody.slice(0, 50 * 1024 * 1024) };
+        return {
+          status: res.status,
+          headers: resHeaders,
+          body: resBody.slice(0, 50 * 1024 * 1024),
+        };
       } finally {
         clearTimeout(timer);
       }
@@ -524,7 +693,7 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
           signal: controller.signal,
           headers: {
             'User-Agent': 'Cabinet/2.0',
-            'Accept': 'application/vnd.github.v3+json',
+            Accept: 'application/vnd.github.v3+json',
           },
         });
         if (!res.ok) {
@@ -538,7 +707,12 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
             path: item.path,
             type: item.type,
           }));
-          return { content: `Directory listing for ${path ?? 'root'}:\n` + items.map((i) => `- ${i.type}: ${i.name}`).join('\n'), items };
+          return {
+            content:
+              `Directory listing for ${path ?? 'root'}:\n` +
+              items.map((i) => `- ${i.type}: ${i.name}`).join('\n'),
+            items,
+          };
         } else {
           // File content
           if (data.content && data.encoding === 'base64') {
@@ -554,7 +728,8 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
 
     cleanWebFetch: async (url: string, maxLength?: number) => {
       const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Only HTTP/HTTPS URLs are allowed');
+      if (!['http:', 'https:'].includes(parsed.protocol))
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
       if (isInternalIP(parsed.hostname)) throw new Error('Internal IP addresses are not allowed');
 
       const controller = new AbortController();
@@ -591,7 +766,7 @@ export function createShellCapabilities(_ctx: CapabilitiesContext) {
           timeout: timeout ?? 60000,
           maxBuffer: 10 * 1024 * 1024,
           env: buildSafeEnv(),
-          shell: process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : '/bin/bash',
+          shell: process.platform === 'win32' ? process.env.COMSPEC || 'cmd.exe' : '/bin/bash',
         });
         return { stdout, stderr, exitCode: 0 };
       } catch (err: any) {
@@ -603,7 +778,12 @@ export function createShellCapabilities(_ctx: CapabilitiesContext) {
 
 export function createSchedulerCapabilities(ctx: CapabilitiesContext) {
   return {
-    scheduleTask: async (name: string, cronExpression: string, prompt: string, recurring: boolean) => {
+    scheduleTask: async (
+      name: string,
+      cronExpression: string,
+      prompt: string,
+      recurring: boolean,
+    ) => {
       return ctx.taskScheduler.schedule(name, cronExpression, prompt, recurring);
     },
     listScheduledTasks: async () => {
@@ -631,7 +811,9 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
       let embeddings: number[][] = [];
       if (ctx.gateway) {
         try {
-          const result = await ctx.gateway.generateEmbeddings({ texts: chunks.map((c) => c.content) });
+          const result = await ctx.gateway.generateEmbeddings({
+            texts: chunks.map((c) => c.content),
+          });
           embeddings = result.embeddings;
         } catch {
           // Store without embeddings — text search fallback
@@ -659,7 +841,9 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
         try {
           const result = await ctx.gateway.generateEmbeddings({ texts: [query] });
           queryEmbedding = result.embeddings[0];
-        } catch { /* fall back to text search */ }
+        } catch {
+          /* fall back to text search */
+        }
       }
 
       const chunksRepo = new DocumentChunkRepository(ctx.db);
@@ -672,7 +856,12 @@ export function createKnowledgeCapabilities(ctx: CapabilitiesContext) {
           .map((row) => {
             const emb = row.embedding ? (JSON.parse(row.embedding) as number[]) : null;
             const score = emb ? cosineSimilarity(queryEmbedding!, emb) : 0;
-            return { content: row.content, sourcePath: row.source_path, chunkIndex: row.chunk_index, score };
+            return {
+              content: row.content,
+              sourcePath: row.source_path,
+              chunkIndex: row.chunk_index,
+              score,
+            };
           })
           .filter((c) => c.score > 0.4)
           .sort((a, b) => b.score - a.score)
@@ -747,21 +936,35 @@ export function createEvaluationCapabilities(ctx: CapabilitiesContext) {
         const dimensions = parsed.dimensions ?? {};
 
         const id = `eval_${Date.now()}`;
-        ctx.db.prepare(
-          `INSERT INTO evaluation_results (id, project_id, session_id, source_type, source_id, overall_score, dimensions, feedback, evaluator_model)
+        ctx.db
+          .prepare(
+            `INSERT INTO evaluation_results (id, project_id, session_id, source_type, source_id, overall_score, dimensions, feedback, evaluator_model)
            VALUES (?, 'default', NULL, ?, ?, ?, ?, ?, ?)`,
-        ).run(id, sourceType, sourceId ?? null, overallScore, JSON.stringify(dimensions), parsed.feedback ?? '', evaluatorModel);
+          )
+          .run(
+            id,
+            sourceType,
+            sourceId ?? null,
+            overallScore,
+            JSON.stringify(dimensions),
+            parsed.feedback ?? '',
+            evaluatorModel,
+          );
 
         return { overallScore, dimensions, feedback: parsed.feedback ?? '', evaluatorModel };
       } catch {
-        return { overallScore: 5, dimensions: {}, feedback: 'Evaluation failed — model output unparseable', evaluatorModel };
+        return {
+          overallScore: 5,
+          dimensions: {},
+          feedback: 'Evaluation failed — model output unparseable',
+          evaluatorModel,
+        };
       }
     },
   };
 }
 
 export function createSystemKnowledgeCapabilities(ctx: CapabilitiesContext) {
-  const { SystemKnowledgeRepository } = require('@cabinet/storage');
   const repo = new SystemKnowledgeRepository(ctx.db);
   return {
     querySystemKnowledge: async (query: string, limit?: number) => {
@@ -775,10 +978,22 @@ export function createSystemKnowledgeCapabilities(ctx: CapabilitiesContext) {
 
 export function createLSPCapabilities() {
   return {
-    workspaceSymbols: async () => ({ available: false as const, error: 'LSP not available in capabilities mode' }),
-    goToDefinition: async () => ({ available: false as const, error: 'LSP not available in capabilities mode' }),
-    findReferences: async () => ({ available: false as const, error: 'LSP not available in capabilities mode' }),
-    diagnostics: async () => ({ available: false as const, error: 'LSP not available in capabilities mode' }),
+    workspaceSymbols: async () => ({
+      available: false as const,
+      error: 'LSP not available in capabilities mode',
+    }),
+    goToDefinition: async () => ({
+      available: false as const,
+      error: 'LSP not available in capabilities mode',
+    }),
+    findReferences: async () => ({
+      available: false as const,
+      error: 'LSP not available in capabilities mode',
+    }),
+    diagnostics: async () => ({
+      available: false as const,
+      error: 'LSP not available in capabilities mode',
+    }),
   };
 }
 
@@ -799,7 +1014,20 @@ export function createAllCapabilities(
   };
   if (!allowed || allowed.length === 0) return all;
   const areaMap: Record<string, string[]> = {
-    file: ['readFile', 'writeFile', 'listFiles', 'searchFiles', 'readDirectory', 'makeDirectory', 'moveFile', 'copyFile', 'deleteFile', 'removeDirectory', 'readFileChunk', 'globFiles'],
+    file: [
+      'readFile',
+      'writeFile',
+      'listFiles',
+      'searchFiles',
+      'readDirectory',
+      'makeDirectory',
+      'moveFile',
+      'copyFile',
+      'deleteFile',
+      'removeDirectory',
+      'readFileChunk',
+      'globFiles',
+    ],
     web: ['httpGet', 'httpPost'],
     shell: ['execCommand'],
     scheduler: ['scheduleTask', 'listScheduledTasks', 'cancelTask'],

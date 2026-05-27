@@ -12,23 +12,23 @@
 
 ## File Map
 
-| File | Responsibility |
-|------|----------------|
-| `packages/storage/src/migrations/003_project_name_unique.ts` | **Create** — 为 `projects.name` 添加 UNIQUE 约束 |
-| `apps/server/src/routes/projects.ts` | **Modify** — 项目创建时初始化物理目录、同名检测、旧数据清理 |
-| `packages/storage/src/repositories/project.ts` | **Modify** — 新增 `findByName()` 方法 |
-| `apps/server/src/routes/workflows.ts` | **Modify** — `create_workflow` 路由 projectId 透传、Scheduler 默认启用 |
-| `packages/agent/src/tools/index.ts` | **Modify** — `create_workflow` 工具 projectId 必填 |
-| `apps/server/src/routes/deliverables.ts` | **Modify/Create** — 全局交付物聚合端点 `GET /api/deliverables` |
-| `packages/agent/src/context-builder.ts` | **Modify** — 请求级缓存（TTL 5s） |
-| `packages/agent/src/__tests__/context-builder.test.ts` | **Create/Modify** — 验证缓存命中、失效、跨会话共享 |
-| `packages/agent/src/agent-loop.ts` | **Modify** — 支持 `prebuiltContext` 透传 |
-| `apps/server/src/routes/secretary.ts` | **Modify** — Secretary 短路由、移除 decisionanalysis 路由依赖 |
-| `apps/server/src/capabilities.ts` | **Modify** — Scheduler 默认启用 |
-| `apps/server/src/routes/ws.ts` | **Modify** — 补全 WebSocket 广播事件 |
-| `apps/desktop/src/components/FileViewer.tsx` | **Modify** — iframe 预览、源码/预览切换、拖拽宽度 |
-| `apps/desktop/src/components/ChatView.tsx` | **Modify** — Thinking 内容上提、ToolCallSummary 默认折叠 |
-| `apps/desktop/src/components/office/DeliverablesPanel.tsx` | **Modify** — 点击交付物触发 `open-file-viewer` |
+| File                                                         | Responsibility                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `packages/storage/src/migrations/003_project_name_unique.ts` | **Create** — 为 `projects.name` 添加 UNIQUE 约束                       |
+| `apps/server/src/routes/projects.ts`                         | **Modify** — 项目创建时初始化物理目录、同名检测、旧数据清理            |
+| `packages/storage/src/repositories/project.ts`               | **Modify** — 新增 `findByName()` 方法                                  |
+| `apps/server/src/routes/workflows.ts`                        | **Modify** — `create_workflow` 路由 projectId 透传、Scheduler 默认启用 |
+| `packages/agent/src/tools/index.ts`                          | **Modify** — `create_workflow` 工具 projectId 必填                     |
+| `apps/server/src/routes/deliverables.ts`                     | **Modify/Create** — 全局交付物聚合端点 `GET /api/deliverables`         |
+| `packages/agent/src/context-builder.ts`                      | **Modify** — 请求级缓存（TTL 5s）                                      |
+| `packages/agent/src/__tests__/context-builder.test.ts`       | **Create/Modify** — 验证缓存命中、失效、跨会话共享                     |
+| `packages/agent/src/agent-loop.ts`                           | **Modify** — 支持 `prebuiltContext` 透传                               |
+| `apps/server/src/routes/secretary.ts`                        | **Modify** — Secretary 短路由、移除 decisionanalysis 路由依赖          |
+| `apps/server/src/capabilities.ts`                            | **Modify** — Scheduler 默认启用                                        |
+| `apps/server/src/routes/ws.ts`                               | **Modify** — 补全 WebSocket 广播事件                                   |
+| `apps/desktop/src/components/FileViewer.tsx`                 | **Modify** — iframe 预览、源码/预览切换、拖拽宽度                      |
+| `apps/desktop/src/components/ChatView.tsx`                   | **Modify** — Thinking 内容上提、ToolCallSummary 默认折叠               |
+| `apps/desktop/src/components/office/DeliverablesPanel.tsx`   | **Modify** — 点击交付物触发 `open-file-viewer`                         |
 
 ---
 
@@ -36,15 +36,15 @@
 
 > **2026-05-26 更新**：在准备执行前拉取了远程最新代码（`9f14d4a`），发现本计划中 **90% 以上的内容已由远程代码实现**。以下标注各 Task 的当前状态。
 
-| Task | 状态 | 说明 |
-|------|------|------|
-| Task 1-5 | ✅ 已完成 | 数据层全部已由远程实现 |
-| Task 6-7 | ✅ 已完成 | ContextBuilder 缓存与 prebuiltContext 已存在 |
-| Task 8 | ✅ 已完成 | `secretary.ts` 中使用 `intentParser` 做路由，未见 decisionanalysis 依赖 |
-| Task 9-10 | ✅ 已完成 | Scheduler 默认启用、T0-T3 授权已存在 |
-| Task 11 | ✅ 已完成 | FileViewer iframe 预览与拖拽宽度已实现 |
-| Task 12 | ✅ 已完成 | thinking 已在 toolCalls 上方，`ToolCallSummary` 内部有 expanded 状态管理 |
-| Task 13-14 | ✅ 已完成 | WebSocket 事件监听已补全、DeliverablesPanel 已可点击 |
+| Task       | 状态      | 说明                                                                     |
+| ---------- | --------- | ------------------------------------------------------------------------ |
+| Task 1-5   | ✅ 已完成 | 数据层全部已由远程实现                                                   |
+| Task 6-7   | ✅ 已完成 | ContextBuilder 缓存与 prebuiltContext 已存在                             |
+| Task 8     | ✅ 已完成 | `secretary.ts` 中使用 `intentParser` 做路由，未见 decisionanalysis 依赖  |
+| Task 9-10  | ✅ 已完成 | Scheduler 默认启用、T0-T3 授权已存在                                     |
+| Task 11    | ✅ 已完成 | FileViewer iframe 预览与拖拽宽度已实现                                   |
+| Task 12    | ✅ 已完成 | thinking 已在 toolCalls 上方，`ToolCallSummary` 内部有 expanded 状态管理 |
+| Task 13-14 | ✅ 已完成 | WebSocket 事件监听已补全、DeliverablesPanel 已可点击                     |
 
 ---
 
@@ -58,6 +58,7 @@
 ### Task 1: 项目名唯一性约束 ✅ 已完成
 
 **Files:**
+
 - Create: `packages/storage/src/migrations/003_project_name_unique.ts`
 - Modify: `packages/storage/src/migrations/index.ts`
 - Test: 通过 `projects.ts` 路由测试间接验证
@@ -102,6 +103,7 @@
 ### Task 2: 项目创建时初始化物理目录 ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/server/src/routes/projects.ts`
 - Modify: `packages/storage/src/repositories/project.ts`
 - Test: `apps/server/src/routes/__tests__/projects.test.ts` (若存在；否则在 Step 1 创建)
@@ -123,15 +125,9 @@
 
   ```ts
   it('returns 409 when project name already exists', async () => {
-    await request(app)
-      .post('/api/projects')
-      .send({ name: 'DuplicateProject' })
-      .expect(201);
+    await request(app).post('/api/projects').send({ name: 'DuplicateProject' }).expect(201);
 
-    await request(app)
-      .post('/api/projects')
-      .send({ name: 'DuplicateProject' })
-      .expect(409);
+    await request(app).post('/api/projects').send({ name: 'DuplicateProject' }).expect(409);
   });
   ```
 
@@ -197,6 +193,7 @@
 ### Task 3: create_workflow projectId 透传（服务端） ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/server/src/routes/workflows.ts`
 - Test: `apps/server/src/routes/__tests__/workflows.test.ts` (若存在)
 
@@ -246,6 +243,7 @@
 ### Task 4: create_workflow tool projectId 必填（Agent 层） ✅ 已完成
 
 **Files:**
+
 - Modify: `packages/agent/src/tools/index.ts`
 - Test: `packages/agent/src/tools/__tests__/index.test.ts` (若存在)
 
@@ -281,6 +279,7 @@
 ### Task 5: 交付物聚合 API ✅ 已完成
 
 **Files:**
+
 - Modify/Create: `apps/server/src/routes/deliverables.ts`
 - Modify: `apps/desktop/src/pages/OfficePage.tsx`
 - Modify: `apps/desktop/src/components/office/Deliverables.tsx`
@@ -343,6 +342,7 @@
 ### Task 6: ContextBuilder 请求级缓存 ✅ 已完成
 
 **Files:**
+
 - Modify: `packages/agent/src/context-builder.ts`
 - Create/Modify: `packages/agent/src/__tests__/context-builder.test.ts`
 
@@ -357,9 +357,15 @@
 
   class SpyMemoryProvider implements MemoryProvider {
     calls: { method: string; args: unknown[] }[] = [];
-    async getShortTerm() { return []; }
-    async getProjectContext() { return 'Test project'; }
-    async getEntityPreferences() { return {}; }
+    async getShortTerm() {
+      return [];
+    }
+    async getProjectContext() {
+      return 'Test project';
+    }
+    async getEntityPreferences() {
+      return {};
+    }
     async searchLongTerm(query: string, projectId: string) {
       this.calls.push({ method: 'searchLongTerm', args: [query, projectId] });
       return [`Result for ${query}`];
@@ -430,7 +436,7 @@
       rules = this.rulesLoader?.loadMatching(rulesContext) ?? [];
       this.contextCache.set(cacheKey, { snapshot, rules, timestamp: now });
     }
-    ```
+  ```
 
 - [ ] **Step 3: 在 clearSessionCache 中支持按 projectId 清除**
 
@@ -460,6 +466,7 @@
 ### Task 7: AgentLoop prebuiltContext 透传 ✅ 已完成
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-loop.ts`
 - Modify: `packages/agent/src/context-builder.ts`
 
@@ -506,6 +513,7 @@
 ### Task 8: Secretary 路由优化 ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/server/src/routes/secretary.ts`
 - Test: `apps/server/src/routes/__tests__/secretary.test.ts` (若存在)
 
@@ -522,7 +530,11 @@
   async function routeMessage(msg: string, context: MessageContext): Promise<RouteResult> {
     // 短路由：无歧义的操作类指令
     const lower = msg.toLowerCase();
-    if (lower.includes('设置定时任务') || lower.includes('每天自动执行') || lower.includes('cron')) {
+    if (
+      lower.includes('设置定时任务') ||
+      lower.includes('每天自动执行') ||
+      lower.includes('cron')
+    ) {
       return { targetAgent: 'workflow_designer', confidence: 0.95, skipUserConfirm: true };
     }
     if (lower.includes('取消所有定时任务') || lower.includes('删除定时任务')) {
@@ -561,6 +573,7 @@
 ### Task 9: Scheduler 默认启用
 
 **Files:**
+
 - Modify: `apps/server/src/routes/workflows.ts`
 - Modify: `apps/server/src/capabilities.ts`
 
@@ -592,6 +605,7 @@
 ### Task 10: 用户授权级别 T0-T3 ✅ 已完成
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-loop.ts`
 - Modify: `apps/server/src/routes/secretary.ts`
 
@@ -648,6 +662,7 @@
 ### Task 11: FileViewer 增强（iframe 预览 + 拖拽宽度） ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/FileViewer.tsx`
 
 - [ ] **Step 1: 实现拖拽调整宽度**
@@ -664,11 +679,17 @@
     const startX = e.clientX;
     const startWidth = width;
     const onMove = (ev: MouseEvent) => {
-      const newWidth = Math.min(Math.max(startWidth - (ev.clientX - startX), 320), window.innerWidth * 0.7);
+      const newWidth = Math.min(
+        Math.max(startWidth - (ev.clientX - startX), 320),
+        window.innerWidth * 0.7,
+      );
       setWidth(newWidth);
       localStorage.setItem('fileViewerWidth', String(newWidth));
     };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
@@ -678,7 +699,10 @@
 
   ```tsx
   <div style={{ width }} className="relative flex flex-col border-l ...">
-    <div onMouseDown={handleMouseDown} className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" />
+    <div
+      onMouseDown={handleMouseDown}
+      className="absolute top-0 bottom-0 left-0 w-1 cursor-col-resize hover:bg-blue-400"
+    />
     {/* ... */}
   </div>
   ```
@@ -719,7 +743,10 @@
   ```ts
   const htmlContent = active.content.includes('<base')
     ? active.content
-    : active.content.replace('<head>', `<head><base href="file://${active.path.substring(0, active.path.lastIndexOf('/'))}/">`);
+    : active.content.replace(
+        '<head>',
+        `<head><base href="file://${active.path.substring(0, active.path.lastIndexOf('/'))}/">`,
+      );
   ```
 
 - [ ] **Step 3: Commit**
@@ -734,6 +761,7 @@
 ### Task 12: 消息流视觉权重调整 ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/ChatView.tsx`（或 `MessageRow.tsx`）
 
 - [ ] **Step 1: Thinking 内容上提**
@@ -785,6 +813,7 @@
 ### Task 13: WebSocket 事件补全 ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/server/src/routes/ws.ts`（或广播逻辑所在文件）
 - Modify: `apps/server/src/routes/projects.ts`
 - Modify: `apps/server/src/scheduler.ts`
@@ -837,6 +866,7 @@
 ### Task 14: DeliverablesPanel 点击修复 ✅ 已完成
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/office/DeliverablesPanel.tsx`
 
 - [ ] **Step 1: 绑定点击事件**
@@ -844,20 +874,29 @@
   Modify `DeliverablesPanel` 中的交付物列表项，增加点击处理：
 
   ```tsx
-  {deliverables.map((d) => (
-    <div
-      key={d.id}
-      className="deliverable-item cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-      onClick={() => {
-        window.dispatchEvent(new CustomEvent('open-file-viewer', {
-          detail: { path: d.filePath, name: d.name, mimeType: d.mimeType, projectId: d.projectId },
-        }));
-      }}
-    >
-      <span className="font-medium">{d.name}</span>
-      {/* ... 其他元数据 ... */}
-    </div>
-  ))}
+  {
+    deliverables.map((d) => (
+      <div
+        key={d.id}
+        className="deliverable-item cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+        onClick={() => {
+          window.dispatchEvent(
+            new CustomEvent('open-file-viewer', {
+              detail: {
+                path: d.filePath,
+                name: d.name,
+                mimeType: d.mimeType,
+                projectId: d.projectId,
+              },
+            }),
+          );
+        }}
+      >
+        <span className="font-medium">{d.name}</span>
+        {/* ... 其他元数据 ... */}
+      </div>
+    ));
+  }
   ```
 
 - [ ] **Step 2: Commit**
@@ -894,7 +933,6 @@
   Expected: Build succeeds.
 
 - [ ] **Step 5: 端到端冒烟测试**
-
   1. 创建新项目，确认 `.cabinet/projects/{projectName}/` 目录生成
   2. 尝试创建同名项目，确认 409 错误
   3. 通过对话创建工作流，确认 projectId 正确透传
@@ -906,6 +944,7 @@
 ## Plan Self-Review
 
 **1. Spec coverage:**
+
 - #1 rootPath 初始化 → Task 2
 - #5 create_workflow default → Task 3, Task 4
 - #10 交付物聚合 → Task 5
@@ -926,4 +965,4 @@
 
 ---
 
-*Plan complete. Ready for execution.*
+_Plan complete. Ready for execution._

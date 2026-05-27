@@ -1,7 +1,13 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
-import { WorkflowEngine, type WorkflowNodeDef, type WorkflowEdge, type WorkflowRun, type AgentLoopHandle } from '@cabinet/workflow';
+import {
+  WorkflowEngine,
+  type WorkflowNodeDef,
+  type WorkflowEdge,
+  type WorkflowRun,
+  type AgentLoopHandle,
+} from '@cabinet/workflow';
 import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
 import {
   AgentLoop,
@@ -14,7 +20,11 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import type { WorkflowCapabilities } from '@cabinet/types';
-import { createAllCapabilities, buildEnvironmentSection, type CapabilitiesContext } from '../capabilities.js';
+import {
+  createAllCapabilities,
+  buildEnvironmentSection,
+  type CapabilitiesContext,
+} from '../capabilities.js';
 
 // ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
@@ -34,7 +44,9 @@ let pendingCapabilities: WorkflowCapabilities = {};
 /** Helper: return a stub that throws with a capabilities-gated message, matching the expected return type. */
 function stub<T>(feature: string): T {
   const msg = `${feature} not enabled. Add "capabilities" to workflow definition.`;
-  return (async () => { throw new Error(msg); }) as unknown as T;
+  return (async () => {
+    throw new Error(msg);
+  }) as unknown as T;
 }
 
 // ── Tool dependencies (capabilities-gated for workflow agents) ──
@@ -89,11 +101,22 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     getWorkflow(id) {
       const row = ctx.workflowRepo.findById(id);
       if (!row) return undefined;
-      return { id: row.id, name: row.name, definition: JSON.parse(row.definition ?? '{}'), status: row.status };
+      return {
+        id: row.id,
+        name: row.name,
+        definition: JSON.parse(row.definition ?? '{}'),
+        status: row.status,
+      };
     },
     createWorkflow(input) {
       const id = `wf_${Date.now()}`;
-      ctx.workflowRepo.create(id, input.projectId ?? 'default', input.name, JSON.stringify(input.definition ?? {}), 'draft');
+      ctx.workflowRepo.create(
+        id,
+        input.projectId ?? 'default',
+        input.name,
+        JSON.stringify(input.definition ?? {}),
+        'draft',
+      );
       return { id };
     },
     updateWorkflow(id, input) {
@@ -125,7 +148,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
         name: input.name,
         description: input.description,
         systemPrompt: input.systemPrompt,
-        modelTier: ((input as any).modelTier as string || 'default') as any,
+        modelTier: (((input as any).modelTier as string) || 'default') as any,
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
         allowedTools: input.allowedTools,
@@ -145,7 +168,10 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     },
     listAgents() {
       return ctx.agentRegistry.list().map((r) => ({
-        type: r.type, name: r.name, description: r.description, builtIn: r.type !== 'custom',
+        type: r.type,
+        name: r.name,
+        description: r.description,
+        builtIn: r.type !== 'custom',
       }));
     },
     async invokeAgent(_agentName, _message) {
@@ -178,65 +204,113 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       return { id: project.id, name: project.name };
     },
 
+    getDashboardStats() {
+      const pendingDecisions = ctx.decisionRepo.countByStatus('pending');
+      const activeWorkflows = ctx.workflowRepo.countByStatus(['running']);
+      const activeProjects = ctx.projectRepo.listAll().filter((p) => !p.archived).length;
+      const todayCost = ctx.costTracker.getDailyCost();
+      const summary = ctx.metrics.getSummary();
+      return {
+        pendingDecisions,
+        activeWorkflows,
+        activeProjects,
+        todayCost,
+        totalLLMCalls: summary.totalLLMCalls,
+        totalTokens: summary.totalTokens,
+        totalDecisions: summary.totalDecisions,
+        errors: summary.errors,
+        recentEvents: [],
+      };
+    },
+    delegateTask(name) {
+      return ctx.taskTracker.addTask(name);
+    },
+    getTaskStatus(taskId) {
+      const task = ctx.taskTracker.getTask(taskId);
+      if (!task) return null;
+      return {
+        id: task.id,
+        name: task.name,
+        status: task.status,
+        startTime: task.startTime,
+        endTime: task.endTime,
+      };
+    },
+    listActiveTasks() {
+      return ctx.taskTracker
+        .listActive()
+        .map((t) => ({ id: t.id, name: t.name, status: t.status }));
+    },
+    getDecisionAudit(decisionId) {
+      const rows = ctx.auditLogRepo.findByEntity('decision', decisionId);
+      return rows.map((r) => ({
+        action: r.action,
+        actor: r.actor,
+        changes: (() => {
+          try {
+            return JSON.parse(r.changes ?? '{}');
+          } catch {
+            return {};
+          }
+        })(),
+        timestamp: r.timestamp,
+      }));
+    },
+    getSystemMetrics() {
+      return ctx.metrics.getSummary();
+    },
+    getWorkflowRun(runId) {
+      const row = ctx.workflowRepo.findRunById(runId);
+      if (!row) return null;
+      let steps: unknown[] = [];
+      try {
+        steps = ctx.workflowRepo.findStepsByRunId(runId);
+      } catch {
+        /* non-fatal */
+      }
+      return {
+        runId: row.run_id,
+        workflowId: row.workflow_id,
+        status: row.status,
+        steps,
+        startedAt: row.started_at,
+        updatedAt: row.updated_at,
+      };
+    },
+    listWorkflowRuns(workflowId) {
+      const rows = ctx.workflowRepo.findRunsByWorkflow(workflowId);
+      return rows.map((r) => ({
+        runId: r.run_id,
+        workflowId: r.workflow_id,
+        status: r.status,
+        startedAt: r.started_at,
+        updatedAt: r.updated_at,
+      }));
+    },
+
     // ── File system (capabilities-gated) ──
-    readFile: caps.files?.read
-      ? shared.readFile
-      : stub('File read'),
-    writeFile: caps.files?.write
-      ? shared.writeFile
-      : stub('File write'),
-    editFile: caps.files?.write
-      ? shared.editFile
-      : stub('File edit'),
-    applyPatch: caps.files?.write
-      ? shared.applyPatch
-      : stub('Patch application'),
-    moveFile: caps.files?.write
-      ? shared.moveFile
-      : stub('File move'),
-    copyFile: caps.files?.write
-      ? shared.copyFile
-      : stub('File copy'),
-    makeDirectory: caps.files?.write
-      ? shared.makeDirectory
-      : stub('Directory creation'),
-    fileInfo: caps.files?.read
-      ? shared.fileInfo
-      : stub('File info'),
-    listDirectory: caps.files?.read
-      ? shared.listDirectory
-      : stub('Directory listing'),
-    searchFiles: caps.files?.read
-      ? shared.searchFiles
-      : stub('File search'),
-    searchContent: caps.files?.read
-      ? shared.searchContent
-      : stub('Content search'),
-    deleteFile: caps.files?.write
-      ? shared.deleteFile
-      : stub('File deletion'),
-    recentFiles: caps.files?.read
-      ? shared.recentFiles
-      : stub('Recent files'),
-    watchFile: caps.files?.read
-      ? shared.watchFile
-      : stub('File watch'),
-    indexProject: caps.knowledge?.index
-      ? shared.indexProject
-      : stub('Project indexing'),
+    readFile: caps.files?.read ? shared.readFile : stub('File read'),
+    writeFile: caps.files?.write ? shared.writeFile : stub('File write'),
+    editFile: caps.files?.write ? shared.editFile : stub('File edit'),
+    applyPatch: caps.files?.write ? shared.applyPatch : stub('Patch application'),
+    moveFile: caps.files?.write ? shared.moveFile : stub('File move'),
+    copyFile: caps.files?.write ? shared.copyFile : stub('File copy'),
+    makeDirectory: caps.files?.write ? shared.makeDirectory : stub('Directory creation'),
+    fileInfo: caps.files?.read ? shared.fileInfo : stub('File info'),
+    listDirectory: caps.files?.read ? shared.listDirectory : stub('Directory listing'),
+    searchFiles: caps.files?.read ? shared.searchFiles : stub('File search'),
+    searchContent: caps.files?.read ? shared.searchContent : stub('Content search'),
+    deleteFile: caps.files?.write ? shared.deleteFile : stub('File deletion'),
+    recentFiles: caps.files?.read ? shared.recentFiles : stub('Recent files'),
+    watchFile: caps.files?.read ? shared.watchFile : stub('File watch'),
+    indexProject: caps.knowledge?.index ? shared.indexProject : stub('Project indexing'),
 
     // ── Web / HTTP (capabilities-gated) ──
-    webFetch: caps.web?.fetch
-      ? shared.webFetch
-      : stub('Web fetch'),
-    httpRequest: caps.web?.http
-      ? shared.httpRequest
-      : stub('HTTP requests'),
+    webFetch: caps.web?.fetch ? shared.webFetch : stub('Web fetch'),
+    httpRequest: caps.web?.http ? shared.httpRequest : stub('HTTP requests'),
 
     // ── Shell (capabilities-gated) ──
-    execCommand: caps.shell
-      ? shared.execCommand
-      : stub('Shell execution'),
+    execCommand: caps.shell ? shared.execCommand : stub('Shell execution'),
 
     // ── Scheduler (always enabled) ──
     scheduleTask: shared.scheduleTask,
@@ -244,20 +318,14 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     cancelScheduledTask: shared.cancelScheduledTask,
 
     // ── Knowledge / RAG (capabilities-gated) ──
-    indexDocument: caps.knowledge?.index
-      ? shared.indexDocument
-      : stub('Document indexing'),
-    searchDocuments: caps.knowledge?.search
-      ? shared.searchDocuments
-      : stub('Document search'),
+    indexDocument: caps.knowledge?.index ? shared.indexDocument : stub('Document indexing'),
+    searchDocuments: caps.knowledge?.search ? shared.searchDocuments : stub('Document search'),
     clearDocumentIndex: caps.knowledge?.index
       ? shared.clearDocumentIndex
       : stub('Index management'),
 
     // ── Evaluation (capabilities-gated) ──
-    evaluateOutput: caps.evaluation
-      ? shared.evaluateOutput
-      : stub('Evaluation'),
+    evaluateOutput: caps.evaluation ? shared.evaluateOutput : stub('Evaluation'),
 
     // ── LSP (always available via TypeScript service) ──
     workspaceSymbols: shared.workspaceSymbols,
@@ -293,7 +361,9 @@ function buildWorkflowMemoryProvider(runId: string) {
         try {
           const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
           queryEmbedding = er.embeddings[0];
-        } catch { /* fall back to text search */ }
+        } catch {
+          /* fall back to text search */
+        }
       }
       const results = await ctx.longTerm.search(query, 5, queryEmbedding);
       return results.map((r) => `[Memory] ${r.content}`);
@@ -348,7 +418,11 @@ function getEngine(): WorkflowEngine {
         registerCabinetTools(baseExecutor, buildToolDependencies(pendingCapabilities));
         registerSkillTools(baseExecutor);
         const mcpCtx = getServerContext();
-        registerMCPTools(baseExecutor, (name, args) => mcpCtx.mcpManager.callTool(name, args), () => mcpCtx.mcpManager.listTools());
+        registerMCPTools(
+          baseExecutor,
+          (name, args) => mcpCtx.mcpManager.callTool(name, args),
+          () => mcpCtx.mcpManager.listTools(),
+        );
         baseExecutor.setToolCallCallback((toolName, success, blocked, durationMs) => {
           ctx.observability.recordToolCall(toolName, success, blocked, durationMs);
         });
@@ -356,9 +430,8 @@ function getEngine(): WorkflowEngine {
       }
 
       // Create a filtered view instead of rebuilding the tool registry
-      const executor = role.allowedTools.length > 0
-        ? baseExecutor.createView(role.allowedTools)
-        : baseExecutor;
+      const executor =
+        role.allowedTools.length > 0 ? baseExecutor.createView(role.allowedTools) : baseExecutor;
 
       const checkpointManager = new CheckpointManager(ctx.db);
       const loop = new AgentLoop({
@@ -393,7 +466,10 @@ function getEngine(): WorkflowEngine {
       return {
         async run(message: string) {
           const result = await loop.run(message);
-          ctx.metrics.increment('llm_call', { model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier, purpose: 'workflow_segment' });
+          ctx.metrics.increment('llm_call', {
+            model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
+            purpose: 'workflow_segment',
+          });
           return result.content;
         },
         async dispose() {
@@ -415,10 +491,18 @@ function getEngine(): WorkflowEngine {
       try {
         const response = await ctx.gateway.generateText({
           model: (d.model as string) ?? 'claude-haiku-4-5',
-          messages: [{ role: 'user', content: (d.prompt as string) ?? (d.label as string) ?? 'Process this step' }],
+          messages: [
+            {
+              role: 'user',
+              content: (d.prompt as string) ?? (d.label as string) ?? 'Process this step',
+            },
+          ],
           maxTokens: (d.maxTokens as number) ?? 200,
         });
-        ctx.metrics.increment('llm_call', { model: (d.model as string) ?? 'claude-haiku-4-5', purpose: 'workflow_legacy' });
+        ctx.metrics.increment('llm_call', {
+          model: (d.model as string) ?? 'claude-haiku-4-5',
+          purpose: 'workflow_legacy',
+        });
         return response.content;
       } catch (e: any) {
         return `Error: ${e.message}`;
@@ -437,7 +521,11 @@ function getEngine(): WorkflowEngine {
         title: `Workflow: ${(d.label as string) ?? node.id}`,
         description: `Workflow needs your approval at: ${(d.label as string) ?? node.id}.`,
         options: [
-          { id: 'approve_continue', label: 'Approve & Continue', impact: 'Workflow proceeds to next step.' },
+          {
+            id: 'approve_continue',
+            label: 'Approve & Continue',
+            impact: 'Workflow proceeds to next step.',
+          },
           { id: 'reject_terminate', label: 'Terminate', impact: 'Workflow stops immediately.' },
         ],
         classification: {
@@ -452,7 +540,10 @@ function getEngine(): WorkflowEngine {
         },
       });
 
-      auditLogRepo.insert('workflow_approval', decisionId, 'pending', 'system', { workflowId: run.workflowId, nodeId: node.id });
+      auditLogRepo.insert('workflow_approval', decisionId, 'pending', 'system', {
+        workflowId: run.workflowId,
+        nodeId: node.id,
+      });
 
       broadcast('decision_created', {
         decisionId,
@@ -467,7 +558,10 @@ function getEngine(): WorkflowEngine {
       const { skillRegistry } = getServerContext();
       const skill = skillRegistry.load(skillId);
       if (!skill) return `Skill not found: ${skillId}`;
-      const result = await skillRegistry.executeSkill(skill, input as Record<string, unknown> ?? {});
+      const result = await skillRegistry.executeSkill(
+        skill,
+        (input as Record<string, unknown>) ?? {},
+      );
       return result.output;
     },
 
@@ -570,7 +664,8 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
     // Default: sequential connection from previous step
     // Skip if previous was a condition (condition handles its own edges)
     const prevIsCondition = prevStep?.type === 'condition';
-    const prevConditionHandlesThis = prevIsCondition &&
+    const prevConditionHandlesThis =
+      prevIsCondition &&
       (prevStep?.condition?.trueBranch === step.id || prevStep?.condition?.falseBranch === step.id);
 
     if (prevStep && !prevIsCondition) {
@@ -646,8 +741,11 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   }
 
   // Find the latest incomplete run for this workflow to resume
-  const incompleteRuns = workflowRepo.findRunsByWorkflow(workflowId)
-    .filter((r) => r.status === 'awaiting_approval' || r.status === 'paused' || r.status === 'running')
+  const incompleteRuns = workflowRepo
+    .findRunsByWorkflow(workflowId)
+    .filter(
+      (r) => r.status === 'awaiting_approval' || r.status === 'paused' || r.status === 'running',
+    )
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const latestRun = incompleteRuns[0];
@@ -657,13 +755,22 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   }
 
   const eng = getEngine();
-  let run = await eng.continueRun(latestRun.run_id, nodes, edges);
+  const run = await eng.continueRun(latestRun.run_id, nodes, edges);
 
-  const finalStatus: string = run.status === 'awaiting_approval' ? 'awaiting_approval' : 'completed';
+  const finalStatus: string =
+    run.status === 'awaiting_approval' ? 'awaiting_approval' : 'completed';
   workflowRepo.updateStatus(workflowId, finalStatus);
-  auditLogRepo.insert('workflow', workflowId, 'resume', 'system', { status: finalStatus, steps: run.steps, runId: run.runId });
+  auditLogRepo.insert('workflow', workflowId, 'resume', 'system', {
+    status: finalStatus,
+    steps: run.steps,
+    runId: run.runId,
+  });
 
-  logger.info('Workflow resumed after approval', { workflowId, nodes: run.steps.length, status: finalStatus });
+  logger.info('Workflow resumed after approval', {
+    workflowId,
+    nodes: run.steps.length,
+    status: finalStatus,
+  });
 }
 
 // ── Approval polling (fallback when WebSocket event is missed) ──
@@ -699,7 +806,11 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
         const decision = decisionRepo.get(decisionId);
 
         if (decision && (decision.status === 'approved' || decision.status === 'rejected')) {
-          logger.info('Workflow approval resolved via polling', { workflowId: wfId, decisionId, status: decision.status });
+          logger.info('Workflow approval resolved via polling', {
+            workflowId: wfId,
+            decisionId,
+            status: decision.status,
+          });
           try {
             if (decision.status === 'approved') {
               await resumeWorkflowAfterApproval(wfId);
@@ -709,9 +820,15 @@ export function startApprovalPolling(intervalMs: number = 30_000): void {
               workflowRepo.failAwaitingRuns(wfId);
             }
             // Mark approval as resolved
-            auditLogRepo.insert('workflow_approval', approvalRow.entity_id, 'resolved', 'system', { workflowId: wfId, status: 'resolved' });
+            auditLogRepo.insert('workflow_approval', approvalRow.entity_id, 'resolved', 'system', {
+              workflowId: wfId,
+              status: 'resolved',
+            });
           } catch (err) {
-            logger.error('Failed to resume workflow after approval', { workflowId: wfId, error: (err as Error).message });
+            logger.error('Failed to resume workflow after approval', {
+              workflowId: wfId,
+              error: (err as Error).message,
+            });
           }
         }
       }
@@ -733,9 +850,7 @@ export function stopApprovalPolling(): void {
 workflowsRouter.get('/', (c) => {
   const { workflowRepo } = getServerContext();
   const projectId = c.req.query('projectId');
-  const rows = projectId
-    ? workflowRepo.listByProject(projectId)
-    : workflowRepo.listAll();
+  const rows = projectId ? workflowRepo.listByProject(projectId) : workflowRepo.listAll();
   const workflows = rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -756,7 +871,13 @@ workflowsRouter.post('/', async (c) => {
   const id = `wf_${Date.now()}`;
   const definition = body.definition ?? { nodes: body.nodes ?? [], edges: body.edges ?? [] };
   try {
-    workflowRepo.create(id, body.projectId, body.name ?? 'Untitled', JSON.stringify(definition), 'draft');
+    workflowRepo.create(
+      id,
+      body.projectId,
+      body.name ?? 'Untitled',
+      JSON.stringify(definition),
+      'draft',
+    );
     return c.json({ id, status: 'created' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -803,7 +924,11 @@ workflowsRouter.post('/:id/run', async (c) => {
 
     const finalStatus = run.status;
     workflowRepo.updateStatus(id, finalStatus);
-    auditLogRepo.insert('workflow', id, 'run', 'system', { status: finalStatus, steps: run.steps, runId: run.runId });
+    auditLogRepo.insert('workflow', id, 'run', 'system', {
+      status: finalStatus,
+      steps: run.steps,
+      runId: run.runId,
+    });
 
     // Collect handoff docs from segment boundaries
     const handoffs: Record<string, unknown> = {};
@@ -825,7 +950,12 @@ workflowsRouter.post('/:id/run', async (c) => {
       status: finalStatus,
       timestamp: new Date().toISOString(),
     });
-    logger.info('Workflow executed', { id, nodes: run.steps.length, status: finalStatus, segments: Object.keys(handoffs).length });
+    logger.info('Workflow executed', {
+      id,
+      nodes: run.steps.length,
+      status: finalStatus,
+      segments: Object.keys(handoffs).length,
+    });
     return c.json({
       runId: run.runId,
       workflowId: id,

@@ -28,7 +28,16 @@ export interface ScheduledTask {
 
 export type TaskExecutor = (task: ScheduledTask) => Promise<void>;
 
-function rowToScheduledTask(r: { id: string; name: string; cron_expression: string; prompt: string; recurring: number; enabled: number; last_run_at: string | null; next_run_at: string | null }): ScheduledTask {
+function rowToScheduledTask(r: {
+  id: string;
+  name: string;
+  cron_expression: string;
+  prompt: string;
+  recurring: number;
+  enabled: number;
+  last_run_at: string | null;
+  next_run_at: string | null;
+}): ScheduledTask {
   return {
     id: r.id,
     name: r.name,
@@ -49,7 +58,12 @@ export class TaskScheduler {
   private jobs = new Map<string, ReturnType<typeof cron.schedule>>();
   private autoArchiveJob: ReturnType<typeof cron.schedule> | null = null;
 
-  constructor(scheduledTaskRepo: ScheduledTaskRepository, decisionRepo: DecisionRepository, logger: SchedulerLogger, _pollIntervalMs = 30000) {
+  constructor(
+    scheduledTaskRepo: ScheduledTaskRepository,
+    decisionRepo: DecisionRepository,
+    logger: SchedulerLogger,
+    _pollIntervalMs = 30000,
+  ) {
     this.scheduledTaskRepo = scheduledTaskRepo;
     this.decisionRepo = decisionRepo;
     this.logger = logger;
@@ -61,7 +75,12 @@ export class TaskScheduler {
 
   // ── Task CRUD (called by secretary callbacks) ──
 
-  schedule(name: string, cronExpression: string, prompt: string, recurring: boolean): { id: string } {
+  schedule(
+    name: string,
+    cronExpression: string,
+    prompt: string,
+    recurring: boolean,
+  ): { id: string } {
     const id = `task_${Date.now()}`;
     const nextRun = this.nextCronTime(cronExpression);
     this.scheduledTaskRepo.insert({
@@ -179,7 +198,9 @@ export class TaskScheduler {
 
   private validateOrFallback(cronExpression: string): string {
     if (cron.validate(cronExpression)) return cronExpression;
-    this.logger.warn('Invalid cron expression, falling back to every minute', { cron: cronExpression });
+    this.logger.warn('Invalid cron expression, falling back to every minute', {
+      cron: cronExpression,
+    });
     return '* * * * *';
   }
 

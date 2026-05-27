@@ -21,21 +21,21 @@
 
 本次设计覆盖 9 项测试发现的问题及 2 项补充问题：
 
-| 编号 | 问题 | 根因归类 | 解决 Phase |
-|------|------|---------|-----------|
-| #1 | 新建项目 `rootPath` 为空，缺少物理文件夹 | 数据层 | Phase 1 |
-| #5 | `create_workflow` 固定使用 `projectId='default'` | 数据层 | Phase 1 |
-| #10 | 交付物只在项目页显示，Office 首页为空 | 数据层 | Phase 1 |
-| #12 | 系统缺失同名项目检测 | 数据层 | Phase 1 |
-| #13 | 项目存储应以项目名命名文件夹 | 数据层 | Phase 1 |
-| #4 | Workflow Designer 调用 177 个工具 | 执行层 | Phase 2 |
-| #6 | Secretary 路由绕弯，调用 decisionanalysis | 执行层 | Phase 2 |
-| #8 | Organize 调用 135 个工具 | 执行层 | Phase 2 |
-| #9 | Agent 无法设置定时任务 | 执行层 | Phase 2 |
-| #2 | 无法预览 HTML/PDF 交付物 | UI 层 | Phase 3 |
-| #3 | 路由折叠窗口工具调用挤占思考内容 | UI 层 | Phase 3 |
-| #7 | Office 首页小组件缺少 WebSocket 推送 | UI 层 | Phase 3 |
-| #11 | DeliverablesPanel 无法点击 | UI 层 | Phase 3 |
+| 编号 | 问题                                             | 根因归类 | 解决 Phase |
+| ---- | ------------------------------------------------ | -------- | ---------- |
+| #1   | 新建项目 `rootPath` 为空，缺少物理文件夹         | 数据层   | Phase 1    |
+| #5   | `create_workflow` 固定使用 `projectId='default'` | 数据层   | Phase 1    |
+| #10  | 交付物只在项目页显示，Office 首页为空            | 数据层   | Phase 1    |
+| #12  | 系统缺失同名项目检测                             | 数据层   | Phase 1    |
+| #13  | 项目存储应以项目名命名文件夹                     | 数据层   | Phase 1    |
+| #4   | Workflow Designer 调用 177 个工具                | 执行层   | Phase 2    |
+| #6   | Secretary 路由绕弯，调用 decisionanalysis        | 执行层   | Phase 2    |
+| #8   | Organize 调用 135 个工具                         | 执行层   | Phase 2    |
+| #9   | Agent 无法设置定时任务                           | 执行层   | Phase 2    |
+| #2   | 无法预览 HTML/PDF 交付物                         | UI 层    | Phase 3    |
+| #3   | 路由折叠窗口工具调用挤占思考内容                 | UI 层    | Phase 3    |
+| #7   | Office 首页小组件缺少 WebSocket 推送             | UI 层    | Phase 3    |
+| #11  | DeliverablesPanel 无法点击                       | UI 层    | Phase 3    |
 
 ---
 
@@ -63,6 +63,7 @@
 ```
 
 **关键约束**：
+
 - 全局索引文件 `.cabinet/projects/{projectId}.json` **继续保留**，不影响现有读取逻辑
 - `Project.rootPath` 在创建时自动设置为 `join(CABINET_DIR, 'projects', projectName)`
 - 项目名称作为文件夹名，**不随项目重命名而变更**（避免路径断裂）
@@ -100,6 +101,7 @@ if (existing) {
 - `GET /api/projects/:id/deliverables`（Project Dashboard）：**加** `projectId` 过滤，只返回当前项目
 
 前端对应调整：
+
 - Office 首页 `Deliverables` 调用 `/api/deliverables`
 - Project Dashboard `Deliverables` 调用 `/api/projects/${pid}/deliverables`
 
@@ -140,6 +142,7 @@ if (cached && now - cached.timestamp < this.CONTEXT_CACHE_TTL_MS) {
 ```
 
 **失效策略**：
+
 - `clearSessionCache()` 中清除对应 `projectId` 的缓存条目
 - 超过 5 秒 TTL 自动失效
 - 缓存未命中时回退到原有自采集逻辑
@@ -159,6 +162,7 @@ interface AgentLoopOptions {
 ```
 
 **使用策略**：
+
 - 正常路径（Secretary → Specialist）：不传递，依赖 3.1 的缓存自动复用
 - 严格一致性场景（如决策事务）：由调用方显式传递，ContextBuilder 完全跳过自采集
 
@@ -204,12 +208,12 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 
 **短路由规则**（仅覆盖无歧义的操作类指令）：
 
-| 用户指令 | Secretary 行为 |
-|---------|---------------|
-| "设置每天8点运行工作流" | 直接调用 `schedule_task` |
-| "取消所有定时任务" | 直接调用 `cancel_scheduled_task` |
-| "列出我的工作流" | 直接查询后回复 |
-| "帮我设计 workflow" | Secretary 自己分析，判断 `workflow_designer` 或 `organize`，必要时询问用户 |
+| 用户指令                | Secretary 行为                                                             |
+| ----------------------- | -------------------------------------------------------------------------- |
+| "设置每天8点运行工作流" | 直接调用 `schedule_task`                                                   |
+| "取消所有定时任务"      | 直接调用 `cancel_scheduled_task`                                           |
+| "列出我的工作流"        | 直接查询后回复                                                             |
+| "帮我设计 workflow"     | Secretary 自己分析，判断 `workflow_designer` 或 `organize`，必要时询问用户 |
 
 **decisionanalysis 的正确定位**：仅在用户明确要求分析时使用（如"帮我分析这两个方案的优劣"）。
 
@@ -218,6 +222,7 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 **修复点**：
 
 1. **默认注入**：在 `apps/server/src/routes/workflows.ts` 中移除 `caps.scheduler` 门控：
+
    ```ts
    // 修改前
    scheduleTask: caps.scheduler ? shared.scheduleTask : stub('Scheduler');
@@ -235,14 +240,15 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 
 **级别定义**：
 
-| 级别 | 连续错误中止 | 系统探测工具上限 | 场景 |
-|------|------------|----------------|------|
-| **T0** 保守 | 2 次 | 3 次 | 用户明确说"谨慎处理" |
-| **T1** 标准 | 3 次 | 5 次 | 默认级别 |
-| **T2** 宽松 | 5 次 | 10 次 | 用户说"你可以多尝试几次" |
-| **T3** 完全信任 | 10 次 | 无上限 | 调试模式 |
+| 级别            | 连续错误中止 | 系统探测工具上限 | 场景                     |
+| --------------- | ------------ | ---------------- | ------------------------ |
+| **T0** 保守     | 2 次         | 3 次             | 用户明确说"谨慎处理"     |
+| **T1** 标准     | 3 次         | 5 次             | 默认级别                 |
+| **T2** 宽松     | 5 次         | 10 次            | 用户说"你可以多尝试几次" |
+| **T3** 完全信任 | 10 次        | 无上限           | 调试模式                 |
 
 **调整方式**：
+
 - **全局设置**：用户在设置面板中选择默认级别（默认 T1）
 - **对话内临时调整**：用户通过自然语言指令调整（如"这次允许你多试几次" → 临时提升到 T2）
 - **不按任务提供 UI 选择**：不在发起工作流前弹窗打扰用户
@@ -261,25 +267,28 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 
 **渲染策略**：
 
-| 文件类型 | 默认视图 | 可切换 | 渲染方式 |
-|---------|---------|--------|---------|
-| `.html`, `.htm` | **预览** | 可切源码 | `iframe` + Blob URL，`sandbox="allow-scripts"` |
-| `.pdf` | **预览** | 不可切 | `iframe` + Blob URL，浏览器内置阅读器 |
-| 图片 | **预览** | 不可切 | 现有 `<img>` |
-| `.md` | 源码 | 二期可接渲染 | 现有 `<pre>` |
-| 代码/文本 | 源码 | 不可切 | 现有 `<pre>` |
+| 文件类型        | 默认视图 | 可切换       | 渲染方式                                       |
+| --------------- | -------- | ------------ | ---------------------------------------------- |
+| `.html`, `.htm` | **预览** | 可切源码     | `iframe` + Blob URL，`sandbox="allow-scripts"` |
+| `.pdf`          | **预览** | 不可切       | `iframe` + Blob URL，浏览器内置阅读器          |
+| 图片            | **预览** | 不可切       | 现有 `<img>`                                   |
+| `.md`           | 源码     | 二期可接渲染 | 现有 `<pre>`                                   |
+| 代码/文本       | 源码     | 不可切       | 现有 `<pre>`                                   |
 
 **安全隔离**：
+
 - `sandbox="allow-scripts allow-same-origin"`
 - 禁用 `allow-top-navigation allow-popups allow-forms`
 - Blob URL 隔离本地文件系统路径
 
 **拖拽调整宽度**：
+
 - 在面板左边缘增加 4px 拖拽手柄
 - 最小 320px，最大 70vw
 - 用户偏好存入 `localStorage`
 
 **触发方式统一**：所有文件打开统一走 `open-file-viewer` 事件，FileViewer 内部根据文件类型自动选择初始视图：
+
 - Explorer 点击 → FileViewer
 - Deliverables / DeliverablesPanel 点击 → FileViewer
 - Chat 消息中的文件路径（自动检测为可点击链接）→ FileViewer
@@ -301,16 +310,16 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 
 **补全方案**：在以下业务操作中增加 WebSocket 广播：
 
-| 业务操作 | 当前是否广播 | 需要广播的事件 |
-|---------|------------|--------------|
-| 交付物创建 | 是 (`ws:deliverable_created`) | — |
-| 工作流完成 | 是 (`ws:workflow_completed`) | — |
-| 会议创建 | 是 (`ws:meeting_created`) | — |
-| 决策创建 | 是 (`ws:decision_created`) | — |
-| 成本更新 | 是 (`ws:cost_updated`) | — |
-| 项目创建 | **否** | 新增 `ws:project_created` |
-| 项目状态变更 | **否** | 新增 `ws:project_updated` |
-| 定时任务触发 | **否** | 新增 `ws:task_executed` |
+| 业务操作     | 当前是否广播                  | 需要广播的事件            |
+| ------------ | ----------------------------- | ------------------------- |
+| 交付物创建   | 是 (`ws:deliverable_created`) | —                         |
+| 工作流完成   | 是 (`ws:workflow_completed`)  | —                         |
+| 会议创建     | 是 (`ws:meeting_created`)     | —                         |
+| 决策创建     | 是 (`ws:decision_created`)    | —                         |
+| 成本更新     | 是 (`ws:cost_updated`)        | —                         |
+| 项目创建     | **否**                        | 新增 `ws:project_created` |
+| 项目状态变更 | **否**                        | 新增 `ws:project_updated` |
+| 定时任务触发 | **否**                        | 新增 `ws:task_executed`   |
 
 **兜底策略**：若 WebSocket 连接断开或事件遗漏，Office 首页保留现有的**定时轮询**（每 60 秒刷新一次 `/api/dashboard/summary`），确保数据最终一致。
 
@@ -321,6 +330,7 @@ async handleMessage(msg: string, context: MessageContext): Promise<RouteResult> 
 **修复**：为 `DeliverablesPanel` 中的每个交付物项绑定 `onClick` 事件，触发 `open-file-viewer` 事件（与 `Deliverables` 组件行为统一）。
 
 同时调整 Deliverables 数据流：
+
 - Office 首页 `Deliverables` 调用 `/api/deliverables`（全局聚合）
 - Project Dashboard `Deliverables` 调用 `/api/projects/${pid}/deliverables`（项目过滤）
 
@@ -352,6 +362,7 @@ Phase 3: UI/交互层
 ```
 
 **关键依赖**：
+
 - Phase 2 的 ContextBuilder 缓存 key 依赖正确的 `projectId`，因此必须在 Phase 1 的 `create_workflow` 透传修复之后实施
 - Phase 3 的 Deliverables 数据流依赖 Phase 1 的聚合 API 调整
 
@@ -359,15 +370,15 @@ Phase 3: UI/交互层
 
 ## 6. 风险评估
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| 项目文件夹命名与现有 `.json` 索引冲突 | Phase 1 | 保留现有索引文件，新增文件夹并行存储，互不干扰 |
-| ContextBuilder 缓存导致文件变更延迟感知 | Phase 2 | TTL 仅 5 秒，且提供 `clearSessionCache()` 手动清除 |
-| Secretary 短路由误判复杂任务 | Phase 2 | 仅对无歧义的操作类指令启用短路由，设计/创建类一律由 Secretary 自己分析 |
-| iframe 预览 HTML 存在 XSS 风险 | Phase 3 | `sandbox` 限制 + 禁用顶层导航 + Blob URL 隔离 |
-| FileViewer 拖拽宽度与现有布局冲突 | Phase 3 | 使用 flex 布局，拖拽仅改变 FileViewer 的 `style.width`，不影响其他区域 |
+| 风险                                    | 影响    | 缓解措施                                                               |
+| --------------------------------------- | ------- | ---------------------------------------------------------------------- |
+| 项目文件夹命名与现有 `.json` 索引冲突   | Phase 1 | 保留现有索引文件，新增文件夹并行存储，互不干扰                         |
+| ContextBuilder 缓存导致文件变更延迟感知 | Phase 2 | TTL 仅 5 秒，且提供 `clearSessionCache()` 手动清除                     |
+| Secretary 短路由误判复杂任务            | Phase 2 | 仅对无歧义的操作类指令启用短路由，设计/创建类一律由 Secretary 自己分析 |
+| iframe 预览 HTML 存在 XSS 风险          | Phase 3 | `sandbox` 限制 + 禁用顶层导航 + Blob URL 隔离                          |
+| FileViewer 拖拽宽度与现有布局冲突       | Phase 3 | 使用 flex 布局，拖拽仅改变 FileViewer 的 `style.width`，不影响其他区域 |
 
 ---
 
-*文档版本: v1.0*  
-*待用户审阅确认后，进入 implementation plan 阶段。*
+_文档版本: v1.0_  
+_待用户审阅确认后，进入 implementation plan 阶段。_

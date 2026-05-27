@@ -12,7 +12,10 @@ interface WatcherDeps {
   skillRepo: SkillRepository;
   agentRegistry: AgentRoleRegistry;
   agentRoleRepo: AgentRoleRepository;
-  logger: { info: (msg: string, meta?: Record<string, unknown>) => void; warn: (msg: string, meta?: Record<string, unknown>) => void };
+  logger: {
+    info: (msg: string, meta?: Record<string, unknown>) => void;
+    warn: (msg: string, meta?: Record<string, unknown>) => void;
+  };
 }
 
 /** Debounce helper: accumulate calls and execute once after delay. */
@@ -39,8 +42,9 @@ export function startSkillWatcher(dataDir: string, deps: WatcherDeps): () => voi
   const scan = () => {
     try {
       const currentNames = new Set<string>();
-      const entries = readdirSync(skillsDir, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+      const entries = readdirSync(skillsDir, { withFileTypes: true }).filter((d) =>
+        d.isDirectory(),
+      );
 
       for (const entry of entries) {
         const skillMdPath = join(skillsDir, entry.name, 'SKILL.md');
@@ -126,7 +130,10 @@ export function startSkillWatcher(dataDir: string, deps: WatcherDeps): () => voi
             });
 
             broadcast('skill_updated', { id: existing.id, name: parsed.name });
-            deps.logger.info('Skill auto-updated from filesystem', { id: existing.id, name: parsed.name });
+            deps.logger.info('Skill auto-updated from filesystem', {
+              id: existing.id,
+              name: parsed.name,
+            });
           }
         }
       }
@@ -139,7 +146,10 @@ export function startSkillWatcher(dataDir: string, deps: WatcherDeps): () => voi
             deps.skillRegistry.unregister(name);
             deps.skillRepo.delete(skill.id);
             broadcast('skill_deleted', { id: skill.id, name: skill.name });
-            deps.logger.info('Skill auto-removed (directory deleted)', { id: skill.id, name: skill.name });
+            deps.logger.info('Skill auto-removed (directory deleted)', {
+              id: skill.id,
+              name: skill.name,
+            });
           }
         }
       }
@@ -177,8 +187,9 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
   const scan = () => {
     try {
       const currentNames = new Set<string>();
-      const entries = readdirSync(agentsDir, { withFileTypes: true })
-        .filter((d) => d.isDirectory());
+      const entries = readdirSync(agentsDir, { withFileTypes: true }).filter((d) =>
+        d.isDirectory(),
+      );
 
       for (const entry of entries) {
         const agentJsonPath = join(agentsDir, entry.name, 'agent.json');
@@ -206,9 +217,17 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
             systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
             modelTier: ((agentCard.modelTier as string) || 'default') as any,
             temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-            maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
-            allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
-            contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+            maxResponseTokens: parseInt(
+              String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+              10,
+            ),
+            allowedTools: (Array.isArray(agentCard.allowedTools)
+              ? agentCard.allowedTools
+              : []) as string[],
+            contextBudget: parseInt(
+              String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+              10,
+            ),
           };
 
           deps.agentRegistry.register(role);
@@ -236,7 +255,8 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
           // Existing custom agent — check if content changed
           const changed =
             existing.description !== String(agentCard.description ?? '') ||
-            existing.systemPrompt !== String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
+            existing.systemPrompt !==
+              String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
             existing.modelTier !== String(agentCard.modelTier ?? 'default');
 
           if (changed) {
@@ -245,9 +265,17 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
               modelTier: ((agentCard.modelTier as string) || 'default') as any,
               temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-              maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
-              allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
-              contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+              maxResponseTokens: parseInt(
+                String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+                10,
+              ),
+              allowedTools: (Array.isArray(agentCard.allowedTools)
+                ? agentCard.allowedTools
+                : []) as string[],
+              contextBudget: parseInt(
+                String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+                10,
+              ),
             });
 
             deps.agentRoleRepo.upsert({
@@ -257,9 +285,17 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               system_prompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
               model_tier: ((agentCard.modelTier as string) || 'default') as any,
               temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-              max_response_tokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
-              allowed_tools: JSON.stringify(Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []),
-              context_budget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+              max_response_tokens: parseInt(
+                String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+                10,
+              ),
+              allowed_tools: JSON.stringify(
+                Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : [],
+              ),
+              context_budget: parseInt(
+                String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+                10,
+              ),
               is_builtin: 0,
               created_at: new Date().toISOString(),
             });

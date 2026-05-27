@@ -114,7 +114,19 @@ export interface SkillDefinition {
 
 // ── Workflow (Declarative, LLM-friendly) ──
 
-export type WorkflowStepType = 'start' | 'end' | 'skill' | 'aiAgent' | 'llmCall' | 'condition' | 'parallel' | 'human' | 'humanApproval' | 'dataQuery' | 'notification' | 'wait';
+export type WorkflowStepType =
+  | 'start'
+  | 'end'
+  | 'skill'
+  | 'aiAgent'
+  | 'llmCall'
+  | 'condition'
+  | 'parallel'
+  | 'human'
+  | 'humanApproval'
+  | 'dataQuery'
+  | 'notification'
+  | 'wait';
 
 /** Runtime node type — alias for WorkflowStepType. Used by the workflow engine. */
 export type WorkflowNodeType = WorkflowStepType;

@@ -35,8 +35,19 @@ export interface ChatMessage {
   routing?: { from: string; to: string };
   isError?: boolean;
   thinkingDurationMs?: number;
-  tasks?: Array<{ id: string; name: string; status: 'pending' | 'running' | 'done' | 'error'; startTime?: number; endTime?: number }>;
-  semanticTasks?: Array<{ id: string; title: string; status: 'pending' | 'running' | 'done' | 'error'; steps?: number }>;
+  tasks?: Array<{
+    id: string;
+    name: string;
+    status: 'pending' | 'running' | 'done' | 'error';
+    startTime?: number;
+    endTime?: number;
+  }>;
+  semanticTasks?: Array<{
+    id: string;
+    title: string;
+    status: 'pending' | 'running' | 'done' | 'error';
+    steps?: number;
+  }>;
   stepBudget?: { remaining: number; maxSteps: number };
   subAgentActivities?: SubAgentActivity[];
 }
@@ -124,14 +135,26 @@ export function useSessions() {
   }, [history]);
 
   const createSession = useCallback(
-    (options?: { title?: string; initialContext?: string; attachedFiles?: AttachedFile[]; projectId?: string }): string => {
+    (options?: {
+      title?: string;
+      initialContext?: string;
+      attachedFiles?: AttachedFile[];
+      projectId?: string;
+    }): string => {
       const id = generateId();
       const session: Session = {
         id,
         title: options?.title ?? `Session-${shortId(id)}`,
         projectId: options?.projectId,
         messages: options?.initialContext
-          ? [{ id: `sys_${Date.now()}`, role: 'user' as const, content: options.initialContext, timestamp: new Date() }]
+          ? [
+              {
+                id: `sys_${Date.now()}`,
+                role: 'user' as const,
+                content: options.initialContext,
+                timestamp: new Date(),
+              },
+            ]
           : [],
         attachedFiles: options?.attachedFiles ?? [],
         createdAt: new Date(),
@@ -147,7 +170,10 @@ export function useSessions() {
   const closeSession = useCallback(
     (id: string) => {
       // Notify backend to trigger Curator consolidation on session close
-      apiFetch(`/api/secretary/sessions/${id}/close`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+      apiFetch(`/api/secretary/sessions/${id}/close`, {
+        method: 'POST',
+        headers: authHeaders(),
+      }).catch(() => {});
       setSessions((prev) => {
         const session = prev.find((s) => s.id === id);
         if (session && session.messages.length > 0) {
@@ -229,23 +255,20 @@ export function useSessions() {
     setHistory((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  const editMessage = useCallback(
-    (sessionId: string, messageId: string, newContent: string) => {
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId
-            ? {
-                ...s,
-                messages: s.messages.map((m) =>
-                  m.id === messageId ? { ...m, content: newContent, isEdited: true } : m,
-                ),
-              }
-            : s,
-        ),
-      );
-    },
-    [],
-  );
+  const editMessage = useCallback((sessionId: string, messageId: string, newContent: string) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              messages: s.messages.map((m) =>
+                m.id === messageId ? { ...m, content: newContent, isEdited: true } : m,
+              ),
+            }
+          : s,
+      ),
+    );
+  }, []);
 
   /** Partially update an existing message — used for streaming increments to avoid full object replacement. */
   const updateMessage = useCallback(
@@ -277,26 +300,29 @@ export function useSessions() {
   }, []);
 
   /** Fork a new session from an existing one up to (and including) a message. */
-  const forkSession = useCallback((sessionId: string, messageId: string): string | null => {
-    const source = sessions.find((s) => s.id === sessionId);
-    if (!source) return null;
-    const idx = source.messages.findIndex((m) => m.id === messageId);
-    if (idx === -1) return null;
+  const forkSession = useCallback(
+    (sessionId: string, messageId: string): string | null => {
+      const source = sessions.find((s) => s.id === sessionId);
+      if (!source) return null;
+      const idx = source.messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return null;
 
-    const id = generateId();
-    const forked: Session = {
-      ...source,
-      id,
-      title: `${source.title} (fork)`,
-      messages: source.messages.slice(0, idx + 1).map((m) => ({ ...m })),
-      attachedFiles: [...source.attachedFiles],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setSessions((prev) => [forked, ...prev]);
-    setActiveSessionId(id);
-    return id;
-  }, [sessions]);
+      const id = generateId();
+      const forked: Session = {
+        ...source,
+        id,
+        title: `${source.title} (fork)`,
+        messages: source.messages.slice(0, idx + 1).map((m) => ({ ...m })),
+        attachedFiles: [...source.attachedFiles],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      setSessions((prev) => [forked, ...prev]);
+      setActiveSessionId(id);
+      return id;
+    },
+    [sessions],
+  );
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
   const isSessionActive = useCallback((id: string) => activeSessionIds.has(id), [activeSessionIds]);

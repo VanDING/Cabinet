@@ -19,9 +19,9 @@ const MODEL_PRICING: Record<string, { prompt: number; completion: number }> = {
   // Regular pricing (no promotion): v4-pro ¥3/M in, ¥6/M out
   'deepseek/deepseek-v4-flash': { prompt: 0.14, completion: 0.28 },
   'deepseek/deepseek-v4-pro': { prompt: 0.42, completion: 0.84 },
-  'deepseek/deepseek-chat': { prompt: 0.14, completion: 0.28 },     // deprecated → v4-flash
-  'deepseek/deepseek-reasoner': { prompt: 0.14, completion: 0.28 },  // deprecated → v4-flash
-  'deepseek/deepseek-v3': { prompt: 0.27, completion: 1.10 },
+  'deepseek/deepseek-chat': { prompt: 0.14, completion: 0.28 }, // deprecated → v4-flash
+  'deepseek/deepseek-reasoner': { prompt: 0.14, completion: 0.28 }, // deprecated → v4-flash
+  'deepseek/deepseek-v3': { prompt: 0.27, completion: 1.1 },
   'deepseek/deepseek-r1': { prompt: 0.55, completion: 2.19 },
   // Keep short names for backward compatibility
   'claude-opus-4-7': { prompt: 15.0, completion: 75.0 },

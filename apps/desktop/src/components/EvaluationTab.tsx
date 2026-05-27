@@ -34,7 +34,9 @@ export function EvaluationTab({ isDark, activeProjectId }: Props) {
         ]);
         if (listRes.ok) setEvaluations((await listRes.json()).evaluations ?? []);
         if (summaryRes.ok) setSummary(await summaryRes.json());
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, [projectId]);
 
@@ -49,7 +51,7 @@ export function EvaluationTab({ isDark, activeProjectId }: Props) {
   const scoreColor = (s: number) => (s >= 7 ? green : s >= 5 ? 'text-yellow-500' : red);
 
   return (
-    <div className="p-6 space-y-4 overflow-auto">
+    <div className="space-y-4 overflow-auto p-6">
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-3">
         {[
@@ -67,32 +69,43 @@ export function EvaluationTab({ isDark, activeProjectId }: Props) {
 
       {/* Evaluations list */}
       {evaluations.length === 0 ? (
-        <p className={sub}>No evaluations yet. Use the evaluate tool in chat to score AI outputs.</p>
+        <p className={sub}>
+          No evaluations yet. Use the evaluate tool in chat to score AI outputs.
+        </p>
       ) : (
         <div className="space-y-2">
           {evaluations.map((ev) => (
             <div key={ev.id} className={`rounded-lg border ${border} ${bg}`}>
               <div
                 onClick={() => setExpandedId(expandedId === ev.id ? null : ev.id)}
-                className="flex items-center justify-between p-3 cursor-pointer"
+                className="flex cursor-pointer items-center justify-between p-3"
               >
                 <div className="flex items-center gap-3">
-                  <span className={`text-lg font-bold ${scoreColor(ev.overallScore)}`}>{ev.overallScore}</span>
+                  <span className={`text-lg font-bold ${scoreColor(ev.overallScore)}`}>
+                    {ev.overallScore}
+                  </span>
                   <div>
-                    <div className={`text-sm font-medium ${text}`}>{ev.sourceType}{ev.sourceId ? ` · ${ev.sourceId.slice(0, 20)}` : ''}</div>
-                    <div className={`text-xs ${sub}`}>{new Date(ev.createdAt).toLocaleString()} · {ev.evaluatorModel}</div>
+                    <div className={`text-sm font-medium ${text}`}>
+                      {ev.sourceType}
+                      {ev.sourceId ? ` · ${ev.sourceId.slice(0, 20)}` : ''}
+                    </div>
+                    <div className={`text-xs ${sub}`}>
+                      {new Date(ev.createdAt).toLocaleString()} · {ev.evaluatorModel}
+                    </div>
                   </div>
                 </div>
                 <BarChart3 size={16} className={sub} />
               </div>
               {expandedId === ev.id && (
-                <div className={`border-t ${border} p-3 space-y-2`}>
+                <div className={`border-t ${border} space-y-2 p-3`}>
                   <div className="grid grid-cols-4 gap-2">
                     {Object.entries(ev.dimensions).map(([dim, d]) => (
                       <div key={dim} className={`rounded border ${border} p-2`}>
                         <div className={`text-xs ${sub} capitalize`}>{dim}</div>
-                        <div className={`text-sm font-bold ${scoreColor(d.score)}`}>{d.score}/10</div>
-                        <div className={`text-xs mt-1 ${sub}`}>{d.feedback}</div>
+                        <div className={`text-sm font-bold ${scoreColor(d.score)}`}>
+                          {d.score}/10
+                        </div>
+                        <div className={`mt-1 text-xs ${sub}`}>{d.feedback}</div>
                       </div>
                     ))}
                   </div>

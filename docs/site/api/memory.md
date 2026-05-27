@@ -9,11 +9,13 @@ Browse, search, and manage the 4-layer memory system.
 List memory entries across layers.
 
 **Query params**:
+
 - `layer` — `short_term`, `long_term`, `entity`, `project`, or `all` (default)
 - `query` — search text
 - `limit` — max results (default: 50)
 
 **Response**:
+
 ```json
 {
   "entries": [
@@ -34,6 +36,7 @@ List memory entries across layers.
 Trigger manual memory consolidation (normally runs automatically every 30 minutes).
 
 **Response**:
+
 ```json
 {
   "status": "consolidated",
@@ -47,6 +50,7 @@ Trigger manual memory consolidation (normally runs automatically every 30 minute
 Memory statistics across layers.
 
 **Response**:
+
 ```json
 {
   "shortTerm": { "count": 23, "sizeEstimate": "12KB" },

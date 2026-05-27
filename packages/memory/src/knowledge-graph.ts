@@ -71,17 +71,23 @@ export class KnowledgeGraph {
 
     const id = `ent_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     this.db
-      .prepare(
-        'INSERT INTO memory_entities (id, name, type, metadata) VALUES (?, ?, ?, ?)',
-      )
+      .prepare('INSERT INTO memory_entities (id, name, type, metadata) VALUES (?, ?, ?, ?)')
       .run(id, name, type, JSON.stringify(metadata));
     return { id, name, type, frequency: 1, metadata };
   }
 
   /** Create or update a relation between two entities. */
-  linkEntities(fromId: string, toId: string, relation: string, strength = 1.0, metadata: Record<string, unknown> = {}): void {
+  linkEntities(
+    fromId: string,
+    toId: string,
+    relation: string,
+    strength = 1.0,
+    metadata: Record<string, unknown> = {},
+  ): void {
     const existing = this.db
-      .prepare('SELECT id, metadata FROM memory_relations WHERE from_entity_id = ? AND to_entity_id = ? AND relation = ?')
+      .prepare(
+        'SELECT id, metadata FROM memory_relations WHERE from_entity_id = ? AND to_entity_id = ? AND relation = ?',
+      )
       .get(fromId, toId, relation) as { id: string; metadata: string } | undefined;
 
     if (existing) {
@@ -137,7 +143,7 @@ export class KnowledgeGraph {
       for (const id of frontier) {
         const rows = this.db
           .prepare(
-            'SELECT e.* FROM memory_entities e INNER JOIN memory_relations r ON e.id = r.to_entity_id WHERE r.from_entity_id = ? AND r.relation != \'contradicts\'',
+            "SELECT e.* FROM memory_entities e INNER JOIN memory_relations r ON e.id = r.to_entity_id WHERE r.from_entity_id = ? AND r.relation != 'contradicts'",
           )
           .all(id) as Record<string, unknown>[];
         for (const row of rows) {
@@ -162,7 +168,7 @@ export class KnowledgeGraph {
 
     const rows = this.db
       .prepare(
-        'SELECT * FROM memory_relations WHERE (from_entity_id = ? OR to_entity_id = ?) AND relation = \'contradicts\'',
+        "SELECT * FROM memory_relations WHERE (from_entity_id = ? OR to_entity_id = ?) AND relation = 'contradicts'",
       )
       .all(ent.id, ent.id) as Record<string, unknown>[];
     return rows.map((r) => this.rowToRelation(r));
@@ -177,7 +183,9 @@ export class KnowledgeGraph {
 
   /** Delete an entity and all its relations. */
   deleteEntity(id: string): void {
-    this.db.prepare('DELETE FROM memory_relations WHERE from_entity_id = ? OR to_entity_id = ?').run(id, id);
+    this.db
+      .prepare('DELETE FROM memory_relations WHERE from_entity_id = ? OR to_entity_id = ?')
+      .run(id, id);
     this.db.prepare('DELETE FROM memory_entities WHERE id = ?').run(id);
   }
 
@@ -185,14 +193,27 @@ export class KnowledgeGraph {
   detectContradictions(
     newMemoryContent: string,
     options?: {
-      llmJudge?: (oldStatement: string, newStatement: string) => Promise<{ isContradiction: boolean; confidence: number; resolutionSuggestion: string }>;
+      llmJudge?: (
+        oldStatement: string,
+        newStatement: string,
+      ) => Promise<{ isContradiction: boolean; confidence: number; resolutionSuggestion: string }>;
     },
-  ): Array<{ oldMemoryId: string; oldContent: string; confidence: number; resolutionSuggestion: string }> {
+  ): Array<{
+    oldMemoryId: string;
+    oldContent: string;
+    confidence: number;
+    resolutionSuggestion: string;
+  }> {
     // 1. Extract candidate entity names from the new memory via simple heuristic
     const candidateNames = this.extractCandidateEntities(newMemoryContent);
     if (candidateNames.length === 0) return [];
 
-    const contradictions: Array<{ oldMemoryId: string; oldContent: string; confidence: number; resolutionSuggestion: string }> = [];
+    const contradictions: Array<{
+      oldMemoryId: string;
+      oldContent: string;
+      confidence: number;
+      resolutionSuggestion: string;
+    }> = [];
 
     // 2. For each candidate, look for existing contradicts relations
     for (const name of candidateNames) {
@@ -203,7 +224,9 @@ export class KnowledgeGraph {
       const direct = this.findContradictions(name);
       for (const rel of direct) {
         const otherId = rel.fromId === ent.id ? rel.toId : rel.fromId;
-        const other = this.db.prepare('SELECT * FROM memory_entities WHERE id = ?').get(otherId) as Record<string, unknown> | undefined;
+        const other = this.db.prepare('SELECT * FROM memory_entities WHERE id = ?').get(otherId) as
+          | Record<string, unknown>
+          | undefined;
         if (!other) continue;
         // Heuristic: if the new memory contains the other entity name, flag
         if (newMemoryContent.toLowerCase().includes((other.name as string).toLowerCase())) {
@@ -211,7 +234,8 @@ export class KnowledgeGraph {
             oldMemoryId: otherId,
             oldContent: String(other.name ?? ''),
             confidence: rel.strength,
-            resolutionSuggestion: 'The new memory directly references an entity known to contradict this concept.',
+            resolutionSuggestion:
+              'The new memory directly references an entity known to contradict this concept.',
           });
         }
       }
@@ -221,7 +245,7 @@ export class KnowledgeGraph {
       for (const r of related) {
         const relRows = this.db
           .prepare(
-            'SELECT * FROM memory_relations WHERE (from_entity_id = ? OR to_entity_id = ?) AND relation = \'contradicts\'',
+            "SELECT * FROM memory_relations WHERE (from_entity_id = ? OR to_entity_id = ?) AND relation = 'contradicts'",
           )
           .all(r.id, r.id) as Record<string, unknown>[];
         for (const relRow of relRows) {
@@ -243,11 +267,17 @@ export class KnowledgeGraph {
   }
 
   /** Mark an old memory as superseded or merged with a new one. */
-  resolveContradiction(oldMemoryId: string, newMemoryId: string, resolution: 'superseded' | 'merged'): void {
+  resolveContradiction(
+    oldMemoryId: string,
+    newMemoryId: string,
+    resolution: 'superseded' | 'merged',
+  ): void {
     // Store resolution metadata in a special relation
     const oldEnt = this.addEntity(oldMemoryId, 'memory');
     const newEnt = this.addEntity(newMemoryId, 'memory');
-    this.linkEntities(oldEnt.id, newEnt.id, resolution, 1.0, { resolvedAt: new Date().toISOString() });
+    this.linkEntities(oldEnt.id, newEnt.id, resolution, 1.0, {
+      resolvedAt: new Date().toISOString(),
+    });
   }
 
   /** Simple heuristic entity extraction: nouns and proper names. */

@@ -30,7 +30,8 @@ function parseArgs(argv: string[]): ParsedArgs {
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--help' || arg === '-h') return { command: 'help', positional: [], flags: {} };
-    if (arg === '--version' || arg === '-v') return { command: 'version', positional: [], flags: {} };
+    if (arg === '--version' || arg === '-v')
+      return { command: 'version', positional: [], flags: {} };
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       if (eqIdx !== -1) {
@@ -211,9 +212,15 @@ async function main(): Promise<void> {
       console.log(c.gray(`Backups: ${BACKUP_DIR}`));
       console.log(c.bold('Environment'));
       console.log(`  PORT                 ${process.env.PORT ?? '3000'}`);
-      console.log(`  ANTHROPIC_API_KEY    ${process.env.ANTHROPIC_API_KEY ? c.green('configured') : c.yellow('not set')}`);
-      console.log(`  OPENAI_API_KEY       ${process.env.OPENAI_API_KEY ? c.green('configured') : c.yellow('not set')}`);
-      console.log(`  DEEPSEEK_API_KEY     ${process.env.DEEPSEEK_API_KEY ? c.green('configured') : c.yellow('not set')}`);
+      console.log(
+        `  ANTHROPIC_API_KEY    ${process.env.ANTHROPIC_API_KEY ? c.green('configured') : c.yellow('not set')}`,
+      );
+      console.log(
+        `  OPENAI_API_KEY       ${process.env.OPENAI_API_KEY ? c.green('configured') : c.yellow('not set')}`,
+      );
+      console.log(
+        `  DEEPSEEK_API_KEY     ${process.env.DEEPSEEK_API_KEY ? c.green('configured') : c.yellow('not set')}`,
+      );
       break;
     }
 

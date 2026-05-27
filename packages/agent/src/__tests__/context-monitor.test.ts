@@ -7,13 +7,22 @@ import { MemoryEventBus } from '@cabinet/events';
 const samples = [
   { name: 'empty', text: '' },
   { name: 'english-short', text: 'Hello, world!' },
-  { name: 'english-paragraph', text: 'The quick brown fox jumps over the lazy dog. This pangram contains every letter of the English alphabet at least once.' },
+  {
+    name: 'english-paragraph',
+    text: 'The quick brown fox jumps over the lazy dog. This pangram contains every letter of the English alphabet at least once.',
+  },
   { name: 'cjk-short', text: '你好世界' },
-  { name: 'cjk-paragraph', text: '人工智能技术正在快速发展，大型语言模型已经能够理解和生成自然语言文本。这种技术在翻译、摘要、对话系统等领域有广泛应用。' },
+  {
+    name: 'cjk-paragraph',
+    text: '人工智能技术正在快速发展，大型语言模型已经能够理解和生成自然语言文本。这种技术在翻译、摘要、对话系统等领域有广泛应用。',
+  },
   { name: 'mixed-en-zh', text: 'Hello 你好 world 世界! This is a test 这是一个测试。' },
   { name: 'code-snippet', text: 'function add(a: number, b: number): number { return a + b; }' },
   { name: 'markdown', text: '# Title\n\n- Item 1\n- Item 2\n\n**Bold** and *italic* text.' },
-  { name: 'json', text: '{"name": "Alice", "age": 30, "active": true, "roles": ["admin", "user"]}' },
+  {
+    name: 'json',
+    text: '{"name": "Alice", "age": 30, "active": true, "roles": ["admin", "user"]}',
+  },
   { name: 'special-chars', text: '$$ E = mc^2 $$\n\t\\n\\t\\n' },
 ];
 
@@ -71,7 +80,12 @@ describe('ContextMonitor zone classification', () => {
 
   it('classifies smart zone below 40%', () => {
     const monitor = new ContextMonitor(bus, { maxTokens: 1000 });
-    const snap = monitor.snapshot({ systemPrompt: 100, messages: 100, toolResults: 100, memory: 99 });
+    const snap = monitor.snapshot({
+      systemPrompt: 100,
+      messages: 100,
+      toolResults: 100,
+      memory: 99,
+    });
     expect(snap.zone).toBe('smart');
   });
 

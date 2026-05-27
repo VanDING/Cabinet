@@ -2,7 +2,13 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { generateText as aiGenerateText, streamText as aiStreamText, embed, tool, stepCountIs } from 'ai';
+import {
+  generateText as aiGenerateText,
+  streamText as aiStreamText,
+  embed,
+  tool,
+  stepCountIs,
+} from 'ai';
 import { z } from 'zod';
 import { ModelRouter } from './model-router.js';
 import type { ModelRole } from './model-router.js';
@@ -77,7 +83,11 @@ export class AISDKAdapter implements LLMGateway {
   private modelMapping: ModelMapping;
   private router: ModelRouter;
 
-  constructor(config: ProviderConfig, modelMapping?: ModelMapping, embeddingConfig?: EmbeddingConfig) {
+  constructor(
+    config: ProviderConfig,
+    modelMapping?: ModelMapping,
+    embeddingConfig?: EmbeddingConfig,
+  ) {
     this.config = config;
     this.embeddingConfig = embeddingConfig ?? {};
     this.modelMapping = modelMapping ?? {};
@@ -157,15 +167,18 @@ export class AISDKAdapter implements LLMGateway {
     const response = (result as any).response;
     if (response?.headers && typeof response.headers.get === 'function') {
       const headers = response.headers as Headers;
-      const remaining = this.parseRateLimitHeader(headers, 'x-ratelimit-remaining-requests')
-        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-remaining')
-        ?? undefined;
-      const limit = this.parseRateLimitHeader(headers, 'x-ratelimit-limit-requests')
-        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-limit')
-        ?? undefined;
-      const reset = this.parseRateLimitHeader(headers, 'x-ratelimit-reset-requests')
-        ?? this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-reset')
-        ?? undefined;
+      const remaining =
+        this.parseRateLimitHeader(headers, 'x-ratelimit-remaining-requests') ??
+        this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-remaining') ??
+        undefined;
+      const limit =
+        this.parseRateLimitHeader(headers, 'x-ratelimit-limit-requests') ??
+        this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-limit') ??
+        undefined;
+      const reset =
+        this.parseRateLimitHeader(headers, 'x-ratelimit-reset-requests') ??
+        this.parseRateLimitHeader(headers, 'anthropic-ratelimit-requests-reset') ??
+        undefined;
       if (remaining != null && limit != null) {
         const resetAt = reset != null ? Date.now() + reset * 1000 : Date.now() + 60_000;
         this.router.getRateLimitTracker().update(provider, remaining, limit, resetAt);
@@ -217,7 +230,9 @@ export class AISDKAdapter implements LLMGateway {
       messages: messages as any,
       ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
-      ...(options.thinkingBudget != null ? { thinking: { type: 'enabled', budgetTokens: options.thinkingBudget } } : {}),
+      ...(options.thinkingBudget != null
+        ? { thinking: { type: 'enabled', budgetTokens: options.thinkingBudget } }
+        : {}),
       tools: Object.keys(aiTools).length > 0 ? aiTools : undefined,
       stopWhen: stepCountIs(options.maxSteps ?? 50),
     } as any);
@@ -249,7 +264,12 @@ export class AISDKAdapter implements LLMGateway {
           fullText += td.text;
           yield { type: 'text', content: td.text };
         } else if (part.type === 'tool-call') {
-          const tc = part as { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown };
+          const tc = part as {
+            type: 'tool-call';
+            toolCallId: string;
+            toolName: string;
+            input: unknown;
+          };
           yield {
             type: 'tool_call',
             toolCall: {
@@ -260,7 +280,12 @@ export class AISDKAdapter implements LLMGateway {
           };
         } else if (part.type === 'tool-result') {
           nextTextNeedsBreak = true;
-          const tr = part as { type: 'tool-result'; toolCallId: string; toolName: string; output: unknown };
+          const tr = part as {
+            type: 'tool-result';
+            toolCallId: string;
+            toolName: string;
+            output: unknown;
+          };
           yield {
             type: 'tool_result',
             toolResult: {
@@ -303,7 +328,7 @@ export class AISDKAdapter implements LLMGateway {
       'google/gemini-2.0-pro',
       'deepseek/deepseek-v4-flash',
       'deepseek/deepseek-v4-pro',
-      'deepseek/deepseek-chat',     // deprecated 2026/07/24 → v4-flash non-thinking
+      'deepseek/deepseek-chat', // deprecated 2026/07/24 → v4-flash non-thinking
       'deepseek/deepseek-reasoner', // deprecated 2026/07/24 → v4-flash thinking
       'deepseek/deepseek-v3',
       'deepseek/deepseek-r1',
@@ -328,13 +353,13 @@ export class AISDKAdapter implements LLMGateway {
     const results: { embedding: number[]; usage?: { tokens: number } }[] = [];
     for (let i = 0; i < options.texts.length; i += CONCURRENCY) {
       const batch = options.texts.slice(i, i + CONCURRENCY);
-      const batchResults = await Promise.all(
-        batch.map((text) => embed({ model, value: text })),
+      const batchResults = await Promise.all(batch.map((text) => embed({ model, value: text })));
+      results.push(
+        ...batchResults.map((r) => ({
+          embedding: Array.from(r.embedding as Iterable<number>),
+          usage: r.usage,
+        })),
       );
-      results.push(...batchResults.map((r) => ({
-        embedding: Array.from(r.embedding as Iterable<number>),
-        usage: r.usage,
-      })));
     }
 
     return {
@@ -399,7 +424,9 @@ export class AISDKAdapter implements LLMGateway {
         const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
         if (!key) throw new Error('OPENAI_API_KEY not configured');
         const baseURL = this.config.openai?.baseUrl;
-        const factory = baseURL ? createOpenAI({ apiKey: key, baseURL }) : createOpenAI({ apiKey: key });
+        const factory = baseURL
+          ? createOpenAI({ apiKey: key, baseURL })
+          : createOpenAI({ apiKey: key });
         return factory(name);
       }
       case 'google': {
@@ -463,7 +490,9 @@ export class AISDKAdapter implements LLMGateway {
           // @ts-expect-error — optional dependency, may not be installed
           return await import('@ai-sdk/google');
         } catch {
-          throw new Error('@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google');
+          throw new Error(
+            '@ai-sdk/google is not installed. Install it with: pnpm add @ai-sdk/google',
+          );
         }
     }
   }
@@ -479,7 +508,12 @@ export class AISDKAdapter implements LLMGateway {
    * When cacheSystemPrompt is enabled and the model is Anthropic,
    * returns a SystemModelMessage with cacheControl provider metadata.
    */
-  private buildSystemPrompt(options: LLMCallOptions): string | { role: 'system'; content: string; providerOptions: Record<string, unknown> } | undefined {
+  private buildSystemPrompt(
+    options: LLMCallOptions,
+  ):
+    | string
+    | { role: 'system'; content: string; providerOptions: Record<string, unknown> }
+    | undefined {
     if (!options.systemPrompt) return undefined;
     if (options.cacheSystemPrompt && this.isAnthropicModel(options.model)) {
       return {
@@ -538,7 +572,7 @@ function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodType {
     }
     case 'object': {
       const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
-      const required = new Set(schema.required as string[] ?? []);
+      const required = new Set((schema.required as string[]) ?? []);
       const shape: Record<string, z.ZodType> = {};
       for (const [key, propSchema] of Object.entries(properties)) {
         let zodProp = jsonSchemaToZod(propSchema);
