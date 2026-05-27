@@ -20,6 +20,11 @@ export function rateLimiter(maxRequests: number, windowMs: number) {
   return async function rateLimitMiddleware(c: Context, next: Next) {
     const key = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? '127.0.0.1';
 
+    // Cabinet is a local desktop app — localhost requests should not be throttled
+    if (key === '127.0.0.1' || key === '::1' || key.startsWith('127.') || key === 'localhost') {
+      return next();
+    }
+
     const now = Date.now();
     const entry = store.get(key);
 
