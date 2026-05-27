@@ -19,7 +19,11 @@ export class WriteGate {
     const key = typeof metadata.key === 'string' ? metadata.key : '';
 
     // Structural fast-path: keys with semantic prefixes are always retained
-    if (key.startsWith('decision_') || key.startsWith('preference_') || key.startsWith('milestone_')) {
+    if (
+      key.startsWith('decision_') ||
+      key.startsWith('preference_') ||
+      key.startsWith('milestone_')
+    ) {
       return { allowed: true, reason: 'structured_key', tier: 'register' };
     }
 
@@ -70,16 +74,23 @@ export class WriteGate {
 
   /** 3. Is it a commitment someone is counting on? */
   private isCommitment(content: string): boolean {
-    const hasDeadline = /\b(?:deadline|due|before|by)\s+\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/i.test(content);
-    const hasDeliverable = /\b(?:deliverable|milestone|release|ship|launch|交付|里程碑|发布)\b/i.test(content);
+    const hasDeadline = /\b(?:deadline|due|before|by)\s+\d{4}[-/]\d{1,2}[-/]\d{1,2}\b/i.test(
+      content,
+    );
+    const hasDeliverable =
+      /\b(?:deliverable|milestone|release|ship|launch|交付|里程碑|发布)\b/i.test(content);
     const hasFollowUp = /\b(?:follow up|跟进|后续|todo|TODO|待办)\b/i.test(content);
     return hasDeadline || hasDeliverable || hasFollowUp;
   }
 
   /** 4. Is it a decision worth remembering the reasoning for? */
   private isDecisionWithReasoning(content: string): boolean {
-    const hasDecisionWord = /\b(?:decided?|决策|决定|approved?|rejected?|选择|否决|批准)\b/i.test(content);
-    const hasReasoning = /\b(?:because|since|therefore|原因|因为|所以|因此| rationale)\b/i.test(content);
+    const hasDecisionWord = /\b(?:decided?|决策|决定|approved?|rejected?|选择|否决|批准)\b/i.test(
+      content,
+    );
+    const hasReasoning = /\b(?:because|since|therefore|原因|因为|所以|因此| rationale)\b/i.test(
+      content,
+    );
     return hasDecisionWord && (hasReasoning || content.length > 80);
   }
 

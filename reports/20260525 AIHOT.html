@@ -1,685 +1,787 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI HOT 日报 · 2026-05-25</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f4f6f8;
-            color: #1a1a2e;
-            line-height: 1.6;
-            padding: 0;
-            min-height: 100vh;
-        }
+      body {
+        font-family:
+          'Noto Sans SC',
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: #f4f6f8;
+        color: #1a1a2e;
+        line-height: 1.6;
+        padding: 0;
+        min-height: 100vh;
+      }
 
-        /* ── Header ── */
-        .header {
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            color: #fff;
-            padding: 48px 24px 40px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 40%, rgba(108,99,255,0.15) 0%, transparent 60%),
-                        radial-gradient(circle at 70% 60%, rgba(0,201,255,0.10) 0%, transparent 50%);
-            pointer-events: none;
-        }
-        .header-content {
-            position: relative;
-            z-index: 1;
-        }
-        .header-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.18);
-            padding: 6px 18px;
-            border-radius: 100px;
-            font-size: 13px;
-            font-weight: 500;
-            color: rgba(255,255,255,0.85);
-            margin-bottom: 16px;
-            letter-spacing: 0.5px;
-        }
+      /* ── Header ── */
+      .header {
+        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        color: #fff;
+        padding: 48px 24px 40px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background:
+          radial-gradient(circle at 30% 40%, rgba(108, 99, 255, 0.15) 0%, transparent 60%),
+          radial-gradient(circle at 70% 60%, rgba(0, 201, 255, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+      }
+      .header-content {
+        position: relative;
+        z-index: 1;
+      }
+      .header-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        padding: 6px 18px;
+        border-radius: 100px;
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 16px;
+        letter-spacing: 0.5px;
+      }
+      .header h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        letter-spacing: -0.5px;
+      }
+      .header h1 span {
+        background: linear-gradient(135deg, #ff6b6b, #ffa94d);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .header .sub {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.65);
+        font-weight: 400;
+      }
+      .header .meta {
+        margin-top: 16px;
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.55);
+      }
+      .header .meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* ── Stats Bar ── */
+      .stats-bar {
+        max-width: 880px;
+        margin: -24px auto 0;
+        padding: 0 20px;
+        position: relative;
+        z-index: 2;
+      }
+      .stats-inner {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        padding: 20px 28px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+      }
+      .stat-item {
+        text-align: center;
+      }
+      .stat-item .num {
+        font-size: 24px;
+        font-weight: 700;
+        color: #302b63;
+      }
+      .stat-item .label {
+        font-size: 13px;
+        color: #888;
+        margin-top: 2px;
+      }
+      .stat-divider {
+        width: 1px;
+        height: 36px;
+        background: #eee;
+      }
+
+      /* ── Container ── */
+      .container {
+        max-width: 880px;
+        margin: 28px auto 60px;
+        padding: 0 20px;
+      }
+
+      /* ── Section ── */
+      .section {
+        margin-bottom: 36px;
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e8ecf0;
+      }
+      .section-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      .section-icon.purple {
+        background: #e8e5ff;
+      }
+      .section-icon.orange {
+        background: #fff0e0;
+      }
+      .section-icon.blue {
+        background: #e0f0ff;
+      }
+      .section-icon.green {
+        background: #e0ffe8;
+      }
+
+      .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a2e;
+      }
+      .section-count {
+        font-size: 13px;
+        color: #aaa;
+        font-weight: 400;
+        margin-left: auto;
+      }
+
+      /* ── Card ── */
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow:
+          0 1px 4px rgba(0, 0, 0, 0.04),
+          0 2px 12px rgba(0, 0, 0, 0.03);
+        padding: 20px 24px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        position: relative;
+      }
+      .card:hover {
+        border-color: #e0e5ec;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+      }
+      .card-highlight {
+        border-left: 4px solid #ff6b6b;
+      }
+      .card-hot {
+        border-left: 4px solid #ffa94d;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .card-index {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ccc;
+        line-height: 1.8;
+        min-width: 28px;
+        flex-shrink: 0;
+        text-align: center;
+      }
+      .card-body {
+        flex: 1;
+      }
+      .card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a2e;
+        line-height: 1.5;
+        margin-bottom: 6px;
+      }
+      .card-title a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .card-title a:hover {
+        color: #6c63ff;
+      }
+      .card-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 2px 10px;
+        border-radius: 100px;
+        letter-spacing: 0.3px;
+      }
+      .tag-hot {
+        background: #fff0e0;
+        color: #cc5500;
+      }
+      .tag-new {
+        background: #e0f0ff;
+        color: #0066cc;
+      }
+      .tag-danger {
+        background: #ffe0e0;
+        color: #cc0000;
+      }
+      .tag-money {
+        background: #e0ffe8;
+        color: #008833;
+      }
+
+      .card-summary {
+        font-size: 14px;
+        color: #555;
+        line-height: 1.7;
+        margin-bottom: 10px;
+      }
+      .card-summary ul {
+        list-style: none;
+        padding: 0;
+        margin: 6px 0;
+      }
+      .card-summary ul li {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 3px;
+      }
+      .card-summary ul li::before {
+        content: '✅';
+        position: absolute;
+        left: 0;
+        font-size: 12px;
+      }
+
+      .card-footer {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: #999;
+        padding-top: 8px;
+        border-top: 1px solid #f0f2f5;
+      }
+      .card-source {
+        color: #6c63ff;
+        text-decoration: none;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .card-source:hover {
+        text-decoration: underline;
+      }
+      .card-source-icon {
+        font-size: 12px;
+      }
+
+      /* ── Focus Box ── */
+      .focus-box {
+        background: linear-gradient(135deg, #fff5f5 0%, #fff0e0 100%);
+        border: 1px solid #ffd6b0;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 28px;
+      }
+      .focus-box .focus-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #cc5500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .focus-box .focus-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+      }
+      .focus-box .focus-desc {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.7;
+      }
+
+      /* ── Footer ── */
+      .footer {
+        text-align: center;
+        padding: 40px 20px 48px;
+        color: #aaa;
+        font-size: 13px;
+        line-height: 1.8;
+      }
+      .footer a {
+        color: #6c63ff;
+        text-decoration: none;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 600px) {
         .header h1 {
-            font-size: 36px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            letter-spacing: -0.5px;
-        }
-        .header h1 span {
-            background: linear-gradient(135deg, #ff6b6b, #ffa94d);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .header .sub {
-            font-size: 16px;
-            color: rgba(255,255,255,0.65);
-            font-weight: 400;
-        }
-        .header .meta {
-            margin-top: 16px;
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            font-size: 14px;
-            color: rgba(255,255,255,0.55);
-        }
-        .header .meta span {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* ── Stats Bar ── */
-        .stats-bar {
-            max-width: 880px;
-            margin: -24px auto 0;
-            padding: 0 20px;
-            position: relative;
-            z-index: 2;
+          font-size: 26px;
         }
         .stats-inner {
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-            padding: 20px 28px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-        }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-item .num {
-            font-size: 24px;
-            font-weight: 700;
-            color: #302b63;
-        }
-        .stat-item .label {
-            font-size: 13px;
-            color: #888;
-            margin-top: 2px;
+          flex-wrap: wrap;
+          gap: 8px;
         }
         .stat-divider {
-            width: 1px;
-            height: 36px;
-            background: #eee;
+          display: none;
         }
-
-        /* ── Container ── */
-        .container {
-            max-width: 880px;
-            margin: 28px auto 60px;
-            padding: 0 20px;
-        }
-
-        /* ── Section ── */
-        .section {
-            margin-bottom: 36px;
-        }
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e8ecf0;
-        }
-        .section-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-        .section-icon.purple { background: #e8e5ff; }
-        .section-icon.orange { background: #fff0e0; }
-        .section-icon.blue   { background: #e0f0ff; }
-        .section-icon.green  { background: #e0ffe8; }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a2e;
-        }
-        .section-count {
-            font-size: 13px;
-            color: #aaa;
-            font-weight: 400;
-            margin-left: auto;
-        }
-
-        /* ── Card ── */
         .card {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.03);
-            padding: 20px 24px;
-            margin-bottom: 12px;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-            position: relative;
-        }
-        .card:hover {
-            border-color: #e0e5ec;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-            transform: translateY(-1px);
-        }
-        .card-highlight {
-            border-left: 4px solid #ff6b6b;
-        }
-        .card-hot {
-            border-left: 4px solid #ffa94d;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
+          padding: 16px;
         }
         .card-index {
-            font-size: 14px;
-            font-weight: 600;
-            color: #ccc;
-            line-height: 1.8;
-            min-width: 28px;
-            flex-shrink: 0;
-            text-align: center;
+          display: none;
         }
-        .card-body {
-            flex: 1;
+        .meta {
+          flex-wrap: wrap;
+          gap: 12px;
         }
-        .card-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a1a2e;
-            line-height: 1.5;
-            margin-bottom: 6px;
-        }
-        .card-title a {
-            color: inherit;
-            text-decoration: none;
-        }
-        .card-title a:hover {
-            color: #6c63ff;
-        }
-        .card-tags {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-        .tag {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 500;
-            padding: 2px 10px;
-            border-radius: 100px;
-            letter-spacing: 0.3px;
-        }
-        .tag-hot {
-            background: #fff0e0;
-            color: #cc5500;
-        }
-        .tag-new {
-            background: #e0f0ff;
-            color: #0066cc;
-        }
-        .tag-danger {
-            background: #ffe0e0;
-            color: #cc0000;
-        }
-        .tag-money {
-            background: #e0ffe8;
-            color: #008833;
-        }
+      }
 
-        .card-summary {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.7;
-            margin-bottom: 10px;
+      /* ── Animations ── */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
         }
-        .card-summary ul {
-            list-style: none;
-            padding: 0;
-            margin: 6px 0;
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-        .card-summary ul li {
-            position: relative;
-            padding-left: 18px;
-            margin-bottom: 3px;
-        }
-        .card-summary ul li::before {
-            content: '✅';
-            position: absolute;
-            left: 0;
-            font-size: 12px;
-        }
-
-        .card-footer {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-            color: #999;
-            padding-top: 8px;
-            border-top: 1px solid #f0f2f5;
-        }
-        .card-source {
-            color: #6c63ff;
-            text-decoration: none;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .card-source:hover {
-            text-decoration: underline;
-        }
-        .card-source-icon {
-            font-size: 12px;
-        }
-
-        /* ── Focus Box ── */
-        .focus-box {
-            background: linear-gradient(135deg, #fff5f5 0%, #fff0e0 100%);
-            border: 1px solid #ffd6b0;
-            border-radius: 12px;
-            padding: 20px 24px;
-            margin-bottom: 28px;
-        }
-        .focus-box .focus-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #cc5500;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-        .focus-box .focus-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a2e;
-            margin-bottom: 4px;
-        }
-        .focus-box .focus-desc {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.7;
-        }
-
-        /* ── Footer ── */
-        .footer {
-            text-align: center;
-            padding: 40px 20px 48px;
-            color: #aaa;
-            font-size: 13px;
-            line-height: 1.8;
-        }
-        .footer a {
-            color: #6c63ff;
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* ── Responsive ── */
-        @media (max-width: 600px) {
-            .header h1 { font-size: 26px; }
-            .stats-inner { flex-wrap: wrap; gap: 8px; }
-            .stat-divider { display: none; }
-            .card { padding: 16px; }
-            .card-index { display: none; }
-            .meta { flex-wrap: wrap; gap: 12px; }
-        }
-
-        /* ── Animations ── */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .card, .focus-box, .stats-inner {
-            animation: fadeInUp 0.5s ease forwards;
-        }
-        .card:nth-child(2) { animation-delay: 0.05s; }
-        .card:nth-child(3) { animation-delay: 0.10s; }
-        .card:nth-child(4) { animation-delay: 0.15s; }
-        .card:nth-child(5) { animation-delay: 0.20s; }
-        .card:nth-child(6) { animation-delay: 0.25s; }
-        .card:nth-child(7) { animation-delay: 0.30s; }
-        .card:nth-child(8) { animation-delay: 0.35s; }
-        .card:nth-child(9) { animation-delay: 0.40s; }
+      }
+      .card,
+      .focus-box,
+      .stats-inner {
+        animation: fadeInUp 0.5s ease forwards;
+      }
+      .card:nth-child(2) {
+        animation-delay: 0.05s;
+      }
+      .card:nth-child(3) {
+        animation-delay: 0.1s;
+      }
+      .card:nth-child(4) {
+        animation-delay: 0.15s;
+      }
+      .card:nth-child(5) {
+        animation-delay: 0.2s;
+      }
+      .card:nth-child(6) {
+        animation-delay: 0.25s;
+      }
+      .card:nth-child(7) {
+        animation-delay: 0.3s;
+      }
+      .card:nth-child(8) {
+        animation-delay: 0.35s;
+      }
+      .card:nth-child(9) {
+        animation-delay: 0.4s;
+      }
     </style>
-</head>
-<body>
-
-<!-- ═══════ HEADER ═══════ -->
-<header class="header">
-    <div class="header-content">
+  </head>
+  <body>
+    <!-- ═══════ HEADER ═══════ -->
+    <header class="header">
+      <div class="header-content">
         <div class="header-badge">🔥 每日精选</div>
         <h1><span>AI HOT</span> 日报</h1>
         <p class="sub">2026 年 5 月 25 日 · 星期二</p>
         <div class="meta">
-            <span>📡 数据来源：aihot.virxact.com</span>
-            <span>📦 共 8 条精选</span>
+          <span>📡 数据来源：aihot.virxact.com</span>
+          <span>📦 共 8 条精选</span>
         </div>
+      </div>
+    </header>
+
+    <!-- ═══════ STATS ═══════ -->
+    <div class="stats-bar">
+      <div class="stats-inner">
+        <div class="stat-item">
+          <div class="num">4</div>
+          <div class="label">📦 产品发布</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="num">2</div>
+          <div class="label">🌐 行业动态</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="num">4</div>
+          <div class="label">💡 观点技巧</div>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <div class="num" style="color: #ff6b6b">1</div>
+          <div class="label" style="color: #ff6b6b">⚠️ 重点关注</div>
+        </div>
+      </div>
     </div>
-</header>
 
-<!-- ═══════ STATS ═══════ -->
-<div class="stats-bar">
-    <div class="stats-inner">
-        <div class="stat-item">
-            <div class="num">4</div>
-            <div class="label">📦 产品发布</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-            <div class="num">2</div>
-            <div class="label">🌐 行业动态</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-            <div class="num">4</div>
-            <div class="label">💡 观点技巧</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-            <div class="num" style="color:#ff6b6b;">1</div>
-            <div class="label" style="color:#ff6b6b;">⚠️ 重点关注</div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════ CONTAINER ═══════ -->
-<div class="container">
-
-    <!-- Focus Box -->
-    <div class="focus-box">
+    <!-- ═══════ CONTAINER ═══════ -->
+    <div class="container">
+      <!-- Focus Box -->
+      <div class="focus-box">
         <div class="focus-label">🔥 本期焦点</div>
         <div class="focus-title">TrapDoor 供应链攻击 — AI 助手配置文件成新型攻击面</div>
         <div class="focus-desc">
-            首次将 AI 助手作为攻击面的供应链攻击，同时袭击 npm、PyPI 和 Cargo，涉及 <strong>34 个恶意包</strong>。
-            攻击者向开源项目提交 PR 注入被篡改的 <code>CLAUDE.md</code> 和 <code>.cursorrules</code> 文件，
-            当开发者使用 Claude Code 或 Cursor 时，AI 会将其当作可信指令执行。
-            建议所有开发者立即检查项目中的 AI 配置文件完整性。
+          首次将 AI 助手作为攻击面的供应链攻击，同时袭击 npm、PyPI 和 Cargo，涉及
+          <strong>34 个恶意包</strong>。 攻击者向开源项目提交 PR 注入被篡改的
+          <code>CLAUDE.md</code> 和 <code>.cursorrules</code> 文件， 当开发者使用 Claude Code 或
+          Cursor 时，AI 会将其当作可信指令执行。 建议所有开发者立即检查项目中的 AI 配置文件完整性。
         </div>
-    </div>
+      </div>
 
-    <!-- ═══════ Section 1: 产品发布 ═══════ -->
-    <div class="section">
+      <!-- ═══════ Section 1: 产品发布 ═══════ -->
+      <div class="section">
         <div class="section-header">
-            <div class="section-icon purple">🚀</div>
-            <span class="section-title">产品发布 / 更新</span>
-            <span class="section-count">2 条</span>
+          <div class="section-icon purple">🚀</div>
+          <span class="section-title">产品发布 / 更新</span>
+          <span class="section-count">2 条</span>
         </div>
 
         <!-- Card 1 -->
         <div class="card card-hot">
-            <div class="card-header">
-                <div class="card-index">01</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-hot">🔥 热度高</span>
-                        <span class="tag tag-new">产品发布</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/LumaLabsAI/status/2058672731705503959" target="_blank">
-                            Luma Agents 实现规模化真实 UGC 广告生成
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        规模化的真实性曾是矛盾，如今已成现实。定义简报，设定风格，Luma Agents 从这里构建每一条 UGC 风格广告。
-                    </div>
-                    <div class="card-footer">
-                        <span>📱</span>
-                        <a class="card-source" href="https://x.com/LumaLabsAI/status/2058672731705503959" target="_blank">
-                            Luma AI (@LumaLabsAI) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">01</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-hot">🔥 热度高</span>
+                <span class="tag tag-new">产品发布</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/LumaLabsAI/status/2058672731705503959" target="_blank">
+                  Luma Agents 实现规模化真实 UGC 广告生成
+                </a>
+              </div>
+              <div class="card-summary">
+                规模化的真实性曾是矛盾，如今已成现实。定义简报，设定风格，Luma Agents
+                从这里构建每一条 UGC 风格广告。
+              </div>
+              <div class="card-footer">
+                <span>📱</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/LumaLabsAI/status/2058672731705503959"
+                  target="_blank"
+                >
+                  Luma AI (@LumaLabsAI) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Card 2 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">02</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-new">版本更新</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/openclaw/status/2058397616124072274" target="_blank">
-                            OpenClaw 2026.5.22 发布：性能优化与安全加固
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        <ul>
-                            <li>Gateway / 模型启动路径更精简</li>
-                            <li><code>/models</code> 响应时间降至约 5 毫秒</li>
-                            <li>npm 包现提供锁定依赖项</li>
-                            <li>Windows 安装 / 更新路径更安全</li>
-                        </ul>
-                    </div>
-                    <div class="card-footer">
-                        <span>⚡</span>
-                        <a class="card-source" href="https://x.com/openclaw/status/2058397616124072274" target="_blank">
-                            OpenClaw (@openclaw) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">02</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-new">版本更新</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/openclaw/status/2058397616124072274" target="_blank">
+                  OpenClaw 2026.5.22 发布：性能优化与安全加固
+                </a>
+              </div>
+              <div class="card-summary">
+                <ul>
+                  <li>Gateway / 模型启动路径更精简</li>
+                  <li><code>/models</code> 响应时间降至约 5 毫秒</li>
+                  <li>npm 包现提供锁定依赖项</li>
+                  <li>Windows 安装 / 更新路径更安全</li>
+                </ul>
+              </div>
+              <div class="card-footer">
+                <span>⚡</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/openclaw/status/2058397616124072274"
+                  target="_blank"
+                >
+                  OpenClaw (@openclaw) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══════ Section 2: 行业动态 ═══════ -->
-    <div class="section">
+      <!-- ═══════ Section 2: 行业动态 ═══════ -->
+      <div class="section">
         <div class="section-header">
-            <div class="section-icon orange">🌐</div>
-            <span class="section-title">行业动态</span>
-            <span class="section-count">2 条</span>
+          <div class="section-icon orange">🌐</div>
+          <span class="section-title">行业动态</span>
+          <span class="section-count">2 条</span>
         </div>
 
         <!-- Card 3 -->
         <div class="card card-highlight">
-            <div class="card-header">
-                <div class="card-index">03</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-danger">⚠️ 安全警报</span>
-                        <span class="tag tag-hot">🔥 热门</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/kimmonismus/status/2058584943052161488" target="_blank">
-                            TrapDoor 供应链攻击：AI 助手成新型攻击面
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        一场名为 "TrapDoor" 的协调供应链攻击同时袭击了 npm、PyPI 和 Crates.io，涉及 <strong>34 个恶意包</strong>，旨在窃取加密货币、AI 和安全开发者的钱包、SSH 密钥和云凭证。攻击的新手段是向流行开源项目提交 Pull Request，注入被操纵的 <code>CLAUDE.md</code> 和 <code>.cursorrules</code> 配置文件。当开发者克隆仓库并使用 Claude Code 或 Cursor 等 AI 助手时，AI 智能体会将这些文件当作可信指令执行，可能在开发者不知情下运行恶意命令。这是 <strong>首次将 AI 助手作为攻击面</strong>。
-                    </div>
-                    <div class="card-footer">
-                        <span>🔓</span>
-                        <a class="card-source" href="https://x.com/kimmonismus/status/2058584943052161488" target="_blank">
-                            Kim (@kimmonismus) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">03</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-danger">⚠️ 安全警报</span>
+                <span class="tag tag-hot">🔥 热门</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/kimmonismus/status/2058584943052161488" target="_blank">
+                  TrapDoor 供应链攻击：AI 助手成新型攻击面
+                </a>
+              </div>
+              <div class="card-summary">
+                一场名为 "TrapDoor" 的协调供应链攻击同时袭击了 npm、PyPI 和 Crates.io，涉及
+                <strong>34 个恶意包</strong>，旨在窃取加密货币、AI 和安全开发者的钱包、SSH
+                密钥和云凭证。攻击的新手段是向流行开源项目提交 Pull Request，注入被操纵的
+                <code>CLAUDE.md</code> 和 <code>.cursorrules</code> 配置文件。当开发者克隆仓库并使用
+                Claude Code 或 Cursor 等 AI 助手时，AI
+                智能体会将这些文件当作可信指令执行，可能在开发者不知情下运行恶意命令。这是
+                <strong>首次将 AI 助手作为攻击面</strong>。
+              </div>
+              <div class="card-footer">
+                <span>🔓</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/kimmonismus/status/2058584943052161488"
+                  target="_blank"
+                >
+                  Kim (@kimmonismus) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Card 4 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">04</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-money">💰 价格战</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://www.bloomberg.com/news/articles/2026-05-23/deepseek-to-make-permanent-75-discount-on-flagship-ai-model" target="_blank">
-                            DeepSeek 将对其旗舰 AI 模型实施永久性 75% 折扣
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        Bloomberg 报道，DeepSeek 将对旗舰 AI 模型实行永久性 75% 价格折扣。推理成本正在以惊人的速度下降。
-                    </div>
-                    <div class="card-footer">
-                        <span>📈</span>
-                        <a class="card-source" href="https://www.bloomberg.com/news/articles/2026-05-23/deepseek-to-make-permanent-75-discount-on-flagship-ai-model" target="_blank">
-                            Bloomberg · Hacker News 热门 <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">04</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-money">💰 价格战</span>
+              </div>
+              <div class="card-title">
+                <a
+                  href="https://www.bloomberg.com/news/articles/2026-05-23/deepseek-to-make-permanent-75-discount-on-flagship-ai-model"
+                  target="_blank"
+                >
+                  DeepSeek 将对其旗舰 AI 模型实施永久性 75% 折扣
+                </a>
+              </div>
+              <div class="card-summary">
+                Bloomberg 报道，DeepSeek 将对旗舰 AI 模型实行永久性 75%
+                价格折扣。推理成本正在以惊人的速度下降。
+              </div>
+              <div class="card-footer">
+                <span>📈</span>
+                <a
+                  class="card-source"
+                  href="https://www.bloomberg.com/news/articles/2026-05-23/deepseek-to-make-permanent-75-discount-on-flagship-ai-model"
+                  target="_blank"
+                >
+                  Bloomberg · Hacker News 热门 <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <!-- ═══════ Section 3: 技巧与观点 ═══════ -->
-    <div class="section">
+      <!-- ═══════ Section 3: 技巧与观点 ═══════ -->
+      <div class="section">
         <div class="section-header">
-            <div class="section-icon blue">💡</div>
-            <span class="section-title">技巧与观点</span>
-            <span class="section-count">4 条</span>
+          <div class="section-icon blue">💡</div>
+          <span class="section-title">技巧与观点</span>
+          <span class="section-count">4 条</span>
         </div>
 
         <!-- Card 5 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">05</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-new">🧠 方法论</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/gdb/status/2058598608224858442" target="_blank">
-                            面向 Codex 的自我优化提示词框架
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        由 Greg Brockman 提出的结构化提示词框架，指导 Codex 自动分析历史记录，识别并固化重复工作流为"技能"、子智能体或自动化工具，避免冗余，提升效率。
-                    </div>
-                    <div class="card-footer">
-                        <span>🧑‍💻</span>
-                        <a class="card-source" href="https://x.com/gdb/status/2058598608224858442" target="_blank">
-                            Greg Brockman (@gdb) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">05</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-new">🧠 方法论</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/gdb/status/2058598608224858442" target="_blank">
+                  面向 Codex 的自我优化提示词框架
+                </a>
+              </div>
+              <div class="card-summary">
+                由 Greg Brockman 提出的结构化提示词框架，指导 Codex
+                自动分析历史记录，识别并固化重复工作流为"技能"、子智能体或自动化工具，避免冗余，提升效率。
+              </div>
+              <div class="card-footer">
+                <span>🧑‍💻</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/gdb/status/2058598608224858442"
+                  target="_blank"
+                >
+                  Greg Brockman (@gdb) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Card 6 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">06</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-new">🎙️ 深度访谈</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://fs.blog/knowledge-project-podcast/greg-brockman" target="_blank">
-                            格雷格·布罗克曼：那段差点让 OpenAI 覆灭的 72 小时
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        Greg Brockman 在 fs.blog 播客中回顾 OpenAI 历史上最惊险的 72 小时，讲述差点让整个公司覆灭的关键时刻。
-                    </div>
-                    <div class="card-footer">
-                        <span>🎧</span>
-                        <a class="card-source" href="https://fs.blog/knowledge-project-podcast/greg-brockman" target="_blank">
-                            fs.blog · Hacker News 热门 <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">06</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-new">🎙️ 深度访谈</span>
+              </div>
+              <div class="card-title">
+                <a href="https://fs.blog/knowledge-project-podcast/greg-brockman" target="_blank">
+                  格雷格·布罗克曼：那段差点让 OpenAI 覆灭的 72 小时
+                </a>
+              </div>
+              <div class="card-summary">
+                Greg Brockman 在 fs.blog 播客中回顾 OpenAI 历史上最惊险的 72
+                小时，讲述差点让整个公司覆灭的关键时刻。
+              </div>
+              <div class="card-footer">
+                <span>🎧</span>
+                <a
+                  class="card-source"
+                  href="https://fs.blog/knowledge-project-podcast/greg-brockman"
+                  target="_blank"
+                >
+                  fs.blog · Hacker News 热门 <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Card 7 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">07</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-new">🛠️ 实战技巧</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/bcherny/status/2058519809214607704" target="_blank">
-                            Claude Code 自动模式：多任务并行的关键技巧
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        用好 Claude Code 的头号技巧：使用自动模式。不再有权限提示，是实现"多 Claude 并行"的关键构件——启动一个会话，然后在其运行时，并行处理另一个会话。
-                    </div>
-                    <div class="card-footer">
-                        <span>⚡</span>
-                        <a class="card-source" href="https://x.com/bcherny/status/2058519809214607704" target="_blank">
-                            Boris Cherny (@bcherny) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">07</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-new">🛠️ 实战技巧</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/bcherny/status/2058519809214607704" target="_blank">
+                  Claude Code 自动模式：多任务并行的关键技巧
+                </a>
+              </div>
+              <div class="card-summary">
+                用好 Claude Code 的头号技巧：使用自动模式。不再有权限提示，是实现"多 Claude
+                并行"的关键构件——启动一个会话，然后在其运行时，并行处理另一个会话。
+              </div>
+              <div class="card-footer">
+                <span>⚡</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/bcherny/status/2058519809214607704"
+                  target="_blank"
+                >
+                  Boris Cherny (@bcherny) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- Card 8 -->
         <div class="card">
-            <div class="card-header">
-                <div class="card-index">08</div>
-                <div class="card-body">
-                    <div class="card-tags">
-                        <span class="tag tag-new">🎨 创意</span>
-                    </div>
-                    <div class="card-title">
-                        <a href="https://x.com/PixVerse_/status/2058564994669727803" target="_blank">
-                            Pixverse 角色设计工作流测试
-                        </a>
-                    </div>
-                    <div class="card-summary">
-                        使用 GPT Image 2.0 创建视觉形象，Seedance 2.0 制作动画弹跳表演。从静态概念图到电影级动态效果。
-                    </div>
-                    <div class="card-footer">
-                        <span>🤖</span>
-                        <a class="card-source" href="https://x.com/PixVerse_/status/2058564994669727803" target="_blank">
-                            PixVerse (@PixVerse_) <span class="card-source-icon">↗</span>
-                        </a>
-                    </div>
-                </div>
+          <div class="card-header">
+            <div class="card-index">08</div>
+            <div class="card-body">
+              <div class="card-tags">
+                <span class="tag tag-new">🎨 创意</span>
+              </div>
+              <div class="card-title">
+                <a href="https://x.com/PixVerse_/status/2058564994669727803" target="_blank">
+                  Pixverse 角色设计工作流测试
+                </a>
+              </div>
+              <div class="card-summary">
+                使用 GPT Image 2.0 创建视觉形象，Seedance 2.0
+                制作动画弹跳表演。从静态概念图到电影级动态效果。
+              </div>
+              <div class="card-footer">
+                <span>🤖</span>
+                <a
+                  class="card-source"
+                  href="https://x.com/PixVerse_/status/2058564994669727803"
+                  target="_blank"
+                >
+                  PixVerse (@PixVerse_) <span class="card-source-icon">↗</span>
+                </a>
+              </div>
             </div>
+          </div>
         </div>
+      </div>
     </div>
 
-</div>
-
-<!-- ═══════ FOOTER ═══════ -->
-<footer class="footer">
-    <p>📡 数据来源：<a href="https://aihot.virxact.com" target="_blank">aihot.virxact.com</a></p>
-    <p>🛠️ 由 Cabinet · AI HOT Skill 自动生成 · 2026-05-25</p>
-</footer>
-
-</body>
+    <!-- ═══════ FOOTER ═══════ -->
+    <footer class="footer">
+      <p>📡 数据来源：<a href="https://aihot.virxact.com" target="_blank">aihot.virxact.com</a></p>
+      <p>🛠️ 由 Cabinet · AI HOT Skill 自动生成 · 2026-05-25</p>
+    </footer>
+  </body>
 </html>

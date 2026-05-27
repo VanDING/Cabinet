@@ -59,8 +59,11 @@ export class EntityMemory {
 
     if (this.repo) {
       this.repo.upsertEmployee(
-        employee.employeeId, employee.name, employee.role,
-        JSON.stringify(employee.persona), JSON.stringify(employee.pipelineConfig),
+        employee.employeeId,
+        employee.name,
+        employee.role,
+        JSON.stringify(employee.persona),
+        JSON.stringify(employee.pipelineConfig),
       );
     }
   }

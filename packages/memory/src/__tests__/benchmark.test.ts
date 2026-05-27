@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { unlinkSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { LongTermMemory } from '../long-term.js';
 import { ProjectIsolatedMemory } from '../project-isolation.js';
@@ -8,6 +9,7 @@ import { ProjectMemory } from '../project.js';
 
 const hnswAvailable = (() => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('hnswlib-node');
     return true;
   } catch {
@@ -39,7 +41,11 @@ describe('Benchmark: Insertion Performance', () => {
   afterEach(() => {
     mem.close();
     db.close();
-    try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
+    try {
+      unlinkSync(indexPath);
+    } catch {
+      /* ignore */
+    }
   });
 
   it('inserts 1000 entries in < 5s', async () => {
@@ -86,7 +92,16 @@ describe('Benchmark: Retrieval Performance', () => {
     mem = new LongTermMemory(db, DIM, indexPath);
     // Seed with synthetic data
     for (let i = 0; i < COUNT; i++) {
-      const topic = i % 5 === 0 ? 'architecture' : i % 5 === 1 ? 'deployment' : i % 5 === 2 ? 'security' : i % 5 === 3 ? 'performance' : 'testing';
+      const topic =
+        i % 5 === 0
+          ? 'architecture'
+          : i % 5 === 1
+            ? 'deployment'
+            : i % 5 === 2
+              ? 'security'
+              : i % 5 === 3
+                ? 'performance'
+                : 'testing';
       await mem.store({
         content: `${topic} discussion item ${i}: ${Array.from({ length: 20 }, (_, j) => `word${j}`).join(' ')}`,
         embedding: randomVec(DIM),
@@ -99,7 +114,11 @@ describe('Benchmark: Retrieval Performance', () => {
   afterEach(() => {
     mem.close();
     db.close();
-    try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
+    try {
+      unlinkSync(indexPath);
+    } catch {
+      /* ignore */
+    }
   });
 
   (hnswAvailable ? it : it.skip)('semantic search p95 < 100ms (10000 entries)', async () => {
@@ -117,7 +136,14 @@ describe('Benchmark: Retrieval Performance', () => {
 
   it('text search p95 < 100ms (10000 entries)', async () => {
     const times: number[] = [];
-    const queries = ['architecture', 'deployment', 'security', 'performance', 'testing', 'nonexistent'];
+    const queries = [
+      'architecture',
+      'deployment',
+      'security',
+      'performance',
+      'testing',
+      'nonexistent',
+    ];
     for (let i = 0; i < 50; i++) {
       const q = queries[i % queries.length]!;
       const start = nowMs();
@@ -176,14 +202,27 @@ describe('Benchmark: Semantic Search Accuracy', () => {
   afterEach(() => {
     mem.close();
     db.close();
-    try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
+    try {
+      unlinkSync(indexPath);
+    } catch {
+      /* ignore */
+    }
   });
 
   (hnswAvailable ? it : it.skip)('top-5 recall rate > 85% for cluster queries', async () => {
     const queries = [
-      { vec: Array.from({ length: DIM }, (_, d) => (d >= 0 && d < 42) ? 0.9 : 0.1), expectedCluster: 'react' },
-      { vec: Array.from({ length: DIM }, (_, d) => (d >= 42 && d < 84) ? 0.9 : 0.1), expectedCluster: 'vue' },
-      { vec: Array.from({ length: DIM }, (_, d) => (d >= 84 && d < 128) ? 0.9 : 0.1), expectedCluster: 'angular' },
+      {
+        vec: Array.from({ length: DIM }, (_, d) => (d >= 0 && d < 42 ? 0.9 : 0.1)),
+        expectedCluster: 'react',
+      },
+      {
+        vec: Array.from({ length: DIM }, (_, d) => (d >= 42 && d < 84 ? 0.9 : 0.1)),
+        expectedCluster: 'vue',
+      },
+      {
+        vec: Array.from({ length: DIM }, (_, d) => (d >= 84 && d < 128 ? 0.9 : 0.1)),
+        expectedCluster: 'angular',
+      },
     ];
 
     let totalRelevant = 0;
@@ -220,14 +259,30 @@ describe('Benchmark: Project Isolation', () => {
     const shortTerm = new ShortTermMemory(db);
     const entity = new EntityMemory(db);
     const project = new ProjectMemory(db);
-    isolatedA = new ProjectIsolatedMemory('proj-a', shortTerm, new LongTermMemory(db, 128, indexPathA), entity, project);
-    isolatedB = new ProjectIsolatedMemory('proj-b', shortTerm, new LongTermMemory(db, 128, indexPathB), entity, project);
+    isolatedA = new ProjectIsolatedMemory(
+      'proj-a',
+      shortTerm,
+      new LongTermMemory(db, 128, indexPathA),
+      entity,
+      project,
+    );
+    isolatedB = new ProjectIsolatedMemory(
+      'proj-b',
+      shortTerm,
+      new LongTermMemory(db, 128, indexPathB),
+      entity,
+      project,
+    );
   });
 
   afterEach(() => {
     db.close();
     [indexPathA, indexPathB].forEach((p) => {
-      try { require('node:fs').unlinkSync(p); } catch { /* ignore */ }
+      try {
+        unlinkSync(p);
+      } catch {
+        /* ignore */
+      }
     });
   });
 
@@ -270,7 +325,11 @@ describe('Benchmark: Memory Footprint', () => {
       expect(deltaMB).toBeLessThan(512);
       mem.close();
       db.close();
-      try { require('node:fs').unlinkSync(indexPath); } catch { /* ignore */ }
+      try {
+        unlinkSync(indexPath);
+      } catch {
+        /* ignore */
+      }
     }
   });
 });

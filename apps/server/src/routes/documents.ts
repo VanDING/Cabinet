@@ -75,9 +75,7 @@ documentsRouter.delete('/:id/documents', (c) => {
         .prepare('DELETE FROM document_chunks WHERE project_id = ? AND source_path = ?')
         .run(projectId, filePath);
     } else {
-      result = ctx.db
-        .prepare('DELETE FROM document_chunks WHERE project_id = ?')
-        .run(projectId);
+      result = ctx.db.prepare('DELETE FROM document_chunks WHERE project_id = ?').run(projectId);
     }
     return c.json({ cleared: true, removed: result.changes });
   } catch (e) {

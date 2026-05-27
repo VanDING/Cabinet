@@ -191,7 +191,12 @@ export class ContextHandoff {
       mdParts.push(`Todo: ${state.remainingSteps.slice(0, 3).join('; ')}`);
     }
     if (state.decisions.length > 0) {
-      mdParts.push(`Decisions: ${state.decisions.slice(-2).map((d) => `${d.decision}→${d.rationale.slice(0, 40)}`).join('; ')}`);
+      mdParts.push(
+        `Decisions: ${state.decisions
+          .slice(-2)
+          .map((d) => `${d.decision}→${d.rationale.slice(0, 40)}`)
+          .join('; ')}`,
+      );
     }
     if (state.learnedFacts.length > 0) {
       mdParts.push(`Facts: ${state.learnedFacts.slice(-3).join('; ')}`);
@@ -200,7 +205,12 @@ export class ContextHandoff {
       mdParts.push(`Open: ${state.openQuestions.slice(0, 2).join('; ')}`);
     }
     if (state.lastToolResults.length > 0) {
-      mdParts.push(`Tools: ${state.lastToolResults.slice(-3).map((t) => `${t.name}(${t.summary.slice(0, 40)})`).join('; ')}`);
+      mdParts.push(
+        `Tools: ${state.lastToolResults
+          .slice(-3)
+          .map((t) => `${t.name}(${t.summary.slice(0, 40)})`)
+          .join('; ')}`,
+      );
     }
 
     mdParts.push('Resume — do NOT redo completed steps.');

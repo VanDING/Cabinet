@@ -15,12 +15,22 @@ interface Props {
   isDark?: boolean;
 }
 
-const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'];
+const IMAGE_MIMES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'image/bmp',
+];
 
 function safeBtoa(str: string): string {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
-  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
   return btoa(binary);
 }
 
@@ -38,7 +48,10 @@ export function FileViewer({ isDark }: Props) {
     const startX = e.clientX;
     const startWidth = width;
     const onMove = (ev: MouseEvent) => {
-      const newWidth = Math.min(Math.max(startWidth - (ev.clientX - startX), 320), window.innerWidth * 0.7);
+      const newWidth = Math.min(
+        Math.max(startWidth - (ev.clientX - startX), 320),
+        window.innerWidth * 0.7,
+      );
       setWidth(newWidth);
       localStorage.setItem('fileViewerWidth', String(newWidth));
     };
@@ -54,7 +67,12 @@ export function FileViewer({ isDark }: Props) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
-        path: string; name: string; content?: string; encoding?: string; mimeType?: string; projectId?: string;
+        path: string;
+        name: string;
+        content?: string;
+        encoding?: string;
+        mimeType?: string;
+        projectId?: string;
       };
       if (!detail.path) return;
 
@@ -93,27 +111,40 @@ export function FileViewer({ isDark }: Props) {
           const data = await res.json();
           setTabs((prev) =>
             prev.map((t) =>
-              t.path === filePath ? { ...t, content: data.content, encoding: data.encoding ?? 'utf-8', mimeType: data.mimeType, absolutePath: data.absolutePath } : t,
+              t.path === filePath
+                ? {
+                    ...t,
+                    content: data.content,
+                    encoding: data.encoding ?? 'utf-8',
+                    mimeType: data.mimeType,
+                    absolutePath: data.absolutePath,
+                  }
+                : t,
             ),
           );
         }
-      } catch (err) { console.error('FileViewer fetch failed:', filePath, err); }
+      } catch (err) {
+        console.error('FileViewer fetch failed:', filePath, err);
+      }
     };
 
     window.addEventListener('open-file-viewer', handler);
     return () => window.removeEventListener('open-file-viewer', handler);
   }, []);
 
-  const closeTab = useCallback((path: string) => {
-    setTabs((prev) => {
-      const next = prev.filter((t) => t.path !== path);
-      if (activeTab === path) {
-        setActiveTab(next.length > 0 ? next[next.length - 1]!.path : null);
-      }
-      if (next.length === 0) setVisible(false);
-      return next;
-    });
-  }, [activeTab]);
+  const closeTab = useCallback(
+    (path: string) => {
+      setTabs((prev) => {
+        const next = prev.filter((t) => t.path !== path);
+        if (activeTab === path) {
+          setActiveTab(next.length > 0 ? next[next.length - 1]!.path : null);
+        }
+        if (next.length === 0) setVisible(false);
+        return next;
+      });
+    },
+    [activeTab],
+  );
 
   const closeAll = () => {
     setTabs([]);
@@ -132,22 +163,23 @@ export function FileViewer({ isDark }: Props) {
   const border = isDark ? 'border-gray-700' : 'border-gray-200';
   const tabBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
 
-
   return (
     <div className="relative flex flex-shrink-0" style={{ width }}>
       {/* Drag handle */}
       <div
         onMouseDown={handleMouseDown}
-        className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10 ${isDark ? 'hover:bg-blue-500' : 'hover:bg-blue-400'}`}
+        className={`absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize ${isDark ? 'hover:bg-blue-500' : 'hover:bg-blue-400'}`}
       />
-      <div className={`flex flex-col border-l ${border} ${bg} flex-1 min-w-0`}>
+      <div className={`flex flex-col border-l ${border} ${bg} min-w-0 flex-1`}>
         {/* Tab bar */}
-        <div className={`flex items-center border-b ${border} ${tabBg} h-9 px-1 gap-0.5 overflow-x-auto`}>
+        <div
+          className={`flex items-center border-b ${border} ${tabBg} h-9 gap-0.5 overflow-x-auto px-1`}
+        >
           {tabs.map((tab) => (
             <div
               key={tab.path}
               onClick={() => setActiveTab(tab.path)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-t text-xs cursor-pointer whitespace-nowrap flex-shrink-0 ${
+              className={`flex flex-shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
                 activeTab === tab.path
                   ? `${bg} border-l border-r border-t ${border} -mb-px`
                   : `${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
@@ -156,14 +188,21 @@ export function FileViewer({ isDark }: Props) {
               {tab.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileCode size={12} />}
               <span className="max-w-[120px] truncate">{tab.name}</span>
               <button
-                onClick={(e) => { e.stopPropagation(); closeTab(tab.path); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeTab(tab.path);
+                }}
                 className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-300'}`}
               >
                 <X size={10} />
               </button>
             </div>
           ))}
-          <button onClick={closeAll} className={`ml-auto mr-2 p-1 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`} title="Close all">
+          <button
+            onClick={closeAll}
+            className={`ml-auto mr-2 rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+            title="Close all"
+          >
             <X size={14} />
           </button>
         </div>
@@ -172,20 +211,24 @@ export function FileViewer({ isDark }: Props) {
         <div className="flex-1 overflow-auto">
           {active ? (
             isImage ? (
-              <div className="flex items-center justify-center h-full p-4">
+              <div className="flex h-full items-center justify-center p-4">
                 <img
                   src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : safeBtoa(active.content)}`}
                   alt={active.name}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                 />
               </div>
             ) : (
-              <pre className={`p-4 text-sm font-mono whitespace-pre-wrap break-all ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              <pre
+                className={`whitespace-pre-wrap break-all p-4 font-mono text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}
+              >
                 {active.content || '(empty)'}
               </pre>
             )
           ) : (
-            <div className={`flex items-center justify-center h-full ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            <div
+              className={`flex h-full items-center justify-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+            >
               <div className="text-center">
                 <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Click a file in Project Explorer to preview</p>

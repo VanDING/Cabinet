@@ -41,32 +41,47 @@ export function WorkflowRunCard({ data, isDark }: Props) {
 
   const nodeTypeIcon = (type: string) => {
     switch (type) {
-      case 'start': return '▶';
-      case 'end': return '■';
+      case 'start':
+        return '▶';
+      case 'end':
+        return '■';
       case 'aiAgent':
-      case 'llmCall': return '🤖';
-      case 'humanApproval': return '👤';
-      case 'condition': return '◆';
-      case 'dataQuery': return '📊';
-      case 'notification': return '🔔';
-      case 'wait': return '⏱';
-      default: return '•';
+      case 'llmCall':
+        return '🤖';
+      case 'humanApproval':
+        return '👤';
+      case 'condition':
+        return '◆';
+      case 'dataQuery':
+        return '📊';
+      case 'notification':
+        return '🔔';
+      case 'wait':
+        return '⏱';
+      default:
+        return '•';
     }
   };
 
   const nodeTypeLabel = (type: string) => {
     switch (type) {
-      case 'aiAgent': return 'AI Agent';
-      case 'llmCall': return 'LLM Call';
-      case 'humanApproval': return 'Human Approval';
-      case 'dataQuery': return 'Data Query';
-      case 'notification': return 'Notification';
-      default: return type.charAt(0).toUpperCase() + type.slice(1);
+      case 'aiAgent':
+        return 'AI Agent';
+      case 'llmCall':
+        return 'LLM Call';
+      case 'humanApproval':
+        return 'Human Approval';
+      case 'dataQuery':
+        return 'Data Query';
+      case 'notification':
+        return 'Notification';
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
 
   return (
-    <div className={`my-3 rounded-lg border ${borderClass} ${bgClass} shadow-sm overflow-hidden`}>
+    <div className={`my-3 rounded-lg border ${borderClass} ${bgClass} overflow-hidden shadow-sm`}>
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -76,15 +91,17 @@ export function WorkflowRunCard({ data, isDark }: Props) {
           <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
             Workflow
           </span>
-          <span className={`text-xs font-mono ${subtextClass}`}>
-            {runId}
-          </span>
+          <span className={`font-mono text-xs ${subtextClass}`}>{runId}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${statusBg} ${statusColor}`}>
+          <span
+            className={`rounded px-2 py-0.5 text-[10px] font-medium ${statusBg} ${statusColor}`}
+          >
             {status}
           </span>
-          <span className={`text-xs ${subtextClass} transform transition-transform ${expanded ? 'rotate-180' : ''}`}>
+          <span
+            className={`text-xs ${subtextClass} transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+          >
             &#9660;
           </span>
         </div>
@@ -97,13 +114,15 @@ export function WorkflowRunCard({ data, isDark }: Props) {
             {steps.map((step, i) => (
               <div key={step.nodeId} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                    step.type === 'end' || status === 'completed'
-                      ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                      : step.type === 'humanApproval'
-                        ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                  }`}>
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                      step.type === 'end' || status === 'completed'
+                        ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
+                        : step.type === 'humanApproval'
+                          ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                    }`}
+                  >
                     {nodeTypeIcon(step.type)}
                   </div>
                   {i < steps.length - 1 && (
@@ -115,13 +134,9 @@ export function WorkflowRunCard({ data, isDark }: Props) {
                     <span className={`text-xs font-medium ${textClass}`}>
                       {nodeTypeLabel(step.type)}
                     </span>
-                    <span className={`text-[10px] font-mono ${subtextClass}`}>
-                      {step.nodeId}
-                    </span>
+                    <span className={`font-mono text-[10px] ${subtextClass}`}>{step.nodeId}</span>
                   </div>
-                  <p className={`text-xs ${subtextClass} mt-0.5`}>
-                    {step.output}
-                  </p>
+                  <p className={`text-xs ${subtextClass} mt-0.5`}>{step.output}</p>
                 </div>
               </div>
             ))}

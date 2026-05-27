@@ -31,22 +31,32 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
     try {
       const res = await apiFetch('/api/scheduled-tasks');
       if (res.ok) setTasks((await res.json()).tasks ?? []);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
   const handleCreate = async () => {
     if (!name || !cron || !prompt) return;
     setLoading(true);
     try {
       await apiFetch('/api/scheduled-tasks', {
-        method: 'POST', headers: authJsonHeaders(),
+        method: 'POST',
+        headers: authJsonHeaders(),
         body: JSON.stringify({ name, cron, prompt, recurring }),
       });
-      onFormClose?.(); setName(''); setCron('0 9 * * *'); setPrompt('');
+      onFormClose?.();
+      setName('');
+      setCron('0 9 * * *');
+      setPrompt('');
       fetchTasks();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setLoading(false);
   };
 
@@ -56,7 +66,10 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
   };
 
   const handleRun = async (id: string) => {
-    await apiFetch(`/api/scheduled-tasks/${id}/run`, { method: 'POST', headers: authJsonHeaders() });
+    await apiFetch(`/api/scheduled-tasks/${id}/run`, {
+      method: 'POST',
+      headers: authJsonHeaders(),
+    });
     fetchTasks();
   };
 
@@ -84,12 +97,23 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
                   <span className={`ml-2 text-xs ${sub}`}>{t.cronExpression}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleRun(t.id)} className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`} title="Run now"><Clock size={14} /></button>
-                  <button onClick={() => handleDelete(t.id)} className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'} text-red-500`}><Trash2 size={14} /></button>
+                  <button
+                    onClick={() => handleRun(t.id)}
+                    className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+                    title="Run now"
+                  >
+                    <Clock size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'} text-red-500`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-              <p className={`text-xs mt-1 ${sub} truncate`}>{t.prompt.slice(0, 120)}</p>
-              <div className={`text-xs mt-1 ${sub}`}>
+              <p className={`mt-1 text-xs ${sub} truncate`}>{t.prompt.slice(0, 120)}</p>
+              <div className={`mt-1 text-xs ${sub}`}>
                 {t.lastRunAt ? `Last: ${new Date(t.lastRunAt).toLocaleString()}` : 'Never run'}
                 {t.nextRunAt ? ` · Next: ${new Date(t.nextRunAt).toLocaleString()}` : ''}
               </div>
@@ -100,14 +124,29 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
 
       {/* Create form modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onFormClose}>
-          <div className={`rounded-xl border ${border} ${bg} p-6 w-full max-w-md shadow-2xl`} onClick={(e) => e.stopPropagation()}>
-            <h3 className={`text-lg font-semibold mb-4 ${text}`}>New Scheduled Task</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={onFormClose}
+        >
+          <div
+            className={`rounded-xl border ${border} ${bg} w-full max-w-md p-6 shadow-2xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className={`mb-4 text-lg font-semibold ${text}`}>New Scheduled Task</h3>
             <div className="space-y-3">
-              <input className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`} placeholder="Task name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input
+                className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`}
+                placeholder="Task name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
               <div>
                 <label className={`text-xs ${sub}`}>Cron Expression</label>
-                <select className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm mt-1`} value={cron} onChange={(e) => setCron(e.target.value)}>
+                <select
+                  className={`w-full rounded border ${border} ${inputBg} mt-1 px-3 py-2 text-sm`}
+                  value={cron}
+                  onChange={(e) => setCron(e.target.value)}
+                >
                   <option value="0 * * * *">Every hour</option>
                   <option value="0 9 * * *">Every day at 9 AM</option>
                   <option value="0 9 * * 1-5">Weekdays at 9 AM</option>
@@ -115,15 +154,36 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
                   <option value="0 0 * * 0">Weekly on Sunday</option>
                 </select>
               </div>
-              <textarea className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`} rows={3} placeholder="Prompt to execute..." value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+              <textarea
+                className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`}
+                rows={3}
+                placeholder="Prompt to execute..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={recurring}
+                  onChange={(e) => setRecurring(e.target.checked)}
+                />
                 <span className={sub}>Recurring</span>
               </label>
             </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={onFormClose} className={`rounded px-3 py-1.5 text-sm border ${border}`}>Cancel</button>
-              <button onClick={handleCreate} disabled={loading} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">Create</button>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={onFormClose}
+                className={`rounded border px-3 py-1.5 text-sm ${border}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={loading}
+                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+              >
+                Create
+              </button>
             </div>
           </div>
         </div>

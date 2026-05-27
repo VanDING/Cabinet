@@ -46,7 +46,12 @@ export class SkillRegistry {
     const results: SkillMetadata[] = [];
     for (const s of this.skills.values()) {
       if (s.status === 'active') {
-        results.push({ name: s.name, description: s.description, kind: s.kind, version: s.version });
+        results.push({
+          name: s.name,
+          description: s.description,
+          kind: s.kind,
+          version: s.version,
+        });
       }
     }
     return results;
@@ -123,7 +128,9 @@ export class SkillRegistry {
             sections.push(`- \`scripts/${s}\` — run with execCommand, cwd: \`${scriptPath}\``);
           }
         }
-      } catch { /* L3 best-effort */ }
+      } catch {
+        /* L3 best-effort */
+      }
     }
 
     // L3: list available references (loadable via readFile)
@@ -133,10 +140,14 @@ export class SkillRegistry {
         if (refs.length > 0) {
           sections.push('\n## Available References');
           for (const r of refs) {
-            sections.push(`- \`references/${r}\` — use readFile to load: \`${skill.referencesPath}/${r}\``);
+            sections.push(
+              `- \`references/${r}\` — use readFile to load: \`${skill.referencesPath}/${r}\``,
+            );
           }
         }
-      } catch { /* L3 best-effort */ }
+      } catch {
+        /* L3 best-effort */
+      }
     }
 
     return { skillName: skill.name, output: sections.join('\n') };

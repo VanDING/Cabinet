@@ -61,7 +61,9 @@ export function runMigration002(db: Database.Database): void {
     // Ensure milestones column exists (added in v2.0 patch)
     try {
       db.exec(`ALTER TABLE project_context ADD COLUMN milestones TEXT NOT NULL DEFAULT '[]'`);
-    } catch { /* column may already exist */ }
+    } catch {
+      /* column may already exist */
+    }
   } finally {
     db.pragma('foreign_keys = ON');
   }

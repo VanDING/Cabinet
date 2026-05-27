@@ -5,5 +5,7 @@ export default defineConfig({
     globals: true,
     exclude: ['**/dist/**', '**/node_modules/**'],
     include: ['**/*.test.ts'],
+    pool: 'threads',
+    singleThread: true,
   },
 });

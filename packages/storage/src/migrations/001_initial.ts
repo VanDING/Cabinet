@@ -136,6 +136,6 @@ export function runMigration001(db: Database.Database): void {
 
 export function trackMigration(db: Database.Database, version: number): void {
   db.prepare(
-    'INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, datetime(\'now\'))',
+    "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?, datetime('now'))",
   ).run(version);
 }

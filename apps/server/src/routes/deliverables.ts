@@ -91,10 +91,24 @@ deliverablesRouter.post('/:id/deliverables', async (c) => {
         `INSERT INTO project_deliverables (id, project_id, meeting_id, title, type, file_path, tags)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, projectId, meetingId ?? null, title, type ?? 'general', filePath ?? null, JSON.stringify(tags ?? []));
+      .run(
+        id,
+        projectId,
+        meetingId ?? null,
+        title,
+        type ?? 'general',
+        filePath ?? null,
+        JSON.stringify(tags ?? []),
+      );
 
     ctx.logger.info('Deliverable created', { id, projectId, title });
-    broadcast('deliverable_created', { id, projectId, title, type: type ?? 'general', timestamp: new Date().toISOString() });
+    broadcast('deliverable_created', {
+      id,
+      projectId,
+      title,
+      type: type ?? 'general',
+      timestamp: new Date().toISOString(),
+    });
     return c.json({ created: true, id, title, type: type ?? 'general' }, 201);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);

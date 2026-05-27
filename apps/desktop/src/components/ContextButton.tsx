@@ -52,7 +52,9 @@ export function ContextButton({
         body: JSON.stringify({ sessionId }),
       });
       // Refresh context after compacting
-      const r = await apiFetch(`/api/secretary/context?sessionId=${sessionId}`, { headers: authHeaders() });
+      const r = await apiFetch(`/api/secretary/context?sessionId=${sessionId}`, {
+        headers: authHeaders(),
+      });
       setData(await r.json());
     } catch {
       /* compact failed */

@@ -91,7 +91,11 @@ describe('TaskScheduler CRUD', () => {
 
   it('schedule creates a task with ISO nextRunAt', () => {
     const repo = makeMockRepo();
-    const scheduler = new TaskScheduler(repo as any, makeMockDecisionRepo() as any, makeLogger() as any);
+    const scheduler = new TaskScheduler(
+      repo as any,
+      makeMockDecisionRepo() as any,
+      makeLogger() as any,
+    );
     scheduler.schedule('daily', '0 9 * * *', 'prompt', true);
 
     expect(repo.insert).toHaveBeenCalledOnce();
@@ -105,9 +109,22 @@ describe('TaskScheduler CRUD', () => {
   it('list returns mapped tasks', () => {
     const repo = makeMockRepo();
     repo.findAll = vi.fn(() => [
-      { id: 't1', name: 'a', cron_expression: '* * * * *', prompt: 'p', recurring: 1, enabled: 1, last_run_at: null, next_run_at: null },
+      {
+        id: 't1',
+        name: 'a',
+        cron_expression: '* * * * *',
+        prompt: 'p',
+        recurring: 1,
+        enabled: 1,
+        last_run_at: null,
+        next_run_at: null,
+      },
     ]);
-    const scheduler = new TaskScheduler(repo as any, makeMockDecisionRepo() as any, makeLogger() as any);
+    const scheduler = new TaskScheduler(
+      repo as any,
+      makeMockDecisionRepo() as any,
+      makeLogger() as any,
+    );
     const list = scheduler.list();
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ id: 't1', name: 'a', recurring: true, enabled: true });
@@ -115,7 +132,11 @@ describe('TaskScheduler CRUD', () => {
 
   it('cancel disables task', () => {
     const repo = makeMockRepo();
-    const scheduler = new TaskScheduler(repo as any, makeMockDecisionRepo() as any, makeLogger() as any);
+    const scheduler = new TaskScheduler(
+      repo as any,
+      makeMockDecisionRepo() as any,
+      makeLogger() as any,
+    );
     scheduler.cancel('t1');
     expect(repo.disable).toHaveBeenCalledWith('t1');
   });

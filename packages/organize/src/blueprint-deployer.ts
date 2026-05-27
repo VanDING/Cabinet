@@ -16,7 +16,9 @@ export interface DeployerDependencies {
 
   listAgents: () => { type: string; name: string; description: string; builtIn: boolean }[];
 
-  createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => { id: string };
+  createWorkflow: (input: { name: string; projectId: string; definition: unknown }) => {
+    id: string;
+  };
   runWorkflow: (id: string) => Promise<{ runId: string; status: string; steps?: unknown[] }>;
 
   eventBus: EventBus;
@@ -121,7 +123,9 @@ export class BlueprintDeployer {
       messageType: MessageType.SystemNotification,
       payload: {
         type: 'blueprint_deployed',
-        message: result.success ? 'Blueprint deployed successfully' : `Blueprint deployed with ${result.errors.length} errors`,
+        message: result.success
+          ? 'Blueprint deployed successfully'
+          : `Blueprint deployed with ${result.errors.length} errors`,
         data: {
           success: result.success,
           agentsCreated: result.agentsCreated,

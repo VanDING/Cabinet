@@ -61,10 +61,12 @@ describe('validateBlueprint', () => {
   it('detects invalid condition trueBranch', () => {
     const bp: Blueprint = {
       workflow: {
-        steps: [{
-          id: 's1',
-          condition: { trueBranch: 'ghost', falseBranch: 'also_ghost', expression: 'true' },
-        }],
+        steps: [
+          {
+            id: 's1',
+            condition: { trueBranch: 'ghost', falseBranch: 'also_ghost', expression: 'true' },
+          },
+        ],
       },
     };
     const result = validateBlueprint(bp);
@@ -74,9 +76,7 @@ describe('validateBlueprint', () => {
   it('detects missing authorization for humanApproval without default', () => {
     const bp: Blueprint = {
       workflow: {
-        steps: [
-          { id: 's1', type: 'humanApproval' },
-        ],
+        steps: [{ id: 's1', type: 'humanApproval' }],
       },
     };
     const result = validateBlueprint(bp);
@@ -86,9 +86,7 @@ describe('validateBlueprint', () => {
   it('default authorization rule covers all humanApproval steps', () => {
     const bp: Blueprint = {
       workflow: {
-        steps: [
-          { id: 's1', type: 'humanApproval' },
-        ],
+        steps: [{ id: 's1', type: 'humanApproval' }],
       },
       authorization: {
         rules: [{ default: 'L2', description: 'Default auth' }],
@@ -140,10 +138,7 @@ describe('validateBlueprint', () => {
 
 describe('detectCircularDependencies', () => {
   it('returns empty for acyclic graph', () => {
-    const steps: BlueprintWorkflowStep[] = [
-      { id: 'a', input: { from: 'b' } },
-      { id: 'b' },
-    ];
+    const steps: BlueprintWorkflowStep[] = [{ id: 'a', input: { from: 'b' } }, { id: 'b' }];
     expect(detectCircularDependencies(steps)).toHaveLength(0);
   });
 

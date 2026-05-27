@@ -114,7 +114,7 @@ describe('ProjectRepository', () => {
         description: '',
         status: ProjectStatus.Active,
         createdAt: new Date(),
-      })
+      }),
     ).toThrow();
   });
 });

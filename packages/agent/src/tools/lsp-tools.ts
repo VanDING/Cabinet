@@ -1,17 +1,48 @@
 import type { ToolDefinition } from '../tool-executor.js';
 
 export interface LSPToolDeps {
-  workspaceSymbols: (query: string) => Promise<{ available: boolean; error?: string; symbols?: { name: string; kind: string; file: string; line: number; column: number }[] }>;
-  goToDefinition: (file: string, line: number, column: number) => Promise<{ available: boolean; error?: string; symbols?: { name: string; kind: string; file: string; line: number; column: number }[] }>;
-  findReferences: (file: string, line: number, column: number) => Promise<{ available: boolean; error?: string; references?: { file: string; line: number; column: number; lineText: string }[] }>;
-  diagnostics: (file?: string) => Promise<{ available: boolean; error?: string; diagnostics?: { file: string; line: number; column: number; message: string; category: 'error' | 'warning' | 'suggestion' }[] }>;
+  workspaceSymbols: (query: string) => Promise<{
+    available: boolean;
+    error?: string;
+    symbols?: { name: string; kind: string; file: string; line: number; column: number }[];
+  }>;
+  goToDefinition: (
+    file: string,
+    line: number,
+    column: number,
+  ) => Promise<{
+    available: boolean;
+    error?: string;
+    symbols?: { name: string; kind: string; file: string; line: number; column: number }[];
+  }>;
+  findReferences: (
+    file: string,
+    line: number,
+    column: number,
+  ) => Promise<{
+    available: boolean;
+    error?: string;
+    references?: { file: string; line: number; column: number; lineText: string }[];
+  }>;
+  diagnostics: (file?: string) => Promise<{
+    available: boolean;
+    error?: string;
+    diagnostics?: {
+      file: string;
+      line: number;
+      column: number;
+      message: string;
+      category: 'error' | 'warning' | 'suggestion';
+    }[];
+  }>;
 }
 
 export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
   return [
     {
       name: 'workspace_symbol',
-      description: 'Search for symbols (functions, classes, variables, types) by name in the workspace using TypeScript language service. Works for TS/JS projects.',
+      description:
+        'Search for symbols (functions, classes, variables, types) by name in the workspace using TypeScript language service. Works for TS/JS projects.',
       timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
@@ -25,7 +56,8 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     },
     {
       name: 'go_to_definition',
-      description: 'Find where a symbol is defined. Provide the file path, line, and column of the symbol reference.',
+      description:
+        'Find where a symbol is defined. Provide the file path, line, and column of the symbol reference.',
       timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string;
@@ -41,7 +73,8 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     },
     {
       name: 'find_references',
-      description: 'Find all references to a symbol across the workspace. Provide the file, line, and column of the symbol.',
+      description:
+        'Find all references to a symbol across the workspace. Provide the file, line, and column of the symbol.',
       timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string;
@@ -57,7 +90,8 @@ export function createLSPTools(deps: LSPToolDeps): ToolDefinition[] {
     },
     {
       name: 'diagnostics',
-      description: 'Get TypeScript compiler errors and warnings. If file is provided, returns diagnostics for that file only. Otherwise returns diagnostics for all files.',
+      description:
+        'Get TypeScript compiler errors and warnings. If file is provided, returns diagnostics for that file only. Otherwise returns diagnostics for all files.',
       timeoutMs: 30000,
       execute: async (args: Record<string, unknown>) => {
         const file = args.file as string | undefined;

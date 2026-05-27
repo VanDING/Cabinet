@@ -165,15 +165,13 @@ export function ApiKeysTab() {
   );
 }
 
-function ApiKeyRow({
-  item,
-  onRemove,
-}: {
-  item: ApiKeyItem;
-  onRemove: (id: string) => void;
-}) {
+function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string) => void }) {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
-  const [testResult, setTestResult] = useState<{ latencyMs?: number; model?: string; message?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    latencyMs?: number;
+    model?: string;
+    message?: string;
+  } | null>(null);
 
   const handleTest = async () => {
     setTestStatus('testing');
@@ -224,10 +222,7 @@ function ApiKeyRow({
         >
           {testStatus === 'testing' ? 'Testing...' : 'Test'}
         </button>
-        <button
-          onClick={() => onRemove(item.id)}
-          className="text-xs text-red-500 hover:underline"
-        >
+        <button onClick={() => onRemove(item.id)} className="text-xs text-red-500 hover:underline">
           Remove
         </button>
       </div>
@@ -293,13 +288,18 @@ function ModelMappingSection() {
 
   return (
     <div className="mt-6 border-t pt-6 dark:border-gray-700">
-      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Model Mapping</h3>
+      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+        Model Mapping
+      </h3>
       <p className="mb-3 text-xs text-gray-500">
-        Leave empty to use automatic inference. Cross-provider mixing is supported, e.g. openai/gpt-4o, deepseek/deepseek-v4-flash.
+        Leave empty to use automatic inference. Cross-provider mixing is supported, e.g.
+        openai/gpt-4o, deepseek/deepseek-v4-flash.
       </p>
-      <div className="space-y-3 max-w-lg">
+      <div className="max-w-lg space-y-3">
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Default Model (default)</label>
+          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+            Default Model (default)
+          </label>
           <input
             type="text"
             placeholder="e.g. openai/gpt-4o"
@@ -309,7 +309,9 @@ function ModelMappingSection() {
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Deep Reasoning Model (deep_reasoning)</label>
+          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+            Deep Reasoning Model (deep_reasoning)
+          </label>
           <input
             type="text"
             placeholder="e.g. anthropic/claude-opus-4-7"
@@ -319,7 +321,9 @@ function ModelMappingSection() {
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Fast Execution Model (fast_execution)</label>
+          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+            Fast Execution Model (fast_execution)
+          </label>
           <input
             type="text"
             placeholder="e.g. anthropic/claude-haiku-4-5"
@@ -363,15 +367,17 @@ function BudgetSection() {
 
   return (
     <div className="mt-6 border-t pt-6 dark:border-gray-700">
-      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Budget Limits</h3>
+      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+        Budget Limits
+      </h3>
       <div className="mb-3 flex items-center gap-2 text-sm">
         <span className="text-gray-500">Today's spend:</span>
         <span className="font-medium text-blue-600">${currentSpend.toFixed(4)}</span>
       </div>
-      <div className="grid grid-cols-3 gap-4 max-w-lg">
+      <div className="grid max-w-lg grid-cols-3 gap-4">
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
-            <label className="block text-sm capitalize text-gray-600 dark:text-gray-400 mb-1">
+            <label className="mb-1 block text-sm capitalize text-gray-600 dark:text-gray-400">
               {period}
             </label>
             <div className="flex items-center gap-1">

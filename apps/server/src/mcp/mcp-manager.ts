@@ -43,7 +43,10 @@ export class MCPManager {
         }
       }
     }
-    this.logger.info('MCP manager initialized', { servers: configs.length, connected: this.clients.size });
+    this.logger.info('MCP manager initialized', {
+      servers: configs.length,
+      connected: this.clients.size,
+    });
   }
 
   /** Connect to a single MCP server and register its tools. */
@@ -57,10 +60,7 @@ export class MCPManager {
       args: config.args,
     });
 
-    const client = new Client(
-      { name: 'cabinet', version: '2.0.0' },
-      { capabilities: {} },
-    );
+    const client = new Client({ name: 'cabinet', version: '2.0.0' }, { capabilities: {} });
 
     await client.connect(transport);
 

@@ -32,16 +32,25 @@ const mockDecision = {
 };
 
 const mockAuditTrail = [
-  { action: 'created', actor: 'secretary', changes: { title: 'Enter 母婴 Market' }, timestamp: '2026-05-01T08:00:00Z' },
+  {
+    action: 'created',
+    actor: 'secretary',
+    changes: { title: 'Enter 母婴 Market' },
+    timestamp: '2026-05-01T08:00:00Z',
+  },
 ];
 
 function setupMocks(decisionOverride?: any, auditOverride?: any) {
   mockApiFetch.mockImplementation((url: string) => {
     if (url.includes('/audit')) {
-      return Promise.resolve({ json: () => Promise.resolve({ trail: auditOverride ?? mockAuditTrail }) });
+      return Promise.resolve({
+        json: () => Promise.resolve({ trail: auditOverride ?? mockAuditTrail }),
+      });
     }
     // Decision detail
-    return Promise.resolve({ json: () => Promise.resolve({ decision: decisionOverride ?? mockDecision }) });
+    return Promise.resolve({
+      json: () => Promise.resolve({ decision: decisionOverride ?? mockDecision }),
+    });
   });
 }
 

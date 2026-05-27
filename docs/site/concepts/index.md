@@ -28,11 +28,11 @@ Secretary ─── Intent Parser ─── Agent Dispatcher
 
 ## Key Terms
 
-| Term | Definition |
-|---|---|
-| **Captain** | The human decision-maker |
+| Term          | Definition                                                           |
+| ------------- | -------------------------------------------------------------------- |
+| **Captain**   | The human decision-maker                                             |
 | **Secretary** | Natural language entry point that routes intent to specialist agents |
-| **Decision** | A structured choice with options, classified L0-L3 by autonomy level |
-| **Meeting** | Multi-agent debate with parallel reasoning and cross-validation |
-| **Workflow** | Declarative pipeline of agent steps with human approval nodes |
-| **Memory** | Four-layer persistence: short-term, long-term, entity, project |
+| **Decision**  | A structured choice with options, classified L0-L3 by autonomy level |
+| **Meeting**   | Multi-agent debate with parallel reasoning and cross-validation      |
+| **Workflow**  | Declarative pipeline of agent steps with human approval nodes        |
+| **Memory**    | Four-layer persistence: short-term, long-term, entity, project       |

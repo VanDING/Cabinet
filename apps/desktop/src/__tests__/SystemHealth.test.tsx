@@ -61,10 +61,11 @@ describe('SystemHealth', () => {
 
   it('shows backup N/A when unavailable', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        ...mockHealth,
-        backup: { available: false },
-      }),
+      json: () =>
+        Promise.resolve({
+          ...mockHealth,
+          backup: { available: false },
+        }),
     });
     render(<SystemHealth />);
     await waitFor(() => {

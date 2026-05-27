@@ -24,7 +24,9 @@ export function McpTab() {
       .catch(() => {});
   };
 
-  useEffect(() => { fetchServers(); }, []);
+  useEffect(() => {
+    fetchServers();
+  }, []);
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.command.trim()) return;
@@ -47,13 +49,13 @@ export function McpTab() {
         setShowForm(false);
         setForm({ name: '', command: 'npx', args: '', enabled: true });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleToggle = async (name: string) => {
-    const updated = servers.map((s) =>
-      s.name === name ? { ...s, enabled: !s.enabled } : s,
-    );
+    const updated = servers.map((s) => (s.name === name ? { ...s, enabled: !s.enabled } : s));
     await apiFetch('/api/settings/mcp-servers', {
       method: 'PUT',
       headers: authJsonHeaders(),
@@ -128,7 +130,9 @@ export function McpTab() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Arguments (space-separated)</label>
+              <label className="mb-1 block text-xs text-gray-500">
+                Arguments (space-separated)
+              </label>
               <input
                 type="text"
                 placeholder="-y @anthropic/mcp-server-filesystem /path"
@@ -167,12 +171,18 @@ export function McpTab() {
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{s.name}</span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-xs ${s.enabled ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {s.name}
+                  </span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-xs ${s.enabled ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-500'}`}
+                  >
                     {s.enabled ? 'enabled' : 'disabled'}
                   </span>
                   {s.status && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-xs ${s.status === 'connected' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-xs ${s.status === 'connected' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}
+                    >
                       {s.status}
                     </span>
                   )}

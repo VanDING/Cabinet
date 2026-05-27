@@ -33,6 +33,7 @@ Cabinet implements a 4-layer memory architecture:
 ## Consolidation
 
 The **Curator** agent periodically runs consolidation:
+
 1. Identifies important information from short-term memory
 2. Summarizes and stores in long-term memory
 3. Links related memories across layers

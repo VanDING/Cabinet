@@ -52,9 +52,13 @@ export class DeadLetterQueue {
             retryCount: row.retry_count as number,
             lastRetryAt: row.last_retry_at as string | undefined,
           });
-        } catch { /* skip corrupted entries */ }
+        } catch {
+          /* skip corrupted entries */
+        }
       }
-    } catch { /* table may not exist yet */ }
+    } catch {
+      /* table may not exist yet */
+    }
   }
 
   enqueue(entry: Omit<DeadLetterEntry, 'id' | 'retryCount'>): void {
@@ -79,7 +83,9 @@ export class DeadLetterQueue {
             entry.messageType,
             entry.failedAt,
           );
-      } catch { /* persistence failure is non-fatal */ }
+      } catch {
+        /* persistence failure is non-fatal */
+      }
     }
   }
 
@@ -109,7 +115,9 @@ export class DeadLetterQueue {
           this.db
             .prepare('UPDATE dead_letter_queue SET retry_count = ?, last_retry_at = ? WHERE id = ?')
             .run(entry.retryCount, entry.lastRetryAt, id);
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
       }
       return false;
     }
@@ -130,14 +138,22 @@ export class DeadLetterQueue {
     const idx = this.entries.findIndex((e) => e.id === id);
     if (idx !== -1) this.entries.splice(idx, 1);
     if (this.db) {
-      try { this.db.prepare('DELETE FROM dead_letter_queue WHERE id = ?').run(id); } catch { /* non-fatal */ }
+      try {
+        this.db.prepare('DELETE FROM dead_letter_queue WHERE id = ?').run(id);
+      } catch {
+        /* non-fatal */
+      }
     }
   }
 
   purgeAll(): void {
     this.entries.length = 0;
     if (this.db) {
-      try { this.db.prepare('DELETE FROM dead_letter_queue').run(); } catch { /* non-fatal */ }
+      try {
+        this.db.prepare('DELETE FROM dead_letter_queue').run();
+      } catch {
+        /* non-fatal */
+      }
     }
   }
 

@@ -15,7 +15,9 @@ export function parseBlueprint(text: string): Blueprint {
       try {
         const parsed = JSON.parse(inner);
         if (isBlueprintShape(parsed)) return normalizeBlueprint(parsed);
-      } catch { /* continue to next block */ }
+      } catch {
+        /* continue to next block */
+      }
     }
   }
 
@@ -24,18 +26,27 @@ export function parseBlueprint(text: string): Blueprint {
     try {
       const parsed = JSON.parse(match[0]);
       if (isBlueprintShape(parsed)) return normalizeBlueprint(parsed);
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
 
   throw new BlueprintParseError(
     'Could not extract a valid Blueprint from the provided text. ' +
-    'Ensure the output contains a JSON object with meta, agents, workflow, harness, or authorization fields.',
+      'Ensure the output contains a JSON object with meta, agents, workflow, harness, or authorization fields.',
   );
 }
 
 export async function parseBlueprintWithLLM(
   text: string,
-  gateway: { generateText: (opts: { model: string; messages: { role: 'user'; content: string }[]; maxTokens: number; temperature: number }) => Promise<{ content: string }> },
+  gateway: {
+    generateText: (opts: {
+      model: string;
+      messages: { role: 'user'; content: string }[];
+      maxTokens: number;
+      temperature: number;
+    }) => Promise<{ content: string }>;
+  },
 ): Promise<Blueprint> {
   const prompt = `Extract an organization blueprint from the following text.
 Return ONLY a valid JSON object with this structure:

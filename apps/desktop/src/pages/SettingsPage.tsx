@@ -1,50 +1,42 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  SkillsTab,
-  ApiKeysTab,
-  RulesTab,
-  McpTab,
-  OthersTab,
-} from './settings/index.js';
+import { SkillsTab, ApiKeysTab, RulesTab, McpTab, OthersTab } from './settings/index.js';
 
-type SettingsTab =
-  | 'rules'
-  | 'skills'
-  | 'mcp'
-  | 'api'
-  | 'others';
+type SettingsTab = 'rules' | 'skills' | 'mcp' | 'api' | 'others';
 
 const tabKeys: Record<SettingsTab, string> = {
-  'rules': 'rules',
-  'skills': 'skills',
-  'mcp': 'mcp',
-  'api': 'apiKeys',
-  'others': 'others',
+  rules: 'rules',
+  skills: 'skills',
+  mcp: 'mcp',
+  api: 'apiKeys',
+  others: 'others',
 };
 
 const tabIcons: Record<SettingsTab, string> = {
-  'rules': '\u{1F4DC}',
-  'skills': '\u{1F9E9}',
-  'mcp': '\u{1F527}',
-  'api': '\u{1F511}',
-  'others': '\u{2699}',
+  rules: '\u{1F4DC}',
+  skills: '\u{1F9E9}',
+  mcp: '\u{1F527}',
+  api: '\u{1F511}',
+  others: '\u{2699}',
 };
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>('rules');
 
-  const tabs: { id: SettingsTab; label: string; icon: string }[] =
-    Object.keys(tabKeys).map((id) => ({
+  const tabs: { id: SettingsTab; label: string; icon: string }[] = Object.keys(tabKeys).map(
+    (id) => ({
       id: id as SettingsTab,
       label: t(`settings.tabs.${tabKeys[id as SettingsTab]}`),
       icon: tabIcons[id as SettingsTab],
-    }));
+    }),
+  );
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">{t('settings.title')}</h1>
+      <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-gray-100">
+        {t('settings.title')}
+      </h1>
 
       {/* Tab Bar */}
       <div className="mb-6 flex gap-1 border-b dark:border-gray-700">

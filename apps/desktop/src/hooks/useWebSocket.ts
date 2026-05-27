@@ -79,7 +79,9 @@ export function useWebSocket(onEvent?: WSEventHandler) {
             }
           }),
         )
-        .then((fn) => { unlisten = fn; })
+        .then((fn) => {
+          unlisten = fn;
+        })
         .catch(() => {});
     }
 

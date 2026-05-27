@@ -50,9 +50,10 @@ export interface ExtractionResult {
 // ── Phase 1: Chair — perspective generation ──
 
 export function buildChairPrompt(topic: string, userAdvisors?: string[]): string {
-  const userSpecifiedLine = userAdvisors && userAdvisors.length > 0
-    ? `\nThe user specifically requested these perspectives (include them all):\n${userAdvisors.map((a) => `- ${a}`).join('\n')}\n`
-    : '';
+  const userSpecifiedLine =
+    userAdvisors && userAdvisors.length > 0
+      ? `\nThe user specifically requested these perspectives (include them all):\n${userAdvisors.map((a) => `- ${a}`).join('\n')}\n`
+      : '';
 
   return [
     `You are the Meeting Chair. Your job is to coordinate analysis, not perform it.`,
@@ -63,8 +64,12 @@ export function buildChairPrompt(topic: string, userAdvisors?: string[]): string
     `Your task:`,
     `1. Determine what analytical perspectives are needed for this specific topic. Use as many perspectives as the topic genuinely requires — simple topics may need only 2, complex cross-domain topics may need 5-6. Do NOT pad with unnecessary perspectives. Do NOT use generic categories — every topic needs its own tailored perspectives.`,
     ...(userAdvisors && userAdvisors.length > 0
-      ? [`2. The user's specified perspectives (above) MUST all be included. Add additional complementary perspectives if there are meaningful coverage gaps.`]
-      : [`2. Name each perspective with a short, descriptive label (e.g., "供应链韧性", "用户体验风险", "监管合规").`]),
+      ? [
+          `2. The user's specified perspectives (above) MUST all be included. Add additional complementary perspectives if there are meaningful coverage gaps.`,
+        ]
+      : [
+          `2. Name each perspective with a short, descriptive label (e.g., "供应链韧性", "用户体验风险", "监管合规").`,
+        ]),
     `3. For each perspective, specify a FOCUSED analysis angle — specific to THIS topic, not a generic template.`,
     `4. Include any project context that is relevant.`,
     '',
@@ -92,7 +97,8 @@ export function parseChairResponse(content: string, topic: string): AnalysisBrie
     if (!match) return fallback;
     const parsed = JSON.parse(match[0]);
     return {
-      selected_perspectives: (parsed.selected_perspectives as PerspectiveDef[]) ?? fallback.selected_perspectives,
+      selected_perspectives:
+        (parsed.selected_perspectives as PerspectiveDef[]) ?? fallback.selected_perspectives,
       topic_refined: (parsed.topic_refined as string) ?? topic,
       key_questions: (parsed.key_questions as string[]) ?? [],
     };
@@ -164,7 +170,10 @@ export function buildReviewerTask(
   synthesisText: string,
 ): string {
   const findingsSummary = findings
-    .map((f) => `[${f.perspective}] claim: ${f.claim} | evidence: ${f.evidence} | confidence: ${f.confidence}`)
+    .map(
+      (f) =>
+        `[${f.perspective}] claim: ${f.claim} | evidence: ${f.evidence} | confidence: ${f.confidence}`,
+    )
     .join('\n');
 
   return [
@@ -208,9 +217,7 @@ export function buildExtractionPrompt(
   synthesis: string,
   findings: AdvisorFinding[],
 ): string {
-  const summary = findings
-    .map((f) => `[${f.perspective}]: ${f.claim}`)
-    .join('\n');
+  const summary = findings.map((f) => `[${f.perspective}]: ${f.claim}`).join('\n');
 
   return [
     `Analyze this meeting outcome and determine if it contains a decision the Captain should make.`,

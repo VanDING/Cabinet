@@ -21,15 +21,15 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 type(scope): message
 ```
 
-| type | use case |
-|---|---|
-| `feat` | new feature (minor bump) |
-| `fix` | bug fix (patch bump) |
+| type       | use case                            |
+| ---------- | ----------------------------------- |
+| `feat`     | new feature (minor bump)            |
+| `fix`      | bug fix (patch bump)                |
 | `refactor` | code change without behavior change |
-| `docs` | documentation only |
-| `test` | adding or updating tests |
-| `chore` | maintenance, dependencies |
-| `ci` | CI/CD changes |
+| `docs`     | documentation only                  |
+| `test`     | adding or updating tests            |
+| `chore`    | maintenance, dependencies           |
+| `ci`       | CI/CD changes                       |
 
 ## Pull Request Process
 
@@ -49,6 +49,7 @@ pnpm changeset
 ```
 
 This prompts you to:
+
 1. Select affected packages
 2. Choose bump level (major / minor / patch)
 3. Write a description of the change
@@ -66,10 +67,10 @@ pnpm build
 
 ### Useful Commands
 
-| Command | Purpose |
-|---|---|
+| Command          | Purpose                 |
+| ---------------- | ----------------------- |
 | `pnpm typecheck` | Type-check all packages |
-| `pnpm test` | Run all unit tests |
-| `pnpm test:e2e` | Run E2E API tests |
-| `pnpm lint` | Lint all files |
-| `pnpm build` | Build all packages |
+| `pnpm test`      | Run all unit tests      |
+| `pnpm test:e2e`  | Run E2E API tests       |
+| `pnpm lint`      | Lint all files          |
+| `pnpm build`     | Build all packages      |

@@ -93,12 +93,8 @@ export class LongTermMemory {
         this.hnsw.readIndex(this.indexPath);
         const meta: IndexMeta = JSON.parse(readFileSync(this.metaPath, 'utf-8'));
         this.nextLabel = meta.nextLabel;
-        this.labelToId = new Map(
-          Object.entries(meta.labelToId).map(([k, v]) => [Number(k), v]),
-        );
-        this.idToLabel = new Map(
-          Object.entries(meta.labelToId).map(([k, v]) => [v, Number(k)]),
-        );
+        this.labelToId = new Map(Object.entries(meta.labelToId).map(([k, v]) => [Number(k), v]));
+        this.idToLabel = new Map(Object.entries(meta.labelToId).map(([k, v]) => [v, Number(k)]));
         return;
       }
     } catch {
@@ -152,7 +148,12 @@ export class LongTermMemory {
             meta.status = 'superseded';
             meta.supersededBy = id;
             meta.supersededReason = c.resolutionSuggestion;
-            this.repo.insert({ id: oldRow.id, content: oldRow.content, embedding: oldRow.embedding, metadata: JSON.stringify(meta) });
+            this.repo.insert({
+              id: oldRow.id,
+              content: oldRow.content,
+              embedding: oldRow.embedding,
+              metadata: JSON.stringify(meta),
+            });
           }
         } else if (c.confidence >= 0.5 && this.onContradictionDetected) {
           this.onContradictionDetected({
@@ -262,7 +263,9 @@ export class LongTermMemory {
 
     // Async accessCount update (best-effort)
     for (const entry of fused) {
-      this.incrementAccessCount(entry.id).catch(() => { /* best-effort */ });
+      this.incrementAccessCount(entry.id).catch(() => {
+        /* best-effort */
+      });
     }
 
     return fused;
@@ -270,7 +273,9 @@ export class LongTermMemory {
 
   private computeDecayScore(entry: LongTermEntry): number {
     try {
-      const { MemoryDecayService } = require('./memory-decay.js') as typeof import('./memory-decay.js');
+      const { MemoryDecayService } =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        require('./memory-decay.js') as typeof import('./memory-decay.js');
       return MemoryDecayService.score(entry);
     } catch {
       return 1;
@@ -290,7 +295,10 @@ export class LongTermMemory {
   }
 
   /** Update memory metadata (e.g., mark as outdated). */
-  async updateMemory(id: string, updates: Partial<{ status: string; importance: number; confidence: number }>): Promise<boolean> {
+  async updateMemory(
+    id: string,
+    updates: Partial<{ status: string; importance: number; confidence: number }>,
+  ): Promise<boolean> {
     try {
       const rows = this.repo.findByIds([id]);
       if (rows.length === 0) return false;

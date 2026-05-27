@@ -20,7 +20,10 @@ scheduledTasksRouter.post('/', async (c) => {
   try {
     const body = await c.req.json();
     const { name, cron, prompt, recurring } = body as {
-      name?: string; cron?: string; prompt?: string; recurring?: boolean;
+      name?: string;
+      cron?: string;
+      prompt?: string;
+      recurring?: boolean;
     };
     if (!name || !cron || !prompt) {
       return c.json({ error: 'name, cron, and prompt are required' }, 400);
@@ -49,12 +52,13 @@ scheduledTasksRouter.post('/:id/run', async (c) => {
   const ctx = getServerContext();
   const id = c.req.param('id');
   try {
-    const tasks = ctx.taskScheduler.list().filter(t => t.id === id);
+    const tasks = ctx.taskScheduler.list().filter((t) => t.id === id);
     if (tasks.length === 0) return c.json({ error: 'Task not found' }, 404);
     // Execute via gateway if available
     if (!ctx.gateway) return c.json({ error: 'No LLM gateway available' }, 503);
     const task = tasks[0]!;
-    const testModel = (ctx.gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
+    const testModel =
+      (ctx.gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
     const result = await ctx.gateway.generateText({
       model: testModel,
       systemPrompt: 'Execute this scheduled task. Be concise.',

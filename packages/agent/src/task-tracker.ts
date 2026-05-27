@@ -50,14 +50,36 @@ export interface SemanticTask {
 function categorizeTool(toolName: string): string {
   const name = toolName.toLowerCase().replace(/[-_]/g, '');
   const readTools = new Set([
-    'readfile', 'read_file', 'fileinfo', 'file_info', 'listdirectory',
-    'list_directory', 'glob', 'grep', 'searchfiles', 'searchfiles',
-    'searchcontent', 'search_content', 'recentfiles', 'recent_files',
+    'readfile',
+    'read_file',
+    'fileinfo',
+    'file_info',
+    'listdirectory',
+    'list_directory',
+    'glob',
+    'grep',
+    'searchfiles',
+    'searchfiles',
+    'searchcontent',
+    'search_content',
+    'recentfiles',
+    'recent_files',
   ]);
   const writeTools = new Set([
-    'writefile', 'write_file', 'editfile', 'edit_file', 'applypatch',
-    'apply_patch', 'deletefile', 'delete_file', 'movefile', 'move_file',
-    'copyfile', 'copy_file', 'makedirectory', 'make_directory',
+    'writefile',
+    'write_file',
+    'editfile',
+    'edit_file',
+    'applypatch',
+    'apply_patch',
+    'deletefile',
+    'delete_file',
+    'movefile',
+    'move_file',
+    'copyfile',
+    'copy_file',
+    'makedirectory',
+    'make_directory',
   ]);
   const verifyTools = new Set(['test', 'lint', 'build', 'check', 'ci']);
   const fetchTools = new Set(['webfetch', 'web_fetch', 'httprequest', 'http_request']);

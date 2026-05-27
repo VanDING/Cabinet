@@ -31,8 +31,18 @@ describe('Condition Evaluator', () => {
   });
 
   it('resolves nested path references (dot notation)', () => {
-    expect(evaluateCondition('{{steps.analyze.output.score}} > 0.7', ctx({ 'steps.analyze.output.score': '0.85' }))).toBe(true);
-    expect(evaluateCondition('{{steps.analyze.output.score}} > 0.9', ctx({ 'steps.analyze.output.score': '0.85' }))).toBe(false);
+    expect(
+      evaluateCondition(
+        '{{steps.analyze.output.score}} > 0.7',
+        ctx({ 'steps.analyze.output.score': '0.85' }),
+      ),
+    ).toBe(true);
+    expect(
+      evaluateCondition(
+        '{{steps.analyze.output.score}} > 0.9',
+        ctx({ 'steps.analyze.output.score': '0.85' }),
+      ),
+    ).toBe(false);
   });
 
   // ── Numeric comparisons ──
@@ -116,34 +126,44 @@ describe('Condition Evaluator', () => {
 
   // ── Combined ──
   it('evaluates combined expression with templates', () => {
-    expect(evaluateCondition(
-      '{{score}} > 0.7 AND {{pass}} == true',
-      ctx({ score: '0.85', pass: 'true' }),
-    )).toBe(true);
+    expect(
+      evaluateCondition(
+        '{{score}} > 0.7 AND {{pass}} == true',
+        ctx({ score: '0.85', pass: 'true' }),
+      ),
+    ).toBe(true);
 
-    expect(evaluateCondition(
-      '{{score}} > 0.7 AND {{pass}} == true',
-      ctx({ score: '0.65', pass: 'true' }),
-    )).toBe(false);
+    expect(
+      evaluateCondition(
+        '{{score}} > 0.7 AND {{pass}} == true',
+        ctx({ score: '0.65', pass: 'true' }),
+      ),
+    ).toBe(false);
   });
 
   it('evaluates OR with templates', () => {
-    expect(evaluateCondition(
-      '{{status}} == done OR {{status}} == approved',
-      ctx({ status: 'approved' }),
-    )).toBe(true);
+    expect(
+      evaluateCondition(
+        '{{status}} == done OR {{status}} == approved',
+        ctx({ status: 'approved' }),
+      ),
+    ).toBe(true);
   });
 
   it('evaluates contains with template', () => {
-    expect(evaluateCondition(
-      '{{output}} contains "error"',
-      ctx({ output: 'Processing failed with error E500' }),
-    )).toBe(true);
+    expect(
+      evaluateCondition(
+        '{{output}} contains "error"',
+        ctx({ output: 'Processing failed with error E500' }),
+      ),
+    ).toBe(true);
 
-    expect(evaluateCondition(
-      '{{output}} contains "error"',
-      ctx({ output: 'Processing completed successfully' }),
-    )).toBe(false);
+    expect(
+      evaluateCondition(
+        '{{output}} contains "error"',
+        ctx({ output: 'Processing completed successfully' }),
+      ),
+    ).toBe(false);
   });
 
   // ── Parentheses ──

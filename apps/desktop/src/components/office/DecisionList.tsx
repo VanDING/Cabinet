@@ -47,7 +47,9 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
 
     // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
-    const hasRelevant = buffered.some((e) => e.type === 'decision_created' || e.type === 'decision_updated');
+    const hasRelevant = buffered.some(
+      (e) => e.type === 'decision_created' || e.type === 'decision_updated',
+    );
     if (hasRelevant) fetchDecisions();
 
     return () => {
@@ -67,9 +69,12 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
   };
 
   const statusBadge = (status: string) => {
-    if (status === 'pending') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-    if (status === 'approved') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
-    if (status === 'rejected') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+    if (status === 'pending')
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    if (status === 'approved')
+      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+    if (status === 'rejected')
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
     return 'bg-gray-100 text-gray-500';
   };
 
@@ -88,7 +93,9 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
       ) : decisions.length === 0 ? (
         <>
           <p className="text-xs text-gray-400">No decisions yet</p>
-          <p className="mt-1 text-xs text-gray-400">Agents create decisions during meetings and task execution</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Agents create decisions during meetings and task execution
+          </p>
         </>
       ) : (
         <div className="space-y-2">
@@ -100,10 +107,14 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
               className="w-full rounded border p-3 text-left transition-colors hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
             >
               <div className="mb-1 flex items-center gap-2">
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${levelBadge(d.level)}`}>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${levelBadge(d.level)}`}
+                >
                   {d.level}
                 </span>
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}
+                >
                   {d.status}
                 </span>
                 <span className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -133,7 +144,9 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
           {resolved.length > 0 && (
             <>
               <div className="my-2 border-t dark:border-gray-700" />
-              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Recently resolved</p>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                Recently resolved
+              </p>
               {resolved.map((d) => (
                 <button
                   key={d.id}
@@ -141,10 +154,14 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                   className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-blue-300 hover:bg-gray-50 hover:opacity-100 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusBadge(d.status)}`}
+                    >
                       {d.status}
                     </span>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{d.title}</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {d.title}
+                    </span>
                   </div>
                 </button>
               ))}

@@ -59,9 +59,9 @@ export class EventLogRepository {
         'SELECT * FROM event_log WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp ASC LIMIT ? OFFSET ?',
       )
       .all(from.toISOString(), to.toISOString(), opts?.limit ?? 1000, opts?.offset ?? 0) as Record<
-        string,
-        unknown
-      >[];
+      string,
+      unknown
+    >[];
     return rows.map((r) => this.rowToEnvelope(r));
   }
 

@@ -1,7 +1,15 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { join } from 'node:path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, cpSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  readdirSync,
+  cpSync,
+} from 'node:fs';
 import AdmZip from 'adm-zip';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
@@ -41,7 +49,10 @@ function rowToSkill(row: any) {
   };
 }
 
-function persistSkillToDb(skillRepo: import('@cabinet/storage').SkillRepository, skill: SkillEntry) {
+function persistSkillToDb(
+  skillRepo: import('@cabinet/storage').SkillRepository,
+  skill: SkillEntry,
+) {
   skillRepo.upsert({
     id: skill.id,
     name: skill.name,
@@ -67,8 +78,7 @@ skillsRouter.get('/', (c) => {
   // Scan filesystem for skills not yet in DB
   const dbNames = new Set(dbSkills.map((s) => s.name));
   try {
-    const dirs = readdirSync(SKILLS_DIR, { withFileTypes: true })
-      .filter((d) => d.isDirectory());
+    const dirs = readdirSync(SKILLS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
     for (const entry of dirs) {
       if (dbNames.has(entry.name)) continue;
       const skillMdPath = join(SKILLS_DIR, entry.name, 'SKILL.md');
@@ -99,9 +109,13 @@ skillsRouter.get('/', (c) => {
             scriptsPath: existsSync(scriptsDir) ? scriptsDir : '',
           });
         }
-      } catch { /* skip malformed */ }
+      } catch {
+        /* skip malformed */
+      }
     }
-  } catch { /* skills dir empty */ }
+  } catch {
+    /* skills dir empty */
+  }
 
   return c.json({ skills: dbSkills, directory: SKILLS_DIR });
 });
@@ -237,7 +251,11 @@ skillsRouter.delete('/:id', (c) => {
   if (row) {
     // Remove from filesystem
     const skillDir = join(SKILLS_DIR, row.name);
-    try { rmSync(skillDir, { recursive: true, force: true }); } catch { /* ok */ }
+    try {
+      rmSync(skillDir, { recursive: true, force: true });
+    } catch {
+      /* ok */
+    }
     // Remove from registry
     skillRegistry.unregister(row.name);
     // Remove from DB
@@ -302,7 +320,11 @@ skillsRouter.post('/import', async (c) => {
     referencesPath: join(dir, 'references'),
     scriptsPath: join(dir, 'scripts'),
   });
-  if (!result) return c.json({ error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' }, 400);
+  if (!result)
+    return c.json(
+      { error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' },
+      400,
+    );
 
   // Write SKILL.md to filesystem
   const skillDir = ensureSkillDir(result.name);
@@ -320,12 +342,15 @@ skillsRouter.post('/import', async (c) => {
 
   broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill imported', { id: result.id, name: result.name });
-  return c.json({
-    id: result.id,
-    name: result.name,
-    status: 'imported',
-    path: join(skillDir, 'SKILL.md'),
-  }, 201);
+  return c.json(
+    {
+      id: result.id,
+      name: result.name,
+      status: 'imported',
+      path: join(skillDir, 'SKILL.md'),
+    },
+    201,
+  );
 });
 
 // ── POST /api/skills/import-zip — import full skill zip with directory structure ──
@@ -364,7 +389,10 @@ skillsRouter.post('/import-zip', async (c) => {
   // Parse to get the skill name before extracting
   const result = importSkillFromMarkdown(skillContent, skillRegistry);
   if (!result) {
-    return c.json({ error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' }, 400);
+    return c.json(
+      { error: 'Invalid SKILL.md format. Expected YAML frontmatter with name + description.' },
+      400,
+    );
   }
 
   // Determine the base path inside the zip (e.g. "my-skill/" or "" for root-level)
@@ -387,7 +415,9 @@ skillsRouter.post('/import-zip', async (c) => {
     try {
       ensureSubdir(join(destPath, '..'));
       writeFileSync(destPath, entry.getData());
-    } catch { /* skip individual file errors */ }
+    } catch {
+      /* skip individual file errors */
+    }
   }
 
   // Also ensure SKILL.md is at root of skill dir
@@ -405,14 +435,17 @@ skillsRouter.post('/import-zip', async (c) => {
 
   broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill zip imported', { id: result.id, name: result.name });
-  return c.json({
-    id: result.id,
-    name: result.name,
-    status: 'imported',
-    path: join(skillDir, 'SKILL.md'),
-    hasReferences: existsSync(refsDir),
-    hasScripts: existsSync(scriptsDir),
-  }, 201);
+  return c.json(
+    {
+      id: result.id,
+      name: result.name,
+      status: 'imported',
+      path: join(skillDir, 'SKILL.md'),
+      hasReferences: existsSync(refsDir),
+      hasScripts: existsSync(scriptsDir),
+    },
+    201,
+  );
 });
 
 // ── GET /api/skills/:id/export — export as SKILL.md ──
@@ -423,18 +456,20 @@ skillsRouter.get('/:id/export', (c) => {
   const row = skillRepo.findById(id);
   if (!row) return c.json({ error: 'Skill not found' }, 404);
 
-  const skill = skillRegistry.load(row.name) ?? {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    kind: row.kind,
-    promptTemplate: row.prompt_template,
-    inputSchema: {},
-    outputSchema: {},
-    version: row.version,
-    status: row.status,
-    metadata: JSON.parse(row.metadata ?? '{}'),
-  } as SkillEntry;
+  const skill =
+    skillRegistry.load(row.name) ??
+    ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      kind: row.kind,
+      promptTemplate: row.prompt_template,
+      inputSchema: {},
+      outputSchema: {},
+      version: row.version,
+      status: row.status,
+      metadata: JSON.parse(row.metadata ?? '{}'),
+    } as SkillEntry);
 
   const markdown = exportSkillToMarkdown(skill);
   return c.json({ id, name: row.name, content: markdown, format: 'SKILL.md' });

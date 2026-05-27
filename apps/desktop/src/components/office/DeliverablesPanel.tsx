@@ -27,17 +27,24 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/projects/${projectId}/deliverables`, { headers: authHeaders() });
+      const res = await apiFetch(`/api/projects/${projectId}/deliverables`, {
+        headers: authHeaders(),
+      });
       if (res.ok) setDeliverables((await res.json()).deliverables ?? []);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [projectId]);
+  useEffect(() => {
+    fetchData();
+  }, [projectId]);
 
   const handleDelete = async (id: string) => {
     await apiFetch(`/api/projects/${projectId}/deliverables/${id}`, {
-      method: 'DELETE', headers: authJsonHeaders(),
+      method: 'DELETE',
+      headers: authJsonHeaders(),
     });
     fetchData();
   };
@@ -49,59 +56,96 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
   const bg = isDark ? 'bg-gray-900' : 'bg-white';
   const text = isDark ? 'text-gray-200' : 'text-gray-800';
   const sub = isDark ? 'text-gray-400' : 'text-gray-500';
-  const typeColors: Record<string, string> = { meeting_report: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', general: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' };
+  const typeColors: Record<string, string> = {
+    meeting_report: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    general: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  };
 
   return (
-    <div className={`fixed inset-y-0 right-0 z-40 w-full max-w-xl border-l ${border} ${bg} shadow-2xl flex flex-col`}>
-      <div className={`flex items-center justify-between p-4 border-b ${border}`}>
+    <div
+      className={`fixed inset-y-0 right-0 z-40 w-full max-w-xl border-l ${border} ${bg} flex flex-col shadow-2xl`}
+    >
+      <div className={`flex items-center justify-between border-b p-4 ${border}`}>
         <h2 className={`text-lg font-semibold ${text}`}>Deliverables</h2>
-        <button onClick={onClose} className={`p-1 rounded ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}><X size={18} /></button>
+        <button
+          onClick={onClose}
+          className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Type filter */}
       {types.length > 1 && (
-        <div className={`flex gap-1 px-4 py-2 border-b ${border} overflow-x-auto`}>
-          <button onClick={() => setFilter('all')} className={`px-2 py-0.5 rounded-full text-xs ${filter === 'all' ? 'bg-blue-600 text-white' : `${sub} border ${border}`}`}>All</button>
+        <div className={`flex gap-1 border-b px-4 py-2 ${border} overflow-x-auto`}>
+          <button
+            onClick={() => setFilter('all')}
+            className={`rounded-full px-2 py-0.5 text-xs ${filter === 'all' ? 'bg-blue-600 text-white' : `${sub} border ${border}`}`}
+          >
+            All
+          </button>
           {types.map((t) => (
-            <button key={t} onClick={() => setFilter(t)} className={`px-2 py-0.5 rounded-full text-xs capitalize ${filter === t ? 'bg-blue-600 text-white' : `${sub} border ${border}`}`}>{t.replace('_', ' ')}</button>
+            <button
+              key={t}
+              onClick={() => setFilter(t)}
+              className={`rounded-full px-2 py-0.5 text-xs capitalize ${filter === t ? 'bg-blue-600 text-white' : `${sub} border ${border}`}`}
+            >
+              {t.replace('_', ' ')}
+            </button>
           ))}
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-4 space-y-2">
+      <div className="flex-1 space-y-2 overflow-auto p-4">
         {loading ? (
           <p className={sub}>Loading...</p>
         ) : filtered.length === 0 ? (
-          <p className={sub}>No deliverables yet. They are auto-created when meetings or workflows complete.</p>
+          <p className={sub}>
+            No deliverables yet. They are auto-created when meetings or workflows complete.
+          </p>
         ) : (
           filtered.map((d) => (
             <div
               key={d.id}
-              className={`rounded-lg border ${border} ${isDark ? 'bg-gray-800' : 'bg-gray-50'} p-3 cursor-pointer hover:opacity-90`}
+              className={`rounded-lg border ${border} ${isDark ? 'bg-gray-800' : 'bg-gray-50'} cursor-pointer p-3 hover:opacity-90`}
               onClick={() => {
                 if (d.filePath) {
-                  window.dispatchEvent(new CustomEvent('open-file-viewer', {
-                    detail: { path: d.filePath, name: d.title, mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined, projectId: d.projectId },
-                  }));
+                  window.dispatchEvent(
+                    new CustomEvent('open-file-viewer', {
+                      detail: {
+                        path: d.filePath,
+                        name: d.title,
+                        mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined,
+                        projectId: d.projectId,
+                      },
+                    }),
+                  );
                 }
               }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-2">
-                  <FileText size={16} className="flex-shrink-0 mt-0.5" />
+                  <FileText size={16} className="mt-0.5 flex-shrink-0" />
                   <div>
                     <span className={`text-sm font-medium ${text}`}>{d.title}</span>
-                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${typeColors[d.type] ?? 'bg-gray-100 text-gray-600'}`}>{d.type.replace('_', ' ')}</span>
+                    <span
+                      className={`ml-2 rounded px-1.5 py-0.5 text-xs ${typeColors[d.type] ?? 'bg-gray-100 text-gray-600'}`}
+                    >
+                      {d.type.replace('_', ' ')}
+                    </span>
                   </div>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
-                  className={`p-1 rounded ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} text-red-500`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(d.id);
+                  }}
+                  className={`rounded p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} text-red-500`}
                 >
                   <Trash2 size={14} />
                 </button>
               </div>
-              <div className={`flex items-center gap-2 mt-2 text-xs ${sub}`}>
+              <div className={`mt-2 flex items-center gap-2 text-xs ${sub}`}>
                 <span>{new Date(d.createdAt).toLocaleDateString()}</span>
                 {d.meetingId && <span>· Meeting: {d.meetingId.slice(0, 12)}...</span>}
                 {d.tags.length > 0 && (

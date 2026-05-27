@@ -22,7 +22,13 @@ employeesRouter.get('/', (c) => {
     role: r.type,
     kind: 'ai' as const,
     model: r.model,
-    expertise: (() => { try { return JSON.parse(r.allowed_tools ?? '[]'); } catch { return []; } })(),
+    expertise: (() => {
+      try {
+        return JSON.parse(r.allowed_tools ?? '[]');
+      } catch {
+        return [];
+      }
+    })(),
     permissionLevel: 'read',
     status: 'active',
     projectId: 'default',
@@ -134,7 +140,11 @@ employeesRouter.delete('/:id', (c) => {
     agentRoleRepo.deleteByName(name);
 
     // Remove from filesystem
-    try { rmSync(join(CABINET_DIR, 'agents', name), { recursive: true, force: true }); } catch { /* ok */ }
+    try {
+      rmSync(join(CABINET_DIR, 'agents', name), { recursive: true, force: true });
+    } catch {
+      /* ok */
+    }
 
     logger.info('Agent deleted via employees', { name });
     return c.json({ status: 'deleted' });

@@ -17,7 +17,9 @@ export class DocumentChunkRepository {
 
   findByProject(projectId: string): DocumentChunkRow[] {
     const rows = this.db
-      .prepare('SELECT * FROM document_chunks WHERE project_id = ? ORDER BY source_path, chunk_index')
+      .prepare(
+        'SELECT * FROM document_chunks WHERE project_id = ? ORDER BY source_path, chunk_index',
+      )
       .all(projectId) as Record<string, unknown>[];
     return rows.map((r) => this.rowToChunk(r));
   }
@@ -34,7 +36,15 @@ export class DocumentChunkRepository {
       .prepare(
         'INSERT INTO document_chunks (project_id, source_path, file_path, chunk_index, content, embedding, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(chunk.project_id, chunk.source_path, chunk.file_path ?? chunk.source_path, chunk.chunk_index, chunk.content, chunk.embedding, chunk.metadata);
+      .run(
+        chunk.project_id,
+        chunk.source_path,
+        chunk.file_path ?? chunk.source_path,
+        chunk.chunk_index,
+        chunk.content,
+        chunk.embedding,
+        chunk.metadata,
+      );
   }
 
   deleteByPath(projectId: string, sourcePath: string): void {

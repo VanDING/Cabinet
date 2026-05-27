@@ -38,7 +38,13 @@ export interface WorkflowEdge {
   branch?: 'true' | 'false';
 }
 
-export type WorkflowRunStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'awaiting_approval';
+export type WorkflowRunStatus =
+  | 'pending'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'awaiting_approval';
 
 export interface WorkflowRun {
   runId: string;
@@ -62,7 +68,10 @@ export interface WorkflowHandlers {
     runId: string,
     options: { persistent?: boolean; segmentId?: string },
   ) => Promise<AgentLoopHandle>;
-  humanApproval?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
+  humanApproval?: (
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+  ) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
   dataQuery?: (node: WorkflowNodeDef) => Promise<string>;
   notification?: (node: WorkflowNodeDef) => Promise<void>;
   wait?: (node: WorkflowNodeDef) => Promise<void>;
@@ -187,10 +196,7 @@ export class WorkflowEngine {
    * Group consecutive aiAgent/llmCall nodes with the same agentId into segments.
    * Non-AI nodes act as segment boundaries.
    */
-  groupNodesIntoSegments(
-    nodes: WorkflowNodeDef[],
-    orderedIds: string[],
-  ): WorkflowNodeDef[][] {
+  groupNodesIntoSegments(nodes: WorkflowNodeDef[], orderedIds: string[]): WorkflowNodeDef[][] {
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const segments: WorkflowNodeDef[][] = [];
     let current: WorkflowNodeDef[] = [];
@@ -274,10 +280,7 @@ export class WorkflowEngine {
 
   // ── Private ──
 
-  private buildGraph(
-    nodes: WorkflowNodeDef[],
-    edges: WorkflowEdge[],
-  ): Map<string, string[]> {
+  private buildGraph(nodes: WorkflowNodeDef[], edges: WorkflowEdge[]): Map<string, string[]> {
     const graph = new Map<string, string[]>();
     for (const n of nodes) graph.set(n.id, []);
     for (const e of edges) {
@@ -313,9 +316,7 @@ export class WorkflowEngine {
       await this.finalizeAgentSegment(run);
     }
 
-    const previousOutputs = run.steps
-      .map((s) => s.output)
-      .join('\n');
+    const previousOutputs = run.steps.map((s) => s.output).join('\n');
 
     let output = '';
     const d = node.data ?? {};
@@ -331,7 +332,10 @@ export class WorkflowEngine {
 
       case 'skill': {
         if (!this.handlers.skill) throw new Error('No skill handler registered');
-        const result = await this.handlers.skill(node.skillId ?? node.id, { nodeId, previousOutputs });
+        const result = await this.handlers.skill(node.skillId ?? node.id, {
+          nodeId,
+          previousOutputs,
+        });
         output = typeof result === 'string' ? result : JSON.stringify(result);
         break;
       }
@@ -342,7 +346,11 @@ export class WorkflowEngine {
         const children = graph.get(nodeId) ?? [];
         const nextChildIsSameAgent = children.some((cid) => {
           const child = nodeMap.get(cid);
-          return child && (child.type === 'aiAgent' || child.type === 'llmCall') && (child.agentId ?? 'secretary') === agentId;
+          return (
+            child &&
+            (child.type === 'aiAgent' || child.type === 'llmCall') &&
+            (child.agentId ?? 'secretary') === agentId
+          );
         });
 
         // Reuse or create AgentLoop for this segment
@@ -363,7 +371,11 @@ export class WorkflowEngine {
           } else if (this.handlers.aiAgent) {
             // Fallback to legacy per-node handler
             const timeoutMs = typeof node.data?.timeout === 'number' ? node.data.timeout : 120_000;
-            output = await this.withTimeout(this.handlers.aiAgent(node, previousOutputs), timeoutMs, `Step ${node.id}`);
+            output = await this.withTimeout(
+              this.handlers.aiAgent(node, previousOutputs),
+              timeoutMs,
+              `Step ${node.id}`,
+            );
             break;
           } else {
             output = 'No agent handler registered';
@@ -375,7 +387,11 @@ export class WorkflowEngine {
         const d = node.data ?? {};
         const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
         const timeoutMs = typeof d.timeout === 'number' ? d.timeout : 120_000;
-        output = await this.withTimeout(run._agentLoop.handle.run(prompt), timeoutMs, `Step ${node.id}`);
+        output = await this.withTimeout(
+          run._agentLoop.handle.run(prompt),
+          timeoutMs,
+          `Step ${node.id}`,
+        );
 
         // If no child shares this agent, finalize the segment
         if (!nextChildIsSameAgent) {
@@ -402,12 +418,18 @@ export class WorkflowEngine {
         if (children.length > 0) {
           // Prefer explicit edge.branch annotations; fall back to positional ordering
           let targetNode: string | undefined;
-          if (children.some((cid) => this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch)) {
-            targetNode = children.find((cid) =>
-              this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch === (isTrue ? 'true' : 'false'),
+          if (
+            children.some(
+              (cid) => this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch,
+            )
+          ) {
+            targetNode = children.find(
+              (cid) =>
+                this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch ===
+                (isTrue ? 'true' : 'false'),
             );
           } else {
-            targetNode = isTrue ? children[0] : (children.length >= 2 ? children[1] : undefined);
+            targetNode = isTrue ? children[0] : children.length >= 2 ? children[1] : undefined;
           }
           if (targetNode) {
             await this.executeNode(targetNode, nodeMap, graph, run, visited);
@@ -540,7 +562,11 @@ export class WorkflowEngine {
 
           let value: unknown = step.output;
           // Try JSON parse for structured output
-          try { value = JSON.parse(step.output); } catch { /* use raw string */ }
+          try {
+            value = JSON.parse(step.output);
+          } catch {
+            /* use raw string */
+          }
 
           // Walk remaining path segments
           for (let i = 1; i < parts.length; i++) {
@@ -578,13 +604,21 @@ export class WorkflowEngine {
 
   // ── Persistence ────────────────────────────────────────────
 
-  private appendStepAndResult(run: WorkflowRun, nodeId: string, nodeType: string, output: string): void {
+  private appendStepAndResult(
+    run: WorkflowRun,
+    nodeId: string,
+    nodeType: string,
+    output: string,
+  ): void {
     if (!this.repo) return;
     try {
       this.repo.appendStep(run.runId, nodeId, nodeType, output);
       this.repo.appendResult(run.runId, nodeId, output);
     } catch (err) {
-      console.error(`[WorkflowEngine] Failed to append step ${nodeId} for run ${run.runId}:`, (err as Error).message);
+      console.error(
+        `[WorkflowEngine] Failed to append step ${nodeId} for run ${run.runId}:`,
+        (err as Error).message,
+      );
     }
   }
 
@@ -592,7 +626,9 @@ export class WorkflowEngine {
     if (!this.repo) return;
     try {
       const results: Record<string, unknown> = {};
-      for (const [k, v] of run.results) { results[k] = v; }
+      for (const [k, v] of run.results) {
+        results[k] = v;
+      }
       this.repo.saveRun({
         run_id: run.runId,
         workflow_id: run.workflowId,
@@ -617,9 +653,14 @@ export class WorkflowEngine {
       // Rebuild steps and results from incremental tables if available
       const incrementalSteps = this.repo.findStepsByRunId(runId);
       const incrementalResults = this.repo.findResultsByRunId(runId);
-      const steps = incrementalSteps.length > 0
-        ? incrementalSteps.map((s) => ({ nodeId: s.nodeId, type: s.type as WorkflowNodeType, output: s.output }))
-        : JSON.parse(row.steps ?? '[]');
+      const steps =
+        incrementalSteps.length > 0
+          ? incrementalSteps.map((s) => ({
+              nodeId: s.nodeId,
+              type: s.type as WorkflowNodeType,
+              output: s.output,
+            }))
+          : JSON.parse(row.steps ?? '[]');
       for (const [key, value] of Object.entries(incrementalResults)) {
         results.set(key, value);
       }

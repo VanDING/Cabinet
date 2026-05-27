@@ -57,7 +57,11 @@ export class CascadeBuffer {
    * (LLM summarization can be injected via the caller) and remove the
    * buffer from memory.
    */
-  seal(sessionId: string, topic: string, summarizer?: (entries: CascadeEntry[]) => string): SealResult {
+  seal(
+    sessionId: string,
+    topic: string,
+    summarizer?: (entries: CascadeEntry[]) => string,
+  ): SealResult {
     const key = `${sessionId}:${topic}`;
     const entries = this.buffers.get(key) ?? [];
     this.buffers.delete(key);
@@ -66,23 +70,22 @@ export class CascadeBuffer {
       return { sealed: [], summaryContent: '' };
     }
 
-    const summaryContent = summarizer
-      ? summarizer(entries)
-      : this.defaultSummarizer(entries);
+    const summaryContent = summarizer ? summarizer(entries) : this.defaultSummarizer(entries);
 
     return { sealed: entries, summaryContent };
   }
 
   /** Force-seal all buffers belonging to a session (e.g. on session close). */
-  sealAll(sessionId: string, summarizer?: (entries: CascadeEntry[]) => string): Map<string, SealResult> {
+  sealAll(
+    sessionId: string,
+    summarizer?: (entries: CascadeEntry[]) => string,
+  ): Map<string, SealResult> {
     const results = new Map<string, SealResult>();
     for (const [key, entries] of this.buffers) {
       if (!key.startsWith(`${sessionId}:`)) continue;
       this.buffers.delete(key);
       const topic = key.slice(sessionId.length + 1);
-      const summaryContent = summarizer
-        ? summarizer(entries)
-        : this.defaultSummarizer(entries);
+      const summaryContent = summarizer ? summarizer(entries) : this.defaultSummarizer(entries);
       results.set(topic, { sealed: entries, summaryContent });
     }
     return results;

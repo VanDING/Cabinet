@@ -5,7 +5,12 @@ import { ToolExecutor } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
 import { CheckpointManager, type CheckpointState } from './checkpoint.js';
-import { ContextBuilder, type MemoryProvider, type ContextBuildResult, type PrebuiltContext } from './context-builder.js';
+import {
+  ContextBuilder,
+  type MemoryProvider,
+  type ContextBuildResult,
+  type PrebuiltContext,
+} from './context-builder.js';
 import type { RulesLoader } from './rules-loader.js';
 import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
@@ -57,7 +62,10 @@ export interface StreamingCallback {
 
 export type TrustLevel = 'T0' | 'T1' | 'T2' | 'T3';
 
-const TRUST_THRESHOLDS: Record<TrustLevel, { maxConsecutiveErrors: number; maxProbeTools: number }> = {
+const TRUST_THRESHOLDS: Record<
+  TrustLevel,
+  { maxConsecutiveErrors: number; maxProbeTools: number }
+> = {
   T0: { maxConsecutiveErrors: 2, maxProbeTools: 3 },
   T1: { maxConsecutiveErrors: 3, maxProbeTools: 5 },
   T2: { maxConsecutiveErrors: 5, maxProbeTools: 10 },
@@ -119,14 +127,21 @@ function parseStructuredOutput(content: string): import('@cabinet/types').AgentO
   if (!match) return undefined;
   try {
     const parsed = JSON.parse(match[1]!);
-    if (parsed && typeof parsed === 'object' && (parsed.summary || parsed.findings || parsed.decisions)) {
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      (parsed.summary || parsed.findings || parsed.decisions)
+    ) {
       return {
         summary: String(parsed.summary ?? ''),
         findings: Array.isArray(parsed.findings) ? parsed.findings : [],
         decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
         openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions : [],
-        confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
-        suggestedNextSteps: Array.isArray(parsed.suggestedNextSteps) ? parsed.suggestedNextSteps : [],
+        confidence:
+          typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5,
+        suggestedNextSteps: Array.isArray(parsed.suggestedNextSteps)
+          ? parsed.suggestedNextSteps
+          : [],
       };
     }
   } catch {
@@ -193,7 +208,11 @@ export class AgentLoop {
       this.contextBuilder.withRules(options.rulesLoader);
     }
     this.contextMonitor = options.eventBus
-      ? ContextMonitor.forModel(options.model ?? 'claude-sonnet-4-6', options.eventBus, options.contextBudget)
+      ? ContextMonitor.forModel(
+          options.model ?? 'claude-sonnet-4-6',
+          options.eventBus,
+          options.contextBudget,
+        )
       : null;
     this.options = options;
   }
@@ -257,8 +276,18 @@ export class AgentLoop {
     while (steps < maxSteps) {
       if (consecutiveErrors >= trust.maxConsecutiveErrors) {
         const msg = `Agent stopped after ${consecutiveErrors} consecutive errors (trust level: ${this.options.trustLevel ?? 'T1'}).`;
-        this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
-          zoneCounts, handoffCount, errorCounts, toolCounts, false);
+        this.reportSession(
+          startTime,
+          steps,
+          executedToolCalls,
+          totalPromptTokens,
+          totalCompletionTokens,
+          zoneCounts,
+          handoffCount,
+          errorCounts,
+          toolCounts,
+          false,
+        );
         this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
         this.pendingCheckpoint = null;
@@ -281,8 +310,9 @@ export class AgentLoop {
       // ── Project snapshot injection ──
       let systemPrompt = ctx.systemPrompt;
       const projectRoot = this.options.projectRoot ?? process.cwd();
-      const snapshot = ProjectSnapshot.getCached(projectRoot)
-        ?? (() => {
+      const snapshot =
+        ProjectSnapshot.getCached(projectRoot) ??
+        (() => {
           const captured = ProjectSnapshot.capture(projectRoot);
           ProjectSnapshot.store(projectRoot, captured);
           return captured;
@@ -333,9 +363,10 @@ export class AgentLoop {
             const keepRecent = 4;
             const recentMessages = messages.slice(-keepRecent);
             const middleMessages = messages.slice(0, -keepRecent);
-            const middleSummary = middleMessages.length > 0
-              ? `${middleMessages.length} prior messages summarized. Latest: ${middleMessages[middleMessages.length - 1]?.content.slice(0, 200) ?? ''}`
-              : '';
+            const middleSummary =
+              middleMessages.length > 0
+                ? `${middleMessages.length} prior messages summarized. Latest: ${middleMessages[middleMessages.length - 1]?.content.slice(0, 200) ?? ''}`
+                : '';
             messages = [
               { role: 'user', content: result.handoffMessage },
               ...(middleMessages.length > 0
@@ -360,15 +391,29 @@ export class AgentLoop {
               systemPrompt: systemPrompt,
               messages: allMessages,
               cacheSystemPrompt: true,
-              ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
-              ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
+              ...(this.options.maxResponseTokens != null
+                ? { maxTokens: this.options.maxResponseTokens }
+                : {}),
+              ...(this.options.temperature != null
+                ? { temperature: this.options.temperature }
+                : {}),
             }),
           new Error('LLM call'),
         );
       } catch (error) {
         errorCounts.fatal++;
-        this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
-          zoneCounts, handoffCount, errorCounts, toolCounts, false);
+        this.reportSession(
+          startTime,
+          steps,
+          executedToolCalls,
+          totalPromptTokens,
+          totalCompletionTokens,
+          zoneCounts,
+          handoffCount,
+          errorCounts,
+          toolCounts,
+          false,
+        );
         this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
         this.pendingCheckpoint = null;
@@ -409,10 +454,22 @@ export class AgentLoop {
           finalContent += `\n\n[注意：已运行 ${steps + 1}/${maxSteps} 步，任务可能未完成。如需继续，请告知。]`;
         }
         messages.push({ role: 'assistant', content: finalContent });
-        handoff.recordStep(`Step ${steps + 1}: Agent completed with final response (${this.contextMonitor ? this.contextMonitor.current?.zone ?? 'unknown' : 'unknown'} zone)`);
+        handoff.recordStep(
+          `Step ${steps + 1}: Agent completed with final response (${this.contextMonitor ? (this.contextMonitor.current?.zone ?? 'unknown') : 'unknown'} zone)`,
+        );
         handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
-        this.reportSession(startTime, steps + 1, executedToolCalls, totalPromptTokens, totalCompletionTokens,
-          zoneCounts, handoffCount, errorCounts, toolCounts, true);
+        this.reportSession(
+          startTime,
+          steps + 1,
+          executedToolCalls,
+          totalPromptTokens,
+          totalCompletionTokens,
+          zoneCounts,
+          handoffCount,
+          errorCounts,
+          toolCounts,
+          true,
+        );
         this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
         this.pendingCheckpoint = null;
@@ -427,22 +484,48 @@ export class AgentLoop {
 
       // ── Read-only tool names that can safely execute in parallel ──
       const READ_TOOL_NAMES = new Set([
-        'read_file', 'file_info', 'list_directory', 'glob', 'grep',
-        'search_memory', 'recall', 'query_decisions', 'get_decision',
-        'get_recent_events', 'get_project_context', 'get_captain_preferences',
-        'list_workflows', 'get_workflow', 'list_agents', 'list_projects',
-        'list_scheduled_tasks', 'search_documents', 'web_fetch',
-        'workspace_symbol', 'go_to_definition', 'find_references', 'diagnostics',
-        'recent_files', 'watch_file',
+        'read_file',
+        'file_info',
+        'list_directory',
+        'glob',
+        'grep',
+        'search_memory',
+        'recall',
+        'query_decisions',
+        'get_decision',
+        'get_recent_events',
+        'get_project_context',
+        'get_captain_preferences',
+        'list_workflows',
+        'get_workflow',
+        'list_agents',
+        'list_projects',
+        'list_scheduled_tasks',
+        'search_documents',
+        'web_fetch',
+        'workspace_symbol',
+        'go_to_definition',
+        'find_references',
+        'diagnostics',
+        'recent_files',
+        'watch_file',
       ]);
 
       // ── Write tool names that can parallelize when operating on different paths ──
       const WRITE_TOOL_NAMES = new Set([
-        'write_file', 'edit_file', 'apply_patch', 'move_file', 'copy_file', 'make_directory',
-        'delete_file', 'execute_command',
+        'write_file',
+        'edit_file',
+        'apply_patch',
+        'move_file',
+        'copy_file',
+        'make_directory',
+        'delete_file',
+        'execute_command',
       ]);
 
-      function hasResourceConflict(toolCalls: { name: string; arguments: Record<string, unknown> }[]): boolean {
+      function hasResourceConflict(
+        toolCalls: { name: string; arguments: Record<string, unknown> }[],
+      ): boolean {
         const filePaths = new Set<string>();
         for (const tc of toolCalls) {
           const fp = tc.arguments?.filePath as string | undefined;
@@ -454,20 +537,31 @@ export class AgentLoop {
       }
 
       // Determine if all tool calls in this step are independent read-only operations
-      const allReadOnly = response.toolCalls.every(tc => READ_TOOL_NAMES.has(tc.name));
-      const uniqueResources = new Set(response.toolCalls.map(tc =>
-        JSON.stringify({name: tc.name, filePath: tc.arguments?.filePath, query: tc.arguments?.query, pattern: tc.arguments?.pattern})
-      ));
+      const allReadOnly = response.toolCalls.every((tc) => READ_TOOL_NAMES.has(tc.name));
+      const uniqueResources = new Set(
+        response.toolCalls.map((tc) =>
+          JSON.stringify({
+            name: tc.name,
+            filePath: tc.arguments?.filePath,
+            query: tc.arguments?.query,
+            pattern: tc.arguments?.pattern,
+          }),
+        ),
+      );
       const canParallelizeReads = allReadOnly && uniqueResources.size === response.toolCalls.length;
 
       // Write tools: parallel if operating on DIFFERENT file paths
-      const allWrite = response.toolCalls.every(tc => WRITE_TOOL_NAMES.has(tc.name));
+      const allWrite = response.toolCalls.every((tc) => WRITE_TOOL_NAMES.has(tc.name));
       const canParallelizeWrites = allWrite && !hasResourceConflict(response.toolCalls);
 
       const canParallelize = canParallelizeReads || canParallelizeWrites;
 
       // ── Execute a single tool call (used by both sequential and parallel paths) ──
-      const executeOneTool = async (tc: { id: string; name: string; arguments: Record<string, unknown> }) => {
+      const executeOneTool = async (tc: {
+        id: string;
+        name: string;
+        arguments: Record<string, unknown>;
+      }) => {
         // Per-tool timeout lookup
         const toolDef = this.toolExecutor.getToolDescriptor(tc.name);
         const toolTimeoutMs = toolDef?.timeoutMs ?? this.options.toolTimeoutMs ?? 300000;
@@ -486,7 +580,10 @@ export class AgentLoop {
             toolCounts.succeeded++;
             return {
               tc,
-              message: { role: 'user' as const, content: `Tool result for ${tc.name} (cached): ${JSON.stringify(alreadyDone.result)}` },
+              message: {
+                role: 'user' as const,
+                content: `Tool result for ${tc.name} (cached): ${JSON.stringify(alreadyDone.result)}`,
+              },
               handoffText: `${tc.name}(cached)`,
             };
           }
@@ -508,7 +605,9 @@ export class AgentLoop {
         let result: { toolCallId: string; output: unknown; error?: string };
         try {
           result = await Promise.race([
-            this.toolExecutor.execute(tc.name, tc.id, tc.arguments, { sessionId: this.options.sessionId }),
+            this.toolExecutor.execute(tc.name, tc.id, tc.arguments, {
+              sessionId: this.options.sessionId,
+            }),
             new Promise<never>((_, reject) =>
               setTimeout(
                 () => reject(new Error(`Tool '${tc.name}' timed out after ${toolTimeoutMs}ms`)),
@@ -554,7 +653,7 @@ export class AgentLoop {
 
       if (canParallelize) {
         // Execute all independent read-only tool calls concurrently
-        const outcomes = await Promise.all(response.toolCalls.map(tc => executeOneTool(tc)));
+        const outcomes = await Promise.all(response.toolCalls.map((tc) => executeOneTool(tc)));
         for (const outcome of outcomes) {
           if (outcome === null) continue; // blocked
           handoff.recordToolResult(outcome.handoffText);
@@ -573,8 +672,12 @@ export class AgentLoop {
       steps++;
 
       // Record step for context handoff tracking
-      const executedCount = executedToolCalls.filter(t => !String(t.result).includes('BLOCKED')).length;
-      handoff.recordStep(`Step ${steps}: ${executedCount} tool calls executed in ${this.contextMonitor?.current?.zone ?? 'unknown'} zone`);
+      const executedCount = executedToolCalls.filter(
+        (t) => !String(t.result).includes('BLOCKED'),
+      ).length;
+      handoff.recordStep(
+        `Step ${steps}: ${executedCount} tool calls executed in ${this.contextMonitor?.current?.zone ?? 'unknown'} zone`,
+      );
 
       // Buffer checkpoint in memory; batch flush every 5 steps
       this.pendingCheckpoint = {
@@ -594,8 +697,18 @@ export class AgentLoop {
       warnedThreshold = true;
       finalContent += `\n\n[注意：已运行 ${steps}/${maxSteps} 步，任务可能未完成。如需继续，请告知。]`;
     }
-    this.reportSession(startTime, steps, executedToolCalls, totalPromptTokens, totalCompletionTokens,
-      zoneCounts, handoffCount, errorCounts, toolCounts, false);
+    this.reportSession(
+      startTime,
+      steps,
+      executedToolCalls,
+      totalPromptTokens,
+      totalCompletionTokens,
+      zoneCounts,
+      handoffCount,
+      errorCounts,
+      toolCounts,
+      false,
+    );
     this.flushCheckpoint();
     this.checkpointManager.delete(this.options.sessionId);
     this.pendingCheckpoint = null;
@@ -607,11 +720,14 @@ export class AgentLoop {
   }
 
   private reportSession(
-    startTime: number, steps: number,
+    startTime: number,
+    steps: number,
     toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[],
-    promptTokens: number, completionTokens: number,
+    promptTokens: number,
+    completionTokens: number,
     zones: { smart: number; warning: number; critical: number; dumb: number },
-    handoffs: number, errors: { transient: number; recoverable: number; fatal: number },
+    handoffs: number,
+    errors: { transient: number; recoverable: number; fatal: number },
     tools: { total: number; succeeded: number; failed: number; blocked: number },
     success: boolean,
   ): void {
@@ -664,12 +780,10 @@ export class AgentLoop {
    * streaming with tool calling via AI SDK maxSteps. Does NOT support checkpoint
    * resumption or context monitoring (use run() for those).
    */
-  async runStreaming(
-    userMessage: string,
-    callback: StreamingCallback,
-  ): Promise<AgentResult> {
+  async runStreaming(userMessage: string, callback: StreamingCallback): Promise<AgentResult> {
     const startTime = Date.now();
-    const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] = [];
+    const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
+      [];
     const errorCounts = { transient: 0, recoverable: 0, fatal: 0 };
     const toolCounts = { total: 0, succeeded: 0, failed: 0, blocked: 0 };
 
@@ -713,7 +827,9 @@ export class AgentLoop {
         toolCounts.total++;
         const start = Date.now();
         try {
-          const result = await this.toolExecutor.execute(td.name, `stream_${Date.now()}`, args, { sessionId: this.options.sessionId });
+          const result = await this.toolExecutor.execute(td.name, `stream_${Date.now()}`, args, {
+            sessionId: this.options.sessionId,
+          });
           if (result.error) {
             toolCounts.failed++;
           } else {
@@ -743,12 +859,19 @@ export class AgentLoop {
         messages,
         tools: streamingTools,
         maxSteps,
-        ...(this.options.maxResponseTokens != null ? { maxTokens: this.options.maxResponseTokens } : {}),
+        ...(this.options.maxResponseTokens != null
+          ? { maxTokens: this.options.maxResponseTokens }
+          : {}),
         ...(this.options.temperature != null ? { temperature: this.options.temperature } : {}),
-        ...(this.options.thinkingBudget != null ? { thinkingBudget: this.options.thinkingBudget } : {}),
+        ...(this.options.thinkingBudget != null
+          ? { thinkingBudget: this.options.thinkingBudget }
+          : {}),
       })) {
         // Step boundary detection: after a tool_result, the next LLM output starts a new step
-        if (afterToolResult && (chunk.type === 'text' || chunk.type === 'tool_call' || chunk.type === 'thinking')) {
+        if (
+          afterToolResult &&
+          (chunk.type === 'text' || chunk.type === 'tool_call' || chunk.type === 'thinking')
+        ) {
           estimatedSteps++;
           afterToolResult = false;
           semanticTracker.completeCurrentStep();
@@ -765,7 +888,7 @@ export class AgentLoop {
         } else if (chunk.type === 'thinking_done') {
           callback.onThinkingDone?.();
         } else if (chunk.type === 'text') {
-          fullText += (chunk.content ?? '');
+          fullText += chunk.content ?? '';
           callback.onChunk(chunk.content ?? '');
         } else if (chunk.type === 'tool_call' && chunk.toolCall) {
           const taskName = formatToolTaskName(chunk.toolCall.name, chunk.toolCall.args);
@@ -809,8 +932,18 @@ export class AgentLoop {
       const msg = (e as Error).message;
       callback.onError?.(msg);
       semanticTracker.finalizeAll(false);
-      this.reportSession(startTime, 0, executedToolCalls, 0, 0,
-        { smart: 0, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, false);
+      this.reportSession(
+        startTime,
+        0,
+        executedToolCalls,
+        0,
+        0,
+        { smart: 0, warning: 0, critical: 0, dumb: 0 },
+        0,
+        errorCounts,
+        toolCounts,
+        false,
+      );
       return { content: `Streaming error: ${msg}`, steps: 0, toolCalls: executedToolCalls };
     }
 
@@ -823,8 +956,18 @@ export class AgentLoop {
     semanticTracker.finalizeAll(true);
     callback.onSemanticTaskUpdate?.(semanticTracker.getTasks());
     callback.onDone(fullText);
-    this.reportSession(startTime, estimatedSteps, executedToolCalls, 0, 0,
-      { smart: 1, warning: 0, critical: 0, dumb: 0 }, 0, errorCounts, toolCounts, true);
+    this.reportSession(
+      startTime,
+      estimatedSteps,
+      executedToolCalls,
+      0,
+      0,
+      { smart: 1, warning: 0, critical: 0, dumb: 0 },
+      0,
+      errorCounts,
+      toolCounts,
+      true,
+    );
     return {
       content: fullText,
       steps: estimatedSteps,

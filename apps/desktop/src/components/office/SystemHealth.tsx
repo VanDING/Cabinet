@@ -3,13 +3,19 @@ import { apiFetch, authHeaders } from '../../utils/pin.js';
 import { usePolling } from '../../hooks/usePolling';
 
 export function SystemHealth() {
-  const { data: health, loading, refresh } = usePolling<any>(
+  const {
+    data: health,
+    loading,
+    refresh,
+  } = usePolling<any>(
     () => apiFetch('/health/system', { headers: authHeaders() }).then((r) => r.json()),
     30000,
   );
 
   useEffect(() => {
-    const handler = () => { refresh(); };
+    const handler = () => {
+      refresh();
+    };
     window.addEventListener('ws:workflow_started', handler);
     window.addEventListener('ws:workflow_completed', handler);
     return () => {

@@ -44,16 +44,36 @@ describe('ContextBuilder RAG cache', () => {
   });
 
   it('reuses cached RAG result within 60s for identical query', async () => {
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
-    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
+    await builder.build({
+      sessionId: 's2',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     expect(memory.calls).toHaveLength(1);
   });
 
   it('refreshes cache after TTL expires', async () => {
     vi.useFakeTimers();
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     vi.advanceTimersByTime(61_000);
-    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1', taskDescription: 'write tests' });
+    await builder.build({
+      sessionId: 's1',
+      projectId: 'p1',
+      captainId: 'c1',
+      taskDescription: 'write tests',
+    });
     expect(memory.calls).toHaveLength(2);
     vi.useRealTimers();
   });
@@ -77,7 +97,10 @@ describe('ContextBuilder context cache', () => {
     const loader = new RulesLoader([]);
     let loadMatchingCalls = 0;
     const orig = loader.loadMatching.bind(loader);
-    loader.loadMatching = (ctx) => { loadMatchingCalls++; return orig(ctx); };
+    loader.loadMatching = (ctx) => {
+      loadMatchingCalls++;
+      return orig(ctx);
+    };
     builder.withRules(loader);
 
     await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
@@ -94,7 +117,10 @@ describe('ContextBuilder context cache', () => {
     const loader = new RulesLoader([]);
     let loadMatchingCalls = 0;
     const orig = loader.loadMatching.bind(loader);
-    loader.loadMatching = (ctx) => { loadMatchingCalls++; return orig(ctx); };
+    loader.loadMatching = (ctx) => {
+      loadMatchingCalls++;
+      return orig(ctx);
+    };
     builder.withRules(loader);
 
     await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
@@ -123,7 +149,10 @@ describe('ContextBuilder rules summary optimization', () => {
     const loader = new RulesLoader([]);
     let summarizeCalls = 0;
     const orig = loader.summarize.bind(loader);
-    loader.summarize = () => { summarizeCalls++; return orig(); };
+    loader.summarize = () => {
+      summarizeCalls++;
+      return orig();
+    };
 
     const builder = new ContextBuilder(memory);
     builder.withRules(loader);

@@ -6,7 +6,9 @@ export function addToEventBuffer(type: string, data: unknown): void {
   if (buffer.length > MAX_BUFFER) buffer.shift();
 }
 
-export function getBufferedEvents(type?: string): { type: string; data: unknown; timestamp: string }[] {
+export function getBufferedEvents(
+  type?: string,
+): { type: string; data: unknown; timestamp: string }[] {
   if (!type) return [...buffer];
   return buffer.filter((e) => e.type === type);
 }

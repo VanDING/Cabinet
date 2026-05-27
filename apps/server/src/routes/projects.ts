@@ -2,7 +2,16 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
-import { readdirSync, statSync, existsSync, writeFileSync, unlinkSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import {
+  readdirSync,
+  statSync,
+  existsSync,
+  writeFileSync,
+  unlinkSync,
+  readFileSync,
+  mkdirSync,
+  rmSync,
+} from 'node:fs';
 import { join, relative, basename, extname } from 'node:path';
 import { CABINET_DIR } from '@cabinet/storage';
 
@@ -11,24 +20,41 @@ const PROJECTS_DIR = join(CABINET_DIR, 'projects');
 export const projectsRouter = new Hono();
 
 function writeProjectIndex(project: {
-  id: string; name: string; description?: string; rootPath?: string;
-  archived?: boolean; lastActivityAt?: string; createdAt?: string;
+  id: string;
+  name: string;
+  description?: string;
+  rootPath?: string;
+  archived?: boolean;
+  lastActivityAt?: string;
+  createdAt?: string;
 }): void {
   const indexPath = join(PROJECTS_DIR, `${project.id}.json`);
-  writeFileSync(indexPath, JSON.stringify({
-    id: project.id,
-    name: project.name,
-    description: project.description ?? '',
-    rootPath: project.rootPath ?? '',
-    archived: project.archived ?? false,
-    lastActivityAt: project.lastActivityAt ?? new Date().toISOString(),
-    createdAt: project.createdAt ?? new Date().toISOString(),
-  }, null, 2), 'utf-8');
+  writeFileSync(
+    indexPath,
+    JSON.stringify(
+      {
+        id: project.id,
+        name: project.name,
+        description: project.description ?? '',
+        rootPath: project.rootPath ?? '',
+        archived: project.archived ?? false,
+        lastActivityAt: project.lastActivityAt ?? new Date().toISOString(),
+        createdAt: project.createdAt ?? new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
+    'utf-8',
+  );
 }
 
 function removeProjectIndex(id: string): void {
   const indexPath = join(PROJECTS_DIR, `${id}.json`);
-  try { unlinkSync(indexPath); } catch { /* ok */ }
+  try {
+    unlinkSync(indexPath);
+  } catch {
+    /* ok */
+  }
 }
 
 // ── GET /api/projects ──
@@ -98,7 +124,7 @@ projectsRouter.post('/', async (c) => {
     return c.json({ error: 'Project name already exists' }, 409);
   }
 
-  const id = `proj_${Date.now()}`;
+  const id = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   projectRepo.create({
     id,
@@ -148,15 +174,24 @@ projectsRouter.post('/', async (c) => {
     try {
       const detected = detectProjectInfo(d.rootPath);
       if (detected) {
-        const goals = detected.techStack.length > 0
-          ? [`Set up ${detected.techStack.join('/')} development environment`, 'Review project structure and dependencies']
-          : ['Review project structure', 'Set up development workflow'];
+        const goals =
+          detected.techStack.length > 0
+            ? [
+                `Set up ${detected.techStack.join('/')} development environment`,
+                'Review project structure and dependencies',
+              ]
+            : ['Review project structure', 'Set up development workflow'];
         projectContextRepo.update(id, {
           summary: detected.summary,
           goals: JSON.stringify(goals),
           tech_summary: detected.techStack.join(', '),
         });
-        logger.info('Project auto-detected', { id, name: d.name, type: detected.projectType, files: detected.fileCount });
+        logger.info('Project auto-detected', {
+          id,
+          name: d.name,
+          type: detected.projectType,
+          files: detected.fileCount,
+        });
       }
     } catch (e) {
       logger.warn('Project auto-detection failed', { id, error: (e as Error).message });
@@ -167,24 +202,33 @@ projectsRouter.post('/', async (c) => {
 
   // Write project index file
   writeProjectIndex({
-    id, name: d.name, description: d.description, rootPath: projectDir,
+    id,
+    name: d.name,
+    description: d.description,
+    rootPath: projectDir,
   });
 
   logger.info('Project created', { id, name: d.name });
   broadcast('project_created', { id, name: d.name, timestamp: new Date().toISOString() });
 
-  return c.json({ project: {
-    id: project.id,
-    name: project.name,
-    description: project.description,
-    status: project.status,
-    rootPath: project.rootPath ?? '',
-    archived: project.archived,
-    lastActivityAt: project.lastActivityAt,
-    icon: 'folder',
-    workflowCount: 0,
-    createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
-  }}, 201);
+  return c.json(
+    {
+      project: {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        rootPath: project.rootPath ?? '',
+        archived: project.archived,
+        lastActivityAt: project.lastActivityAt,
+        icon: 'folder',
+        workflowCount: 0,
+        createdAt:
+          project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
+      },
+    },
+    201,
+  );
 });
 
 // ── GET /api/projects/:id ──
@@ -208,7 +252,8 @@ projectsRouter.get('/:id', (c) => {
       lastActivityAt: project.lastActivityAt,
       icon: 'folder',
       workflowCount: 0,
-      createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
+      createdAt:
+        project.createdAt instanceof Date ? project.createdAt.toISOString() : project.createdAt,
     },
     context: ctx
       ? {
@@ -232,7 +277,9 @@ projectsRouter.put('/:id', async (c) => {
   const existing = projectRepo.findById(id);
   if (!existing) return c.json({ error: 'Project not found' }, 404);
 
-  const changes: Partial<Pick<typeof existing, 'name' | 'description' | 'rootPath'>> & { icon?: string } = {};
+  const changes: Partial<Pick<typeof existing, 'name' | 'description' | 'rootPath'>> & {
+    icon?: string;
+  } = {};
   for (const [k, v] of Object.entries(body)) {
     if (k === 'name') changes.name = String(v);
     if (k === 'description') changes.description = String(v);
@@ -243,22 +290,29 @@ projectsRouter.put('/:id', async (c) => {
   if (Object.keys(changes).length > 0) {
     projectRepo.update(id, changes);
     logger.info('Project updated', { id });
-    broadcast('project_updated', { id, name: body.name ?? existing.name, timestamp: new Date().toISOString() });
+    broadcast('project_updated', {
+      id,
+      name: body.name ?? existing.name,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const updated = projectRepo.findById(id);
-  return c.json({ project: {
-    id: updated!.id,
-    name: updated!.name,
-    description: updated!.description,
-    status: updated!.status,
-    rootPath: updated!.rootPath ?? '',
-    archived: updated!.archived,
-    lastActivityAt: updated!.lastActivityAt,
-    icon: (body as any).icon ?? 'folder',
-    workflowCount: 0,
-    createdAt: updated!.createdAt instanceof Date ? updated!.createdAt.toISOString() : updated!.createdAt,
-  }});
+  return c.json({
+    project: {
+      id: updated!.id,
+      name: updated!.name,
+      description: updated!.description,
+      status: updated!.status,
+      rootPath: updated!.rootPath ?? '',
+      archived: updated!.archived,
+      lastActivityAt: updated!.lastActivityAt,
+      icon: (body as any).icon ?? 'folder',
+      workflowCount: 0,
+      createdAt:
+        updated!.createdAt instanceof Date ? updated!.createdAt.toISOString() : updated!.createdAt,
+    },
+  });
 });
 
 // ── POST /api/projects/:id/archive ──
@@ -267,7 +321,14 @@ projectsRouter.post('/:id/archive', (c) => {
   const id = c.req.param('id');
   projectRepo.archive(id);
   const project = projectRepo.findById(id);
-  if (project) writeProjectIndex({ ...project, createdAt: project.createdAt instanceof Date ? project.createdAt.toISOString() : String(project.createdAt) });
+  if (project)
+    writeProjectIndex({
+      ...project,
+      createdAt:
+        project.createdAt instanceof Date
+          ? project.createdAt.toISOString()
+          : String(project.createdAt),
+    });
   logger.info('Project archived', { id });
   return c.json({ archived: true });
 });
@@ -278,14 +339,22 @@ projectsRouter.post('/:id/restore', (c) => {
   const id = c.req.param('id');
   projectRepo.restore(id);
   const restored = projectRepo.findById(id);
-  if (restored) writeProjectIndex({ ...restored, createdAt: restored.createdAt instanceof Date ? restored.createdAt.toISOString() : String(restored.createdAt) });
+  if (restored)
+    writeProjectIndex({
+      ...restored,
+      createdAt:
+        restored.createdAt instanceof Date
+          ? restored.createdAt.toISOString()
+          : String(restored.createdAt),
+    });
   logger.info('Project restored', { id });
   return c.json({ restored: true });
 });
 
 // ── DELETE /api/projects/:id ──
 projectsRouter.delete('/:id', (c) => {
-  const { projectRepo, projectContextRepo, decisionRepo, employeeRepo, workflowRepo, db, logger } = getServerContext();
+  const { projectRepo, projectContextRepo, decisionRepo, employeeRepo, workflowRepo, db, logger } =
+    getServerContext();
   const id = c.req.param('id');
 
   // Get project name before deletion for broadcast
@@ -373,14 +442,14 @@ const PROJECT_TYPE_SIGNATURES: Record<string, { type: string; label: string }> =
   'requirements.txt': { type: 'python', label: 'Python' },
   'pyproject.toml': { type: 'python', label: 'Python' },
   'setup.py': { type: 'python', label: 'Python' },
-  'Pipfile': { type: 'python', label: 'Python' },
-  'Gemfile': { type: 'ruby', label: 'Ruby' },
+  Pipfile: { type: 'python', label: 'Python' },
+  Gemfile: { type: 'ruby', label: 'Ruby' },
   'pom.xml': { type: 'java', label: 'Java (Maven)' },
   'build.gradle': { type: 'java', label: 'Java (Gradle)' },
   'composer.json': { type: 'php', label: 'PHP' },
   'CMakeLists.txt': { type: 'cpp', label: 'C/C++ (CMake)' },
-  'Makefile': { type: 'make', label: 'Make-based' },
-  'Dockerfile': { type: 'docker', label: 'Docker' },
+  Makefile: { type: 'make', label: 'Make-based' },
+  Dockerfile: { type: 'docker', label: 'Docker' },
   'docker-compose.yml': { type: 'docker', label: 'Docker Compose' },
   '.git': { type: 'git', label: 'Git repository' },
   'pnpm-workspace.yaml': { type: 'monorepo', label: 'pnpm Monorepo' },
@@ -434,7 +503,9 @@ function detectProjectInfo(rootPath: string): DetectedProjectInfo | null {
       const pkg = JSON.parse(readFileSync(join(rootPath, 'package.json'), 'utf-8'));
       if (pkg.name) projectName = pkg.name;
       if (pkg.description) projectDescription = pkg.description;
-    } catch { /* ignore malformed JSON */ }
+    } catch {
+      /* ignore malformed JSON */
+    }
   }
 
   // Try Cargo.toml
@@ -445,7 +516,9 @@ function detectProjectInfo(rootPath: string): DetectedProjectInfo | null {
       if (nameMatch) projectName = nameMatch[1]!;
       const descMatch = cargo.match(/^description\s*=\s*"(.+)"$/m);
       if (descMatch) projectDescription = descMatch[1]!;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // Count files (shallow, max depth 2 for performance)
@@ -454,11 +527,14 @@ function detectProjectInfo(rootPath: string): DetectedProjectInfo | null {
     if (depth > 1) return;
     try {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'target') continue;
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'target')
+          continue;
         if (entry.isFile()) fileCount++;
         else if (entry.isDirectory()) countFiles(join(dir, entry.name), depth + 1);
       }
-    } catch { /* skip unreadable */ }
+    } catch {
+      /* skip unreadable */
+    }
   }
   countFiles(rootPath, 0);
 
@@ -470,9 +546,8 @@ function detectProjectInfo(rootPath: string): DetectedProjectInfo | null {
   if (projectDescription) {
     summaryParts.push(projectDescription);
   } else {
-    const techDesc = techStack.length > 0
-      ? `A ${techStack.slice(0, 3).join('/')} project`
-      : 'A project';
+    const techDesc =
+      techStack.length > 0 ? `A ${techStack.slice(0, 3).join('/')} project` : 'A project';
     summaryParts.push(`${techDesc} located at ${rootPath}.`);
   }
   summaryParts.push(`${fileCount} files detected.`);

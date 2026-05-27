@@ -15,8 +15,13 @@ vi.mock('../utils/pin.js', () => ({
 const { CostChart } = await import('../components/office/CostChart');
 
 const mockCostHistory = [
-  { date: '2026-05-10', cost: 1.2, calls: 50, byModel: { 'claude-sonnet-4-6': 1.0, 'gpt-4o': 0.2 } },
-  { date: '2026-05-11', cost: 0.8, calls: 30, byModel: { 'claude-sonnet-4-6': 0.8 } },
+  {
+    date: '2026-05-10',
+    cost: 1.2,
+    calls: 50,
+    byModel: { 'claude-sonnet-4-6': 1.0, 'gpt-4o': 0.2 },
+  },
+  { date: '2026-05-11', cost: 0.8, calls: 80, byModel: { 'claude-sonnet-4-6': 0.8 } },
 ];
 
 describe('CostChart', () => {
@@ -26,7 +31,12 @@ describe('CostChart', () => {
 
   it('shows "No data yet" when history is empty', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({ history: [], budgetStatus: { daily: 0, weekly: 0, monthly: 0 }, limits: { daily: 5, weekly: 25, monthly: 100 } }),
+      json: () =>
+        Promise.resolve({
+          history: [],
+          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -36,11 +46,12 @@ describe('CostChart', () => {
 
   it('renders cost summary after data loads', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        history: mockCostHistory,
-        budgetStatus: { daily: 2.0, weekly: 10, monthly: 40 },
-        limits: { daily: 5, weekly: 25, monthly: 100 },
-      }),
+      json: () =>
+        Promise.resolve({
+          history: mockCostHistory,
+          budgetStatus: { daily: 2.0, weekly: 10, monthly: 40 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -54,11 +65,12 @@ describe('CostChart', () => {
 
   it('renders total calls count', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        history: mockCostHistory,
-        budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-        limits: { daily: 5, weekly: 25, monthly: 100 },
-      }),
+      json: () =>
+        Promise.resolve({
+          history: mockCostHistory,
+          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -68,11 +80,12 @@ describe('CostChart', () => {
 
   it('toggles between stacked and bar view modes', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        history: mockCostHistory,
-        budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-        limits: { daily: 5, weekly: 25, monthly: 100 },
-      }),
+      json: () =>
+        Promise.resolve({
+          history: mockCostHistory,
+          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -92,11 +105,12 @@ describe('CostChart', () => {
 
   it('shows budget limits', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        history: mockCostHistory,
-        budgetStatus: { daily: 1.5, weekly: 8, monthly: 30 },
-        limits: { daily: 5, weekly: 25, monthly: 100 },
-      }),
+      json: () =>
+        Promise.resolve({
+          history: mockCostHistory,
+          budgetStatus: { daily: 1.5, weekly: 8, monthly: 30 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -109,11 +123,12 @@ describe('CostChart', () => {
 
   it('shows model legend in stacked mode', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () => Promise.resolve({
-        history: mockCostHistory,
-        budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-        limits: { daily: 5, weekly: 25, monthly: 100 },
-      }),
+      json: () =>
+        Promise.resolve({
+          history: mockCostHistory,
+          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
+          limits: { daily: 5, weekly: 25, monthly: 100 },
+        }),
     });
     render(<CostChart />);
     await waitFor(() => {

@@ -369,9 +369,22 @@ export class GarbageCollector {
     // Only check source files — build artifacts and config files produce false
     // positives because they share similar structure (e.g. Cargo fingerprint JSON).
     const sourceExts = new Set([
-      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-      '.rs', '.py', '.go', '.java', '.kt', '.swift',
-      '.cpp', '.c', '.h', '.hpp',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      '.rs',
+      '.py',
+      '.go',
+      '.java',
+      '.kt',
+      '.swift',
+      '.cpp',
+      '.c',
+      '.h',
+      '.hpp',
     ]);
 
     for (const file of files) {

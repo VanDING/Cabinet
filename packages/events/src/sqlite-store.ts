@@ -5,7 +5,10 @@ import { buildCausationChain } from './causation.js';
 import { DeadLetterQueue } from './dead-letter.js';
 
 export class SqliteEventStore implements EventBus {
-  private readonly subscribers = new Map<MessageType, Set<{ handler: MessageHandler; name: string }>>();
+  private readonly subscribers = new Map<
+    MessageType,
+    Set<{ handler: MessageHandler; name: string }>
+  >();
   readonly deadLetterQueue = new DeadLetterQueue();
 
   constructor(private readonly eventLog: EventLogRepository) {
@@ -22,9 +25,7 @@ export class SqliteEventStore implements EventBus {
           await handler(envelope);
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err));
-          console.error(
-            `[SqliteEventStore] Handler error (${name}): ${error.message}`,
-          );
+          console.error(`[SqliteEventStore] Handler error (${name}): ${error.message}`);
           this.deadLetterQueue.enqueue({
             envelope,
             error: error.message,
@@ -88,14 +89,8 @@ export class SqliteEventStore implements EventBus {
    * Replay historical events to a handler. Returns the number of events replayed.
    * Useful for new subscribers that need to catch up on past events.
    */
-  async replay(
-    since: Date,
-    handler: MessageHandler,
-    messageType?: string,
-  ): Promise<number> {
-    const events = messageType
-      ? this.eventLog.findByType(messageType)
-      : this.eventLog.findAll();
+  async replay(since: Date, handler: MessageHandler, messageType?: string): Promise<number> {
+    const events = messageType ? this.eventLog.findByType(messageType) : this.eventLog.findAll();
     let count = 0;
     for (const event of events) {
       if (event.timestamp >= since) {

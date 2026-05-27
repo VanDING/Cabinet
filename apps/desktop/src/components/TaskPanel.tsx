@@ -48,15 +48,30 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks, isDark 
   };
 
   return (
-    <div className={`mb-2 rounded-lg border ${borderClass} ${bgClass} p-2 shadow-sm backdrop-blur-sm`}>
+    <div
+      className={`mb-2 rounded-lg border ${borderClass} ${bgClass} p-2 shadow-sm backdrop-blur-sm`}
+    >
       <div className="mb-1.5 flex items-center justify-between">
         <span className={`text-[10px] font-semibold uppercase tracking-wider ${subtextClass}`}>
           {displaySemantic ? '任务进度' : 'Tasks'}
         </span>
         <span className={`text-[10px] ${subtextClass}`}>
-          {done}<span className="text-green-500">✓</span>
-          {running > 0 && <span> · {running}<span className="text-blue-500">⟳</span></span>}
-          {errors > 0 && <span> · {errors}<span className="text-red-500">✕</span></span>}
+          {done}
+          <span className="text-green-500">✓</span>
+          {running > 0 && (
+            <span>
+              {' '}
+              · {running}
+              <span className="text-blue-500">⟳</span>
+            </span>
+          )}
+          {errors > 0 && (
+            <span>
+              {' '}
+              · {errors}
+              <span className="text-red-500">✕</span>
+            </span>
+          )}
         </span>
       </div>
       <div className="space-y-1">

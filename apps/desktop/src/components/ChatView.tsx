@@ -107,7 +107,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
       <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-0.5 transition-colors"
+          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <span>{expanded ? '▼' : '▶'}</span>
           {total} tool{total !== 1 ? 's' : ''}
@@ -131,10 +131,10 @@ const ToolCallSummary = memo(function ToolCallSummary({
           {toolCalls.map((tc) => (
             <div key={tc.id} className="flex items-center gap-2 text-xs">
               <span>{tc.status === 'error' ? '✕' : tc.status === 'running' ? '⟳' : '✓'}</span>
-              <span className="font-mono text-gray-700 dark:text-gray-300">{formatToolPreview(tc)}</span>
-              {tc.status === 'error' && (
-                <span className="text-red-500">error</span>
-              )}
+              <span className="font-mono text-gray-700 dark:text-gray-300">
+                {formatToolPreview(tc)}
+              </span>
+              {tc.status === 'error' && <span className="text-red-500">error</span>}
             </div>
           ))}
         </div>
@@ -175,10 +175,13 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
     // 3. Protect skill tags BEFORE markdown parsing so they don't become HTML-escaped
     // Match /skill-name but not file paths like /usr/bin or /api/secretary/chat
     const skillBlocks: string[] = [];
-    const withSkillTags = withUrlsProtected.replace(/\/(?![\/\.\\])[a-zA-Z][\w-]{0,19}(?![\w\.\/\\])/g, (match) => {
-      skillBlocks.push(`<span class="skill-tag">${match}</span>`);
-      return `%%SK${skillBlocks.length - 1}%%`;
-    });
+    const withSkillTags = withUrlsProtected.replace(
+      /\/(?![/.\\])[a-zA-Z][\w-]{0,19}(?![\w./\\])/g,
+      (match) => {
+        skillBlocks.push(`<span class="skill-tag">${match}</span>`);
+        return `%%SK${skillBlocks.length - 1}%%`;
+      },
+    );
 
     // 4. Parse markdown
     let html = marked.parse(withSkillTags) as string;
@@ -310,7 +313,9 @@ export const ChatView = memo(function ChatView({
         {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
           <div className="flex gap-3">
             <div className="flex-1">
-              <span className="text-sm italic text-gray-400 dark:text-gray-500">{t('chat.thinking')}</span>
+              <span className="text-sm italic text-gray-400 dark:text-gray-500">
+                {t('chat.thinking')}
+              </span>
             </div>
           </div>
         )}
@@ -357,7 +362,9 @@ const MessageRow = memo(function MessageRow({
   const [editText, setEditText] = useState(msg.content);
 
   return (
-    <div className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-red-400 bg-red-50/50 pl-2 dark:border-red-600 dark:bg-red-900/10' : ''}`}>
+    <div
+      className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-red-400 bg-red-50/50 pl-2 dark:border-red-600 dark:bg-red-900/10' : ''}`}
+    >
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -377,7 +384,10 @@ const MessageRow = memo(function MessageRow({
             <div className="ml-auto hidden gap-1 group-hover:flex">
               {msg.role === 'user' && onEditMessage && (
                 <button
-                  onClick={() => { setEditText(msg.content); setEditing(true); }}
+                  onClick={() => {
+                    setEditText(msg.content);
+                    setEditing(true);
+                  }}
                   className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
                 >
                   {t('chat.edit')}
@@ -426,7 +436,10 @@ const MessageRow = memo(function MessageRow({
                   {t('chat.saveAndResend')}
                 </button>
                 <button
-                  onClick={() => { setEditText(msg.content); setEditing(false); }}
+                  onClick={() => {
+                    setEditText(msg.content);
+                    setEditing(false);
+                  }}
                   className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
                 >
                   {t('chat.cancel')}
@@ -442,23 +455,22 @@ const MessageRow = memo(function MessageRow({
                 </div>
               )}
               {(msg.semanticTasks || msg.tasks) && (
-                <TaskPanel
-                  semanticTasks={msg.semanticTasks}
-                  tasks={msg.tasks}
-                  isDark={isDark}
-                />
+                <TaskPanel semanticTasks={msg.semanticTasks} tasks={msg.tasks} isDark={isDark} />
               )}
-              {msg.stepBudget && msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
-                <div className={`mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
-                  msg.stepBudget.remaining <= 0
-                    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
-                    : 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
-                }`}>
-                  {msg.stepBudget.remaining <= 0
-                    ? `步骤预算已耗尽 (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps})，任务可能未完成。`
-                    : `步骤预算即将耗尽 (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
-                </div>
-              )}
+              {msg.stepBudget &&
+                msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
+                  <div
+                    className={`mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
+                      msg.stepBudget.remaining <= 0
+                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
+                        : 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
+                    }`}
+                  >
+                    {msg.stepBudget.remaining <= 0
+                      ? `步骤预算已耗尽 (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps})，任务可能未完成。`
+                      : `步骤预算即将耗尽 (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
+                  </div>
+                )}
               {msg.subAgentActivities && msg.subAgentActivities.length > 0 && (
                 <div className="mt-2">
                   {msg.subAgentActivities.map((activity, idx) => (
@@ -470,15 +482,22 @@ const MessageRow = memo(function MessageRow({
                   ))}
                 </div>
               )}
-              {msg.thinking && (() => {
-                const duration = msg.thinkingDurationMs ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)` : '';
-                return (
-                  <details className="thinking-block mb-2" open>
-                    <summary className="thinking-summary">{t('chat.thinking')} {duration}</summary>
-                    <pre className="thinking-content">{msg.thinking.replace(/\n?<!--segment-->\n?/g, '\n')}</pre>
-                  </details>
-                );
-              })()}
+              {msg.thinking &&
+                (() => {
+                  const duration = msg.thinkingDurationMs
+                    ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)`
+                    : '';
+                  return (
+                    <details className="thinking-block mb-2" open>
+                      <summary className="thinking-summary">
+                        {t('chat.thinking')} {duration}
+                      </summary>
+                      <pre className="thinking-content">
+                        {msg.thinking.replace(/\n?<!--segment-->\n?/g, '\n')}
+                      </pre>
+                    </details>
+                  );
+                })()}
               <MarkdownContent content={msg.content} />
               {msg.toolCalls && msg.toolCalls.length > 0 && (
                 <ToolCallSummary toolCalls={msg.toolCalls} isStreaming={msg.isStreaming} />
@@ -513,7 +532,9 @@ const MessageRow = memo(function MessageRow({
                       />
                     );
                   }
-                } catch { /* ignore parse errors */ }
+                } catch {
+                  /* ignore parse errors */
+                }
                 return null;
               })()}
               {msg.isStreaming && (

@@ -27,7 +27,17 @@ export class ScheduledTaskRepository {
       .prepare(
         'INSERT INTO scheduled_tasks (id, name, cron_expression, prompt, recurring, enabled, created_at, last_run_at, next_run_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(task.id, task.name, task.cron_expression, task.prompt, task.recurring, task.enabled, task.created_at, task.last_run_at, task.next_run_at);
+      .run(
+        task.id,
+        task.name,
+        task.cron_expression,
+        task.prompt,
+        task.recurring,
+        task.enabled,
+        task.created_at,
+        task.last_run_at,
+        task.next_run_at,
+      );
   }
 
   updateLastRun(id: string, lastRunAt: string): void {

@@ -10,7 +10,8 @@ export function usePolling<T>(
   fetchFnRef.current = fetchFn;
 
   const fetch = useCallback(() => {
-    fetchFnRef.current()
+    fetchFnRef
+      .current()
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));

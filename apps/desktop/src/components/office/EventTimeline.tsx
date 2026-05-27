@@ -57,8 +57,18 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
     // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
     const hasRelevant = buffered.some((e) =>
-      ['decision_created','decision_updated','meeting_created','project_created','project_deleted',
-       'workflow_started','workflow_completed','task_updated','deliverable_created'].includes(e.type));
+      [
+        'decision_created',
+        'decision_updated',
+        'meeting_created',
+        'project_created',
+        'project_deleted',
+        'workflow_started',
+        'workflow_completed',
+        'task_updated',
+        'deliverable_created',
+      ].includes(e.type),
+    );
     if (hasRelevant) fetchEvents();
 
     return () => {
@@ -82,7 +92,9 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
       ) : events.length === 0 ? (
         <>
           <p className="text-xs text-gray-400">No recent events.</p>
-          <p className="mt-1 text-xs text-gray-400">Activity appears as agents run tasks, meetings, and workflows</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Activity appears as agents run tasks, meetings, and workflows
+          </p>
         </>
       ) : (
         <div className="space-y-2">

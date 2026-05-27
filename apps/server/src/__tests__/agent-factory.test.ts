@@ -85,6 +85,14 @@ describe('createStandardToolExecutor', () => {
       setProjectContext: vi.fn(),
       createProject: vi.fn(),
       listProjects: vi.fn(),
+      getDashboardStats: vi.fn(),
+      delegateTask: vi.fn(),
+      getTaskStatus: vi.fn(),
+      listActiveTasks: vi.fn(),
+      getDecisionAudit: vi.fn(),
+      getSystemMetrics: vi.fn(),
+      getWorkflowRun: vi.fn(),
+      listWorkflowRuns: vi.fn(),
     };
 
     const executor = createStandardToolExecutor(mockCtx, deps);

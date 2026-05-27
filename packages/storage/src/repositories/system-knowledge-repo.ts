@@ -30,8 +30,9 @@ export class SystemKnowledgeRepository {
   }
 
   upsert(entry: Omit<SystemKnowledgeEntry, 'updated_at'>): void {
-    this.db.prepare(
-      `INSERT INTO system_knowledge (id, topic, category, content, version, metadata, updated_at)
+    this.db
+      .prepare(
+        `INSERT INTO system_knowledge (id, topic, category, content, version, metadata, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT(id) DO UPDATE SET
          topic = excluded.topic,
@@ -39,49 +40,50 @@ export class SystemKnowledgeRepository {
          content = excluded.content,
          version = excluded.version,
          metadata = excluded.metadata,
-         updated_at = datetime('now')`
-    ).run(
-      entry.id,
-      entry.topic,
-      entry.category,
-      entry.content,
-      entry.version,
-      entry.metadata
-    );
+         updated_at = datetime('now')`,
+      )
+      .run(entry.id, entry.topic, entry.category, entry.content, entry.version, entry.metadata);
   }
 
   findByTopic(topic: string): SystemKnowledgeEntry | undefined {
-    return this.db.prepare(
-      'SELECT * FROM system_knowledge WHERE topic = ?'
-    ).get(topic) as SystemKnowledgeEntry | undefined;
+    return this.db.prepare('SELECT * FROM system_knowledge WHERE topic = ?').get(topic) as
+      | SystemKnowledgeEntry
+      | undefined;
   }
 
   findByCategory(category: string): SystemKnowledgeEntry[] {
-    return this.db.prepare(
-      'SELECT * FROM system_knowledge WHERE category = ? ORDER BY topic'
-    ).all(category) as SystemKnowledgeEntry[];
+    return this.db
+      .prepare('SELECT * FROM system_knowledge WHERE category = ? ORDER BY topic')
+      .all(category) as SystemKnowledgeEntry[];
   }
 
-  search(query: string, limit = 5): Array<Pick<SystemKnowledgeEntry, 'topic' | 'content' | 'category'>> {
+  search(
+    query: string,
+    limit = 5,
+  ): Array<Pick<SystemKnowledgeEntry, 'topic' | 'content' | 'category'>> {
     const pattern = `%${query}%`;
-    return this.db.prepare(
-      `SELECT topic, content, category FROM system_knowledge
+    return this.db
+      .prepare(
+        `SELECT topic, content, category FROM system_knowledge
        WHERE topic LIKE ? OR content LIKE ?
        ORDER BY topic
-       LIMIT ?`
-    ).all(pattern, pattern, limit) as Array<Pick<SystemKnowledgeEntry, 'topic' | 'content' | 'category'>>;
+       LIMIT ?`,
+      )
+      .all(pattern, pattern, limit) as Array<
+      Pick<SystemKnowledgeEntry, 'topic' | 'content' | 'category'>
+    >;
   }
 
   findAll(): SystemKnowledgeEntry[] {
-    return this.db.prepare(
-      'SELECT * FROM system_knowledge ORDER BY category, topic'
-    ).all() as SystemKnowledgeEntry[];
+    return this.db
+      .prepare('SELECT * FROM system_knowledge ORDER BY category, topic')
+      .all() as SystemKnowledgeEntry[];
   }
 
   getVersion(id: string): number {
-    const row = this.db.prepare(
-      'SELECT version FROM system_knowledge WHERE id = ?'
-    ).get(id) as { version: number } | undefined;
+    const row = this.db.prepare('SELECT version FROM system_knowledge WHERE id = ?').get(id) as
+      | { version: number }
+      | undefined;
     return row?.version ?? 0;
   }
 
