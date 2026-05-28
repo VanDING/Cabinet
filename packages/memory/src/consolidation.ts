@@ -63,14 +63,15 @@ export class ConsolidationService {
       // Skip entries that are still fresh (active within preserveRecentMs)
       if (entry && entry.timestamp.getTime() > cutoff) continue;
 
-      if (typeof value !== 'string') continue;
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+      if (!stringValue) continue;
 
-      const gate = this.writeGate.evaluate(value, { key, sessionId });
+      const gate = this.writeGate.evaluate(stringValue, { key, sessionId });
       if (!gate.allowed) continue;
 
       if (gate.tier === 'register' || gate.tier === 'working') {
         await this.longTerm.store({
-          content: value,
+          content: stringValue,
           metadata: {
             key,
             sessionId,
@@ -85,7 +86,7 @@ export class ConsolidationService {
       } else {
         // daily tier → stage in cascade buffer
         dailyKeys.push(key);
-        dailyEntries.push({ key, value });
+        dailyEntries.push({ key, value: stringValue });
       }
     }
 
@@ -100,6 +101,23 @@ export class ConsolidationService {
           timestamp: new Date(),
         },
       ]);
+    }
+
+    // Track cascade buffering state in short-term for restart survival
+    if (dailyEntries.length > 0) {
+      const CASCADE_META_KEY = '__cascade_meta__';
+      const existing = this.shortTerm._store.get(`${sessionId}:${CASCADE_META_KEY}`)?.value as
+        | Record<string, { firstAt: number; entryCount: number }>
+        | undefined;
+      const updated = { ...(existing ?? {}) };
+      for (const { key } of dailyEntries) {
+        if (!updated[key]) {
+          updated[key] = { firstAt: Date.now(), entryCount: 1 };
+        } else {
+          updated[key]!.entryCount++;
+        }
+      }
+      this.shortTerm.set(sessionId, CASCADE_META_KEY, updated);
     }
 
     // Try to auto-seal buffers that meet thresholds
@@ -194,26 +212,72 @@ export class ConsolidationService {
       }
     }
 
+    // Load persisted cascade metadata (survives restarts)
+    const CASCADE_META_KEY = '__cascade_meta__';
+    const cascadeMeta = this.shortTerm._store.get(`${sessionId}:${CASCADE_META_KEY}`)?.value as
+      | Record<string, { firstAt: number; entryCount: number }>
+      | undefined;
+
     for (const topic of topics) {
-      if (this.cascade.shouldSeal(sessionId, topic, { minCount: 3, maxAgeMs: 30 * 60 * 1000 })) {
-        const result = this.cascade.seal(sessionId, topic);
-        if (result.summaryContent.length === 0) continue;
-        await this.longTerm.store({
-          content: result.summaryContent,
-          metadata: {
-            sessionId,
-            source: 'cascade_l1',
-            topic,
-            entryCount: result.sealed.length,
-          },
-          timestamp: new Date(),
-        });
-        for (const entry of result.sealed) {
-          this.shortTerm.delete(sessionId, entry.sourceKey);
+      // Check in-memory buffer OR persisted metadata for seal eligibility
+      let shouldSeal = this.cascade.shouldSeal(sessionId, topic, { minCount: 3, maxAgeMs: 30 * 60 * 1000 });
+      if (!shouldSeal && cascadeMeta?.[topic]) {
+        const meta = cascadeMeta[topic]!;
+        if (meta.entryCount >= 3 && Date.now() - meta.firstAt >= 30 * 60 * 1000) {
+          // Restore buffer from short-term entries after restart
+          const entries: import('./cascade-buffer.js').CascadeEntry[] = [];
+          for (const [k, entry] of this.shortTerm._store) {
+            if (k.startsWith(`${sessionId}:`) && k.slice(sessionId.length + 1) === topic) {
+              entries.push({
+                id: `${sessionId}:${topic}:${entry.timestamp.getTime()}`,
+                content: typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
+                sourceKey: topic,
+                sessionId,
+                timestamp: entry.timestamp,
+              });
+            }
+          }
+          if (entries.length > 0) {
+            this.cascade.restoreFromShortTerm(sessionId, topic, entries);
+            shouldSeal = true;
+          }
         }
-        sealedCount++;
+      }
+
+      if (!shouldSeal) continue;
+
+      const result = this.cascade.seal(sessionId, topic);
+      if (result.summaryContent.length === 0) continue;
+      await this.longTerm.store({
+        content: result.summaryContent,
+        metadata: {
+          sessionId,
+          source: 'cascade_l1',
+          topic,
+          entryCount: result.sealed.length,
+        },
+        timestamp: new Date(),
+      });
+      for (const entry of result.sealed) {
+        this.shortTerm.delete(sessionId, entry.sourceKey);
+      }
+      sealedCount++;
+    }
+
+    // Clean up cascade meta for sealed topics
+    if (cascadeMeta) {
+      for (const topic of Object.keys(cascadeMeta)) {
+        if (topics.has(topic)) {
+          delete cascadeMeta[topic];
+        }
+      }
+      if (Object.keys(cascadeMeta).length > 0) {
+        this.shortTerm.set(sessionId, CASCADE_META_KEY, cascadeMeta);
+      } else {
+        this.shortTerm.delete(sessionId, CASCADE_META_KEY);
       }
     }
+
     return sealedCount;
   }
 }

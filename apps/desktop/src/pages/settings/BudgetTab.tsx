@@ -27,7 +27,7 @@ export function BudgetTab() {
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
             <label className="mb-1 block text-sm capitalize text-gray-600 dark:text-gray-400">
-              {period} Budget (USD)
+              {period} Budget (RMB)
             </label>
             <input
               type="number"

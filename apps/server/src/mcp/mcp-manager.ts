@@ -8,6 +8,8 @@ export interface MCPServerConfig {
   command: string;
   args: string[];
   enabled: boolean;
+  /** Environment variables to pass to the MCP server process. Supports ${VAR} substitution. */
+  env?: Record<string, string>;
 }
 
 export interface MCPTool {
@@ -58,7 +60,8 @@ export class MCPManager {
     const transport = new StdioClientTransport({
       command: config.command,
       args: config.args,
-    });
+      env: config.env,
+    } as any);
 
     const client = new Client({ name: 'cabinet', version: '2.0.0' }, { capabilities: {} });
 

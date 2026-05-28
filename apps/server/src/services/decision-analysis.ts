@@ -37,8 +37,11 @@ export class DecisionAnalysisService {
     try {
       const analysis = await this.analyze(decision, callerSessionId);
       this.ctx.decisionRepo.save({ ...decision, analysis });
-    } catch {
-      // Analysis failure is non-fatal
+    } catch (e) {
+      console.warn('[DecisionAnalysis] Failed to analyze decision', {
+        decisionId,
+        error: (e as Error).message,
+      });
     }
   }
 }

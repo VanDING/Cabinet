@@ -21,9 +21,15 @@ export class CheckpointManager {
   }
 
   load(sessionId: string): CheckpointState | null {
-    const raw = this.repo.load(sessionId);
-    if (!raw) return null;
-    return JSON.parse(raw) as CheckpointState;
+    try {
+      const raw = this.repo.load(sessionId);
+      if (!raw) return null;
+      return JSON.parse(raw) as CheckpointState;
+    } catch {
+      // Corrupt checkpoint data — discard and start fresh
+      this.delete(sessionId);
+      return null;
+    }
   }
 
   delete(sessionId: string): void {

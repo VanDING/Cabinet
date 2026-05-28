@@ -140,8 +140,8 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
   const summary = getStr(data, 'summary') || '';
   const goals = getArr(data, 'goals') as string[];
   const milestones = getArr(data, 'milestones') as unknown[];
-  const keyDecisions =
-    (getArr(data, 'key_decisions') as string[]) || (getArr(data, 'keyDecisions') as string[]);
+  const rawDecisions = getArr(data, 'key_decisions') as string[];
+  const keyDecisions = rawDecisions.length > 0 ? rawDecisions : (getArr(data, 'keyDecisions') as string[]);
 
   return (
     <div className="space-y-3">
@@ -208,6 +208,11 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
             ))}
           </ul>
         </div>
+      )}
+      {!summary && goals.length === 0 && milestones.length === 0 && keyDecisions.length === 0 && (
+        <p className="text-xs italic text-gray-400 dark:text-gray-500">
+          No project context yet. Use chat to update the project summary, add milestones, or create decisions.
+        </p>
       )}
     </div>
   );
@@ -606,11 +611,20 @@ export function MemoryPage() {
                             {(() => {
                               const parsed = tryParseJson(m.content);
                               if (isRecord(parsed)) {
-                                const summary =
-                                  getStr(parsed, 'summary') ||
-                                  getStr(parsed, 'name') ||
-                                  getStr(parsed, 'title');
+                                const summary = getStr(parsed, 'summary');
                                 if (summary) return summary;
+                                const name = getStr(parsed, 'name') || getStr(parsed, 'title');
+                                if (name) return name;
+                                const pid = getStr(parsed, 'projectId');
+                                if (pid) {
+                                  const goalsLen = (getArr(parsed, 'goals') as unknown[]).length;
+                                  const milestonesLen = (getArr(parsed, 'milestones') as unknown[]).length;
+                                  const decisionsLen = (getArr(parsed, 'keyDecisions') as unknown[]).length;
+                                  if (goalsLen + milestonesLen + decisionsLen > 0) {
+                                    return `Project ${pid.slice(0, 8)} — ${goalsLen} goals, ${milestonesLen} milestones, ${decisionsLen} decisions`;
+                                  }
+                                  return `Project ${pid.slice(0, 8)} — empty`;
+                                }
                               }
                               return (
                                 m.content.slice(0, 200) + (m.content.length > 200 ? '...' : '')

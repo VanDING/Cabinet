@@ -2,6 +2,8 @@ export interface ToolResult {
   toolCallId: string;
   output: unknown;
   error?: string;
+  /** Structured error category for better LLM decision-making. */
+  errorType?: 'timeout' | 'permission' | 'not_found' | 'invalid_input' | 'internal' | 'network';
 }
 
 export interface ToolContext {
@@ -72,7 +74,15 @@ export class ToolExecutor {
       return { toolCallId, output: summarized };
     } catch (error) {
       this.onToolCall?.(name, false, false, Date.now() - startTime);
-      return { toolCallId, output: null, error: (error as Error).message };
+      const msg = (error as Error).message.toLowerCase();
+      let errorType: ToolResult['errorType'];
+      if (msg.includes('timeout') || msg.includes('timed out')) errorType = 'timeout';
+      else if (msg.includes('permission') || msg.includes('denied') || msg.includes('eacces')) errorType = 'permission';
+      else if (msg.includes('not found') || msg.includes('enoent') || msg.includes('no such file')) errorType = 'not_found';
+      else if (msg.includes('invalid') || msg.includes('required') || msg.includes('is required')) errorType = 'invalid_input';
+      else if (msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('socket') || msg.includes('network')) errorType = 'network';
+      else errorType = 'internal';
+      return { toolCallId, output: null, error: (error as Error).message, errorType };
     }
   }
 

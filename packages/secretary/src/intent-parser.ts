@@ -172,6 +172,10 @@ interface EmbeddingMatch {
 
 // ── Intent Parser ─────────────────────────────────────────────
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
@@ -180,7 +184,8 @@ export class IntentParser {
     'reviewer',
     'organize',
   ]);
-  private customAgents: Map<string, string> = new Map(); // name -> description
+  private customAgents: Map<string, { description: string; keywords?: string[]; aliases?: string[] }> =
+    new Map();
   private exampleEmbeddingsWarmed = false;
 
   constructor(private readonly gateway?: LLMGateway) {}
@@ -196,8 +201,18 @@ export class IntentParser {
   }
 
   /** Register custom agent names and descriptions for fallback routing. */
-  setCustomAgents(agents: Map<string, string>): void {
-    this.customAgents = agents;
+  setCustomAgents(agents: Map<string, string | { description: string; keywords?: string[]; aliases?: string[] }>): void {
+    const normalized = new Map<string, { description: string; keywords?: string[]; aliases?: string[] }>();
+    for (const [name, info] of agents) {
+      if (typeof info === 'string') {
+        // Derive default keywords from the agent name (split on whitespace/hyphens/underscores)
+        const defaultKeywords = name.toLowerCase().split(/[\s\-_]+/).filter((k) => k.length > 1);
+        normalized.set(name, { description: info, keywords: defaultKeywords, aliases: [] });
+      } else {
+        normalized.set(name, info);
+      }
+    }
+    this.customAgents = normalized;
   }
 
   /** Inject captain preferences for personalized routing. */
@@ -231,11 +246,27 @@ export class IntentParser {
       'elaborate',
       'explain',
       'detail',
+      // Common follow-up phrases
+      '上面',
+      '刚才',
+      '之前',
+      '那',
+      '那么',
+      '所以',
+      '还有吗',
+      '然后呢',
+      'more',
+      'and',
+      'also',
     ];
-    const isShortFollowUp = trimmed.length < 20 && followUpPatterns.some((p) => lower.includes(p));
+    // startsWith gives stronger signal, even on longer messages
+    const startsWithFollowUp = followUpPatterns.some((p) => trimmed.startsWith(p));
+    const isFollowUp =
+      startsWithFollowUp ||
+      (trimmed.length < 40 && followUpPatterns.some((p) => lower.includes(p)));
 
     // Require both a follow-up pattern AND a known previous route to avoid false positives
-    if (isShortFollowUp && conversationContext?.lastIntent && conversationContext?.lastRoute) {
+    if (isFollowUp && conversationContext?.lastIntent && conversationContext?.lastRoute) {
       return {
         kind: 'follow_up',
         previousKind: conversationContext.lastIntent,
@@ -286,7 +317,10 @@ export class IntentParser {
     // Meeting request: must explicitly ask to organize/schedule a meeting, not just mention one.
     const hasOrganizeMeeting =
       (lower.includes('组织') && lower.includes('讨论')) ||
+      lower.includes('组织会议') ||
+      lower.includes('组织个会') ||
       lower.includes('开会') ||
+      lower.includes('开个会') ||
       lower.includes('召集') ||
       lower.includes('启动会议');
     const hasAdvisorIntent =
@@ -341,6 +375,27 @@ export class IntentParser {
       !this.hasNegation(lower, 'schedule_request')
     ) {
       return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
+    }
+
+    // Conflict resolution: "设计审查" pattern means review, not organize.
+    // But "审查" must be the main ACTION, not a modifier.
+    // "创建一个代码审查agent" = organizing, not reviewing; "审查这个设计" = reviewing.
+    const hasReviewSignal =
+      lower.includes('审查') || lower.includes('review') ||
+      lower.includes('审核') || lower.includes('复核');
+    const hasDesignOrCreateSignal =
+      lower.includes('设计') || lower.includes('创建') || lower.includes('搭建');
+    const hasSystemOrganizeSignal =
+      lower.includes('agent') || lower.includes('系统') || lower.includes('流程') ||
+      lower.includes('工作流') || lower.includes('自动化') || lower.includes('架构') ||
+      lower.includes('方案');
+    if (
+      hasReviewSignal &&
+      hasDesignOrCreateSignal &&
+      !hasSystemOrganizeSignal &&
+      !this.hasNegation(lower, 'review_request')
+    ) {
+      return { kind: 'review_request', target: message.slice(0, 100), context: message };
     }
 
     // Organize: higher-level design intent — must be checked before workflow_request
@@ -593,7 +648,6 @@ Message: "${message}"`;
     const highConfidenceIntents = new Set([
       'decision_request',
       'meeting_request',
-      'workflow_request',
       'organize_request',
       'review_request',
     ]);
@@ -637,7 +691,7 @@ Message: "${message}"`;
         intent: embIntent,
       });
       // High-confidence embedding match can short-circuit
-      if (embeddingMatch.confidence > 0.75) {
+      if (embeddingMatch.confidence > 0.65) {
         return {
           targetAgent: embRoute.targetAgent,
           confidence: embeddingMatch.confidence,
@@ -733,7 +787,7 @@ Message: "${message}"`;
       : '';
 
     const embeddingHint =
-      embeddingMatch && embeddingMatch.confidence >= 0.55
+      embeddingMatch && embeddingMatch.confidence >= 0.50
         ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
         : '';
 
@@ -745,7 +799,6 @@ ${prefsLine}
 Routing guidelines:
 - secretary: General questions, casual conversation, simple information retrieval, or decision analysis
 - meeting_chair: The topic needs multiple perspectives, expert opinions, or debate
-- workflow_designer: The user wants to create/design/run a multi-step process
 - reviewer: The user wants to review/audit/check the quality or correctness of something
 - organize: The user wants to design/build/architect an organization, system, or capability
 ${historyLine}${embeddingHint}
@@ -833,20 +886,47 @@ Message: "${message}"`;
     let targetAgent: AgentRoleType = 'secretary';
     let reasoning = 'Default routing (no LLM available).';
 
-    // Custom agent detection: if a custom agent name appears in the message, route to it
+    // Custom agent detection: word-boundary match on name/aliases, word-level match on keywords
     if (message) {
       const lowerMsg = message.toLowerCase();
-      for (const [name, description] of this.customAgents) {
+      const words = lowerMsg.split(/[\s,，。！？、；：""''（）\(\)\[\]\{\}]+/).filter(Boolean);
+
+      for (const [name, info] of this.customAgents) {
         const lowerName = name.toLowerCase();
-        if (lowerMsg.includes(lowerName) || lowerMsg.includes(description.toLowerCase())) {
-          targetAgent = name as AgentRoleType;
-          reasoning = `Custom agent "${name}" matched in user message.`;
+        // Word-boundary match on agent name: "Code" shouldn't match "decode"
+        const nameRegex = new RegExp(`\\b${escapeRegex(lowerName)}\\b`, 'i');
+        if (nameRegex.test(lowerMsg)) {
           return {
-            targetAgent,
-            confidence: 0.75,
-            reasoning,
+            targetAgent: name as AgentRoleType,
+            confidence: 0.8,
+            reasoning: `Custom agent "${name}" matched in user message.`,
             intent,
           };
+        }
+
+        // Match against aliases with word boundary
+        for (const alias of info.aliases ?? []) {
+          const aliasRegex = new RegExp(`\\b${escapeRegex(alias.toLowerCase())}\\b`, 'i');
+          if (aliasRegex.test(lowerMsg)) {
+            return {
+              targetAgent: name as AgentRoleType,
+              confidence: 0.75,
+              reasoning: `Custom agent "${name}" matched via alias "${alias}".`,
+              intent,
+            };
+          }
+        }
+
+        // Match against keywords (word-level, not substring)
+        for (const kw of info.keywords ?? []) {
+          if (words.includes(kw.toLowerCase())) {
+            return {
+              targetAgent: name as AgentRoleType,
+              confidence: 0.7,
+              reasoning: `Custom agent "${name}" matched via keyword "${kw}".`,
+              intent,
+            };
+          }
         }
       }
     }

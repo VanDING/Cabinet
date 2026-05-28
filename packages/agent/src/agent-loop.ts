@@ -1,7 +1,7 @@
 import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
 import type { DelegationTier } from '@cabinet/types';
-import { ToolExecutor } from './tool-executor.js';
+import { ToolExecutor, type ToolResult } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
 import { CheckpointManager, type CheckpointState } from './checkpoint.js';
@@ -105,6 +105,8 @@ export interface AgentLoopOptions {
   projectRoot?: string;
   /** Optional rules loader for hierarchical rule injection. */
   rulesLoader?: RulesLoader;
+  /** Optional cost tracker for per-LLM-call cost recording. */
+  costTracker?: { record(model: string, promptTokens: number, completionTokens: number, cachedPromptTokens?: number): void };
   /** Pre-built context for strict consistency (skips self-collection in ContextBuilder). */
   prebuiltContext?: PrebuiltContext;
   /** User-configurable trust level (T0-T3) for error tolerance and tool limits. */
@@ -121,17 +123,50 @@ export interface AgentResult {
 }
 
 /** Format a human-readable task name from a tool call. */
-/** Try to extract a structured AgentOutput from LLM text containing a ```json block. */
+/** Try to extract a structured AgentOutput from LLM text. Multi-level fallback:
+ *  1. ```json fence block
+ *  2. Bare JSON (balanced bracket extraction)
+ *  3. Any code fence block (``` without json tag)
+ */
 function parseStructuredOutput(content: string): import('@cabinet/types').AgentOutput | undefined {
-  const match = content.match(/```json\s*([\s\S]*?)\s*```/);
-  if (!match) return undefined;
+  // Level 1: Try ```json fence (most reliable)
+  const fenceMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+  if (fenceMatch) {
+    const result = tryParseAgentOutput(fenceMatch[1]!);
+    if (result) return result;
+  }
+
+  // Level 2: Try bare JSON — extract first balanced { or [ block
+  const bracketMatch = extractBalancedJSON(content);
+  if (bracketMatch) {
+    const result = tryParseAgentOutput(bracketMatch);
+    if (result) return result;
+  }
+
+  // Level 3: Try any code fence (``` without json tag, ```javascript, etc.)
+  const anyFenceMatch = content.match(/```\w*\s*([\s\S]*?)\s*```/);
+  if (anyFenceMatch) {
+    const result = tryParseAgentOutput(anyFenceMatch[1]!);
+    if (result) return result;
+  }
+
+  return undefined;
+}
+
+/** Parse a JSON string into AgentOutput with relaxed shape validation. */
+function tryParseAgentOutput(json: string): import('@cabinet/types').AgentOutput | undefined {
   try {
-    const parsed = JSON.parse(match[1]!);
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      (parsed.summary || parsed.findings || parsed.decisions)
-    ) {
+    const parsed = JSON.parse(json.trim());
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const hasKnownField = !!(
+      parsed.summary ||
+      parsed.findings ||
+      parsed.decisions ||
+      parsed.openQuestions ||
+      parsed.confidence !== undefined
+    );
+    const hasMultipleFields = Object.keys(parsed).length >= 2;
+    if (hasKnownField || hasMultipleFields) {
       return {
         summary: String(parsed.summary ?? ''),
         findings: Array.isArray(parsed.findings) ? parsed.findings : [],
@@ -145,9 +180,54 @@ function parseStructuredOutput(content: string): import('@cabinet/types').AgentO
       };
     }
   } catch {
-    // Ignore malformed JSON
+    /* not valid JSON */
   }
   return undefined;
+}
+
+/** Extract the first balanced JSON object or array from text using bracket matching. */
+function extractBalancedJSON(text: string): string | null {
+  const startBrace = text.indexOf('{');
+  const startBracket = text.indexOf('[');
+  let start = -1;
+  let openChar = '';
+  let closeChar = '';
+  if (startBrace !== -1 && (startBracket === -1 || startBrace < startBracket)) {
+    start = startBrace;
+    openChar = '{';
+    closeChar = '}';
+  } else if (startBracket !== -1) {
+    start = startBracket;
+    openChar = '[';
+    closeChar = ']';
+  }
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]!;
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === openChar) depth++;
+    else if (ch === closeChar) {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 /** Format a human-readable task name from a tool call. */
@@ -240,11 +320,17 @@ export class AgentLoop {
     const isResuming = state !== null && state !== undefined;
     let steps = state?.step ?? 0;
     const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
-      state?.toolCallHistory ?? [];
+      (state?.toolCallHistory as { name: string; args: Record<string, unknown>; result: unknown }[]) ?? [];
 
     // If resuming from a crashed session, skip re-adding the user message (it's already in checkpoint)
     let messages: { role: 'user' | 'assistant'; content: string }[] = state?.messages ?? [];
     const wasCrashed = (state?.metadata as Record<string, unknown>)?.crashed === true;
+    if (wasCrashed) {
+      messages.push({
+        role: 'assistant',
+        content: '[System: Previous session crashed. Resuming from checkpoint — some progress may have been lost. Review the last tool result for idempotency.]',
+      });
+    }
 
     // Observability tracking
     const zoneCounts = { smart: 0, warning: 0, critical: 0, dumb: 0 };
@@ -322,7 +408,10 @@ export class AgentLoop {
       }
 
       // Combine system context messages with conversation messages
-      const allMessages = [...ctx.messages, ...messages];
+      // Deduplicate: skip short-term messages that already exist in the internal message array
+      const internalContents = new Set(messages.map((m) => m.content));
+      const uniqueCtxMessages = ctx.messages.filter((m) => !internalContents.has(m.content));
+      const allMessages = [...uniqueCtxMessages, ...messages];
 
       // ── Context Utilization Check (before LLM call) ──
       if (this.contextMonitor) {
@@ -427,6 +516,16 @@ export class AgentLoop {
       // Track token usage
       totalPromptTokens += response.usage?.promptTokens ?? 0;
       totalCompletionTokens += response.usage?.completionTokens ?? 0;
+
+      // Record cost tracking
+      if (this.options.costTracker && response.usage) {
+        this.options.costTracker.record(
+          response.model,
+          response.usage.promptTokens,
+          response.usage.completionTokens,
+          response.usage.cachedPromptTokens ?? 0,
+        );
+      }
 
       // Calibrate estimator against actual token usage from the API
       if (this.contextMonitor && response.usage?.promptTokens) {
@@ -602,7 +701,7 @@ export class AgentLoop {
         }
 
         // Execute with watchdog timeout
-        let result: { toolCallId: string; output: unknown; error?: string };
+        let result: ToolResult;
         try {
           result = await Promise.race([
             this.toolExecutor.execute(tc.name, tc.id, tc.arguments, {
@@ -641,8 +740,9 @@ export class AgentLoop {
           result: result.error ?? result.output,
         });
 
-        const handoffText = `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${JSON.stringify(result.error ?? result.output).slice(0, 80)}`;
-        const msgText = `Tool result for ${tc.name}: ${JSON.stringify(result.error ?? result.output)}`;
+        const errorLabel = result.errorType ? `[${result.errorType}] ` : '';
+        const handoffText = `${tc.name}(${JSON.stringify(tc.arguments).slice(0, 80)}): ${errorLabel}${JSON.stringify(result.error ?? result.output).slice(0, 80)}`;
+        const msgText = `Tool result for ${tc.name}: ${errorLabel}${JSON.stringify(result.error ?? result.output)}`;
 
         return {
           tc,

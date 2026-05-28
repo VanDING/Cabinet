@@ -14,19 +14,19 @@ describe('CostTracker', () => {
     expect(entry.model).toBe('anthropic/claude-sonnet-4-6');
     expect(entry.promptTokens).toBe(1000);
     expect(entry.completionTokens).toBe(500);
-    expect(entry.costUsd).toBeGreaterThan(0);
+    expect(entry.costRmb).toBeGreaterThan(0);
     expect(tracker.getEntries()).toHaveLength(1);
   });
 
   it('calculates cost correctly for known model', () => {
     const entry = tracker.record('anthropic/claude-sonnet-4-6', 1_000_000, 1_000_000);
-    // Claude Sonnet: $3/M prompt, $15/M completion = $18
-    expect(entry.costUsd).toBeCloseTo(18.0, 1);
+    // Claude Sonnet: ¥21.6/M prompt, ¥108/M completion = ¥129.6
+    expect(entry.costRmb).toBeCloseTo(129.6, 1);
   });
 
   it('uses default pricing for unknown model', () => {
     const entry = tracker.record('unknown-model', 1_000_000, 1_000_000);
-    expect(entry.costUsd).toBeCloseTo(5.0, 1); // $1 + $4 default
+    expect(entry.costRmb).toBeCloseTo(5.0, 1); // ¥1 + ¥4 default
   });
 
   it('getTotalCost sums all entries', () => {
@@ -47,8 +47,8 @@ describe('BudgetGuard', () => {
 
   it('returns warning when over 80%', () => {
     const tracker = new CostTracker();
-    // Simulate high cost: Claude Opus $15/M prompt
-    tracker.record('anthropic/claude-opus-4-7', 300_000, 0); // ~$4.50
+    // Simulate high cost: Claude Opus ¥108/M prompt
+    tracker.record('anthropic/claude-opus-4-7', 40_000, 0); // ~¥4.32
     const guard = new BudgetGuard(tracker, { daily: 5.0, weekly: 100, monthly: 500 });
     const statuses = guard.checkAll();
     const dailyStatus = statuses.find((s) => s.period === 'daily');
@@ -58,7 +58,7 @@ describe('BudgetGuard', () => {
 
   it('blocks non-L3 calls when budget exceeded', () => {
     const tracker = new CostTracker();
-    tracker.record('anthropic/claude-opus-4-7', 500_000, 0); // ~$7.50
+    tracker.record('anthropic/claude-opus-4-7', 50_000, 0); // ~¥5.40
     const guard = new BudgetGuard(tracker, { daily: 5.0, weekly: 100, monthly: 500 });
 
     const nonL3 = guard.canProceed('L2');

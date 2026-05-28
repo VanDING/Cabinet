@@ -42,6 +42,10 @@ export interface AgentRole {
   contextBudget: number;
   /** Maximum agent loop steps (default 50 if not set). */
   maxSteps?: number;
+  /** Alternative names users might call this agent. e.g. ["codebot", "coder"] */
+  aliases?: string[];
+  /** Keywords associated with this agent's domain. e.g. ["code", "programming"] */
+  keywords?: string[];
   /** Model tier to use for complex/upgraded tasks (e.g., L2/L3 decisions). */
   upgradeModelTier?: ModelTier;
   /** Model tier to use for simple/downgraded tasks (e.g., modifying existing workflow). */
@@ -182,7 +186,7 @@ export const SECRETARY_ROLE: AgentRole = {
     // intentionally excluded — they belong in workflow humanApproval nodes.
   ],
   contextBudget: 0.5,
-  maxSteps: 50,
+  maxSteps: 500,
 };
 
 export const MEETING_CHAIR_ROLE: AgentRole = {
@@ -301,21 +305,17 @@ export const REVIEWER_ROLE: AgentRole = {
     '3. Do NOT perform the analysis yourself — only review what was provided and verify against available data.',
     '4. Output a clear pass/fail decision with specific, actionable issues.',
     '',
-    'Output format (JSON):',
-    '{',
-    '  "pass": true/false,',
-    '  "score": 0.0 to 1.0,',
-    '  "issues": [',
-    '    { "type": "weak_evidence|logical_gap|unstated_assumption|factual_error",',
-    '      "detail": "specific description of the issue",',
-    '      "severity": "high|medium|low" }',
-    '  ],',
-    '  "suggestion": {',
-    '    "action": "strengthen_evidence|revise_logic|correct_fact",',
-    '    "detail": "what to fix and how",',
-    '    "or_assign_independent_agent": false',
-    '  }',
-    '}',
+    'Output your review as a JSON object with these fields:',
+    '- "pass": boolean — whether the output meets quality standards',
+    '- "score": number from 0.0 to 1.0 — overall quality score',
+    '- "issues": array of objects, each with:',
+    '    "type": one of "weak_evidence", "logical_gap", "unstated_assumption", "factual_error"',
+    '    "detail": specific, actionable description of the issue',
+    '    "severity": "high", "medium", or "low"',
+    '- "suggestion": object with "action" and "detail" fields describing the fix',
+    '',
+    'Only include issues you actually found. Do not output placeholder values or empty template fields.',
+    'If no issues exist, use an empty array for "issues".',
     '',
     'Guidelines:',
     '- Be specific. "The analysis is weak" is not actionable. "The market sizing claim on line 3 lacks data — cite specific numbers" is.',
@@ -324,6 +324,7 @@ export const REVIEWER_ROLE: AgentRole = {
     '- If the same issues persist after 2+ review rounds, set or_assign_independent_agent: true.',
     '- Do not add your own analysis. Only review what was given to you.',
     '- The Captain is the human user — your review ensures quality before the Captain sees the output.',
+    '- CRITICAL: Only include issues based on actual review. Do not copy example values, placeholder text, or template fields. An empty or minimal result is better than a fabricated one.',
     '',
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
   ].join('\n'),
@@ -421,8 +422,15 @@ export const ORGANIZE_ROLE: AgentRole = {
     '5. **Authorization**: which steps need Captain approval and at what level (L0-L3)',
     '6. **Design Decisions**: open questions for the Captain to resolve',
     '',
-    'Output your final blueprint as a JSON object:',
-    '{"goal": "...", "agents": {"reuse": [...], "create": [...]}, "workflow": {...}, "qualityGates": [...], "authorization": {...}, "designDecisions": [...]}',
+    'Output your final blueprint as a structured plan. Include:',
+    '- goal: the objective of this system',
+    '- agents: which agents to reuse or create, with their responsibilities',
+    '- workflow: the steps and decision points',
+    '- qualityGates: checkpoints where output is reviewed',
+    '- authorization: what requires human approval',
+    '- designDecisions: key trade-offs you considered',
+    '',
+    'Present the plan in plain language first, then as a structured JSON blueprint at the end.',
     '',
     '## Guidelines',
     '- You are both the architect and the implementer. Default to direct implementation using register_agent and create_workflow. Only invoke other agents (via invokeAgent) when a component requires specialized optimization beyond your expertise.',
@@ -442,6 +450,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     '- `use_skill__mcpBuilder` — for MCP server development',
     '',
     'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
+    '- CRITICAL: Only include content based on actual analysis. Do not copy example values, placeholder text, or empty template structures. An empty or minimal result is better than a fabricated one.',
   ].join('\n'),
   modelTier: 'deep_reasoning',
   temperature: 0.4,
@@ -474,6 +483,11 @@ export const ORGANIZE_ROLE: AgentRole = {
     'web_fetch',
     'query_system_knowledge',
     'get_system_knowledge',
+    'use_skill__workflowDesigner',
+    'use_skill__agentCreator',
+    'use_skill__skillCreator',
+    'use_skill__mcpBuilder',
+    'write_file',
   ],
   contextBudget: 0.5,
   maxSteps: 150,

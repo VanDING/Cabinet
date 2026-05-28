@@ -34,4 +34,4 @@ export function errResponse(
 }
 
 // ── Budget defaults (mirrors @cabinet/types boundaries) ──
-export { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
+export { DAILY_BUDGET, WEEKLY_BUDGET, MONTHLY_BUDGET } from '@cabinet/types';

@@ -71,6 +71,9 @@ export class LongTermMemoryRepository {
            LIMIT ?`,
         )
         .all(query, limit) as Record<string, unknown>[];
+      if (rows.length === 0) {
+        return this.searchByText(query, limit);
+      }
       return rows.map((r) => this.rowToEntry(r));
     } catch {
       // Fallback to LIKE if FTS5 is unavailable or query is malformed
@@ -81,6 +84,14 @@ export class LongTermMemoryRepository {
   findAllWithEmbeddings(): LongTermMemoryRow[] {
     const rows = this.db
       .prepare('SELECT * FROM memory_embeddings WHERE embedding IS NOT NULL')
+      .all() as Record<string, unknown>[];
+    return rows.map((r) => this.rowToEntry(r));
+  }
+
+  /** Return all rows (id, content, metadata, timestamp) for pruning/scoring. */
+  findAll(): LongTermMemoryRow[] {
+    const rows = this.db
+      .prepare('SELECT id, content, metadata, timestamp FROM memory_embeddings')
       .all() as Record<string, unknown>[];
     return rows.map((r) => this.rowToEntry(r));
   }

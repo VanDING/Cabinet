@@ -33,8 +33,8 @@ export class ProjectIsolatedMemory {
   }
 
   // Long-term: filter by project metadata
-  async longTermSearch(query: string, limit = 5): Promise<any[]> {
-    const results = await this.longTerm.search(query, limit);
+  async longTermSearch(query: string, limit = 5, queryEmbedding?: number[]): Promise<any[]> {
+    const results = await this.longTerm.search(query, limit, queryEmbedding);
     return results.filter((r) => r.metadata?.projectId === this.projectId);
   }
 

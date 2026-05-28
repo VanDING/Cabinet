@@ -8,6 +8,8 @@ export interface SkillMetadata {
   description: string;
   kind: 'tool' | 'prompt' | 'composite';
   version: number;
+  /** Names of other skills this skill depends on. */
+  dependencies?: string[];
 }
 
 // ── Full Skill (L2 — loaded on demand) ──
@@ -93,6 +95,13 @@ export class SkillRegistry {
       if (skill.status !== 'active') continue;
       tools.push({
         name: `use_skill__${skill.name}`,
+        description: skill.description,
+        parameters: {
+          type: 'object',
+          properties: {
+            skill: { type: 'string', description: `Skill name: ${skill.name}` },
+          },
+        },
         execute: async (args: Record<string, unknown>) => {
           return this.executeSkill(skill, args);
         },
@@ -101,11 +110,23 @@ export class SkillRegistry {
     return tools;
   }
 
+  private usageCounts = new Map<string, number>();
+
+  /** Get usage statistics for all skills. */
+  getUsageStats(): Record<string, number> {
+    const stats: Record<string, number> = {};
+    for (const [name, count] of this.usageCounts) {
+      stats[name] = count;
+    }
+    return stats;
+  }
+
   /** Execute a skill with full L3 progressive disclosure context. */
   async executeSkill(
     skill: SkillEntry,
     args: Record<string, unknown>,
   ): Promise<{ skillName: string; output: string }> {
+    this.usageCounts.set(skill.name, (this.usageCounts.get(skill.name) ?? 0) + 1);
     let prompt = skill.promptTemplate;
     for (const [key, value] of Object.entries(args)) {
       prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));

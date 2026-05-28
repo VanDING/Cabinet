@@ -186,18 +186,15 @@ settingsRouter.post('/api-keys/:id/test', async (c) => {
     [provider]: { apiKey: decryptedKey, ...(baseUrl ? { baseUrl } : {}) },
   };
 
-  const defaultMapping: Record<string, string> = {
-    deep_reasoning: `${provider}/default`,
-    default: `${provider}/default`,
-    fast_execution: `${provider}/default`,
-  };
+  const tempAdapter = new AISDKAdapter(providerConfigs as any, {});
 
-  const tempAdapter = new AISDKAdapter(providerConfigs as any, defaultMapping);
+  // Use the actual fastest model for testing, not the literal string "default"
+  const testModel = tempAdapter.resolveModelString('fast_execution');
 
   const start = Date.now();
   try {
     const result = await tempAdapter.generateText({
-      model: 'default',
+      model: testModel,
       messages: [{ role: 'user', content: 'Reply with just "OK".' }],
       maxTokens: 10,
     });
