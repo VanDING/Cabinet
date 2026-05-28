@@ -133,7 +133,9 @@ export function createStandardMemoryProvider(
           /* fall back to text search */
         }
       }
-      const results = await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
+      const results = isolated
+        ? await isolated.longTermSearch(query, RAG_LONGTERM_TOP_K, queryEmbedding)
+        : await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
       return results.map((r) => `[Memory] ${r.content}`);
     },
   };

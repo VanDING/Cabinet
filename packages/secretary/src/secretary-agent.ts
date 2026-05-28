@@ -120,14 +120,26 @@ export class SecretaryAgent {
       const specialistResult = await this.runSpecialist(targetAgent, message, sessionId);
       response = specialistResult.response;
 
-      // Post-route verification: check if specialist output matches the request
-      const verified = await this.verifyRoute(message, response, targetAgent);
-      if (!verified.matches && verified.correctAgent && verified.correctAgent !== targetAgent) {
-        // Store negative feedback for learning
-        await this.storeRouteFeedback(message, targetAgent, false, routingState?.lastRoute);
-        // Append routing hint instead of silently re-routing
-        response = `${response}\n\n---\n[系统提示：${targetAgent} 的输出可能未完全匹配您的请求。${verified.correctAgent} 可能更适合。如需要，请告诉我切换。]`;
-      } else if (feedback === 'positive') {
+      // Post-route verification: only for low-confidence routes, check if specialist output matches
+      if (routeResult.confidence < 0.6) {
+        const verified = await this.verifyRoute(message, response, targetAgent);
+        if (!verified.matches && verified.correctAgent && verified.correctAgent !== targetAgent) {
+          await this.storeRouteFeedback(message, targetAgent, false, routingState?.lastRoute);
+          // Auto re-dispatch to the suggested agent instead of just appending a note
+          try {
+            const reRoutedResult = await this.runSpecialist(
+              verified.correctAgent as AgentRoleType,
+              message,
+              sessionId,
+            );
+            response = reRoutedResult.response;
+            targetAgent = verified.correctAgent as AgentRoleType;
+          } catch {
+            response = `${response}\n\n---\n[系统提示：${targetAgent} 的输出可能未完全匹配您的请求。${verified.correctAgent} 可能更适合。如需要，请告诉我切换。]`;
+          }
+        }
+      }
+      if (feedback === 'positive') {
         await this.storeRouteFeedback(message, targetAgent, true, routingState?.lastRoute);
       }
 
@@ -299,12 +311,17 @@ If not, which single agent type would be more appropriate: secretary, meeting_ch
 Respond with ONLY a JSON object (no markdown, no backticks):
 {"matches": true or false, "correctAgent": "agentType or null"}`;
 
-      const result = await this.gateway.generateText({
-        model: 'claude-haiku-4-5',
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: 150,
-        temperature: 0.1,
-      });
+      const result = await Promise.race([
+        this.gateway.generateText({
+          model: 'claude-haiku-4-5',
+          messages: [{ role: 'user', content: prompt }],
+          maxTokens: 150,
+          temperature: 0.1,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Verification timeout')), 3000),
+        ),
+      ]);
 
       const match = result.content.match(/\{[\s\S]*\}/);
       if (!match) return { matches: true };
@@ -344,13 +361,23 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     originalMessage: string,
     specialistOutput: string,
   ): string {
+    const MAX_OUTPUT = 8000;
+    let outputSnippet: string;
+    if (specialistOutput.length <= MAX_OUTPUT) {
+      outputSnippet = specialistOutput;
+    } else {
+      const head = specialistOutput.slice(0, 5000);
+      const tail = specialistOutput.slice(-2500);
+      const omitted = specialistOutput.length - 5000 - 2500;
+      outputSnippet = `${head}\n\n[... ${omitted} chars omitted from middle ...]\n\n${tail}`;
+    }
     return [
       `The ${agentName} specialist has completed the following task for the Captain.`,
       ``,
       `Original request: "${originalMessage.slice(0, 300)}"`,
       ``,
       `[${agentName} output]`,
-      specialistOutput.slice(0, 8000),
+      outputSnippet,
       ``,
       `Please synthesize a clear, concise response for the Captain. Highlight key findings, decisions needed, and next steps. Do not mention the specialist agent unless relevant.`,
     ].join('\n');
@@ -375,12 +402,12 @@ Respond with ONLY a JSON object (no markdown, no backticks):
       'switch',
       'different',
     ];
+    // '继续' intentionally excluded — it means "continue", not feedback
     const positiveSignals = [
       '很好',
       '不错',
       '对的',
       '正确',
-      '继续',
       'perfect',
       'good',
       'great',
@@ -389,8 +416,22 @@ Respond with ONLY a JSON object (no markdown, no backticks):
       'exactly',
       'thanks',
     ];
-    if (negativeSignals.some((s) => lower.includes(s))) return 'negative';
-    if (positiveSignals.some((s) => lower.includes(s))) return 'positive';
+    const hasNegative = negativeSignals.some((s) => lower.includes(s));
+    const hasPositive = positiveSignals.some((s) => lower.includes(s));
+
+    // Both signals present = ambiguous, skip
+    if (hasNegative && hasPositive) return 'none';
+
+    if (!hasNegative && hasPositive) {
+      // Short acknowledgment (<15 chars) is likely real feedback
+      if (lower.length < 15) return 'positive';
+      // Longer messages: only treat as positive if no substantive query words are present
+      const substantiveWords = ['什么', '如何', '怎么', '为什么', '分析', '帮我', '方案', '项目', '代码'];
+      if (!substantiveWords.some((w) => lower.includes(w))) return 'positive';
+      return 'none';
+    }
+
+    if (hasNegative) return 'negative';
     return 'none';
   }
 
@@ -439,7 +480,7 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     } else if (lower.includes('会议') || lower.includes('讨论') || lower.includes('顾问')) {
       detectedIntent = 'meeting_request';
     } else if (lower.includes('流程') || lower.includes('workflow') || lower.includes('步骤')) {
-      detectedIntent = 'workflow_request';
+      detectedIntent = 'organize_request';
     } else if (lower.includes('组织') || lower.includes('设计') || lower.includes('架构')) {
       detectedIntent = 'organize_request';
     } else if (lower.includes('审查') || lower.includes('检查') || lower.includes('review')) {
@@ -449,7 +490,6 @@ Respond with ONLY a JSON object (no markdown, no backticks):
     const intentBased: Record<string, string> = {
       decision_request: 'secretary',
       meeting_request: 'secretary',
-      workflow_request: 'organize',
       organize_request: 'organize',
       review_request: 'secretary',
       status_query: 'secretary',

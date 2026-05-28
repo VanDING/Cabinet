@@ -195,6 +195,7 @@ export class AISDKAdapter implements LLMGateway {
       usage: {
         promptTokens: result.usage?.inputTokens ?? 0,
         completionTokens: result.usage?.outputTokens ?? 0,
+        cachedPromptTokens: (result.usage as any)?.inputTokenDetails?.cacheReadTokens ?? 0,
       },
       model: options.model,
     };
@@ -299,10 +300,14 @@ export class AISDKAdapter implements LLMGateway {
     } catch (e) {
       yield { type: 'error', content: (e as Error).message };
     }
-    let usage: { promptTokens: number; completionTokens: number } | undefined;
+    let usage: { promptTokens: number; completionTokens: number; cachedPromptTokens: number } | undefined;
     try {
       const u = await result.usage;
-      usage = { promptTokens: u?.inputTokens ?? 0, completionTokens: u?.outputTokens ?? 0 };
+      usage = {
+        promptTokens: u?.inputTokens ?? 0,
+        completionTokens: u?.outputTokens ?? 0,
+        cachedPromptTokens: (u as any)?.inputTokenDetails?.cacheReadTokens ?? 0,
+      };
     } catch {
       // usage not available for this provider/model
     }
@@ -396,8 +401,13 @@ export class AISDKAdapter implements LLMGateway {
       'zhipu',
       'baichuan',
     ];
+    // Check explicitly configured providers first
     for (const p of order) {
-      if (this.config[p]?.apiKey ?? process.env[`${p.toUpperCase()}_API_KEY`]) return p;
+      if (this.config[p]?.apiKey) return p;
+    }
+    // Fall back to environment variables (only if no config was passed)
+    for (const p of order) {
+      if (process.env[`${p.toUpperCase()}_API_KEY`]) return p;
     }
     return 'anthropic';
   }

@@ -69,6 +69,7 @@ export {
 } from './repositories/entity-memory-repo.js';
 export { CheckpointRepository } from './repositories/checkpoint-repo.js';
 export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
+export { RouteFeedbackRepository, type RouteFeedbackRow } from './repositories/route-feedback-repo.js';
 export {
   SYSTEM_KNOWLEDGE_BASE,
   syncSystemKnowledge,

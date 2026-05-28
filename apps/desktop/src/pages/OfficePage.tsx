@@ -284,7 +284,7 @@ export function OfficePage() {
         return (
           <StatCard
             label="Today's Cost"
-            value={`$${stats.todayCost.toFixed(2)}`}
+            value={`${stats.todayCost.toFixed(2)}`}
             color="text-blue-600"
             onClick={() => handleWidgetClick('today-cost')}
           />
@@ -473,7 +473,7 @@ export function OfficePage() {
             {expandedWidget === 'today-cost' && (
               <div className="space-y-3">
                 <div className="text-2xl font-bold text-blue-600">
-                  ${stats.todayCost.toFixed(2)}
+                  ¥{stats.todayCost.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-500">Total token consumption cost for today</p>
                 <div className="mt-3 space-y-2 border-t pt-3 dark:border-gray-700">
@@ -486,7 +486,7 @@ export function OfficePage() {
                         {c.model}
                       </span>
                       <span className="font-medium text-gray-800 dark:text-gray-200">
-                        ${c.cost.toFixed(2)}
+                        ¥{c.cost.toFixed(2)}
                       </span>
                     </div>
                   ))}

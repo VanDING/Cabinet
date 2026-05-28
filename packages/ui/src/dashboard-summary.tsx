@@ -22,7 +22,7 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
     },
     {
       label: "Today's Cost",
-      value: `$${stats.todayCost.toFixed(2)}`,
+      value: `${stats.todayCost.toFixed(2)}`,
       color: 'text-blue-600',
       target: null,
     },

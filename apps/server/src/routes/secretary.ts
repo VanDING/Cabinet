@@ -365,7 +365,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Decision write callbacks ──
     createDecision(input) {
       const id = `dec_${Date.now()}`;
-      return ctx.decisionService.create({
+      const decision = ctx.decisionService.create({
         id,
         projectId: input.projectId,
         type: input.type,
@@ -375,6 +375,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         classification: input.classification,
         captainId: input.captainId,
       }) as Decision;
+      if (decision.status === 'approved' && decision.captainId === 'system') {
+        ctx.logger.info('Decision auto-approved', {
+          decisionId: decision.id,
+          title: decision.title,
+          level: decision.level,
+        });
+      }
+      return decision;
     },
     approveDecision(decisionId, captainId, chosenOptionId) {
       return ctx.decisionService.approve(decisionId, captainId, chosenOptionId);
@@ -621,9 +629,11 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
       if (callerSessionId) {
         const session = ctx.sessionManager.get(callerSessionId);
         if (session && session.messages.length > 0) {
-          const recent = session.messages.slice(-5);
-          const history = recent.map((m) => `${m.role}: ${m.content.slice(0, 200)}`).join('\n');
-          augmentedMessage = `[Context from previous conversation]:\n${history}\n\n[Current task]: ${message}`;
+          const recent = session.messages.slice(-10);
+          const history = recent
+            .map((m) => `[${m.role}]: ${m.content.slice(0, 500)}`)
+            .join('\n');
+          augmentedMessage = `[Conversation history — use for context only. The current task follows after "---"]:\n${history}\n\n---\n\n[Current task]: ${message}`;
         }
       }
       const result = await loop.run(augmentedMessage);
@@ -752,6 +762,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     getSystemMetrics() {
       return ctx.metrics.getSummary();
+    },
+
+    generateEmbeddings: async (texts) => {
+      if (!ctx.gateway) throw new Error('No LLM gateway available');
+      const result = await ctx.gateway.generateEmbeddings({ texts });
+      return result.embeddings;
     },
 
     // ── File system callbacks ──
@@ -1822,7 +1838,7 @@ async function runMeeting(
             scopeDescription: topic,
             isCrossSession: false,
             optionCount: options.length,
-            estimatedCostUsd: 0,
+            estimatedCost: 0,
             involvesFunds: false,
             involvesPermissions: false,
             involvesDataDeletion: false,
@@ -1862,7 +1878,7 @@ async function runMeeting(
   return result;
 }
 
-// ── In-memory feedback store for route learning (cross-session) ──
+// ── Feedback store for route learning (in-memory cache + SQLite persistence) ──
 const routeFeedbackStore: {
   message: string;
   routedAgent: string;
@@ -1870,15 +1886,50 @@ const routeFeedbackStore: {
   timestamp: Date;
   previousRoute?: string;
 }[] = [];
+let feedbackStoreLoaded = false;
+
+function loadFeedbackStore(): void {
+  if (feedbackStoreLoaded) return;
+  try {
+    const ctx = getServerContext();
+    const rows = ctx.routeFeedbackRepo.findAll();
+    for (const row of rows) {
+      routeFeedbackStore.push({
+        message: row.message,
+        routedAgent: row.routed_agent,
+        correct: row.correct === 1,
+        timestamp: new Date(row.timestamp),
+        previousRoute: row.previous_route ?? undefined,
+      });
+    }
+  } catch {
+    /* best-effort: use empty cache if DB unavailable */
+  }
+  feedbackStoreLoaded = true;
+}
 
 const feedbackStore: FeedbackStore = {
   async store(feedback) {
+    loadFeedbackStore();
     routeFeedbackStore.push(feedback);
-    if (routeFeedbackStore.length > 1000) {
+    if (routeFeedbackStore.length > 5000) {
       routeFeedbackStore.shift();
+    }
+    // Persist to DB (fire-and-forget)
+    try {
+      const ctx = getServerContext();
+      ctx.routeFeedbackRepo.insert({
+        message: feedback.message,
+        routed_agent: feedback.routedAgent,
+        correct: feedback.correct,
+        previous_route: feedback.previousRoute,
+      });
+    } catch {
+      /* best-effort persist */
     }
   },
   async query(previousRoute, correct, limit = 10) {
+    loadFeedbackStore();
     const matches = routeFeedbackStore
       .filter((f) => f.previousRoute === previousRoute && f.correct === correct)
       .reduce(
@@ -2001,6 +2052,7 @@ function getAgentLoopForRole(
   const checkpointManager = new CheckpointManager(ctx.db);
   const rulesLoader = buildRulesLoader(projectRootPath);
   const loop = new AgentLoop({
+    costTracker: ctx.costTracker,
     gateway: ctx.gateway,
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
@@ -2084,6 +2136,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
   const checkpointManager = new CheckpointManager(ctx.db);
   const rulesLoader = buildRulesLoader();
   const loop = new AgentLoop({
+    costTracker: ctx.costTracker,
     gateway: ctx.gateway,
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(ctx.delegationTier),
@@ -2422,6 +2475,7 @@ function getOrCreateAgent(
     const checkpointManager = new CheckpointManager(ctx.db);
     const rulesLoader = buildRulesLoader(projectRootPath);
     secretaryLoop = new AgentLoop({
+    costTracker: ctx.costTracker,
       gateway: ctx.gateway!,
       toolExecutor: executor,
       safetyChecker: new SafetyChecker(ctx.delegationTier),
@@ -2474,10 +2528,14 @@ function getOrCreateAgent(
   intentParser.setAgentDescriptions(registry.describeForRouting());
   intentParser.setValidAgentTypes(registry.getValidAgentTypes());
   // Register custom agents for fallback routing by name/description match
-  const customAgents = new Map<string, string>();
+  const customAgents = new Map<string, { description: string; keywords?: string[]; aliases?: string[] }>();
   for (const role of registry.list()) {
     if (role.type === 'custom') {
-      customAgents.set(role.name, role.description);
+      customAgents.set(role.name, {
+        description: role.description,
+        keywords: role.keywords,
+        aliases: role.aliases,
+      });
     }
   }
   intentParser.setCustomAgents(customAgents);
@@ -2498,6 +2556,13 @@ function getOrCreateAgent(
     }
   } catch {
     /* preferences not available — routing works without */
+  }
+
+  // Warm up embeddings eagerly so the first request doesn't pay the latency cost
+  if (hasGateway) {
+    intentParser.warmupEmbeddings().catch(() => {
+      /* best-effort; fallback to keyword routing if it fails */
+    });
   }
 
   const agent = new SecretaryAgent(

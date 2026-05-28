@@ -139,7 +139,21 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       return { meetingId, topic, synthesis: '', perspectives: [] };
     },
     async writeLongTermMemory(content, metadata) {
-      return ctx.longTerm.store({ content, metadata: metadata ?? {}, timestamp: new Date() });
+      let embedding: number[] | undefined;
+      if (ctx.gateway) {
+        try {
+          const result = await ctx.gateway.generateEmbeddings({ texts: [content] });
+          embedding = result.embeddings[0];
+        } catch {
+          /* embedding generation failed — store without */
+        }
+      }
+      return ctx.longTerm.store({
+        content,
+        metadata: metadata ?? {},
+        embedding,
+        timestamp: new Date(),
+      });
     },
     createEmployee(_input) {},
     registerAgent(input) {
@@ -258,6 +272,11 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     },
     getSystemMetrics() {
       return ctx.metrics.getSummary();
+    },
+    generateEmbeddings: async (texts) => {
+      if (!ctx.gateway) throw new Error('No LLM gateway available');
+      const result = await ctx.gateway.generateEmbeddings({ texts });
+      return result.embeddings;
     },
     getWorkflowRun(runId) {
       const row = ctx.workflowRepo.findRunById(runId);
@@ -532,7 +551,7 @@ function getEngine(): WorkflowEngine {
           scopeDescription: 'Workflow human approval',
           isCrossSession: true,
           optionCount: 2,
-          estimatedCostUsd: 0,
+          estimatedCost: 0,
           involvesFunds: false,
           involvesPermissions: false,
           involvesDataDeletion: false,

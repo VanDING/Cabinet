@@ -55,7 +55,7 @@ describe('FallbackChain', () => {
       async generateText(options: LLMCallOptions): Promise<LLMResponse> {
         return {
           content: `Response from ${options.model}`,
-          usage: { promptTokens: 1, completionTokens: 1 },
+          usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 },
           model: options.model,
         };
       },
@@ -94,7 +94,7 @@ describe('FallbackChain', () => {
         }
         return {
           content: `Response from ${options.model}`,
-          usage: { promptTokens: 1, completionTokens: 1 },
+          usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 },
           model: options.model,
         };
       },

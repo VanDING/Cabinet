@@ -14,11 +14,23 @@ export class ShortTermMemory {
   private readonly defaultTtl = 30 * 60 * 1000;
   private readonly maxSize: number;
   private repo: ShortTermMemoryRepository | null;
+  private expireListeners: Array<(sessionId: string, key: string, value: unknown) => void> = [];
 
   constructor(db?: Database, maxSize = 1000) {
     this.repo = db ? new ShortTermMemoryRepository(db) : null;
     this.repo?.ensureTable();
     this.maxSize = maxSize;
+  }
+
+  /** Register a callback invoked when an entry expires via TTL. */
+  onExpire(fn: (sessionId: string, key: string, value: unknown) => void): void {
+    this.expireListeners.push(fn);
+  }
+
+  private notifyExpire(sessionId: string, key: string, value: unknown): void {
+    for (const fn of this.expireListeners) {
+      try { fn(sessionId, key, value); } catch { /* best-effort */ }
+    }
   }
 
   set(sessionId: string, key: string, value: unknown, ttl?: number): void {
@@ -70,6 +82,7 @@ export class ShortTermMemory {
       if (this.repo) {
         this.repo.delete(sessionId, key);
       }
+      this.notifyExpire(sessionId, key, entry.value);
       return null;
     }
 
@@ -90,6 +103,7 @@ export class ShortTermMemory {
         const ts = new Date(row.timestamp + 'Z').getTime();
         if (Date.now() - ts > (row.ttl ?? this.defaultTtl)) {
           this.repo.delete(sessionId, key);
+          this.notifyExpire(sessionId, key, null);
           return null;
         }
         const value = JSON.parse(row.value ?? 'null');

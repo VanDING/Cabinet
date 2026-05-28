@@ -76,7 +76,7 @@ decisionsRouter.post('/', async (c) => {
     ],
     classification: {
       scopeDescription: parsed.data.classification?.scopeDescription ?? parsed.data.title,
-      estimatedCostUsd: parsed.data.classification?.estimatedCost ?? 0,
+      estimatedCost: parsed.data.classification?.estimatedCost ?? 0,
       optionCount: parsed.data.options?.length ?? 2,
       isCrossSession: false,
       involvesFunds: false,

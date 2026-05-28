@@ -50,7 +50,7 @@ export interface ToolDependencies
       scopeDescription: string;
       isCrossSession: boolean;
       optionCount: number;
-      estimatedCostUsd: number;
+      estimatedCost: number;
       involvesFunds: boolean;
       involvesPermissions: boolean;
       involvesDataDeletion: boolean;
@@ -167,6 +167,8 @@ export interface ToolDependencies
     totalDecisions: number;
     errors: number;
   };
+
+  generateEmbeddings: (texts: string[]) => Promise<number[][]>;
 }
 
 export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
@@ -176,20 +178,35 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'query_decisions',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', description: 'Filter by status: pending, approved, rejected, expired, archived, or all (default: pending)' },
+          projectId: { type: 'string', description: 'Filter by project ID (omit for all projects)' },
+        },
+      },
       execute: async (args: Record<string, unknown>) => {
         const status = (args.status as string) ?? 'pending';
         const projectId = args.projectId as string | undefined;
-        const chairBrief = args.brief as string | undefined;
         if (projectId) {
           return deps.decisionStore
             .listByProject(projectId)
             .filter((d: Decision) => status === 'all' || d.status === status);
         }
-        return deps.decisionStore.listPending(projectId ?? 'all');
+        return status === 'all'
+          ? deps.decisionStore.listAll()
+          : deps.decisionStore.listAllPending();
       },
     },
     {
       name: 'get_decision',
+      parameters: {
+        type: 'object',
+        properties: {
+          decisionId: { type: 'string', description: 'ID of the decision to retrieve' },
+        },
+        required: ['decisionId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const id = args.decisionId as string;
         const decision = deps.decisionStore.get(id);
@@ -199,6 +216,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'get_decision_audit',
+      parameters: {
+        type: 'object',
+        properties: {
+          decisionId: { type: 'string', description: 'ID of the decision to get audit trail for' },
+        },
+        required: ['decisionId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const decisionId = args.decisionId as string;
         if (!decisionId) return { error: 'decisionId is required' };
@@ -212,6 +236,23 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'create_decision',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Decision title (short, actionable)' },
+          description: { type: 'string', description: 'Detailed description of what is being decided' },
+          type: { type: 'string', description: 'Decision type: strategic, technical, resource, or process (default: strategic)' },
+          projectId: { type: 'string', description: 'Project ID (default: "default")' },
+          options: { type: 'array', description: 'Array of {id, label, impact} option objects' },
+          scopeDescription: { type: 'string', description: 'Scope description for level classification' },
+          estimatedCost: { type: 'number', description: 'Estimated cost in RMB for level classification' },
+          involvesFunds: { type: 'boolean', description: 'Whether decision involves financial transactions' },
+          involvesPermissions: { type: 'boolean', description: 'Whether decision involves permission changes' },
+          involvesDataDeletion: { type: 'boolean', description: 'Whether decision involves data deletion' },
+          involvesOrgConfig: { type: 'boolean', description: 'Whether decision involves org-wide config changes' },
+        },
+        required: ['title'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const title = args.title as string;
         const description = (args.description as string) ?? '';
@@ -226,13 +267,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           scopeDescription: (args.scopeDescription as string) ?? description.slice(0, 200),
           isCrossSession: (args.isCrossSession as boolean) ?? false,
           optionCount: (args.optionCount as number) ?? options.length,
-          estimatedCostUsd: (args.estimatedCostUsd as number) ?? 0,
+          estimatedCost: (args.estimatedCost as number) ?? 0,
           involvesFunds: (args.involvesFunds as boolean) ?? false,
           involvesPermissions: (args.involvesPermissions as boolean) ?? false,
           involvesDataDeletion: (args.involvesDataDeletion as boolean) ?? false,
           involvesOrgConfig: (args.involvesOrgConfig as boolean) ?? false,
         };
-        return deps.createDecision({
+        const result = deps.createDecision({
           projectId,
           type,
           title,
@@ -241,10 +282,26 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           classification,
           captainId,
         });
+        // Link decision to project context so it appears in get_project_context
+        try {
+          deps.project.addDecision(projectId, title, `Decision created (${type})`);
+        } catch {
+          /* best-effort: project context linking is non-critical */
+        }
+        return result;
       },
     },
     {
       name: 'approve_decision',
+      parameters: {
+        type: 'object',
+        properties: {
+          decisionId: { type: 'string', description: 'ID of the decision to approve' },
+          chosenOptionId: { type: 'string', description: 'ID of the chosen option' },
+          captainId: { type: 'string', description: 'ID of the Captain approving (default: current user)' },
+        },
+        required: ['decisionId', 'chosenOptionId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const decisionId = args.decisionId as string;
         const captainId = (args.captainId as string) ?? DEFAULT_CAPTAIN_ID;
@@ -257,6 +314,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'reject_decision',
+      parameters: {
+        type: 'object',
+        properties: {
+          decisionId: { type: 'string', description: 'ID of the decision to reject' },
+          captainId: { type: 'string', description: 'ID of the Captain rejecting (default: current user)' },
+        },
+        required: ['decisionId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const decisionId = args.decisionId as string;
         const captainId = (args.captainId as string) ?? DEFAULT_CAPTAIN_ID;
@@ -303,6 +368,16 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'remember',
+      parameters: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', description: 'Session ID for scoping this memory' },
+          key: { type: 'string', description: 'Key to store the value under' },
+          value: { description: 'The value to remember (any JSON-compatible value)' },
+          ttlMs: { type: 'integer', description: 'Optional time-to-live in milliseconds' },
+        },
+        required: ['sessionId', 'key', 'value'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const sessionId = args.sessionId as string;
         const key = args.key as string;
@@ -314,6 +389,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     {
       name: 'recall',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string', description: 'Session ID to recall from' },
+          key: { type: 'string', description: 'Specific key to recall, or omit to get all keys' },
+        },
+        required: ['sessionId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const sessionId = args.sessionId as string;
         const key = args.key as string | undefined;
@@ -327,10 +410,25 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     {
       name: 'search_memory',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Natural language search query for long-term memory' },
+          limit: { type: 'integer', description: 'Maximum number of results (default 5)', default: 5 },
+        },
+        required: ['query'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
         const limit = (args.limit as number) ?? 5;
-        const results = await deps.longTerm.search(query, limit);
+        let queryEmbedding: number[] | undefined;
+        try {
+          const embeddings = await deps.generateEmbeddings([query]);
+          queryEmbedding = embeddings[0];
+        } catch {
+          /* fall back to text-only search */
+        }
+        const results = await deps.longTerm.search(query, limit, queryEmbedding);
         return results.map((r) => ({
           content: r.content,
           timestamp: r.timestamp,
@@ -340,6 +438,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'write_memory',
+      parameters: {
+        type: 'object',
+        properties: {
+          content: { type: 'string', description: 'Memory content to store (minimum 10 characters)' },
+          metadata: { type: 'object', description: 'Optional metadata key-value pairs attached to the memory' },
+        },
+        required: ['content'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const content = args.content as string;
         const metadata = (args.metadata as Record<string, unknown>) ?? {};
@@ -352,6 +458,16 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'update_memory',
+      parameters: {
+        type: 'object',
+        properties: {
+          memoryId: { type: 'string', description: 'ID of the memory entry to update' },
+          status: { type: 'string', description: 'New status value (e.g. "superseded", "archived")' },
+          importance: { type: 'number', description: 'Importance score for decay weighting' },
+          confidence: { type: 'number', description: 'Confidence score for the stored fact' },
+        },
+        required: ['memoryId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const memoryId = args.memoryId as string;
         const status = args.status as string | undefined;
@@ -368,6 +484,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'delete_memory',
+      parameters: {
+        type: 'object',
+        properties: {
+          memoryId: { type: 'string', description: 'ID of the memory entry to delete' },
+        },
+        required: ['memoryId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const memoryId = args.memoryId as string;
         if (!memoryId) return { error: 'memoryId is required' };
@@ -381,6 +504,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'get_project_context',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID to retrieve context for' },
+          brief: { type: 'string', description: 'Optional Chair brief/description for context' },
+        },
+        required: ['projectId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
         const chairBrief = args.brief as string | undefined;
@@ -396,6 +527,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'add_milestone',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID (defaults to "default")' },
+          title: { type: 'string', description: 'Milestone title text' },
+        },
+        required: ['title'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = (args.projectId as string) ?? 'default';
         const title = args.title as string;
@@ -406,6 +545,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'update_project_summary',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID (defaults to "default")' },
+          summary: { type: 'string', description: 'Updated project summary text' },
+        },
+        required: ['summary'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = (args.projectId as string) ?? 'default';
         const summary = args.summary as string;
@@ -640,11 +787,22 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'set_project_context',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID to set as active context' },
+          brief: { type: 'string', description: 'Optional Chair brief describing the current task or focus' },
+        },
+        required: ['projectId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
         const chairBrief = args.brief as string | undefined;
         if (!projectId) return { error: 'projectId is required' };
         const result = deps.setProjectContext(projectId);
+        if (chairBrief) {
+          deps.project.updateSummary(projectId, chairBrief);
+        }
         return { activeProject: result };
       },
     },
@@ -696,6 +854,18 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       name: 'get_dashboard_stats',
       execute: async (_args: Record<string, unknown>) => {
         return deps.getDashboardStats();
+      },
+    },
+
+    {
+      name: 'get_memory_stats',
+      execute: async (_args: Record<string, unknown>) => {
+        const shortTermCount = deps.shortTerm.size?.() ?? 0;
+        const longTermCount = (deps.longTerm as any).size?.() ?? 0;
+        return {
+          shortTerm: { count: shortTermCount },
+          longTerm: { count: longTermCount },
+        };
       },
     },
 
@@ -822,6 +992,36 @@ export function registerSkillTools(executor: ToolExecutor): ToolExecutor {
       if (!skill) return { error: `Skill not found: ${skillName}` };
       const result = await registry.executeSkill(skill, args);
       return result;
+    },
+  });
+
+  // Register update_skill for in-place skill modification
+  executor.register({
+    name: 'update_skill',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Name of the skill to update' },
+        description: { type: 'string', description: 'Updated description' },
+        promptTemplate: { type: 'string', description: 'Updated instruction body (Markdown)' },
+        kind: { type: 'string', description: 'Updated kind: tool, prompt, or composite' },
+      },
+      required: ['name'],
+    },
+    execute: async (args: Record<string, unknown>) => {
+      const skillName = args.name as string;
+      if (!skillName) return { error: 'name is required' };
+      const existing = registry.load(skillName);
+      if (!existing) return { error: `Skill not found: ${skillName}` };
+      const updated = {
+        ...existing,
+        description: (args.description as string) ?? existing.description,
+        promptTemplate: (args.promptTemplate as string) ?? existing.promptTemplate,
+        kind: (args.kind as 'tool' | 'prompt' | 'composite') ?? existing.kind,
+        version: existing.version + 1,
+      };
+      registry.register(updated);
+      return { updated: true, name: skillName, version: updated.version };
     },
   });
 

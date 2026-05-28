@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import {
-  DAILY_BUDGET_USD,
-  WEEKLY_BUDGET_USD,
-  MONTHLY_BUDGET_USD,
+  DAILY_BUDGET,
+  WEEKLY_BUDGET,
+  MONTHLY_BUDGET,
   MessageType,
 } from '@cabinet/types';
 
@@ -178,6 +178,6 @@ dashboardRouter.get('/cost-history', (c) => {
     history,
     dailyCost: costTracker.getDailyCost(),
     budgetStatus,
-    limits: { daily: DAILY_BUDGET_USD, weekly: WEEKLY_BUDGET_USD, monthly: MONTHLY_BUDGET_USD },
+    limits: { daily: DAILY_BUDGET, weekly: WEEKLY_BUDGET, monthly: MONTHLY_BUDGET },
   });
 });

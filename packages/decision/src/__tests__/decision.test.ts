@@ -47,7 +47,7 @@ describe('LevelClassifier', () => {
     scopeDescription: 'test',
     isCrossSession: false,
     optionCount: 1,
-    estimatedCostUsd: 0,
+    estimatedCost: 0,
     involvesFunds: false,
     involvesPermissions: false,
     involvesDataDeletion: false,
@@ -59,7 +59,7 @@ describe('LevelClassifier', () => {
   });
 
   it('classifies L3 for high cost', () => {
-    expect(classifier.classify({ ...baseInput, estimatedCostUsd: 2.0 })).toBe('L3');
+    expect(classifier.classify({ ...baseInput, estimatedCost: 2.0 })).toBe('L3');
   });
 
   it('classifies L2 for cross-session', () => {
@@ -67,7 +67,7 @@ describe('LevelClassifier', () => {
   });
 
   it('classifies L1 for low-risk within session', () => {
-    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCostUsd: 0.05 })).toBe(
+    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCost: 0.05 })).toBe(
       'L1',
     );
   });
@@ -83,6 +83,8 @@ describe('DecisionService tier awareness', () => {
     get: () => null,
     listByProject: () => [],
     listPending: () => [],
+    listAll: () => [],
+    listAllPending: () => [],
   };
 
   function createService(tier: DelegationTier) {
@@ -108,7 +110,7 @@ describe('DecisionService tier awareness', () => {
       scopeDescription: 'test',
       isCrossSession: false,
       optionCount: 1,
-      estimatedCostUsd: 0,
+      estimatedCost: 0,
       involvesFunds: false,
       involvesPermissions: false,
       involvesDataDeletion: false,
@@ -156,7 +158,7 @@ describe('DecisionService tier awareness', () => {
     const svc = createService(DelegationTier.StrategicGuard);
     const decision = svc.create({
       ...baseInput,
-      classification: { ...baseInput.classification, estimatedCostUsd: 0.05, optionCount: 2 },
+      classification: { ...baseInput.classification, estimatedCost: 0.05, optionCount: 2 },
     });
     expect(decision.status).toBe('approved');
     expect(decision.captainId).toBe('system');

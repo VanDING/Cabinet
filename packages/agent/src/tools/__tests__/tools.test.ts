@@ -20,6 +20,12 @@ class MockDecisionStore implements DecisionStore {
   listPending(_projectId: string): Decision[] {
     return [...this.decisions.values()].filter((d) => d.status === 'pending');
   }
+  listAll(_opts?: { limit?: number }): Decision[] {
+    return [...this.decisions.values()];
+  }
+  listAllPending(_opts?: { limit?: number }): Decision[] {
+    return [...this.decisions.values()].filter((d) => d.status === 'pending');
+  }
 }
 
 describe('Cabinet Tools', () => {
@@ -262,7 +268,7 @@ describe('Cabinet Tools', () => {
   });
 
   it('registers 42 tools', () => {
-    expect(executor.listTools()).toHaveLength(75);
+    expect(executor.listTools()).toHaveLength(76);
   });
 
   it('remember and recall work together', async () => {
