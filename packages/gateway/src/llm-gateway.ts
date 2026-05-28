@@ -25,6 +25,8 @@ export interface LLMResponse {
   usage: {
     promptTokens: number;
     completionTokens: number;
+    /** Number of prompt tokens served from cache (billed at lower rate). */
+    cachedPromptTokens: number;
   };
   model: string;
 }
@@ -41,7 +43,7 @@ export interface StreamChunk {
   toolCall?: { name: string; args: Record<string, unknown>; id: string };
   toolResult?: { name: string; result: unknown; id: string };
   /** Token usage, populated on 'done' chunks. */
-  usage?: { promptTokens: number; completionTokens: number };
+  usage?: { promptTokens: number; completionTokens: number; cachedPromptTokens: number };
   /** Number of LLM tool rounds consumed, populated on 'done' chunks. */
   steps?: number;
 }

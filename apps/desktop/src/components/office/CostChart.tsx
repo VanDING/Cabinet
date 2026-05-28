@@ -165,7 +165,7 @@ export function CostChart() {
                       return (
                         <div
                           key={model}
-                          title={`${model}: $${modelCost.toFixed(3)}`}
+                          title={`${model}: ${modelCost.toFixed(3)}`}
                           style={{
                             height: `${Math.max((modelCost / maxCost) * 100, 2)}%`,
                             backgroundColor: modelColor(model, mi),

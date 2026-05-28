@@ -7,7 +7,7 @@ class MockLLMGateway implements LLMGateway {
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
     return {
       content: `Mock response to: ${options.messages[options.messages.length - 1]?.content ?? ''}`,
-      usage: { promptTokens: 10, completionTokens: 5 },
+      usage: { promptTokens: 10, completionTokens: 5, cachedPromptTokens: 0 },
       model: options.model,
     };
   }

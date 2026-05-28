@@ -110,6 +110,8 @@ export interface SkillDefinition {
   promptTemplate: string;
   version: number;
   status: SkillStatus;
+  /** Names of other skills this skill depends on. */
+  dependencies?: string[];
 }
 
 // ── Workflow (Declarative, LLM-friendly) ──

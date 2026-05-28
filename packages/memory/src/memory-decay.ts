@@ -21,7 +21,16 @@ export class MemoryDecayService {
 
   async runDecayCycle(): Promise<DecayResult> {
     const now = new Date();
-    const results = await this.longTerm.search('', 10_000); // load all active entries
+    // Use explicit text search (LIKE '%%' matches all) instead of relying on
+    // the empty-string FTS5 fallback path.
+    const allRows = this.longTerm.searchByText('', 10_000);
+    const results = allRows.map((r) => ({
+      id: r.id,
+      content: r.content,
+      embedding: r.embedding ? (() => { try { return JSON.parse(r.embedding); } catch { return undefined; } })() : undefined,
+      metadata: (() => { try { return JSON.parse(r.metadata ?? '{}') as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })(),
+      timestamp: new Date(r.timestamp),
+    }));
     let expired = 0;
     let archived = 0;
     let superseded = 0;

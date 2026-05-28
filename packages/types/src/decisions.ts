@@ -74,6 +74,8 @@ export interface Decision {
   chosenOptionId?: string;
   captainId?: string;
   analysis?: string;
+  /** ID of a previous rejected/expired decision this one supersedes (enables decision chains). */
+  parentId?: string;
   createdAt: Date;
   resolvedAt?: Date;
 }
@@ -84,4 +86,6 @@ export interface DecisionStore {
   get(id: string): Decision | null;
   listByProject(projectId: string): Decision[];
   listPending(projectId: string): Decision[];
+  listAll(opts?: { limit?: number }): Decision[];
+  listAllPending(opts?: { limit?: number }): Decision[];
 }

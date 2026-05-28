@@ -83,8 +83,8 @@ export class DeadLetterQueue {
             entry.messageType,
             entry.failedAt,
           );
-      } catch {
-        /* persistence failure is non-fatal */
+      } catch (e) {
+        console.warn('[DeadLetterQueue] Failed to persist enqueue:', (e as Error).message);
       }
     }
   }
@@ -115,8 +115,8 @@ export class DeadLetterQueue {
           this.db
             .prepare('UPDATE dead_letter_queue SET retry_count = ?, last_retry_at = ? WHERE id = ?')
             .run(entry.retryCount, entry.lastRetryAt, id);
-        } catch {
-          /* non-fatal */
+        } catch (e) {
+          console.warn('[DeadLetterQueue] Failed to persist retry update:', (e as Error).message);
         }
       }
       return false;
@@ -140,8 +140,8 @@ export class DeadLetterQueue {
     if (this.db) {
       try {
         this.db.prepare('DELETE FROM dead_letter_queue WHERE id = ?').run(id);
-      } catch {
-        /* non-fatal */
+      } catch (e) {
+        console.warn('[DeadLetterQueue] Failed to persist purge:', (e as Error).message);
       }
     }
   }
@@ -151,8 +151,8 @@ export class DeadLetterQueue {
     if (this.db) {
       try {
         this.db.prepare('DELETE FROM dead_letter_queue').run();
-      } catch {
-        /* non-fatal */
+      } catch (e) {
+        console.warn('[DeadLetterQueue] Failed to persist purgeAll:', (e as Error).message);
       }
     }
   }

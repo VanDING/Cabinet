@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import type { HierarchicalNSW as HierarchicalNSWType } from 'hnswlib-node';
-import { LongTermMemoryRepository, type Database } from '@cabinet/storage';
+import { LongTermMemoryRepository, type Database, type LongTermMemoryRow } from '@cabinet/storage';
 
 const req = typeof require !== 'undefined' ? require : createRequire(import.meta.url);
 
@@ -64,6 +64,7 @@ export class LongTermMemory {
     confidence: number;
     newMemoryId: string;
   }) => void;
+  private readonly MAX_LONGTERM_ENTRIES = 500_000;
 
   constructor(db: Database, dimension = DEFAULT_DIMENSION, indexPath?: string) {
     this.repo = new LongTermMemoryRepository(db);
@@ -136,6 +137,24 @@ export class LongTermMemory {
   async store(entry: Omit<LongTermEntry, 'id'>): Promise<string> {
     const id = `ltm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+    // ── Populate knowledge graph with extracted entities ──
+    if (this.knowledgeGraph) {
+      // Match English capitalized phrases and Chinese/Unicode words (2+ chars)
+      const entityPattern = /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{2,}/gu;
+      const matches = entry.content.match(entityPattern) ?? [];
+      const seen = new Set<string>();
+      for (const name of matches) {
+        if (name.length > 2 && !seen.has(name.toLowerCase())) {
+          seen.add(name.toLowerCase());
+          try {
+            this.knowledgeGraph.addEntity(name, 'concept', { source: 'memory_store' });
+          } catch {
+            /* best-effort entity extraction */
+          }
+        }
+      }
+    }
+
     // ── Contradiction detection (Phase 4.2) ──
     if (this.knowledgeGraph) {
       const conflicts = this.knowledgeGraph.detectContradictions(entry.content);
@@ -187,7 +206,59 @@ export class LongTermMemory {
       }
     }
 
+    // Prune if over capacity (every 1000th insert to amortize cost)
+    const count = this.repo.count();
+    if (count > this.MAX_LONGTERM_ENTRIES && count % 1000 < 50) {
+      this.pruneExcess();
+    }
+
     return id;
+  }
+
+  /** Remove lowest-scoring entries when over capacity. Expired/archived entries are removed first unconditionally. */
+  private pruneExcess(): void {
+    try {
+      // Phase 1: Remove all expired/archived entries
+      const rows = this.repo.findAll();
+      const expiredIds: string[] = [];
+      const scored: { id: string; score: number }[] = [];
+
+      for (const row of rows) {
+        const meta = (() => { try { return JSON.parse(row.metadata ?? '{}'); } catch { return {}; } })();
+        const status = meta.status as string | undefined;
+        if (status === 'expired' || status === 'archived') {
+          expiredIds.push(row.id);
+        } else {
+          const timestamp = new Date(row.timestamp);
+          // Reuse MemoryDecayService.score if available, otherwise simple recency
+          const ageDays = (Date.now() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
+          const importance = (meta.importance as number) ?? 0.5;
+          const confidence = (meta.confidence as number) ?? 0.5;
+          const accessCount = (meta.accessCount as number) ?? 0;
+          const recencyDecay = Math.exp(-ageDays / 30);
+          const accessBoost = 1 + Math.log1p(accessCount);
+          scored.push({ id: row.id, score: importance * confidence * recencyDecay * accessBoost });
+        }
+      }
+
+      // Delete expired/archived unconditionally
+      for (const id of expiredIds) {
+        this.delete(id);
+      }
+
+      // Prune lowest-scoring entries if still over limit
+      const remaining = scored.length;
+      const target = Math.floor(this.MAX_LONGTERM_ENTRIES * 0.9);
+      if (remaining > target) {
+        scored.sort((a, b) => a.score - b.score);
+        const toDelete = scored.slice(0, remaining - target);
+        for (const { id } of toDelete) {
+          this.delete(id);
+        }
+      }
+    } catch {
+      /* best-effort pruning */
+    }
   }
 
   /**
@@ -202,6 +273,8 @@ export class LongTermMemory {
       const semantic = await this.semanticSearch(queryEmbedding, limit * 2);
       for (let i = 0; i < semantic.length; i++) {
         const r = semantic[i]!;
+        const status = r.metadata.status as string | undefined;
+        if (status === 'expired' || status === 'archived') continue;
         semanticResults.push({
           entry: {
             id: r.id,
@@ -311,6 +384,11 @@ export class LongTermMemory {
     } catch {
       return false;
     }
+  }
+
+  /** Text-only search (LIKE) — bypasses BM25/FTS5. Safe for empty-string queries. */
+  searchByText(query: string, limit: number): LongTermMemoryRow[] {
+    return this.repo.searchByText(query, limit);
   }
 
   /** Synchronous metadata update (for decay service internal use). */

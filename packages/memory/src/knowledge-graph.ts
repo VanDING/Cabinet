@@ -284,10 +284,11 @@ export class KnowledgeGraph {
   private extractCandidateEntities(text: string): string[] {
     const seen = new Set<string>();
     const results: string[] = [];
-    // Match capitalized phrases and quoted terms as likely entities
+    // Match capitalized phrases, quoted terms, and Unicode words (Chinese/Japanese) as likely entities
     const capitalized = text.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) ?? [];
+    const unicode = text.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{2,}/gu) ?? [];
     const quoted = text.match(/"([^"]{2,50})"/g) ?? [];
-    for (const raw of [...capitalized, ...quoted]) {
+    for (const raw of [...capitalized, ...unicode, ...quoted]) {
       const name = raw.replace(/^"|"$/g, '').trim();
       if (name.length > 2 && !seen.has(name.toLowerCase())) {
         seen.add(name.toLowerCase());

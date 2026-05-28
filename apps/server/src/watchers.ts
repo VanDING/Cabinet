@@ -336,3 +336,89 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
     deps.logger.info('Agent filesystem watcher stopped');
   };
 }
+
+// ── Project filesystem watcher ──────────────────────────────────
+
+interface ProjectWatcherDeps {
+  logger: { info(msg: string, meta?: Record<string, unknown>): void };
+}
+
+/** Watch ~/.cabinet/projects/ for new/removed project files and broadcast changes. */
+export function startProjectWatcher(
+  dataDir: string,
+  deps: ProjectWatcherDeps,
+): () => void {
+  const projectsDir = join(dataDir, 'projects');
+
+  if (!existsSync(projectsDir)) return () => {};
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const scan = () => {
+    try {
+      const files = readdirSync(projectsDir).filter((f) => f.endsWith('.json'));
+      deps.logger.info('Project directory change detected', { fileCount: files.length });
+      broadcast('project_dir_changed', { dir: projectsDir, fileCount: files.length });
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  const debouncedScan = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(scan, 500);
+  };
+
+  const watcher = watch(projectsDir, { recursive: false }, (_eventType, _filename) => {
+    debouncedScan();
+  });
+
+  deps.logger.info('Project filesystem watcher started', { dir: projectsDir });
+
+  return () => {
+    watcher.close();
+    deps.logger.info('Project filesystem watcher stopped');
+  };
+}
+
+// ── Rules filesystem watcher ────────────────────────────────────
+
+interface RulesWatcherDeps {
+  reloadRules: () => void;
+  logger: { info(msg: string, meta?: Record<string, unknown>): void };
+}
+
+/** Watch ~/.cabinet/rules/ for changes and auto-reload agent rules. */
+export function startRulesWatcher(
+  dataDir: string,
+  deps: RulesWatcherDeps,
+): () => void {
+  const rulesDir = join(dataDir, 'rules');
+
+  if (!existsSync(rulesDir)) return () => {};
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const debouncedReload = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      try {
+        deps.reloadRules();
+        deps.logger.info('Rules reloaded from directory change');
+      } catch (e: any) {
+        deps.logger.info('Rules reload failed', { error: e.message });
+      }
+    }, 500);
+  };
+
+  const watcher = watch(rulesDir, { recursive: true }, (_eventType, _filename) => {
+    debouncedReload();
+  });
+
+  deps.logger.info('Rules filesystem watcher started', { dir: rulesDir });
+
+  return () => {
+    watcher.close();
+    deps.logger.info('Rules filesystem watcher stopped');
+  };
+}

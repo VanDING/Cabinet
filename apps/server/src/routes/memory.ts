@@ -196,6 +196,27 @@ memoryRouter.get('/graph', (c) => {
   }
 });
 
+// GET /api/memory/stats — memory health statistics across layers
+memoryRouter.get('/stats', (c) => {
+  const { shortTerm, longTerm, entity, project, logger } = getServerContext();
+  try {
+    const shortTermCount = (shortTerm as any).size?.() ?? 0;
+    const longTermCount = (longTerm as any).size?.() ?? 0;
+    const entityCount = (entity as any).size?.() ?? 0;
+    const decayResult = { lastRun: (memoryRouter as any)._lastDecayResult };
+
+    return c.json({
+      shortTerm: { count: shortTermCount },
+      longTerm: { count: longTermCount },
+      entity: { count: entityCount },
+      decay: decayResult,
+    });
+  } catch (err) {
+    logger.warn('Memory stats query failed', { error: (err as Error).message });
+    return c.json({ error: 'Failed to retrieve memory stats' }, 500);
+  }
+});
+
 // Helper: get tracked session IDs from ShortTermMemory
 function getAllSessionIds(shortTerm: any): string[] {
   try {

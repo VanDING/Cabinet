@@ -56,6 +56,15 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'read_file',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file to read' },
+          offset: { type: 'integer', description: 'Line number to start reading from' },
+          limit: { type: 'integer', description: 'Maximum number of lines to read' },
+        },
+        required: ['path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         if (!filePath) return { error: 'path is required' };
@@ -79,6 +88,15 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       name: 'write_file',
       description:
         'Create a new file or overwrite an existing one. Set overwrite: false to prevent accidental overwrites.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file to write' },
+          content: { type: 'string', description: 'Content to write to the file' },
+          overwrite: { type: 'boolean', description: 'Whether to overwrite if file exists (default: true)' },
+        },
+        required: ['path', 'content'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const content = args.content as string;
@@ -104,6 +122,16 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       name: 'edit_file',
       description:
         'Replace old_string with new_string in a file. Use replace_all: true to replace all occurrences.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file to edit' },
+          old_string: { type: 'string', description: 'Exact text to find and replace' },
+          new_string: { type: 'string', description: 'Replacement text' },
+          replace_all: { type: 'boolean', description: 'Replace all occurrences (default: false)' },
+        },
+        required: ['path', 'old_string', 'new_string'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const oldString = args.old_string as string;
@@ -126,6 +154,14 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       name: 'apply_patch',
       description:
         'Apply a unified diff patch to a file. The diff header (--- a/path, +++ b/path) identifies the target file.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the target file' },
+          diff: { type: 'string', description: 'Unified diff patch to apply' },
+        },
+        required: ['path', 'diff'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const diff = args.diff as string;
@@ -146,6 +182,14 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'move_file',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Source file path' },
+          destination: { type: 'string', description: 'Destination file path' },
+        },
+        required: ['source', 'destination'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const source = args.source as string;
         const destination = args.destination as string;
@@ -161,6 +205,14 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'copy_file',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Source file path' },
+          destination: { type: 'string', description: 'Destination file path' },
+        },
+        required: ['source', 'destination'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const source = args.source as string;
         const destination = args.destination as string;
@@ -176,6 +228,13 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'make_directory',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path of the directory to create' },
+        },
+        required: ['path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const dirPath = args.path as string;
         if (!dirPath) return { error: 'path is required' };
@@ -190,6 +249,13 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'file_info',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file or directory to inspect' },
+        },
+        required: ['path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         if (!filePath) return { error: 'path is required' };
@@ -204,6 +270,12 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'list_directory',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the directory to list (default: ".")' },
+        },
+      },
       execute: async (args: Record<string, unknown>) => {
         const dirPath = (args.path as string) ?? '.';
         try {
@@ -217,6 +289,15 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'glob',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: { type: 'string', description: 'Glob pattern to match files (e.g. "**/*.ts")' },
+          path: { type: 'string', description: 'Directory to search in (default: workspace root)' },
+          max_depth: { type: 'integer', description: 'Maximum recursion depth' },
+        },
+        required: ['pattern'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const pattern = args.pattern as string;
         if (!pattern) return { error: 'pattern is required' };
@@ -233,6 +314,16 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     {
       name: 'grep',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: { type: 'string', description: 'Regular expression to search for in file contents' },
+          path: { type: 'string', description: 'Directory to search in (default: workspace root)' },
+          include: { type: 'string', description: 'Glob pattern to filter files (e.g. "*.ts")' },
+          max_depth: { type: 'integer', description: 'Maximum recursion depth' },
+        },
+        required: ['pattern'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const pattern = args.pattern as string;
         if (!pattern) return { error: 'pattern is required' };
@@ -252,6 +343,12 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       description:
         'List recently accessed files in the current workspace. Useful for understanding what files are being worked on.',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', description: 'Maximum number of recent files to return (default: 20)' },
+        },
+      },
       execute: async (args: Record<string, unknown>) => {
         const limit = (args.limit as number) ?? 20;
         try {
@@ -267,6 +364,14 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       description:
         'Watch a file for changes. Returns when the file is modified or the timeout is reached. Useful after running build commands to wait for output files.',
       timeoutMs: 30000,
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file to watch for changes' },
+          timeout_ms: { type: 'integer', description: 'Maximum time to wait in milliseconds (default: 30000)' },
+        },
+        required: ['path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const timeoutMs = (args.timeout_ms as number) ?? 30000;
@@ -283,6 +388,15 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       name: 'index_project',
       description:
         'Scan and index all source files in a project directory for semantic search. Call this after attaching a project for the first time, or use force: true to re-index.',
+      parameters: {
+        type: 'object',
+        properties: {
+          project_id: { type: 'string', description: 'Project ID to associate the index with' },
+          root_path: { type: 'string', description: 'Absolute path to the project root directory' },
+          force: { type: 'boolean', description: 'Force re-index even if already indexed' },
+        },
+        required: ['project_id', 'root_path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.project_id as string;
         const rootPath = args.root_path as string;
@@ -299,6 +413,13 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
     },
     {
       name: 'delete_file',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Absolute path to the file to delete' },
+        },
+        required: ['path'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         if (!filePath) return { error: 'path is required' };

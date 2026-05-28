@@ -4,7 +4,7 @@ export interface ClassificationInput {
   scopeDescription: string;
   isCrossSession: boolean;
   optionCount: number;
-  estimatedCostUsd: number;
+  estimatedCost: number;
   involvesFunds: boolean;
   involvesPermissions: boolean;
   involvesDataDeletion: boolean;
@@ -13,7 +13,7 @@ export interface ClassificationInput {
 
 export class LevelClassifier {
   classify(input: ClassificationInput): string {
-    const totalCost = Math.abs(input.estimatedCostUsd);
+    const totalCost = Math.abs(input.estimatedCost);
 
     // L3: funds, permissions, data deletion, org config, or high cost
     if (

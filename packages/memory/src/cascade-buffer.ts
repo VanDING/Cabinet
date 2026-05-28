@@ -39,6 +39,14 @@ export class CascadeBuffer {
     return this.buffers.get(`${sessionId}:${topic}`) ?? [];
   }
 
+  /** Restore buffer entries from short-term storage after a restart. */
+  restoreFromShortTerm(sessionId: string, topic: string, entries: CascadeEntry[]): void {
+    const key = `${sessionId}:${topic}`;
+    if (!this.buffers.has(key)) {
+      this.buffers.set(key, entries);
+    }
+  }
+
   /** Check whether the buffer should be sealed. */
   shouldSeal(
     sessionId: string,

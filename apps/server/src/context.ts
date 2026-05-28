@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
-import { startSkillWatcher, startAgentWatcher } from './watchers.js';
+import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher } from './watchers.js';
 import {
   createConnection,
   runMigrations,
@@ -31,6 +31,7 @@ import {
   SystemKnowledgeRepository,
   syncSystemKnowledge,
   SYSTEM_KNOWLEDGE_BASE,
+  RouteFeedbackRepository,
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import {
@@ -50,7 +51,7 @@ import {
   KnowledgeGraph,
   MemoryDecayService,
 } from '@cabinet/memory';
-import { MemoryEventBus } from '@cabinet/events';
+import { SqliteEventStore } from '@cabinet/events';
 import { SessionManager } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
@@ -60,7 +61,7 @@ import {
   DEFAULT_CAPTAIN_ID,
   DEFAULT_CAPTAIN_NAME,
   MessageType,
-  DAILY_BUDGET_USD,
+  DAILY_BUDGET,
 } from '@cabinet/types';
 import {
   AgentRoleRegistry,
@@ -115,6 +116,7 @@ export interface ServerContext {
   sessionMetricsRepo: SessionMetricsRepository;
   settingsRepo: SettingsRepository;
   systemKnowledgeRepo: SystemKnowledgeRepository;
+  routeFeedbackRepo: RouteFeedbackRepository;
   // Decision service
   decisionService: DecisionService;
   // Memory
@@ -154,7 +156,7 @@ export interface ServerContext {
   // Subconscious loop
   subconsciousLoop: SubconsciousLoop;
   // Infrastructure
-  eventBus: MemoryEventBus;
+  eventBus: import('@cabinet/events').EventBus;
   metrics: MetricsCollector;
   logger: ReturnType<typeof getLogger>;
   backupManager: BackupManager | null;
@@ -226,6 +228,31 @@ export class TaskTracker {
   listActive() {
     return this.tasks.filter((t) => t.status === 'running');
   }
+}
+
+// ── System Mode ──────────────────────────────────────────────
+
+export type SystemMode = 'normal' | 'maintenance' | 'readonly' | 'emergency';
+
+let systemMode: SystemMode = 'normal';
+const modeChangeListeners: Array<(mode: SystemMode) => void> = [];
+
+export function getSystemMode(): SystemMode {
+  return systemMode;
+}
+
+export function setSystemMode(mode: SystemMode): void {
+  systemMode = mode;
+  if (ctx) {
+    (ctx as any).systemMode = mode;
+  }
+  for (const listener of modeChangeListeners) {
+    try { listener(mode); } catch { /* non-fatal */ }
+  }
+}
+
+export function onSystemModeChange(fn: (mode: SystemMode) => void): void {
+  modeChangeListeners.push(fn);
 }
 
 let ctx: ServerContext | null = null;
@@ -344,7 +371,7 @@ export function getServerContext(): ServerContext {
   const stateMachine = new DecisionStateMachine();
   const classifier = new LevelClassifier();
   const auditLog = new AuditLogger(db);
-  const eventBus = new MemoryEventBus();
+  const eventBus = new SqliteEventStore(eventRepo);
   eventBus.deadLetterQueue.setDb(db);
   const escalation = new EscalationService(eventBus);
 
@@ -468,7 +495,7 @@ export function getServerContext(): ServerContext {
         entry.model,
         entry.promptTokens,
         entry.completionTokens,
-        entry.costUsd,
+        entry.costRmb,
       );
     },
   });
@@ -482,7 +509,8 @@ export function getServerContext(): ServerContext {
           model: r.model,
           promptTokens: r.prompt_tokens,
           completionTokens: r.completion_tokens,
-          costUsd: r.cost_usd,
+          cachedPromptTokens: 0,
+          costRmb: r.cost_rmb,
         })),
       );
       logger.info('Cost history restored', { entries: recentRows.length });
@@ -718,8 +746,23 @@ export function getServerContext(): ServerContext {
       deleteWorkflow: () => {},
       runWorkflow: async () => ({ runId: '', status: 'not_implemented' }),
       startMeeting: async (topic) => ({ meetingId: '', topic, synthesis: '', perspectives: [] }),
-      writeLongTermMemory: async (content, metadata) =>
-        longTerm.store({ content, metadata: metadata ?? {}, timestamp: new Date() }),
+      writeLongTermMemory: async (content, metadata) => {
+        let embedding: number[] | undefined;
+        if (gateway) {
+          try {
+            const result = await gateway.generateEmbeddings({ texts: [content] });
+            embedding = result.embeddings[0];
+          } catch {
+            /* embedding generation failed — store without */
+          }
+        }
+        return longTerm.store({
+          content,
+          metadata: metadata ?? {},
+          embedding,
+          timestamp: new Date(),
+        });
+      },
       createEmployee: () => {},
       registerAgent: (input) => {
         agentRegistry.register({
@@ -858,12 +901,18 @@ export function getServerContext(): ServerContext {
       }),
       querySystemKnowledge: async () => [],
       getSystemKnowledge: async () => null,
+      generateEmbeddings: async (texts) => {
+        if (!gateway) throw new Error('No LLM gateway available');
+        const result = await gateway.generateEmbeddings({ texts });
+        return result.embeddings;
+      },
     };
 
     const executor = createStandardToolExecutor(ctx!, curatorDeps, role.allowedTools);
 
     const checkpointManager = new CheckpointManager(db);
     return new AgentLoop({
+      costTracker: ctx!.costTracker,
       gateway,
       toolExecutor: executor,
       safetyChecker: new SafetyChecker(currentTier),
@@ -1770,7 +1819,7 @@ export function getServerContext(): ServerContext {
             payload: {
               level: 'critical' as const,
               currentSpend: todayCost,
-              limit: DAILY_BUDGET_USD,
+              limit: DAILY_BUDGET,
               period: 'daily' as const,
             },
           });
@@ -1822,6 +1871,31 @@ export function getServerContext(): ServerContext {
   subconsciousTimer.unref();
   logger.info('Subconscious loop scheduled (1h)');
 
+  // Garbage collection: weekly scan on Sunday 4 AM
+  const gcTimer = setInterval(
+    async () => {
+      const now = new Date();
+      if (now.getDay() !== 0 || now.getHours() !== 4) return;
+      try {
+        const { GarbageCollector } = await import('@cabinet/harness');
+        const gc = new GarbageCollector(eventBus, { rootDir: process.cwd(), autoFix: false });
+        const result = await gc.collect();
+        logger.info('Garbage collection completed', {
+          dryRun: true,
+          filesScanned: result.filesScanned,
+          totalIssues: result.summary.total,
+          errors: result.summary.errors,
+          warnings: result.summary.warnings,
+        });
+      } catch (e: any) {
+        logger.warn('Garbage collection failed', { error: e.message });
+      }
+    },
+    60 * 60 * 1000,
+  );
+  gcTimer.unref();
+  logger.info('Garbage collection scheduled (weekly Sunday 4 AM)');
+
   // Workflow approval polling (30s fallback for missed WebSocket events)
   startApprovalPolling(30_000);
   logger.info('Workflow approval polling started (30s)');
@@ -1829,6 +1903,19 @@ export function getServerContext(): ServerContext {
   // Start filesystem watchers for skills and agents (hot-reload)
   startSkillWatcher(dataDir, { skillRegistry, skillRepo, agentRegistry, agentRoleRepo, logger });
   startAgentWatcher(dataDir, { skillRegistry, skillRepo, agentRegistry, agentRoleRepo, logger });
+
+  // Start project directory watcher (detects new/removed project files)
+  startProjectWatcher(dataDir, { logger });
+
+  // Start rules directory watcher (RulesLoader auto-detects changes via timestamp comparison)
+  startRulesWatcher(dataDir, {
+    reloadRules: () => {
+      // RulesLoader instances use timestamp-based cache invalidation,
+      // so the next loadAll() call will pick up changes automatically.
+      broadcast('rules_changed', { dir: join(dataDir, 'rules') });
+    },
+    logger,
+  });
 
   const shutdown = () => {
     logger.info('Shutting down server context...');
@@ -1948,6 +2035,7 @@ export function getServerContext(): ServerContext {
     }
   });
 
+  const routeFeedbackRepo = new RouteFeedbackRepository(db);
   const fileTracker = new FileAccessTracker();
   const taskTracker = new TaskTracker();
 
@@ -1969,6 +2057,7 @@ export function getServerContext(): ServerContext {
     sessionMetricsRepo,
     settingsRepo,
     systemKnowledgeRepo,
+    routeFeedbackRepo,
     decisionService,
     shortTerm,
     longTerm,

@@ -101,6 +101,8 @@ export class DecisionService {
           reason: `Auto-approved up to ${this.getAutoApproveMaxLevel()}`,
         },
       });
+      // Notify preference learner and workflow hooks (same as manual approve)
+      this.onResolved?.(decision.id, 'approved', decision.title, undefined, 'system');
     }
 
     // Escalate L3

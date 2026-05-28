@@ -37,20 +37,20 @@ export const MAX_RETRY_RECOVERABLE = 2;
 /** LLM call timeout in milliseconds */
 export const LLM_TIMEOUT_MS = 30_000;
 
-/** Daily budget cap in USD */
-export const DAILY_BUDGET_USD = 5.0;
+/** Daily budget cap in RMB */
+export const DAILY_BUDGET = 5.0;
 
-/** Weekly budget cap in USD */
-export const WEEKLY_BUDGET_USD = 25.0;
+/** Weekly budget cap in RMB */
+export const WEEKLY_BUDGET = 25.0;
 
-/** Monthly budget cap in USD */
-export const MONTHLY_BUDGET_USD = 100.0;
+/** Monthly budget cap in RMB */
+export const MONTHLY_BUDGET = 100.0;
 
 /** Budget warning threshold — trigger reminder when this proportion is reached */
 export const BUDGET_WARNING_THRESHOLD = 0.8;
 
-/** Meeting cost confirmation threshold in USD — requires Captain confirmation above this */
-export const MEETING_COST_CONFIRM_THRESHOLD_USD = 0.5;
+/** Meeting cost confirmation threshold in RMB — requires Captain confirmation above this */
+export const MEETING_COST_CONFIRM_THRESHOLD = 0.5;
 
 /** Rumination detection semantic similarity threshold — treated as duplicate argument above this */
 export const RUMINATION_SIMILARITY_THRESHOLD = 0.85;

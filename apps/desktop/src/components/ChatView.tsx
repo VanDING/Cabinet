@@ -488,7 +488,7 @@ const MessageRow = memo(function MessageRow({
                     ? `(${(msg.thinkingDurationMs / 1000).toFixed(1)}s)`
                     : '';
                   return (
-                    <details className="thinking-block mb-2" open>
+                    <details className="thinking-block mb-2">
                       <summary className="thinking-summary">
                         {t('chat.thinking')} {duration}
                       </summary>

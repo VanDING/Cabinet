@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { DAILY_BUDGET_USD, WEEKLY_BUDGET_USD, MONTHLY_BUDGET_USD } from '@cabinet/types';
+import { DAILY_BUDGET, WEEKLY_BUDGET, MONTHLY_BUDGET } from '@cabinet/types';
 
 function loadEnvFile(): void {
   const paths = [join(homedir(), '.cabinet', '.env'), join(process.cwd(), '.env')];
@@ -68,9 +68,9 @@ const envSchema = z.object({
   MOONSHOT_API_KEY: z.string().optional(),
   ZHIPU_API_KEY: z.string().optional(),
   BAICHUAN_API_KEY: z.string().optional(),
-  CABINET_DAILY_BUDGET: z.coerce.number().default(DAILY_BUDGET_USD),
-  CABINET_WEEKLY_BUDGET: z.coerce.number().default(WEEKLY_BUDGET_USD),
-  CABINET_MONTHLY_BUDGET: z.coerce.number().default(MONTHLY_BUDGET_USD),
+  CABINET_DAILY_BUDGET: z.coerce.number().default(DAILY_BUDGET),
+  CABINET_WEEKLY_BUDGET: z.coerce.number().default(WEEKLY_BUDGET),
+  CABINET_MONTHLY_BUDGET: z.coerce.number().default(MONTHLY_BUDGET),
 });
 
 const result = envSchema.safeParse(process.env);

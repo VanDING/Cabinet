@@ -91,6 +91,7 @@ describe('createStandardToolExecutor', () => {
       listActiveTasks: vi.fn(),
       getDecisionAudit: vi.fn(),
       getSystemMetrics: vi.fn(),
+      generateEmbeddings: vi.fn().mockResolvedValue([]),
       getWorkflowRun: vi.fn(),
       listWorkflowRuns: vi.fn(),
     };
