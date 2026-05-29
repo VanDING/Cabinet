@@ -174,7 +174,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 text-xl leading-none text-content-tertiary hover:text-content-secondary:text-content-tertiary"
+              className="flex-shrink-0 text-xl leading-none text-content-tertiary hover:text-content-secondary"
             >
               &times;
             </button>
@@ -209,7 +209,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                           ? 'border-intent-success bg-intent-success-muted ring-2 ring-intent-success'
                           : isSelected
                             ? 'border-accent bg-accent-muted ring-2 ring-accent'
-                            : 'border-border hover:border-accent:border-accent'
+                            : 'border-border hover:border-accent'
                       } ${isResolved ? 'cursor-default' : 'cursor-pointer'}`}
                     >
                       <div className="mb-1 flex items-center gap-2">

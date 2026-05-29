@@ -104,7 +104,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
             <button
               key={d.id}
               onClick={() => onSelectDecision?.(d.id)}
-              className="w-full rounded border p-3 text-left transition-colors hover:border-accent hover:bg-surface-elevated:border-accent:bg-surface-primary/50"
+              className="w-full rounded border p-3 text-left transition-colors hover:border-accent hover:bg-surface-elevated bg-surface-primary/50"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -151,7 +151,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 <button
                   key={d.id}
                   onClick={() => onSelectDecision?.(d.id)}
-                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-accent hover:bg-surface-elevated hover:opacity-100:border-accent:bg-surface-primary/50"
+                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-accent hover:bg-surface-elevated hover:opacity-100 bg-surface-primary/50"
                 >
                   <div className="flex items-center gap-2">
                     <span
