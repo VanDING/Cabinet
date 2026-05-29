@@ -15,11 +15,10 @@ interface Deliverable {
 
 interface Props {
   projectId: string;
-  isDark?: boolean;
   onClose: () => void;
 }
 
-export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
+export function DeliverablesPanel({ projectId, onClose }: Props) {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -50,12 +49,13 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
   };
 
   const types = [...new Set(deliverables.map((d) => d.type))];
-  const filtered = filter === 'all' ? deliverables : deliverables.filter((d) => d.type === filter);
+  const filtered =
+    filter === 'all' ? deliverables : deliverables.filter((d) => d.type === filter);
 
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
-  const bg = isDark ? 'bg-gray-900' : 'bg-white';
-  const text = isDark ? 'text-gray-200' : 'text-gray-800';
-  const sub = isDark ? 'text-gray-400' : 'text-gray-500';
+  const border = 'border-gray-200 dark:border-gray-700';
+  const bg = 'bg-white dark:bg-gray-900';
+  const text = 'text-gray-800 dark:text-gray-200';
+  const sub = 'text-gray-500 dark:text-gray-400';
   const typeColors: Record<string, string> = {
     meeting_report: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
     general: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -67,17 +67,14 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
     >
       <div className={`flex items-center justify-between border-b p-4 ${border}`}>
         <h2 className={`text-lg font-semibold ${text}`}>Deliverables</h2>
-        <button
-          onClick={onClose}
-          className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
-        >
+        <button onClick={onClose} className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700">
           <X size={18} />
         </button>
       </div>
 
       {/* Type filter */}
       {types.length > 1 && (
-        <div className={`flex gap-1 border-b px-4 py-2 ${border} overflow-x-auto`}>
+        <div className={`flex gap-1 overflow-x-auto border-b px-4 py-2 ${border}`}>
           <button
             onClick={() => setFilter('all')}
             className={`rounded-full px-2 py-0.5 text-xs ${filter === 'all' ? 'bg-blue-600 text-white' : `${sub} border ${border}`}`}
@@ -107,7 +104,7 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
           filtered.map((d) => (
             <div
               key={d.id}
-              className={`rounded-lg border ${border} ${isDark ? 'bg-gray-800' : 'bg-gray-50'} cursor-pointer p-3 hover:opacity-90`}
+              className={`cursor-pointer rounded-lg border ${border} bg-gray-50 p-3 hover:opacity-90 dark:bg-gray-800`}
               onClick={() => {
                 if (d.filePath) {
                   window.dispatchEvent(
@@ -140,7 +137,7 @@ export function DeliverablesPanel({ projectId, isDark, onClose }: Props) {
                     e.stopPropagation();
                     handleDelete(d.id);
                   }}
-                  className={`rounded p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} text-red-500`}
+                  className="rounded p-1 text-red-500 hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   <Trash2 size={14} />
                 </button>

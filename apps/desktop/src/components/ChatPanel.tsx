@@ -38,7 +38,6 @@ interface Props {
   onEnterChat: () => void;
   isProcessing: boolean;
   onStop?: (sessionId: string) => void;
-  isDark?: boolean;
   activeProjectId?: string | null;
   projects?: ProjectInfo[];
   onSwitchProject?: (projectId: string | null) => void;
@@ -63,7 +62,6 @@ export function ChatPanel({
   onEnterChat,
   isProcessing,
   onStop,
-  isDark,
   activeProjectId,
   projects = [],
   onSwitchProject,
@@ -115,20 +113,16 @@ export function ChatPanel({
   const active = activeSession;
   const attachedFiles = active?.attachedFiles ?? [];
 
-  const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
-  const bgClass = isDark ? 'bg-gray-800' : 'bg-white';
-  const tabBgClass = isDark ? 'bg-gray-900' : 'bg-gray-50';
-  const inputBgClass = isDark ? 'bg-gray-800' : 'bg-white';
-  const textClass = isDark ? 'text-gray-100' : 'text-gray-800';
-  const subtextClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const hoverClass = isDark
-    ? 'hover:bg-gray-700 hover:text-gray-200'
-    : 'hover:bg-gray-100 hover:text-gray-700';
-  const btnBaseClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const dropdownBgClass = isDark ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200';
-  const dropdownItemClass = isDark
-    ? 'text-gray-200 hover:bg-gray-700'
-    : 'text-gray-700 hover:bg-gray-100';
+  const borderClass = 'border-gray-200 dark:border-gray-700';
+  const bgClass = 'bg-white dark:bg-gray-800';
+  const tabBgClass = 'bg-gray-50 dark:bg-gray-900';
+  const inputBgClass = 'bg-white dark:bg-gray-800';
+  const textClass = 'text-gray-800 dark:text-gray-100';
+  const subtextClass = 'text-gray-500 dark:text-gray-400';
+  const hoverClass = 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200';
+  const btnBaseClass = 'text-gray-500 dark:text-gray-400';
+  const dropdownBgClass = 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600';
+  const dropdownItemClass = 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700';
 
   useEffect(() => {
     setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window);
@@ -264,12 +258,10 @@ export function ChatPanel({
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const activeTabClass = isDark
-    ? 'bg-gray-800 text-gray-200 border-blue-500'
-    : 'bg-white text-gray-800 border-blue-500';
-  const inactiveTabClass = isDark
-    ? 'text-gray-500 hover:bg-gray-700'
-    : 'text-gray-500 hover:bg-gray-200';
+  const activeTabClass =
+    'bg-white text-gray-800 border-blue-500 dark:bg-gray-800 dark:text-gray-200';
+  const inactiveTabClass =
+    'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700';
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
@@ -285,11 +277,7 @@ export function ChatPanel({
             <button
               ref={agentBtnRef}
               onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
-                isDark
-                  ? 'bg-blue-900/40 text-blue-300 hover:bg-blue-900/60'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              }`}
+              className="flex items-center gap-0.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60"
               title="Switch agent"
             >
               @{activeAgent}
@@ -297,10 +285,10 @@ export function ChatPanel({
             </button>
             {agentMenuOpen && (
               <div
-                className={`absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
+                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
               >
                 <div
-                  className={`px-3 py-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
+                  className="border-b border-gray-200 px-3 py-1 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
                 >
                   Switch Agent
                 </div>
@@ -317,12 +305,8 @@ export function ChatPanel({
                     }}
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       activeAgent === a.id
-                        ? isDark
-                          ? 'bg-blue-900/30 text-blue-400'
-                          : 'bg-blue-50 text-blue-600'
-                        : isDark
-                          ? 'text-gray-300 hover:bg-gray-700'
-                          : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
                     @{a.id}
@@ -338,12 +322,8 @@ export function ChatPanel({
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
               className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
                 activeProjectId
-                  ? isDark
-                    ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60'
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                  : isDark
-                    ? 'text-gray-400 hover:bg-gray-700'
-                    : 'text-gray-500 hover:bg-gray-200'
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60'
+                  : 'text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700'
               }`}
               title="Select project"
             >
@@ -365,7 +345,7 @@ export function ChatPanel({
                     onSwitchProject?.(null);
                     setProjectMenuOpen(false);
                   }}
-                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600') : dropdownItemClass}`}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : dropdownItemClass}`}
                 >
                   Global (no project)
                 </button>
@@ -380,9 +360,7 @@ export function ChatPanel({
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs ${
                         activeProjectId === p.id
-                          ? isDark
-                            ? 'bg-blue-900/30 text-blue-400'
-                            : 'bg-blue-50 text-blue-600'
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                           : dropdownItemClass
                       }`}
                     >
@@ -423,7 +401,7 @@ export function ChatPanel({
                       className={`h-2 w-2 flex-shrink-0 rounded-full ${
                         hasActivity
                           ? 'animate-pulse bg-blue-500'
-                          : `border ${isDark ? 'border-gray-500' : 'border-gray-400'}`
+                          : `border border-gray-400 dark:border-gray-500`
                       }`}
                     />
                     <span className="flex-1 truncate">{session.title}</span>
@@ -624,9 +602,7 @@ export function ChatPanel({
                     }}
                     className={`w-full px-4 py-1.5 text-left transition-colors ${
                       delegationTier === t.id
-                        ? isDark
-                          ? 'bg-blue-900/30 text-blue-400'
-                          : 'bg-blue-50 text-blue-600'
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                         : dropdownItemClass
                     }`}
                   >
@@ -672,9 +648,7 @@ export function ChatPanel({
                         }}
                         className={`w-full px-5 py-1 text-left font-mono text-xs transition-colors ${
                           selectedModel === model
-                            ? isDark
-                              ? 'bg-blue-900/30 text-blue-400'
-                              : 'bg-blue-50 text-blue-600'
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                             : dropdownItemClass
                         }`}
                       >
@@ -690,7 +664,6 @@ export function ChatPanel({
           {/* Context status */}
           <ContextButton
             sessionId={active?.id ?? 'default'}
-            isDark={isDark}
             btnBaseClass={btnBaseClass}
             hoverClass={hoverClass}
             dropdownBgClass={dropdownBgClass}

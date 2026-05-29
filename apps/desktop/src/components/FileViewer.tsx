@@ -11,10 +11,6 @@ interface FileTab {
   absolutePath?: string;
 }
 
-interface Props {
-  isDark?: boolean;
-}
-
 const IMAGE_MIMES = [
   'image/png',
   'image/jpeg',
@@ -34,7 +30,7 @@ function safeBtoa(str: string): string {
   return btoa(binary);
 }
 
-export function FileViewer({ isDark }: Props) {
+export function FileViewer() {
   const [tabs, setTabs] = useState<FileTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
@@ -63,7 +59,6 @@ export function FileViewer({ isDark }: Props) {
     document.addEventListener('mouseup', onUp);
   };
 
-  // Listen for custom events from ProjectExplorer or ChatView
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
@@ -76,7 +71,6 @@ export function FileViewer({ isDark }: Props) {
       };
       if (!detail.path) return;
 
-      // Avoid duplicates
       setTabs((prev) => {
         const existing = prev.find((t) => t.path === detail.path);
         if (existing) {
@@ -94,7 +88,6 @@ export function FileViewer({ isDark }: Props) {
         };
         setActiveTab(detail.path);
         setVisible(true);
-        // Fetch content if not provided
         if (!detail.content) {
           fetchFileContent(detail.path, newTab, detail.projectId);
         }
@@ -152,28 +145,25 @@ export function FileViewer({ isDark }: Props) {
     setVisible(false);
   };
 
-  // Compute derived state BEFORE any conditional return so hooks are always
-  // called in the same order on every render.
   const active = tabs.find((t) => t.path === activeTab);
   const isImage = active?.mimeType && IMAGE_MIMES.includes(active.mimeType);
 
   if (!visible) return null;
 
-  const bg = isDark ? 'bg-gray-900' : 'bg-white';
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
-  const tabBg = isDark ? 'bg-gray-800' : 'bg-gray-100';
+  const bg = 'bg-white dark:bg-gray-900';
+  const border = 'border-gray-200 dark:border-gray-700';
+  const tabBg = 'bg-gray-100 dark:bg-gray-800';
 
   return (
     <div className="relative flex flex-shrink-0" style={{ width }}>
-      {/* Drag handle */}
       <div
         onMouseDown={handleMouseDown}
-        className={`absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize ${isDark ? 'hover:bg-blue-500' : 'hover:bg-blue-400'}`}
+        className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize hover:bg-blue-400 dark:hover:bg-blue-500"
       />
-      <div className={`flex flex-col border-l ${border} ${bg} min-w-0 flex-1`}>
+      <div className={`flex min-w-0 flex-1 flex-col border-l ${border} ${bg}`}>
         {/* Tab bar */}
         <div
-          className={`flex items-center border-b ${border} ${tabBg} h-9 gap-0.5 overflow-x-auto px-1`}
+          className={`flex h-9 items-center gap-0.5 overflow-x-auto border-b px-1 ${border} ${tabBg}`}
         >
           {tabs.map((tab) => (
             <div
@@ -181,8 +171,8 @@ export function FileViewer({ isDark }: Props) {
               onClick={() => setActiveTab(tab.path)}
               className={`flex flex-shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
                 activeTab === tab.path
-                  ? `${bg} border-l border-r border-t ${border} -mb-px`
-                  : `${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+                  ? `${bg} -mb-px border-l border-r border-t ${border}`
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
               }`}
             >
               {tab.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileCode size={12} />}
@@ -192,7 +182,7 @@ export function FileViewer({ isDark }: Props) {
                   e.stopPropagation();
                   closeTab(tab.path);
                 }}
-                className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-300'}`}
+                className="ml-1 rounded-full p-0.5 hover:bg-gray-300 dark:hover:bg-gray-600"
               >
                 <X size={10} />
               </button>
@@ -200,7 +190,7 @@ export function FileViewer({ isDark }: Props) {
           ))}
           <button
             onClick={closeAll}
-            className={`ml-auto mr-2 rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+            className="ml-auto mr-2 rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
             title="Close all"
           >
             <X size={14} />
@@ -219,16 +209,12 @@ export function FileViewer({ isDark }: Props) {
                 />
               </div>
             ) : (
-              <pre
-                className={`whitespace-pre-wrap break-all p-4 font-mono text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}
-              >
+              <pre className="whitespace-pre-wrap break-all p-4 font-mono text-sm text-gray-800 dark:text-gray-200">
                 {active.content || '(empty)'}
               </pre>
             )
           ) : (
-            <div
-              className={`flex h-full items-center justify-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-            >
+            <div className="flex h-full items-center justify-center text-gray-400 dark:text-gray-500">
               <div className="text-center">
                 <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Click a file in Project Explorer to preview</p>

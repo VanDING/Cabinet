@@ -16,11 +16,10 @@ interface ChunkInfo {
 }
 
 interface Props {
-  isDark?: boolean;
   activeProjectId?: string | null;
 }
 
-export function KnowledgeTab({ isDark, activeProjectId }: Props) {
+export function KnowledgeTab({ activeProjectId }: Props) {
   const [docs, setDocs] = useState<DocumentInfo[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [chunks, setChunks] = useState<ChunkInfo[]>([]);
@@ -66,22 +65,19 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
     fetchDocs();
   };
 
-  const bg = isDark ? 'bg-gray-800' : 'bg-white';
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
-  const inputBg = isDark ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900';
-  const text = isDark ? 'text-gray-200' : 'text-gray-800';
-  const sub = isDark ? 'text-gray-400' : 'text-gray-500';
+  const borderClasses = 'border-gray-200 dark:border-gray-700';
+  const inputClasses =
+    'rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+  const textClasses = 'text-gray-800 dark:text-gray-200';
+  const subClasses = 'text-gray-500 dark:text-gray-400';
 
   return (
     <div className="flex h-full">
       {/* Left: Document list */}
-      <div
-        className="flex w-64 flex-shrink-0 flex-col border-r"
-        style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
-      >
-        <div className="border-b p-3" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+      <div className="flex w-64 flex-shrink-0 flex-col border-r border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 p-3 dark:border-gray-700">
           <input
-            className={`w-full rounded border ${border} ${inputBg} px-2 py-1 text-xs`}
+            className={`w-full ${inputClasses}`}
             placeholder="Search query..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -89,7 +85,7 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
         </div>
         <div className="flex-1 overflow-auto">
           {docs.length === 0 ? (
-            <p className={`p-3 text-xs ${sub}`}>
+            <p className={`p-3 text-xs ${subClasses}`}>
               No indexed documents. Use chat to index files with the index_document tool.
             </p>
           ) : (
@@ -98,14 +94,16 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
                 key={d.path}
                 onClick={() => fetchChunks(d.path)}
                 className={`flex cursor-pointer items-center justify-between px-3 py-2 text-xs ${
-                  selectedDoc === d.path ? (isDark ? 'bg-blue-900/30' : 'bg-blue-50') : ''
-                } ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                  selectedDoc === d.path
+                    ? 'bg-blue-50 dark:bg-blue-900/30'
+                    : ''
+                } hover:bg-gray-100 dark:hover:bg-gray-700`}
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <FileText size={12} className="flex-shrink-0" />
-                  <span className={`truncate ${text}`}>{d.path.split('/').pop()}</span>
+                  <span className={`truncate ${textClasses}`}>{d.path.split('/').pop()}</span>
                 </div>
-                <span className={`ml-2 flex-shrink-0 ${sub}`}>{d.chunks}c</span>
+                <span className={`ml-2 flex-shrink-0 ${subClasses}`}>{d.chunks}c</span>
               </div>
             ))
           )}
@@ -117,11 +115,11 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
         {selectedDoc ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className={`text-sm font-semibold ${text}`}>{selectedDoc}</h3>
+              <h3 className={`text-sm font-semibold ${textClasses}`}>{selectedDoc}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleClear(selectedDoc)}
-                  className={`flex items-center gap-1 text-xs ${sub} hover:text-red-500`}
+                  className={`flex items-center gap-1 text-xs ${subClasses} hover:text-red-500`}
                 >
                   <Trash2 size={12} /> Clear
                 </button>
@@ -130,23 +128,26 @@ export function KnowledgeTab({ isDark, activeProjectId }: Props) {
                     setSelectedDoc(selectedDoc);
                     fetchChunks(selectedDoc);
                   }}
-                  className={`flex items-center gap-1 text-xs ${sub}`}
+                  className={`flex items-center gap-1 text-xs ${subClasses}`}
                 >
                   <RefreshCw size={12} /> Refresh
                 </button>
               </div>
             </div>
             {chunks.map((chunk) => (
-              <div key={chunk.id} className={`rounded border ${border} ${bg} p-3`}>
-                <div className={`mb-1 text-xs ${sub}`}>Chunk {chunk.index}</div>
-                <pre className={`whitespace-pre-wrap font-sans text-xs ${text}`}>
+              <div
+                key={chunk.id}
+                className={`rounded border ${borderClasses} bg-white p-3 dark:bg-gray-800`}
+              >
+                <div className={`mb-1 text-xs ${subClasses}`}>Chunk {chunk.index}</div>
+                <pre className={`whitespace-pre-wrap font-sans text-xs ${textClasses}`}>
                   {chunk.content.slice(0, 1000)}
                 </pre>
               </div>
             ))}
           </div>
         ) : (
-          <div className={`flex h-full items-center justify-center ${sub}`}>
+          <div className={`flex h-full items-center justify-center ${subClasses}`}>
             <div className="text-center">
               <Search size={24} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">Select a document to view chunks</p>

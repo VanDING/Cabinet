@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button, Input, Card, Tag } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 
 interface MCPServer {
@@ -98,12 +99,9 @@ export function McpTab() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">MCP Servers</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Server'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -141,13 +139,14 @@ export function McpTab() {
                 className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
-            <button
+            <Button
+              size="sm"
+              fullWidth
               onClick={handleAdd}
               disabled={!form.name.trim() || !form.command.trim()}
-              className="w-full rounded-lg bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
             >
               Add MCP Server
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -165,26 +164,19 @@ export function McpTab() {
       ) : (
         <div className="space-y-2">
           {servers.map((s) => (
-            <div
-              key={s.name}
-              className="flex items-center justify-between rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
-            >
+            <Card key={s.name} padding="sm" className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {s.name}
                   </span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-xs ${s.enabled ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-500'}`}
-                  >
+                  <Tag variant={s.enabled ? 'success' : 'default'}>
                     {s.enabled ? 'enabled' : 'disabled'}
-                  </span>
+                  </Tag>
                   {s.status && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-xs ${s.status === 'connected' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}
-                    >
+                    <Tag variant={s.status === 'connected' ? 'info' : 'danger'}>
                       {s.status}
-                    </span>
+                    </Tag>
                   )}
                 </div>
                 <p className="mt-0.5 font-mono text-xs text-gray-400">
@@ -192,26 +184,17 @@ export function McpTab() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleTest(s.name)}
-                  className="rounded border px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                >
+                <Button variant="ghost" size="xs" onClick={() => handleTest(s.name)}>
                   Test
-                </button>
-                <button
-                  onClick={() => handleToggle(s.name)}
-                  className="rounded border px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                >
+                </Button>
+                <Button variant="ghost" size="xs" onClick={() => handleToggle(s.name)}>
                   {s.enabled ? 'Disable' : 'Enable'}
-                </button>
-                <button
-                  onClick={() => handleRemove(s.name)}
-                  className="rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900"
-                >
+                </Button>
+                <Button variant="ghost" size="xs" className="text-red-500" onClick={() => handleRemove(s.name)}>
                   Remove
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

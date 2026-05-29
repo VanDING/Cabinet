@@ -69,7 +69,7 @@ export function App() {
   const [showProjectActionModal, setShowProjectActionModal] = useState(false);
   const abortRef = useRef<Map<string, AbortController>>(new Map());
   const navigate = useNavigate();
-  const { isDark, toggle } = useTheme();
+  const { toggle } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
 
@@ -675,9 +675,9 @@ export function App() {
 
   return (
     <ServerLoading>
-      <div className={`flex h-screen flex-col overflow-hidden ${isDark ? 'dark' : ''}`}>
+      <div className="flex h-screen flex-col overflow-hidden">
         {/* Custom Title Bar */}
-        <TitleBar isDark={isDark} onToggleTheme={toggle} />
+        <TitleBar onToggleTheme={toggle} />
 
         {/* Main body: sidebar + content */}
         <div className="flex flex-1 overflow-hidden">
@@ -686,7 +686,6 @@ export function App() {
             <Navigation
               activePage={activePage}
               onNavigate={handleNavigate}
-              isDark={isDark}
               collapsed={sidebarCollapsed}
               onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
               onNavigateToSession={(sessionId) => {
@@ -725,9 +724,7 @@ export function App() {
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
               }}
-              className={`w-1 flex-shrink-0 cursor-col-resize transition-colors ${
-                isDark ? 'bg-gray-700 hover:bg-blue-500' : 'bg-gray-200 hover:bg-blue-400'
-              }`}
+              className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 transition-colors hover:bg-blue-400 dark:bg-gray-700 dark:hover:bg-blue-500"
             />
           )}
 
@@ -735,7 +732,6 @@ export function App() {
           <ProjectExplorer
             projectId={activeProjectId}
             projectName={projects.find((p) => p.id === activeProjectId)?.name}
-            isDark={isDark}
             onAddFile={addFile}
             activeSessionId={activeSession?.id}
           />
@@ -795,7 +791,6 @@ export function App() {
                       isProcessing={isActiveSessionProcessing}
                       attachedFiles={activeSession.attachedFiles}
                       sessionTitle={activeSession.title}
-                      isDark={isDark}
                       onEditMessage={(msgId, newContent) => {
                         editMessage(activeSession.id, msgId, newContent);
                         handleSend(activeSession.id, newContent, activeSession.attachedFiles);
@@ -858,7 +853,6 @@ export function App() {
               onEnterChat={handleEnterChat}
               isProcessing={isActiveSessionProcessing}
               onStop={handleStop}
-              isDark={isDark}
               activeProjectId={activeProjectId}
               projects={projects}
               onSwitchProject={(id) => setActiveProjectId(id)}
@@ -869,7 +863,7 @@ export function App() {
           </div>
 
           {/* File Viewer — third column, right side */}
-          <FileViewer isDark={isDark} />
+          <FileViewer />
         </div>
 
         {/* Mobile bottom nav */}
@@ -882,12 +876,10 @@ export function App() {
             onClick={() => setShowProjectActionModal(false)}
           >
             <div
-              className={`rounded-xl border ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} mx-4 w-full max-w-sm p-6 shadow-2xl`}
+              className="mx-4 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3
-                className={`mb-4 text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}
-              >
+              <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
                 Add Project
               </h3>
               <div className="space-y-3">
@@ -896,14 +888,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleCreateNewProject();
                   }}
-                  className={`w-full rounded-lg border ${isDark ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'} px-4 py-3 text-left text-sm font-medium transition-colors`}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
                 >
-                  <span className={`block text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  <span className="block text-base text-gray-900 dark:text-white">
                     Create New Project
                   </span>
-                  <span
-                    className={`mt-0.5 block text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-                  >
+                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
                     Start with an empty project
                   </span>
                 </button>
@@ -912,14 +902,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleImportProject();
                   }}
-                  className={`w-full rounded-lg border ${isDark ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'} px-4 py-3 text-left text-sm font-medium transition-colors`}
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
                 >
-                  <span className={`block text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  <span className="block text-base text-gray-900 dark:text-white">
                     Import Existing Folder
                   </span>
-                  <span
-                    className={`mt-0.5 block text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-                  >
+                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
                     Import a local folder as project
                   </span>
                 </button>
@@ -927,7 +915,7 @@ export function App() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowProjectActionModal(false)}
-                  className={`rounded border px-3 py-1.5 text-sm ${isDark ? 'border-gray-600 text-gray-300' : 'border-gray-300 text-gray-700'}`}
+                  className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300"
                 >
                   Cancel
                 </button>

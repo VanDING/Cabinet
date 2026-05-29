@@ -16,7 +16,6 @@ interface Props {
   isProcessing: boolean;
   attachedFiles: AttachedFile[];
   sessionTitle: string;
-  isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
   onForkMessage?: (messageId: string) => void;
@@ -212,7 +211,6 @@ export const ChatView = memo(function ChatView({
   isProcessing,
   attachedFiles,
   sessionTitle,
-  isDark,
   onEditMessage,
   onRegenerate,
   onForkMessage,
@@ -302,7 +300,6 @@ export const ChatView = memo(function ChatView({
             key={msg.id}
             msg={msg}
             isProcessing={isProcessing}
-            isDark={isDark}
             onEditMessage={onEditMessage}
             onRegenerate={onRegenerate}
             onForkMessage={onForkMessage}
@@ -343,7 +340,6 @@ export const ChatView = memo(function ChatView({
 const MessageRow = memo(function MessageRow({
   msg,
   isProcessing,
-  isDark,
   onEditMessage,
   onRegenerate,
   onForkMessage,
@@ -351,7 +347,6 @@ const MessageRow = memo(function MessageRow({
 }: {
   msg: ChatMessage;
   isProcessing: boolean;
-  isDark?: boolean;
   onEditMessage?: (messageId: string, newContent: string) => void;
   onRegenerate?: (messageId: string) => void;
   onForkMessage?: (messageId: string) => void;
@@ -455,7 +450,7 @@ const MessageRow = memo(function MessageRow({
                 </div>
               )}
               {(msg.semanticTasks || msg.tasks) && (
-                <TaskPanel semanticTasks={msg.semanticTasks} tasks={msg.tasks} isDark={isDark} />
+                <TaskPanel semanticTasks={msg.semanticTasks} tasks={msg.tasks} />
               )}
               {msg.stepBudget &&
                 msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
@@ -512,7 +507,7 @@ const MessageRow = memo(function MessageRow({
                   <span>→</span>
                 </button>
               )}
-              {msg.meeting && <MeetingCard data={msg.meeting} isDark={isDark} />}
+              {msg.meeting && <MeetingCard data={msg.meeting} />}
               {(() => {
                 const call = msg.toolCalls?.find(
                   (tc) => tc.name === 'runWorkflow' && tc.status === 'completed',
@@ -528,7 +523,6 @@ const MessageRow = memo(function MessageRow({
                           status: parsed.status,
                           steps: parsed.steps,
                         }}
-                        isDark={isDark}
                       />
                     );
                   }

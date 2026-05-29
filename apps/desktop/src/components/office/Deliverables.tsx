@@ -16,11 +16,10 @@ interface Deliverable {
 
 interface Props {
   projectId?: string;
-  isDark?: boolean;
   onExpand?: () => void;
 }
 
-export function Deliverables({ projectId, isDark, onExpand }: Props) {
+export function Deliverables({ projectId, onExpand }: Props) {
   const [items, setItems] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,7 +68,6 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
     window.addEventListener('ws:workflow_completed', handler);
     window.addEventListener('ws:meeting_created', handler);
 
-    // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
     const hasRelevant = buffered.some((e) =>
       ['deliverable_created', 'workflow_completed', 'meeting_created'].includes(e.type),
@@ -83,8 +81,8 @@ export function Deliverables({ projectId, isDark, onExpand }: Props) {
     };
   }, [fetchDeliverables]);
 
-  const text = isDark ? 'text-gray-200' : 'text-gray-800';
-  const sub = isDark ? 'text-gray-400' : 'text-gray-500';
+  const text = 'text-gray-800 dark:text-gray-200';
+  const sub = 'text-gray-500 dark:text-gray-400';
 
   return (
     <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">

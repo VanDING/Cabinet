@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Button, Card, Tabs } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 import { KnowledgeTab } from '../components/KnowledgeTab';
 import { EvaluationTab } from '../components/EvaluationTab';
 import { GraphTab } from '../components/GraphTab';
-import { useTheme } from '../hooks/useTheme';
 
 interface MemoryEntry {
   id: string;
@@ -426,8 +426,6 @@ export function MemoryPage() {
   const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation' | 'graph'>(
     'memory',
   );
-  const { isDark } = useTheme();
-
   const fetchMemories = useCallback(async () => {
     setLoading(true);
     try {
@@ -498,29 +496,19 @@ export function MemoryPage() {
         </span>
       </div>
 
-      {/* Tab bar */}
-      <div className={`mb-4 flex gap-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        {(['memory', 'knowledge', 'evaluation', 'graph'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`border-b-2 pb-2 text-sm font-medium capitalize transition-colors ${
-              activeTab === tab
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="mb-4"
+        tabs={['memory', 'knowledge', 'evaluation', 'graph'].map((id) => ({ id, label: id }))}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as 'memory' | 'knowledge' | 'evaluation' | 'graph')}
+      />
 
       {activeTab === 'knowledge' ? (
-        <KnowledgeTab isDark={isDark} />
+        <KnowledgeTab />
       ) : activeTab === 'evaluation' ? (
-        <EvaluationTab isDark={isDark} />
+        <EvaluationTab />
       ) : activeTab === 'graph' ? (
-        <GraphTab isDark={isDark} />
+        <GraphTab />
       ) : (
         <>
           {/* Filters */}
@@ -545,19 +533,17 @@ export function MemoryPage() {
               placeholder="Search memories..."
               className="ml-auto w-48 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             />
-            <button
-              onClick={fetchMemories}
-              className="rounded-lg border px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
-            >
+            <Button variant="ghost" size="xs" onClick={fetchMemories}>
               Refresh
-            </button>
-            <button
+            </Button>
+            <Button
+              size="xs"
+              className="bg-purple-600 hover:bg-purple-700"
               onClick={handleConsolidate}
               disabled={consolidating}
-              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
             >
               {consolidating ? 'Consolidating...' : 'Consolidate Now'}
-            </button>
+            </Button>
             {consolidateResult && (
               <span className="text-xs text-gray-500 dark:text-gray-400">{consolidateResult}</span>
             )}
@@ -566,17 +552,14 @@ export function MemoryPage() {
           {/* Stats */}
           <div className="mb-6 grid grid-cols-4 gap-3">
             {['short_term', 'long_term', 'entity', 'project'].map((layer) => (
-              <div
-                key={layer}
-                className="rounded-lg border bg-white p-3 text-center dark:border-gray-700 dark:bg-gray-800"
-              >
+              <Card key={layer} padding="sm" className="text-center">
                 <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {loading ? '-' : (layerCounts[layer] ?? 0)}
                 </div>
                 <div className="text-xs capitalize text-gray-500 dark:text-gray-400">
                   {layer.replace('_', ' ')}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
@@ -587,9 +570,10 @@ export function MemoryPage() {
             {entries.map((m) => {
               const isExpanded = expanded.has(m.id);
               return (
-                <div
+                <Card
                   key={m.id}
-                  className="group rounded-lg border bg-white transition-shadow hover:shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                  padding="none"
+                  className="group transition-shadow hover:shadow-sm"
                 >
                   <div
                     className="flex cursor-pointer items-start gap-2 p-3"
@@ -751,7 +735,7 @@ export function MemoryPage() {
                       )}
                     </div>
                   )}
-                </div>
+                </Card>
               );
             })}
             {entries.length === 0 && !loading && (

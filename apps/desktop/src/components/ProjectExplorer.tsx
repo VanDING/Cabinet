@@ -14,7 +14,6 @@ interface FileNode {
 interface Props {
   projectId: string | null;
   projectName?: string;
-  isDark?: boolean;
   onAddFile: (sessionId: string, file: AttachedFile) => void;
   activeSessionId?: string;
 }
@@ -22,7 +21,6 @@ interface Props {
 export function ProjectExplorer({
   projectId,
   projectName,
-  isDark,
   onAddFile,
   activeSessionId,
 }: Props) {
@@ -65,7 +63,6 @@ export function ProjectExplorer({
       toggleExpand(node.path);
       return;
     }
-    // Open in FileViewer
     window.dispatchEvent(
       new CustomEvent('open-file-viewer', {
         detail: { path: node.path, name: node.name, projectId },
@@ -105,36 +102,30 @@ export function ProjectExplorer({
   if (!projectId) return null;
 
   const displayFiles = filteredFiles ?? files;
-  const bg = isDark ? 'bg-gray-900' : 'bg-white';
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
+  const bg = 'bg-white dark:bg-gray-900';
+  const border = 'border-gray-200 dark:border-gray-700';
 
   return (
     <div className={`flex h-full w-56 flex-shrink-0 flex-col border-r ${border} ${bg}`}>
       {/* Header */}
       <div className={`flex-shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <Folder size={14} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-          <span
-            className={`truncate text-xs font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}
-          >
+          <Folder size={14} className="text-blue-600 dark:text-blue-400" />
+          <span className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
             {projectName ?? 'Project'}
           </span>
         </div>
         <div className="relative">
           <Search
             size={12}
-            className={`absolute left-1.5 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
           />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter files..."
-            className={`w-full rounded border py-0.5 pl-6 pr-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-              isDark
-                ? 'border-gray-600 bg-gray-800 text-gray-200'
-                : 'border-gray-200 bg-gray-50 text-gray-700'
-            }`}
+            className="w-full rounded border border-gray-200 bg-gray-50 py-0.5 pl-6 pr-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
           />
         </div>
       </div>
@@ -142,11 +133,9 @@ export function ProjectExplorer({
       {/* File tree */}
       <div className="flex-1 overflow-y-auto py-1">
         {loading ? (
-          <p className={`px-3 py-2 text-xs italic ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            Loading...
-          </p>
+          <p className="px-3 py-2 text-xs italic text-gray-400 dark:text-gray-500">Loading...</p>
         ) : displayFiles.length === 0 ? (
-          <p className={`px-3 py-2 text-xs italic ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          <p className="px-3 py-2 text-xs italic text-gray-400 dark:text-gray-500">
             {rootPath ? 'No files found' : 'No folder imported'}
           </p>
         ) : (
@@ -155,7 +144,6 @@ export function ProjectExplorer({
             expanded={expanded}
             onToggle={toggleExpand}
             onFileClick={handleFileClick}
-            isDark={isDark}
             depth={0}
           />
         )}
@@ -169,14 +157,12 @@ function FileTree({
   expanded,
   onToggle,
   onFileClick,
-  isDark,
   depth,
 }: {
   nodes: FileNode[];
   expanded: Set<string>;
   onToggle: (path: string) => void;
   onFileClick: (node: FileNode) => void;
-  isDark?: boolean;
   depth: number;
 }) {
   return (
@@ -184,7 +170,7 @@ function FileTree({
       {nodes.map((node) => {
         const isExpanded = expanded.has(node.path);
         const isDir = node.type === 'directory';
-        const hoverClass = isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100';
+        const hoverClass = 'hover:bg-gray-100 dark:hover:bg-gray-800';
 
         return (
           <div key={node.path}>
@@ -205,27 +191,17 @@ function FileTree({
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder
-                    size={12}
-                    className={`flex-shrink-0 ${isDark ? 'text-amber-500' : 'text-amber-600'}`}
-                  />
+                  <Folder size={12} className="flex-shrink-0 text-amber-600 dark:text-amber-500" />
                 </>
               ) : (
                 <>
                   <span className="w-3 flex-shrink-0" />
-                  <File
-                    size={12}
-                    className={`flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-                  />
+                  <File size={12} className="flex-shrink-0 text-gray-500 dark:text-gray-400" />
                 </>
               )}
-              <span className={`truncate ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                {node.name}
-              </span>
+              <span className="truncate text-gray-700 dark:text-gray-300">{node.name}</span>
               {node.size !== undefined && (
-                <span
-                  className={`ml-auto flex-shrink-0 text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-                >
+                <span className="ml-auto flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500">
                   {formatSize(node.size)}
                 </span>
               )}
@@ -236,7 +212,6 @@ function FileTree({
                 expanded={expanded}
                 onToggle={onToggle}
                 onFileClick={onFileClick}
-                isDark={isDark}
                 depth={depth + 1}
               />
             )}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 
 // ── Maintenance Tab (Garbage Collection) ──
@@ -63,27 +64,23 @@ export function MaintenanceTab() {
           System Maintenance
         </h2>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={async () => {
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 await invoke('open_devtools');
               } catch {
-                // Tauri API not available (browser mode)
                 console.log('DevTools: press F12 in browser');
               }
             }}
-            className="rounded-lg border px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Open DevTools
-          </button>
-          <button
-            onClick={handleScan}
-            disabled={scanning}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          </Button>
+          <Button size="sm" onClick={handleScan} disabled={scanning}>
             {scanning ? 'Scanning...' : 'Run GC Scan'}
-          </button>
+          </Button>
         </div>
       </div>
 

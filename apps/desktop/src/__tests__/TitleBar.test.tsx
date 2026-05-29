@@ -30,17 +30,13 @@ describe('TitleBar', () => {
     expect(toggle).toHaveBeenCalled();
   });
 
-  it('shows moon icon in light mode (isDark=false)', () => {
-    renderTitleBar({ isDark: false, onToggleTheme: vi.fn() });
+  it('renders both sun and moon icons (visibility controlled by CSS dark mode)', () => {
+    renderTitleBar({ onToggleTheme: vi.fn() });
     const btn = screen.getByLabelText('Toggle theme');
-    // lucide-react renders <svg class="lucide lucide-moon" ...>
-    expect(btn.querySelector('svg')?.getAttribute('class')).toContain('lucide-moon');
-  });
-
-  it('shows sun icon in dark mode (isDark=true)', () => {
-    renderTitleBar({ isDark: true, onToggleTheme: vi.fn() });
-    const btn = screen.getByLabelText('Toggle theme');
-    expect(btn.querySelector('svg')?.getAttribute('class')).toContain('lucide-sun');
+    const svgs = btn.querySelectorAll('svg');
+    const classes = Array.from(svgs).map((s) => s.getAttribute('class'));
+    expect(classes.some((c) => c?.includes('lucide-sun'))).toBe(true);
+    expect(classes.some((c) => c?.includes('lucide-moon'))).toBe(true);
   });
 
   it('hides window controls when Tauri not available (browser mode)', () => {
