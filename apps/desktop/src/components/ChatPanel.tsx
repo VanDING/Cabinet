@@ -114,7 +114,7 @@ export function ChatPanel({
   const attachedFiles = active?.attachedFiles ?? [];
 
   const borderClass = 'border-border';
-  const bgClass = 'bg-surface-primary';
+  const bgClass = 'bg-surface-sidebar';
   const tabBgClass = 'bg-surface-elevated';
   const inputBgClass = 'bg-surface-primary';
   const textClass = 'text-content-primary';

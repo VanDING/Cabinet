@@ -243,7 +243,7 @@ export const ChatView = memo(function ChatView({
   }, [messages]);
 
   return (
-    <div className="flex h-full flex-col bg-surface-primary">
+    <div className="flex h-full flex-col">
       <div className="flex-shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5">
         <h2 className="truncate text-sm font-medium text-content-secondary">
           {sessionTitle}

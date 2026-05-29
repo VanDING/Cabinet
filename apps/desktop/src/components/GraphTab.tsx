@@ -26,14 +26,9 @@ interface NodePosition {
   y: number;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  person: '#3b82f6',
-  project: '#8b5cf6',
-  concept: '#10b981',
-  technology: '#f59e0b',
-  decision: '#ef4444',
-  memory: '#6b7280',
-};
+function entityColor(type: string): string {
+  return `var(--graph-entity-${type})`;
+}
 
 function computeLayout(entities: GraphEntity[]): Map<string, NodePosition> {
   const positions = new Map<string, NodePosition>();
@@ -169,8 +164,8 @@ export function GraphTab() {
                   opacity={hoveredNode && !isHighlighted ? 0.2 : 1}
                   className={
                     isHighlighted
-                      ? '[stroke:#60a5fa]'
-                      : '[stroke:#d1d5db]:#374151]'
+                      ? '[stroke:var(--graph-edge-active)]'
+                      : '[stroke:var(--graph-edge-inactive)]'
                   }
                 />
               );
@@ -179,7 +174,7 @@ export function GraphTab() {
             {filteredEntities.map((e) => {
               const pos = positions.get(e.id);
               if (!pos) return null;
-              const color = TYPE_COLORS[e.type] || '#6b7280';
+              const color = entityColor(e.type);
               const isHighlighted = hoveredNode === e.id;
               const hasRelation = hoveredNode
                 ? filteredRelations.some(
@@ -203,13 +198,13 @@ export function GraphTab() {
                     r={8 + Math.min(e.frequency * 2, 12)}
                     fill={color}
                     strokeWidth={isHighlighted ? 3 : 2}
-                    className="[stroke:#ffffff]:#1f2937]"
+                    className="[stroke:var(--surface-primary)]"
                   />
                   <text
                     y={22 + Math.min(e.frequency * 2, 12)}
                     textAnchor="middle"
                     fontSize={11}
-                    className="[fill:#374151]:#d1d5db]"
+                    className="[fill:var(--graph-node-label)]"
                   >
                     {e.name.length > 16 ? e.name.slice(0, 16) + '...' : e.name}
                   </text>
@@ -221,11 +216,11 @@ export function GraphTab() {
       </div>
 
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-content-tertiary">
-        {Object.entries(TYPE_COLORS).map(([type, color]) => (
+        {['person','project','concept','technology','decision','memory'].map((type) => (
           <div key={type} className="flex items-center gap-1">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: color }}
+              style={{ backgroundColor: entityColor(type) }}
             />
             <span className="capitalize">{type}</span>
           </div>
