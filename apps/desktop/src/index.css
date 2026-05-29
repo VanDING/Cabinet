@@ -1,9 +1,9 @@
+/* Generated theme CSS — all [data-theme="X"] blocks */
+@import './themes/generated.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Generated theme CSS — all [data-theme="X"] blocks */
-@import './themes/generated.css';
 
 body {
   margin: 0;
