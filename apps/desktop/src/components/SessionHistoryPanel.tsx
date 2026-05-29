@@ -29,9 +29,9 @@ export function SessionHistoryPanel({ isOpen, onClose, history, onReopen, onDele
   return (
     <div
       ref={panelRef}
-      className="absolute bottom-full right-0 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-white shadow-xl dark:border-gray-600 dark:bg-gray-800"
+      className="absolute bottom-full right-0 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-white shadow-xl"
     >
-      <div className="border-b px-3 py-2 text-xs uppercase text-gray-400 dark:border-gray-700">
+      <div className="border-b px-3 py-2 text-xs uppercase text-gray-400">
         Recent Sessions
       </div>
       {history.length === 0 ? (
@@ -40,11 +40,11 @@ export function SessionHistoryPanel({ isOpen, onClose, history, onReopen, onDele
         history.map((session) => (
           <div
             key={session.id}
-            className="group flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+            className="group flex items-center justify-between px-3 py-2 hover:bg-gray-50:bg-gray-700"
           >
             <button
               onClick={() => onReopen(session)}
-              className="flex-1 truncate text-left text-sm text-gray-700 dark:text-gray-200"
+              className="flex-1 truncate text-left text-sm text-gray-700"
             >
               {session.title}
               <span className="block text-xs text-gray-400">

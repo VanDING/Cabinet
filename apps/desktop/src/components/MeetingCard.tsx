@@ -34,23 +34,23 @@ export function MeetingCard({ data }: Props) {
 
   const scoreColor =
     (crossValidation?.coherenceScore ?? 0) >= 0.7
-      ? 'text-green-600 dark:text-green-400'
+      ? 'text-green-600'
       : (crossValidation?.coherenceScore ?? 0) >= 0.5
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-red-600 dark:text-red-400';
+        ? 'text-amber-600'
+        : 'text-red-600';
 
   const hasProcess = !!process && process.analysisBrief.length > 0;
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-blue-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
+    <div className="my-3 overflow-hidden rounded-lg border border-blue-200 bg-white shadow-sm">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between bg-blue-50 px-4 py-2.5 transition-colors dark:bg-gray-700/80"
+        className="flex w-full items-center justify-between bg-blue-50 px-4 py-2.5 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">Meeting</span>
-          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{topic}</span>
+          <span className="text-sm font-semibold text-blue-700">Meeting</span>
+          <span className="text-sm font-medium text-gray-800">{topic}</span>
         </div>
         <div className="flex items-center gap-3">
           {crossValidation && (
@@ -59,12 +59,12 @@ export function MeetingCard({ data }: Props) {
             </span>
           )}
           {hasProcess && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500">
               {process!.reviewPassed ? '✓ Review passed' : '⚠ Review flagged'}
             </span>
           )}
           <span
-            className={`text-xs text-gray-500 transition-transform dark:text-gray-400 ${expanded ? 'rotate-180' : ''}`}
+            className={`text-xs text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
           >
             &#9660;
           </span>
@@ -75,13 +75,13 @@ export function MeetingCard({ data }: Props) {
         <div>
           {/* Tabs */}
           {hasProcess && (
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <div className="flex border-b border-gray-200">
               <button
                 onClick={() => setActiveTab('result')}
                 className={`px-4 py-2 text-xs font-medium transition-colors ${
                   activeTab === 'result'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700:text-gray-300'
                 }`}
               >
                 Result
@@ -90,8 +90,8 @@ export function MeetingCard({ data }: Props) {
                 onClick={() => setActiveTab('process')}
                 className={`px-4 py-2 text-xs font-medium transition-colors ${
                   activeTab === 'process'
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700:text-gray-300'
                 }`}
               >
                 Process
@@ -133,24 +133,24 @@ function ResultTab({
       {/* Advisor Perspectives */}
       {perspectives.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          <p className="text-xs font-medium text-gray-500">
             Advisor Perspectives ({perspectives.length})
           </p>
           <div className="grid gap-2">
             {perspectives.map((p, i) => (
               <div
                 key={i}
-                className="rounded border border-gray-200 bg-gray-50 p-2.5 dark:border-gray-600 dark:bg-gray-700/60"
+                className="rounded border border-gray-200 bg-gray-50 p-2.5"
               >
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-800 dark:text-gray-200">
+                  <span className="text-xs font-medium text-gray-800">
                     {p.advisor}
                   </span>
-                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
                     {p.role}
                   </span>
                 </div>
-                <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                <p className="text-xs leading-relaxed text-gray-600">
                   {p.content}
                 </p>
               </div>
@@ -162,10 +162,10 @@ function ResultTab({
       {/* Synthesis */}
       {synthesis && (
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-500">
             Chair Synthesis
           </p>
-          <div className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+          <div className="text-sm leading-relaxed text-gray-800">
             {synthesis}
           </div>
         </div>
@@ -174,19 +174,19 @@ function ResultTab({
       {/* Cross Validation Details */}
       {crossValidation && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          <p className="text-xs font-medium text-gray-500">
             Cross Validation
           </p>
           {crossValidation.disagreements.length > 0 && (
             <div>
-              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              <span className="text-xs font-medium text-amber-600">
                 Disagreements:
               </span>
               <ul className="mt-0.5 space-y-0.5">
                 {crossValidation.disagreements.map((d, i) => (
                   <li
                     key={i}
-                    className="ml-3 list-disc text-xs text-amber-700 dark:text-amber-300"
+                    className="ml-3 list-disc text-xs text-amber-700"
                   >
                     {d}
                   </li>
@@ -196,10 +196,10 @@ function ResultTab({
           )}
           {crossValidation.gaps.length > 0 && (
             <div>
-              <span className="text-xs font-medium text-red-600 dark:text-red-400">Gaps:</span>
+              <span className="text-xs font-medium text-red-600">Gaps:</span>
               <ul className="mt-0.5 space-y-0.5">
                 {crossValidation.gaps.map((g, i) => (
-                  <li key={i} className="ml-3 list-disc text-xs text-red-700 dark:text-red-300">
+                  <li key={i} className="ml-3 list-disc text-xs text-red-700">
                     {g}
                   </li>
                 ))}
@@ -208,14 +208,14 @@ function ResultTab({
           )}
           {crossValidation.agreements.length > 0 && (
             <div>
-              <span className="text-xs font-medium text-green-600 dark:text-green-400">
+              <span className="text-xs font-medium text-green-600">
                 Agreements:
               </span>
               <ul className="mt-0.5 space-y-0.5">
                 {crossValidation.agreements.map((a, i) => (
                   <li
                     key={i}
-                    className="ml-3 list-disc text-xs text-green-700 dark:text-green-300"
+                    className="ml-3 list-disc text-xs text-green-700"
                   >
                     {a}
                   </li>
@@ -228,7 +228,7 @@ function ResultTab({
 
       {/* Auto-extracted Decision */}
       {decisionId && (
-        <div className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300">
+        <div className="rounded border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-700">
           Decision <code className="font-mono">{decisionId}</code> was auto-extracted from this
           meeting. Review it in the Office or Decision Room.
         </div>
@@ -284,22 +284,22 @@ function ProcessTab({
               <div
                 className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                   step.status === 'done'
-                    ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                    : 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-amber-100 text-amber-600'
                 }`}
               >
                 {step.status === 'done' ? '✓' : '!'}
               </div>
               {i < steps.length - 1 && (
-                <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                <div className="w-px flex-1 bg-gray-200" />
               )}
             </div>
             {/* Step content */}
             <div className="pb-3">
-              <p className="text-xs font-medium text-gray-800 dark:text-gray-200">
+              <p className="text-xs font-medium text-gray-800">
                 {step.title}
               </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">{step.content}</p>
+              <p className="text-[10px] text-gray-500">{step.content}</p>
             </div>
           </div>
         ))}
@@ -307,8 +307,8 @@ function ProcessTab({
 
       {/* Review issues detail */}
       {process.reviewIssues.length > 0 && (
-        <div className="rounded border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-900/10">
-          <p className="mb-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+        <div className="rounded border border-amber-200 bg-amber-50 p-2">
+          <p className="mb-1 text-xs font-medium text-amber-700">
             Reviewer Issues
           </p>
           <ul className="space-y-1">
@@ -323,7 +323,7 @@ function ProcessTab({
                         : 'bg-blue-500'
                   }`}
                 />
-                <span className="text-gray-700 dark:text-gray-300">{issue.detail}</span>
+                <span className="text-gray-700">{issue.detail}</span>
               </li>
             ))}
           </ul>
@@ -333,10 +333,10 @@ function ProcessTab({
       {/* Raw brief (collapsible) */}
       {process.analysisBrief.length > 0 && (
         <details>
-          <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">
+          <summary className="cursor-pointer text-xs text-gray-500">
             Raw chair brief (JSON)
           </summary>
-          <pre className="mt-1 max-h-32 overflow-auto rounded bg-gray-100 p-2 text-[10px] text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+          <pre className="mt-1 max-h-32 overflow-auto rounded bg-gray-100 p-2 text-[10px] text-gray-600">
             {process.analysisBrief}
           </pre>
         </details>

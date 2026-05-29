@@ -16,21 +16,21 @@ export function WorkflowRunCard({ data }: Props) {
 
   const statusColor =
     status === 'completed'
-      ? 'text-green-600 dark:text-green-400'
+      ? 'text-green-600'
       : status === 'failed'
-        ? 'text-red-600 dark:text-red-400'
+        ? 'text-red-600'
         : status === 'running'
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-amber-600 dark:text-amber-400';
+          ? 'text-blue-600'
+          : 'text-amber-600';
 
   const statusBg =
     status === 'completed'
-      ? 'bg-green-100 dark:bg-green-900/40'
+      ? 'bg-green-100'
       : status === 'failed'
-        ? 'bg-red-100 dark:bg-red-900/40'
+        ? 'bg-red-100'
         : status === 'running'
-          ? 'bg-blue-100 dark:bg-blue-900/40'
-          : 'bg-amber-100 dark:bg-amber-900/40';
+          ? 'bg-blue-100'
+          : 'bg-amber-100';
 
   const nodeTypeIcon = (type: string) => {
     switch (type) {
@@ -74,17 +74,17 @@ export function WorkflowRunCard({ data }: Props) {
   };
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-purple-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
+    <div className="my-3 overflow-hidden rounded-lg border border-purple-200 bg-white shadow-sm">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 bg-purple-50 transition-colors dark:bg-gray-700/80"
+        className="flex w-full items-center justify-between px-4 py-2.5 bg-purple-50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+          <span className="text-sm font-semibold text-purple-700">
             Workflow
           </span>
-          <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{runId}</span>
+          <span className="font-mono text-xs text-gray-500">{runId}</span>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -93,7 +93,7 @@ export function WorkflowRunCard({ data }: Props) {
             {status}
           </span>
           <span
-            className={`text-xs text-gray-500 transition-transform dark:text-gray-400 ${expanded ? 'rotate-180' : ''}`}
+            className={`text-xs text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
           >
             &#9660;
           </span>
@@ -110,26 +110,26 @@ export function WorkflowRunCard({ data }: Props) {
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                       step.type === 'end' || status === 'completed'
-                        ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
+                        ? 'bg-green-100 text-green-600'
                         : step.type === 'humanApproval'
-                          ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                          ? 'bg-amber-100 text-amber-600'
+                          : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {nodeTypeIcon(step.type)}
                   </div>
                   {i < steps.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                    <div className="w-px flex-1 bg-gray-200" />
                   )}
                 </div>
                 <div className="pb-3">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium text-gray-800 dark:text-gray-200`}>
+                    <span className={`text-xs font-medium text-gray-800`}>
                       {nodeTypeLabel(step.type)}
                     </span>
-                    <span className={`font-mono text-[10px] text-gray-500 dark:text-gray-400`}>{step.nodeId}</span>
+                    <span className={`font-mono text-[10px] text-gray-500`}>{step.nodeId}</span>
                   </div>
-                  <p className={`text-xs text-gray-500 dark:text-gray-400 mt-0.5`}>{step.output}</p>
+                  <p className={`text-xs text-gray-500 mt-0.5`}>{step.output}</p>
                 </div>
               </div>
             ))}

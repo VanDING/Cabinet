@@ -138,15 +138,15 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     return 0;
   };
 
-  const textClass = 'text-gray-800 dark:text-gray-200';
-  const subtextClass = 'text-gray-400 dark:text-gray-500';
-  const codeBgClass = 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900';
+  const textClass = 'text-gray-800';
+  const subtextClass = 'text-gray-400';
+  const codeBgClass = 'border border-gray-200 bg-gray-50';
 
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Factory</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Factory</h1>
           <span className={`text-sm ${subtextClass}`}>
             Create and manage automated workflows via conversation.
           </span>
@@ -177,7 +177,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
           onFormClose={() => setScheduledFormOpen(false)}
         />
       ) : workflows.length === 0 ? (
-        <div className="py-24 text-center text-gray-400 dark:text-gray-500">
+        <div className="py-24 text-center text-gray-400">
           <p className="text-lg">No workflows yet</p>
           <p className="mt-1 text-sm">
             Click "+ New Workflow" to design one conversationally with the Workflow Designer.
@@ -187,19 +187,19 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         <div className="space-y-3">
           {workflows.map((wf) => (
             <div key={wf.id}>
-              <Card className="flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-750">
+              <Card className="flex items-center justify-between transition-colors hover:bg-gray-50:bg-gray-750">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className={`text-sm font-medium ${textClass}`}>{wf.name}</h3>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${
                         wf.status === 'running'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                          ? 'bg-blue-100 text-blue-700'
                           : wf.status === 'completed'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                            ? 'bg-green-100 text-green-700'
                             : wf.status === 'failed'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {wf.status}
@@ -232,7 +232,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
               {/* Expanded JSON view */}
               {expandedJson.has(wf.id) && (
                 <div
-                  className={`mt-1 rounded-lg p-4 font-mono text-xs text-gray-700 dark:text-gray-300 ${codeBgClass}`}
+                  className={`mt-1 rounded-lg p-4 font-mono text-xs text-gray-700 ${codeBgClass}`}
                 >
                   <pre className="overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(wf.definition, null, 2)}

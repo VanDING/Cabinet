@@ -79,14 +79,14 @@ export function Weather() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-white p-3 dark:border-gray-600 dark:bg-gray-800">
+    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-white p-3">
       {data ? (
         <>
           <span className="text-2xl">{weatherEmoji(data.code)}</span>
-          <span className="mt-1 text-xl font-bold text-gray-800 dark:text-gray-100">
+          <span className="mt-1 text-xl font-bold text-gray-800">
             {data.temp}&deg;C
           </span>
-          <span className="truncate text-xs text-gray-500 dark:text-gray-400">{data.desc}</span>
+          <span className="truncate text-xs text-gray-500">{data.desc}</span>
           <span className="mt-0.5 text-[10px] text-gray-400">Humidity {data.humidity}%</span>
           <span className="truncate text-[10px] text-gray-400">{data.city}</span>
         </>

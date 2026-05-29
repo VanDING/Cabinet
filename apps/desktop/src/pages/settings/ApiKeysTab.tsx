@@ -69,14 +69,14 @@ export function ApiKeysTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">API Keys</h2>
+        <h2 className="text-lg font-semibold text-gray-900">API Keys</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Key'}
         </Button>
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs text-gray-500">Provider</label>
@@ -89,7 +89,7 @@ export function ApiKeysTab() {
                     model: PROVIDER_MODELS[e.target.value]?.[0] ?? '',
                   }))
                 }
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="openai">OpenAI</option>
@@ -108,7 +108,7 @@ export function ApiKeysTab() {
                 placeholder="https://api.anthropic.com"
                 value={formData.baseUrl}
                 onChange={(e) => setFormData((p) => ({ ...p, baseUrl: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -118,7 +118,7 @@ export function ApiKeysTab() {
                 placeholder="sk-ant-..."
                 value={formData.apiKey}
                 onChange={(e) => setFormData((p) => ({ ...p, apiKey: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -128,7 +128,7 @@ export function ApiKeysTab() {
                 placeholder="e.g. claude-sonnet-4-6"
                 value={formData.model}
                 onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <Button size="sm" fullWidth onClick={handleAdd} disabled={!formData.apiKey.trim()}>
@@ -193,14 +193,14 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
     <Card padding="sm" className="flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-medium capitalize text-gray-900">
             {item.provider}
           </span>
           {item.model && <span className="font-mono text-xs text-gray-400">{item.model}</span>}
         </div>
         <p className="mt-0.5 font-mono text-xs text-gray-400">{item.keyPreview}</p>
         {testStatus === 'ok' && testResult && (
-          <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+          <p className="mt-1 text-xs text-green-600">
             OK — {testResult.latencyMs}ms · {testResult.model}
           </p>
         )}
@@ -275,15 +275,15 @@ function ModelMappingSection() {
 
   if (loading) {
     return (
-      <div className="mt-6 border-t pt-6 dark:border-gray-700">
+      <div className="mt-6 border-t pt-6">
         <p className="text-sm text-gray-400">Loading model configuration...</p>
       </div>
     );
   }
 
   return (
-    <div className="mt-6 border-t pt-6 dark:border-gray-700">
-      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+    <div className="mt-6 border-t pt-6">
+      <h3 className="mb-3 text-base font-semibold text-gray-900">
         Model Mapping
       </h3>
       <p className="mb-3 text-xs text-gray-500">
@@ -292,7 +292,7 @@ function ModelMappingSection() {
       </p>
       <div className="max-w-lg space-y-3">
         <div>
-          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+          <label className="mb-1 block text-sm text-gray-600">
             Default Model (default)
           </label>
           <input
@@ -300,11 +300,11 @@ function ModelMappingSection() {
             placeholder="e.g. openai/gpt-4o"
             value={mapping.default}
             onChange={(e) => setMapping((p) => ({ ...p, default: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+          <label className="mb-1 block text-sm text-gray-600">
             Deep Reasoning Model (deep_reasoning)
           </label>
           <input
@@ -312,11 +312,11 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-opus-4-7"
             value={mapping.deep_reasoning}
             onChange={(e) => setMapping((p) => ({ ...p, deep_reasoning: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-gray-600 dark:text-gray-400">
+          <label className="mb-1 block text-sm text-gray-600">
             Fast Execution Model (fast_execution)
           </label>
           <input
@@ -324,7 +324,7 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-haiku-4-5"
             value={mapping.fast_execution}
             onChange={(e) => setMapping((p) => ({ ...p, fast_execution: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
           />
         </div>
       </div>
@@ -358,8 +358,8 @@ function BudgetSection() {
   };
 
   return (
-    <div className="mt-6 border-t pt-6 dark:border-gray-700">
-      <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">
+    <div className="mt-6 border-t pt-6">
+      <h3 className="mb-3 text-base font-semibold text-gray-900">
         Budget Limits
       </h3>
       <div className="mb-3 flex items-center gap-2 text-sm">
@@ -369,7 +369,7 @@ function BudgetSection() {
       <div className="grid max-w-lg grid-cols-3 gap-4">
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
-            <label className="mb-1 block text-sm capitalize text-gray-600 dark:text-gray-400">
+            <label className="mb-1 block text-sm capitalize text-gray-600">
               {period}
             </label>
             <div className="flex items-center gap-1">
@@ -380,7 +380,7 @@ function BudgetSection() {
                 onChange={(e) =>
                   setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
                 }
-                className="w-24 rounded border bg-white px-2 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-24 rounded border bg-white px-2 py-1.5 text-sm text-gray-900"
               />
             </div>
           </div>

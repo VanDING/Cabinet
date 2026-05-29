@@ -39,10 +39,10 @@ export function MaintenanceTab() {
 
   const severityColor = (s: string) =>
     s === 'error'
-      ? 'text-red-600 bg-red-50 dark:bg-red-900 dark:text-red-300'
+      ? 'text-red-600 bg-red-50'
       : s === 'warning'
-        ? 'text-amber-600 bg-amber-50 dark:bg-amber-900 dark:text-amber-300'
-        : 'text-blue-600 bg-blue-50 dark:bg-blue-900 dark:text-blue-300';
+        ? 'text-amber-600 bg-amber-50'
+        : 'text-blue-600 bg-blue-50';
 
   const categoryLabel = (c: string) =>
     c === 'orphan_file'
@@ -60,7 +60,7 @@ export function MaintenanceTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-lg font-semibold text-gray-900">
           System Maintenance
         </h2>
         <div className="flex gap-2">
@@ -86,23 +86,23 @@ export function MaintenanceTab() {
 
       {lastReport && (
         <div className="mb-4 flex gap-4">
-          <div className="flex-1 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="flex-1 rounded-lg border bg-white p-3">
+            <div className="text-2xl font-bold text-gray-900">
               {lastReport.summary?.total ?? 0}
             </div>
             <div className="text-xs text-gray-500">Total Issues</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex-1 rounded-lg border bg-white p-3">
             <div className="text-2xl font-bold text-red-600">{lastReport.summary?.errors ?? 0}</div>
             <div className="text-xs text-gray-500">Errors</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex-1 rounded-lg border bg-white p-3">
             <div className="text-2xl font-bold text-amber-600">
               {lastReport.summary?.warnings ?? 0}
             </div>
             <div className="text-xs text-gray-500">Warnings</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex-1 rounded-lg border bg-white p-3">
             <div className="text-2xl font-bold text-gray-500">{lastReport.filesScanned ?? 0}</div>
             <div className="text-xs text-gray-500">Files Scanned</div>
           </div>
@@ -110,8 +110,8 @@ export function MaintenanceTab() {
       )}
 
       {summary && (
-        <div className="mb-4 rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700 dark:text-gray-300">
+        <div className="mb-4 rounded-lg border bg-white p-4">
+          <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
             {summary}
           </pre>
         </div>
@@ -122,7 +122,7 @@ export function MaintenanceTab() {
           {issues.slice(0, 20).map((issue, i) => (
             <div
               key={i}
-              className="rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
+              className="rounded-lg border bg-white p-3"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -133,10 +133,10 @@ export function MaintenanceTab() {
                 <span className="text-xs text-gray-500">{categoryLabel(issue.category)}</span>
                 {issue.autoFixable && <span className="text-xs text-green-600">auto-fixable</span>}
               </div>
-              <p className="text-sm text-gray-900 dark:text-gray-100">{issue.description}</p>
+              <p className="text-sm text-gray-900">{issue.description}</p>
               <p className="mt-1 font-mono text-xs text-gray-400">{issue.location}</p>
               {issue.suggestedFix && (
-                <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                <p className="mt-1 text-xs text-blue-600">
                   Fix: {issue.suggestedFix}
                 </p>
               )}

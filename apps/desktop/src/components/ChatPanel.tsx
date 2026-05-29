@@ -113,16 +113,16 @@ export function ChatPanel({
   const active = activeSession;
   const attachedFiles = active?.attachedFiles ?? [];
 
-  const borderClass = 'border-gray-200 dark:border-gray-700';
-  const bgClass = 'bg-white dark:bg-gray-800';
-  const tabBgClass = 'bg-gray-50 dark:bg-gray-900';
-  const inputBgClass = 'bg-white dark:bg-gray-800';
-  const textClass = 'text-gray-800 dark:text-gray-100';
-  const subtextClass = 'text-gray-500 dark:text-gray-400';
-  const hoverClass = 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200';
-  const btnBaseClass = 'text-gray-500 dark:text-gray-400';
-  const dropdownBgClass = 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600';
-  const dropdownItemClass = 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700';
+  const borderClass = 'border-gray-200';
+  const bgClass = 'bg-white';
+  const tabBgClass = 'bg-gray-50';
+  const inputBgClass = 'bg-white';
+  const textClass = 'text-gray-800';
+  const subtextClass = 'text-gray-500';
+  const hoverClass = 'hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200';
+  const btnBaseClass = 'text-gray-500';
+  const dropdownBgClass = 'bg-white border-gray-200';
+  const dropdownItemClass = 'text-gray-700 hover:bg-gray-100:bg-gray-700';
 
   useEffect(() => {
     setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window);
@@ -259,9 +259,9 @@ export function ChatPanel({
   };
 
   const activeTabClass =
-    'bg-white text-gray-800 border-blue-500 dark:bg-gray-800 dark:text-gray-200';
+    'bg-white text-gray-800 border-blue-500';
   const inactiveTabClass =
-    'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700';
+    'text-gray-500 hover:bg-gray-200:bg-gray-700';
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
@@ -277,7 +277,7 @@ export function ChatPanel({
             <button
               ref={agentBtnRef}
               onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className="flex items-center gap-0.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60"
+              className="flex items-center gap-0.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200:bg-blue-900/60"
               title="Switch agent"
             >
               @{activeAgent}
@@ -285,10 +285,10 @@ export function ChatPanel({
             </button>
             {agentMenuOpen && (
               <div
-                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-xl"
               >
                 <div
-                  className="border-b border-gray-200 px-3 py-1 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                  className="border-b border-gray-200 px-3 py-1 text-xs text-gray-500"
                 >
                   Switch Agent
                 </div>
@@ -305,8 +305,8 @@ export function ChatPanel({
                     }}
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       activeAgent === a.id
-                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:bg-gray-100:bg-gray-700'
                     }`}
                   >
                     @{a.id}
@@ -322,8 +322,8 @@ export function ChatPanel({
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
               className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
                 activeProjectId
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60'
-                  : 'text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700'
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200:bg-green-900/60'
+                  : 'text-gray-500 hover:bg-gray-200:bg-gray-700'
               }`}
               title="Select project"
             >
@@ -345,7 +345,7 @@ export function ChatPanel({
                     onSwitchProject?.(null);
                     setProjectMenuOpen(false);
                   }}
-                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : dropdownItemClass}`}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? 'bg-blue-50 text-blue-600' : dropdownItemClass}`}
                 >
                   Global (no project)
                 </button>
@@ -360,7 +360,7 @@ export function ChatPanel({
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs ${
                         activeProjectId === p.id
-                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                          ? 'bg-blue-50 text-blue-600'
                           : dropdownItemClass
                       }`}
                     >
@@ -401,7 +401,7 @@ export function ChatPanel({
                       className={`h-2 w-2 flex-shrink-0 rounded-full ${
                         hasActivity
                           ? 'animate-pulse bg-blue-500'
-                          : `border border-gray-400 dark:border-gray-500`
+                          : `border border-gray-400`
                       }`}
                     />
                     <span className="flex-1 truncate">{session.title}</span>
@@ -463,7 +463,7 @@ export function ChatPanel({
             {attachedFiles.map((file) => (
               <span
                 key={file.id}
-                className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
               >
                 <span className="max-w-[160px] truncate" title={file.path}>
                   {file.type === 'project' ? file.path : file.name}
@@ -556,7 +556,7 @@ export function ChatPanel({
                       onClick={() => handleSelectSkill(skill.name)}
                       className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                     >
-                      <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+                      <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700">
                         /
                       </span>
                       {skill.name}
@@ -602,7 +602,7 @@ export function ChatPanel({
                     }}
                     className={`w-full px-4 py-1.5 text-left transition-colors ${
                       delegationTier === t.id
-                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                        ? 'bg-blue-50 text-blue-600'
                         : dropdownItemClass
                     }`}
                   >
@@ -648,7 +648,7 @@ export function ChatPanel({
                         }}
                         className={`w-full px-5 py-1 text-left font-mono text-xs transition-colors ${
                           selectedModel === model
-                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                            ? 'bg-blue-50 text-blue-600'
                             : dropdownItemClass
                         }`}
                       >
@@ -684,7 +684,7 @@ export function ChatPanel({
                 ? 'bg-red-500 text-white hover:bg-red-600'
                 : input.trim()
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'cursor-not-allowed bg-gray-300 text-gray-400 dark:bg-gray-600 dark:text-gray-500'
+                  : 'cursor-not-allowed bg-gray-300 text-gray-400'
             }`}
             aria-label={isProcessing ? 'Stop' : 'Send'}
           >

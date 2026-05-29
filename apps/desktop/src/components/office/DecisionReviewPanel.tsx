@@ -17,18 +17,18 @@ interface Props {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  L0: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  L1: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  L2: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  L3: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  L0: 'bg-green-100 text-green-700',
+  L1: 'bg-blue-100 text-blue-700',
+  L2: 'bg-amber-100 text-amber-700',
+  L3: 'bg-red-100 text-red-700',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20',
-  approved: 'text-green-600 bg-green-50 dark:bg-green-900/20',
-  rejected: 'text-red-600 bg-red-50 dark:bg-red-900/20',
-  expired: 'text-gray-400 bg-gray-100 dark:bg-gray-800',
-  archived: 'text-gray-400 bg-gray-100 dark:bg-gray-800',
+  pending: 'text-amber-600 bg-amber-50',
+  approved: 'text-green-600 bg-green-50',
+  rejected: 'text-red-600 bg-red-50',
+  expired: 'text-gray-400 bg-gray-100',
+  archived: 'text-gray-400 bg-gray-100',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -124,7 +124,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
   if (loading) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
       </div>
     );
@@ -132,7 +132,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
   if (!decision) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl">
         <p className="text-sm text-gray-400">Decision not found</p>
       </div>
     );
@@ -147,9 +147,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l bg-white shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="sticky top-0 z-10 border-b bg-white px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
@@ -167,14 +167,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                   {TYPE_LABELS[decision.type] ?? decision.type}
                 </span>
               </div>
-              <h2 className="truncate text-lg font-bold text-gray-900 dark:text-gray-100">
+              <h2 className="truncate text-lg font-bold text-gray-900">
                 {decision.title}
               </h2>
               <p className="mt-1 text-xs text-gray-500">{LEVEL_DESCRIPTIONS[decision.level]}</p>
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 text-xl leading-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="flex-shrink-0 text-xl leading-none text-gray-400 hover:text-gray-600:text-gray-200"
             >
               &times;
             </button>
@@ -182,7 +182,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
           {/* Description */}
           {decision.description && (
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{decision.description}</p>
+            <p className="mt-3 text-sm text-gray-600">{decision.description}</p>
           )}
         </div>
 
@@ -191,7 +191,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
           {/* Option Comparison */}
           {decision.options && decision.options.length > 0 && (
             <section>
-              <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
+              <h3 className="mb-3 text-sm font-semibold text-gray-800">
                 Options
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -206,10 +206,10 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                       disabled={isResolved}
                       className={`rounded-lg border p-3 text-left transition-all ${
                         isResolved && decision.chosenOptionId === opt.id
-                          ? 'border-green-500 bg-green-50 ring-2 ring-green-500 dark:bg-green-900/20'
+                          ? 'border-green-500 bg-green-50 ring-2 ring-green-500'
                           : isSelected
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 dark:bg-blue-900/20'
-                            : 'border-gray-200 hover:border-blue-300 dark:border-gray-700 dark:hover:border-blue-700'
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500'
+                            : 'border-gray-200 hover:border-blue-300:border-blue-700'
                       } ${isResolved ? 'cursor-default' : 'cursor-pointer'}`}
                     >
                       <div className="mb-1 flex items-center gap-2">
@@ -219,14 +219,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                               ? 'border-green-500 bg-green-500'
                               : isSelected
                                 ? 'border-blue-500 bg-blue-500'
-                                : 'border-gray-300 dark:border-gray-600'
+                                : 'border-gray-300'
                           }`}
                         >
                           {((isResolved && decision.chosenOptionId === opt.id) || isSelected) && (
                             <div className="h-1.5 w-1.5 rounded-full bg-white" />
                           )}
                         </div>
-                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        <span className="text-sm font-medium text-gray-800">
                           {opt.label}
                         </span>
                         {isResolved && decision.chosenOptionId === opt.id && (
@@ -234,7 +234,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                         )}
                       </div>
 
-                      <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p className="mt-1.5 text-xs text-gray-500">
                         {opt.impact}
                       </p>
 
@@ -249,7 +249,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                           return (
                             <div key={dim} className="flex items-center gap-2">
                               <span className="w-5 text-xs text-gray-400">{dimIcons[idx]}</span>
-                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                                 <div
                                   className={`h-full rounded-full ${isHigh ? 'bg-amber-400' : 'bg-blue-400'}`}
                                   style={{ width: `${value}%` }}
@@ -268,7 +268,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
           {/* Audit Trail */}
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <h3 className="mb-3 text-sm font-semibold text-gray-800">
               Decision Trail
             </h3>
             {audit.length === 0 ? (
@@ -279,7 +279,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                   <div key={i} className="relative flex gap-3 pb-3 text-xs">
                     {/* Timeline line */}
                     {i < audit.length - 1 && (
-                      <div className="absolute bottom-0 left-[6.5px] top-3 w-px bg-gray-200 dark:bg-gray-700" />
+                      <div className="absolute bottom-0 left-[6.5px] top-3 w-px bg-gray-200" />
                     )}
                     {/* Dot */}
                     <div
@@ -295,7 +295,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium capitalize text-gray-700 dark:text-gray-300">
+                        <span className="font-medium capitalize text-gray-700">
                           {entry.action}
                         </span>
                         <span className="text-gray-400">by {entry.actor}</span>
@@ -343,14 +343,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
         {/* Footer — Captain Actions (only for pending decisions) */}
         {decision.status === 'pending' && (
-          <div className="sticky bottom-0 space-y-3 border-t bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+          <div className="sticky bottom-0 space-y-3 border-t bg-white px-6 py-4">
             {/* Reason (optional) */}
             <textarea
               placeholder="Reasoning (optional)..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              className="w-full resize-none rounded border bg-gray-50 px-3 py-2 text-sm text-gray-900"
             />
 
             {/* Action buttons */}
@@ -359,7 +359,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                 <select
                   value={selectedOption ?? ''}
                   onChange={(e) => setSelectedOption(e.target.value)}
-                  className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                  className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900"
                 >
                   <option value="" disabled>
                     Select an option...

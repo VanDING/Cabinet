@@ -60,30 +60,30 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
 
   const levelBadge = (level: string) => {
     const colors: Record<string, string> = {
-      L0: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-      L1: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-      L2: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-      L3: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+      L0: 'bg-green-100 text-green-700',
+      L1: 'bg-blue-100 text-blue-700',
+      L2: 'bg-amber-100 text-amber-700',
+      L3: 'bg-red-100 text-red-700',
     };
     return colors[level] ?? 'bg-gray-100 text-gray-500';
   };
 
   const statusBadge = (status: string) => {
     if (status === 'pending')
-      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+      return 'bg-amber-100 text-amber-700';
     if (status === 'approved')
-      return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+      return 'bg-green-100 text-green-700';
     if (status === 'rejected')
-      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+      return 'bg-red-100 text-red-700';
     return 'bg-gray-100 text-gray-500';
   };
 
   return (
-    <div className="h-full overflow-y-auto rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">
+    <div className="h-full overflow-y-auto rounded-lg border bg-white p-4">
+      <h3 className="mb-3 text-sm font-semibold text-gray-800">
         Decisions
         {pending.length > 0 && (
-          <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+          <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
             {pending.length} pending
           </span>
         )}
@@ -104,7 +104,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
             <button
               key={d.id}
               onClick={() => onSelectDecision?.(d.id)}
-              className="w-full rounded border p-3 text-left transition-colors hover:border-blue-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
+              className="w-full rounded border p-3 text-left transition-colors hover:border-blue-300 hover:bg-gray-50:border-blue-700:bg-gray-800/50"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -117,7 +117,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 >
                   {d.status}
                 </span>
-                <span className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
+                <span className="truncate text-sm font-medium text-gray-700">
                   {d.title}
                 </span>
               </div>
@@ -128,7 +128,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 {d.options?.slice(0, 3).map((opt: any) => (
                   <span
                     key={opt.id}
-                    className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                    className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500"
                   >
                     {opt.label}
                   </span>
@@ -143,7 +143,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
           {/* Recently resolved */}
           {resolved.length > 0 && (
             <>
-              <div className="my-2 border-t dark:border-gray-700" />
+              <div className="my-2 border-t" />
               <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
                 Recently resolved
               </p>
@@ -151,7 +151,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 <button
                   key={d.id}
                   onClick={() => onSelectDecision?.(d.id)}
-                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-blue-300 hover:bg-gray-50 hover:opacity-100 dark:border-gray-700 dark:hover:border-blue-700 dark:hover:bg-gray-800/50"
+                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-blue-300 hover:bg-gray-50 hover:opacity-100:border-blue-700:bg-gray-800/50"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -159,7 +159,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                     >
                       {d.status}
                     </span>
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-xs font-medium text-gray-700">
                       {d.title}
                     </span>
                   </div>

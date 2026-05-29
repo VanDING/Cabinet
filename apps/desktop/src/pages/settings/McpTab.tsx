@@ -98,14 +98,14 @@ export function McpTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">MCP Servers</h2>
+        <h2 className="text-lg font-semibold text-gray-900">MCP Servers</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Server'}
         </Button>
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs text-gray-500">Server Name</label>
@@ -114,7 +114,7 @@ export function McpTab() {
                 placeholder="e.g. filesystem"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ export function McpTab() {
                 placeholder="npx"
                 value={form.command}
                 onChange={(e) => setForm((p) => ({ ...p, command: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -136,7 +136,7 @@ export function McpTab() {
                 placeholder="-y @anthropic/mcp-server-filesystem /path"
                 value={form.args}
                 onChange={(e) => setForm((p) => ({ ...p, args: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <Button
@@ -152,7 +152,7 @@ export function McpTab() {
       )}
 
       {testResult && (
-        <div className="mb-3 rounded bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-900 dark:text-green-300">
+        <div className="mb-3 rounded bg-green-50 px-3 py-2 text-sm text-green-700">
           {testResult}
         </div>
       )}
@@ -167,7 +167,7 @@ export function McpTab() {
             <Card key={s.name} padding="sm" className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-medium text-gray-900">
                     {s.name}
                   </span>
                   <Tag variant={s.enabled ? 'success' : 'default'}>

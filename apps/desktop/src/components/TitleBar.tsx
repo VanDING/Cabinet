@@ -82,15 +82,15 @@ export function TitleBar({
   const handleClose = useCallback(() => invoke('close').catch(() => {}), []);
 
   const btnHover =
-    'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200';
+    'text-gray-500 hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200';
 
   return (
     <div
       data-tauri-drag-region
-      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-gray-200 bg-white"
     >
       <div data-tauri-drag-region className="flex items-center pl-4">
-        <span className="text-xs font-semibold tracking-wide text-gray-600 dark:text-gray-300">
+        <span className="text-xs font-semibold tracking-wide text-gray-600">
           Cabinet
         </span>
       </div>
@@ -150,7 +150,7 @@ export function TitleBar({
             </button>
             <button
               onClick={handleClose}
-              className="flex h-full w-10 items-center justify-center text-gray-500 transition-colors hover:bg-red-600 hover:text-white dark:text-gray-400"
+              className="flex h-full w-10 items-center justify-center text-gray-500 transition-colors hover:bg-red-600 hover:text-white"
               aria-label="Close"
             >
               <X size={14} />

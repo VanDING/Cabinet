@@ -86,16 +86,16 @@ export function ProgressBoard({ projectId }: Props) {
 
   const statusColor = (s: string) =>
     s === 'completed'
-      ? 'text-green-700 bg-green-50 dark:bg-green-900 dark:text-green-300'
+      ? 'text-green-700 bg-green-50'
       : s === 'in_progress'
-        ? 'text-blue-700 bg-blue-50 dark:bg-blue-900 dark:text-blue-300'
+        ? 'text-blue-700 bg-blue-50'
         : s === 'blocked'
-          ? 'text-red-700 bg-red-50 dark:bg-red-900 dark:text-red-300'
-          : 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300';
+          ? 'text-red-700 bg-red-50'
+          : 'text-gray-600 bg-gray-100';
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4">
         <span className="text-xs text-gray-400">Loading progress...</span>
       </div>
     );
@@ -103,8 +103,8 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (!data || data.tasks.length === 0) {
     return (
-      <div className="h-full rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
-        <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Task Board</div>
+      <div className="h-full rounded-lg border bg-white p-4">
+        <div className="mb-2 text-sm font-medium text-gray-700">Task Board</div>
         <p className="text-xs text-gray-400">
           No tasks tracked yet. Use the secretary to create tasks.
         </p>
@@ -116,9 +116,9 @@ export function ProgressBoard({ projectId }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Task Board</div>
+        <div className="text-sm font-medium text-gray-700">Task Board</div>
         <button onClick={fetchProgress} className="text-xs text-blue-500 hover:underline">
           Refresh
         </button>
@@ -132,7 +132,7 @@ export function ProgressBoard({ projectId }: Props) {
           </span>
           <span>{data.percent}%</span>
         </div>
-        <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-600">
+        <div className="h-1.5 w-full rounded-full bg-gray-200">
           <div
             className="h-1.5 rounded-full bg-blue-500 transition-all"
             style={{ width: `${data.percent}%` }}
@@ -142,9 +142,9 @@ export function ProgressBoard({ projectId }: Props) {
 
       {/* Next task */}
       {data.nextTask && (
-        <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2 dark:border-blue-800 dark:bg-blue-900/20">
+        <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2">
           <div className="text-[10px] font-medium uppercase text-blue-500">Next Up</div>
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <div className="text-sm font-medium text-gray-900">
             {data.nextTask.title}
           </div>
         </div>
@@ -155,11 +155,11 @@ export function ProgressBoard({ projectId }: Props) {
         {data.tasks.map((task) => (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-gray-50:bg-gray-700/50"
           >
             <span className="text-sm">{statusIcon(task.status)}</span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-gray-800 dark:text-gray-200">
+              <div className="truncate text-xs font-medium text-gray-800">
                 {task.title}
               </div>
               {task.blockedReason && (

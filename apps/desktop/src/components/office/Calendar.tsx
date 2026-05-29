@@ -96,21 +96,21 @@ export function Calendar({ projectId }: Props) {
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-3 dark:border-gray-600 dark:bg-gray-800">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-3">
       {/* Month navigation */}
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600:text-gray-200"
         >
           ‹
         </button>
-        <div className="truncate text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="truncate text-center text-sm font-medium text-gray-700">
           {monthNames[month]} {year}
         </div>
         <button
           onClick={nextMonth}
-          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600:text-gray-200"
         >
           ›
         </button>
@@ -138,7 +138,7 @@ export function Calendar({ projectId }: Props) {
                 d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
                   ? 'rounded bg-blue-600 text-white'
                   : d
-                    ? 'text-gray-600 dark:text-gray-300'
+                    ? 'text-gray-600'
                     : ''
               }`}
             >
