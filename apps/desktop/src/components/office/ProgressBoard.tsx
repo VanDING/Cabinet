@@ -181,7 +181,7 @@ export function ProgressBoard({ projectId }: Props) {
                 <>
                   <button
                     onClick={() => updateStatus(task.id, 'completed')}
-                    className="rounded bg-intent-success-muted px-1.5 py-0.5 text-xs text-intent-success hover:bg-intent-success-muted"
+                    className="rounded bg-intent-success-muted px-1.5 py-0.5 text-xs text-intent-success hover:bg-intent-success"
                     title="Complete"
                   >
                     ✓
