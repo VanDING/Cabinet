@@ -41,7 +41,7 @@ export function MaintenanceTab() {
     s === 'error'
       ? 'text-intent-danger bg-intent-danger-muted'
       : s === 'warning'
-        ? 'text-amber-600 bg-amber-50'
+        ? 'text-intent-warning bg-intent-warning-muted'
         : 'text-accent bg-accent-muted';
 
   const categoryLabel = (c: string) =>
@@ -97,7 +97,7 @@ export function MaintenanceTab() {
             <div className="text-xs text-content-tertiary">Errors</div>
           </div>
           <div className="flex-1 rounded-lg border bg-surface-primary p-3">
-            <div className="text-2xl font-bold text-amber-600">
+            <div className="text-2xl font-bold text-intent-warning">
               {lastReport.summary?.warnings ?? 0}
             </div>
             <div className="text-xs text-content-tertiary">Warnings</div>

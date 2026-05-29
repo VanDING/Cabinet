@@ -264,7 +264,7 @@ export function OfficePage() {
           <StatCard
             label="Pending Decisions"
             value={stats.pendingDecisions}
-            color="text-amber-600"
+            color="text-intent-warning"
             onClick={() => {
               if (stats.pendingDecisions > 0) {
                 // Open the first pending decision

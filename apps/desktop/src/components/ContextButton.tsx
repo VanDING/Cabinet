@@ -95,7 +95,7 @@ export function ContextButton({
               </div>
               <div className="mt-1 h-1.5 w-full rounded-full bg-surface-muted">
                 <div
-                  className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-intent-danger' : pct > 50 ? 'bg-amber-500' : 'bg-accent'}`}
+                  className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-intent-danger' : pct > 50 ? 'bg-intent-warning' : 'bg-accent'}`}
                   style={{ width: `${Math.min(pct, 100)}%` }}
                 />
               </div>

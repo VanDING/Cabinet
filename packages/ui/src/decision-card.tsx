@@ -22,9 +22,9 @@ export function DecisionCard({
 
   const levelColors: Record<string, string> = {
     L0: 'bg-surface-muted text-content-secondary',
-    L1: 'bg-green-100 text-intent-success',
-    L2: 'bg-amber-100 text-amber-700',
-    L3: 'bg-red-100 text-intent-danger',
+    L1: 'bg-intent-success-muted text-intent-success',
+    L2: 'bg-intent-warning-muted text-intent-warning',
+    L3: 'bg-intent-danger-muted text-intent-danger',
   };
 
   return (
@@ -70,7 +70,7 @@ export function DecisionCard({
         {onApprove && decision.status === 'pending' && (
           <button
             onClick={() => onApprove(decision.id, selectedOptionId)}
-            className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-green-700"
+            className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
           >
             Approve
           </button>
@@ -78,7 +78,7 @@ export function DecisionCard({
         {onReject && decision.status === 'pending' && (
           <button
             onClick={() => onReject(decision.id)}
-            className="rounded bg-red-100 px-3 py-1.5 text-sm text-intent-danger hover:bg-red-200"
+            className="rounded bg-intent-danger-muted px-3 py-1.5 text-sm text-intent-danger hover:bg-intent-danger-muted"
           >
             Reject
           </button>

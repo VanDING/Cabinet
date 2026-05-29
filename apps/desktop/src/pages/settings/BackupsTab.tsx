@@ -105,7 +105,7 @@ export function BackupsTab() {
               <button
                 onClick={() => handleRestore(b.path)}
                 disabled={restoring}
-                className="rounded border border-amber-300 px-2 py-1 text-xs text-amber-600 hover:text-amber-700 disabled:opacity-50"
+                className="rounded border border-intent-warning px-2 py-1 text-xs text-intent-warning hover:text-intent-warning disabled:opacity-50"
               >
                 Restore
               </button>

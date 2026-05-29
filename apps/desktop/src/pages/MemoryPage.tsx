@@ -400,7 +400,7 @@ const layerColors: Record<string, string> = {
   short_term: 'bg-accent-muted text-accent',
   long_term: 'bg-intent-purple-muted text-intent-purple',
   entity: 'bg-intent-success-muted text-intent-success',
-  project: 'bg-amber-100 text-amber-700',
+  project: 'bg-intent-warning-muted text-intent-warning',
 };
 
 function getNumericMeta(meta: Record<string, unknown>, key: string): number | undefined {
@@ -694,7 +694,7 @@ export function MemoryPage() {
                                 </span>
                               )}
                               {supersededBy && (
-                                <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700">
+                                <span className="rounded bg-intent-warning-muted px-1.5 py-0.5 text-xs text-intent-warning">
                                   Superseded by: {String(supersededBy).slice(0, 20)}
                                 </span>
                               )}

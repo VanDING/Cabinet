@@ -5,11 +5,11 @@ import { useNotifications, type AppNotification } from './NotificationContext';
 const TYPE_ICONS: Record<AppNotification['type'], { label: string; color: string }> = {
   decision: { label: 'D', color: 'bg-accent' },
   meeting: { label: 'M', color: 'bg-intent-purple' },
-  task: { label: 'T', color: 'bg-amber-500' },
+  task: { label: 'T', color: 'bg-intent-warning' },
   project: { label: 'P', color: 'bg-intent-success' },
   system: { label: 'S', color: 'bg-surface-elevated0' },
-  workflow: { label: 'W', color: 'bg-cyan-500' },
-  deliverable: { label: 'F', color: 'bg-teal-500' },
+  workflow: { label: 'W', color: 'bg-intent-info' },
+  deliverable: { label: 'F', color: 'bg-intent-info' },
 };
 
 function timeAgo(date: Date): string {
@@ -59,7 +59,7 @@ export function NotificationBell() {
       >
         <Bell size={14} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-orange-500 px-0.5 text-[9px] font-bold leading-none text-content-inverse">
+          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-intent-warning px-0.5 text-[9px] font-bold leading-none text-content-inverse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
