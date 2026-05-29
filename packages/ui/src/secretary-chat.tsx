@@ -87,7 +87,7 @@ export function SecretaryChat({
                 >
                   <p className="text-sm whitespace-pre-wrap">{parsed.text || msg.content}</p>
                   {msg.isStreaming && (
-                    <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-gray-400" />
+                    <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-surface-input" />
                   )}
                   <span className="mt-1 block text-xs opacity-50">
                     {msg.timestamp.toLocaleTimeString()}

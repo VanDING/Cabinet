@@ -17,7 +17,7 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
     {
       label: 'Pending Decisions',
       value: stats.pendingDecisions,
-      color: 'text-amber-600',
+      color: 'text-intent-warning',
       target: 'office' as const,
     },
     {

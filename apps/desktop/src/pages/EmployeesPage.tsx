@@ -63,7 +63,7 @@ export function EmployeesPage() {
 
   const statusColors: Record<string, string> = {
     active: 'bg-intent-success-muted text-intent-success',
-    idle: 'bg-amber-100 text-amber-700',
+    idle: 'bg-intent-warning-muted text-intent-warning',
     offline: 'bg-surface-muted text-content-tertiary',
   };
 
@@ -321,7 +321,7 @@ export function EmployeesPage() {
                     Configure
                   </button>
                   {emp.kind === 'ai' && (
-                    <button className="rounded bg-amber-100 px-3 py-1 text-xs text-amber-700 hover:bg-amber-200">
+                    <button className="rounded bg-intent-warning-muted px-3 py-1 text-xs text-intent-warning hover:bg-intent-warning-muted">
                       Test
                     </button>
                   )}

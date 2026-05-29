@@ -58,7 +58,7 @@ export function DelegationTab() {
       case 'T0':
         return 'border-intent-danger bg-intent-danger-muted';
       case 'T1':
-        return 'border-amber-400 bg-amber-50';
+        return 'border-intent-warning bg-intent-warning-muted';
       case 'T2':
         return 'border-accent bg-accent-muted';
       case 'T3':

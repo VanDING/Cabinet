@@ -21,7 +21,7 @@ export function WorkflowRunCard({ data }: Props) {
         ? 'text-intent-danger'
         : status === 'running'
           ? 'text-accent'
-          : 'text-amber-600';
+          : 'text-intent-warning';
 
   const statusBg =
     status === 'completed'
@@ -30,7 +30,7 @@ export function WorkflowRunCard({ data }: Props) {
         ? 'bg-intent-danger-muted'
         : status === 'running'
           ? 'bg-accent-muted'
-          : 'bg-amber-100';
+          : 'bg-intent-warning-muted';
 
   const nodeTypeIcon = (type: string) => {
     switch (type) {
@@ -112,7 +112,7 @@ export function WorkflowRunCard({ data }: Props) {
                       step.type === 'end' || status === 'completed'
                         ? 'bg-intent-success-muted text-intent-success'
                         : step.type === 'humanApproval'
-                          ? 'bg-amber-100 text-amber-600'
+                          ? 'bg-intent-warning-muted text-intent-warning'
                           : 'bg-surface-muted text-content-secondary'
                     }`}
                   >

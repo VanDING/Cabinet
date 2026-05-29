@@ -24,11 +24,11 @@ export interface WorkflowCanvasProps {
 }
 
 const nodeTypeColors: Record<string, string> = {
-  skill: 'bg-blue-100 border-blue-400 text-accent',
-  condition: 'bg-amber-100 border-amber-400 text-amber-800',
+  skill: 'bg-accent-muted border-accent text-accent',
+  condition: 'bg-intent-warning-muted border-intent-warning text-intent-warning',
   parallel:
-    'bg-purple-100 border-purple-400 text-intent-purple',
-  human: 'bg-green-100 border-green-400 text-intent-success',
+    'bg-intent-purple-muted border-intent-purple text-intent-purple',
+  human: 'bg-intent-success-muted border-intent-success text-intent-success',
 };
 
 export function WorkflowCanvas({
@@ -65,9 +65,9 @@ export function WorkflowCanvas({
           <span
             className={`rounded px-2 py-0.5 text-xs ${
               workflow.status === 'active'
-                ? 'bg-green-100 text-intent-success'
+                ? 'bg-intent-success-muted text-intent-success'
                 : workflow.status === 'failed'
-                  ? 'bg-red-100 text-intent-danger'
+                  ? 'bg-intent-danger-muted text-intent-danger'
                   : 'bg-surface-muted text-content-secondary'
             }`}
           >
@@ -91,7 +91,7 @@ export function WorkflowCanvas({
           {onSave && editable && (
             <button
               onClick={() => onSave(workflow)}
-              className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-green-700"
+              className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
             >
               Save
             </button>
@@ -124,7 +124,7 @@ export function WorkflowCanvas({
             onClick={() => handleNodeClick(node.id)}
             className={`relative cursor-pointer rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all ${
               nodeTypeColors[node.type] ?? 'bg-surface-muted'
-            } ${selectedNode === node.id ? 'ring-2 ring-accent' : ''} ${linkFrom === node.id ? 'ring-2 ring-amber-500' : ''}`}
+            } ${selectedNode === node.id ? 'ring-2 ring-accent' : ''} ${linkFrom === node.id ? 'ring-2 ring-intent-warning' : ''}`}
           >
             <div className="text-xs uppercase opacity-60">{node.type}</div>
             <div>{node.title ?? node.skillId ?? node.id}</div>
@@ -167,7 +167,7 @@ export function WorkflowCanvas({
             <span>→</span>
             <span className="font-mono">{edge.to}</span>
             {edge.condition && (
-              <span className="text-amber-600">[if: {edge.condition}]</span>
+              <span className="text-intent-warning">[if: {edge.condition}]</span>
             )}
           </div>
         ))}

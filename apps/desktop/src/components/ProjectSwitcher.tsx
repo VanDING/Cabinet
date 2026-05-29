@@ -21,7 +21,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
 
   const statusColors: Record<string, string> = {
     active: 'bg-intent-success',
-    draft: 'bg-amber-500',
+    draft: 'bg-intent-warning',
     archived: 'bg-surface-muted',
   };
 

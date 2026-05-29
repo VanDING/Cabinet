@@ -19,12 +19,12 @@ interface Props {
 const LEVEL_COLORS: Record<string, string> = {
   L0: 'bg-intent-success-muted text-intent-success',
   L1: 'bg-accent-muted text-accent',
-  L2: 'bg-amber-100 text-amber-700',
+  L2: 'bg-intent-warning-muted text-intent-warning',
   L3: 'bg-intent-danger-muted text-intent-danger',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'text-amber-600 bg-amber-50',
+  pending: 'text-intent-warning bg-intent-warning-muted',
   approved: 'text-intent-success bg-intent-success-muted',
   rejected: 'text-intent-danger bg-intent-danger-muted',
   expired: 'text-content-tertiary bg-surface-muted',
@@ -251,7 +251,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                               <span className="w-5 text-xs text-content-tertiary">{dimIcons[idx]}</span>
                               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
                                 <div
-                                  className={`h-full rounded-full ${isHigh ? 'bg-amber-400' : 'bg-accent'}`}
+                                  className={`h-full rounded-full ${isHigh ? 'bg-intent-warning' : 'bg-accent'}`}
                                   style={{ width: `${value}%` }}
                                 />
                               </div>

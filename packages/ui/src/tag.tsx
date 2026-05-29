@@ -10,12 +10,12 @@ export interface TagProps {
 
 const variantClasses: Record<TagVariant, string> = {
   default: 'bg-surface-muted text-content-secondary',
-  success: 'bg-green-100 text-intent-success',
-  danger: 'bg-red-100 text-intent-danger',
-  warning: 'bg-amber-100 text-amber-700',
-  info: 'bg-blue-100 text-accent',
-  purple: 'bg-purple-100 text-intent-purple',
-  amber: 'bg-amber-100 text-amber-700',
+  success: 'bg-intent-success-muted text-intent-success',
+  danger: 'bg-intent-danger-muted text-intent-danger',
+  warning: 'bg-intent-warning-muted text-intent-warning',
+  info: 'bg-accent-muted text-accent',
+  purple: 'bg-intent-purple-muted text-intent-purple',
+  amber: 'bg-intent-warning-muted text-intent-warning',
 };
 
 export function Tag({ variant = 'default', className, children }: TagProps) {

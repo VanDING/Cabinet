@@ -52,7 +52,7 @@ const sidebarBgClasses = 'bg-surface-primary';
 const borderClasses = 'border-border';
 const textMutedClasses = 'text-content-tertiary';
 const activeClasses =
-  'bg-blue-50 text-accent border-r-2 border-accent';
+  'bg-accent-muted text-accent border-r-2 border-accent';
 const hoverClasses = 'hover:bg-surface-muted hover:text-content-secondary';
 
 export function Navigation({
@@ -197,7 +197,7 @@ export function Navigation({
                       >
                         <span
                           className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                            (p as any).activeWorkflowCount > 0 ? 'bg-green-500' : 'bg-gray-400'
+                            (p as any).activeWorkflowCount > 0 ? 'bg-intent-success' : 'bg-surface-input'
                           }`}
                         />
                         <span className="truncate">{p.name}</span>
