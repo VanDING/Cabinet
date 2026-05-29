@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Plus, Grip } from 'lucide-react';
+import { Button, Card } from '@cabinet/ui';
 import GridLayout, { type Layout, verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import { StatCard } from '../components/office/StatCard';
@@ -354,19 +355,13 @@ export function OfficePage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPool(!showPool)}
-            className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-700"
-          >
+          <Button size="xs" onClick={() => setShowPool(!showPool)}>
             <Plus size={12} />
             Add Widget
-          </button>
-          <button
-            onClick={handleReset}
-            className="rounded-lg border px-3 py-1.5 text-xs text-gray-500 transition-colors hover:text-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
-          >
+          </Button>
+          <Button variant="ghost" size="xs" onClick={handleReset}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -451,7 +446,7 @@ export function OfficePage() {
           onClick={() => setExpandedWidget(null)}
         >
           <div
-            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

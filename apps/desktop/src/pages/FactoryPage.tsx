@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../components/Toast';
 import { ScheduledTab } from '../components/ScheduledTab';
+import { Button, Card, Tabs } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 
 interface WorkflowItem {
@@ -26,7 +26,6 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
   const [activeTab, setActiveTab] = useState<'workflows' | 'scheduled'>('workflows');
   const [scheduledFormOpen, setScheduledFormOpen] = useState(false);
   const { addToast } = useToast();
-  const { isDark } = useTheme();
 
   const fetchWorkflows = useCallback(() => {
     const url = projectId ? `/api/factory?projectId=${projectId}` : '/api/factory';
@@ -139,15 +138,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     return 0;
   };
 
-  const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
-  const cardBgClass = isDark ? 'bg-gray-800' : 'bg-white';
-  const hoverBgClass = isDark ? 'hover:bg-gray-750' : 'hover:bg-gray-50';
-  const textClass = isDark ? 'text-gray-200' : 'text-gray-800';
-  const subtextClass = isDark ? 'text-gray-500' : 'text-gray-400';
-  const codeBgClass = isDark ? 'bg-gray-900' : 'bg-gray-50';
-  const btnGhostClass = isDark
-    ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
-    : 'border-gray-300 text-gray-600 hover:bg-gray-100';
+  const textClass = 'text-gray-800 dark:text-gray-200';
+  const subtextClass = 'text-gray-400 dark:text-gray-500';
+  const codeBgClass = 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900';
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -158,43 +151,28 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
             Create and manage automated workflows via conversation.
           </span>
         </div>
-        <button
+        <Button
+          size="md"
           onClick={() =>
             activeTab === 'workflows' ? handleNewWorkflow() : setScheduledFormOpen(true)
           }
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
         >
           {activeTab === 'workflows' ? '+ New Workflow' : '+ New Task'}
-        </button>
+        </Button>
       </div>
 
-      {/* Tab bar */}
-      <div className={`mb-6 flex gap-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <button
-          onClick={() => setActiveTab('workflows')}
-          className={`border-b-2 pb-2 text-sm font-medium transition-colors ${
-            activeTab === 'workflows'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
-          }`}
-        >
-          Workflows
-        </button>
-        <button
-          onClick={() => setActiveTab('scheduled')}
-          className={`border-b-2 pb-2 text-sm font-medium transition-colors ${
-            activeTab === 'scheduled'
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-              : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
-          }`}
-        >
-          Scheduled
-        </button>
-      </div>
+      <Tabs
+        className="mb-6"
+        tabs={[
+          { id: 'workflows', label: 'Workflows' },
+          { id: 'scheduled', label: 'Scheduled' },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as 'workflows' | 'scheduled')}
+      />
 
       {activeTab === 'scheduled' ? (
         <ScheduledTab
-          isDark={isDark}
           showForm={scheduledFormOpen}
           onFormClose={() => setScheduledFormOpen(false)}
         />
@@ -209,9 +187,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         <div className="space-y-3">
           {workflows.map((wf) => (
             <div key={wf.id}>
-              <div
-                className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${cardBgClass} ${borderClass} ${hoverBgClass}`}
-              >
+              <Card className="flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-750">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className={`text-sm font-medium ${textClass}`}>{wf.name}</h3>
@@ -236,39 +212,27 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                 </div>
 
                 <div className="flex flex-shrink-0 gap-2">
-                  <button
-                    onClick={() => toggleJson(wf.id)}
-                    className={`rounded border px-3 py-1 text-xs transition-colors ${btnGhostClass}`}
-                  >
+                  <Button variant="ghost" size="xs" onClick={() => toggleJson(wf.id)}>
                     {expandedJson.has(wf.id) ? 'Hide JSON' : 'View JSON'}
-                  </button>
-                  <button
-                    onClick={() => handleChatEdit(wf)}
-                    className="rounded bg-blue-600 px-3 py-1 text-xs text-white transition-colors hover:bg-blue-700"
-                  >
+                  </Button>
+                  <Button size="xs" onClick={() => handleChatEdit(wf)}>
                     Chat Edit
-                  </button>
+                  </Button>
                   {wf.status === 'draft' && (
-                    <button
-                      onClick={() => handleRun(wf)}
-                      className="rounded bg-green-600 px-3 py-1 text-xs text-white transition-colors hover:bg-green-700"
-                    >
+                    <Button size="xs" className="bg-green-600 hover:bg-green-700" onClick={() => handleRun(wf)}>
                       Run
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    onClick={() => handleDelete(wf)}
-                    className="rounded px-3 py-1 text-xs text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
+                  <Button variant="ghost" size="xs" className="text-red-500" onClick={() => handleDelete(wf)}>
                     Delete
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
 
               {/* Expanded JSON view */}
               {expandedJson.has(wf.id) && (
                 <div
-                  className={`mt-1 rounded-lg border p-4 font-mono text-xs ${borderClass} ${codeBgClass} ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+                  className={`mt-1 rounded-lg p-4 font-mono text-xs text-gray-700 dark:text-gray-300 ${codeBgClass}`}
                 >
                   <pre className="overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(wf.definition, null, 2)}

@@ -18,13 +18,16 @@ export interface SemanticTask {
 interface Props {
   tasks?: AgentTask[];
   semanticTasks?: SemanticTask[];
-  isDark?: boolean;
 }
 
-export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks, isDark }: Props) {
+const cardClasses =
+  'mb-2 rounded-lg border border-gray-200 bg-white/90 p-2 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90';
+const subtextClasses = 'text-gray-500 dark:text-gray-400';
+const textClasses = 'text-gray-800 dark:text-gray-200';
+
+export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Prefer semantic tasks; fall back to legacy micro-tasks
   const displaySemantic = semanticTasks && semanticTasks.length > 0;
   const activeTasks = displaySemantic ? semanticTasks : tasks;
   if (!activeTasks || activeTasks.length === 0) return null;
@@ -32,11 +35,6 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks, isDark 
   const running = activeTasks.filter((t) => t.status === 'running').length;
   const done = activeTasks.filter((t) => t.status === 'done').length;
   const errors = activeTasks.filter((t) => t.status === 'error').length;
-
-  const bgClass = isDark ? 'bg-gray-800/90' : 'bg-white/90';
-  const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
-  const textClass = isDark ? 'text-gray-200' : 'text-gray-800';
-  const subtextClass = isDark ? 'text-gray-400' : 'text-gray-500';
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -48,14 +46,12 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks, isDark 
   };
 
   return (
-    <div
-      className={`mb-2 rounded-lg border ${borderClass} ${bgClass} p-2 shadow-sm backdrop-blur-sm`}
-    >
+    <div className={cardClasses}>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${subtextClass}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-wider ${subtextClasses}`}>
           {displaySemantic ? '任务进度' : 'Tasks'}
         </span>
-        <span className={`text-[10px] ${subtextClass}`}>
+        <span className={`text-[10px] ${subtextClasses}`}>
           {done}
           <span className="text-green-500">✓</span>
           {running > 0 && (
@@ -93,16 +89,16 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks, isDark 
                 <span
                   className={`truncate text-[10px] ${
                     task.status === 'done'
-                      ? `${subtextClass} line-through opacity-60`
+                      ? `${subtextClasses} line-through opacity-60`
                       : task.status === 'error'
                         ? 'text-red-600 dark:text-red-400'
-                        : textClass
+                        : textClasses
                   }`}
                 >
                   {title}
                 </span>
                 {steps !== undefined && steps > 0 && (
-                  <span className={`ml-auto text-[10px] ${subtextClass}`}>{steps}步</span>
+                  <span className={`ml-auto text-[10px] ${subtextClasses}`}>{steps}步</span>
                 )}
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button } from '@cabinet/ui';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 
 // ── Audit Log Tab ──
@@ -43,12 +44,9 @@ export function AuditTab() {
           <option value="employee">Employee</option>
           <option value="skill">Skill</option>
         </select>
-        <button
-          onClick={fetchAudit}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <Button size="sm" onClick={fetchAudit}>
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading ? (

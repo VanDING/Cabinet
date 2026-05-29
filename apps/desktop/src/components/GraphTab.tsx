@@ -65,7 +65,7 @@ function computeLayout(entities: GraphEntity[]): Map<string, NodePosition> {
   return positions;
 }
 
-export function GraphTab({ isDark }: { isDark: boolean }) {
+export function GraphTab() {
   const [data, setData] = useState<GraphData>({ entities: [], relations: [] });
   const [loading, setLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -139,7 +139,7 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-lg border dark:border-gray-700">
+      <div className="flex-1 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
         {loading ? (
           <div className="flex h-full items-center justify-center text-gray-400">
             Loading graph...
@@ -151,10 +151,8 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
         ) : (
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="h-full w-full"
-            style={{ background: isDark ? '#111827' : '#f9fafb' }}
+            className="h-full w-full bg-gray-50 dark:bg-gray-900"
           >
-            {/* Relations */}
             {filteredRelations.map((r) => {
               const from = positions.get(r.from);
               const to = positions.get(r.to);
@@ -167,14 +165,17 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
                   y1={from.y}
                   x2={to.x}
                   y2={to.y}
-                  stroke={isHighlighted ? '#60a5fa' : isDark ? '#374151' : '#d1d5db'}
                   strokeWidth={isHighlighted ? 2 : Math.max(0.5, r.strength * 1.5)}
                   opacity={hoveredNode && !isHighlighted ? 0.2 : 1}
+                  className={
+                    isHighlighted
+                      ? '[stroke:#60a5fa]'
+                      : '[stroke:#d1d5db] dark:[stroke:#374151]'
+                  }
                 />
               );
             })}
 
-            {/* Nodes */}
             {filteredEntities.map((e) => {
               const pos = positions.get(e.id);
               if (!pos) return null;
@@ -201,14 +202,14 @@ export function GraphTab({ isDark }: { isDark: boolean }) {
                   <circle
                     r={8 + Math.min(e.frequency * 2, 12)}
                     fill={color}
-                    stroke={isHighlighted ? '#fff' : isDark ? '#1f2937' : '#fff'}
                     strokeWidth={isHighlighted ? 3 : 2}
+                    className="[stroke:#ffffff] dark:[stroke:#1f2937]"
                   />
                   <text
                     y={22 + Math.min(e.frequency * 2, 12)}
                     textAnchor="middle"
-                    fill={isDark ? '#d1d5db' : '#374151'}
                     fontSize={11}
+                    className="[fill:#374151] dark:[fill:#d1d5db]"
                   >
                     {e.name.length > 16 ? e.name.slice(0, 16) + '...' : e.name}
                   </text>

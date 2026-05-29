@@ -8,18 +8,11 @@ export interface WorkflowRunData {
 
 interface Props {
   data: WorkflowRunData;
-  isDark?: boolean;
 }
 
-export function WorkflowRunCard({ data, isDark }: Props) {
+export function WorkflowRunCard({ data }: Props) {
   const [expanded, setExpanded] = useState(true);
   const { runId, status, steps = [] } = data;
-
-  const borderClass = isDark ? 'border-gray-700' : 'border-purple-200';
-  const bgClass = isDark ? 'bg-gray-800/80' : 'bg-white';
-  const headerBg = isDark ? 'bg-gray-700/80' : 'bg-purple-50';
-  const textClass = isDark ? 'text-gray-200' : 'text-gray-800';
-  const subtextClass = isDark ? 'text-gray-400' : 'text-gray-500';
 
   const statusColor =
     status === 'completed'
@@ -81,17 +74,17 @@ export function WorkflowRunCard({ data, isDark }: Props) {
   };
 
   return (
-    <div className={`my-3 rounded-lg border ${borderClass} ${bgClass} overflow-hidden shadow-sm`}>
+    <div className="my-3 overflow-hidden rounded-lg border border-purple-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className={`flex w-full items-center justify-between px-4 py-2.5 ${headerBg} transition-colors`}
+        className="flex w-full items-center justify-between px-4 py-2.5 bg-purple-50 transition-colors dark:bg-gray-700/80"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
             Workflow
           </span>
-          <span className={`font-mono text-xs ${subtextClass}`}>{runId}</span>
+          <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{runId}</span>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -100,7 +93,7 @@ export function WorkflowRunCard({ data, isDark }: Props) {
             {status}
           </span>
           <span
-            className={`text-xs ${subtextClass} transform transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`text-xs text-gray-500 transition-transform dark:text-gray-400 ${expanded ? 'rotate-180' : ''}`}
           >
             &#9660;
           </span>
@@ -126,17 +119,17 @@ export function WorkflowRunCard({ data, isDark }: Props) {
                     {nodeTypeIcon(step.type)}
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`w-px flex-1 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+                    <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700" />
                   )}
                 </div>
                 <div className="pb-3">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium ${textClass}`}>
+                    <span className={`text-xs font-medium text-gray-800 dark:text-gray-200`}>
                       {nodeTypeLabel(step.type)}
                     </span>
-                    <span className={`font-mono text-[10px] ${subtextClass}`}>{step.nodeId}</span>
+                    <span className={`font-mono text-[10px] text-gray-500 dark:text-gray-400`}>{step.nodeId}</span>
                   </div>
-                  <p className={`text-xs ${subtextClass} mt-0.5`}>{step.output}</p>
+                  <p className={`text-xs text-gray-500 dark:text-gray-400 mt-0.5`}>{step.output}</p>
                 </div>
               </div>
             ))}

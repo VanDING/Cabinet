@@ -107,12 +107,12 @@ describe('MeetingCard', () => {
     expect(screen.queryByText(/auto-extracted/)).not.toBeInTheDocument();
   });
 
-  it('applies dark mode classes when isDark', () => {
-    const { container } = render(<MeetingCard data={baseData} isDark />);
+  it('includes dark mode classes via Tailwind dark: prefix', () => {
+    const { container } = render(<MeetingCard data={baseData} />);
     const outerDiv = container.firstChild as HTMLElement;
-    // isDark swaps classes: border-gray-700 instead of border-blue-200, bg-gray-800/80 instead of bg-white
-    expect(outerDiv.className).toContain('border-gray-700');
-    expect(outerDiv.className).toContain('bg-gray-800/80');
+    // Dark mode classes are always present via Tailwind dark: prefix
+    expect(outerDiv.className).toContain('dark:border-gray-700');
+    expect(outerDiv.className).toContain('dark:bg-gray-800/80');
   });
 
   it('renders without perspectives gracefully', () => {

@@ -4,13 +4,11 @@ import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 
 export function ContextButton({
   sessionId,
-  isDark,
   btnBaseClass,
   hoverClass,
   dropdownBgClass,
 }: {
   sessionId: string;
-  isDark?: boolean;
   btnBaseClass: string;
   hoverClass: string;
   dropdownBgClass: string;
@@ -51,7 +49,6 @@ export function ContextButton({
         headers: authJsonHeaders(),
         body: JSON.stringify({ sessionId }),
       });
-      // Refresh context after compacting
       const r = await apiFetch(`/api/secretary/context?sessionId=${sessionId}`, {
         headers: authHeaders(),
       });
