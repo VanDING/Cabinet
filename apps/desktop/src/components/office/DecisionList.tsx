@@ -62,7 +62,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
     const colors: Record<string, string> = {
       L0: 'bg-intent-success-muted text-intent-success',
       L1: 'bg-accent-muted text-accent',
-      L2: 'bg-amber-100 text-amber-700',
+      L2: 'bg-intent-warning-muted text-intent-warning',
       L3: 'bg-intent-danger-muted text-intent-danger',
     };
     return colors[level] ?? 'bg-surface-muted text-content-tertiary';
@@ -70,7 +70,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
 
   const statusBadge = (status: string) => {
     if (status === 'pending')
-      return 'bg-amber-100 text-amber-700';
+      return 'bg-intent-warning-muted text-intent-warning';
     if (status === 'approved')
       return 'bg-intent-success-muted text-intent-success';
     if (status === 'rejected')
@@ -83,7 +83,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
       <h3 className="mb-3 text-sm font-semibold text-content-primary">
         Decisions
         {pending.length > 0 && (
-          <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+          <span className="ml-1.5 rounded-full bg-intent-warning-muted px-1.5 py-0.5 text-[10px] text-intent-warning">
             {pending.length} pending
           </span>
         )}

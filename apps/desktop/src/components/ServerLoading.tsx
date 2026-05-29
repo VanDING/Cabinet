@@ -100,7 +100,7 @@ export function ServerLoading({ children }: { children: ReactNode }) {
         {isSpinning ? (
           <Loader2 className="h-10 w-10 animate-spin text-accent" />
         ) : (
-          <AlertTriangle className="h-10 w-10 text-amber-400" />
+          <AlertTriangle className="h-10 w-10 text-intent-warning" />
         )}
 
         <span className="text-lg font-medium text-content-tertiary">Cabinet</span>

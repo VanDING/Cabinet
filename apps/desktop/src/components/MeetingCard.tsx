@@ -36,7 +36,7 @@ export function MeetingCard({ data }: Props) {
     (crossValidation?.coherenceScore ?? 0) >= 0.7
       ? 'text-intent-success'
       : (crossValidation?.coherenceScore ?? 0) >= 0.5
-        ? 'text-amber-600'
+        ? 'text-intent-warning'
         : 'text-intent-danger';
 
   const hasProcess = !!process && process.analysisBrief.length > 0;
@@ -179,14 +179,14 @@ function ResultTab({
           </p>
           {crossValidation.disagreements.length > 0 && (
             <div>
-              <span className="text-xs font-medium text-amber-600">
+              <span className="text-xs font-medium text-intent-warning">
                 Disagreements:
               </span>
               <ul className="mt-0.5 space-y-0.5">
                 {crossValidation.disagreements.map((d, i) => (
                   <li
                     key={i}
-                    className="ml-3 list-disc text-xs text-amber-700"
+                    className="ml-3 list-disc text-xs text-intent-warning"
                   >
                     {d}
                   </li>
@@ -285,7 +285,7 @@ function ProcessTab({
                 className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                   step.status === 'done'
                     ? 'bg-intent-success-muted text-intent-success'
-                    : 'bg-amber-100 text-amber-600'
+                    : 'bg-intent-warning-muted text-intent-warning'
                 }`}
               >
                 {step.status === 'done' ? '✓' : '!'}
@@ -307,8 +307,8 @@ function ProcessTab({
 
       {/* Review issues detail */}
       {process.reviewIssues.length > 0 && (
-        <div className="rounded border border-amber-200 bg-amber-50 p-2">
-          <p className="mb-1 text-xs font-medium text-amber-700">
+        <div className="rounded border border-intent-warning bg-intent-warning-muted p-2">
+          <p className="mb-1 text-xs font-medium text-intent-warning">
             Reviewer Issues
           </p>
           <ul className="space-y-1">
@@ -319,7 +319,7 @@ function ProcessTab({
                     issue.severity === 'high'
                       ? 'bg-intent-danger'
                       : issue.severity === 'medium'
-                        ? 'bg-amber-500'
+                        ? 'bg-intent-warning'
                         : 'bg-accent'
                   }`}
                 />

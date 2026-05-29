@@ -79,7 +79,7 @@ export function ObservabilityWidget() {
         <div className="rounded bg-surface-elevated p-2">
           <div className="text-content-tertiary">Success Rate</div>
           <div
-            className={`text-lg font-semibold ${health.successRate >= 0.9 ? 'text-intent-success' : health.successRate >= 0.7 ? 'text-amber-600' : 'text-intent-danger'}`}
+            className={`text-lg font-semibold ${health.successRate >= 0.9 ? 'text-intent-success' : health.successRate >= 0.7 ? 'text-intent-warning' : 'text-intent-danger'}`}
           >
             {(health.successRate * 100).toFixed(0)}%
           </div>

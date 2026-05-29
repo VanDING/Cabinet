@@ -51,7 +51,7 @@ function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => voi
   const colors = {
     success: 'bg-intent-success',
     error: 'bg-intent-danger',
-    warning: 'bg-amber-700',
+    warning: 'bg-intent-warning',
     info: 'bg-accent-hover',
   };
 

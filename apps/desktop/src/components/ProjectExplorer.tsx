@@ -191,7 +191,7 @@ function FileTree({
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder size={12} className="flex-shrink-0 text-amber-600" />
+                  <Folder size={12} className="flex-shrink-0 text-intent-warning" />
                 </>
               ) : (
                 <>

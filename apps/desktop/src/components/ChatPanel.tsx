@@ -492,7 +492,7 @@ export function ChatPanel({
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             disabled={isProcessing}
             rows={2}
-            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-gray-400 focus:outline-none disabled:opacity-50 ${textClass}`}
+            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-content-tertiary focus:outline-none disabled:opacity-50 ${textClass}`}
             style={{ minHeight: '40px', maxHeight: '200px' }}
           />
         </div>

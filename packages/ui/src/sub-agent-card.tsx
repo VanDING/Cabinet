@@ -26,20 +26,20 @@ const statusConfig: Record<
 > = {
   running: {
     label: '运行中',
-    border: 'border-blue-300',
-    bg: 'bg-blue-50',
+    border: 'border-accent',
+    bg: 'bg-accent-muted',
     icon: '●',
   },
   completed: {
     label: '已完成',
-    border: 'border-green-300',
-    bg: 'bg-green-50',
+    border: 'border-intent-success',
+    bg: 'bg-intent-success-muted',
     icon: '✓',
   },
   error: {
     label: '出错',
-    border: 'border-red-300',
-    bg: 'bg-red-50',
+    border: 'border-intent-danger',
+    bg: 'bg-intent-danger-muted',
     icon: '✕',
   },
 };
