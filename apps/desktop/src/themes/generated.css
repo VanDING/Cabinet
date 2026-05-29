@@ -360,3 +360,63 @@
   --scrollbar-track: transparent;
 }
 
+[data-theme="glass"] {
+  --surface-primary: rgba(255, 255, 255, 0.72);
+  --surface-elevated: rgba(255, 255, 255, 0.50);
+  --surface-overlay: rgba(255, 255, 255, 0.80);
+  --surface-input: rgba(255, 255, 255, 0.60);
+  --surface-muted: rgba(255, 255, 255, 0.30);
+  --content-primary: #1D1D1F;
+  --content-secondary: #6E6E73;
+  --content-tertiary: #AEAEB2;
+  --content-inverse: #FFFFFF;
+  --border-color: rgba(255, 255, 255, 0.30);
+  --border-subtle: rgba(255, 255, 255, 0.18);
+  --accent: #007AFF;
+  --accent-hover: #0062CC;
+  --accent-muted: rgba(0, 122, 255, 0.10);
+  --accent-foreground: #FFFFFF;
+  --intent-success: #34C759;
+  --intent-success-muted: rgba(52, 199, 89, 0.10);
+  --intent-success-foreground: #FFFFFF;
+  --intent-danger: #FF3B30;
+  --intent-danger-muted: rgba(255, 59, 48, 0.08);
+  --intent-danger-foreground: #FFFFFF;
+  --intent-warning: #FF9500;
+  --intent-warning-muted: rgba(255, 149, 0, 0.10);
+  --intent-warning-foreground: #FFFFFF;
+  --intent-info: #007AFF;
+  --intent-info-muted: rgba(0, 122, 255, 0.10);
+  --intent-info-foreground: #FFFFFF;
+  --intent-purple: #AF52DE;
+  --intent-purple-muted: rgba(175, 82, 222, 0.08);
+  --intent-purple-foreground: #FFFFFF;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 1px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.08);
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --letter-spacing: -0.01em;
+  --line-height: 1.5;
+  --border-width: 1px;
+  --duration: 250ms;
+  --easing: ease-out;
+  --opacity-hover: 0.85;
+  --opacity-disabled: 0.4;
+  --opacity-overlay: 0.35;
+  --blur-amount: 20px;
+  --glass-opacity: 0.72;
+  --focus-ring-width: 3px;
+  --focus-ring-color: rgba(0, 122, 255, 0.4);
+  --focus-ring-offset: 1px;
+  --selection-bg: #007AFF;
+  --selection-fg: #FFFFFF;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-track: transparent;
+}
+
