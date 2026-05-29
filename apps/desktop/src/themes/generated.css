@@ -420,3 +420,63 @@
   --scrollbar-track: transparent;
 }
 
+[data-theme="cyberpunk"] {
+  --surface-primary: #0B0C10;
+  --surface-elevated: #1F2833;
+  --surface-overlay: rgba(0, 255, 240, 0.10);
+  --surface-input: #1A1D24;
+  --surface-muted: rgba(69, 162, 158, 0.15);
+  --content-primary: #00FFF0;
+  --content-secondary: #FF007F;
+  --content-tertiary: #C5C6C7;
+  --content-inverse: #0B0C10;
+  --border-color: #45A29E;
+  --border-subtle: #1F2833;
+  --accent: #FCEE0A;
+  --accent-hover: #FFD700;
+  --accent-muted: rgba(252, 238, 10, 0.12);
+  --accent-foreground: #0B0C10;
+  --intent-success: #00FF41;
+  --intent-success-muted: rgba(0, 255, 65, 0.12);
+  --intent-success-foreground: #0B0C10;
+  --intent-danger: #FF003C;
+  --intent-danger-muted: rgba(255, 0, 60, 0.12);
+  --intent-danger-foreground: #0B0C10;
+  --intent-warning: #FFAA00;
+  --intent-warning-muted: rgba(255, 170, 0, 0.12);
+  --intent-warning-foreground: #0B0C10;
+  --intent-info: #00C8FF;
+  --intent-info-muted: rgba(0, 200, 255, 0.12);
+  --intent-info-foreground: #0B0C10;
+  --intent-purple: #C800FF;
+  --intent-purple-muted: rgba(200, 0, 255, 0.12);
+  --intent-purple-foreground: #0B0C10;
+  --radius-sm: 0;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --shadow-sm: 0 0 6px rgba(0, 255, 240, 0.12);
+  --shadow-md: 0 0 14px rgba(0, 255, 240, 0.18);
+  --shadow-lg: 0 0 24px rgba(0, 255, 240, 0.15), 0 0 48px rgba(255, 0, 127, 0.08);
+  --font-family: 'Share Tech Mono', 'Courier New', monospace;
+  --font-display: 'Share Tech Mono', 'Courier New', monospace;
+  --letter-spacing: 0.05em;
+  --line-height: 1.5;
+  --border-width: 2px;
+  --duration: 80ms;
+  --easing: step-end;
+  --opacity-hover: 1.0;
+  --opacity-disabled: 0.5;
+  --opacity-overlay: 0.7;
+  --blur-amount: 0px;
+  --glass-opacity: 1;
+  --focus-ring-width: 2px;
+  --focus-ring-color: #00FFF0;
+  --focus-ring-offset: 2px;
+  --selection-bg: #FF007F;
+  --selection-fg: #0B0C10;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: #45A29E;
+  --scrollbar-track: #0B0C10;
+}
+
