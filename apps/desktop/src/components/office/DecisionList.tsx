@@ -143,7 +143,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
           {/* Recently resolved */}
           {resolved.length > 0 && (
             <>
-              <div className="my-2 border-t" />
+              <div className="my-2 border-t border-border" />
               <p className="text-[10px] font-medium uppercase tracking-wider text-content-tertiary">
                 Recently resolved
               </p>

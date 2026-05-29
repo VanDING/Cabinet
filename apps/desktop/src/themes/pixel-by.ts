@@ -25,7 +25,7 @@ export const pixelBY: Theme = {
       base: '#2563EB',
       hover: '#FCD34D',
       muted: 'rgba(37, 99, 235, 0.15)',
-      foreground: '#1E293B',
+      foreground: '#FFFFFF',
     },
     intent: {
       success:  { color: '#16A34A', muted: 'rgba(22, 163, 74, 0.15)', foreground: '#FFFFFF' },

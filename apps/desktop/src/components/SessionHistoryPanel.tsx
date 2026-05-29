@@ -31,7 +31,7 @@ export function SessionHistoryPanel({ isOpen, onClose, history, onReopen, onDele
       ref={panelRef}
       className="absolute bottom-full right-0 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-surface-primary shadow-xl"
     >
-      <div className="border-b px-3 py-2 text-xs uppercase text-content-tertiary">
+      <div className="border-b border-border px-3 py-2 text-xs uppercase text-content-tertiary">
         Recent Sessions
       </div>
       {history.length === 0 ? (

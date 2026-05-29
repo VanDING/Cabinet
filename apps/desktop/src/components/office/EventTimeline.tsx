@@ -101,7 +101,7 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
           {events.map((event, i) => (
             <div
               key={i}
-              className="flex justify-between border-b pb-1.5 text-xs last:border-0 last:pb-0"
+              className="flex justify-between border-b border-border pb-1.5 text-xs last:border-0 last:pb-0"
             >
               <span className="text-content-secondary">{event.message}</span>
               <span className="ml-2 flex-shrink-0 text-content-tertiary">

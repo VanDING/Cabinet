@@ -300,7 +300,7 @@ export function EmployeesPage() {
             </div>
 
             {selected === emp.id && (
-              <div className="mt-3 space-y-1 border-t pt-3 text-xs text-content-tertiary">
+              <div className="mt-3 space-y-1 border-t border-border pt-3 text-xs text-content-tertiary">
                 <div>
                   Permission:{' '}
                   <span className="font-medium text-content-secondary">

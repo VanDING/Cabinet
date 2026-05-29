@@ -124,7 +124,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
   if (loading) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-surface-primary shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l border-border bg-surface-primary shadow-2xl">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
@@ -132,7 +132,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
   if (!decision) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-surface-primary shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l border-border bg-surface-primary shadow-2xl">
         <p className="text-sm text-content-tertiary">Decision not found</p>
       </div>
     );
@@ -147,9 +147,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l bg-surface-primary shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-surface-primary shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-surface-primary px-6 py-4">
+        <div className="sticky top-0 z-10 border-b border-border bg-surface-primary px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
@@ -343,7 +343,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
         {/* Footer — Captain Actions (only for pending decisions) */}
         {decision.status === 'pending' && (
-          <div className="sticky bottom-0 space-y-3 border-t bg-surface-primary px-6 py-4">
+          <div className="sticky bottom-0 space-y-3 border-t border-border bg-surface-primary px-6 py-4">
             {/* Reason (optional) */}
             <textarea
               placeholder="Reasoning (optional)..."
