@@ -56,5 +56,6 @@ export const lightDefault: Theme = {
     focusRing: { width: '2px', color: 'rgba(79, 70, 229, 0.4)', offset: '2px' },
     selection: { bg: '#4F46E5', fg: '#FFFFFF' },
     scrollbar: { width: '5px', thumb: '#D1D5DB', track: 'transparent' },
+    bodyBg: '#F8F9FA',
   },
 };

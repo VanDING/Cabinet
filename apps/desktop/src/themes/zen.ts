@@ -55,5 +55,6 @@ export const zen: Theme = {
     focusRing: { width: '1px', color: '#2C2C2C', offset: '0px' },
     selection: { bg: '#E8F0E8', fg: '#4A6B4A' },
     scrollbar: { width: '4px', thumb: '#D4CFC4', track: 'transparent' },
+    bodyBg: 'linear-gradient(0deg, rgba(0,0,0,0.015) 0%, transparent 50%, rgba(0,0,0,0.01) 100%), #F2F0EB',
   },
 };

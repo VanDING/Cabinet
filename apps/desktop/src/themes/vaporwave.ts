@@ -55,5 +55,6 @@ export const vaporwave: Theme = {
     focusRing: { width: '2px', color: '#01CDFE', offset: '1px' },
     selection: { bg: '#FF71CE', fg: '#2B0F4C' },
     scrollbar: { width: '8px', thumb: '#FF71CE', track: '#2B0F4C' },
+    bodyBg: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,113,206,0.025) 3px, rgba(255,113,206,0.025) 4px), #2B0F4C',
   },
 };

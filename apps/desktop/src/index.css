@@ -8,7 +8,7 @@
 body {
   margin: 0;
   font-family: var(--font-family);
-  background-color: var(--surface-elevated);
+  background: var(--body-bg);
   color: var(--content-primary);
   transition:
     background-color var(--duration) var(--easing),
