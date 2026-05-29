@@ -5,8 +5,9 @@ import { darkDefault } from './dark-default';
 import { pixelBY } from './pixel-by';
 import { warm } from './warm';
 import { geek } from './geek';
+import { glass } from './glass';
 
-export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek];
+export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek, glass];
 
 export const defaultTheme = lightDefault;
 

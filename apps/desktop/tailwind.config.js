@@ -130,6 +130,9 @@ export default {
       blur: {
         DEFAULT: 'var(--blur-amount)',
       },
+      backdropBlur: {
+        DEFAULT: 'var(--blur-amount)',
+      },
     },
   },
   plugins: [],
