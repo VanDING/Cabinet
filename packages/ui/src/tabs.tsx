@@ -14,7 +14,7 @@ export interface TabsProps {
 
 export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
   return (
-    <div className={cn('flex gap-4 border-b border-gray-200', className)}>
+    <div className={cn('flex gap-4 border-b border-border', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -22,8 +22,8 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
           className={cn(
             'border-b-2 pb-2 text-sm font-medium capitalize transition-colors',
             activeTab === tab.id
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700',
+              ? 'border-accent text-accent'
+              : 'border-transparent text-content-tertiary hover:text-content-secondary',
           )}
         >
           {tab.label}

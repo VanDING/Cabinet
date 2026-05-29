@@ -48,12 +48,12 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   },
 ];
 
-const sidebarBgClasses = 'bg-white';
-const borderClasses = 'border-gray-200';
-const textMutedClasses = 'text-gray-400';
+const sidebarBgClasses = 'bg-surface-primary';
+const borderClasses = 'border-border';
+const textMutedClasses = 'text-content-tertiary';
 const activeClasses =
-  'bg-blue-50 text-blue-700 border-r-2 border-blue-500';
-const hoverClasses = 'hover:bg-gray-100 hover:text-gray-700';
+  'bg-blue-50 text-accent border-r-2 border-accent';
+const hoverClasses = 'hover:bg-surface-muted hover:text-content-secondary';
 
 export function Navigation({
   activePage,
@@ -142,19 +142,19 @@ export function Navigation({
         {!collapsed && (
           <div className="px-4 py-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium tracking-wider uppercase text-gray-400">
+              <span className="text-xs font-medium tracking-wider uppercase text-content-tertiary">
                 Projects
               </span>
               <button
                 onClick={onNewProject}
-                className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+                className="text-xs text-content-tertiary transition-colors hover:text-content-secondary"
                 title="New project"
               >
                 +
               </button>
             </div>
             {projects.filter((p) => !(p as any).archived).length === 0 ? (
-              <p className="py-1 text-xs text-gray-500 italic">No projects</p>
+              <p className="py-1 text-xs text-content-tertiary italic">No projects</p>
             ) : (
               projects
                 .filter((p) => !(p as any).archived)
@@ -180,7 +180,7 @@ export function Navigation({
                           }
                           if (e.key === 'Escape') setRenamingId(null);
                         }}
-                        className="flex-1 rounded border bg-white px-1 py-0.5 text-xs text-gray-900"
+                        className="flex-1 rounded border bg-surface-primary px-1 py-0.5 text-xs text-content-primary"
                       />
                     ) : (
                       <button
@@ -191,8 +191,8 @@ export function Navigation({
                         }}
                         className={`flex flex-1 items-center gap-1 py-1.5 text-left text-xs transition-colors ${
                           activeProjectId === p.id
-                            ? 'font-medium text-blue-600'
-                            : 'text-gray-600 hover:text-gray-900'
+                            ? 'font-medium text-accent'
+                            : 'text-content-secondary hover:text-content-primary'
                         }`}
                       >
                         <span
@@ -209,7 +209,7 @@ export function Navigation({
                         if (!confirm(`Delete project "${p.name}"?`)) return;
                         onDeleteProject?.(p.id, p.name);
                       }}
-                      className="ml-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-xs text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+                      className="ml-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-xs text-content-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:text-intent-danger"
                       aria-label={`Delete ${p.name}`}
                     >
                       &times;
@@ -251,7 +251,7 @@ export function Navigation({
         <div className={`border-t py-1 ${borderClasses}`}>
           <button
             onClick={onToggleCollapse}
-            className="flex w-full items-center justify-center py-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="flex w-full items-center justify-center py-2 text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <svg
