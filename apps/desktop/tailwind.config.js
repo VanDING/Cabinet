@@ -5,7 +5,6 @@ export default {
     './src/**/*.{js,ts,jsx,tsx}',
     '../../packages/ui/src/**/*.{js,ts,jsx,tsx}',
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -56,14 +55,20 @@ export default {
         },
       },
       borderRadius: {
-        'ui-sm': '0.25rem',
-        'ui-md': '0.375rem',
-        'ui-lg': '0.5rem',
-        'ui-xl': '0.75rem',
+        'ui-sm': 'var(--radius-sm)',
+        'ui-md': 'var(--radius-md)',
+        'ui-lg': 'var(--radius-lg)',
+        'ui-xl': 'var(--radius-xl)',
       },
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
         '3xs': ['0.6875rem', { lineHeight: '0.875rem' }],
+      },
+      transitionDuration: {
+        DEFAULT: 'var(--duration)',
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'var(--easing)',
       },
     },
   },
