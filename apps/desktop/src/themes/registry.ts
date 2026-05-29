@@ -8,8 +8,9 @@ import { geek } from './geek';
 import { glass } from './glass';
 import { cyberpunk } from './cyberpunk';
 import { vaporwave } from './vaporwave';
+import { zen } from './zen';
 
-export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek, glass, cyberpunk, vaporwave];
+export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek, glass, cyberpunk, vaporwave, zen];
 
 export const defaultTheme = lightDefault;
 
