@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Minus, Maximize2, RectangleHorizontal, X } from 'lucide-react';
+import { Palette, Minus, Maximize2, RectangleHorizontal, X, ChevronDown } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 function useTauriWindow() {
@@ -33,9 +33,20 @@ async function invoke(name: string): Promise<any> {
   return tauriInvoke(name);
 }
 
-export function TitleBar({ onToggleTheme }: { onToggleTheme?: () => void }) {
+interface ThemeInfo { id: string; name: string; }
+export function TitleBar({
+  themes,
+  currentTheme,
+  onSetTheme,
+}: {
+  themes: ThemeInfo[];
+  currentTheme: string;
+  onSetTheme?: (id: string) => void;
+}) {
   const [isMaximized, setIsMaximized] = useState(false);
   const { available } = useTauriWindow();
+  const [themeOpen, setThemeOpen] = useState(false);
+  const currentThemeName = themes.find((t) => t.id === currentTheme)?.name ?? 'Theme';
 
   useEffect(() => {
     if (!available) return;
@@ -89,14 +100,37 @@ export function TitleBar({ onToggleTheme }: { onToggleTheme?: () => void }) {
       <div className="flex h-full items-center">
         <NotificationBell />
 
-        <button
-          onClick={onToggleTheme}
-          className={`flex h-full w-8 items-center justify-center transition-colors ${btnHover}`}
-          aria-label="Toggle theme"
-        >
-          <Sun size={14} className="block dark:hidden" />
-          <Moon size={14} className="hidden dark:block" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setThemeOpen((v) => !v)}
+            className={`flex h-full items-center gap-1 px-2 text-xs transition-colors ${btnHover}`}
+            aria-label="Select theme"
+          >
+            <Palette size={14} />
+            <span className="hidden sm:inline">{currentThemeName}</span>
+            <ChevronDown size={10} />
+          </button>
+          {themeOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setThemeOpen(false)} />
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                {themes.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => { onSetTheme?.(t.id); setThemeOpen(false); }}
+                    className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-gray-100 ${
+                      t.id === currentTheme
+                        ? 'font-semibold text-blue-600'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {available && (
           <>
