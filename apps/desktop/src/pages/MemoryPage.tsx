@@ -643,7 +643,7 @@ export function MemoryPage() {
 
                   {/* Expanded detail */}
                   {isExpanded && (
-                    <div className="border-t px-3 py-2">
+                    <div className="border-t border-border px-3 py-2">
                       <div className="mb-2 text-xs text-content-tertiary">ID: {m.id}</div>
                       {/* Visualized metadata fields */}
                       <div className="mb-2 flex flex-wrap items-center gap-3">

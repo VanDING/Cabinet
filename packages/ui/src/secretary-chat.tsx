@@ -65,7 +65,7 @@ export function SecretaryChat({
   return (
     <div className="flex h-full flex-col rounded-lg border bg-surface-primary">
       {title && (
-        <div className="rounded-t-lg border-b bg-surface-elevated px-4 py-3">
+        <div className="rounded-t-lg border-b border-border bg-surface-elevated px-4 py-3">
           <h2 className="font-semibold text-content-primary">{title}</h2>
         </div>
       )}
@@ -126,7 +126,7 @@ export function SecretaryChat({
           </div>
         )}
       </div>
-      <div className="flex gap-2 border-t p-3">
+      <div className="flex gap-2 border-t border-border p-3">
         <input
           type="text"
           value={input}

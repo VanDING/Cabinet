@@ -130,7 +130,7 @@ export function RulesTab() {
               </div>
 
               {editingFile === rule.filename && (
-                <div className="border-t bg-surface-elevated p-3">
+                <div className="border-t border-border bg-surface-elevated p-3">
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}

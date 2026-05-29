@@ -157,7 +157,7 @@ export function WorkflowCanvas({
       </div>
 
       {/* Edge list */}
-      <div className="border-t pt-3">
+      <div className="border-t border-border pt-3">
         <div className="mb-2 text-xs text-content-tertiary">
           Connections ({workflow.edges.length})
         </div>

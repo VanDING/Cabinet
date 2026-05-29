@@ -471,7 +471,7 @@ export function OfficePage() {
                   ¥{stats.todayCost.toFixed(2)}
                 </div>
                 <p className="text-xs text-content-tertiary">Total token consumption cost for today</p>
-                <div className="mt-3 space-y-2 border-t pt-3">
+                <div className="mt-3 space-y-2 border-t border-border pt-3">
                   <h4 className="text-sm font-medium text-content-secondary">
                     Cost by Model
                   </h4>
