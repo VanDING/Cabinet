@@ -63,10 +63,10 @@ export function SecretaryChat({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div className="flex h-full flex-col rounded-lg border bg-white">
       {title && (
-        <div className="rounded-t-lg border-b bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="font-semibold text-gray-800 dark:text-gray-200">{title}</h2>
+        <div className="rounded-t-lg border-b bg-gray-50 px-4 py-3">
+          <h2 className="font-semibold text-gray-800">{title}</h2>
         </div>
       )}
       <div
@@ -82,7 +82,7 @@ export function SecretaryChat({
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
                     msg.role === 'user'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
+                      : 'bg-gray-100 text-gray-800'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{parsed.text || msg.content}</p>
@@ -120,13 +120,13 @@ export function SecretaryChat({
         })}
         {isProcessing && !messages[messages.length - 1]?.isStreaming && (
           <div className="flex justify-start">
-            <div className="rounded-lg bg-gray-100 px-4 py-2 dark:bg-gray-700">
-              <span className="text-sm text-gray-400 dark:text-gray-500">Thinking...</span>
+            <div className="rounded-lg bg-gray-100 px-4 py-2">
+              <span className="text-sm text-gray-400">Thinking...</span>
             </div>
           </div>
         )}
       </div>
-      <div className="flex gap-2 border-t p-3 dark:border-gray-700">
+      <div className="flex gap-2 border-t p-3">
         <input
           type="text"
           value={input}
@@ -134,7 +134,7 @@ export function SecretaryChat({
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={placeholder ?? 'Type your message...'}
           disabled={isProcessing}
-          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:disabled:bg-gray-800"
+          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-50"
         />
         <button
           onClick={handleSend}

@@ -48,12 +48,12 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   },
 ];
 
-const sidebarBgClasses = 'bg-white dark:bg-gray-900';
-const borderClasses = 'border-gray-200 dark:border-gray-700';
-const textMutedClasses = 'text-gray-400 dark:text-gray-500';
+const sidebarBgClasses = 'bg-white';
+const borderClasses = 'border-gray-200';
+const textMutedClasses = 'text-gray-400';
 const activeClasses =
-  'bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-white border-r-2 border-blue-500';
-const hoverClasses = 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200';
+  'bg-blue-50 text-blue-700 border-r-2 border-blue-500';
+const hoverClasses = 'hover:bg-gray-100 hover:text-gray-700';
 
 export function Navigation({
   activePage,
@@ -95,12 +95,12 @@ export function Navigation({
         <img
           src="/Cabinet_logo_color.png"
           alt="Cabinet"
-          className={`object-contain transition-all duration-200 dark:hidden ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
+          className={`object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
         />
         <img
           src="/Cabinet_logo_darkcolor.png"
           alt="Cabinet"
-          className={`hidden object-contain transition-all duration-200 dark:block ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
+          className={`hidden object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
         />
       </div>
 
@@ -142,12 +142,12 @@ export function Navigation({
         {!collapsed && (
           <div className="px-4 py-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium tracking-wider uppercase text-gray-400 dark:text-gray-500">
+              <span className="text-xs font-medium tracking-wider uppercase text-gray-400">
                 Projects
               </span>
               <button
                 onClick={onNewProject}
-                className="text-xs text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="text-xs text-gray-400 transition-colors hover:text-gray-600"
                 title="New project"
               >
                 +
@@ -180,7 +180,7 @@ export function Navigation({
                           }
                           if (e.key === 'Escape') setRenamingId(null);
                         }}
-                        className="flex-1 rounded border bg-white px-1 py-0.5 text-xs text-gray-900 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100"
+                        className="flex-1 rounded border bg-white px-1 py-0.5 text-xs text-gray-900"
                       />
                     ) : (
                       <button
@@ -191,8 +191,8 @@ export function Navigation({
                         }}
                         className={`flex flex-1 items-center gap-1 py-1.5 text-left text-xs transition-colors ${
                           activeProjectId === p.id
-                            ? 'font-medium text-blue-600 dark:text-blue-400'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+                            ? 'font-medium text-blue-600'
+                            : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
                         <span
@@ -251,7 +251,7 @@ export function Navigation({
         <div className={`border-t py-1 ${borderClasses}`}>
           <button
             onClick={onToggleCollapse}
-            className="flex w-full items-center justify-center py-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+            className="flex w-full items-center justify-center py-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <svg

@@ -24,11 +24,11 @@ export interface WorkflowCanvasProps {
 }
 
 const nodeTypeColors: Record<string, string> = {
-  skill: 'bg-blue-100 border-blue-400 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  condition: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+  skill: 'bg-blue-100 border-blue-400 text-blue-800',
+  condition: 'bg-amber-100 border-amber-400 text-amber-800',
   parallel:
-    'bg-purple-100 border-purple-400 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  human: 'bg-green-100 border-green-400 text-green-800 dark:bg-green-900 dark:text-green-300',
+    'bg-purple-100 border-purple-400 text-purple-800',
+  human: 'bg-green-100 border-green-400 text-green-800',
 };
 
 export function WorkflowCanvas({
@@ -58,17 +58,17 @@ export function WorkflowCanvas({
   };
 
   return (
-    <div className="rounded-lg border bg-white p-4 dark:bg-gray-800">
+    <div className="rounded-lg border bg-white p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{workflow.name}</h3>
+          <h3 className="font-semibold text-gray-900">{workflow.name}</h3>
           <span
             className={`rounded px-2 py-0.5 text-xs ${
               workflow.status === 'active'
                 ? 'bg-green-100 text-green-700'
                 : workflow.status === 'failed'
                   ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  : 'bg-gray-100 text-gray-600'
             }`}
           >
             {workflow.status} | {workflow.nodes.length} nodes | {workflow.edges.length} edges
@@ -81,7 +81,7 @@ export function WorkflowCanvas({
                 <button
                   key={type}
                   onClick={() => onAddNode(type)}
-                  className="rounded border px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
                 >
                   +{type}
                 </button>
@@ -108,7 +108,7 @@ export function WorkflowCanvas({
       </div>
 
       {linkFrom && (
-        <div className="mb-2 text-xs text-blue-600 dark:text-blue-400">
+        <div className="mb-2 text-xs text-blue-600">
           Linking from: {linkFrom} — click a target node to connect
           <button onClick={() => setLinkFrom(null)} className="ml-2 text-red-500">
             Cancel
@@ -157,17 +157,17 @@ export function WorkflowCanvas({
       </div>
 
       {/* Edge list */}
-      <div className="border-t pt-3 dark:border-gray-700">
-        <div className="mb-2 text-xs text-gray-400 dark:text-gray-500">
+      <div className="border-t pt-3">
+        <div className="mb-2 text-xs text-gray-400">
           Connections ({workflow.edges.length})
         </div>
         {workflow.edges.map((edge, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
             <span className="font-mono">{edge.from}</span>
             <span>→</span>
             <span className="font-mono">{edge.to}</span>
             {edge.condition && (
-              <span className="text-amber-600 dark:text-amber-400">[if: {edge.condition}]</span>
+              <span className="text-amber-600">[if: {edge.condition}]</span>
             )}
           </div>
         ))}
