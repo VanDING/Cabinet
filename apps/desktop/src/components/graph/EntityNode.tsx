@@ -1,14 +1,9 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 
-export const TYPE_COLORS: Record<string, string> = {
-  person: '#3b82f6',
-  project: '#8b5cf6',
-  concept: '#10b981',
-  technology: '#f59e0b',
-  decision: '#ef4444',
-  memory: '#6b7280',
-};
+export function entityColor(type: string): string {
+  return `var(--graph-entity-${type})`;
+}
 
 interface EntityNodeData extends Record<string, unknown> {
   label: string;
@@ -20,7 +15,7 @@ interface EntityNodeData extends Record<string, unknown> {
 export type EntityNode = Node<EntityNodeData, 'entity'>;
 
 function EntityNodeComp({ data, selected }: NodeProps<EntityNode>) {
-  const color = TYPE_COLORS[data.type] ?? '#6b7280';
+  const color = entityColor(data.type);
   const radius = 8 + Math.min(data.frequency * 2, 14);
   const label = data.label.length > 16 ? data.label.slice(0, 16) + '…' : data.label;
 
@@ -39,8 +34,8 @@ function EntityNodeComp({ data, selected }: NodeProps<EntityNode>) {
             backgroundColor: color,
             opacity: selected ? 1 : 0.85,
             boxShadow: selected
-              ? `0 0 0 3px ${color}40, 0 0 12px ${color}60`
-              : `0 1px 3px ${color}30`,
+              ? `0 0 0 3px ${color}, 0 0 12px ${color}`
+              : `0 1px 3px ${color}`,
           }}
           title={data.label}
         />
@@ -52,7 +47,7 @@ function EntityNodeComp({ data, selected }: NodeProps<EntityNode>) {
           left: '50%',
           transform: 'translateX(-50%)',
           fontSize: 10,
-          color: '#e2e8f0',
+          color: 'var(--graph-node-label)',
           maxWidth: 80,
           whiteSpace: 'nowrap',
           overflow: 'hidden',

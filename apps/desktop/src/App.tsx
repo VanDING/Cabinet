@@ -876,7 +876,7 @@ export function App() {
             onClick={() => setShowProjectActionModal(false)}
           >
             <div
-              className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-primary p-6 shadow-2xl"
+              className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="mb-4 text-lg font-semibold text-content-primary">

@@ -15,6 +15,7 @@ export default {
           overlay: 'var(--surface-overlay)',
           input: 'var(--surface-input)',
           muted: 'var(--surface-muted)',
+          sidebar: 'var(--surface-sidebar)',
         },
         // Semantic content/text tokens
         content: {
@@ -53,6 +54,49 @@ export default {
           'purple-muted': 'var(--intent-purple-muted)',
           'purple-foreground': 'var(--intent-purple-foreground)',
         },
+        // Code block tokens
+        code: {
+          'block-bg': 'var(--code-block-bg)',
+          'block-border': 'var(--code-block-border)',
+          'block-color': 'var(--code-block-color)',
+          'inline-bg': 'var(--code-inline-bg)',
+          'inline-color': 'var(--code-inline-color)',
+        },
+        // Syntax highlighting tokens
+        syntax: {
+          keyword: 'var(--syntax-keyword)',
+          string: 'var(--syntax-string)',
+          number: 'var(--syntax-number)',
+          comment: 'var(--syntax-comment)',
+          function: 'var(--syntax-function)',
+          variable: 'var(--syntax-variable)',
+          tag: 'var(--syntax-tag)',
+        },
+        // Graph visualization tokens
+        graph: {
+          'entity-person': 'var(--graph-entity-person)',
+          'entity-project': 'var(--graph-entity-project)',
+          'entity-concept': 'var(--graph-entity-concept)',
+          'entity-technology': 'var(--graph-entity-technology)',
+          'entity-decision': 'var(--graph-entity-decision)',
+          'entity-memory': 'var(--graph-entity-memory)',
+          'edge-active': 'var(--graph-edge-active)',
+          'edge-inactive': 'var(--graph-edge-inactive)',
+          'node-label': 'var(--graph-node-label)',
+          'bg-grid': 'var(--graph-bg-grid)',
+          'minimap-mask': 'var(--graph-minimap-mask)',
+        },
+        // Chart / data-viz palette
+        chart: {
+          '1': 'var(--chart-1)',
+          '2': 'var(--chart-2)',
+          '3': 'var(--chart-3)',
+          '4': 'var(--chart-4)',
+          '5': 'var(--chart-5)',
+          '6': 'var(--chart-6)',
+          '7': 'var(--chart-7)',
+          '8': 'var(--chart-8)',
+        },
       },
       borderRadius: {
         DEFAULT: 'var(--radius-md)',
@@ -82,15 +126,23 @@ export default {
         3: '3px',
         4: '4px',
       },
+      borderStyle: {
+        DEFAULT: 'var(--border-style)',
+      },
       fontSize: {
-        xs: ['0.75rem', { lineHeight: '1rem' }],
-        sm: ['0.875rem', { lineHeight: '1.25rem' }],
-        base: ['1rem', { lineHeight: '1.5rem' }],
-        lg: ['1.125rem', { lineHeight: '1.75rem' }],
-        xl: ['1.25rem', { lineHeight: '1.75rem' }],
-        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        xs: ['var(--font-size-xs)', { lineHeight: '1rem' }],
+        sm: ['var(--font-size-sm)', { lineHeight: '1.25rem' }],
+        base: ['var(--font-size-base)', { lineHeight: '1.5rem' }],
+        lg: ['var(--font-size-lg)', { lineHeight: '1.75rem' }],
+        xl: ['var(--font-size-xl)', { lineHeight: '1.75rem' }],
+        '2xl': ['var(--font-size-2xl)', { lineHeight: '2rem' }],
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
         '3xs': ['0.6875rem', { lineHeight: '0.875rem' }],
+      },
+      fontWeight: {
+        normal: 'var(--font-weight-normal)',
+        medium: 'var(--font-weight-medium)',
+        bold: 'var(--font-weight-bold)',
       },
       transitionDuration: {
         DEFAULT: 'var(--duration)',

@@ -21,27 +21,27 @@ interface Limits {
 }
 
 const MODEL_COLORS: Record<string, string> = {
-  'claude-haiku-4-5': '#10B981',
-  'claude-sonnet-4-6': '#3B82F6',
-  'claude-opus-4-7': '#8B5CF6',
-  'gpt-4o': '#F59E0B',
-  'gpt-4o-mini': '#FBBF24',
-  'gpt-4-turbo': '#EF4444',
-  'deepseek-chat': '#06B6D4',
-  'deepseek-v3': '#14B8A6',
-  'deepseek-r1': '#6366F1',
-  'gemini-2.0-flash': '#EC4899',
-  'gemini-2.0-pro': '#F97316',
+  'claude-haiku-4-5': 'var(--chart-2)',
+  'claude-sonnet-4-6': 'var(--chart-1)',
+  'claude-opus-4-7': 'var(--chart-4)',
+  'gpt-4o': 'var(--chart-3)',
+  'gpt-4o-mini': 'var(--chart-7)',
+  'gpt-4-turbo': 'var(--chart-5)',
+  'deepseek-chat': 'var(--chart-8)',
+  'deepseek-v3': 'var(--chart-7)',
+  'deepseek-r1': 'var(--chart-6)',
+  'gemini-2.0-flash': 'var(--chart-6)',
+  'gemini-2.0-pro': 'var(--chart-5)',
 };
 const FALLBACK_COLORS = [
-  '#3B82F6',
-  '#10B981',
-  '#F59E0B',
-  '#8B5CF6',
-  '#EF4444',
-  '#EC4899',
-  '#14B8A6',
-  '#6366F1',
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+  'var(--chart-7)',
+  'var(--chart-8)',
 ];
 
 function modelColor(model: string, idx: number): string {

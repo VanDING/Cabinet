@@ -13,7 +13,7 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw, Search } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 import { computeForceLayout } from './force-layout';
-import { EntityNodeComponent, TYPE_COLORS } from './EntityNode';
+import { EntityNodeComponent, entityColor } from './EntityNode';
 import type { EntityNode } from './EntityNode';
 import { RelationEdgeComponent } from './RelationEdge';
 import type { RelationEdge } from './RelationEdge';
@@ -234,7 +234,7 @@ export function GraphTab() {
               }`}
               style={
                 activeTypes.has(t)
-                  ? { backgroundColor: TYPE_COLORS[t] ?? '#6b7280' }
+                  ? { backgroundColor: entityColor(t) }
                   : { backgroundColor: 'transparent' }
               }
             >
@@ -243,7 +243,7 @@ export function GraphTab() {
                 style={{
                   backgroundColor: activeTypes.has(t)
                     ? 'white'
-                    : TYPE_COLORS[t] ?? '#6b7280',
+                    : entityColor(t),
                 }}
               />
               {t}
@@ -285,7 +285,7 @@ export function GraphTab() {
                     >
                       <span
                         className="h-2 w-2 flex-shrink-0 rounded-full"
-                        style={{ backgroundColor: TYPE_COLORS[e.type] ?? '#6b7280' }}
+                        style={{ backgroundColor: entityColor(e.type) }}
                       />
                       <span className="truncate">{e.name}</span>
                       <span className="ml-auto flex-shrink-0 text-[10px] text-content-tertiary">
@@ -330,7 +330,7 @@ export function GraphTab() {
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               proOptions={{ hideAttribution: true }}
             >
-              <Background color="#334155" gap={24} />
+              <Background color="var(--graph-bg-grid)" gap={24} />
               <Controls
                 className="!rounded-md !border !border-border !bg-surface-primary !shadow-lg"
                 position="bottom-right"
@@ -339,9 +339,9 @@ export function GraphTab() {
                 className="!rounded-md !border !border-border !bg-surface-primary"
                 nodeColor={(n) => {
                   const nodeData = (n as EntityNode)?.data;
-                  return TYPE_COLORS[nodeData?.type ?? ''] ?? '#6b7280';
+                  return nodeData?.type ? entityColor(nodeData.type) : entityColor('memory');
                 }}
-                maskColor="rgba(0,0,0,0.6)"
+                maskColor="var(--graph-minimap-mask)"
                 position="bottom-left"
                 style={{ width: 160, height: 120 }}
               />
