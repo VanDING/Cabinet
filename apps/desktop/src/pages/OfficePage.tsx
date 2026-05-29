@@ -446,7 +446,7 @@ export function OfficePage() {
           onClick={() => setExpandedWidget(null)}
         >
           <div
-            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto"
+            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-primary p-6 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -459,7 +459,7 @@ export function OfficePage() {
               </h3>
               <button
                 onClick={() => setExpandedWidget(null)}
-                className="text-xl leading-none text-content-tertiary hover:text-content-secondary:text-content-tertiary"
+                className="text-xl leading-none text-content-tertiary hover:text-content-secondary"
               >
                 &times;
               </button>
