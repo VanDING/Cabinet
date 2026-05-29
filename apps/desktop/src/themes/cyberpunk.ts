@@ -55,5 +55,6 @@ export const cyberpunk: Theme = {
     focusRing: { width: '2px', color: '#00FFF0', offset: '2px' },
     selection: { bg: '#FF007F', fg: '#0B0C10' },
     scrollbar: { width: '6px', thumb: '#45A29E', track: '#0B0C10' },
+    bodyBg: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,240,0.015) 2px, rgba(0,255,240,0.015) 3px), repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,255,240,0.008) 40px, rgba(0,255,240,0.008) 41px), #0B0C10',
   },
 };

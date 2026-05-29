@@ -55,5 +55,6 @@ export const geek: Theme = {
     focusRing: { width: '2px', color: '#33FF33', offset: '1px' },
     selection: { bg: 'rgba(51, 255, 51, 0.2)', fg: '#E8ECEA' },
     scrollbar: { width: '8px', thumb: '#1A3A1A', track: 'transparent' },
+    bodyBg: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(51,255,51,0.025) 2px, rgba(51,255,51,0.025) 3px), #0A0F0A',
   },
 };
