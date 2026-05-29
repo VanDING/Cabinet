@@ -3,7 +3,7 @@ import { Button, Card, Tabs } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 import { KnowledgeTab } from '../components/KnowledgeTab';
 import { EvaluationTab } from '../components/EvaluationTab';
-import { GraphTab } from '../components/GraphTab';
+import { GraphTab } from '../components/graph/GraphTab';
 
 interface MemoryEntry {
   id: string;

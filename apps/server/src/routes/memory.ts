@@ -196,6 +196,85 @@ memoryRouter.get('/graph', (c) => {
   }
 });
 
+// GET /api/memory/graph/entity/:id — single entity detail
+memoryRouter.get('/graph/entity/:id', (c) => {
+  const { knowledgeGraph, logger } = getServerContext();
+  const id = c.req.param('id');
+  try {
+    const db = (knowledgeGraph as any).db;
+    const entity = db.prepare('SELECT * FROM memory_entities WHERE id = ?').get(id) as any;
+    if (!entity) return c.json({ error: 'Entity not found' }, 404);
+    return c.json({
+      id: entity.id,
+      name: entity.name,
+      type: entity.type,
+      frequency: entity.frequency,
+      first_seen: entity.first_seen,
+      last_seen: entity.last_seen,
+      metadata: entity.metadata ? JSON.parse(entity.metadata) : {},
+    });
+  } catch (err) {
+    logger.warn('Entity detail query failed', { error: (err as Error).message, id });
+    return c.json({ error: 'Query failed' }, 500);
+  }
+});
+
+// GET /api/memory/graph/entity/:id/relations — all relations for an entity
+memoryRouter.get('/graph/entity/:id/relations', (c) => {
+  const { knowledgeGraph, logger } = getServerContext();
+  const id = c.req.param('id');
+  try {
+    const db = (knowledgeGraph as any).db;
+    const relations = db
+      .prepare(
+        `SELECT r.id, r.from_entity_id, r.to_entity_id, r.relation, r.strength,
+                e_from.name as fromName, e_from.type as fromType,
+                e_to.name as toName, e_to.type as toType
+         FROM memory_relations r
+         LEFT JOIN memory_entities e_from ON r.from_entity_id = e_from.id
+         LEFT JOIN memory_entities e_to ON r.to_entity_id = e_to.id
+         WHERE r.from_entity_id = ? OR r.to_entity_id = ?`,
+      )
+      .all(id, id) as any[];
+    return c.json({
+      relations: relations.map((r) => ({
+        id: r.id,
+        from: r.from_entity_id,
+        to: r.to_entity_id,
+        relation: r.relation,
+        strength: r.strength,
+        otherEntityName: r.from_entity_id === id ? r.toName : r.fromName,
+        otherEntityType: r.from_entity_id === id ? r.toType : r.fromType,
+        direction: r.from_entity_id === id ? 'out' : 'in',
+      })),
+    });
+  } catch (err) {
+    logger.warn('Entity relations query failed', { error: (err as Error).message, id });
+    return c.json({ relations: [] });
+  }
+});
+
+// GET /api/memory/graph/search?q=... — search entities by name
+memoryRouter.get('/graph/search', (c) => {
+  const { knowledgeGraph, logger } = getServerContext();
+  const q = c.req.query('q') ?? '';
+  if (!q) return c.json({ entities: [] });
+  try {
+    const entities = knowledgeGraph.searchEntities(q, 20);
+    return c.json({
+      entities: entities.map((e) => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        frequency: e.frequency,
+      })),
+    });
+  } catch (err) {
+    logger.warn('Entity search failed', { error: (err as Error).message, q });
+    return c.json({ entities: [] });
+  }
+});
+
 // GET /api/memory/stats — memory health statistics across layers
 memoryRouter.get('/stats', (c) => {
   const { shortTerm, longTerm, entity, project, logger } = getServerContext();

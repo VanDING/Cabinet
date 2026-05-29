@@ -414,13 +414,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Natural language search query for long-term memory' },
-          limit: { type: 'integer', description: 'Maximum number of results (default 5)', default: 5 },
+          limit: { type: 'integer', description: 'Maximum number of results (default 20)', default: 20 },
         },
         required: ['query'],
       },
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
-        const limit = (args.limit as number) ?? 5;
+        const limit = (args.limit as number) ?? 20;
         let queryEmbedding: number[] | undefined;
         try {
           const embeddings = await deps.generateEmbeddings([query]);
@@ -434,6 +434,44 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
           timestamp: r.timestamp,
           metadata: r.metadata,
         }));
+      },
+    },
+    {
+      name: 'list_memories',
+      timeoutMs: 15000,
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', description: 'Maximum results (default 20, max 100)', default: 20 },
+          offset: { type: 'integer', description: 'Pagination offset (default 0)', default: 0 },
+          status: { type: 'string', description: "Filter: 'active' (default), 'expired', 'archived', or 'all'" },
+        },
+        required: [],
+      },
+      execute: async (args: Record<string, unknown>) => {
+        const limit = Math.min((args.limit as number) ?? 20, 100);
+        const offset = (args.offset as number) ?? 0;
+        const statusFilter = (args.status as string) ?? 'active';
+        const all = deps.longTerm.findAll(limit + offset, 0);
+        const filtered =
+          statusFilter === 'all'
+            ? all
+            : all.filter((r) => {
+                const s = r.metadata.status as string | undefined;
+                if (statusFilter === 'active') return !s || (s !== 'expired' && s !== 'archived');
+                return s === statusFilter;
+              });
+        const sliced = filtered.slice(offset, offset + limit);
+        return {
+          memories: sliced.map((r) => ({
+            id: r.id,
+            content: r.content.slice(0, 500),
+            timestamp: r.timestamp,
+            metadata: r.metadata,
+          })),
+          total: filtered.length,
+          hasMore: offset + limit < filtered.length,
+        };
       },
     },
     {

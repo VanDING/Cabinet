@@ -32,10 +32,11 @@ export class ProjectIsolatedMemory {
     return this.shortTerm.getAll(`${this.projectId}:${sessionId}`);
   }
 
-  // Long-term: filter by project metadata
+  // Long-term: filter by project metadata (fetch extra to avoid post-filter starvation)
   async longTermSearch(query: string, limit = 5, queryEmbedding?: number[]): Promise<any[]> {
-    const results = await this.longTerm.search(query, limit, queryEmbedding);
-    return results.filter((r) => r.metadata?.projectId === this.projectId);
+    const fetchLimit = Math.max(limit * 4, 40);
+    const results = await this.longTerm.search(query, fetchLimit, queryEmbedding);
+    return results.filter((r) => r.metadata?.projectId === this.projectId).slice(0, limit);
   }
 
   async longTermStore(

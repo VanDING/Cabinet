@@ -1,7 +1,26 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Folder, File, ChevronRight, ChevronDown, Search } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import {
+  Folder,
+  File,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Eye,
+  Plus,
+  Pencil,
+  Trash2,
+  Copy,
+  ExternalLink,
+  FilePlus,
+  FolderPlus,
+  Paperclip,
+} from 'lucide-react';
 import type { AttachedFile } from '../hooks/useSessions';
 import { apiFetch, authHeaders } from '../utils/pin.js';
+import { ContextMenu } from './ContextMenu';
+import type { ContextMenuEntry } from './ContextMenu';
+import { useToast } from './Toast';
 
 interface FileNode {
   name: string;
@@ -29,6 +48,10 @@ export function ProjectExplorer({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const { addToast } = useToast();
 
   useEffect(() => {
     if (!projectId) {
@@ -47,7 +70,7 @@ export function ProjectExplorer({
         setFiles([]);
       })
       .finally(() => setLoading(false));
-  }, [projectId]);
+  }, [projectId, refreshKey]);
 
   const toggleExpand = (path: string) => {
     setExpanded((prev) => {
@@ -58,25 +81,294 @@ export function ProjectExplorer({
     });
   };
 
-  const handleFileClick = (node: FileNode) => {
-    if (node.type === 'directory') {
-      toggleExpand(node.path);
-      return;
-    }
-    window.dispatchEvent(
-      new CustomEvent('open-file-viewer', {
-        detail: { path: node.path, name: node.name, projectId },
-      }),
-    );
-    if (activeSessionId) {
-      onAddFile(activeSessionId, {
-        id: `f_${Date.now()}`,
-        name: node.name,
-        path: node.path,
-        type: 'project',
-      });
-    }
-  };
+  const clickTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const handleFileClick = useCallback(
+    (node: FileNode) => {
+      if (node.type === 'directory') {
+        toggleExpand(node.path);
+        return;
+      }
+      const existing = clickTimers.current.get(node.path);
+      if (existing) {
+        // Double click — attach to chat
+        clearTimeout(existing);
+        clickTimers.current.delete(node.path);
+        if (activeSessionId) {
+          onAddFile(activeSessionId, {
+            id: `f_${Date.now()}`,
+            name: node.name,
+            path: node.path,
+            type: 'project',
+          });
+        }
+      } else {
+        // Single click — preview after 250ms (canceled if double-click arrives)
+        const timer = setTimeout(() => {
+          clickTimers.current.delete(node.path);
+          window.dispatchEvent(
+            new CustomEvent('open-file-viewer', {
+              detail: { path: node.path, name: node.name, projectId },
+            }),
+          );
+        }, 250);
+        clickTimers.current.set(node.path, timer);
+      }
+    },
+    [projectId, activeSessionId, onAddFile],
+  );
+
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    node: FileNode;
+  } | null>(null);
+
+  const refresh = () => setRefreshKey((k) => k + 1);
+
+  const commitRename = useCallback(
+    (path: string) => {
+      const newName = renameValue.trim();
+      const oldName = path.split('/').pop() || path;
+      setRenamingPath(null);
+      if (!newName || newName === oldName) return;
+      apiFetch('/api/files/rename', {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, newName, projectId }),
+      })
+        .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
+        .then(() => {
+          addToast('success', `Renamed to ${newName}`);
+          refresh();
+        })
+        .catch((e) => addToast('error', `Rename failed: ${e?.error ?? e}`));
+    },
+    [renameValue, projectId, addToast],
+  );
+
+  const buildMenuEntries = useCallback(
+    (node: FileNode): ContextMenuEntry[] => {
+      const absolutePath = rootPath
+        ? `${rootPath.replace(/[/\\]$/, '')}/${node.path}`
+        : node.path;
+
+      if (node.type === 'file') {
+        return [
+          {
+            type: 'item',
+            item: {
+              label: 'Open',
+              icon: <Eye size={13} />,
+              onClick: () => {
+                window.dispatchEvent(
+                  new CustomEvent('open-file-viewer', {
+                    detail: { path: node.path, name: node.name, projectId },
+                  }),
+                );
+              },
+            },
+          },
+          {
+            type: 'item',
+            item: {
+              label: 'Add to Chat',
+              icon: <Paperclip size={13} />,
+              onClick: () => {
+                if (activeSessionId) {
+                  onAddFile(activeSessionId, {
+                    id: `f_${Date.now()}`,
+                    name: node.name,
+                    path: node.path,
+                    type: 'project',
+                  });
+                  addToast('success', `Attached: ${node.name}`);
+                }
+              },
+              disabled: !activeSessionId,
+            },
+          },
+          { type: 'separator' },
+          {
+            type: 'item',
+            item: {
+              label: 'Rename',
+              icon: <Pencil size={13} />,
+              onClick: () => {
+                setRenamingPath(node.path);
+                setRenameValue(node.name);
+              },
+            },
+          },
+          {
+            type: 'item',
+            item: {
+              label: 'Delete',
+              icon: <Trash2 size={13} />,
+              danger: true,
+              onClick: () => {
+                if (!window.confirm(`Delete "${node.name}"?`)) return;
+                const qs = `path=${encodeURIComponent(node.path)}&projectId=${encodeURIComponent(projectId ?? '')}`;
+                apiFetch(`/api/files?${qs}`, {
+                  method: 'DELETE',
+                  headers: authHeaders(),
+                })
+                  .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
+                  .then(() => {
+                    addToast('success', `Deleted ${node.name}`);
+                    refresh();
+                  })
+                  .catch((e) => addToast('error', `Delete failed: ${e?.error ?? e}`));
+              },
+            },
+          },
+          { type: 'separator' },
+          {
+            type: 'item',
+            item: {
+              label: 'Copy Path',
+              icon: <Copy size={13} />,
+              onClick: () => {
+                navigator.clipboard.writeText(node.path).then(
+                  () => addToast('success', 'Path copied'),
+                  () => addToast('error', 'Failed to copy path'),
+                );
+              },
+            },
+          },
+          {
+            type: 'item',
+            item: {
+              label: 'Open in System',
+              icon: <ExternalLink size={13} />,
+              onClick: () => {
+                if (!rootPath) {
+                  addToast('error', 'Project path not available');
+                  return;
+                }
+                import('@tauri-apps/plugin-opener')
+                  .then((m) => m.openPath(absolutePath))
+                  .catch(() => addToast('error', 'Failed to open file'));
+              },
+            },
+          },
+        ];
+      }
+
+      // Directory context menu
+      return [
+        {
+          type: 'item',
+          item: {
+            label: 'New File',
+            icon: <FilePlus size={13} />,
+            onClick: () => {
+              const name = window.prompt('File name:');
+              if (!name) return;
+              apiFetch('/api/files/file', {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parentPath: node.path, name, projectId }),
+              })
+                .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
+                .then(() => {
+                  addToast('success', `Created ${name}`);
+                  refresh();
+                })
+                .catch((e) => addToast('error', `Create failed: ${e?.error ?? e}`));
+            },
+          },
+        },
+        {
+          type: 'item',
+          item: {
+            label: 'New Folder',
+            icon: <FolderPlus size={13} />,
+            onClick: () => {
+              const name = window.prompt('Folder name:');
+              if (!name) return;
+              apiFetch('/api/files/directory', {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parentPath: node.path, name, projectId }),
+              })
+                .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
+                .then(() => {
+                  addToast('success', `Created ${name}/`);
+                  refresh();
+                })
+                .catch((e) => addToast('error', `Create failed: ${e?.error ?? e}`));
+            },
+          },
+        },
+        { type: 'separator' },
+        {
+          type: 'item',
+          item: {
+            label: 'Rename',
+            icon: <Pencil size={13} />,
+            onClick: () => {
+              setRenamingPath(node.path);
+              setRenameValue(node.name);
+            },
+          },
+        },
+        {
+          type: 'item',
+          item: {
+            label: 'Delete',
+            icon: <Trash2 size={13} />,
+            danger: true,
+            onClick: () => {
+              if (!window.confirm(`Delete "${node.name}" and all contents?`)) return;
+              const qs = `path=${encodeURIComponent(node.path)}&projectId=${encodeURIComponent(projectId ?? '')}`;
+              apiFetch(`/api/files?${qs}`, {
+                method: 'DELETE',
+                headers: authHeaders(),
+              })
+                .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
+                .then(() => {
+                  addToast('success', `Deleted ${node.name}`);
+                  refresh();
+                })
+                .catch((e) => addToast('error', `Delete failed: ${e?.error ?? e}`));
+            },
+          },
+        },
+        { type: 'separator' },
+        {
+          type: 'item',
+          item: {
+            label: 'Copy Path',
+            icon: <Copy size={13} />,
+            onClick: () => {
+              navigator.clipboard.writeText(node.path).then(
+                () => addToast('success', 'Path copied'),
+                () => addToast('error', 'Failed to copy path'),
+              );
+            },
+          },
+        },
+        {
+          type: 'item',
+          item: {
+            label: 'Open in File Manager',
+            icon: <ExternalLink size={13} />,
+            onClick: () => {
+              if (!rootPath) {
+                addToast('error', 'Project path not available');
+                return;
+              }
+              import('@tauri-apps/plugin-opener')
+                .then((m) => m.openPath(absolutePath))
+                .catch(() => addToast('error', 'Failed to open folder'));
+            },
+          },
+        },
+      ];
+    },
+    [projectId, activeSessionId, rootPath, onAddFile, addToast],
+  );
 
   const filteredFiles = useMemo(() => {
     if (!query.trim()) return null;
@@ -144,10 +436,28 @@ export function ProjectExplorer({
             expanded={expanded}
             onToggle={toggleExpand}
             onFileClick={handleFileClick}
+            onContextMenu={(e, node) => {
+              e.preventDefault();
+              setContextMenu({ x: e.clientX, y: e.clientY, node });
+            }}
+            renamingPath={renamingPath}
+            renameValue={renameValue}
+            onRenameValueChange={setRenameValue}
+            onCommitRename={commitRename}
             depth={0}
           />
         )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          title={contextMenu.node.name}
+          entries={buildMenuEntries(contextMenu.node)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -157,12 +467,22 @@ function FileTree({
   expanded,
   onToggle,
   onFileClick,
+  onContextMenu,
+  renamingPath,
+  renameValue,
+  onRenameValueChange,
+  onCommitRename,
   depth,
 }: {
   nodes: FileNode[];
   expanded: Set<string>;
   onToggle: (path: string) => void;
   onFileClick: (node: FileNode) => void;
+  onContextMenu: (e: ReactMouseEvent, node: FileNode) => void;
+  renamingPath: string | null;
+  renameValue: string;
+  onRenameValueChange: (value: string) => void;
+  onCommitRename: (path: string) => void;
   depth: number;
 }) {
   return (
@@ -176,6 +496,7 @@ function FileTree({
           <div key={node.path}>
             <button
               onClick={() => onFileClick(node)}
+              onContextMenu={(e) => onContextMenu(e, node)}
               className={`flex w-full items-center gap-1 py-1 text-left text-xs transition-colors ${hoverClass}`}
               style={{ paddingLeft: `${12 + depth * 12}px`, paddingRight: '8px' }}
               title={node.path}
@@ -199,8 +520,24 @@ function FileTree({
                   <File size={12} className="flex-shrink-0 text-content-tertiary" />
                 </>
               )}
-              <span className="truncate text-content-secondary">{node.name}</span>
-              {node.size !== undefined && (
+              {renamingPath === node.path ? (
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={(e) => onRenameValueChange(e.target.value)}
+                  onBlur={() => onCommitRename(node.path)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') onCommitRename(node.path);
+                    if (e.key === 'Escape') onCommitRename(node.path);
+                  }}
+                  className="min-w-0 flex-1 rounded border border-accent bg-surface-primary px-1 py-0 text-xs text-content-primary outline-none"
+                  onClick={(e) => e.stopPropagation()}
+                  onContextMenu={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="truncate text-content-secondary">{node.name}</span>
+              )}
+              {node.size !== undefined && renamingPath !== node.path && (
                 <span className="ml-auto flex-shrink-0 text-[10px] text-content-tertiary">
                   {formatSize(node.size)}
                 </span>
@@ -212,6 +549,11 @@ function FileTree({
                 expanded={expanded}
                 onToggle={onToggle}
                 onFileClick={onFileClick}
+                onContextMenu={onContextMenu}
+                renamingPath={renamingPath}
+                renameValue={renameValue}
+                onRenameValueChange={onRenameValueChange}
+                onCommitRename={onCommitRename}
                 depth={depth + 1}
               />
             )}

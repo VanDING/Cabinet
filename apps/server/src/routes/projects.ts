@@ -136,8 +136,15 @@ projectsRouter.post('/', async (c) => {
   });
 
   // Initialize physical project directory
-  const projectDir = join(CABINET_DIR, 'projects', d.name);
-  if (!existsSync(projectDir)) {
+  const isImport = !!(d.rootPath && existsSync(d.rootPath));
+  const projectDir = isImport ? d.rootPath! : join(CABINET_DIR, 'projects', d.name);
+
+  if (isImport) {
+    // Ensure .cabinet/ config dirs exist inside the imported folder
+    mkdirSync(join(projectDir, '.cabinet', 'rules'), { recursive: true });
+    mkdirSync(join(projectDir, '.cabinet', 'skills'), { recursive: true });
+    mkdirSync(join(projectDir, '.cabinet', 'mcp'), { recursive: true });
+  } else if (!existsSync(projectDir)) {
     mkdirSync(projectDir, { recursive: true });
     mkdirSync(join(projectDir, '.cabinet', 'rules'), { recursive: true });
     mkdirSync(join(projectDir, '.cabinet', 'skills'), { recursive: true });
@@ -153,7 +160,7 @@ projectsRouter.post('/', async (c) => {
     }
   }
 
-  // Update rootPath to the initialized directory
+  // Update rootPath to the actual project directory
   projectRepo.update(id, { rootPath: projectDir });
 
   // Create project_context entry
