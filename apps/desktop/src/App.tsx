@@ -888,7 +888,7 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleCreateNewProject();
                   }}
-                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated:bg-surface-input"
+                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
                 >
                   <span className="block text-base text-content-primary">
                     Create New Project
@@ -902,7 +902,7 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleImportProject();
                   }}
-                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated:bg-surface-input"
+                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
                 >
                   <span className="block text-base text-content-primary">
                     Import Existing Folder

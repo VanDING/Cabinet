@@ -106,7 +106,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
       <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-muted:bg-surface-input"
+          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-muted bg-surface-input"
         >
           <span>{expanded ? '▼' : '▶'}</span>
           {total} tool{total !== 1 ? 's' : ''}
@@ -435,7 +435,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(false);
                   }}
-                  className="rounded border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated:bg-surface-input"
+                  className="rounded border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated bg-surface-input"
                 >
                   {t('chat.cancel')}
                 </button>

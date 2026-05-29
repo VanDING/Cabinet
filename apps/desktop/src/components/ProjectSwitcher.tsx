@@ -29,7 +29,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg border bg-surface-primary px-3 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-elevated:bg-surface-input"
+        className="flex items-center gap-2 rounded-lg border bg-surface-primary px-3 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-elevated bg-surface-input"
       >
         <span
           className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-surface-muted'}`}
@@ -48,7 +48,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
                 onSwitch(p.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-elevated:bg-surface-input ${
+              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-elevated bg-surface-input ${
                 p.id === current?.id
                   ? 'bg-accent-muted text-accent'
                   : 'text-content-secondary'

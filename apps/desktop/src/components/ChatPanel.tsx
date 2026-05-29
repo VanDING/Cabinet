@@ -122,7 +122,7 @@ export function ChatPanel({
   const hoverClass = 'hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
   const btnBaseClass = 'text-content-tertiary';
   const dropdownBgClass = 'bg-surface-primary border-border';
-  const dropdownItemClass = 'text-content-secondary hover:bg-surface-muted:bg-surface-input';
+  const dropdownItemClass = 'text-content-secondary hover:bg-surface-muted bg-surface-input';
 
   useEffect(() => {
     setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window);
@@ -261,7 +261,7 @@ export function ChatPanel({
   const activeTabClass =
     'bg-surface-primary text-content-primary border-accent';
   const inactiveTabClass =
-    'text-content-tertiary hover:bg-surface-muted:bg-surface-input';
+    'text-content-tertiary hover:bg-surface-muted bg-surface-input';
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
@@ -306,7 +306,7 @@ export function ChatPanel({
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       activeAgent === a.id
                         ? 'bg-accent-muted text-accent'
-                        : 'text-content-secondary hover:bg-surface-muted:bg-surface-input'
+                        : 'text-content-secondary hover:bg-surface-muted bg-surface-input'
                     }`}
                   >
                     @{a.id}
@@ -323,7 +323,7 @@ export function ChatPanel({
               className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
                 activeProjectId
                   ? 'bg-intent-success-muted text-intent-success hover:bg-intent-success-muted:bg-intent-success/60'
-                  : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'
+                  : 'text-content-tertiary hover:bg-surface-muted bg-surface-input'
               }`}
               title="Select project"
             >

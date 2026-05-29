@@ -316,7 +316,7 @@ export function EmployeesPage() {
                       e.stopPropagation();
                       handleStartEdit(emp);
                     }}
-                    className="rounded border px-3 py-1 text-xs hover:bg-surface-elevated:bg-surface-input"
+                    className="rounded border px-3 py-1 text-xs hover:bg-surface-elevated bg-surface-input"
                   >
                     Configure
                   </button>

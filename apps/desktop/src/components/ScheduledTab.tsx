@@ -98,14 +98,14 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleRun(t.id)}
-                    className="rounded p-1 hover:bg-surface-muted:bg-surface-input"
+                    className="rounded p-1 hover:bg-surface-muted bg-surface-input"
                     title="Run now"
                   >
                     <Clock size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="rounded p-1 text-intent-danger hover:bg-surface-muted:bg-surface-input"
+                    className="rounded p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
                   >
                     <Trash2 size={14} />
                   </button>

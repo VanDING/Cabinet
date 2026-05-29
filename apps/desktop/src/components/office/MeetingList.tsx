@@ -86,7 +86,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
           {meetings.map((m) => (
             <div
               key={m.id}
-              className="border-b border-border-subtle px-3 py-2 transition-colors hover:bg-surface-elevated:bg-surface-primary/50"
+              className="border-b border-border-subtle px-3 py-2 transition-colors hover:bg-surface-elevated bg-surface-primary/50"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="truncate text-xs font-medium text-content-primary">

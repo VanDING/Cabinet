@@ -170,7 +170,7 @@ function FileTree({
       {nodes.map((node) => {
         const isExpanded = expanded.has(node.path);
         const isDir = node.type === 'directory';
-        const hoverClass = 'hover:bg-surface-muted:bg-surface-primary';
+        const hoverClass = 'hover:bg-surface-muted bg-surface-primary';
 
         return (
           <div key={node.path}>

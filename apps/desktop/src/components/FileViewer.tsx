@@ -182,7 +182,7 @@ export function FileViewer() {
                   e.stopPropagation();
                   closeTab(tab.path);
                 }}
-                className="ml-1 rounded-full p-0.5 hover:bg-surface-muted:bg-surface-input"
+                className="ml-1 rounded-full p-0.5 hover:bg-surface-muted bg-surface-input"
               >
                 <X size={10} />
               </button>
@@ -190,7 +190,7 @@ export function FileViewer() {
           ))}
           <button
             onClick={closeAll}
-            className="ml-auto mr-2 rounded p-1 hover:bg-surface-muted:bg-surface-input"
+            className="ml-auto mr-2 rounded p-1 hover:bg-surface-muted bg-surface-input"
             title="Close all"
           >
             <X size={14} />
