@@ -69,7 +69,7 @@ export function App() {
   const [showProjectActionModal, setShowProjectActionModal] = useState(false);
   const abortRef = useRef<Map<string, AbortController>>(new Map());
   const navigate = useNavigate();
-  const { toggle } = useTheme();
+  const { theme, themes, setTheme } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
 
@@ -677,7 +677,7 @@ export function App() {
     <ServerLoading>
       <div className="flex h-screen flex-col overflow-hidden">
         {/* Custom Title Bar */}
-        <TitleBar onToggleTheme={toggle} />
+        <TitleBar themes={themes} currentTheme={theme} onSetTheme={setTheme} />
 
         {/* Main body: sidebar + content */}
         <div className="flex flex-1 overflow-hidden">
