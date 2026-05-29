@@ -840,3 +840,63 @@
   --scrollbar-track: #1C1C1C;
 }
 
+[data-theme="meadow"] {
+  --surface-primary: #FAF8F2;
+  --surface-elevated: #FFFFFF;
+  --surface-overlay: rgba(255, 252, 245, 0.90);
+  --surface-input: #FFFFFF;
+  --surface-muted: #F5F2EA;
+  --content-primary: #3E4A32;
+  --content-secondary: #7D8C6C;
+  --content-tertiary: #A8B398;
+  --content-inverse: #FAF8F2;
+  --border-color: #D4D0BE;
+  --border-subtle: #EBE6D5;
+  --accent: #7D9F50;
+  --accent-hover: #6B8A3E;
+  --accent-muted: #EBF2E2;
+  --accent-foreground: #FFFFFF;
+  --intent-success: #7D9F50;
+  --intent-success-muted: #EBF2E2;
+  --intent-success-foreground: #FFFFFF;
+  --intent-danger: #C4906E;
+  --intent-danger-muted: #F5EAE4;
+  --intent-danger-foreground: #FFFFFF;
+  --intent-warning: #C4A85E;
+  --intent-warning-muted: #F5F0E2;
+  --intent-warning-foreground: #3E4A32;
+  --intent-info: #7D9FB8;
+  --intent-info-muted: #E4EEF5;
+  --intent-info-foreground: #FFFFFF;
+  --intent-purple: #9B8EC4;
+  --intent-purple-muted: #EDE8F5;
+  --intent-purple-foreground: #FFFFFF;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --shadow-sm: 0 1px 4px rgba(60, 70, 40, 0.06);
+  --shadow-md: 0 4px 14px rgba(100, 120, 60, 0.10);
+  --shadow-lg: 0 8px 30px rgba(120, 140, 80, 0.12);
+  --font-family: 'Karla', 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Karla', 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+  --letter-spacing: 0;
+  --line-height: 1.6;
+  --border-width: 1px;
+  --duration: 200ms;
+  --easing: ease-out;
+  --opacity-hover: 0.9;
+  --opacity-disabled: 0.45;
+  --opacity-overlay: 0.35;
+  --blur-amount: 12px;
+  --glass-opacity: 0.6;
+  --focus-ring-width: 2px;
+  --focus-ring-color: #7D9F50;
+  --focus-ring-offset: 2px;
+  --selection-bg: #EBF2E2;
+  --selection-fg: #3E4A32;
+  --scrollbar-width: 5px;
+  --scrollbar-thumb: #D4D0BE;
+  --scrollbar-track: transparent;
+}
+
