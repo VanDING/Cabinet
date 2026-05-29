@@ -63,10 +63,10 @@ export function SecretaryChat({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white">
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary">
       {title && (
-        <div className="rounded-t-lg border-b bg-gray-50 px-4 py-3">
-          <h2 className="font-semibold text-gray-800">{title}</h2>
+        <div className="rounded-t-lg border-b bg-surface-elevated px-4 py-3">
+          <h2 className="font-semibold text-content-primary">{title}</h2>
         </div>
       )}
       <div
@@ -81,8 +81,8 @@ export function SecretaryChat({
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-accent text-content-inverse'
+                      : 'bg-surface-muted text-content-primary'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{parsed.text || msg.content}</p>
@@ -120,8 +120,8 @@ export function SecretaryChat({
         })}
         {isProcessing && !messages[messages.length - 1]?.isStreaming && (
           <div className="flex justify-start">
-            <div className="rounded-lg bg-gray-100 px-4 py-2">
-              <span className="text-sm text-gray-400">Thinking...</span>
+            <div className="rounded-lg bg-surface-muted px-4 py-2">
+              <span className="text-sm text-content-tertiary">Thinking...</span>
             </div>
           </div>
         )}
@@ -134,12 +134,12 @@ export function SecretaryChat({
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={placeholder ?? 'Type your message...'}
           disabled={isProcessing}
-          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-50"
+          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-accent focus:outline-none disabled:bg-surface-elevated"
         />
         <button
           onClick={handleSend}
           disabled={isProcessing || !input.trim()}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm text-content-inverse hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           Send
         </button>

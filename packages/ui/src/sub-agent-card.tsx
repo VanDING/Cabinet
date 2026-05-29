@@ -68,25 +68,25 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
       <button onClick={handleToggle} className="flex w-full items-center justify-between text-left">
         <div className="flex items-center gap-2">
           <span
-            className={`text-sm ${isRunning ? 'animate-pulse text-blue-600' : activity.status === 'error' ? 'text-red-600' : 'text-green-600'}`}
+            className={`text-sm ${isRunning ? 'animate-pulse text-accent' : activity.status === 'error' ? 'text-intent-danger' : 'text-intent-success'}`}
           >
             {config.icon}
           </span>
-          <span className="text-sm font-medium text-gray-800">
+          <span className="text-sm font-medium text-content-primary">
             {activity.agentName}
           </span>
-          <span className="rounded px-1.5 py-0.5 text-xs text-gray-500">
+          <span className="rounded px-1.5 py-0.5 text-xs text-content-tertiary">
             {config.label}
           </span>
         </div>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-content-tertiary">
           {expanded ? '收起' : '展开'}
         </span>
       </button>
 
       {/* Summary line */}
       {!expanded && activity.result && visibility !== 'summary' && (
-        <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+        <p className="mt-1 line-clamp-2 text-xs text-content-tertiary">
           {activity.result.slice(0, 200)}
           {activity.result.length > 200 ? '…' : ''}
         </p>
@@ -97,9 +97,9 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
         <div className="mt-2 space-y-2">
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-500">思考过程</div>
-              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-gray-200 bg-white p-2 whitespace-pre-wrap">
-                <p className="text-xs text-gray-600">
+              <div className="text-xs font-medium text-content-tertiary">思考过程</div>
+              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-border bg-surface-primary p-2 whitespace-pre-wrap">
+                <p className="text-xs text-content-secondary">
                   {activity.thinking.join('')}
                 </p>
               </div>
@@ -108,10 +108,10 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.toolCalls && activity.toolCalls.length > 0 && (
             <div className="mt-2">
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
                 <button
                   onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
-                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100"
+                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-muted"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
                   工具调用 ({activity.toolCalls.length})
@@ -120,23 +120,23 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                   activity.toolCalls.slice(0, 4).map((tc, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5"
+                      className="inline-flex items-center gap-1 rounded bg-surface-muted px-1.5 py-0.5"
                     >
-                      <span className="font-mono text-gray-700">{tc.name}</span>
+                      <span className="font-mono text-content-secondary">{tc.name}</span>
                     </span>
                   ))}
                 {!toolCallsExpanded && activity.toolCalls.length > 4 && (
-                  <span className="text-gray-400">+{activity.toolCalls.length - 4}</span>
+                  <span className="text-content-tertiary">+{activity.toolCalls.length - 4}</span>
                 )}
               </div>
               {toolCallsExpanded && (
-                <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2">
+                <div className="mt-1 space-y-1 rounded border border-border bg-surface-elevated p-2">
                   {activity.toolCalls.map((tc, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="mt-0.5 font-mono text-gray-700">
+                      <span className="mt-0.5 font-mono text-content-secondary">
                         {tc.name}
                       </span>
-                      <span className="truncate text-gray-500">
+                      <span className="truncate text-content-tertiary">
                         {Object.entries(tc.args)
                           .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
                           .join(', ')}
@@ -150,8 +150,8 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.result && (
             <div>
-              <div className="text-xs font-medium text-gray-500">结果</div>
-              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-gray-700">
+              <div className="text-xs font-medium text-content-tertiary">结果</div>
+              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-content-secondary">
                 {activity.result}
               </p>
             </div>
@@ -159,8 +159,8 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.error && (
             <div>
-              <div className="text-xs font-medium text-red-500">错误</div>
-              <p className="mt-1 text-xs text-red-600">{activity.error}</p>
+              <div className="text-xs font-medium text-intent-danger">错误</div>
+              <p className="mt-1 text-xs text-intent-danger">{activity.error}</p>
             </div>
           )}
         </div>
