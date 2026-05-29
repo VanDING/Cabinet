@@ -720,3 +720,63 @@
   --scrollbar-track: #F0F0F0;
 }
 
+[data-theme="bauhaus"] {
+  --surface-primary: #E5E5E5;
+  --surface-elevated: #FFFFFF;
+  --surface-overlay: #FFFFFF;
+  --surface-input: #FFFFFF;
+  --surface-muted: #CCCCCC;
+  --content-primary: #1A1A1A;
+  --content-secondary: #D32F2F;
+  --content-tertiary: #1976D2;
+  --content-inverse: #FBC02D;
+  --border-color: #000000;
+  --border-subtle: #AAAAAA;
+  --accent: #FBC02D;
+  --accent-hover: #F9A825;
+  --accent-muted: #FFF9C4;
+  --accent-foreground: #1A1A1A;
+  --intent-success: #388E3C;
+  --intent-success-muted: rgba(56, 142, 60, 0.10);
+  --intent-success-foreground: #FFFFFF;
+  --intent-danger: #D32F2F;
+  --intent-danger-muted: rgba(211, 47, 47, 0.10);
+  --intent-danger-foreground: #FFFFFF;
+  --intent-warning: #FBC02D;
+  --intent-warning-muted: rgba(251, 192, 45, 0.15);
+  --intent-warning-foreground: #1A1A1A;
+  --intent-info: #1976D2;
+  --intent-info-muted: rgba(25, 118, 210, 0.10);
+  --intent-info-foreground: #FFFFFF;
+  --intent-purple: #7B1FA2;
+  --intent-purple-muted: rgba(123, 31, 162, 0.10);
+  --intent-purple-foreground: #FFFFFF;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --font-family: 'Bauhaus 93', 'Futura', 'Poppins', -apple-system, sans-serif;
+  --font-display: 'Bauhaus 93', 'Futura', 'Poppins', -apple-system, sans-serif;
+  --letter-spacing: 0.03em;
+  --line-height: 1.4;
+  --border-width: 2px;
+  --duration: 100ms;
+  --easing: ease-out;
+  --opacity-hover: 1.0;
+  --opacity-disabled: 0.5;
+  --opacity-overlay: 0.6;
+  --blur-amount: 0px;
+  --glass-opacity: 1;
+  --focus-ring-width: 3px;
+  --focus-ring-color: #000000;
+  --focus-ring-offset: 2px;
+  --selection-bg: #FBC02D;
+  --selection-fg: #1A1A1A;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb: #000000;
+  --scrollbar-track: #E5E5E5;
+}
+
