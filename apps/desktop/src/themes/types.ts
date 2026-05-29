@@ -44,6 +44,7 @@ export interface ThemeStyle {
   focusRing: { width: string; color: string; offset: string };
   selection: { bg: string; fg: string };
   scrollbar: { width: string; thumb: string; track: string };
+  bodyBg: string;
 }
 
 export interface Theme {

@@ -89,6 +89,7 @@ function flattenTokens(theme: Theme): Record<string, string> {
   vars['--scrollbar-width'] = style.scrollbar.width;
   vars['--scrollbar-thumb'] = style.scrollbar.thumb;
   vars['--scrollbar-track'] = style.scrollbar.track;
+  vars['--body-bg'] = style.bodyBg;
 
   return vars;
 }

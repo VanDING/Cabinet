@@ -55,5 +55,6 @@ export const brutalism: Theme = {
     focusRing: { width: '2px', color: '#000000', offset: '2px' },
     selection: { bg: '#0000FF', fg: '#FFFFFF' },
     scrollbar: { width: '18px', thumb: '#999999', track: '#F0F0F0' },
+    bodyBg: '#F0F0F0',
   },
 };

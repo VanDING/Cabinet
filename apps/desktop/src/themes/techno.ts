@@ -55,5 +55,6 @@ export const techno: Theme = {
     focusRing: { width: '2px', color: '#F4C542', offset: '2px' },
     selection: { bg: '#F4C542', fg: '#1C1C1C' },
     scrollbar: { width: '8px', thumb: '#555555', track: '#1C1C1C' },
+    bodyBg: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.012) 1px, rgba(255,255,255,0.012) 2px), #1C1C1C',
   },
 };

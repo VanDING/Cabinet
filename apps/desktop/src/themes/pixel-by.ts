@@ -55,5 +55,6 @@ export const pixelBY: Theme = {
     focusRing: { width: '3px', color: '#FCD34D', offset: '2px' },
     selection: { bg: '#FCD34D', fg: '#1E293B' },
     scrollbar: { width: '12px', thumb: '#FCD34D', track: '#1E293B' },
+    bodyBg: '#BFDBFE',
   },
 };

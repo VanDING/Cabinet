@@ -55,5 +55,6 @@ export const warm: Theme = {
     focusRing: { width: '2px', color: '#D97757', offset: '2px' },
     selection: { bg: 'rgba(217, 119, 87, 0.15)', fg: '#3D3929' },
     scrollbar: { width: '6px', thumb: 'rgba(0, 0, 0, 0.12)', track: 'transparent' },
+    bodyBg: '#F0EBE3',
   },
 };
