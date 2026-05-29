@@ -660,3 +660,63 @@
   --scrollbar-track: #FFFFFF;
 }
 
+[data-theme="brutalism"] {
+  --surface-primary: #FFFFFF;
+  --surface-elevated: #F0F0F0;
+  --surface-overlay: #FFFFFF;
+  --surface-input: #FFFFFF;
+  --surface-muted: #E0E0E0;
+  --content-primary: #000000;
+  --content-secondary: #333333;
+  --content-tertiary: #666666;
+  --content-inverse: #FFFFFF;
+  --border-color: #000000;
+  --border-subtle: #CCCCCC;
+  --accent: #0000FF;
+  --accent-hover: #0000CC;
+  --accent-muted: rgba(0, 0, 255, 0.08);
+  --accent-foreground: #FFFFFF;
+  --intent-success: #008000;
+  --intent-success-muted: rgba(0, 128, 0, 0.10);
+  --intent-success-foreground: #FFFFFF;
+  --intent-danger: #FF0000;
+  --intent-danger-muted: rgba(255, 0, 0, 0.08);
+  --intent-danger-foreground: #FFFFFF;
+  --intent-warning: #FFA500;
+  --intent-warning-muted: rgba(255, 165, 0, 0.10);
+  --intent-warning-foreground: #000000;
+  --intent-info: #0000FF;
+  --intent-info-muted: rgba(0, 0, 255, 0.08);
+  --intent-info-foreground: #FFFFFF;
+  --intent-purple: #800080;
+  --intent-purple-muted: rgba(128, 0, 128, 0.08);
+  --intent-purple-foreground: #FFFFFF;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --font-family: 'Times New Roman', Georgia, serif;
+  --font-display: 'Times New Roman', Georgia, serif;
+  --letter-spacing: 0;
+  --line-height: 1.4;
+  --border-width: 3px;
+  --duration: 0s;
+  --easing: linear;
+  --opacity-hover: 1.0;
+  --opacity-disabled: 0.5;
+  --opacity-overlay: 0.6;
+  --blur-amount: 0px;
+  --glass-opacity: 1;
+  --focus-ring-width: 2px;
+  --focus-ring-color: #000000;
+  --focus-ring-offset: 2px;
+  --selection-bg: #0000FF;
+  --selection-fg: #FFFFFF;
+  --scrollbar-width: 18px;
+  --scrollbar-thumb: #999999;
+  --scrollbar-track: #F0F0F0;
+}
+
