@@ -95,21 +95,21 @@ export function ServerLoading({ children }: { children: ReactNode }) {
     status === 'restarting';
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-gray-950">
-      <div className="flex flex-col items-center gap-4 text-gray-400">
+    <div className="flex h-screen w-screen items-center justify-center bg-surface-elevated">
+      <div className="flex flex-col items-center gap-4 text-content-tertiary">
         {isSpinning ? (
-          <Loader2 className="h-10 w-10 animate-spin text-blue-400" />
+          <Loader2 className="h-10 w-10 animate-spin text-accent" />
         ) : (
           <AlertTriangle className="h-10 w-10 text-amber-400" />
         )}
 
-        <span className="text-lg font-medium text-gray-200">Cabinet</span>
+        <span className="text-lg font-medium text-content-tertiary">Cabinet</span>
 
         <span className="text-sm">{message}</span>
 
         {(status === 'timeout' || status === 'fatal') && (
           <button
-            className="mt-2 inline-flex items-center gap-2 rounded bg-gray-800 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+            className="mt-2 inline-flex items-center gap-2 rounded bg-surface-primary px-4 py-2 text-sm text-content-tertiary hover:bg-surface-input"
             onClick={() => {
               setStatus('starting');
               setMessage('Retrying...');

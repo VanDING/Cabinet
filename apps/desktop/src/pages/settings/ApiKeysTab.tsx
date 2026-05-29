@@ -69,17 +69,17 @@ export function ApiKeysTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">API Keys</h2>
+        <h2 className="text-lg font-semibold text-content-primary">API Keys</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Key'}
         </Button>
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
+        <div className="mb-4 rounded-lg border bg-surface-elevated p-4">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Provider</label>
+              <label className="mb-1 block text-xs text-content-tertiary">Provider</label>
               <select
                 value={formData.provider}
                 onChange={(e) =>
@@ -89,7 +89,7 @@ export function ApiKeysTab() {
                     model: PROVIDER_MODELS[e.target.value]?.[0] ?? '',
                   }))
                 }
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="openai">OpenAI</option>
@@ -102,33 +102,33 @@ export function ApiKeysTab() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Base URL (optional)</label>
+              <label className="mb-1 block text-xs text-content-tertiary">Base URL (optional)</label>
               <input
                 type="text"
                 placeholder="https://api.anthropic.com"
                 value={formData.baseUrl}
                 onChange={(e) => setFormData((p) => ({ ...p, baseUrl: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">API Key</label>
+              <label className="mb-1 block text-xs text-content-tertiary">API Key</label>
               <input
                 type="password"
                 placeholder="sk-ant-..."
                 value={formData.apiKey}
                 onChange={(e) => setFormData((p) => ({ ...p, apiKey: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Model</label>
+              <label className="mb-1 block text-xs text-content-tertiary">Model</label>
               <input
                 type="text"
                 placeholder="e.g. claude-sonnet-4-6"
                 value={formData.model}
                 onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button size="sm" fullWidth onClick={handleAdd} disabled={!formData.apiKey.trim()}>
@@ -139,7 +139,7 @@ export function ApiKeysTab() {
       )}
 
       {keys.length === 0 ? (
-        <p className="py-4 text-sm text-gray-400">
+        <p className="py-4 text-sm text-content-tertiary">
           No API keys configured. Add keys to enable LLM features.
         </p>
       ) : (
@@ -193,19 +193,19 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
     <Card padding="sm" className="flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium capitalize text-gray-900">
+          <span className="text-sm font-medium capitalize text-content-primary">
             {item.provider}
           </span>
-          {item.model && <span className="font-mono text-xs text-gray-400">{item.model}</span>}
+          {item.model && <span className="font-mono text-xs text-content-tertiary">{item.model}</span>}
         </div>
-        <p className="mt-0.5 font-mono text-xs text-gray-400">{item.keyPreview}</p>
+        <p className="mt-0.5 font-mono text-xs text-content-tertiary">{item.keyPreview}</p>
         {testStatus === 'ok' && testResult && (
-          <p className="mt-1 text-xs text-green-600">
+          <p className="mt-1 text-xs text-intent-success">
             OK — {testResult.latencyMs}ms · {testResult.model}
           </p>
         )}
         {testStatus === 'error' && testResult && (
-          <p className="mt-1 text-xs text-red-500">{testResult.message}</p>
+          <p className="mt-1 text-xs text-intent-danger">{testResult.message}</p>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
         >
           {testStatus === 'testing' ? 'Testing...' : 'Test'}
         </Button>
-        <Button variant="ghost" size="xs" className="text-red-500" onClick={() => onRemove(item.id)}>
+        <Button variant="ghost" size="xs" className="text-intent-danger" onClick={() => onRemove(item.id)}>
           Remove
         </Button>
       </div>
@@ -276,23 +276,23 @@ function ModelMappingSection() {
   if (loading) {
     return (
       <div className="mt-6 border-t pt-6">
-        <p className="text-sm text-gray-400">Loading model configuration...</p>
+        <p className="text-sm text-content-tertiary">Loading model configuration...</p>
       </div>
     );
   }
 
   return (
     <div className="mt-6 border-t pt-6">
-      <h3 className="mb-3 text-base font-semibold text-gray-900">
+      <h3 className="mb-3 text-base font-semibold text-content-primary">
         Model Mapping
       </h3>
-      <p className="mb-3 text-xs text-gray-500">
+      <p className="mb-3 text-xs text-content-tertiary">
         Leave empty to use automatic inference. Cross-provider mixing is supported, e.g.
         openai/gpt-4o, deepseek/deepseek-v4-flash.
       </p>
       <div className="max-w-lg space-y-3">
         <div>
-          <label className="mb-1 block text-sm text-gray-600">
+          <label className="mb-1 block text-sm text-content-secondary">
             Default Model (default)
           </label>
           <input
@@ -300,11 +300,11 @@ function ModelMappingSection() {
             placeholder="e.g. openai/gpt-4o"
             value={mapping.default}
             onChange={(e) => setMapping((p) => ({ ...p, default: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-gray-600">
+          <label className="mb-1 block text-sm text-content-secondary">
             Deep Reasoning Model (deep_reasoning)
           </label>
           <input
@@ -312,11 +312,11 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-opus-4-7"
             value={mapping.deep_reasoning}
             onChange={(e) => setMapping((p) => ({ ...p, deep_reasoning: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-gray-600">
+          <label className="mb-1 block text-sm text-content-secondary">
             Fast Execution Model (fast_execution)
           </label>
           <input
@@ -324,7 +324,7 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-haiku-4-5"
             value={mapping.fast_execution}
             onChange={(e) => setMapping((p) => ({ ...p, fast_execution: e.target.value }))}
-            className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
       </div>
@@ -359,28 +359,28 @@ function BudgetSection() {
 
   return (
     <div className="mt-6 border-t pt-6">
-      <h3 className="mb-3 text-base font-semibold text-gray-900">
+      <h3 className="mb-3 text-base font-semibold text-content-primary">
         Budget Limits
       </h3>
       <div className="mb-3 flex items-center gap-2 text-sm">
-        <span className="text-gray-500">Today's spend:</span>
-        <span className="font-medium text-blue-600">${currentSpend.toFixed(4)}</span>
+        <span className="text-content-tertiary">Today's spend:</span>
+        <span className="font-medium text-accent">${currentSpend.toFixed(4)}</span>
       </div>
       <div className="grid max-w-lg grid-cols-3 gap-4">
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
-            <label className="mb-1 block text-sm capitalize text-gray-600">
+            <label className="mb-1 block text-sm capitalize text-content-secondary">
               {period}
             </label>
             <div className="flex items-center gap-1">
-              <span className="text-sm text-gray-400">$</span>
+              <span className="text-sm text-content-tertiary">$</span>
               <input
                 type="number"
                 value={(budget as any)[period]}
                 onChange={(e) =>
                   setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
                 }
-                className="w-24 rounded border bg-white px-2 py-1.5 text-sm text-gray-900"
+                className="w-24 rounded border bg-surface-primary px-2 py-1.5 text-sm text-content-primary"
               />
             </div>
           </div>

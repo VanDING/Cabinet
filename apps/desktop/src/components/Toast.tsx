@@ -49,18 +49,18 @@ function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => voi
   }, [toast.duration, onClose]);
 
   const colors = {
-    success: 'bg-green-700',
-    error: 'bg-red-700',
+    success: 'bg-intent-success',
+    error: 'bg-intent-danger',
     warning: 'bg-amber-700',
-    info: 'bg-blue-700',
+    info: 'bg-accent-hover',
   };
 
   return (
     <div
-      className={`${colors[toast.type]} animate-slide-in flex items-center gap-2 rounded-lg px-4 py-3 text-white shadow-lg`}
+      className={`${colors[toast.type]} animate-slide-in flex items-center gap-2 rounded-lg px-4 py-3 text-content-inverse shadow-lg`}
     >
       <span className="flex-1 text-sm">{toast.message}</span>
-      <button onClick={onClose} className="text-lg leading-none text-white/70 hover:text-white">
+      <button onClick={onClose} className="text-lg leading-none text-content-inverse/70 hover:text-content-inverse">
         &times;
       </button>
     </div>

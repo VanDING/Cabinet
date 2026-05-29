@@ -83,7 +83,7 @@ export function SkillsTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
+        <h2 className="text-lg font-semibold text-content-primary">Skills</h2>
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -139,26 +139,26 @@ export function SkillsTab() {
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
+        <div className="mb-4 rounded-lg border bg-surface-elevated p-4">
           <div className="space-y-3">
             <input
               placeholder="Name"
               value={formData.name}
               onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <textarea
               placeholder="Description"
               value={formData.description}
               onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               rows={2}
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <div className="flex gap-3">
               <select
                 value={formData.kind}
                 onChange={(e) => setFormData((p) => ({ ...p, kind: e.target.value }))}
-                className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               >
                 <option value="tool">Tool</option>
                 <option value="prompt">Prompt</option>
@@ -168,7 +168,7 @@ export function SkillsTab() {
                 placeholder="Prompt Template"
                 value={formData.promptTemplate}
                 onChange={(e) => setFormData((p) => ({ ...p, promptTemplate: e.target.value }))}
-                className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="flex-1 rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button
@@ -184,14 +184,14 @@ export function SkillsTab() {
       )}
 
       {skills.length === 0 ? (
-        <p className="py-4 text-sm text-gray-400">No skills registered yet.</p>
+        <p className="py-4 text-sm text-content-tertiary">No skills registered yet.</p>
       ) : (
         <div className="space-y-2">
           {skills.map((s) => (
             <Card key={s.id} padding="sm" className="group flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-content-primary">
                     {s.name}
                   </span>
                   <Tag
@@ -203,22 +203,22 @@ export function SkillsTab() {
                     {s.status}
                   </Tag>
                 </div>
-                <p className="mt-0.5 text-xs text-gray-500">{s.description}</p>
+                <p className="mt-0.5 text-xs text-content-tertiary">{s.description}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleEdit(s)}
-                  className="px-2 py-1 text-xs text-gray-400 opacity-0 transition-opacity hover:text-blue-500 group-hover:opacity-100"
+                  className="px-2 py-1 text-xs text-content-tertiary opacity-0 transition-opacity hover:text-accent group-hover:opacity-100"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(s.id)}
-                  className="px-2 py-1 text-xs text-gray-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                  className="px-2 py-1 text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
                 >
                   Del
                 </button>
-                <span className="text-xs text-gray-400">v{s.version}</span>
+                <span className="text-xs text-content-tertiary">v{s.version}</span>
               </div>
             </Card>
           ))}

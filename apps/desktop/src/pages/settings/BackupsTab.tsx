@@ -65,10 +65,10 @@ export function BackupsTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Backups</h2>
+        <h2 className="text-lg font-semibold text-content-primary">Backups</h2>
         <button
           onClick={handleCreate}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
         >
           + Create Backup
         </button>
@@ -76,14 +76,14 @@ export function BackupsTab() {
 
       {status && (
         <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') || status.includes('Failed') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
+          className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') || status.includes('Failed') ? 'bg-intent-danger-muted text-intent-danger' : 'bg-intent-success-muted text-intent-success'}`}
         >
           {status}
         </div>
       )}
 
       {backups.length === 0 ? (
-        <p className="py-4 text-sm text-gray-400">
+        <p className="py-4 text-sm text-content-tertiary">
           No backups yet. Create your first backup to protect your data.
         </p>
       ) : (
@@ -91,13 +91,13 @@ export function BackupsTab() {
           {backups.map((b, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg border bg-white p-3"
+              className="flex items-center justify-between rounded-lg border bg-surface-primary p-3"
             >
               <div>
-                <div className="font-mono text-sm font-medium text-gray-900">
+                <div className="font-mono text-sm font-medium text-content-primary">
                   {b.path}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-content-tertiary">
                   {formatSize(b.size)}
                   {b.createdAt && ` · ${new Date(b.createdAt).toLocaleString()}`}
                 </div>

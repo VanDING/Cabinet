@@ -26,7 +26,7 @@ export function SystemHealth() {
 
   if (!health) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4 text-xs text-gray-400">
+      <div className="flex h-full items-center justify-center rounded-lg border bg-surface-primary p-4 text-xs text-content-tertiary">
         {loading ? 'Loading...' : 'No data'}
       </div>
     );
@@ -36,40 +36,40 @@ export function SystemHealth() {
   const m = health.metrics;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
-      <div className="mb-3 text-sm font-medium text-gray-700">System Health</div>
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+      <div className="mb-3 text-sm font-medium text-content-secondary">System Health</div>
       <div className="flex-1 space-y-2 text-xs">
         <div className="flex justify-between">
-          <span className="text-gray-500">CPU</span>
-          <span className="text-gray-700">{s.cpu.cores} cores</span>
+          <span className="text-content-tertiary">CPU</span>
+          <span className="text-content-secondary">{s.cpu.cores} cores</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Memory (process)</span>
-          <span className="font-mono text-gray-700">{s.memory.processMB}</span>
+          <span className="text-content-tertiary">Memory (process)</span>
+          <span className="font-mono text-content-secondary">{s.memory.processMB}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Memory (free)</span>
-          <span className="font-mono text-gray-700">
+          <span className="text-content-tertiary">Memory (free)</span>
+          <span className="font-mono text-content-secondary">
             {s.memory.systemFreeMB}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Database</span>
-          <span className="font-mono text-gray-700">{s.database.sizeMB}</span>
+          <span className="text-content-tertiary">Database</span>
+          <span className="font-mono text-content-secondary">{s.database.sizeMB}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Uptime</span>
-          <span className="text-gray-700">
+          <span className="text-content-tertiary">Uptime</span>
+          <span className="text-content-secondary">
             {Math.floor(s.uptime.process / 60)}m
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">LLM Calls</span>
-          <span className="text-gray-700">{m?.totalCalls ?? '-'}</span>
+          <span className="text-content-tertiary">LLM Calls</span>
+          <span className="text-content-secondary">{m?.totalCalls ?? '-'}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-500">Backup</span>
-          <span className={health.backup?.available ? 'text-green-600' : 'text-gray-400'}>
+          <span className="text-content-tertiary">Backup</span>
+          <span className={health.backup?.available ? 'text-intent-success' : 'text-content-tertiary'}>
             {health.backup?.available ? 'Active' : 'N/A'}
           </span>
         </div>

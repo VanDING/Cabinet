@@ -117,15 +117,15 @@ export function GraphTab() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-500">Entity type:</span>
+        <span className="text-xs text-content-tertiary">Entity type:</span>
         {types.map((t) => (
           <button
             key={t}
             onClick={() => setSelectedType(t)}
             className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
               selectedType === t
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50:bg-gray-700'
+                ? 'border-accent bg-accent text-content-inverse'
+                : 'border-border text-content-secondary hover:bg-surface-elevated:bg-surface-input'
             }`}
           >
             {t}
@@ -133,25 +133,25 @@ export function GraphTab() {
         ))}
         <button
           onClick={fetchGraph}
-          className="ml-auto rounded-lg border px-3 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
+          className="ml-auto rounded-lg border px-3 py-1 text-xs text-content-tertiary transition-colors hover:text-content-secondary"
         >
           Refresh
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
+      <div className="flex-1 overflow-hidden rounded-lg border border-border">
         {loading ? (
-          <div className="flex h-full items-center justify-center text-gray-400">
+          <div className="flex h-full items-center justify-center text-content-tertiary">
             Loading graph...
           </div>
         ) : filteredEntities.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-gray-400">
+          <div className="flex h-full items-center justify-center text-content-tertiary">
             No entities found.
           </div>
         ) : (
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="h-full w-full bg-gray-50"
+            className="h-full w-full bg-surface-elevated"
           >
             {filteredRelations.map((r) => {
               const from = positions.get(r.from);
@@ -220,7 +220,7 @@ export function GraphTab() {
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-content-tertiary">
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1">
             <span

@@ -82,15 +82,15 @@ export function TitleBar({
   const handleClose = useCallback(() => invoke('close').catch(() => {}), []);
 
   const btnHover =
-    'text-gray-500 hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200';
+    'text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
 
   return (
     <div
       data-tauri-drag-region
-      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-gray-200 bg-white"
+      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-border bg-surface-primary"
     >
       <div data-tauri-drag-region className="flex items-center pl-4">
-        <span className="text-xs font-semibold tracking-wide text-gray-600">
+        <span className="text-xs font-semibold tracking-wide text-content-secondary">
           Cabinet
         </span>
       </div>
@@ -113,15 +113,15 @@ export function TitleBar({
           {themeOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setThemeOpen(false)} />
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-md border border-border bg-surface-primary py-1 shadow-lg">
                 {themes.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => { onSetTheme?.(t.id); setThemeOpen(false); }}
-                    className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-gray-100 ${
+                    className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-surface-muted ${
                       t.id === currentTheme
-                        ? 'font-semibold text-blue-600'
-                        : 'text-gray-700'
+                        ? 'font-semibold text-accent'
+                        : 'text-content-secondary'
                     }`}
                   >
                     {t.name}
@@ -150,7 +150,7 @@ export function TitleBar({
             </button>
             <button
               onClick={handleClose}
-              className="flex h-full w-10 items-center justify-center text-gray-500 transition-colors hover:bg-red-600 hover:text-white"
+              className="flex h-full w-10 items-center justify-center text-content-tertiary transition-colors hover:bg-intent-danger hover:text-content-inverse"
               aria-label="Close"
             >
               <X size={14} />

@@ -98,37 +98,37 @@ export function McpTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">MCP Servers</h2>
+        <h2 className="text-lg font-semibold text-content-primary">MCP Servers</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Server'}
         </Button>
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
+        <div className="mb-4 rounded-lg border bg-surface-elevated p-4">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Server Name</label>
+              <label className="mb-1 block text-xs text-content-tertiary">Server Name</label>
               <input
                 type="text"
                 placeholder="e.g. filesystem"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">Command</label>
+              <label className="mb-1 block text-xs text-content-tertiary">Command</label>
               <input
                 type="text"
                 placeholder="npx"
                 value={form.command}
                 onChange={(e) => setForm((p) => ({ ...p, command: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-gray-500">
+              <label className="mb-1 block text-xs text-content-tertiary">
                 Arguments (space-separated)
               </label>
               <input
@@ -136,7 +136,7 @@ export function McpTab() {
                 placeholder="-y @anthropic/mcp-server-filesystem /path"
                 value={form.args}
                 onChange={(e) => setForm((p) => ({ ...p, args: e.target.value }))}
-                className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button
@@ -152,13 +152,13 @@ export function McpTab() {
       )}
 
       {testResult && (
-        <div className="mb-3 rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+        <div className="mb-3 rounded bg-intent-success-muted px-3 py-2 text-sm text-intent-success">
           {testResult}
         </div>
       )}
 
       {servers.length === 0 ? (
-        <p className="py-4 text-sm text-gray-400">
+        <p className="py-4 text-sm text-content-tertiary">
           No MCP servers configured. Add MCP servers to extend AI capabilities with custom tools.
         </p>
       ) : (
@@ -167,7 +167,7 @@ export function McpTab() {
             <Card key={s.name} padding="sm" className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-content-primary">
                     {s.name}
                   </span>
                   <Tag variant={s.enabled ? 'success' : 'default'}>
@@ -179,7 +179,7 @@ export function McpTab() {
                     </Tag>
                   )}
                 </div>
-                <p className="mt-0.5 font-mono text-xs text-gray-400">
+                <p className="mt-0.5 font-mono text-xs text-content-tertiary">
                   {s.command} {s.args.join(' ')}
                 </p>
               </div>
@@ -190,7 +190,7 @@ export function McpTab() {
                 <Button variant="ghost" size="xs" onClick={() => handleToggle(s.name)}>
                   {s.enabled ? 'Disable' : 'Enable'}
                 </Button>
-                <Button variant="ghost" size="xs" className="text-red-500" onClick={() => handleRemove(s.name)}>
+                <Button variant="ghost" size="xs" className="text-intent-danger" onClick={() => handleRemove(s.name)}>
                   Remove
                 </Button>
               </div>

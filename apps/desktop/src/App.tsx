@@ -49,8 +49,8 @@ const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ defau
 function PageLoader() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="text-center text-gray-400">
-        <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <div className="text-center text-content-tertiary">
+        <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
         <p className="text-xs">Loading...</p>
       </div>
     </div>
@@ -724,7 +724,7 @@ export function App() {
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
               }}
-              className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 transition-colors hover:bg-blue-400:bg-blue-500"
+              className="w-1 flex-shrink-0 cursor-col-resize bg-surface-muted transition-colors hover:bg-accent:bg-accent"
             />
           )}
 
@@ -876,10 +876,10 @@ export function App() {
             onClick={() => setShowProjectActionModal(false)}
           >
             <div
-              className="mx-4 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-2xl"
+              className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-primary p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              <h3 className="mb-4 text-lg font-semibold text-content-primary">
                 Add Project
               </h3>
               <div className="space-y-3">
@@ -888,12 +888,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleCreateNewProject();
                   }}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50:bg-gray-700"
+                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated:bg-surface-input"
                 >
-                  <span className="block text-base text-gray-900">
+                  <span className="block text-base text-content-primary">
                     Create New Project
                   </span>
-                  <span className="mt-0.5 block text-xs text-gray-500">
+                  <span className="mt-0.5 block text-xs text-content-tertiary">
                     Start with an empty project
                   </span>
                 </button>
@@ -902,12 +902,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleImportProject();
                   }}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50:bg-gray-700"
+                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated:bg-surface-input"
                 >
-                  <span className="block text-base text-gray-900">
+                  <span className="block text-base text-content-primary">
                     Import Existing Folder
                   </span>
-                  <span className="mt-0.5 block text-xs text-gray-500">
+                  <span className="mt-0.5 block text-xs text-content-tertiary">
                     Import a local folder as project
                   </span>
                 </button>
@@ -915,7 +915,7 @@ export function App() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowProjectActionModal(false)}
-                  className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
+                  className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary"
                 >
                   Cancel
                 </button>

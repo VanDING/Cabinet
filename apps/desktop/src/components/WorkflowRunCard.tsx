@@ -16,20 +16,20 @@ export function WorkflowRunCard({ data }: Props) {
 
   const statusColor =
     status === 'completed'
-      ? 'text-green-600'
+      ? 'text-intent-success'
       : status === 'failed'
-        ? 'text-red-600'
+        ? 'text-intent-danger'
         : status === 'running'
-          ? 'text-blue-600'
+          ? 'text-accent'
           : 'text-amber-600';
 
   const statusBg =
     status === 'completed'
-      ? 'bg-green-100'
+      ? 'bg-intent-success-muted'
       : status === 'failed'
-        ? 'bg-red-100'
+        ? 'bg-intent-danger-muted'
         : status === 'running'
-          ? 'bg-blue-100'
+          ? 'bg-accent-muted'
           : 'bg-amber-100';
 
   const nodeTypeIcon = (type: string) => {
@@ -74,17 +74,17 @@ export function WorkflowRunCard({ data }: Props) {
   };
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-purple-200 bg-white shadow-sm">
+    <div className="my-3 overflow-hidden rounded-lg border border-intent-purple bg-surface-primary shadow-sm">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 bg-purple-50 transition-colors"
+        className="flex w-full items-center justify-between px-4 py-2.5 bg-intent-purple-muted transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-purple-700">
+          <span className="text-sm font-semibold text-intent-purple">
             Workflow
           </span>
-          <span className="font-mono text-xs text-gray-500">{runId}</span>
+          <span className="font-mono text-xs text-content-tertiary">{runId}</span>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -93,7 +93,7 @@ export function WorkflowRunCard({ data }: Props) {
             {status}
           </span>
           <span
-            className={`text-xs text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`text-xs text-content-tertiary transition-transform ${expanded ? 'rotate-180' : ''}`}
           >
             &#9660;
           </span>
@@ -110,26 +110,26 @@ export function WorkflowRunCard({ data }: Props) {
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                       step.type === 'end' || status === 'completed'
-                        ? 'bg-green-100 text-green-600'
+                        ? 'bg-intent-success-muted text-intent-success'
                         : step.type === 'humanApproval'
                           ? 'bg-amber-100 text-amber-600'
-                          : 'bg-gray-100 text-gray-600'
+                          : 'bg-surface-muted text-content-secondary'
                     }`}
                   >
                     {nodeTypeIcon(step.type)}
                   </div>
                   {i < steps.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200" />
+                    <div className="w-px flex-1 bg-surface-muted" />
                   )}
                 </div>
                 <div className="pb-3">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium text-gray-800`}>
+                    <span className={`text-xs font-medium text-content-primary`}>
                       {nodeTypeLabel(step.type)}
                     </span>
-                    <span className={`font-mono text-[10px] text-gray-500`}>{step.nodeId}</span>
+                    <span className={`font-mono text-[10px] text-content-tertiary`}>{step.nodeId}</span>
                   </div>
-                  <p className={`text-xs text-gray-500 mt-0.5`}>{step.output}</p>
+                  <p className={`text-xs text-content-tertiary mt-0.5`}>{step.output}</p>
                 </div>
               </div>
             ))}
