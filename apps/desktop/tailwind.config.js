@@ -60,6 +60,8 @@ export default {
         md: 'var(--radius-md)',
         lg: 'var(--radius-lg)',
         xl: 'var(--radius-xl)',
+        '2xl': 'var(--radius-xl)',
+        '3xl': 'var(--radius-xl)',
         'ui-sm': 'var(--radius-sm)',
         'ui-md': 'var(--radius-md)',
         'ui-lg': 'var(--radius-lg)',
@@ -70,6 +72,8 @@ export default {
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
+        xl: 'var(--shadow-lg)',
+        '2xl': 'var(--shadow-lg)',
       },
       borderWidth: {
         DEFAULT: 'var(--border-width)',
@@ -90,6 +94,12 @@ export default {
       },
       transitionDuration: {
         DEFAULT: 'var(--duration)',
+        75: '75ms',
+        100: '100ms',
+        150: 'var(--duration)',
+        200: 'var(--duration)',
+        300: 'var(--duration)',
+        500: 'var(--duration)',
       },
       transitionTimingFunction: {
         DEFAULT: 'var(--easing)',
