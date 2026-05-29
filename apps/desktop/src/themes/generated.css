@@ -120,3 +120,63 @@
   --scrollbar-track: transparent;
 }
 
+[data-theme="pixel-by"] {
+  --surface-primary: #EFF6FF;
+  --surface-elevated: #BFDBFE;
+  --surface-overlay: #DBEAFE;
+  --surface-input: #FFFFFF;
+  --surface-muted: #93C5FD;
+  --content-primary: #1E3A5F;
+  --content-secondary: #3B82F6;
+  --content-tertiary: #60A5FA;
+  --content-inverse: #FCD34D;
+  --border-color: #1E293B;
+  --border-subtle: #93C5FD;
+  --accent: #2563EB;
+  --accent-hover: #FCD34D;
+  --accent-muted: rgba(37, 99, 235, 0.15);
+  --accent-foreground: #1E293B;
+  --intent-success: #16A34A;
+  --intent-success-muted: rgba(22, 163, 74, 0.15);
+  --intent-success-foreground: #FFFFFF;
+  --intent-danger: #EF4444;
+  --intent-danger-muted: rgba(239, 68, 68, 0.15);
+  --intent-danger-foreground: #FFFFFF;
+  --intent-warning: #FCD34D;
+  --intent-warning-muted: rgba(252, 211, 77, 0.2);
+  --intent-warning-foreground: #1E293B;
+  --intent-info: #2563EB;
+  --intent-info-muted: rgba(37, 99, 235, 0.15);
+  --intent-info-foreground: #FFFFFF;
+  --intent-purple: #8B5CF6;
+  --intent-purple-muted: rgba(139, 92, 246, 0.15);
+  --intent-purple-foreground: #FFFFFF;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --shadow-sm: 3px 3px 0 #1E293B;
+  --shadow-md: 4px 4px 0 #1E293B;
+  --shadow-lg: 6px 6px 0 #1E293B;
+  --font-family: 'Courier New', 'Fira Code', monospace;
+  --font-display: 'Press Start 2P', 'Courier New', monospace;
+  --letter-spacing: 0.05em;
+  --line-height: 1.25;
+  --border-width: 3px;
+  --duration: 0ms;
+  --easing: step-end;
+  --opacity-hover: 1.0;
+  --opacity-disabled: 0.6;
+  --opacity-overlay: 0.85;
+  --blur-amount: 0px;
+  --glass-opacity: 1;
+  --focus-ring-width: 3px;
+  --focus-ring-color: #FCD34D;
+  --focus-ring-offset: 2px;
+  --selection-bg: #FCD34D;
+  --selection-fg: #1E293B;
+  --scrollbar-width: 12px;
+  --scrollbar-thumb: #FCD34D;
+  --scrollbar-track: #1E293B;
+}
+
