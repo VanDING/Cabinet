@@ -43,8 +43,8 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <div className="mb-6">
-        <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400">{stats.greeting}</p>
+        <h1 className="mb-1 text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-500">{stats.greeting}</p>
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -52,18 +52,18 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
           <div
             key={card.label}
             onClick={() => card.target && onNavigate?.(card.target)}
-            className={`rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800 ${card.target ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+            className={`rounded-lg border bg-white p-4 ${card.target ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
           >
             <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
-            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">{card.label}</div>
+            <div className="mt-1 text-sm text-gray-500">{card.label}</div>
           </div>
         ))}
       </div>
 
-      <div className="rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="mb-3 font-semibold text-gray-800 dark:text-gray-200">Recent Events</h2>
+      <div className="rounded-lg border bg-white p-4">
+        <h2 className="mb-3 font-semibold text-gray-800">Recent Events</h2>
         {stats.recentEvents.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500">No recent events.</p>
+          <p className="text-sm text-gray-400">No recent events.</p>
         ) : (
           <div className="space-y-2">
             {stats.recentEvents.map((event, i) => (
@@ -71,8 +71,8 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
                 key={i}
                 className="flex justify-between border-b pb-1.5 text-sm last:border-0 last:pb-0"
               >
-                <span className="text-gray-700 dark:text-gray-300">{event.message}</span>
-                <span className="text-gray-400 dark:text-gray-500">
+                <span className="text-gray-700">{event.message}</span>
+                <span className="text-gray-400">
                   {event.time.toLocaleString()}
                 </span>
               </div>
