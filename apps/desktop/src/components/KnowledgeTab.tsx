@@ -97,7 +97,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
                   selectedDoc === d.path
                     ? 'bg-accent-muted'
                     : ''
-                } hover:bg-surface-muted:bg-surface-input`}
+                } hover:bg-surface-muted bg-surface-input`}
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <FileText size={12} className="flex-shrink-0" />

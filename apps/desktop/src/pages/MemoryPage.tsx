@@ -520,7 +520,7 @@ export function MemoryPage() {
                 className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                   filter === layer
                     ? 'border-accent bg-accent text-content-inverse'
-                    : 'border-border text-content-secondary hover:bg-surface-elevated:bg-surface-input'
+                    : 'border-border text-content-secondary hover:bg-surface-elevated bg-surface-input'
                 }`}
               >
                 {layer === 'all' ? 'All Layers' : layer.replace('_', ' ')}

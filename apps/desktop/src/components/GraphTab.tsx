@@ -125,7 +125,7 @@ export function GraphTab() {
             className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
               selectedType === t
                 ? 'border-accent bg-accent text-content-inverse'
-                : 'border-border text-content-secondary hover:bg-surface-elevated:bg-surface-input'
+                : 'border-border text-content-secondary hover:bg-surface-elevated bg-surface-input'
             }`}
           >
             {t}
