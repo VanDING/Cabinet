@@ -85,7 +85,7 @@ export function RulesTab() {
           {rules.map((rule) => (
             <div
               key={rule.filename}
-              className="overflow-hidden rounded-lg border bg-surface-primary"
+              className="overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm"
             >
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
@@ -135,7 +135,7 @@ export function RulesTab() {
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={12}
-                    className="w-full rounded border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
+                    className="w-full rounded border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
                   />
                   <div className="mt-2 flex justify-end">
                     <Button size="sm" onClick={() => handleSave(rule.filename)}>

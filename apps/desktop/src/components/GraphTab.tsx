@@ -122,7 +122,7 @@ export function GraphTab() {
           <button
             key={t}
             onClick={() => setSelectedType(t)}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+            className={`rounded-full border border-border px-2.5 py-1 text-xs transition-colors ${
               selectedType === t
                 ? 'border-accent bg-accent text-content-inverse'
                 : 'border-border text-content-secondary hover:bg-surface-elevated bg-surface-input'
@@ -133,7 +133,7 @@ export function GraphTab() {
         ))}
         <button
           onClick={fetchGraph}
-          className="ml-auto rounded-lg border px-3 py-1 text-xs text-content-tertiary transition-colors hover:text-content-secondary"
+          className="ml-auto rounded-lg border border-border px-3 py-1 text-xs text-content-tertiary transition-colors hover:text-content-secondary"
         >
           Refresh
         </button>

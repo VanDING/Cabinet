@@ -36,7 +36,7 @@ export function ObservabilityWidget() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border bg-surface-primary p-4">
+      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
@@ -44,7 +44,7 @@ export function ObservabilityWidget() {
 
   if (!health) {
     return (
-      <div className="h-full rounded-lg border bg-surface-primary p-4">
+      <div className="h-full rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
         <p className="text-xs text-content-tertiary">Observability data unavailable.</p>
       </div>
     );
@@ -66,7 +66,7 @@ export function ObservabilityWidget() {
   };
 
   return (
-    <div className="h-full overflow-hidden rounded-lg border bg-surface-primary p-4">
+    <div className="h-full overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-4">
       <h3 className="mb-3 text-sm font-semibold text-content-primary">Agent Health</h3>
 
       <div className="grid grid-cols-2 gap-2 text-xs">

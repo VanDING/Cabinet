@@ -63,7 +63,7 @@ export function SecretaryChat({
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-surface-primary">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary shadow-sm">
       {title && (
         <div className="rounded-t-lg border-b border-border bg-surface-elevated px-4 py-3">
           <h2 className="font-semibold text-content-primary">{title}</h2>
@@ -134,7 +134,7 @@ export function SecretaryChat({
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={placeholder ?? 'Type your message...'}
           disabled={isProcessing}
-          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-accent focus:outline-none disabled:bg-surface-elevated"
+          className="flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-accent focus:outline-none disabled:bg-surface-elevated"
         />
         <button
           onClick={handleSend}

@@ -108,7 +108,7 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border px-2 py-1"
+                  className="flex items-center justify-between rounded border border-border px-2 py-1"
                 >
                   <span
                     className="truncate text-[11px] text-content-secondary"
@@ -187,7 +187,7 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border px-2 py-1"
+                  className="flex items-center justify-between rounded border border-border px-2 py-1"
                 >
                   <span className="text-[11px] text-content-secondary">{title}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeColor}`}>
@@ -517,7 +517,7 @@ export function MemoryPage() {
               <button
                 key={layer}
                 onClick={() => setFilter(layer)}
-                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                className={`rounded-full border border-border px-3 py-1.5 text-xs transition-colors ${
                   filter === layer
                     ? 'border-accent bg-accent text-content-inverse'
                     : 'border-border text-content-secondary hover:bg-surface-elevated bg-surface-input'
@@ -531,7 +531,7 @@ export function MemoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search memories..."
-              className="ml-auto w-48 rounded-lg border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
+              className="ml-auto w-48 rounded-lg border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
             />
             <Button variant="ghost" size="xs" onClick={fetchMemories}>
               Refresh

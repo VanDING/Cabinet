@@ -91,7 +91,7 @@ export function CostChart() {
   const totalCalls = history.length > 0 ? (history[history.length - 1]!.calls ?? 0) : 0;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
         <div className="text-sm font-medium text-content-secondary">Cost Analysis</div>

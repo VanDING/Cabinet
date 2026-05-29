@@ -194,7 +194,7 @@ export function EmployeesPage() {
       </div>
 
       {showForm && (
-        <div className="mb-6 rounded-lg border bg-surface-primary p-4">
+        <div className="mb-6 rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
           <h2 className="mb-3 font-semibold text-content-primary">
             {editingId ? 'Edit Employee' : 'Create Employee'}
           </h2>
@@ -203,12 +203,12 @@ export function EmployeesPage() {
               placeholder="Name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <select
               value={form.kind}
               onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as 'ai' | 'human' }))}
-              className="rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             >
               <option value="ai">AI</option>
               <option value="human">Human</option>
@@ -217,14 +217,14 @@ export function EmployeesPage() {
               placeholder="Role (e.g. advisor)"
               value={form.role}
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-              className="rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             {form.kind === 'ai' && (
               <input
                 placeholder="Model (e.g. claude-sonnet-4-6)"
                 value={form.model}
                 onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                className="rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             )}
           </div>
@@ -233,7 +233,7 @@ export function EmployeesPage() {
               placeholder="Expertise (comma-separated)"
               value={form.expertise}
               onChange={(e) => setForm((f) => ({ ...f, expertise: e.target.value }))}
-              className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
           </div>
           <button
@@ -249,7 +249,7 @@ export function EmployeesPage() {
       <div className="mb-4 text-sm text-content-tertiary">{employees.length} team members</div>
 
       {employees.length === 0 && !showForm && (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-lg border border-dashed border-border p-8 text-center">
           <p className="text-content-tertiary">No employees yet.</p>
           <p className="mt-1 text-sm text-content-tertiary">
             Create your first team member to get started.
@@ -262,7 +262,7 @@ export function EmployeesPage() {
           <div
             key={emp.id}
             onClick={() => setSelected(selected === emp.id ? null : emp.id)}
-            className={`group cursor-pointer rounded-lg border bg-surface-primary p-4 transition-all ${selected === emp.id ? 'border-accent ring-2 ring-accent' : 'hover:shadow-md'}`}
+            className={`group cursor-pointer rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-all ${selected === emp.id ? 'border-accent ring-2 ring-accent' : 'hover:shadow-md'}`}
           >
             <div className="mb-2 flex items-center justify-between">
               <div>
@@ -316,12 +316,12 @@ export function EmployeesPage() {
                       e.stopPropagation();
                       handleStartEdit(emp);
                     }}
-                    className="rounded border px-3 py-1 text-xs hover:bg-surface-elevated bg-surface-input"
+                    className="rounded border border-border px-3 py-1 text-xs hover:bg-surface-elevated bg-surface-input"
                   >
                     Configure
                   </button>
                   {emp.kind === 'ai' && (
-                    <button className="rounded bg-intent-warning-muted px-3 py-1 text-xs text-intent-warning hover:bg-intent-warning-muted">
+                    <button className="rounded bg-intent-warning-muted px-3 py-1 text-xs text-intent-warning hover:bg-intent-warning">
                       Test
                     </button>
                   )}

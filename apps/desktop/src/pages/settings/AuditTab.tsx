@@ -35,7 +35,7 @@ export function AuditTab() {
           onChange={(e) => {
             setFilter((p) => ({ ...p, entityType: e.target.value }));
           }}
-          className="rounded border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
+          className="rounded border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
         >
           <option value="">All types</option>
           <option value="decision">Decision</option>

@@ -63,7 +63,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   }, [fetchMeetings]);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto rounded-lg border bg-surface-primary">
+    <div className="flex h-full flex-col overflow-y-auto rounded-lg border border-border bg-surface-primary shadow-sm">
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center text-content-tertiary">

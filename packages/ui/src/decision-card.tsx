@@ -28,7 +28,7 @@ export function DecisionCard({
   };
 
   return (
-    <div className="rounded-lg border bg-surface-primary p-4 transition-shadow hover:shadow-md">
+    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="mb-2 flex items-center justify-between">
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold ${levelColors[decision.level] ?? 'bg-surface-muted'}`}
@@ -86,7 +86,7 @@ export function DecisionCard({
         {onViewDetails && (
           <button
             onClick={() => onViewDetails(decision.id)}
-            className="rounded border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
+            className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
           >
             Details
           </button>

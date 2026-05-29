@@ -73,7 +73,7 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
   };
 
   const cardClasses =
-    'rounded-lg border border-border bg-surface-primary';
+    'rounded-lg border border-border bg-surface-primary shadow-sm';
   const inputClasses =
     'rounded border border-border bg-surface-elevated px-3 py-2 text-sm text-content-primary';
   const textClasses = 'text-content-primary';
