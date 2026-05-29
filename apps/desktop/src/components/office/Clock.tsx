@@ -9,7 +9,7 @@ export function Clock() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <div className="font-mono text-3xl font-bold text-content-primary">
         {time.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
       </div>

@@ -35,7 +35,7 @@ export function BudgetTab() {
               onChange={(e) =>
                 setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
               }
-              className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
           </div>
         ))}

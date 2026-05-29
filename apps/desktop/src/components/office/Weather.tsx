@@ -79,7 +79,7 @@ export function Weather() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-surface-primary p-3">
+    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-3">
       {data ? (
         <>
           <span className="text-2xl">{weatherEmoji(data.code)}</span>

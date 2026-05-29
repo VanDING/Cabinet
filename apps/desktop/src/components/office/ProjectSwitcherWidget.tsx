@@ -5,7 +5,7 @@ export function ProjectSwitcherWidget() {
   const { projects, current, setProject } = useProject();
 
   return (
-    <div className="flex h-full flex-col items-center justify-center rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-content-primary">
         Active Project
       </h3>

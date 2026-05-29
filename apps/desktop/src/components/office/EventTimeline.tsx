@@ -85,7 +85,7 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
   }, [fetchEvents]);
 
   return (
-    <div className="h-full overflow-y-auto rounded-lg border bg-surface-primary p-4">
+    <div className="h-full overflow-y-auto rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <h3 className="mb-3 text-sm font-semibold text-content-primary">Recent Events</h3>
       {loading ? (
         <p className="text-xs text-content-tertiary">Loading...</p>

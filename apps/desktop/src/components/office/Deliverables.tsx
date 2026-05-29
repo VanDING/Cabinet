@@ -85,7 +85,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
   const sub = 'text-content-tertiary';
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
         <span className="text-sm font-medium text-content-secondary">Deliverables</span>
         {items.length > 0 && (

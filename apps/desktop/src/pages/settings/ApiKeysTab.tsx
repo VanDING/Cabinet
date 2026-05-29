@@ -76,7 +76,7 @@ export function ApiKeysTab() {
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-surface-elevated p-4">
+        <div className="mb-4 rounded-lg border border-border bg-surface-elevated p-4">
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs text-content-tertiary">Provider</label>
@@ -89,7 +89,7 @@ export function ApiKeysTab() {
                     model: PROVIDER_MODELS[e.target.value]?.[0] ?? '',
                   }))
                 }
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="openai">OpenAI</option>
@@ -108,7 +108,7 @@ export function ApiKeysTab() {
                 placeholder="https://api.anthropic.com"
                 value={formData.baseUrl}
                 onChange={(e) => setFormData((p) => ({ ...p, baseUrl: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -118,7 +118,7 @@ export function ApiKeysTab() {
                 placeholder="sk-ant-..."
                 value={formData.apiKey}
                 onChange={(e) => setFormData((p) => ({ ...p, apiKey: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -128,7 +128,7 @@ export function ApiKeysTab() {
                 placeholder="e.g. claude-sonnet-4-6"
                 value={formData.model}
                 onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button size="sm" fullWidth onClick={handleAdd} disabled={!formData.apiKey.trim()}>
@@ -300,7 +300,7 @@ function ModelMappingSection() {
             placeholder="e.g. openai/gpt-4o"
             value={mapping.default}
             onChange={(e) => setMapping((p) => ({ ...p, default: e.target.value }))}
-            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
         <div>
@@ -312,7 +312,7 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-opus-4-7"
             value={mapping.deep_reasoning}
             onChange={(e) => setMapping((p) => ({ ...p, deep_reasoning: e.target.value }))}
-            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
         <div>
@@ -324,7 +324,7 @@ function ModelMappingSection() {
             placeholder="e.g. anthropic/claude-haiku-4-5"
             value={mapping.fast_execution}
             onChange={(e) => setMapping((p) => ({ ...p, fast_execution: e.target.value }))}
-            className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
           />
         </div>
       </div>
@@ -380,7 +380,7 @@ function BudgetSection() {
                 onChange={(e) =>
                   setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
                 }
-                className="w-24 rounded border bg-surface-primary px-2 py-1.5 text-sm text-content-primary"
+                className="w-24 rounded border border-border bg-surface-primary px-2 py-1.5 text-sm text-content-primary"
               />
             </div>
           </div>

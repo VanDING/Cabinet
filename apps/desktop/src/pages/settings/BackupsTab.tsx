@@ -91,7 +91,7 @@ export function BackupsTab() {
           {backups.map((b, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg border bg-surface-primary p-3"
+              className="flex items-center justify-between rounded-lg border border-border bg-surface-primary p-3 shadow-sm"
             >
               <div>
                 <div className="font-mono text-sm font-medium text-content-primary">

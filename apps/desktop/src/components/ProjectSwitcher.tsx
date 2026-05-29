@@ -29,7 +29,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg border bg-surface-primary px-3 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-elevated bg-surface-input"
+        className="flex items-center gap-2 rounded-lg border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-elevated bg-surface-input"
       >
         <span
           className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-surface-muted'}`}
@@ -39,7 +39,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border bg-surface-primary py-1 shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-surface-primary py-1 shadow-lg">
           <div className="px-3 py-2 text-xs uppercase text-content-tertiary">Projects</div>
           {projects.map((p) => (
             <button

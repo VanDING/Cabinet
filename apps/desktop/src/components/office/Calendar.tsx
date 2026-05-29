@@ -96,7 +96,7 @@ export function Calendar({ projectId }: Props) {
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-surface-primary p-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-3">
       {/* Month navigation */}
       <div className="mb-2 flex items-center justify-between">
         <button
