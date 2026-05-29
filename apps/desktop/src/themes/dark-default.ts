@@ -3,7 +3,7 @@ import type { Theme } from './types';
 
 export const darkDefault: Theme = {
   id: 'dark-default',
-  name: '暗色默认',
+  name: 'Dark',
   colors: {
     surface: {
       primary: '#141414',

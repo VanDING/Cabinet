@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Palette, Minus, Maximize2, RectangleHorizontal, X, ChevronDown } from 'lucide-react';
+import { Palette, Minus, Maximize2, RectangleHorizontal, X } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 function useTauriWindow() {
@@ -46,7 +46,6 @@ export function TitleBar({
   const [isMaximized, setIsMaximized] = useState(false);
   const { available } = useTauriWindow();
   const [themeOpen, setThemeOpen] = useState(false);
-  const currentThemeName = themes.find((t) => t.id === currentTheme)?.name ?? 'Theme';
 
   useEffect(() => {
     if (!available) return;
@@ -107,8 +106,6 @@ export function TitleBar({
             aria-label="Select theme"
           >
             <Palette size={14} />
-            <span className="hidden sm:inline">{currentThemeName}</span>
-            <ChevronDown size={10} />
           </button>
           {themeOpen && (
             <>

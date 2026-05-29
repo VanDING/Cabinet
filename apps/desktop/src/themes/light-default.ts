@@ -3,7 +3,7 @@ import type { Theme } from './types';
 
 export const lightDefault: Theme = {
   id: 'light-default',
-  name: '亮色默认',
+  name: 'Light',
   colors: {
     surface: {
       primary: '#FFFFFF',
