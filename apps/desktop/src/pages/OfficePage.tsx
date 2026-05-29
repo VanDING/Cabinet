@@ -23,13 +23,13 @@ import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidge
 import { TokensWidget } from '../components/office/TokensWidget';
 import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
 import { MeetingList } from '../components/office/MeetingList';
+import { CostOverviewModal } from '../components/office/CostOverviewModal';
+import { ActiveWorkflowsModal } from '../components/office/ActiveWorkflowsModal';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/pin.js';
 
 type WidgetType =
-  | 'pending-decisions'
   | 'today-cost'
-  | 'active-projects'
   | 'active-workflows'
   | 'decision-list'
   | 'event-timeline'
@@ -57,9 +57,7 @@ interface WidgetDef {
 }
 
 const WIDGET_POOL: WidgetDef[] = [
-  { type: 'pending-decisions', label: 'Pending Decisions', w: 3, h: 1, available: true },
   { type: 'today-cost', label: "Today's Cost", w: 3, h: 1, available: true },
-  { type: 'active-projects', label: 'Active Projects', w: 3, h: 1, available: true },
   { type: 'active-workflows', label: 'Active Workflows', w: 3, h: 1, available: true },
   { type: 'decision-list', label: 'Decision List', w: 6, h: 3, available: true },
   { type: 'event-timeline', label: 'Event Timeline', w: 6, h: 2, available: true },
@@ -80,10 +78,8 @@ const WIDGET_POOL: WidgetDef[] = [
 ];
 
 const DEFAULT_LAYOUT = [
-  { i: 'pending-decisions', x: 0, y: 0, w: 3, h: 1 },
-  { i: 'today-cost', x: 3, y: 0, w: 3, h: 1 },
-  { i: 'active-projects', x: 6, y: 0, w: 3, h: 1 },
-  { i: 'active-workflows', x: 9, y: 0, w: 3, h: 1 },
+  { i: 'today-cost', x: 0, y: 0, w: 3, h: 1 },
+  { i: 'active-workflows', x: 3, y: 0, w: 3, h: 1 },
   { i: 'decision-list', x: 0, y: 1, w: 6, h: 3 },
   { i: 'event-timeline', x: 6, y: 1, w: 6, h: 2 },
   { i: 'deliverables', x: 0, y: 3, w: 6, h: 3 },
@@ -124,11 +120,8 @@ export function OfficePage() {
   const [showPool, setShowPool] = useState(false);
   const [reviewDecisionId, setReviewDecisionId] = useState<string | null>(null);
   const [expandedWidget, setExpandedWidget] = useState<string | null>(null);
-  const [costDetails, setCostDetails] = useState<{ model: string; cost: number }[]>([]);
   const [stats, setStats] = useState({
-    pendingDecisions: 0,
     todayCost: 0,
-    activeProjects: 0,
     activeWorkflows: 0,
   });
 
@@ -152,9 +145,7 @@ export function OfficePage() {
       .then((res) => res.json())
       .then((data) => {
         setStats({
-          pendingDecisions: data.pendingDecisions ?? 0,
           todayCost: data.todayCost ?? 0,
-          activeProjects: data.activeProjects ?? 0,
           activeWorkflows: data.activeWorkflows ?? 0,
         });
       })
@@ -170,8 +161,6 @@ export function OfficePage() {
 
   // Listen for WebSocket event updates
   useEffect(() => {
-    window.addEventListener('ws:decision_created', refreshStats);
-    window.addEventListener('ws:decision_updated', refreshStats);
     window.addEventListener('ws:meeting_created', refreshStats);
     window.addEventListener('ws:project_created', refreshStats);
     window.addEventListener('ws:project_updated', refreshStats);
@@ -182,8 +171,6 @@ export function OfficePage() {
     window.addEventListener('ws:task_updated', refreshStats);
     window.addEventListener('ws:task_executed', refreshStats);
     return () => {
-      window.removeEventListener('ws:decision_created', refreshStats);
-      window.removeEventListener('ws:decision_updated', refreshStats);
       window.removeEventListener('ws:meeting_created', refreshStats);
       window.removeEventListener('ws:project_created', refreshStats);
       window.removeEventListener('ws:project_updated', refreshStats);
@@ -234,24 +221,9 @@ export function OfficePage() {
 
   const handleWidgetClick = (type: string) => {
     if (type === 'today-cost') {
-      apiFetch('/api/dashboard/cost-history?days=1', { headers: authHeaders() })
-        .then((r) => r.json())
-        .then((data) => {
-          const todayEntry = data.history?.[0];
-          if (todayEntry?.byModel) {
-            const details = Object.entries(todayEntry.byModel).map(([model, cost]) => ({
-              model,
-              cost: cost as number,
-            }));
-            setCostDetails(details.length > 0 ? details : [{ model: 'No usage today', cost: 0 }]);
-          } else {
-            setCostDetails([{ model: 'No usage today', cost: 0 }]);
-          }
-        })
-        .catch(() => setCostDetails([{ model: 'Unavailable', cost: 0 }]));
       setExpandedWidget('today-cost');
-    } else if (type === 'active-projects') {
-      setExpandedWidget('active-projects');
+    } else if (type === 'active-workflows') {
+      setExpandedWidget('active-workflows');
     } else if (type === 'decision-list') {
       setExpandedWidget('decision-list');
     }
@@ -259,28 +231,6 @@ export function OfficePage() {
 
   const renderWidget = (type: string) => {
     switch (type) {
-      case 'pending-decisions':
-        return (
-          <StatCard
-            label="Pending Decisions"
-            value={stats.pendingDecisions}
-            color="text-intent-warning"
-            onClick={() => {
-              if (stats.pendingDecisions > 0) {
-                // Open the first pending decision
-                apiFetch(
-                  `/api/decisions?status=pending${projectId ? `&projectId=${projectId}` : ''}`,
-                  { headers: authHeaders() },
-                )
-                  .then((r) => r.json())
-                  .then((data) => {
-                    if (data.decisions?.[0]) setReviewDecisionId(data.decisions[0].id);
-                  })
-                  .catch(() => {});
-              }
-            }}
-          />
-        );
       case 'today-cost':
         return (
           <StatCard
@@ -290,17 +240,15 @@ export function OfficePage() {
             onClick={() => handleWidgetClick('today-cost')}
           />
         );
-      case 'active-projects':
+      case 'active-workflows':
         return (
           <StatCard
-            label="Active Projects"
-            value={stats.activeProjects}
-            color="text-intent-success"
-            onClick={() => handleWidgetClick('active-projects')}
+            label="Workflows"
+            value={stats.activeWorkflows}
+            color="text-intent-purple"
+            onClick={() => handleWidgetClick('active-workflows')}
           />
         );
-      case 'active-workflows':
-        return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-intent-purple" />;
       case 'decision-list':
         return (
           <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />
@@ -440,7 +388,13 @@ export function OfficePage() {
       </div>
 
       {/* Expanded overlay */}
-      {expandedWidget && (
+      {expandedWidget === 'today-cost' && (
+        <CostOverviewModal onClose={() => setExpandedWidget(null)} />
+      )}
+      {expandedWidget === 'active-workflows' && (
+        <ActiveWorkflowsModal onClose={() => setExpandedWidget(null)} />
+      )}
+      {expandedWidget && expandedWidget !== 'today-cost' && expandedWidget !== 'active-workflows' && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={() => setExpandedWidget(null)}
@@ -451,11 +405,7 @@ export function OfficePage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-content-primary">
-                {expandedWidget === 'today-cost'
-                  ? "Today's Cost Breakdown"
-                  : expandedWidget === 'active-projects'
-                    ? 'Active Projects'
-                    : 'Details'}
+                {'Details'}
               </h3>
               <button
                 onClick={() => setExpandedWidget(null)}
@@ -464,36 +414,6 @@ export function OfficePage() {
                 &times;
               </button>
             </div>
-
-            {expandedWidget === 'today-cost' && (
-              <div className="space-y-3">
-                <div className="text-2xl font-bold text-accent">
-                  ¥{stats.todayCost.toFixed(2)}
-                </div>
-                <p className="text-xs text-content-tertiary">Total token consumption cost for today</p>
-                <div className="mt-3 space-y-2 border-t border-border pt-3">
-                  <h4 className="text-sm font-medium text-content-secondary">
-                    Cost by Model
-                  </h4>
-                  {costDetails.map((c) => (
-                    <div key={c.model} className="flex justify-between text-sm">
-                      <span className="font-mono text-xs text-content-secondary">
-                        {c.model}
-                      </span>
-                      <span className="font-medium text-content-primary">
-                        ¥{c.cost.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {expandedWidget === 'active-projects' && (
-              <div className="space-y-3">
-                <p className="text-xs text-content-tertiary">Project list managed from sidebar.</p>
-              </div>
-            )}
 
             {expandedWidget === 'decision-list' && (
               <DecisionList
