@@ -2010,6 +2010,29 @@ export function getServerContext(): ServerContext {
         },
         86400000,
       );
+      // Create a deliverable so the result appears in Office
+      try {
+        const did = `del_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        deliverableRepo.insert({
+          id: did,
+          project_id: '',
+          meeting_id: null,
+          title: task.name,
+          type: 'scheduled_task',
+          file_path: null,
+          tags: JSON.stringify(['scheduled', 'automated']),
+          created_at: new Date().toISOString(),
+        });
+        broadcast('deliverable_created', {
+          id: did,
+          title: task.name,
+          type: 'scheduled_task',
+          projectId: '',
+          createdAt: new Date().toISOString(),
+        });
+      } catch {
+        /* non-fatal — deliverable creation is best-effort */
+      }
       // Notify frontend via WebSocket
       broadcast('task_completed', {
         taskId: task.id,

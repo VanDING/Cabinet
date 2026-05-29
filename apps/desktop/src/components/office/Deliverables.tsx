@@ -67,10 +67,11 @@ export function Deliverables({ projectId, onExpand }: Props) {
     window.addEventListener('ws:deliverable_created', handler);
     window.addEventListener('ws:workflow_completed', handler);
     window.addEventListener('ws:meeting_created', handler);
+    window.addEventListener('ws:task_completed', handler);
 
     const buffered = getBufferedEvents();
     const hasRelevant = buffered.some((e) =>
-      ['deliverable_created', 'workflow_completed', 'meeting_created'].includes(e.type),
+      ['deliverable_created', 'workflow_completed', 'meeting_created', 'task_completed'].includes(e.type),
     );
     if (hasRelevant) fetchDeliverables();
 

@@ -377,26 +377,8 @@ export class IntentParser {
       return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
     }
 
-    // Conflict resolution: "设计审查" pattern means review, not organize.
-    // But "审查" must be the main ACTION, not a modifier.
-    // "创建一个代码审查agent" = organizing, not reviewing; "审查这个设计" = reviewing.
-    const hasReviewSignal =
-      lower.includes('审查') || lower.includes('review') ||
-      lower.includes('审核') || lower.includes('复核');
-    const hasDesignOrCreateSignal =
-      lower.includes('设计') || lower.includes('创建') || lower.includes('搭建');
-    const hasSystemOrganizeSignal =
-      lower.includes('agent') || lower.includes('系统') || lower.includes('流程') ||
-      lower.includes('工作流') || lower.includes('自动化') || lower.includes('架构') ||
-      lower.includes('方案');
-    if (
-      hasReviewSignal &&
-      hasDesignOrCreateSignal &&
-      !hasSystemOrganizeSignal &&
-      !this.hasNegation(lower, 'review_request')
-    ) {
-      return { kind: 'review_request', target: message.slice(0, 100), context: message };
-    }
+    // Reviewer is ONLY a meeting quality gate, never routed directly.
+    // "审查代码" / "review this" → Secretary handles directly with read_file and analysis tools.
 
     // Organize: higher-level design intent — must be checked before workflow_request
     const hasCreateOrDesign =
@@ -441,20 +423,7 @@ export class IntentParser {
       return { kind: 'mcp_request', topic: message.slice(0, 100), context: message };
     }
 
-    if (
-      (lower.includes('审查') ||
-        lower.includes('检查') ||
-        lower.includes('review') ||
-        lower.includes('复核') ||
-        lower.includes('审核')) &&
-      !this.hasNegation(lower, 'review_request')
-    ) {
-      return {
-        kind: 'review_request',
-        target: message.slice(0, 100),
-        context: message,
-      };
-    }
+    // Reviewer is ONLY a meeting quality gate — never route directly from user messages
 
     return { kind: 'unknown', raw: message };
   }
@@ -959,8 +928,8 @@ Message: "${message}"`;
         reasoning = 'Scheduling request — Secretary has schedule_task tools.';
         break;
       case 'review_request':
-        targetAgent = 'reviewer';
-        reasoning = 'Review/audit request routed to Reviewer.';
+        targetAgent = 'secretary';
+        reasoning = 'Review requests handled by Secretary (Reviewer is meeting-only quality gate).';
         break;
       case 'follow_up':
         targetAgent = 'secretary';

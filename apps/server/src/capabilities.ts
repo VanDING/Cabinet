@@ -231,7 +231,15 @@ function buildSafeEnv(): Record<string, string> {
 
 export function buildEnvironmentSection(projectRootPath?: string): string {
   const workDir = projectRootPath || process.cwd();
+  const now = new Date();
+  const tzOffset = -now.getTimezoneOffset() / 60;
+  const tzLabel = `UTC${tzOffset >= 0 ? '+' : ''}${tzOffset}`;
+  const dateStr = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
   const parts = ['## System Environment'];
+  parts.push(`- Current date: ${dateStr} (${weekday})`);
+  parts.push(`- Current time: ${timeStr} (${tzLabel})`);
   parts.push(`- Platform: ${process.platform} (${process.arch})`);
   if (process.platform === 'win32') {
     parts.push(`- Shell: ${process.env.COMSPEC || 'cmd.exe'}`);

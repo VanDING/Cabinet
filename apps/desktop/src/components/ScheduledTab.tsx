@@ -2,6 +2,63 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
 import { apiFetch, authJsonHeaders } from '../utils/pin.js';
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function formatCron(expr: string): string {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return expr;
+
+  const [min, hour, dom, month, dow] = parts as string[];
+
+  // Every minute
+  if (min === '*' && hour === '*' && dom === '*' && month === '*' && dow === '*') {
+    return 'Every minute';
+  }
+
+  // Every hour at minute 0
+  if (min === '0' && hour === '*' && dom === '*' && month === '*' && dow === '*') {
+    return 'Every hour';
+  }
+
+  // Every N minutes
+  if (min!.startsWith('*/') && hour === '*' && dom === '*' && month === '*' && dow === '*') {
+    const interval = parseInt(min!.slice(2), 10);
+    if (!isNaN(interval)) return `Every ${interval} min`;
+  }
+
+  // Specific time: 0 HH * * * → "HH:00 daily"
+  if (dom === '*' && month === '*' && dow === '*') {
+    if (min === '0' || /^\d+$/.test(min!)) {
+      const h = parseInt(hour!, 10);
+      const m = parseInt(min!, 10);
+      if (!isNaN(h) && !isNaN(m)) {
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} daily`;
+      }
+    }
+  }
+
+  // Day-of-week patterns
+  const dayLabel = (() => {
+    if (dow === '1-5') return 'weekdays';
+    if (dow === '0') return 'Sundays';
+    if (dow === '1') return 'Mondays';
+    const d = parseInt(dow!, 10);
+    if (!isNaN(d) && d >= 0 && d <= 6 && dom === '*' && month === '*') return DAY_NAMES[d] + 's';
+    return null;
+  })();
+
+  if (dayLabel && (min === '0' || /^\d+$/.test(min!))) {
+    const h = parseInt(hour!, 10);
+    const m = parseInt(min!, 10);
+    if (!isNaN(h) && !isNaN(m)) {
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}, ${dayLabel}`;
+    }
+  }
+
+  // Fallback
+  return expr;
+}
+
 interface ScheduledTask {
   id: string;
   name: string;
@@ -93,7 +150,7 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
               <div className="flex items-center justify-between">
                 <div>
                   <span className={`font-medium ${textClasses}`}>{t.name}</span>
-                  <span className={`ml-2 text-xs ${subClasses}`}>{t.cronExpression}</span>
+                  <span className={`ml-2 text-xs ${subClasses}`}>{formatCron(t.cronExpression)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button

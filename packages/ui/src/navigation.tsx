@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Command, Workflow, UserRound, Brain } from 'lucide-react';
 
 export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'settings';
 
@@ -25,28 +26,19 @@ export interface NavigationProps {
   sidebarWidth?: number;
 }
 
-const navItems: { id: NavPage; label: string; icon: string }[] = [
-  {
-    id: 'office',
-    label: 'Office',
-    icon: 'M2 3h10a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1z',
-  },
-  {
-    id: 'factory',
-    label: 'Factory',
-    icon: 'M6.5 2L9 5h2.5L9.5 8.5h2L8 13l-1.2-2.5H4l1-2.5h2.5L6.5 2z',
-  },
-  {
-    id: 'employees',
-    label: 'Employees',
-    icon: 'M5 4a2 2 0 012 2 2 2 0 01-2 2 2 2 0 01-2-2 2 2 0 012-2zm-3 7c0-1.5 1.5-2.5 3-2.5 1.5 0 3 1 3 2.5v.5H2v-.5zm6-3.5a1.5 1.5 0 011.5-1.5 1.5 1.5 0 011.5 1.5 1.5 1.5 0 01-1.5 1.5A1.5 1.5 0 018 7.5zm-1.5 3c0-.8.5-1.5 1-2 .4-.4 1-.6 1.7-.6h.4c1.2 0 2.3.7 2.7 1.7.2.4.2.7.2 1V11h-6v-.5z',
-  },
-  {
-    id: 'memory',
-    label: 'Memory',
-    icon: 'M2 5h2v2H2V5zm3 0h2v2H5V5zm0 3h2v2H5V8zm3-3h2v2H8V5zm0 3h2v2H8V8zm3-3h2v2h-2V5zM2 8h2v2H2V8zm6 3h2v2H8v-2zm-3 0h2v2H5v-2zm-3 0h2v2H2v-2z',
-  },
+const navItems: { id: NavPage; label: string }[] = [
+  { id: 'office', label: 'Office' },
+  { id: 'factory', label: 'Factory' },
+  { id: 'employees', label: 'Employees' },
+  { id: 'memory', label: 'Memory' },
 ];
+
+const navIcons: Partial<Record<NavPage, typeof Command>> = {
+  office: Command,
+  factory: Workflow,
+  employees: UserRound,
+  memory: Brain,
+};
 
 const sidebarBgClasses = 'bg-surface-primary';
 const borderClasses = 'border-border';
@@ -90,56 +82,60 @@ export function Navigation({
       className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${sidebarBgClasses} ${borderClasses}`}
       style={sidebarStyle}
     >
-      {/* Logo */}
-      <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>
-        <img
-          src="/Cabinet_logo_color.png"
-          alt="Cabinet"
-          className={`object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
-        />
-        <img
-          src="/Cabinet_logo_darkcolor.png"
-          alt="Cabinet"
-          className={`hidden object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
-        />
-      </div>
-
       {/* Nav items */}
       <div className="flex-1 overflow-y-auto py-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            aria-label={item.label}
-            aria-current={activePage === item.id ? 'page' : undefined}
-            className={`flex w-full items-center text-sm font-medium transition-colors ${
-              collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
-            } ${activePage === item.id ? activeClasses : `${textMutedClasses} ${hoverClasses}`}`}
-          >
-            {collapsed ? (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 14 14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d={item.icon} />
-              </svg>
-            ) : (
-              item.label
-            )}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const Icon = navIcons[item.id];
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              aria-label={item.label}
+              aria-current={activePage === item.id ? 'page' : undefined}
+              className={`flex w-full items-center text-sm font-medium transition-colors ${
+                collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
+              } ${activePage === item.id ? activeClasses : `${textMutedClasses} ${hoverClasses}`}`}
+            >
+              {collapsed && Icon ? (
+                <Icon size={18} strokeWidth={1.5} />
+              ) : (
+                item.label
+              )}
+            </button>
+          );
+        })}
 
         {/* Divider before projects */}
         <div className={`my-1 border-t ${borderClasses} ${collapsed ? 'mx-2' : 'mx-4'}`} />
 
         {/* Project list */}
-        {!collapsed && (
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-1 py-1">
+            {projects
+              .filter((p) => !(p as any).archived)
+              .map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onNavigateToProject?.(p.id)}
+                  title={p.name}
+                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors ${
+                    activeProjectId === p.id
+                      ? 'bg-accent text-white'
+                      : 'bg-surface-muted text-content-secondary hover:bg-surface-elevated'
+                  }`}
+                >
+                  {p.name.trim().charAt(0).toUpperCase()}
+                </button>
+              ))}
+            <button
+              onClick={onNewProject}
+              title="New project"
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+            >
+              +
+            </button>
+          </div>
+        ) : (
           <div className="px-4 py-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium tracking-wider uppercase text-content-tertiary">

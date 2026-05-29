@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
-import { readdir } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile, rename, writeFile, mkdir, rm, stat } from 'node:fs/promises';
+import { join, relative, resolve, dirname, basename } from 'node:path';
 import { getServerContext } from '../context.js';
 
 export const filesRouter = new Hono();
@@ -150,5 +149,117 @@ filesRouter.get('/read', async (c) => {
     });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// ── File operation helpers ──────────────────────────────────────
+
+async function resolveProjectPath(
+  filePath: string,
+  projectId: string | undefined,
+): Promise<{ root: string; fullPath: string }> {
+  let root = PROJECT_ROOT;
+  if (projectId) {
+    const { projectRepo } = getServerContext();
+    const project = projectRepo.findById(projectId);
+    if (project?.rootPath) root = resolve(project.rootPath);
+  }
+  const fullPath = resolve(root, filePath);
+  return { root, fullPath };
+}
+
+function isSensitive(filePath: string): boolean {
+  const baseName = filePath.split('/').pop() || filePath;
+  return SENSITIVE_EXACT.has(baseName) || SENSITIVE_PATTERNS.some((p) => p.test(baseName));
+}
+
+// DELETE /api/files?path=...&projectId=... — delete file or directory
+filesRouter.delete('/', async (c) => {
+  const filePath = c.req.query('path');
+  if (!filePath) return c.json({ error: 'path required' }, 400);
+
+  const projectId = c.req.query('projectId');
+  const { root, fullPath } = await resolveProjectPath(filePath, projectId);
+
+  if (!fullPath.startsWith(root)) return c.json({ error: 'Invalid path' }, 403);
+  if (isSensitive(filePath)) return c.json({ error: 'Access denied' }, 403);
+
+  try {
+    const info = await stat(fullPath);
+    if (info.isDirectory()) {
+      await rm(fullPath, { recursive: true, force: true });
+    } else {
+      await rm(fullPath);
+    }
+    return c.json({ success: true });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// PUT /api/files/rename — rename file or directory
+filesRouter.put('/rename', async (c) => {
+  const body = await c.req.json();
+  const { path: filePath, newName, projectId } = body ?? {};
+
+  if (!filePath || !newName) return c.json({ error: 'path and newName required' }, 400);
+
+  const { root, fullPath } = await resolveProjectPath(filePath, projectId);
+
+  if (!fullPath.startsWith(root)) return c.json({ error: 'Invalid path' }, 403);
+  if (isSensitive(filePath)) return c.json({ error: 'Access denied' }, 403);
+
+  const destPath = resolve(dirname(fullPath), newName);
+  if (!destPath.startsWith(root)) return c.json({ error: 'Invalid destination' }, 403);
+
+  try {
+    await rename(fullPath, destPath);
+    const relPath = relative(root, destPath).replace(/\\/g, '/');
+    return c.json({ success: true, path: relPath, newName });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 500);
+  }
+});
+
+// POST /api/files/directory — create directory
+filesRouter.post('/directory', async (c) => {
+  const body = await c.req.json();
+  const { parentPath, name, projectId } = body ?? {};
+
+  if (!parentPath || !name) return c.json({ error: 'parentPath and name required' }, 400);
+
+  const { root } = await resolveProjectPath(parentPath, projectId);
+  const newDir = resolve(root, parentPath, name);
+
+  if (!newDir.startsWith(root)) return c.json({ error: 'Invalid path' }, 403);
+
+  try {
+    await mkdir(newDir, { recursive: true });
+    const relPath = relative(root, newDir).replace(/\\/g, '/');
+    return c.json({ success: true, path: relPath }, 201);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 500);
+  }
+});
+
+// POST /api/files/file — create empty file
+filesRouter.post('/file', async (c) => {
+  const body = await c.req.json();
+  const { parentPath, name, projectId } = body ?? {};
+
+  if (!parentPath || !name) return c.json({ error: 'parentPath and name required' }, 400);
+
+  const { root } = await resolveProjectPath(parentPath, projectId);
+  const newFile = resolve(root, parentPath, name);
+
+  if (!newFile.startsWith(root)) return c.json({ error: 'Invalid path' }, 403);
+  if (isSensitive(name)) return c.json({ error: 'Access denied' }, 403);
+
+  try {
+    await writeFile(newFile, '', 'utf-8');
+    const relPath = relative(root, newFile).replace(/\\/g, '/');
+    return c.json({ success: true, path: relPath }, 201);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 500);
   }
 });

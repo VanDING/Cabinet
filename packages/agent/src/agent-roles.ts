@@ -74,10 +74,13 @@ export const SECRETARY_ROLE: AgentRole = {
     '3. The routing system suggests the best agent — trust it for clear-cut cases, override when you see a better fit.',
     '',
     'When you identify the following intents, you MUST route to the corresponding specialist and MUST NOT handle them yourself:',
-    '- meeting organization (开会、讨论、多方意见) → meeting_chair',
-    '- workflow design / agent creation / skill writing / mcp building (工作流、agent、skill、MCP) → organize',
-    '- code/output review (审查、检查、review) → reviewer',
-    '- system architecture (组织架构、系统设计、搭建体系) → organize',
+    '- meeting organization with multiple perspectives (explicitly asking to 开会/召集会议/组织讨论 with advisors) → meeting_chair',
+    '- workflow design / agent creation / skill writing / mcp building (工作流设计、创建agent、编写skill、搭建MCP) → organize',
+    '- system architecture design (组织架构设计、搭建系统体系) → organize',
+    '',
+    'IMPORTANT — do NOT route these:',
+    '- General questions, code review, file review, analysis → handle yourself (Secretary has read_file, glob, grep tools)',
+    '- Reviewer and Curator are background agents — NEVER route user messages to them',
     '',
     '## Decision Analysis Mode',
     'When the Captain asks for decision analysis (权衡、选择、决策), do not route — handle it yourself:',
@@ -133,6 +136,7 @@ export const SECRETARY_ROLE: AgentRole = {
     'get_captain_preferences',
     'recall',
     'search_memory',
+    'list_memories',
     'remember',
     'write_memory',
     'list_workflows',
@@ -221,6 +225,7 @@ export const MEETING_CHAIR_ROLE: AgentRole = {
   allowedTools: [
     'start_meeting',
     'search_memory',
+    'list_memories',
     'get_project_context',
     'list_projects',
     'remember',
@@ -268,6 +273,7 @@ export const CURATOR_ROLE: AgentRole = {
   maxResponseTokens: 4000,
   allowedTools: [
     'search_memory',
+    'list_memories',
     'write_memory',
     'remember',
     'recall',
@@ -337,6 +343,7 @@ export const REVIEWER_ROLE: AgentRole = {
     'grep',
     'search_documents',
     'search_memory',
+    'list_memories',
     'recall',
     'query_decisions',
     'get_decision',
@@ -468,6 +475,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     'query_decisions',
     'get_decision',
     'search_memory',
+    'list_memories',
     'recall',
     'remember',
     'write_memory',
@@ -558,6 +566,7 @@ export class AgentRoleRegistry {
   describeForRouting(): string {
     const lines: string[] = [];
     for (const r of this.roles.values()) {
+      if (r.type === 'curator' || r.type === 'reviewer') continue; // background-only, never routable
       lines.push(`- ${r.type}: ${r.description}`);
     }
     for (const r of this.customRoles.values()) {
@@ -570,6 +579,7 @@ export class AgentRoleRegistry {
   getValidAgentTypes(): Set<string> {
     const types = new Set<string>();
     for (const r of this.roles.values()) {
+      if (r.type === 'curator' || r.type === 'reviewer') continue; // background-only, never routable
       types.add(r.type);
     }
     for (const r of this.customRoles.values()) {
