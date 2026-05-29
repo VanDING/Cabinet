@@ -14,12 +14,11 @@ interface ScheduledTask {
 }
 
 interface Props {
-  isDark?: boolean;
   showForm?: boolean;
   onFormClose?: () => void;
 }
 
-export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
+export function ScheduledTab({ showForm = false, onFormClose }: Props) {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [name, setName] = useState('');
   const [cron, setCron] = useState('0 9 * * *');
@@ -73,47 +72,47 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
     fetchTasks();
   };
 
-  const bg = isDark ? 'bg-gray-800' : 'bg-white';
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
-  const inputBg = isDark ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900';
-  const text = isDark ? 'text-gray-200' : 'text-gray-800';
-  const sub = isDark ? 'text-gray-400' : 'text-gray-500';
+  const cardClasses =
+    'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+  const inputClasses =
+    'rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+  const textClasses = 'text-gray-800 dark:text-gray-200';
+  const subClasses = 'text-gray-500 dark:text-gray-400';
 
   return (
     <div className="space-y-4">
-      {/* Task list */}
       {tasks.length === 0 ? (
         <div className="py-24 text-center text-gray-400 dark:text-gray-500">
           <p className="text-lg">No scheduled tasks</p>
-          <p className="mt-1 text-sm">Click "+ New Task" to create one.</p>
+          <p className="mt-1 text-sm">Click &quot;+ New Task&quot; to create one.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {tasks.map((t) => (
-            <div key={t.id} className={`rounded-lg border ${border} ${bg} p-3`}>
+            <div key={t.id} className={`${cardClasses} p-3`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className={`font-medium ${text}`}>{t.name}</span>
-                  <span className={`ml-2 text-xs ${sub}`}>{t.cronExpression}</span>
+                  <span className={`font-medium ${textClasses}`}>{t.name}</span>
+                  <span className={`ml-2 text-xs ${subClasses}`}>{t.cronExpression}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleRun(t.id)}
-                    className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
+                    className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
                     title="Run now"
                   >
                     <Clock size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className={`rounded p-1 ${isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-200'} text-red-500`}
+                    className="rounded p-1 text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700"
                   >
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
-              <p className={`mt-1 text-xs ${sub} truncate`}>{t.prompt.slice(0, 120)}</p>
-              <div className={`mt-1 text-xs ${sub}`}>
+              <p className={`mt-1 truncate text-xs ${subClasses}`}>{t.prompt.slice(0, 120)}</p>
+              <div className={`mt-1 text-xs ${subClasses}`}>
                 {t.lastRunAt ? `Last: ${new Date(t.lastRunAt).toLocaleString()}` : 'Never run'}
                 {t.nextRunAt ? ` · Next: ${new Date(t.nextRunAt).toLocaleString()}` : ''}
               </div>
@@ -122,28 +121,27 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
         </div>
       )}
 
-      {/* Create form modal */}
       {showForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={onFormClose}
         >
           <div
-            className={`rounded-xl border ${border} ${bg} w-full max-w-md p-6 shadow-2xl`}
+            className={`${cardClasses} w-full max-w-md rounded-xl p-6 shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className={`mb-4 text-lg font-semibold ${text}`}>New Scheduled Task</h3>
+            <h3 className={`mb-4 text-lg font-semibold ${textClasses}`}>New Scheduled Task</h3>
             <div className="space-y-3">
               <input
-                className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`}
+                className={`w-full ${inputClasses}`}
                 placeholder="Task name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <div>
-                <label className={`text-xs ${sub}`}>Cron Expression</label>
+                <label className={`text-xs ${subClasses}`}>Cron Expression</label>
                 <select
-                  className={`w-full rounded border ${border} ${inputBg} mt-1 px-3 py-2 text-sm`}
+                  className={`mt-1 w-full ${inputClasses}`}
                   value={cron}
                   onChange={(e) => setCron(e.target.value)}
                 >
@@ -155,7 +153,7 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
                 </select>
               </div>
               <textarea
-                className={`w-full rounded border ${border} ${inputBg} px-3 py-2 text-sm`}
+                className={`w-full ${inputClasses}`}
                 rows={3}
                 placeholder="Prompt to execute..."
                 value={prompt}
@@ -167,13 +165,13 @@ export function ScheduledTab({ isDark, showForm = false, onFormClose }: Props) {
                   checked={recurring}
                   onChange={(e) => setRecurring(e.target.checked)}
                 />
-                <span className={sub}>Recurring</span>
+                <span className={subClasses}>Recurring</span>
               </label>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={onFormClose}
-                className={`rounded border px-3 py-1.5 text-sm ${border}`}
+                className="rounded border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700"
               >
                 Cancel
               </button>

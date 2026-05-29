@@ -22,18 +22,20 @@ function timeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-interface Props {
-  isDark?: boolean;
-}
+const panelClasses =
+  'absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800';
+const textClasses = 'text-gray-800 dark:text-gray-200';
+const subtextClasses = 'text-gray-500 dark:text-gray-400';
+const borderClasses = 'border-gray-200 dark:border-gray-700';
+const itemHoverClasses = 'hover:bg-gray-50 dark:hover:bg-gray-700';
 
-export function NotificationBell({ isDark }: Props) {
+export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markRead, markAllRead, clearAll } = useNotifications();
 
-  // Close panel when clicking outside both the bell button and the panel
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -47,22 +49,12 @@ export function NotificationBell({ isDark }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const bgClass = isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200';
-  const itemHover = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
-  const textClass = isDark ? 'text-gray-200' : 'text-gray-800';
-  const subtextClass = isDark ? 'text-gray-400' : 'text-gray-500';
-  const borderClass = isDark ? 'border-gray-700' : 'border-gray-200';
-
   return (
     <div className="relative flex h-full items-center">
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
-        className={`relative flex h-full w-8 items-center justify-center transition-colors ${
-          isDark
-            ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-        }`}
+        className="relative flex h-full w-8 items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
         aria-label="Notifications"
       >
         <Bell size={14} />
@@ -74,17 +66,14 @@ export function NotificationBell({ isDark }: Props) {
       </button>
 
       {open && (
-        <div
-          ref={panelRef}
-          className={`absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border shadow-xl ${bgClass}`}
-        >
-          <div className={`flex items-center justify-between border-b px-3 py-2 ${borderClass}`}>
-            <span className={`text-xs font-semibold ${textClass}`}>Notifications</span>
+        <div ref={panelRef} className={panelClasses}>
+          <div className={`flex items-center justify-between border-b px-3 py-2 ${borderClasses}`}>
+            <span className={`text-xs font-semibold ${textClasses}`}>Notifications</span>
             <div className="flex gap-1">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClass} hover:text-blue-500`}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-blue-500`}
                 >
                   Mark all read
                 </button>
@@ -92,7 +81,7 @@ export function NotificationBell({ isDark }: Props) {
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
-                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClass} hover:text-red-500`}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-red-500`}
                 >
                   Clear
                 </button>
@@ -103,8 +92,8 @@ export function NotificationBell({ isDark }: Props) {
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center">
-                <Bell size={24} className={`mx-auto mb-2 ${subtextClass}`} />
-                <p className={`text-xs ${subtextClass}`}>No notifications</p>
+                <Bell size={24} className={`mx-auto mb-2 ${subtextClasses}`} />
+                <p className={`text-xs ${subtextClasses}`}>No notifications</p>
               </div>
             ) : (
               notifications.map((n) => {
@@ -118,7 +107,7 @@ export function NotificationBell({ isDark }: Props) {
                       if (!n.read) markRead(n.id);
                       setExpandedId(isExpanded ? null : n.id);
                     }}
-                    className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHover} ${borderClass} ${n.read ? 'opacity-60' : ''}`}
+                    className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHoverClasses} ${borderClasses} ${n.read ? 'opacity-60' : ''}`}
                   >
                     <span
                       className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${icon.color}`}
@@ -127,18 +116,18 @@ export function NotificationBell({ isDark }: Props) {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`truncate text-xs font-medium ${textClass}`}>{n.title}</p>
-                        <span className={`flex-shrink-0 text-[10px] ${subtextClass}`}>
+                        <p className={`truncate text-xs font-medium ${textClasses}`}>{n.title}</p>
+                        <span className={`flex-shrink-0 text-[10px] ${subtextClasses}`}>
                           {timeAgo(n.timestamp)}
                         </span>
                       </div>
                       <p
-                        className={`mt-0.5 text-[11px] ${subtextClass} ${isExpanded ? 'whitespace-pre-wrap' : 'truncate'}`}
+                        className={`mt-0.5 text-[11px] ${subtextClasses} ${isExpanded ? 'whitespace-pre-wrap' : 'truncate'}`}
                       >
                         {n.message}
                       </p>
                       {isLong && (
-                        <p className={`mt-1 text-[10px] ${subtextClass}`}>
+                        <p className={`mt-1 text-[10px] ${subtextClasses}`}>
                           {isExpanded ? '▲ collapse' : '▼ expand'}
                         </p>
                       )}

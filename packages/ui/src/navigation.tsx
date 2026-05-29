@@ -13,7 +13,6 @@ interface ProjectInfo {
 export interface NavigationProps {
   activePage: NavPage;
   onNavigate: (page: NavPage) => void;
-  isDark?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigateToSession?: (sessionId: string) => void;
@@ -49,10 +48,16 @@ const navItems: { id: NavPage; label: string; icon: string }[] = [
   },
 ];
 
+const sidebarBgClasses = 'bg-white dark:bg-gray-900';
+const borderClasses = 'border-gray-200 dark:border-gray-700';
+const textMutedClasses = 'text-gray-400 dark:text-gray-500';
+const activeClasses =
+  'bg-blue-50 text-blue-700 dark:bg-gray-800 dark:text-white border-r-2 border-blue-500';
+const hoverClasses = 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200';
+
 export function Navigation({
   activePage,
   onNavigate,
-  isDark,
   collapsed,
   onToggleCollapse,
   onNavigateToSession,
@@ -78,26 +83,24 @@ export function Navigation({
   };
   const sidebarW = collapsed ? 'w-12' : sidebarWidth ? '' : 'w-40';
   const sidebarStyle = !collapsed && sidebarWidth ? { width: `${sidebarWidth}px` } : undefined;
-  const bg = isDark ? 'bg-gray-900' : 'bg-white';
-  const border = isDark ? 'border-gray-700' : 'border-gray-200';
-  const text = isDark ? 'text-gray-400' : 'text-gray-500';
-  const activeBg = isDark ? 'bg-gray-800 text-white' : 'bg-blue-50 text-blue-700';
-  const hover = isDark
-    ? 'hover:bg-gray-800 hover:text-gray-200'
-    : 'hover:bg-gray-100 hover:text-gray-700';
 
   return (
     <nav
       aria-label="Main navigation"
-      className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${bg} ${border}`}
+      className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${sidebarBgClasses} ${borderClasses}`}
       style={sidebarStyle}
     >
       {/* Logo */}
       <div className={`flex justify-center py-3 ${collapsed ? 'px-1' : 'px-3'}`}>
         <img
-          src={isDark ? '/Cabinet_logo_darkcolor.png' : '/Cabinet_logo_color.png'}
+          src="/Cabinet_logo_color.png"
           alt="Cabinet"
-          className={`object-contain transition-all duration-200 ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
+          className={`object-contain transition-all duration-200 dark:hidden ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
+        />
+        <img
+          src="/Cabinet_logo_darkcolor.png"
+          alt="Cabinet"
+          className={`hidden object-contain transition-all duration-200 dark:block ${collapsed ? 'h-12 w-12' : 'h-24 w-24'}`}
         />
       </div>
 
@@ -111,7 +114,7 @@ export function Navigation({
             aria-current={activePage === item.id ? 'page' : undefined}
             className={`flex w-full items-center text-sm font-medium transition-colors ${
               collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
-            } ${activePage === item.id ? activeBg + ' border-r-2 border-blue-500' : text + ' ' + hover}`}
+            } ${activePage === item.id ? activeClasses : `${textMutedClasses} ${hoverClasses}`}`}
           >
             {collapsed ? (
               <svg
@@ -133,20 +136,18 @@ export function Navigation({
         ))}
 
         {/* Divider before projects */}
-        <div className={`my-1 border-t ${border} ${collapsed ? 'mx-2' : 'mx-4'}`} />
+        <div className={`my-1 border-t ${borderClasses} ${collapsed ? 'mx-2' : 'mx-4'}`} />
 
         {/* Project list */}
         {!collapsed && (
           <div className="px-4 py-1">
             <div className="flex items-center justify-between">
-              <span
-                className={`text-xs font-medium tracking-wider uppercase ${isDark ? 'text-gray-500' : 'text-gray-400'}`}
-              >
+              <span className="text-xs font-medium tracking-wider uppercase text-gray-400 dark:text-gray-500">
                 Projects
               </span>
               <button
                 onClick={onNewProject}
-                className={`text-xs transition-colors ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                className="text-xs text-gray-400 transition-colors hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 title="New project"
               >
                 +
@@ -190,12 +191,8 @@ export function Navigation({
                         }}
                         className={`flex flex-1 items-center gap-1 py-1.5 text-left text-xs transition-colors ${
                           activeProjectId === p.id
-                            ? isDark
-                              ? 'font-medium text-blue-400'
-                              : 'font-medium text-blue-600'
-                            : isDark
-                              ? 'text-gray-300 hover:text-white'
-                              : 'text-gray-600 hover:text-gray-900'
+                            ? 'font-medium text-blue-600 dark:text-blue-400'
+                            : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
                         }`}
                       >
                         <span
@@ -225,13 +222,13 @@ export function Navigation({
       </div>
 
       {/* Bottom bar: Settings + Collapse toggle */}
-      <div className={`border-t ${border}`}>
+      <div className={`border-t ${borderClasses}`}>
         <button
           onClick={() => onNavigate('settings')}
           title={collapsed ? 'Settings' : undefined}
           className={`flex w-full items-center text-sm font-medium transition-colors ${
             collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5 text-left'
-          } ${activePage === 'settings' ? activeBg + ' border-r-2 border-blue-500' : text + ' ' + hover}`}
+          } ${activePage === 'settings' ? activeClasses : `${textMutedClasses} ${hoverClasses}`}`}
         >
           {collapsed ? (
             <svg
@@ -251,14 +248,10 @@ export function Navigation({
             'Settings'
           )}
         </button>
-        <div className={`border-t py-1 ${border}`}>
+        <div className={`border-t py-1 ${borderClasses}`}>
           <button
             onClick={onToggleCollapse}
-            className={`flex w-full items-center justify-center py-2 transition-colors ${
-              isDark
-                ? 'text-gray-500 hover:bg-gray-800 hover:text-gray-300'
-                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-            }`}
+            className="flex w-full items-center justify-center py-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <svg

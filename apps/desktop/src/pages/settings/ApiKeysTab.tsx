@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button, Input, Card, Tag } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 import { PROVIDER_MODELS } from '../../hooks/useAvailableModels.js';
 import { useToast } from '../../components/Toast.js';
@@ -69,12 +70,9 @@ export function ApiKeysTab() {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">API Keys</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-        >
+        <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Key'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -133,13 +131,9 @@ export function ApiKeysTab() {
                 className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
-            <button
-              onClick={handleAdd}
-              disabled={!formData.apiKey.trim()}
-              className="w-full rounded-lg bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button size="sm" fullWidth onClick={handleAdd} disabled={!formData.apiKey.trim()}>
               Add Key (AES-256 Encrypted)
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -196,7 +190,7 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
   };
 
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+    <Card padding="sm" className="flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
@@ -215,18 +209,19 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
         )}
       </div>
       <div className="flex items-center gap-2">
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={handleTest}
           disabled={testStatus === 'testing'}
-          className="rounded border px-2 py-1 text-xs transition-colors hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:hover:bg-gray-700"
         >
           {testStatus === 'testing' ? 'Testing...' : 'Test'}
-        </button>
-        <button onClick={() => onRemove(item.id)} className="text-xs text-red-500 hover:underline">
+        </Button>
+        <Button variant="ghost" size="xs" className="text-red-500" onClick={() => onRemove(item.id)}>
           Remove
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -333,12 +328,9 @@ function ModelMappingSection() {
           />
         </div>
       </div>
-      <button
-        onClick={handleSave}
-        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-      >
+      <Button size="sm" onClick={handleSave} className="mt-4">
         Save Model Mapping
-      </button>
+      </Button>
     </div>
   );
 }
@@ -394,12 +386,9 @@ function BudgetSection() {
           </div>
         ))}
       </div>
-      <button
-        onClick={handleSave}
-        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-      >
+      <Button size="sm" onClick={handleSave} className="mt-4">
         Save Budget
-      </button>
+      </Button>
     </div>
   );
 }

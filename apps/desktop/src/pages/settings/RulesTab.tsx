@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 
 // ── Rules Tab ──
@@ -137,12 +138,9 @@ export function RulesTab() {
                     className="w-full rounded border bg-white px-3 py-2 font-mono text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                   />
                   <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={() => handleSave(rule.filename)}
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-                    >
+                    <Button size="sm" onClick={() => handleSave(rule.filename)}>
                       Save
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

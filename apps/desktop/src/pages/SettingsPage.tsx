@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Tabs, type Tab } from '@cabinet/ui';
 import { SkillsTab, ApiKeysTab, RulesTab, McpTab, OthersTab } from './settings/index.js';
 
 type SettingsTab = 'rules' | 'skills' | 'mcp' | 'api' | 'others';
@@ -12,25 +13,14 @@ const tabKeys: Record<SettingsTab, string> = {
   others: 'others',
 };
 
-const tabIcons: Record<SettingsTab, string> = {
-  rules: '\u{1F4DC}',
-  skills: '\u{1F9E9}',
-  mcp: '\u{1F527}',
-  api: '\u{1F511}',
-  others: '\u{2699}',
-};
-
 export function SettingsPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>('rules');
 
-  const tabs: { id: SettingsTab; label: string; icon: string }[] = Object.keys(tabKeys).map(
-    (id) => ({
-      id: id as SettingsTab,
-      label: t(`settings.tabs.${tabKeys[id as SettingsTab]}`),
-      icon: tabIcons[id as SettingsTab],
-    }),
-  );
+  const tabItems: Tab[] = (Object.keys(tabKeys) as SettingsTab[]).map((id) => ({
+    id,
+    label: t(`settings.tabs.${tabKeys[id]}`),
+  }));
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -38,22 +28,12 @@ export function SettingsPage() {
         {t('settings.title')}
       </h1>
 
-      {/* Tab Bar */}
-      <div className="mb-6 flex gap-1 border-b dark:border-gray-700">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={tabItems}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as SettingsTab)}
+        className="mb-6"
+      />
 
       {/* Tab Content */}
       {activeTab === 'rules' && <RulesTab />}

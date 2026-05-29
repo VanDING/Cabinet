@@ -33,13 +33,7 @@ async function invoke(name: string): Promise<any> {
   return tauriInvoke(name);
 }
 
-export function TitleBar({
-  isDark,
-  onToggleTheme,
-}: {
-  isDark?: boolean;
-  onToggleTheme?: () => void;
-}) {
+export function TitleBar({ onToggleTheme }: { onToggleTheme?: () => void }) {
   const [isMaximized, setIsMaximized] = useState(false);
   const { available } = useTauriWindow();
 
@@ -47,14 +41,12 @@ export function TitleBar({
     if (!available) return;
     let cancelled = false;
 
-    // Initial check
     invoke('is_maximized')
       .then((v) => {
         if (!cancelled) setIsMaximized(Boolean(v));
       })
       .catch(() => {});
 
-    // Listen for resize events to update maximize state
     import('@tauri-apps/api/event')
       .then(({ listen }) => {
         if (cancelled) return;
@@ -78,21 +70,16 @@ export function TitleBar({
   const handleMaximize = useCallback(() => invoke('maximize').catch(() => {}), []);
   const handleClose = useCallback(() => invoke('close').catch(() => {}), []);
 
-  const btnHover = isDark
-    ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700';
+  const btnHover =
+    'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200';
 
   return (
     <div
       data-tauri-drag-region
-      className={`flex h-8 flex-shrink-0 select-none items-center justify-between border-b ${
-        isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-white'
-      }`}
+      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
     >
       <div data-tauri-drag-region className="flex items-center pl-4">
-        <span
-          className={`text-xs font-semibold tracking-wide ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
-        >
+        <span className="text-xs font-semibold tracking-wide text-gray-600 dark:text-gray-300">
           Cabinet
         </span>
       </div>
@@ -100,14 +87,15 @@ export function TitleBar({
       <div data-tauri-drag-region className="flex-1" />
 
       <div className="flex h-full items-center">
-        <NotificationBell isDark={isDark} />
+        <NotificationBell />
 
         <button
           onClick={onToggleTheme}
           className={`flex h-full w-8 items-center justify-center transition-colors ${btnHover}`}
           aria-label="Toggle theme"
         >
-          {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          <Sun size={14} className="block dark:hidden" />
+          <Moon size={14} className="hidden dark:block" />
         </button>
 
         {available && (
@@ -128,7 +116,7 @@ export function TitleBar({
             </button>
             <button
               onClick={handleClose}
-              className={`flex h-full w-10 items-center justify-center transition-colors ${isDark ? 'text-gray-400 hover:bg-red-600 hover:text-white' : 'text-gray-500 hover:bg-red-600 hover:text-white'}`}
+              className="flex h-full w-10 items-center justify-center text-gray-500 transition-colors hover:bg-red-600 hover:text-white dark:text-gray-400"
               aria-label="Close"
             >
               <X size={14} />
