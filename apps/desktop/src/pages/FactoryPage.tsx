@@ -187,7 +187,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         <div className="space-y-3">
           {workflows.map((wf) => (
             <div key={wf.id}>
-              <Card className="flex items-center justify-between transition-colors hover:bg-surface-elevated:bg-surface-input">
+              <Card className="flex items-center justify-between transition-colors hover:bg-surface-elevated bg-surface-input">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className={`text-sm font-medium ${textClass}`}>{wf.name}</h3>

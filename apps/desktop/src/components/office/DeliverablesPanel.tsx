@@ -67,7 +67,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
     >
       <div className={`flex items-center justify-between border-b p-4 ${border}`}>
         <h2 className={`text-lg font-semibold ${text}`}>Deliverables</h2>
-        <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted:bg-surface-input">
+        <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted bg-surface-input">
           <X size={18} />
         </button>
       </div>
@@ -137,7 +137,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
                     e.stopPropagation();
                     handleDelete(d.id);
                   }}
-                  className="rounded p-1 text-intent-danger hover:bg-surface-muted:bg-surface-input"
+                  className="rounded p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
                 >
                   <Trash2 size={14} />
                 </button>

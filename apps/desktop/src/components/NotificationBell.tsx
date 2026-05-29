@@ -27,7 +27,7 @@ const panelClasses =
 const textClasses = 'text-content-primary';
 const subtextClasses = 'text-content-tertiary';
 const borderClasses = 'border-border';
-const itemHoverClasses = 'hover:bg-surface-elevated:bg-surface-input';
+const itemHoverClasses = 'hover:bg-surface-elevated bg-surface-input';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);

@@ -40,7 +40,7 @@ export function SessionHistoryPanel({ isOpen, onClose, history, onReopen, onDele
         history.map((session) => (
           <div
             key={session.id}
-            className="group flex items-center justify-between px-3 py-2 hover:bg-surface-elevated:bg-surface-input"
+            className="group flex items-center justify-between px-3 py-2 hover:bg-surface-elevated bg-surface-input"
           >
             <button
               onClick={() => onReopen(session)}

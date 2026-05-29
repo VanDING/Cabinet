@@ -155,7 +155,7 @@ export function ProgressBoard({ projectId }: Props) {
         {data.tasks.map((task) => (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-elevated:bg-surface-input/50"
+            className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-elevated bg-surface-input/50"
           >
             <span className="text-sm">{statusIcon(task.status)}</span>
             <div className="min-w-0 flex-1">

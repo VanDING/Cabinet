@@ -98,13 +98,13 @@ export function CostChart() {
         <div className="flex gap-1">
           <button
             onClick={() => setViewMode('stacked')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted bg-surface-input'}`}
           >
             By Model
           </button>
           <button
             onClick={() => setViewMode('bar')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted bg-surface-input'}`}
           >
             Total
           </button>

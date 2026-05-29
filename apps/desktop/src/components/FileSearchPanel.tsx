@@ -85,7 +85,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
                   onSelect(f);
                   onClose();
                 }}
-                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-surface-muted:bg-surface-input"
+                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-surface-muted bg-surface-input"
               >
                 <span className="font-medium text-content-primary">{f.name}</span>
                 <span className="ml-2 max-w-[200px] truncate text-xs text-content-tertiary">{f.path}</span>
