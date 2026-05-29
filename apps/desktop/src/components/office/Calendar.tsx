@@ -1,84 +1,44 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
-import { getBufferedEvents } from '../../utils/eventBuffer.js';
+import { useState, useCallback } from 'react';
 
-interface MeetingDate {
-  date: string; // YYYY-MM-DD
-  count: number;
+const STORAGE_KEY = 'cabinet-calendar-notes';
+
+function loadNotes(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
-interface Props {
-  projectId?: string;
+function saveNotes(notes: Record<string, string[]>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
 }
 
-export function Calendar({ projectId }: Props) {
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export function Calendar() {
   const [viewDate, setViewDate] = useState(() => new Date());
-  const [meetingDates, setMeetingDates] = useState<Set<string>>(new Set());
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [notesByDate, setNotesByDate] = useState<Record<string, string[]>>(loadNotes);
+
+  const persistAndSet = useCallback((updated: Record<string, string[]>) => {
+    setNotesByDate(updated);
+    saveNotes(updated);
+  }, []);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = toDateStr(today);
+  const selectedStr = toDateStr(selectedDate);
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  const fetchMeetingDates = useCallback(() => {
-    const params = new URLSearchParams({ limit: '200' });
-    if (projectId) params.set('projectId', projectId);
-    apiFetch(`/api/meetings?${params.toString()}`, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((data) => {
-        const dates = new Set<string>();
-        for (const m of data.meetings ?? []) {
-          if (m.createdAt) {
-            const d = new Date(m.createdAt);
-            const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            dates.add(localStr);
-          }
-        }
-        setMeetingDates(dates);
-      })
-      .catch(() => {});
-  }, [projectId]);
-
-  useEffect(() => {
-    fetchMeetingDates();
-  }, [fetchMeetingDates]);
-
-  useEffect(() => {
-    const handler = () => fetchMeetingDates();
-    window.addEventListener('ws:meeting_created', handler);
-
-    // Replay buffered events that arrived before mount
-    const buffered = getBufferedEvents();
-    if (buffered.some((e) => e.type === 'meeting_created')) fetchMeetingDates();
-
-    return () => window.removeEventListener('ws:meeting_created', handler);
-  }, [fetchMeetingDates]);
-
-  // Keep viewDate current when month changes (e.g., left open overnight)
-  useEffect(() => {
-    const now = new Date();
-    const msUntilMidnight =
-      new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
-    const timer = setTimeout(() => setViewDate(new Date()), msUntilMidnight + 1000);
-    return () => clearTimeout(timer);
-  }, []);
 
   const weeks: (number | null)[][] = [];
   let week: (number | null)[] = [];
@@ -95,75 +55,131 @@ export function Calendar({ projectId }: Props) {
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
+  const selectedNotes = notesByDate[selectedStr] ?? [];
+
+  const addNote = () => {
+    const updated = { ...notesByDate, [selectedStr]: [...selectedNotes, ''] };
+    persistAndSet(updated);
+  };
+
+  const updateNote = (index: number, value: string) => {
+    const next = [...selectedNotes];
+    next[index] = value;
+    const updated = { ...notesByDate, [selectedStr]: next };
+    persistAndSet(updated);
+  };
+
+  const deleteNote = (index: number) => {
+    const next = selectedNotes.filter((_, i) => i !== index);
+    const updated = next.length > 0
+      ? { ...notesByDate, [selectedStr]: next }
+      : { ...notesByDate };
+    if (next.length === 0) delete updated[selectedStr];
+    persistAndSet(updated);
+  };
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-3">
       {/* Month navigation */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary:text-content-tertiary"
+          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary"
         >
-          ‹
+          &#8249;
         </button>
-        <div className="truncate text-center text-sm font-medium text-content-secondary">
-          {monthNames[month]} {year}
+        <div className="text-xs font-medium text-content-secondary">
+          {MONTHS[month]} {year}
         </div>
         <button
           onClick={nextMonth}
-          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary:text-content-tertiary"
+          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary"
         >
-          ›
+          &#8250;
         </button>
       </div>
 
-      {/* Day headers */}
-      <div className="grid min-h-0 grid-cols-7 gap-px text-center text-xs">
-        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-          <div key={d} className="truncate text-[10px] text-content-tertiary">
-            {d}
-          </div>
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 text-center">
+        {WEEKDAYS.map((d) => (
+          <div key={d} className="text-[10px] text-content-tertiary">{d}</div>
         ))}
+      </div>
 
-        {/* Day cells */}
+      {/* Days grid */}
+      <div className="grid grid-cols-7 text-center">
         {weeks.flat().map((d, i) => {
           const dateStr = d
             ? `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
             : null;
-          const hasMeeting = dateStr ? meetingDates.has(dateStr) : false;
+          const isToday = dateStr === todayStr;
+          const isSelected = dateStr === selectedStr;
+          const hasNotes = dateStr ? (notesByDate[dateStr]?.length ?? 0) > 0 : false;
 
           return (
-            <div
+            <button
               key={i}
-              className={`relative flex items-center justify-center truncate text-[10px] ${
-                d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
-                  ? 'rounded bg-accent text-content-inverse'
-                  : d
-                    ? 'text-content-secondary'
-                    : ''
+              onClick={() => {
+                if (d) {
+                  setSelectedDate(new Date(year, month, d));
+                  setViewDate(new Date(year, month, 1));
+                }
+              }}
+              disabled={!d}
+              className={`relative flex h-[22px] items-center justify-center text-[11px] ${
+                isToday
+                  ? 'rounded bg-accent font-semibold text-content-inverse'
+                  : isSelected
+                    ? 'rounded bg-accent-muted font-medium text-accent'
+                    : d
+                      ? 'text-content-secondary hover:rounded hover:bg-surface-muted'
+                      : ''
               }`}
             >
               {d ?? ''}
-              {hasMeeting && (
-                <span
-                  className={`absolute bottom-0.5 h-1 w-1 rounded-full ${
-                    d === today.getDate() &&
-                    month === today.getMonth() &&
-                    year === today.getFullYear()
-                      ? 'bg-surface-primary'
-                      : 'bg-intent-purple'
-                  }`}
-                />
+              {hasNotes && !isToday && (
+                <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-accent" />
               )}
-            </div>
+              {hasNotes && isToday && (
+                <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-content-inverse" />
+              )}
+            </button>
           );
         })}
       </div>
 
-      {meetingDates.size > 0 && (
-        <div className="mt-1 text-[10px] text-content-tertiary">
-          {meetingDates.size} meeting day{meetingDates.size !== 1 ? 's' : ''} this month
-        </div>
-      )}
+      {/* Divider */}
+      <div className="my-1.5 border-t border-border" />
+
+      {/* Notes for selected date */}
+      <div className="flex-1 space-y-1 overflow-y-auto">
+        {selectedNotes.map((note, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <input
+              value={note}
+              onChange={(e) => updateNote(i, e.target.value)}
+              placeholder="..."
+              className="min-w-0 flex-1 rounded bg-surface-muted px-2 py-1 text-[11px] text-content-primary outline-none placeholder:text-content-tertiary"
+            />
+            <button
+              onClick={() => deleteNote(i)}
+              className="flex-shrink-0 text-xs text-content-tertiary hover:text-intent-danger"
+            >
+              &#10005;
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={addNote}
+          className="flex w-full items-center gap-1 rounded px-2 py-1 text-[11px] text-content-tertiary hover:bg-surface-muted hover:text-content-secondary"
+        >
+          + Add note
+        </button>
+      </div>
     </div>
   );
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

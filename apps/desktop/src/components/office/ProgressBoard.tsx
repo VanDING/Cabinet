@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Clock, RefreshCw, CheckCircle2, XCircle, Play, Check, Ban, RotateCcw } from 'lucide-react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
@@ -73,16 +74,16 @@ export function ProgressBoard({ projectId }: Props) {
     fetchProgress();
   };
 
-  const statusIcon = (s: string) =>
-    s === 'completed'
-      ? '✅'
-      : s === 'in_progress'
-        ? '🔄'
-        : s === 'blocked'
-          ? '🚫'
-          : s === 'cancelled'
-            ? '❌'
-            : '⏳';
+  const StatusIcon = ({ status }: { status: string }) => {
+    const cls = 'h-3.5 w-3.5';
+    switch (status) {
+      case 'completed': return <CheckCircle2 className={`${cls} text-intent-success`} />;
+      case 'in_progress': return <RefreshCw className={`${cls} text-accent`} />;
+      case 'blocked': return <XCircle className={`${cls} text-intent-danger`} />;
+      case 'cancelled': return <XCircle className={`${cls} text-content-tertiary`} />;
+      default: return <Clock className={`${cls} text-content-tertiary`} />;
+    }
+  };
 
   const statusColor = (s: string) =>
     s === 'completed'
@@ -157,7 +158,7 @@ export function ProgressBoard({ projectId }: Props) {
             key={task.id}
             className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-elevated bg-surface-input/50"
           >
-            <span className="text-sm">{statusIcon(task.status)}</span>
+            <StatusIcon status={task.status} />
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-medium text-content-primary">
                 {task.title}
@@ -171,37 +172,37 @@ export function ProgressBoard({ projectId }: Props) {
               {task.status === 'pending' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded bg-accent-muted px-1.5 py-0.5 text-xs text-accent hover:bg-accent"
+                  className="rounded bg-accent-muted p-0.5 text-accent hover:bg-accent"
                   title="Start"
                 >
-                  ▶
+                  <Play size={12} />
                 </button>
               )}
               {task.status === 'in_progress' && (
                 <>
                   <button
                     onClick={() => updateStatus(task.id, 'completed')}
-                    className="rounded bg-intent-success-muted px-1.5 py-0.5 text-xs text-intent-success hover:bg-intent-success"
+                    className="rounded bg-intent-success-muted p-0.5 text-intent-success hover:bg-intent-success"
                     title="Complete"
                   >
-                    ✓
+                    <Check size={12} />
                   </button>
                   <button
                     onClick={() => updateStatus(task.id, 'blocked')}
-                    className="rounded bg-intent-danger-muted px-1.5 py-0.5 text-xs text-intent-danger hover:bg-intent-danger"
+                    className="rounded bg-intent-danger-muted p-0.5 text-intent-danger hover:bg-intent-danger"
                     title="Block"
                   >
-                    ✗
+                    <Ban size={12} />
                   </button>
                 </>
               )}
               {task.status === 'blocked' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded bg-accent-muted px-1.5 py-0.5 text-xs text-accent hover:bg-accent"
+                  className="rounded bg-accent-muted p-0.5 text-accent hover:bg-accent"
                   title="Unblock"
                 >
-                  ↩
+                  <RotateCcw size={12} />
                 </button>
               )}
             </div>
