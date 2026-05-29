@@ -480,3 +480,63 @@
   --scrollbar-track: #0B0C10;
 }
 
+[data-theme="vaporwave"] {
+  --surface-primary: #2B0F4C;
+  --surface-elevated: #3C1A6B;
+  --surface-overlay: rgba(255, 120, 200, 0.30);
+  --surface-input: #1F0A3A;
+  --surface-muted: rgba(185, 103, 255, 0.20);
+  --content-primary: #FF71CE;
+  --content-secondary: #01CDFE;
+  --content-tertiary: #B967FF;
+  --content-inverse: #2B0F4C;
+  --border-color: #FF71CE;
+  --border-subtle: #B967FF;
+  --accent: #FF00A0;
+  --accent-hover: #FF71CE;
+  --accent-muted: rgba(255, 0, 160, 0.12);
+  --accent-foreground: #FFFFFF;
+  --intent-success: #00FF41;
+  --intent-success-muted: rgba(0, 255, 65, 0.12);
+  --intent-success-foreground: #2B0F4C;
+  --intent-danger: #FF3C3C;
+  --intent-danger-muted: rgba(255, 60, 60, 0.12);
+  --intent-danger-foreground: #2B0F4C;
+  --intent-warning: #FFC800;
+  --intent-warning-muted: rgba(255, 200, 0, 0.12);
+  --intent-warning-foreground: #2B0F4C;
+  --intent-info: #01CDFE;
+  --intent-info-muted: rgba(1, 205, 254, 0.12);
+  --intent-info-foreground: #2B0F4C;
+  --intent-purple: #B967FF;
+  --intent-purple-muted: rgba(185, 103, 255, 0.12);
+  --intent-purple-foreground: #2B0F4C;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --shadow-sm: 3px 3px 0 #000000;
+  --shadow-md: 4px 4px 0 #000000;
+  --shadow-lg: 6px 6px 0 #000000;
+  --font-family: 'VT323', 'Courier New', monospace;
+  --font-display: 'VT323', 'Courier New', monospace;
+  --letter-spacing: 0.03em;
+  --line-height: 1.2;
+  --border-width: 2px;
+  --duration: 0ms;
+  --easing: step-end;
+  --opacity-hover: 1.0;
+  --opacity-disabled: 0.5;
+  --opacity-overlay: 0.6;
+  --blur-amount: 0px;
+  --glass-opacity: 1;
+  --focus-ring-width: 2px;
+  --focus-ring-color: #01CDFE;
+  --focus-ring-offset: 1px;
+  --selection-bg: #FF71CE;
+  --selection-fg: #2B0F4C;
+  --scrollbar-width: 8px;
+  --scrollbar-thumb: #FF71CE;
+  --scrollbar-track: #2B0F4C;
+}
+
