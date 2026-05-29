@@ -3,11 +3,11 @@ import { Bell } from 'lucide-react';
 import { useNotifications, type AppNotification } from './NotificationContext';
 
 const TYPE_ICONS: Record<AppNotification['type'], { label: string; color: string }> = {
-  decision: { label: 'D', color: 'bg-blue-500' },
-  meeting: { label: 'M', color: 'bg-purple-500' },
+  decision: { label: 'D', color: 'bg-accent' },
+  meeting: { label: 'M', color: 'bg-intent-purple' },
   task: { label: 'T', color: 'bg-amber-500' },
-  project: { label: 'P', color: 'bg-green-500' },
-  system: { label: 'S', color: 'bg-gray-500' },
+  project: { label: 'P', color: 'bg-intent-success' },
+  system: { label: 'S', color: 'bg-surface-elevated0' },
   workflow: { label: 'W', color: 'bg-cyan-500' },
   deliverable: { label: 'F', color: 'bg-teal-500' },
 };
@@ -23,11 +23,11 @@ function timeAgo(date: Date): string {
 }
 
 const panelClasses =
-  'absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-xl';
-const textClasses = 'text-gray-800';
-const subtextClasses = 'text-gray-500';
-const borderClasses = 'border-gray-200';
-const itemHoverClasses = 'hover:bg-gray-50:bg-gray-700';
+  'absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-border bg-surface-primary shadow-xl';
+const textClasses = 'text-content-primary';
+const subtextClasses = 'text-content-tertiary';
+const borderClasses = 'border-border';
+const itemHoverClasses = 'hover:bg-surface-elevated:bg-surface-input';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -54,12 +54,12 @@ export function NotificationBell() {
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
-        className="relative flex h-full w-8 items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200"
+        className="relative flex h-full w-8 items-center justify-center text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
         aria-label="Notifications"
       >
         <Bell size={14} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-orange-500 px-0.5 text-[9px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-orange-500 px-0.5 text-[9px] font-bold leading-none text-content-inverse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -73,7 +73,7 @@ export function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-blue-500`}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-accent`}
                 >
                   Mark all read
                 </button>
@@ -81,7 +81,7 @@ export function NotificationBell() {
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
-                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-red-500`}
+                  className={`rounded px-2 py-0.5 text-xs transition-colors ${subtextClasses} hover:text-intent-danger`}
                 >
                   Clear
                 </button>
@@ -110,7 +110,7 @@ export function NotificationBell() {
                     className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHoverClasses} ${borderClasses} ${n.read ? 'opacity-60' : ''}`}
                   >
                     <span
-                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${icon.color}`}
+                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-content-inverse ${icon.color}`}
                     >
                       {icon.label}
                     </span>
@@ -133,7 +133,7 @@ export function NotificationBell() {
                       )}
                     </div>
                     {!n.read && (
-                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
                     )}
                   </button>
                 );

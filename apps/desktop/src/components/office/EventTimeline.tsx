@@ -85,14 +85,14 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
   }, [fetchEvents]);
 
   return (
-    <div className="h-full overflow-y-auto rounded-lg border bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-800">Recent Events</h3>
+    <div className="h-full overflow-y-auto rounded-lg border bg-surface-primary p-4">
+      <h3 className="mb-3 text-sm font-semibold text-content-primary">Recent Events</h3>
       {loading ? (
-        <p className="text-xs text-gray-400">Loading...</p>
+        <p className="text-xs text-content-tertiary">Loading...</p>
       ) : events.length === 0 ? (
         <>
-          <p className="text-xs text-gray-400">No recent events.</p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-xs text-content-tertiary">No recent events.</p>
+          <p className="mt-1 text-xs text-content-tertiary">
             Activity appears as agents run tasks, meetings, and workflows
           </p>
         </>
@@ -103,8 +103,8 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
               key={i}
               className="flex justify-between border-b pb-1.5 text-xs last:border-0 last:pb-0"
             >
-              <span className="text-gray-700">{event.message}</span>
-              <span className="ml-2 flex-shrink-0 text-gray-400">
+              <span className="text-content-secondary">{event.message}</span>
+              <span className="ml-2 flex-shrink-0 text-content-tertiary">
                 {event.time.toLocaleTimeString()}
               </span>
             </div>

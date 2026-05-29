@@ -56,36 +56,36 @@ export function DelegationTab() {
   const tierColor = (t: string) => {
     switch (t) {
       case 'T0':
-        return 'border-red-400 bg-red-50';
+        return 'border-intent-danger bg-intent-danger-muted';
       case 'T1':
         return 'border-amber-400 bg-amber-50';
       case 'T2':
-        return 'border-blue-400 bg-blue-50';
+        return 'border-accent bg-accent-muted';
       case 'T3':
-        return 'border-green-400 bg-green-50';
+        return 'border-intent-success bg-intent-success-muted';
       default:
-        return 'border-gray-200';
+        return 'border-border';
     }
   };
 
   return (
     <div>
-      <h2 className="mb-2 text-lg font-semibold text-gray-900">
+      <h2 className="mb-2 text-lg font-semibold text-content-primary">
         Delegation Tier
       </h2>
-      <p className="mb-4 text-sm text-gray-500">
+      <p className="mb-4 text-sm text-content-tertiary">
         Control how much autonomy Cabinet has before requiring your confirmation.
       </p>
 
       {/* Current tier description */}
       <div className={`mb-4 rounded-lg border p-4 ${tierColor(tier)}`}>
         <div className="mb-1 flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-gray-500">{tier}</span>
-          <span className="text-sm font-semibold text-gray-800">
+          <span className="font-mono text-xs font-bold text-content-tertiary">{tier}</span>
+          <span className="text-sm font-semibold text-content-primary">
             {tierLabel(tier)}
           </span>
         </div>
-        <p className="text-xs text-gray-600">{description}</p>
+        <p className="text-xs text-content-secondary">{description}</p>
       </div>
 
       {/* Tier selector */}
@@ -97,30 +97,30 @@ export function DelegationTab() {
             disabled={loading || t.id === tier}
             className={`w-full rounded-lg border p-3 text-left transition-all ${
               t.id === tier
-                ? 'cursor-default border-blue-500 ring-2 ring-blue-500'
-                : 'cursor-pointer border-gray-200 hover:border-blue-300:border-blue-700'
+                ? 'cursor-default border-accent ring-2 ring-accent'
+                : 'cursor-pointer border-border hover:border-accent:border-accent'
             } ${loading ? 'opacity-50' : ''}`}
           >
             <div className="mb-1 flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-gray-500">{t.id}</span>
-              <span className="text-sm font-medium text-gray-800">
+              <span className="font-mono text-xs font-bold text-content-tertiary">{t.id}</span>
+              <span className="text-sm font-medium text-content-primary">
                 {t.label}
               </span>
               {t.id === tier && (
-                <span className="text-xs font-medium text-blue-600">Active</span>
+                <span className="text-xs font-medium text-accent">Active</span>
               )}
             </div>
-            <p className="text-xs text-gray-500">{t.description}</p>
+            <p className="text-xs text-content-tertiary">{t.description}</p>
           </button>
         ))}
       </div>
 
       {/* Blocked tools info */}
-      <div className="mt-4 rounded-lg border bg-gray-50 p-3">
-        <p className="mb-1 text-xs font-medium text-gray-700">
+      <div className="mt-4 rounded-lg border bg-surface-elevated p-3">
+        <p className="mb-1 text-xs font-medium text-content-secondary">
           What's blocked at {tierLabel(tier)}:
         </p>
-        <ul className="list-inside list-disc space-y-0.5 text-xs text-gray-500">
+        <ul className="list-inside list-disc space-y-0.5 text-xs text-content-tertiary">
           {tier === 'T0' && (
             <>All write operations are blocked. Only read-only queries are allowed.</>
           )}

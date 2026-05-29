@@ -35,11 +35,11 @@ export function ApiSwitcher() {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
-      <div className="mb-3 text-sm font-medium text-gray-700">API Switcher</div>
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+      <div className="mb-3 text-sm font-medium text-content-secondary">API Switcher</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {keys.length === 0 ? (
-          <div className="py-2 text-xs text-gray-400">No API keys configured.</div>
+          <div className="py-2 text-xs text-content-tertiary">No API keys configured.</div>
         ) : (
           keys.map((k) => (
             <button
@@ -47,12 +47,12 @@ export function ApiSwitcher() {
               onClick={() => handleSelect(k)}
               className={`w-full rounded px-2 py-1.5 text-left text-xs transition-colors ${
                 active === k.id
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50:bg-gray-700'
+                  ? 'bg-accent-muted text-accent'
+                  : 'text-content-secondary hover:bg-surface-elevated:bg-surface-input'
               }`}
             >
               <div className="font-medium capitalize">{k.provider}</div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-content-tertiary">
                 {k.keyPreview}
                 {k.model ? ` · ${k.model}` : ''}
               </div>

@@ -96,21 +96,21 @@ export function Calendar({ projectId }: Props) {
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-white p-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-surface-primary p-3">
       {/* Month navigation */}
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600:text-gray-200"
+          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary:text-content-tertiary"
         >
           ‹
         </button>
-        <div className="truncate text-center text-sm font-medium text-gray-700">
+        <div className="truncate text-center text-sm font-medium text-content-secondary">
           {monthNames[month]} {year}
         </div>
         <button
           onClick={nextMonth}
-          className="rounded px-1 text-xs text-gray-400 hover:text-gray-600:text-gray-200"
+          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary:text-content-tertiary"
         >
           ›
         </button>
@@ -119,7 +119,7 @@ export function Calendar({ projectId }: Props) {
       {/* Day headers */}
       <div className="grid min-h-0 grid-cols-7 gap-px text-center text-xs">
         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-          <div key={d} className="truncate text-[10px] text-gray-400">
+          <div key={d} className="truncate text-[10px] text-content-tertiary">
             {d}
           </div>
         ))}
@@ -136,9 +136,9 @@ export function Calendar({ projectId }: Props) {
               key={i}
               className={`relative flex items-center justify-center truncate text-[10px] ${
                 d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
-                  ? 'rounded bg-blue-600 text-white'
+                  ? 'rounded bg-accent text-content-inverse'
                   : d
-                    ? 'text-gray-600'
+                    ? 'text-content-secondary'
                     : ''
               }`}
             >
@@ -149,8 +149,8 @@ export function Calendar({ projectId }: Props) {
                     d === today.getDate() &&
                     month === today.getMonth() &&
                     year === today.getFullYear()
-                      ? 'bg-white'
-                      : 'bg-purple-500'
+                      ? 'bg-surface-primary'
+                      : 'bg-intent-purple'
                   }`}
                 />
               )}
@@ -160,7 +160,7 @@ export function Calendar({ projectId }: Props) {
       </div>
 
       {meetingDates.size > 0 && (
-        <div className="mt-1 text-[10px] text-gray-400">
+        <div className="mt-1 text-[10px] text-content-tertiary">
           {meetingDates.size} meeting day{meetingDates.size !== 1 ? 's' : ''} this month
         </div>
       )}

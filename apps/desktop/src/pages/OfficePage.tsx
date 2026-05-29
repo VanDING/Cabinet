@@ -286,7 +286,7 @@ export function OfficePage() {
           <StatCard
             label="Today's Cost"
             value={`${stats.todayCost.toFixed(2)}`}
-            color="text-blue-600"
+            color="text-accent"
             onClick={() => handleWidgetClick('today-cost')}
           />
         );
@@ -295,12 +295,12 @@ export function OfficePage() {
           <StatCard
             label="Active Projects"
             value={stats.activeProjects}
-            color="text-green-600"
+            color="text-intent-success"
             onClick={() => handleWidgetClick('active-projects')}
           />
         );
       case 'active-workflows':
-        return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-purple-600" />;
+        return <StatCard label="Workflows" value={stats.activeWorkflows} color="text-intent-purple" />;
       case 'decision-list':
         return (
           <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />
@@ -347,10 +347,10 @@ export function OfficePage() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 pb-2 pt-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-content-primary">
             {projectId ? 'Project Dashboard' : 'Office'}
           </h1>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-content-tertiary">
             {projectId ? `Project #${projectId}` : 'Your Decision Room'}
           </span>
         </div>
@@ -368,7 +368,7 @@ export function OfficePage() {
       {/* Widget pool dropdown */}
       {showPool && (
         <div className="px-6 pb-2">
-          <div className="grid grid-cols-4 gap-2 rounded-lg border bg-white p-3 lg:grid-cols-8">
+          <div className="grid grid-cols-4 gap-2 rounded-lg border bg-surface-primary p-3 lg:grid-cols-8">
             {WIDGET_POOL.filter((w) => !addedTypes.has(w.type)).map((w) => (
               <button
                 key={w.type}
@@ -376,15 +376,15 @@ export function OfficePage() {
                 disabled={!w.available}
                 className={`rounded px-2 py-1.5 text-center text-xs transition-colors ${
                   w.available
-                    ? 'bg-gray-100 text-gray-700 hover:bg-blue-100:bg-blue-900/30'
-                    : 'cursor-not-allowed bg-gray-50 text-gray-400 line-through'
+                    ? 'bg-surface-muted text-content-secondary hover:bg-accent-muted:bg-accent-hover/30'
+                    : 'cursor-not-allowed bg-surface-elevated text-content-tertiary line-through'
                 }`}
               >
                 {w.label}
               </button>
             ))}
             {WIDGET_POOL.every((w) => addedTypes.has(w.type)) && (
-              <span className="col-span-full py-2 text-center text-xs text-gray-400">
+              <span className="col-span-full py-2 text-center text-xs text-content-tertiary">
                 All widgets added.
               </span>
             )}
@@ -395,7 +395,7 @@ export function OfficePage() {
       {/* Grid layout */}
       <div ref={gridContainerRef} className="px-6 pb-6">
         {layout.length === 0 ? (
-          <div className="flex items-center justify-center py-24 text-center text-gray-400">
+          <div className="flex items-center justify-center py-24 text-center text-content-tertiary">
             <div>
               <p className="text-lg">No widgets yet</p>
               <p className="mt-1 text-sm">Click "Add Widget" to customize your Office.</p>
@@ -422,12 +422,12 @@ export function OfficePage() {
               <div key={item.i} className="group relative">
                 {/* Drag handle + remove button */}
                 <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-gray-400 hover:text-gray-600 active:cursor-grabbing:text-gray-200">
+                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
                     <Grip size={12} />
                   </div>
                   <button
                     onClick={() => handleRemoveWidget(item.i)}
-                    className="flex h-5 w-5 items-center justify-center rounded text-gray-400 hover:text-red-500"
+                    className="flex h-5 w-5 items-center justify-center rounded text-content-tertiary hover:text-intent-danger"
                   >
                     &times;
                   </button>
@@ -450,7 +450,7 @@ export function OfficePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-content-primary">
                 {expandedWidget === 'today-cost'
                   ? "Today's Cost Breakdown"
                   : expandedWidget === 'active-projects'
@@ -459,7 +459,7 @@ export function OfficePage() {
               </h3>
               <button
                 onClick={() => setExpandedWidget(null)}
-                className="text-xl leading-none text-gray-400 hover:text-gray-600:text-gray-200"
+                className="text-xl leading-none text-content-tertiary hover:text-content-secondary:text-content-tertiary"
               >
                 &times;
               </button>
@@ -467,20 +467,20 @@ export function OfficePage() {
 
             {expandedWidget === 'today-cost' && (
               <div className="space-y-3">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-accent">
                   ¥{stats.todayCost.toFixed(2)}
                 </div>
-                <p className="text-xs text-gray-500">Total token consumption cost for today</p>
+                <p className="text-xs text-content-tertiary">Total token consumption cost for today</p>
                 <div className="mt-3 space-y-2 border-t pt-3">
-                  <h4 className="text-sm font-medium text-gray-700">
+                  <h4 className="text-sm font-medium text-content-secondary">
                     Cost by Model
                   </h4>
                   {costDetails.map((c) => (
                     <div key={c.model} className="flex justify-between text-sm">
-                      <span className="font-mono text-xs text-gray-600">
+                      <span className="font-mono text-xs text-content-secondary">
                         {c.model}
                       </span>
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium text-content-primary">
                         ¥{c.cost.toFixed(2)}
                       </span>
                     </div>
@@ -491,7 +491,7 @@ export function OfficePage() {
 
             {expandedWidget === 'active-projects' && (
               <div className="space-y-3">
-                <p className="text-xs text-gray-500">Project list managed from sidebar.</p>
+                <p className="text-xs text-content-tertiary">Project list managed from sidebar.</p>
               </div>
             )}
 

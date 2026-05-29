@@ -81,25 +81,25 @@ export function Deliverables({ projectId, onExpand }: Props) {
     };
   }, [fetchDeliverables]);
 
-  const text = 'text-gray-800';
-  const sub = 'text-gray-500';
+  const text = 'text-content-primary';
+  const sub = 'text-content-tertiary';
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
-        <span className="text-sm font-medium text-gray-700">Deliverables</span>
+        <span className="text-sm font-medium text-content-secondary">Deliverables</span>
         {items.length > 0 && (
-          <span className="text-xs text-blue-500 hover:underline">View all</span>
+          <span className="text-xs text-accent hover:underline">View all</span>
         )}
       </div>
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
+        <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           Loading...
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
+        <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           No deliverables yet
-          <span className="mt-1 block text-[10px] text-gray-400">
+          <span className="mt-1 block text-[10px] text-content-tertiary">
             Meeting reports and workflow outputs appear here
           </span>
         </div>
@@ -111,7 +111,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
               className={`flex cursor-pointer items-center gap-2 text-xs ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
               onClick={() => handleOpenDeliverable(d)}
             >
-              <FileText size={12} className="flex-shrink-0 text-gray-400" />
+              <FileText size={12} className="flex-shrink-0 text-content-tertiary" />
               <span className={`truncate ${text}`}>{d.title}</span>
               <span className={`ml-auto flex-shrink-0 ${sub}`}>
                 {new Date(d.createdAt).toLocaleDateString()}

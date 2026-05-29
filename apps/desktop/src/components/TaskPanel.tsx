@@ -21,9 +21,9 @@ interface Props {
 }
 
 const cardClasses =
-  'mb-2 rounded-lg border border-gray-200 bg-white/90 p-2 shadow-sm backdrop-blur-sm';
-const subtextClasses = 'text-gray-500';
-const textClasses = 'text-gray-800';
+  'mb-2 rounded-lg border border-border bg-surface-primary/90 p-2 shadow-sm backdrop-blur-sm';
+const subtextClasses = 'text-content-tertiary';
+const textClasses = 'text-content-primary';
 
 export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -53,19 +53,19 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
         </span>
         <span className={`text-[10px] ${subtextClasses}`}>
           {done}
-          <span className="text-green-500">✓</span>
+          <span className="text-intent-success">✓</span>
           {running > 0 && (
             <span>
               {' '}
               · {running}
-              <span className="text-blue-500">⟳</span>
+              <span className="text-accent">⟳</span>
             </span>
           )}
           {errors > 0 && (
             <span>
               {' '}
               · {errors}
-              <span className="text-red-500">✕</span>
+              <span className="text-intent-danger">✕</span>
             </span>
           )}
         </span>
@@ -81,17 +81,17 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
             <div key={task.id} className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 <span className="flex-shrink-0 text-[10px]">
-                  {task.status === 'done' && <span className="text-green-500">✅</span>}
-                  {task.status === 'running' && <span className="text-blue-500">⟳</span>}
-                  {task.status === 'error' && <span className="text-red-500">✕</span>}
-                  {task.status === 'pending' && <span className="text-gray-400">○</span>}
+                  {task.status === 'done' && <span className="text-intent-success">✅</span>}
+                  {task.status === 'running' && <span className="text-accent">⟳</span>}
+                  {task.status === 'error' && <span className="text-intent-danger">✕</span>}
+                  {task.status === 'pending' && <span className="text-content-tertiary">○</span>}
                 </span>
                 <span
                   className={`truncate text-[10px] ${
                     task.status === 'done'
                       ? `${subtextClasses} line-through opacity-60`
                       : task.status === 'error'
-                        ? 'text-red-600'
+                        ? 'text-intent-danger'
                         : textClasses
                   }`}
                 >

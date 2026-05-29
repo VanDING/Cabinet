@@ -17,18 +17,18 @@ interface Props {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  L0: 'bg-green-100 text-green-700',
-  L1: 'bg-blue-100 text-blue-700',
+  L0: 'bg-intent-success-muted text-intent-success',
+  L1: 'bg-accent-muted text-accent',
   L2: 'bg-amber-100 text-amber-700',
-  L3: 'bg-red-100 text-red-700',
+  L3: 'bg-intent-danger-muted text-intent-danger',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'text-amber-600 bg-amber-50',
-  approved: 'text-green-600 bg-green-50',
-  rejected: 'text-red-600 bg-red-50',
-  expired: 'text-gray-400 bg-gray-100',
-  archived: 'text-gray-400 bg-gray-100',
+  approved: 'text-intent-success bg-intent-success-muted',
+  rejected: 'text-intent-danger bg-intent-danger-muted',
+  expired: 'text-content-tertiary bg-surface-muted',
+  archived: 'text-content-tertiary bg-surface-muted',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -124,16 +124,16 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
   if (loading) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-surface-primary shadow-2xl">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
 
   if (!decision) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-white shadow-2xl">
-        <p className="text-sm text-gray-400">Decision not found</p>
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l bg-surface-primary shadow-2xl">
+        <p className="text-sm text-content-tertiary">Decision not found</p>
       </div>
     );
   }
@@ -147,9 +147,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l bg-white shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l bg-surface-primary shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-white px-6 py-4">
+        <div className="sticky top-0 z-10 border-b bg-surface-primary px-6 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
@@ -163,18 +163,18 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                 >
                   {decision.status}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-content-tertiary">
                   {TYPE_LABELS[decision.type] ?? decision.type}
                 </span>
               </div>
-              <h2 className="truncate text-lg font-bold text-gray-900">
+              <h2 className="truncate text-lg font-bold text-content-primary">
                 {decision.title}
               </h2>
-              <p className="mt-1 text-xs text-gray-500">{LEVEL_DESCRIPTIONS[decision.level]}</p>
+              <p className="mt-1 text-xs text-content-tertiary">{LEVEL_DESCRIPTIONS[decision.level]}</p>
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 text-xl leading-none text-gray-400 hover:text-gray-600:text-gray-200"
+              className="flex-shrink-0 text-xl leading-none text-content-tertiary hover:text-content-secondary:text-content-tertiary"
             >
               &times;
             </button>
@@ -182,7 +182,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
           {/* Description */}
           {decision.description && (
-            <p className="mt-3 text-sm text-gray-600">{decision.description}</p>
+            <p className="mt-3 text-sm text-content-secondary">{decision.description}</p>
           )}
         </div>
 
@@ -191,7 +191,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
           {/* Option Comparison */}
           {decision.options && decision.options.length > 0 && (
             <section>
-              <h3 className="mb-3 text-sm font-semibold text-gray-800">
+              <h3 className="mb-3 text-sm font-semibold text-content-primary">
                 Options
               </h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -206,35 +206,35 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                       disabled={isResolved}
                       className={`rounded-lg border p-3 text-left transition-all ${
                         isResolved && decision.chosenOptionId === opt.id
-                          ? 'border-green-500 bg-green-50 ring-2 ring-green-500'
+                          ? 'border-intent-success bg-intent-success-muted ring-2 ring-intent-success'
                           : isSelected
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500'
-                            : 'border-gray-200 hover:border-blue-300:border-blue-700'
+                            ? 'border-accent bg-accent-muted ring-2 ring-accent'
+                            : 'border-border hover:border-accent:border-accent'
                       } ${isResolved ? 'cursor-default' : 'cursor-pointer'}`}
                     >
                       <div className="mb-1 flex items-center gap-2">
                         <div
                           className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 ${
                             isResolved && decision.chosenOptionId === opt.id
-                              ? 'border-green-500 bg-green-500'
+                              ? 'border-intent-success bg-intent-success'
                               : isSelected
-                                ? 'border-blue-500 bg-blue-500'
-                                : 'border-gray-300'
+                                ? 'border-accent bg-accent'
+                                : 'border-border'
                           }`}
                         >
                           {((isResolved && decision.chosenOptionId === opt.id) || isSelected) && (
-                            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            <div className="h-1.5 w-1.5 rounded-full bg-surface-primary" />
                           )}
                         </div>
-                        <span className="text-sm font-medium text-gray-800">
+                        <span className="text-sm font-medium text-content-primary">
                           {opt.label}
                         </span>
                         {isResolved && decision.chosenOptionId === opt.id && (
-                          <span className="ml-auto text-xs font-medium text-green-600">Chosen</span>
+                          <span className="ml-auto text-xs font-medium text-intent-success">Chosen</span>
                         )}
                       </div>
 
-                      <p className="mt-1.5 text-xs text-gray-500">
+                      <p className="mt-1.5 text-xs text-content-tertiary">
                         {opt.impact}
                       </p>
 
@@ -248,10 +248,10 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                           const isHigh = value > 60;
                           return (
                             <div key={dim} className="flex items-center gap-2">
-                              <span className="w-5 text-xs text-gray-400">{dimIcons[idx]}</span>
-                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                              <span className="w-5 text-xs text-content-tertiary">{dimIcons[idx]}</span>
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
                                 <div
-                                  className={`h-full rounded-full ${isHigh ? 'bg-amber-400' : 'bg-blue-400'}`}
+                                  className={`h-full rounded-full ${isHigh ? 'bg-amber-400' : 'bg-accent'}`}
                                   style={{ width: `${value}%` }}
                                 />
                               </div>
@@ -268,38 +268,38 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
           {/* Audit Trail */}
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">
+            <h3 className="mb-3 text-sm font-semibold text-content-primary">
               Decision Trail
             </h3>
             {audit.length === 0 ? (
-              <p className="text-xs text-gray-400">No audit entries yet.</p>
+              <p className="text-xs text-content-tertiary">No audit entries yet.</p>
             ) : (
               <div className="space-y-0">
                 {audit.map((entry, i) => (
                   <div key={i} className="relative flex gap-3 pb-3 text-xs">
                     {/* Timeline line */}
                     {i < audit.length - 1 && (
-                      <div className="absolute bottom-0 left-[6.5px] top-3 w-px bg-gray-200" />
+                      <div className="absolute bottom-0 left-[6.5px] top-3 w-px bg-surface-muted" />
                     )}
                     {/* Dot */}
                     <div
                       className={`mt-0.5 h-3 w-3 flex-shrink-0 rounded-full ${
                         entry.action === 'created'
-                          ? 'bg-blue-400'
+                          ? 'bg-accent'
                           : entry.action === 'approved'
-                            ? 'bg-green-400'
+                            ? 'bg-intent-success'
                             : entry.action === 'rejected'
-                              ? 'bg-red-400'
-                              : 'bg-gray-300'
+                              ? 'bg-intent-danger'
+                              : 'bg-surface-muted'
                       }`}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium capitalize text-gray-700">
+                        <span className="font-medium capitalize text-content-secondary">
                           {entry.action}
                         </span>
-                        <span className="text-gray-400">by {entry.actor}</span>
-                        <span className="ml-auto flex-shrink-0 text-gray-400">
+                        <span className="text-content-tertiary">by {entry.actor}</span>
+                        <span className="ml-auto flex-shrink-0 text-content-tertiary">
                           {new Date(entry.timestamp).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -307,7 +307,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                         </span>
                       </div>
                       {entry.changes && Object.keys(entry.changes).length > 0 && (
-                        <div className="mt-0.5 text-gray-400">
+                        <div className="mt-0.5 text-content-tertiary">
                           {Object.entries(entry.changes).map(([k, v]) => (
                             <span key={k} className="mr-2">
                               {k}: {typeof v === 'string' ? v : JSON.stringify(v)}
@@ -323,7 +323,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
           </section>
 
           {/* Meta */}
-          <section className="space-y-1 text-xs text-gray-400">
+          <section className="space-y-1 text-xs text-content-tertiary">
             <div className="flex justify-between">
               <span>Created</span>
               <span>{new Date(decision.createdAt).toLocaleString()}</span>
@@ -343,14 +343,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
         {/* Footer — Captain Actions (only for pending decisions) */}
         {decision.status === 'pending' && (
-          <div className="sticky bottom-0 space-y-3 border-t bg-white px-6 py-4">
+          <div className="sticky bottom-0 space-y-3 border-t bg-surface-primary px-6 py-4">
             {/* Reason (optional) */}
             <textarea
               placeholder="Reasoning (optional)..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border bg-gray-50 px-3 py-2 text-sm text-gray-900"
+              className="w-full resize-none rounded border bg-surface-elevated px-3 py-2 text-sm text-content-primary"
             />
 
             {/* Action buttons */}
@@ -359,7 +359,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                 <select
                   value={selectedOption ?? ''}
                   onChange={(e) => setSelectedOption(e.target.value)}
-                  className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900"
+                  className="flex-1 rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
                 >
                   <option value="" disabled>
                     Select an option...
@@ -374,14 +374,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
               <button
                 onClick={handleApprove}
                 disabled={submitting || !selectedOption}
-                className="rounded-lg bg-green-600 px-4 py-2 text-sm text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-intent-success px-4 py-2 text-sm text-content-inverse transition-colors hover:bg-intent-success disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? '...' : 'Approve'}
               </button>
               <button
                 onClick={handleReject}
                 disabled={submitting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-intent-danger px-4 py-2 text-sm text-content-inverse transition-colors hover:bg-intent-danger disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? '...' : 'Reject'}
               </button>
