@@ -28,17 +28,17 @@ export function DecisionCard({
   };
 
   return (
-    <div className="rounded-lg border bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+    <div className="rounded-lg border bg-white p-4 transition-shadow hover:shadow-md">
       <div className="mb-2 flex items-center justify-between">
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold ${levelColors[decision.level] ?? 'bg-gray-100'}`}
         >
           {decision.level}
         </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">{decision.type}</span>
+        <span className="text-xs text-gray-400">{decision.type}</span>
       </div>
-      <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">{decision.title}</h3>
-      <p className="mb-3 line-clamp-2 text-sm text-gray-500 dark:text-gray-400">
+      <h3 className="mb-1 font-medium text-gray-900">{decision.title}</h3>
+      <p className="mb-3 line-clamp-2 text-sm text-gray-500">
         {decision.description}
       </p>
 
@@ -58,8 +58,8 @@ export function DecisionCard({
                 onChange={() => setSelectedOptionId(opt.id)}
               />
               <div>
-                <div className="font-medium text-gray-700 dark:text-gray-300">{opt.label}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{opt.impact}</div>
+                <div className="font-medium text-gray-700">{opt.label}</div>
+                <div className="text-xs text-gray-500">{opt.impact}</div>
               </div>
             </label>
           ))}
@@ -86,7 +86,7 @@ export function DecisionCard({
         {onViewDetails && (
           <button
             onClick={() => onViewDetails(decision.id)}
-            className="rounded border px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded border px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
           >
             Details
           </button>

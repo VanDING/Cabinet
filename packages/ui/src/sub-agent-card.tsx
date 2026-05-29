@@ -62,7 +62,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
   return (
     <div
-      className={`mt-2 rounded-lg border ${config.border} ${config.bg} dark:border-opacity-30 p-3 transition-all`}
+      className={`mt-2 rounded-lg border ${config.border} ${config.bg} p-3 transition-all`}
     >
       {/* Header */}
       <button onClick={handleToggle} className="flex w-full items-center justify-between text-left">
@@ -72,21 +72,21 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           >
             {config.icon}
           </span>
-          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          <span className="text-sm font-medium text-gray-800">
             {activity.agentName}
           </span>
-          <span className="rounded px-1.5 py-0.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className="rounded px-1.5 py-0.5 text-xs text-gray-500">
             {config.label}
           </span>
         </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
+        <span className="text-xs text-gray-400">
           {expanded ? '收起' : '展开'}
         </span>
       </button>
 
       {/* Summary line */}
       {!expanded && activity.result && visibility !== 'summary' && (
-        <p className="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 line-clamp-2 text-xs text-gray-500">
           {activity.result.slice(0, 200)}
           {activity.result.length > 200 ? '…' : ''}
         </p>
@@ -97,9 +97,9 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
         <div className="mt-2 space-y-2">
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">思考过程</div>
-              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-gray-200 bg-white p-2 whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
-                <p className="text-xs text-gray-600 dark:text-gray-300">
+              <div className="text-xs font-medium text-gray-500">思考过程</div>
+              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-gray-200 bg-white p-2 whitespace-pre-wrap">
+                <p className="text-xs text-gray-600">
                   {activity.thinking.join('')}
                 </p>
               </div>
@@ -108,10 +108,10 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.toolCalls && activity.toolCalls.length > 0 && (
             <div className="mt-2">
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500">
                 <button
                   onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
-                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
                   工具调用 ({activity.toolCalls.length})
@@ -120,9 +120,9 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                   activity.toolCalls.slice(0, 4).map((tc, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+                      className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5"
                     >
-                      <span className="font-mono text-gray-700 dark:text-gray-300">{tc.name}</span>
+                      <span className="font-mono text-gray-700">{tc.name}</span>
                     </span>
                   ))}
                 {!toolCallsExpanded && activity.toolCalls.length > 4 && (
@@ -130,13 +130,13 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                 )}
               </div>
               {toolCallsExpanded && (
-                <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/60">
+                <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2">
                   {activity.toolCalls.map((tc, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="mt-0.5 font-mono text-gray-700 dark:text-gray-300">
+                      <span className="mt-0.5 font-mono text-gray-700">
                         {tc.name}
                       </span>
-                      <span className="truncate text-gray-500 dark:text-gray-400">
+                      <span className="truncate text-gray-500">
                         {Object.entries(tc.args)
                           .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
                           .join(', ')}
@@ -150,8 +150,8 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.result && (
             <div>
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">结果</div>
-              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+              <div className="text-xs font-medium text-gray-500">结果</div>
+              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-gray-700">
                 {activity.result}
               </p>
             </div>
@@ -160,7 +160,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           {activity.error && (
             <div>
               <div className="text-xs font-medium text-red-500">错误</div>
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{activity.error}</p>
+              <p className="mt-1 text-xs text-red-600">{activity.error}</p>
             </div>
           )}
         </div>
