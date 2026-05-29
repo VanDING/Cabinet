@@ -24,11 +24,11 @@ export interface WorkflowCanvasProps {
 }
 
 const nodeTypeColors: Record<string, string> = {
-  skill: 'bg-blue-100 border-blue-400 text-blue-800',
+  skill: 'bg-blue-100 border-blue-400 text-accent',
   condition: 'bg-amber-100 border-amber-400 text-amber-800',
   parallel:
-    'bg-purple-100 border-purple-400 text-purple-800',
-  human: 'bg-green-100 border-green-400 text-green-800',
+    'bg-purple-100 border-purple-400 text-intent-purple',
+  human: 'bg-green-100 border-green-400 text-intent-success',
 };
 
 export function WorkflowCanvas({
@@ -58,17 +58,17 @@ export function WorkflowCanvas({
   };
 
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border bg-surface-primary p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">{workflow.name}</h3>
+          <h3 className="font-semibold text-content-primary">{workflow.name}</h3>
           <span
             className={`rounded px-2 py-0.5 text-xs ${
               workflow.status === 'active'
-                ? 'bg-green-100 text-green-700'
+                ? 'bg-green-100 text-intent-success'
                 : workflow.status === 'failed'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-red-100 text-intent-danger'
+                  : 'bg-surface-muted text-content-secondary'
             }`}
           >
             {workflow.status} | {workflow.nodes.length} nodes | {workflow.edges.length} edges
@@ -81,7 +81,7 @@ export function WorkflowCanvas({
                 <button
                   key={type}
                   onClick={() => onAddNode(type)}
-                  className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                  className="rounded border px-2 py-1 text-xs hover:bg-surface-elevated"
                 >
                   +{type}
                 </button>
@@ -91,7 +91,7 @@ export function WorkflowCanvas({
           {onSave && editable && (
             <button
               onClick={() => onSave(workflow)}
-              className="rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700"
+              className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-green-700"
             >
               Save
             </button>
@@ -99,7 +99,7 @@ export function WorkflowCanvas({
           {onRun && (
             <button
               onClick={() => onRun(workflow.id)}
-              className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
+              className="rounded bg-accent px-4 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
             >
               Run
             </button>
@@ -108,9 +108,9 @@ export function WorkflowCanvas({
       </div>
 
       {linkFrom && (
-        <div className="mb-2 text-xs text-blue-600">
+        <div className="mb-2 text-xs text-accent">
           Linking from: {linkFrom} — click a target node to connect
-          <button onClick={() => setLinkFrom(null)} className="ml-2 text-red-500">
+          <button onClick={() => setLinkFrom(null)} className="ml-2 text-intent-danger">
             Cancel
           </button>
         </div>
@@ -123,8 +123,8 @@ export function WorkflowCanvas({
             key={node.id}
             onClick={() => handleNodeClick(node.id)}
             className={`relative cursor-pointer rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all ${
-              nodeTypeColors[node.type] ?? 'bg-gray-100'
-            } ${selectedNode === node.id ? 'ring-2 ring-blue-500' : ''} ${linkFrom === node.id ? 'ring-2 ring-amber-500' : ''}`}
+              nodeTypeColors[node.type] ?? 'bg-surface-muted'
+            } ${selectedNode === node.id ? 'ring-2 ring-accent' : ''} ${linkFrom === node.id ? 'ring-2 ring-amber-500' : ''}`}
           >
             <div className="text-xs uppercase opacity-60">{node.type}</div>
             <div>{node.title ?? node.skillId ?? node.id}</div>
@@ -135,7 +135,7 @@ export function WorkflowCanvas({
                     e.stopPropagation();
                     handleStartLink(node.id);
                   }}
-                  className="text-xs text-blue-500 hover:underline"
+                  className="text-xs text-accent hover:underline"
                 >
                   Link
                 </button>
@@ -145,7 +145,7 @@ export function WorkflowCanvas({
                       e.stopPropagation();
                       onDeleteNode(node.id);
                     }}
-                    className="text-xs text-red-500 hover:underline"
+                    className="text-xs text-intent-danger hover:underline"
                   >
                     Del
                   </button>
@@ -158,11 +158,11 @@ export function WorkflowCanvas({
 
       {/* Edge list */}
       <div className="border-t pt-3">
-        <div className="mb-2 text-xs text-gray-400">
+        <div className="mb-2 text-xs text-content-tertiary">
           Connections ({workflow.edges.length})
         </div>
         {workflow.edges.map((edge, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+          <div key={i} className="flex items-center gap-2 text-xs text-content-tertiary">
             <span className="font-mono">{edge.from}</span>
             <span>→</span>
             <span className="font-mono">{edge.to}</span>
@@ -172,7 +172,7 @@ export function WorkflowCanvas({
           </div>
         ))}
         {workflow.edges.length === 0 && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-content-tertiary">
             No connections yet. {editable ? 'Click "Link" on a node to start.' : ''}
           </p>
         )}
