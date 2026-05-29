@@ -2,8 +2,9 @@
 import type { Theme } from './types';
 import { lightDefault } from './light-default';
 import { darkDefault } from './dark-default';
+import { pixelBY } from './pixel-by';
 
-export const registry: Theme[] = [lightDefault, darkDefault];
+export const registry: Theme[] = [lightDefault, darkDefault, pixelBY];
 
 export const defaultTheme = lightDefault;
 
