@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
 
 interface ApiKey {
   id: string;
@@ -10,9 +10,7 @@ interface ApiKey {
 
 export function ApiSwitcher() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [active, setActive] = useState<string>(
-    () => localStorage.getItem('cabinet-active-api-key') ?? '',
-  );
+  const [active, setActive] = useState<string>('');
 
   useEffect(() => {
     const fetchKeys = () => {
@@ -28,10 +26,18 @@ export function ApiSwitcher() {
     return () => window.removeEventListener('ws:apikeys_changed', fetchKeys);
   }, []);
 
-  const handleSelect = (key: ApiKey) => {
+  const handleSelect = async (key: ApiKey) => {
     setActive(key.id);
-    localStorage.setItem('cabinet-active-api-key', key.id);
     if (key.model) localStorage.setItem('cabinet-selected-model', key.model);
+    try {
+      await apiFetch('/api/settings/preferred-key', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ keyId: key.id }),
+      });
+    } catch {
+      // Preference stored server-side, network error is non-fatal
+    }
   };
 
   return (

@@ -42,3 +42,4 @@ export {
 } from './auto-adjuster.js';
 export { QualityResponseService, type ReconsolidationCallback } from './quality-response.js';
 export { SubconsciousLoop, type SubconsciousInsight } from './subconscious-loop.js';
+export { HarnessAnalyst } from './harness-analyst.js';

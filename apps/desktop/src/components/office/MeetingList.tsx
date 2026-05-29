@@ -63,7 +63,13 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   }, [fetchMeetings]);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto rounded-lg border border-border bg-surface-primary shadow-sm">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <h3 className="text-xs font-semibold text-content-secondary">Meetings</h3>
+        {!loading && meetings.length > 0 && (
+          <span className="text-xs text-content-tertiary">{meetings.length}</span>
+        )}
+      </div>
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center text-content-tertiary">
@@ -78,11 +84,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
           </div>
         </div>
       ) : (
-        <>
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <h3 className="text-xs font-semibold text-content-secondary">Meetings</h3>
-            <span className="text-xs text-content-tertiary">{meetings.length}</span>
-          </div>
+        <div className="flex-1 overflow-y-auto">
           {meetings.map((m) => (
             <div
               key={m.id}
@@ -110,7 +112,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
               )}
             </div>
           ))}
-        </>
+        </div>
       )}
     </div>
   );
