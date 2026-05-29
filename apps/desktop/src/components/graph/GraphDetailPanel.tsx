@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
-import { TYPE_COLORS } from './EntityNode';
+import { entityColor } from './EntityNode';
 
 interface EntityDetail {
   id: string;
@@ -64,7 +64,7 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
 
   if (!entityId) return null;
 
-  const color = entity ? TYPE_COLORS[entity.type] ?? '#6b7280' : '#6b7280';
+  const color = entity ? entityColor(entity.type) : entityColor('memory');
 
   return (
     <div className="flex h-full w-64 flex-shrink-0 flex-col border-l border-border bg-surface-primary">

@@ -18,6 +18,7 @@ function flattenTokens(theme: Theme): Record<string, string> {
   vars['--surface-overlay'] = colors.surface.overlay;
   vars['--surface-input'] = colors.surface.input;
   vars['--surface-muted'] = colors.surface.muted;
+  vars['--surface-sidebar'] = colors.surface.sidebar;
 
   // Content
   vars['--content-primary'] = colors.content.primary;
@@ -43,6 +44,45 @@ function flattenTokens(theme: Theme): Record<string, string> {
     vars[`--intent-${name}-foreground`] = i.foreground;
   }
 
+  // Code blocks
+  vars['--code-block-bg'] = colors.code.blockBg;
+  vars['--code-block-border'] = colors.code.blockBorder;
+  vars['--code-block-color'] = colors.code.blockColor;
+  vars['--code-inline-bg'] = colors.code.inlineBg;
+  vars['--code-inline-color'] = colors.code.inlineColor;
+
+  // Syntax highlighting
+  vars['--syntax-keyword'] = colors.syntax.keyword;
+  vars['--syntax-string'] = colors.syntax.string;
+  vars['--syntax-number'] = colors.syntax.number;
+  vars['--syntax-comment'] = colors.syntax.comment;
+  vars['--syntax-function'] = colors.syntax.function;
+  vars['--syntax-variable'] = colors.syntax.variable;
+  vars['--syntax-tag'] = colors.syntax.tag;
+
+  // Graph
+  vars['--graph-entity-person'] = colors.graph.entityPerson;
+  vars['--graph-entity-project'] = colors.graph.entityProject;
+  vars['--graph-entity-concept'] = colors.graph.entityConcept;
+  vars['--graph-entity-technology'] = colors.graph.entityTechnology;
+  vars['--graph-entity-decision'] = colors.graph.entityDecision;
+  vars['--graph-entity-memory'] = colors.graph.entityMemory;
+  vars['--graph-edge-active'] = colors.graph.edgeActive;
+  vars['--graph-edge-inactive'] = colors.graph.edgeInactive;
+  vars['--graph-node-label'] = colors.graph.nodeLabel;
+  vars['--graph-bg-grid'] = colors.graph.bgGrid;
+  vars['--graph-minimap-mask'] = colors.graph.minimapMask;
+
+  // Chart palette
+  vars['--chart-1'] = colors.chart.c1;
+  vars['--chart-2'] = colors.chart.c2;
+  vars['--chart-3'] = colors.chart.c3;
+  vars['--chart-4'] = colors.chart.c4;
+  vars['--chart-5'] = colors.chart.c5;
+  vars['--chart-6'] = colors.chart.c6;
+  vars['--chart-7'] = colors.chart.c7;
+  vars['--chart-8'] = colors.chart.c8;
+
   // Style: radius
   vars['--radius-sm'] = style.radius.sm;
   vars['--radius-md'] = style.radius.md;
@@ -59,9 +99,19 @@ function flattenTokens(theme: Theme): Record<string, string> {
   vars['--font-display'] = style.font.display;
   vars['--letter-spacing'] = style.font.letterSpacing;
   vars['--line-height'] = style.font.lineHeight;
+  vars['--font-size-base'] = style.font.sizeBase;
+  vars['--font-size-sm'] = style.font.sizeSm;
+  vars['--font-size-xs'] = style.font.sizeXs;
+  vars['--font-size-lg'] = style.font.sizeLg;
+  vars['--font-size-xl'] = style.font.sizeXl;
+  vars['--font-size-2xl'] = style.font.size2xl;
+  vars['--font-weight-normal'] = style.font.weightNormal;
+  vars['--font-weight-medium'] = style.font.weightMedium;
+  vars['--font-weight-bold'] = style.font.weightBold;
 
   // Style: border
   vars['--border-width'] = style.border.width;
+  vars['--border-style'] = style.border.style;
 
   // Style: transition
   vars['--duration'] = style.transition.duration;

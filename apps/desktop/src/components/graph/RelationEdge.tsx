@@ -38,7 +38,7 @@ function RelationEdgeComp({
   const strength = data?.strength ?? 0.5;
   const strokeWidth = Math.max(0.5, strength * 2);
   const isActive = selected || (data?.active ?? false);
-  const strokeColor = isActive ? '#60a5fa' : '#475569';
+  const strokeColor = isActive ? 'var(--graph-edge-active)' : 'var(--graph-edge-inactive)';
   const opacity = isActive ? 1 : 0.25;
 
   return (
