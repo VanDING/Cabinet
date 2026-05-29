@@ -12,8 +12,9 @@ import { zen } from './zen';
 import { memphis } from './memphis';
 import { brutalism } from './brutalism';
 import { bauhaus } from './bauhaus';
+import { techno } from './techno';
 
-export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek, glass, cyberpunk, vaporwave, zen, memphis, brutalism, bauhaus];
+export const registry: Theme[] = [lightDefault, darkDefault, pixelBY, warm, geek, glass, cyberpunk, vaporwave, zen, memphis, brutalism, bauhaus, techno];
 
 export const defaultTheme = lightDefault;
 
