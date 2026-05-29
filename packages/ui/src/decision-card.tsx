@@ -47,7 +47,7 @@ export function DecisionCard({
           {decision.options.map((opt) => (
             <label
               key={opt.id}
-              className="flex items-start gap-2 border-b py-1.5 text-sm last:border-0"
+              className="flex items-start gap-2 border-b border-border py-1.5 text-sm last:border-0"
             >
               <input
                 type="radio"

@@ -62,7 +62,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
         className="max-h-80 w-96 overflow-hidden rounded-lg border bg-surface-primary shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b p-3">
+        <div className="border-b border-border p-3">
           <input
             ref={inputRef}
             type="text"

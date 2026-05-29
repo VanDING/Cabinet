@@ -13,15 +13,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-accent text-content-inverse hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-accent disabled:bg-blue-400',
+    'bg-accent text-accent-foreground hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50',
   secondary:
-    'bg-surface-muted text-content-secondary hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-gray-400',
+    'bg-surface-muted text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
   destructive:
-    'bg-intent-danger text-content-inverse hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-intent-danger disabled:bg-red-400',
+    'bg-intent-danger text-intent-danger-foreground hover:bg-intent-danger hover:opacity-80 focus-visible:ring-2 focus-visible:ring-intent-danger disabled:opacity-50',
   ghost:
-    'border text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-gray-400',
+    'border text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
   outline:
-    'border bg-surface-primary text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-gray-400',
+    'border bg-surface-primary text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -48,7 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 font-medium transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-1.5 font-medium shadow-sm transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
         variantClasses[variant],
         sizeClasses[size],
         fullWidth && 'w-full',

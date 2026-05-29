@@ -69,7 +69,7 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
             {stats.recentEvents.map((event, i) => (
               <div
                 key={i}
-                className="flex justify-between border-b pb-1.5 text-sm last:border-0 last:pb-0"
+                className="flex justify-between border-b border-border pb-1.5 text-sm last:border-0 last:pb-0"
               >
                 <span className="text-content-secondary">{event.message}</span>
                 <span className="text-content-tertiary">

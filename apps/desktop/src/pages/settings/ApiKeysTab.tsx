@@ -275,14 +275,14 @@ function ModelMappingSection() {
 
   if (loading) {
     return (
-      <div className="mt-6 border-t pt-6">
+      <div className="mt-6 border-t border-border pt-6">
         <p className="text-sm text-content-tertiary">Loading model configuration...</p>
       </div>
     );
   }
 
   return (
-    <div className="mt-6 border-t pt-6">
+    <div className="mt-6 border-t border-border pt-6">
       <h3 className="mb-3 text-base font-semibold text-content-primary">
         Model Mapping
       </h3>
@@ -358,7 +358,7 @@ function BudgetSection() {
   };
 
   return (
-    <div className="mt-6 border-t pt-6">
+    <div className="mt-6 border-t border-border pt-6">
       <h3 className="mb-3 text-base font-semibold text-content-primary">
         Budget Limits
       </h3>

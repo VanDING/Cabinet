@@ -186,7 +186,7 @@ export function CostChart() {
 
           {/* Model legend */}
           {viewMode === 'stacked' && allModels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-2">
               {allModels.map((model, mi) => {
                 const modelTotal = history.reduce((sum, h) => sum + (h.byModel[model] ?? 0), 0);
                 return (

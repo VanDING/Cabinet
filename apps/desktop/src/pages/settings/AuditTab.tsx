@@ -58,7 +58,7 @@ export function AuditTab() {
           {entries.map((e: any, i: number) => (
             <div
               key={i}
-              className="flex items-center gap-3 border-b py-2 text-xs"
+              className="flex items-center gap-3 border-b border-border py-2 text-xs"
             >
               <span className="w-14 flex-shrink-0 text-content-tertiary">
                 {new Date(e.timestamp).toLocaleTimeString([], {
