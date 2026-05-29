@@ -62,9 +62,9 @@ export function EmployeesPage() {
   });
 
   const statusColors: Record<string, string> = {
-    active: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-    idle: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-    offline: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+    active: 'bg-green-100 text-green-700',
+    idle: 'bg-amber-100 text-amber-700',
+    offline: 'bg-gray-100 text-gray-500',
   };
 
   const refreshEmployees = () => {
@@ -176,8 +176,8 @@ export function EmployeesPage() {
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Employees</h1>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-gray-900">Employees</h1>
+          <span className="text-sm text-gray-500">
             Configure AI and human team members
           </span>
         </div>
@@ -194,8 +194,8 @@ export function EmployeesPage() {
       </div>
 
       {showForm && (
-        <div className="mb-6 rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <h2 className="mb-3 font-semibold text-gray-900 dark:text-gray-100">
+        <div className="mb-6 rounded-lg border bg-white p-4">
+          <h2 className="mb-3 font-semibold text-gray-900">
             {editingId ? 'Edit Employee' : 'Create Employee'}
           </h2>
           <div className="grid grid-cols-2 gap-3">
@@ -203,12 +203,12 @@ export function EmployeesPage() {
               placeholder="Name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
             />
             <select
               value={form.kind}
               onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as 'ai' | 'human' }))}
-              className="rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
             >
               <option value="ai">AI</option>
               <option value="human">Human</option>
@@ -217,14 +217,14 @@ export function EmployeesPage() {
               placeholder="Role (e.g. advisor)"
               value={form.role}
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-              className="rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
             />
             {form.kind === 'ai' && (
               <input
                 placeholder="Model (e.g. claude-sonnet-4-6)"
                 value={form.model}
                 onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                className="rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             )}
           </div>
@@ -233,7 +233,7 @@ export function EmployeesPage() {
               placeholder="Expertise (comma-separated)"
               value={form.expertise}
               onChange={(e) => setForm((f) => ({ ...f, expertise: e.target.value }))}
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
             />
           </div>
           <button
@@ -249,9 +249,9 @@ export function EmployeesPage() {
       <div className="mb-4 text-sm text-gray-500">{employees.length} team members</div>
 
       {employees.length === 0 && !showForm && (
-        <div className="rounded-lg border border-dashed p-8 text-center dark:border-gray-700">
-          <p className="text-gray-500 dark:text-gray-400">No employees yet.</p>
-          <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-gray-500">No employees yet.</p>
+          <p className="mt-1 text-sm text-gray-400">
             Create your first team member to get started.
           </p>
         </div>
@@ -262,12 +262,12 @@ export function EmployeesPage() {
           <div
             key={emp.id}
             onClick={() => setSelected(selected === emp.id ? null : emp.id)}
-            className={`group cursor-pointer rounded-lg border bg-white p-4 transition-all dark:bg-gray-800 ${selected === emp.id ? 'border-blue-500 ring-2 ring-blue-500' : 'hover:shadow-md dark:border-gray-700'}`}
+            className={`group cursor-pointer rounded-lg border bg-white p-4 transition-all ${selected === emp.id ? 'border-blue-500 ring-2 ring-blue-500' : 'hover:shadow-md'}`}
           >
             <div className="mb-2 flex items-center justify-between">
               <div>
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">{emp.name}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <h3 className="font-medium text-gray-900">{emp.name}</h3>
+                <p className="text-xs text-gray-500">
                   {emp.role} · {emp.kind === 'ai' ? `${emp.model}` : 'Human'}
                 </p>
               </div>
@@ -292,7 +292,7 @@ export function EmployeesPage() {
               {emp.expertise.map((exp) => (
                 <span
                   key={exp}
-                  className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
                 >
                   {exp}
                 </span>
@@ -300,10 +300,10 @@ export function EmployeesPage() {
             </div>
 
             {selected === emp.id && (
-              <div className="mt-3 space-y-1 border-t pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              <div className="mt-3 space-y-1 border-t pt-3 text-xs text-gray-500">
                 <div>
                   Permission:{' '}
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <span className="font-medium text-gray-700">
                     {emp.permissionLevel}
                   </span>
                 </div>
@@ -316,12 +316,12 @@ export function EmployeesPage() {
                       e.stopPropagation();
                       handleStartEdit(emp);
                     }}
-                    className="rounded border px-3 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                    className="rounded border px-3 py-1 text-xs hover:bg-gray-50:bg-gray-700"
                   >
                     Configure
                   </button>
                   {emp.kind === 'ai' && (
-                    <button className="rounded bg-amber-100 px-3 py-1 text-xs text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300">
+                    <button className="rounded bg-amber-100 px-3 py-1 text-xs text-amber-700 hover:bg-amber-200">
                       Test
                     </button>
                   )}

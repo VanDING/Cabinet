@@ -83,7 +83,7 @@ export function SkillsTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -139,26 +139,26 @@ export function SkillsTab() {
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="mb-4 rounded-lg border bg-gray-50 p-4">
           <div className="space-y-3">
             <input
               placeholder="Name"
               value={formData.name}
               onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
             />
             <textarea
               placeholder="Description"
               value={formData.description}
               onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               rows={2}
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
             />
             <div className="flex gap-3">
               <select
                 value={formData.kind}
                 onChange={(e) => setFormData((p) => ({ ...p, kind: e.target.value }))}
-                className="rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="rounded border bg-white px-3 py-2 text-sm text-gray-900"
               >
                 <option value="tool">Tool</option>
                 <option value="prompt">Prompt</option>
@@ -168,7 +168,7 @@ export function SkillsTab() {
                 placeholder="Prompt Template"
                 value={formData.promptTemplate}
                 onChange={(e) => setFormData((p) => ({ ...p, promptTemplate: e.target.value }))}
-                className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                className="flex-1 rounded border bg-white px-3 py-2 text-sm text-gray-900"
               />
             </div>
             <Button
@@ -191,7 +191,7 @@ export function SkillsTab() {
             <Card key={s.id} padding="sm" className="group flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-medium text-gray-900">
                     {s.name}
                   </span>
                   <Tag

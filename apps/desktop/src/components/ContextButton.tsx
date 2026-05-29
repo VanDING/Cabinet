@@ -78,22 +78,22 @@ export function ContextButton({
         <div
           className={`absolute bottom-full right-0 z-50 mb-1 w-56 rounded-lg border p-3 shadow-xl ${dropdownBgClass} text-xs`}
         >
-          <div className="mb-2 font-medium text-gray-700 dark:text-gray-200">Context Usage</div>
+          <div className="mb-2 font-medium text-gray-700">Context Usage</div>
           {data ? (
             <div className="space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-gray-500">Messages</span>
-                <span className="font-mono text-gray-700 dark:text-gray-300">
+                <span className="font-mono text-gray-700">
                   {data.messageCount}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Est. Tokens</span>
-                <span className="font-mono text-gray-700 dark:text-gray-300">
+                <span className="font-mono text-gray-700">
                   {tokens.toLocaleString()} / {max.toLocaleString()}
                 </span>
               </div>
-              <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-600">
+              <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200">
                 <div
                   className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-500' : 'bg-blue-500'}`}
                   style={{ width: `${Math.min(pct, 100)}%` }}

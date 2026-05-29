@@ -59,17 +59,17 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20" onClick={onClose}>
       <div
-        className="max-h-80 w-96 overflow-hidden rounded-lg border bg-white shadow-xl dark:border-gray-600 dark:bg-gray-800"
+        className="max-h-80 w-96 overflow-hidden rounded-lg border bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b p-3 dark:border-gray-700">
+        <div className="border-b p-3">
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search project files..."
-            className="w-full rounded border bg-gray-50 px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            className="w-full rounded border bg-gray-50 px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="max-h-60 overflow-y-auto">
@@ -85,9 +85,9 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
                   onSelect(f);
                   onClose();
                 }}
-                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100:bg-gray-700"
               >
-                <span className="font-medium text-gray-800 dark:text-gray-200">{f.name}</span>
+                <span className="font-medium text-gray-800">{f.name}</span>
                 <span className="ml-2 max-w-[200px] truncate text-xs text-gray-400">{f.path}</span>
               </button>
             ))

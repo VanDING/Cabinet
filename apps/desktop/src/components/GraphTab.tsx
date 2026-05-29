@@ -117,7 +117,7 @@ export function GraphTab() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-gray-500 dark:text-gray-400">Entity type:</span>
+        <span className="text-xs text-gray-500">Entity type:</span>
         {types.map((t) => (
           <button
             key={t}
@@ -125,7 +125,7 @@ export function GraphTab() {
             className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
               selectedType === t
                 ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-50:bg-gray-700'
             }`}
           >
             {t}
@@ -133,13 +133,13 @@ export function GraphTab() {
         ))}
         <button
           onClick={fetchGraph}
-          className="ml-auto rounded-lg border px-3 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700 dark:border-gray-600 dark:text-gray-400"
+          className="ml-auto rounded-lg border px-3 py-1 text-xs text-gray-500 transition-colors hover:text-gray-700"
         >
           Refresh
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
         {loading ? (
           <div className="flex h-full items-center justify-center text-gray-400">
             Loading graph...
@@ -151,7 +151,7 @@ export function GraphTab() {
         ) : (
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="h-full w-full bg-gray-50 dark:bg-gray-900"
+            className="h-full w-full bg-gray-50"
           >
             {filteredRelations.map((r) => {
               const from = positions.get(r.from);
@@ -170,7 +170,7 @@ export function GraphTab() {
                   className={
                     isHighlighted
                       ? '[stroke:#60a5fa]'
-                      : '[stroke:#d1d5db] dark:[stroke:#374151]'
+                      : '[stroke:#d1d5db]:#374151]'
                   }
                 />
               );
@@ -203,13 +203,13 @@ export function GraphTab() {
                     r={8 + Math.min(e.frequency * 2, 12)}
                     fill={color}
                     strokeWidth={isHighlighted ? 3 : 2}
-                    className="[stroke:#ffffff] dark:[stroke:#1f2937]"
+                    className="[stroke:#ffffff]:#1f2937]"
                   />
                   <text
                     y={22 + Math.min(e.frequency * 2, 12)}
                     textAnchor="middle"
                     fontSize={11}
-                    className="[fill:#374151] dark:[fill:#d1d5db]"
+                    className="[fill:#374151]:#d1d5db]"
                   >
                     {e.name.length > 16 ? e.name.slice(0, 16) + '...' : e.name}
                   </text>
@@ -220,7 +220,7 @@ export function GraphTab() {
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1">
             <span

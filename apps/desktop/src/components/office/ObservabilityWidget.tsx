@@ -36,7 +36,7 @@ export function ObservabilityWidget() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex h-full items-center justify-center rounded-lg border bg-white p-4">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
       </div>
     );
@@ -44,7 +44,7 @@ export function ObservabilityWidget() {
 
   if (!health) {
     return (
-      <div className="h-full rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <div className="h-full rounded-lg border bg-white p-4">
         <p className="text-xs text-gray-400">Observability data unavailable.</p>
       </div>
     );
@@ -66,17 +66,17 @@ export function ObservabilityWidget() {
   };
 
   return (
-    <div className="h-full overflow-hidden rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <h3 className="mb-3 text-sm font-semibold text-gray-800 dark:text-gray-200">Agent Health</h3>
+    <div className="h-full overflow-hidden rounded-lg border bg-white p-4">
+      <h3 className="mb-3 text-sm font-semibold text-gray-800">Agent Health</h3>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded bg-gray-50 p-2 dark:bg-gray-900">
+        <div className="rounded bg-gray-50 p-2">
           <div className="text-gray-400">Sessions</div>
-          <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          <div className="text-lg font-semibold text-gray-800">
             {health.recentSessions}
           </div>
         </div>
-        <div className="rounded bg-gray-50 p-2 dark:bg-gray-900">
+        <div className="rounded bg-gray-50 p-2">
           <div className="text-gray-400">Success Rate</div>
           <div
             className={`text-lg font-semibold ${health.successRate >= 0.9 ? 'text-green-600' : health.successRate >= 0.7 ? 'text-amber-600' : 'text-red-600'}`}
@@ -84,13 +84,13 @@ export function ObservabilityWidget() {
             {(health.successRate * 100).toFixed(0)}%
           </div>
         </div>
-        <div className="rounded bg-gray-50 p-2 dark:bg-gray-900">
+        <div className="rounded bg-gray-50 p-2">
           <div className="text-gray-400">Avg Cost</div>
-          <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+          <div className="text-lg font-semibold text-gray-800">
             ${health.avgCostPerSession.toFixed(3)}
           </div>
         </div>
-        <div className="rounded bg-gray-50 p-2 dark:bg-gray-900">
+        <div className="rounded bg-gray-50 p-2">
           <div className="text-gray-400">Tools</div>
           <div className="text-lg">{healthDot(health.toolHealth)}</div>
         </div>

@@ -20,7 +20,7 @@ export function MobileNav({ activePage, onNavigate }: Props) {
   return (
     <nav
       aria-label={t('nav.mobileNavLabel')}
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white text-gray-800 md:hidden"
     >
       <div className="flex justify-around py-1">
         {items.map((item) => (
@@ -30,7 +30,7 @@ export function MobileNav({ activePage, onNavigate }: Props) {
             aria-label={item.label}
             aria-current={activePage === item.id ? 'page' : undefined}
             className={`flex flex-col items-center px-2 py-1.5 text-xs transition-colors ${
-              activePage === item.id ? 'text-blue-400' : 'text-gray-400 dark:text-gray-500'
+              activePage === item.id ? 'text-blue-400' : 'text-gray-400'
             }`}
           >
             <span>{item.label}</span>

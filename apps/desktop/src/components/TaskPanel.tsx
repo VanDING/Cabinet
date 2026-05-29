@@ -21,9 +21,9 @@ interface Props {
 }
 
 const cardClasses =
-  'mb-2 rounded-lg border border-gray-200 bg-white/90 p-2 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90';
-const subtextClasses = 'text-gray-500 dark:text-gray-400';
-const textClasses = 'text-gray-800 dark:text-gray-200';
+  'mb-2 rounded-lg border border-gray-200 bg-white/90 p-2 shadow-sm backdrop-blur-sm';
+const subtextClasses = 'text-gray-500';
+const textClasses = 'text-gray-800';
 
 export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -91,7 +91,7 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
                     task.status === 'done'
                       ? `${subtextClasses} line-through opacity-60`
                       : task.status === 'error'
-                        ? 'text-red-600 dark:text-red-400'
+                        ? 'text-red-600'
                         : textClasses
                   }`}
                 >

@@ -91,20 +91,20 @@ export function CostChart() {
   const totalCalls = history.length > 0 ? (history[history.length - 1]!.calls ?? 0) : 0;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Cost Analysis</div>
+        <div className="text-sm font-medium text-gray-700">Cost Analysis</div>
         <div className="flex gap-1">
           <button
             onClick={() => setViewMode('stacked')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100:bg-gray-700'}`}
           >
             By Model
           </button>
           <button
             onClick={() => setViewMode('bar')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100:bg-gray-700'}`}
           >
             Total
           </button>
@@ -115,20 +115,20 @@ export function CostChart() {
       <div className="mb-3 flex gap-3 text-xs">
         <span className="text-gray-500">
           Total:{' '}
-          <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
+          <span className="font-mono font-medium text-gray-700">
             ${totalCost.toFixed(3)}
           </span>
         </span>
         <span className="text-gray-500">
           Calls:{' '}
-          <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
+          <span className="font-mono font-medium text-gray-700">
             {totalCalls}
           </span>
         </span>
         <span className="text-gray-500">
           Daily budget:{' '}
           <span
-            className={`font-mono font-medium ${budget.daily > limits.daily * 0.8 ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}
+            className={`font-mono font-medium ${budget.daily > limits.daily * 0.8 ? 'text-red-500' : 'text-gray-700'}`}
           >
             ${budget.daily.toFixed(2)} / ${limits.daily}
           </span>
@@ -145,13 +145,13 @@ export function CostChart() {
           <div className="flex flex-1 items-end gap-1">
             {history.map((point, i) => (
               <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="font-mono text-[10px] text-gray-500 dark:text-gray-400">
+                <span className="font-mono text-[10px] text-gray-500">
                   ${point.cost.toFixed(2)}
                 </span>
 
                 {viewMode === 'bar' ? (
                   <div
-                    className="min-h-[2px] w-full rounded-t-sm bg-blue-500 transition-all dark:bg-blue-400"
+                    className="min-h-[2px] w-full rounded-t-sm bg-blue-500 transition-all"
                     style={{ height: `${Math.max((point.cost / maxCost) * 100, 2)}%` }}
                   />
                 ) : (
@@ -186,7 +186,7 @@ export function CostChart() {
 
           {/* Model legend */}
           {viewMode === 'stacked' && allModels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2 dark:border-gray-700">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t pt-2">
               {allModels.map((model, mi) => {
                 const modelTotal = history.reduce((sum, h) => sum + (h.byModel[model] ?? 0), 0);
                 return (

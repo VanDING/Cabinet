@@ -81,13 +81,13 @@ export function Deliverables({ projectId, onExpand }: Props) {
     };
   }, [fetchDeliverables]);
 
-  const text = 'text-gray-800 dark:text-gray-200';
-  const sub = 'text-gray-500 dark:text-gray-400';
+  const text = 'text-gray-800';
+  const sub = 'text-gray-500';
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
+    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Deliverables</span>
+        <span className="text-sm font-medium text-gray-700">Deliverables</span>
         {items.length > 0 && (
           <span className="text-xs text-blue-500 hover:underline">View all</span>
         )}

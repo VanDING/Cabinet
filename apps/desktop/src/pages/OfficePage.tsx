@@ -347,10 +347,10 @@ export function OfficePage() {
       {/* Header */}
       <div className="flex items-center justify-between px-6 pb-2 pt-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-bold text-gray-900">
             {projectId ? 'Project Dashboard' : 'Office'}
           </h1>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-gray-500">
             {projectId ? `Project #${projectId}` : 'Your Decision Room'}
           </span>
         </div>
@@ -368,7 +368,7 @@ export function OfficePage() {
       {/* Widget pool dropdown */}
       {showPool && (
         <div className="px-6 pb-2">
-          <div className="grid grid-cols-4 gap-2 rounded-lg border bg-white p-3 dark:border-gray-700 dark:bg-gray-800 lg:grid-cols-8">
+          <div className="grid grid-cols-4 gap-2 rounded-lg border bg-white p-3 lg:grid-cols-8">
             {WIDGET_POOL.filter((w) => !addedTypes.has(w.type)).map((w) => (
               <button
                 key={w.type}
@@ -376,8 +376,8 @@ export function OfficePage() {
                 disabled={!w.available}
                 className={`rounded px-2 py-1.5 text-center text-xs transition-colors ${
                   w.available
-                    ? 'bg-gray-100 text-gray-700 hover:bg-blue-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-blue-900/30'
-                    : 'cursor-not-allowed bg-gray-50 text-gray-400 line-through dark:bg-gray-800'
+                    ? 'bg-gray-100 text-gray-700 hover:bg-blue-100:bg-blue-900/30'
+                    : 'cursor-not-allowed bg-gray-50 text-gray-400 line-through'
                 }`}
               >
                 {w.label}
@@ -422,7 +422,7 @@ export function OfficePage() {
               <div key={item.i} className="group relative">
                 {/* Drag handle + remove button */}
                 <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-gray-400 hover:text-gray-600 active:cursor-grabbing dark:hover:text-gray-200">
+                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-gray-400 hover:text-gray-600 active:cursor-grabbing:text-gray-200">
                     <Grip size={12} />
                   </div>
                   <button
@@ -450,7 +450,7 @@ export function OfficePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">
                 {expandedWidget === 'today-cost'
                   ? "Today's Cost Breakdown"
                   : expandedWidget === 'active-projects'
@@ -459,7 +459,7 @@ export function OfficePage() {
               </h3>
               <button
                 onClick={() => setExpandedWidget(null)}
-                className="text-xl leading-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                className="text-xl leading-none text-gray-400 hover:text-gray-600:text-gray-200"
               >
                 &times;
               </button>
@@ -471,16 +471,16 @@ export function OfficePage() {
                   ¥{stats.todayCost.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-500">Total token consumption cost for today</p>
-                <div className="mt-3 space-y-2 border-t pt-3 dark:border-gray-700">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div className="mt-3 space-y-2 border-t pt-3">
+                  <h4 className="text-sm font-medium text-gray-700">
                     Cost by Model
                   </h4>
                   {costDetails.map((c) => (
                     <div key={c.model} className="flex justify-between text-sm">
-                      <span className="font-mono text-xs text-gray-600 dark:text-gray-400">
+                      <span className="font-mono text-xs text-gray-600">
                         {c.model}
                       </span>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
+                      <span className="font-medium text-gray-800">
                         ¥{c.cost.toFixed(2)}
                       </span>
                     </div>

@@ -65,17 +65,17 @@ export function KnowledgeTab({ activeProjectId }: Props) {
     fetchDocs();
   };
 
-  const borderClasses = 'border-gray-200 dark:border-gray-700';
+  const borderClasses = 'border-gray-200';
   const inputClasses =
-    'rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
-  const textClasses = 'text-gray-800 dark:text-gray-200';
-  const subClasses = 'text-gray-500 dark:text-gray-400';
+    'rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900';
+  const textClasses = 'text-gray-800';
+  const subClasses = 'text-gray-500';
 
   return (
     <div className="flex h-full">
       {/* Left: Document list */}
-      <div className="flex w-64 flex-shrink-0 flex-col border-r border-gray-200 dark:border-gray-700">
-        <div className="border-b border-gray-200 p-3 dark:border-gray-700">
+      <div className="flex w-64 flex-shrink-0 flex-col border-r border-gray-200">
+        <div className="border-b border-gray-200 p-3">
           <input
             className={`w-full ${inputClasses}`}
             placeholder="Search query..."
@@ -95,9 +95,9 @@ export function KnowledgeTab({ activeProjectId }: Props) {
                 onClick={() => fetchChunks(d.path)}
                 className={`flex cursor-pointer items-center justify-between px-3 py-2 text-xs ${
                   selectedDoc === d.path
-                    ? 'bg-blue-50 dark:bg-blue-900/30'
+                    ? 'bg-blue-50'
                     : ''
-                } hover:bg-gray-100 dark:hover:bg-gray-700`}
+                } hover:bg-gray-100:bg-gray-700`}
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <FileText size={12} className="flex-shrink-0" />
@@ -137,7 +137,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
             {chunks.map((chunk) => (
               <div
                 key={chunk.id}
-                className={`rounded border ${borderClasses} bg-white p-3 dark:bg-gray-800`}
+                className={`rounded border ${borderClasses} bg-white p-3`}
               >
                 <div className={`mb-1 text-xs ${subClasses}`}>Chunk {chunk.index}</div>
                 <pre className={`whitespace-pre-wrap font-sans text-xs ${textClasses}`}>
