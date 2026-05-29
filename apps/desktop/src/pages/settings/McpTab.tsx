@@ -105,7 +105,7 @@ export function McpTab() {
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border bg-surface-elevated p-4">
+        <div className="mb-4 rounded-lg border border-border bg-surface-elevated p-4">
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs text-content-tertiary">Server Name</label>
@@ -114,7 +114,7 @@ export function McpTab() {
                 placeholder="e.g. filesystem"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ export function McpTab() {
                 placeholder="npx"
                 value={form.command}
                 onChange={(e) => setForm((p) => ({ ...p, command: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -136,7 +136,7 @@ export function McpTab() {
                 placeholder="-y @anthropic/mcp-server-filesystem /path"
                 value={form.args}
                 onChange={(e) => setForm((p) => ({ ...p, args: e.target.value }))}
-                className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button

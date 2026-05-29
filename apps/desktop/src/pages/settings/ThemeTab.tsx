@@ -10,7 +10,7 @@ export function ThemeTab() {
         Theme
       </h2>
       <div className="max-w-md space-y-4">
-        <div className="rounded-lg border bg-surface-primary p-4">
+        <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
           <div className="mb-3 text-sm font-medium text-content-primary">
             Select Theme
           </div>

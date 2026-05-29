@@ -180,7 +180,7 @@ export function Navigation({
                           }
                           if (e.key === 'Escape') setRenamingId(null);
                         }}
-                        className="flex-1 rounded border bg-surface-primary px-1 py-0.5 text-xs text-content-primary"
+                        className="flex-1 rounded border border-border bg-surface-primary px-1 py-0.5 text-xs text-content-primary"
                       />
                     ) : (
                       <button

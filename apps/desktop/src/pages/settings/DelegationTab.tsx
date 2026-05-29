@@ -78,7 +78,7 @@ export function DelegationTab() {
       </p>
 
       {/* Current tier description */}
-      <div className={`mb-4 rounded-lg border p-4 ${tierColor(tier)}`}>
+      <div className={`mb-4 rounded-lg border border-border p-4 ${tierColor(tier)}`}>
         <div className="mb-1 flex items-center gap-2">
           <span className="font-mono text-xs font-bold text-content-tertiary">{tier}</span>
           <span className="text-sm font-semibold text-content-primary">
@@ -95,7 +95,7 @@ export function DelegationTab() {
             key={t.id}
             onClick={() => handleChange(t.id)}
             disabled={loading || t.id === tier}
-            className={`w-full rounded-lg border p-3 text-left transition-all ${
+            className={`w-full rounded-lg border border-border p-3 text-left transition-all ${
               t.id === tier
                 ? 'cursor-default border-accent ring-2 ring-accent'
                 : 'cursor-pointer border-border hover:border-accent:border-accent'
@@ -116,7 +116,7 @@ export function DelegationTab() {
       </div>
 
       {/* Blocked tools info */}
-      <div className="mt-4 rounded-lg border bg-surface-elevated p-3">
+      <div className="mt-4 rounded-lg border border-border bg-surface-elevated p-3">
         <p className="mb-1 text-xs font-medium text-content-secondary">
           What's blocked at {tierLabel(tier)}:
         </p>

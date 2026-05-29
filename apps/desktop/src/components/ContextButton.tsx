@@ -76,7 +76,7 @@ export function ContextButton({
       </button>
       {open && (
         <div
-          className={`absolute bottom-full right-0 z-50 mb-1 w-56 rounded-lg border p-3 shadow-xl ${dropdownBgClass} text-xs`}
+          className={`absolute bottom-full right-0 z-50 mb-1 w-56 rounded-lg border border-border p-3 shadow-xl ${dropdownBgClass} text-xs`}
         >
           <div className="mb-2 font-medium text-content-secondary">Context Usage</div>
           {data ? (

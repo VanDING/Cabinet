@@ -204,7 +204,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                       key={opt.id}
                       onClick={() => !isResolved && setSelectedOption(opt.id)}
                       disabled={isResolved}
-                      className={`rounded-lg border p-3 text-left transition-all ${
+                      className={`rounded-lg border border-border p-3 text-left transition-all ${
                         isResolved && decision.chosenOptionId === opt.id
                           ? 'border-intent-success bg-intent-success-muted ring-2 ring-intent-success'
                           : isSelected
@@ -350,7 +350,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border bg-surface-elevated px-3 py-2 text-sm text-content-primary"
+              className="w-full resize-none rounded border border-border bg-surface-elevated px-3 py-2 text-sm text-content-primary"
             />
 
             {/* Action buttons */}
@@ -359,7 +359,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                 <select
                   value={selectedOption ?? ''}
                   onChange={(e) => setSelectedOption(e.target.value)}
-                  className="flex-1 rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                  className="flex-1 rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
                 >
                   <option value="" disabled>
                     Select an option...

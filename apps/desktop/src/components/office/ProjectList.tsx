@@ -34,7 +34,7 @@ export function ProjectList() {
   }, [fetchProjects]);
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <div className="mb-3 text-sm font-medium text-content-secondary">Projects</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {projects.length === 0 ? (

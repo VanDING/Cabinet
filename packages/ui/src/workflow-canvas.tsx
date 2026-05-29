@@ -58,7 +58,7 @@ export function WorkflowCanvas({
   };
 
   return (
-    <div className="rounded-lg border bg-surface-primary p-4">
+    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-content-primary">{workflow.name}</h3>
@@ -81,7 +81,7 @@ export function WorkflowCanvas({
                 <button
                   key={type}
                   onClick={() => onAddNode(type)}
-                  className="rounded border px-2 py-1 text-xs hover:bg-surface-elevated"
+                  className="rounded border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
                 >
                   +{type}
                 </button>

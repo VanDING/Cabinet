@@ -39,7 +39,7 @@ export function TokensWidget() {
   const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       <div className="mb-3 text-sm font-medium text-content-secondary">Tokens</div>
       {totalTokens === null ? (
         <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">

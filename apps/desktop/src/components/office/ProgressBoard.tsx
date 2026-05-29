@@ -95,7 +95,7 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border bg-surface-primary p-4">
+      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
         <span className="text-xs text-content-tertiary">Loading progress...</span>
       </div>
     );
@@ -103,7 +103,7 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (!data || data.tasks.length === 0) {
     return (
-      <div className="h-full rounded-lg border bg-surface-primary p-4">
+      <div className="h-full rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
         <div className="mb-2 text-sm font-medium text-content-secondary">Task Board</div>
         <p className="text-xs text-content-tertiary">
           No tasks tracked yet. Use the secretary to create tasks.
@@ -116,7 +116,7 @@ export function ProgressBoard({ projectId }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-surface-primary p-4">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-medium text-content-secondary">Task Board</div>
         <button onClick={fetchProgress} className="text-xs text-accent hover:underline">

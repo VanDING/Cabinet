@@ -455,7 +455,7 @@ const MessageRow = memo(function MessageRow({
               {msg.stepBudget &&
                 msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
                   <div
-                    className={`mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
+                    className={`mb-2 rounded border border-border px-2 py-1 text-[10px] font-medium ${
                       msg.stepBudget.remaining <= 0
                         ? 'border-intent-danger bg-intent-danger-muted text-intent-danger'
                         : 'border-intent-warning bg-intent-warning-muted text-intent-warning'

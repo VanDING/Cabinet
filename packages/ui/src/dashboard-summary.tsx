@@ -52,7 +52,7 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
           <div
             key={card.label}
             onClick={() => card.target && onNavigate?.(card.target)}
-            className={`rounded-lg border bg-surface-primary p-4 ${card.target ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+            className={`rounded-lg border border-border bg-surface-primary p-4 shadow-sm ${card.target ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
           >
             <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
             <div className="mt-1 text-sm text-content-tertiary">{card.label}</div>
@@ -60,7 +60,7 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
         ))}
       </div>
 
-      <div className="rounded-lg border bg-surface-primary p-4">
+      <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
         <h2 className="mb-3 font-semibold text-content-primary">Recent Events</h2>
         {stats.recentEvents.length === 0 ? (
           <p className="text-sm text-content-tertiary">No recent events.</p>
