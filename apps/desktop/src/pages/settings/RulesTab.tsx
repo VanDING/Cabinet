@@ -54,17 +54,17 @@ export function RulesTab() {
 
   const modeColor = (mode: string) =>
     mode === 'always'
-      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+      ? 'bg-green-100 text-green-700'
       : mode === 'auto'
-        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-gray-100 text-gray-600';
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Project Rules</h2>
+      <h2 className="mb-4 text-lg font-semibold text-gray-900">Project Rules</h2>
       <p className="mb-4 text-xs text-gray-500">
         Rules are loaded from{' '}
-        <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">.cabinet/rules/</code>. Each
+        <code className="rounded bg-gray-100 px-1">.cabinet/rules/</code>. Each
         file has YAML frontmatter controlling when it activates.
       </p>
 
@@ -85,12 +85,12 @@ export function RulesTab() {
           {rules.map((rule) => (
             <div
               key={rule.filename}
-              className="overflow-hidden rounded-lg border bg-white dark:border-gray-700 dark:bg-gray-800"
+              className="overflow-hidden rounded-lg border bg-white"
             >
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <span className="font-mono text-sm font-medium text-gray-900">
                       {rule.filename}
                     </span>
                     <span
@@ -107,7 +107,7 @@ export function RulesTab() {
                     {rule.globs.map((g) => (
                       <span
                         key={g}
-                        className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                        className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600"
                       >
                         {g}
                       </span>
@@ -130,12 +130,12 @@ export function RulesTab() {
               </div>
 
               {editingFile === rule.filename && (
-                <div className="border-t bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div className="border-t bg-gray-50 p-3">
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={12}
-                    className="w-full rounded border bg-white px-3 py-2 font-mono text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                    className="w-full rounded border bg-white px-3 py-2 font-mono text-sm text-gray-900"
                   />
                   <div className="mt-2 flex justify-end">
                     <Button size="sm" onClick={() => handleSave(rule.filename)}>

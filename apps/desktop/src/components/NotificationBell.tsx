@@ -23,11 +23,11 @@ function timeAgo(date: Date): string {
 }
 
 const panelClasses =
-  'absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800';
-const textClasses = 'text-gray-800 dark:text-gray-200';
-const subtextClasses = 'text-gray-500 dark:text-gray-400';
-const borderClasses = 'border-gray-200 dark:border-gray-700';
-const itemHoverClasses = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+  'absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-gray-200 bg-white shadow-xl';
+const textClasses = 'text-gray-800';
+const subtextClasses = 'text-gray-500';
+const borderClasses = 'border-gray-200';
+const itemHoverClasses = 'hover:bg-gray-50:bg-gray-700';
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -54,7 +54,7 @@ export function NotificationBell() {
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
-        className="relative flex h-full w-8 items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+        className="relative flex h-full w-8 items-center justify-center text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200"
         aria-label="Notifications"
       >
         <Bell size={14} />

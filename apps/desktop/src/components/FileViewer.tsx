@@ -150,15 +150,15 @@ export function FileViewer() {
 
   if (!visible) return null;
 
-  const bg = 'bg-white dark:bg-gray-900';
-  const border = 'border-gray-200 dark:border-gray-700';
-  const tabBg = 'bg-gray-100 dark:bg-gray-800';
+  const bg = 'bg-white';
+  const border = 'border-gray-200';
+  const tabBg = 'bg-gray-100';
 
   return (
     <div className="relative flex flex-shrink-0" style={{ width }}>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize hover:bg-blue-400 dark:hover:bg-blue-500"
+        className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize hover:bg-blue-400:bg-blue-500"
       />
       <div className={`flex min-w-0 flex-1 flex-col border-l ${border} ${bg}`}>
         {/* Tab bar */}
@@ -172,7 +172,7 @@ export function FileViewer() {
               className={`flex flex-shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
                 activeTab === tab.path
                   ? `${bg} -mb-px border-l border-r border-t ${border}`
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-700:text-gray-200'
               }`}
             >
               {tab.mimeType?.startsWith('image/') ? <Image size={12} /> : <FileCode size={12} />}
@@ -182,7 +182,7 @@ export function FileViewer() {
                   e.stopPropagation();
                   closeTab(tab.path);
                 }}
-                className="ml-1 rounded-full p-0.5 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="ml-1 rounded-full p-0.5 hover:bg-gray-300:bg-gray-600"
               >
                 <X size={10} />
               </button>
@@ -190,7 +190,7 @@ export function FileViewer() {
           ))}
           <button
             onClick={closeAll}
-            className="ml-auto mr-2 rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="ml-auto mr-2 rounded p-1 hover:bg-gray-200:bg-gray-700"
             title="Close all"
           >
             <X size={14} />
@@ -209,12 +209,12 @@ export function FileViewer() {
                 />
               </div>
             ) : (
-              <pre className="whitespace-pre-wrap break-all p-4 font-mono text-sm text-gray-800 dark:text-gray-200">
+              <pre className="whitespace-pre-wrap break-all p-4 font-mono text-sm text-gray-800">
                 {active.content || '(empty)'}
               </pre>
             )
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400 dark:text-gray-500">
+            <div className="flex h-full items-center justify-center text-gray-400">
               <div className="text-center">
                 <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Click a file in Project Explorer to preview</p>

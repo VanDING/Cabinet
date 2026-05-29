@@ -75,16 +75,16 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">
           {name.slice(0, 1).toUpperCase()}
         </span>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{name}</span>
+        <span className="text-sm font-semibold text-gray-900">{name}</span>
       </div>
       {total > 0 && (
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
             <span>Total: {total}</span>
-            <span className="text-green-600 dark:text-green-400">Approved: {approved}</span>
+            <span className="text-green-600">Approved: {approved}</span>
             <span className="text-red-500">Rejected: {rejected}</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
             <div className="h-full rounded-full bg-green-500" style={{ width: `${rate}%` }} />
           </div>
           <div className="text-[10px] text-gray-400">Approval rate: {rate}%</div>
@@ -92,7 +92,7 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
       )}
       {decisions.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Decision History</p>
+          <p className="text-xs font-medium text-gray-700">Decision History</p>
           <div className="max-h-40 space-y-1 overflow-y-auto">
             {decisions.slice(0, 20).map((d, i) => {
               const rd = isRecord(d) ? d : {};
@@ -101,17 +101,17 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
               const date = getStr(rd, 'date') || getStr(rd, 'timestamp') || '';
               const badgeColor =
                 action === 'approved'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                  ? 'bg-green-100 text-green-700'
                   : action === 'rejected'
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-600';
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border px-2 py-1 dark:border-gray-700"
+                  className="flex items-center justify-between rounded border px-2 py-1"
                 >
                   <span
-                    className="truncate text-[11px] text-gray-700 dark:text-gray-300"
+                    className="truncate text-[11px] text-gray-700"
                     title={title}
                   >
                     {title}
@@ -147,16 +147,16 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-3">
       {summary && (
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">Summary</p>
-          <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-700">Summary</p>
+          <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600">
             {summary}
           </p>
         </div>
       )}
       {goals.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">Goals</p>
-          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600 dark:text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-700">Goals</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600">
             {goals.map((g, i) => (
               <li key={i}>{typeof g === 'string' ? g : JSON.stringify(g)}</li>
             ))}
@@ -165,12 +165,12 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
       )}
       {milestones.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">Milestones</p>
+          <p className="mb-1 text-xs font-medium text-gray-700">Milestones</p>
           <div className="space-y-1">
             {milestones.map((m, i) => {
               if (typeof m === 'string') {
                 return (
-                  <div key={i} className="text-[11px] text-gray-600 dark:text-gray-400">
+                  <div key={i} className="text-[11px] text-gray-600">
                     {m}
                   </div>
                 );
@@ -180,16 +180,16 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
               const status = getStr(rm, 'status') || 'pending';
               const badgeColor =
                 status === 'done' || status === 'completed'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                  ? 'bg-green-100 text-green-700'
                   : status === 'in_progress'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-600';
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border px-2 py-1 dark:border-gray-700"
+                  className="flex items-center justify-between rounded border px-2 py-1"
                 >
-                  <span className="text-[11px] text-gray-700 dark:text-gray-300">{title}</span>
+                  <span className="text-[11px] text-gray-700">{title}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeColor}`}>
                     {status}
                   </span>
@@ -201,8 +201,8 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
       )}
       {keyDecisions.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">Key Decisions</p>
-          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600 dark:text-gray-400">
+          <p className="mb-1 text-xs font-medium text-gray-700">Key Decisions</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600">
             {keyDecisions.map((d, i) => (
               <li key={i}>{typeof d === 'string' ? d : JSON.stringify(d)}</li>
             ))}
@@ -210,7 +210,7 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
         </div>
       )}
       {!summary && goals.length === 0 && milestones.length === 0 && keyDecisions.length === 0 && (
-        <p className="text-xs italic text-gray-400 dark:text-gray-500">
+        <p className="text-xs italic text-gray-400">
           No project context yet. Use chat to update the project summary, add milestones, or create decisions.
         </p>
       )}
@@ -240,19 +240,19 @@ function LongTermRenderer({ content }: { content: string }) {
             const val = parsed[key];
             return (
               <div key={key}>
-                <p className="mb-0.5 text-xs font-medium text-gray-700 dark:text-gray-300">{key}</p>
+                <p className="mb-0.5 text-xs font-medium text-gray-700">{key}</p>
                 {typeof val === 'string' ? (
-                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600">
                     {val}
                   </p>
                 ) : Array.isArray(val) ? (
-                  <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600 dark:text-gray-400">
+                  <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600">
                     {val.map((v, i) => (
                       <li key={i}>{typeof v === 'string' ? v : JSON.stringify(v)}</li>
                     ))}
                   </ul>
                 ) : (
-                  <pre className="whitespace-pre-wrap font-mono text-[11px] text-gray-600 dark:text-gray-400">
+                  <pre className="whitespace-pre-wrap font-mono text-[11px] text-gray-600">
                     {JSON.stringify(val, null, 2)}
                   </pre>
                 )}
@@ -272,7 +272,7 @@ function LongTermRenderer({ content }: { content: string }) {
     const line = lines[i] ?? '';
     if (/^#{1,2}\s/.test(line)) {
       elements.push(
-        <p key={i} className="mt-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+        <p key={i} className="mt-2 text-sm font-semibold text-gray-800">
           {line.replace(/^#+\s/, '')}
         </p>,
       );
@@ -285,7 +285,7 @@ function LongTermRenderer({ content }: { content: string }) {
       elements.push(
         <ul
           key={i}
-          className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600 dark:text-gray-400"
+          className="list-disc space-y-0.5 pl-4 text-[11px] text-gray-600"
         >
           {items.map((it, idx) => (
             <li key={idx}>{it}</li>
@@ -302,7 +302,7 @@ function LongTermRenderer({ content }: { content: string }) {
       elements.push(
         <ol
           key={i}
-          className="list-decimal space-y-0.5 pl-4 text-[11px] text-gray-600 dark:text-gray-400"
+          className="list-decimal space-y-0.5 pl-4 text-[11px] text-gray-600"
         >
           {items.map((it, idx) => (
             <li key={idx}>{it}</li>
@@ -313,7 +313,7 @@ function LongTermRenderer({ content }: { content: string }) {
     } else if (/\*\*.+?\*\*/.test(line)) {
       // Simple bold inline — render as paragraph preserving some formatting
       elements.push(
-        <p key={i} className="text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+        <p key={i} className="text-[11px] leading-relaxed text-gray-600">
           {line}
         </p>,
       );
@@ -321,7 +321,7 @@ function LongTermRenderer({ content }: { content: string }) {
       // Skip blank lines, but add spacing via className when needed
     } else {
       elements.push(
-        <p key={i} className="text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+        <p key={i} className="text-[11px] leading-relaxed text-gray-600">
           {line}
         </p>,
       );
@@ -336,28 +336,28 @@ function ShortTermRenderer({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-1">
       {Object.entries(data).map(([k, v]) => (
         <div key={k} className="flex items-start gap-2">
-          <span className="flex-shrink-0 text-[11px] font-medium text-gray-700 dark:text-gray-300">
+          <span className="flex-shrink-0 text-[11px] font-medium text-gray-700">
             {k}:
           </span>
           {typeof v === 'string' ? (
-            <span className="whitespace-pre-wrap text-[11px] text-gray-600 dark:text-gray-400">
+            <span className="whitespace-pre-wrap text-[11px] text-gray-600">
               {v}
             </span>
           ) : typeof v === 'number' || typeof v === 'boolean' ? (
-            <span className="text-[11px] text-gray-600 dark:text-gray-400">{String(v)}</span>
+            <span className="text-[11px] text-gray-600">{String(v)}</span>
           ) : isRecord(v) ? (
             <div className="space-y-0.5 pl-2">
               {Object.entries(v).map(([sk, sv]) => (
                 <div key={sk} className="flex items-start gap-1">
                   <span className="text-[10px] text-gray-500">{sk}:</span>
-                  <span className="whitespace-pre-wrap text-[10px] text-gray-600 dark:text-gray-400">
+                  <span className="whitespace-pre-wrap text-[10px] text-gray-600">
                     {typeof sv === 'string' ? sv : JSON.stringify(sv)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <span className="whitespace-pre-wrap font-mono text-[11px] text-gray-600 dark:text-gray-400">
+            <span className="whitespace-pre-wrap font-mono text-[11px] text-gray-600">
               {JSON.stringify(v, null, 2)}
             </span>
           )}
@@ -372,7 +372,7 @@ function LayerContent({ layer, content }: { layer: string; content: string }) {
   if (!isRecord(parsed)) {
     if (layer === 'long_term') return <LongTermRenderer content={content} />;
     return (
-      <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+      <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600">
         {content}
       </p>
     );
@@ -389,7 +389,7 @@ function LayerContent({ layer, content }: { layer: string; content: string }) {
       return <LongTermRenderer content={content} />;
     default:
       return (
-        <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600 dark:text-gray-400">
+        <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-gray-600">
           {content}
         </p>
       );
@@ -397,10 +397,10 @@ function LayerContent({ layer, content }: { layer: string; content: string }) {
 }
 
 const layerColors: Record<string, string> = {
-  short_term: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  long_term: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  entity: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  project: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  short_term: 'bg-blue-100 text-blue-700',
+  long_term: 'bg-purple-100 text-purple-700',
+  entity: 'bg-green-100 text-green-700',
+  project: 'bg-amber-100 text-amber-700',
 };
 
 function getNumericMeta(meta: Record<string, unknown>, key: string): number | undefined {
@@ -490,8 +490,8 @@ export function MemoryPage() {
   return (
     <div className="h-full overflow-y-auto p-6 pb-40">
       <div className="mb-6 flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Memory</h1>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="text-2xl font-bold text-gray-900">Memory</h1>
+        <span className="text-sm text-gray-500">
           Browse, search, and manage system memory
         </span>
       </div>
@@ -520,7 +520,7 @@ export function MemoryPage() {
                 className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                   filter === layer
                     ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50:bg-gray-700'
                 }`}
               >
                 {layer === 'all' ? 'All Layers' : layer.replace('_', ' ')}
@@ -531,7 +531,7 @@ export function MemoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search memories..."
-              className="ml-auto w-48 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="ml-auto w-48 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-900"
             />
             <Button variant="ghost" size="xs" onClick={fetchMemories}>
               Refresh
@@ -545,7 +545,7 @@ export function MemoryPage() {
               {consolidating ? 'Consolidating...' : 'Consolidate Now'}
             </Button>
             {consolidateResult && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">{consolidateResult}</span>
+              <span className="text-xs text-gray-500">{consolidateResult}</span>
             )}
           </div>
 
@@ -553,10 +553,10 @@ export function MemoryPage() {
           <div className="mb-6 grid grid-cols-4 gap-3">
             {['short_term', 'long_term', 'entity', 'project'].map((layer) => (
               <Card key={layer} padding="sm" className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                <div className="text-2xl font-bold text-gray-900">
                   {loading ? '-' : (layerCounts[layer] ?? 0)}
                 </div>
-                <div className="text-xs capitalize text-gray-500 dark:text-gray-400">
+                <div className="text-xs capitalize text-gray-500">
                   {layer.replace('_', ' ')}
                 </div>
               </Card>
@@ -586,12 +586,12 @@ export function MemoryPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span
-                        className={`block text-sm ${isExpanded ? '' : 'line-clamp-2'} text-gray-700 dark:text-gray-300`}
+                        className={`block text-sm ${isExpanded ? '' : 'line-clamp-2'} text-gray-700`}
                       >
                         {isExpanded ? (
                           <LayerContent layer={m.layer} content={m.content} />
                         ) : (
-                          <span className="text-[11px] text-gray-600 dark:text-gray-400">
+                          <span className="text-[11px] text-gray-600">
                             {(() => {
                               const parsed = tryParseJson(m.content);
                               if (isRecord(parsed)) {
@@ -643,7 +643,7 @@ export function MemoryPage() {
 
                   {/* Expanded detail */}
                   {isExpanded && (
-                    <div className="border-t px-3 py-2 dark:border-gray-700">
+                    <div className="border-t px-3 py-2">
                       <div className="mb-2 text-xs text-gray-400">ID: {m.id}</div>
                       {/* Visualized metadata fields */}
                       <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -658,7 +658,7 @@ export function MemoryPage() {
                               {confidence !== undefined && (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs text-gray-500">Confidence</span>
-                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200">
                                     <div
                                       className="h-full rounded-full bg-blue-500"
                                       style={{ width: `${Math.round(confidence * 100)}%` }}
@@ -672,7 +672,7 @@ export function MemoryPage() {
                               {importance !== undefined && (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs text-gray-500">Importance</span>
-                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200">
                                     <div
                                       className="h-full rounded-full bg-purple-500"
                                       style={{ width: `${Math.round(importance * 100)}%` }}
@@ -684,17 +684,17 @@ export function MemoryPage() {
                                 </div>
                               )}
                               {accessCount !== undefined && (
-                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
                                   Accessed {accessCount} times
                                 </span>
                               )}
                               {validUntil && (
-                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
                                   Valid until: {new Date(validUntil).toLocaleDateString()}
                                 </span>
                               )}
                               {supersededBy && (
-                                <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                                <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-700">
                                   Superseded by: {String(supersededBy).slice(0, 20)}
                                 </span>
                               )}
@@ -720,7 +720,7 @@ export function MemoryPage() {
                             .map(([k, v]) => (
                               <span
                                 key={k}
-                                className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                                className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600"
                               >
                                 {k}:{' '}
                                 {typeof v === 'object'

@@ -52,13 +52,13 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
   const filtered =
     filter === 'all' ? deliverables : deliverables.filter((d) => d.type === filter);
 
-  const border = 'border-gray-200 dark:border-gray-700';
-  const bg = 'bg-white dark:bg-gray-900';
-  const text = 'text-gray-800 dark:text-gray-200';
-  const sub = 'text-gray-500 dark:text-gray-400';
+  const border = 'border-gray-200';
+  const bg = 'bg-white';
+  const text = 'text-gray-800';
+  const sub = 'text-gray-500';
   const typeColors: Record<string, string> = {
-    meeting_report: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    general: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+    meeting_report: 'bg-blue-100 text-blue-700',
+    general: 'bg-gray-100 text-gray-700',
   };
 
   return (
@@ -67,7 +67,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
     >
       <div className={`flex items-center justify-between border-b p-4 ${border}`}>
         <h2 className={`text-lg font-semibold ${text}`}>Deliverables</h2>
-        <button onClick={onClose} className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700">
+        <button onClick={onClose} className="rounded p-1 hover:bg-gray-200:bg-gray-700">
           <X size={18} />
         </button>
       </div>
@@ -104,7 +104,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
           filtered.map((d) => (
             <div
               key={d.id}
-              className={`cursor-pointer rounded-lg border ${border} bg-gray-50 p-3 hover:opacity-90 dark:bg-gray-800`}
+              className={`cursor-pointer rounded-lg border ${border} bg-gray-50 p-3 hover:opacity-90`}
               onClick={() => {
                 if (d.filePath) {
                   window.dispatchEvent(
@@ -137,7 +137,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
                     e.stopPropagation();
                     handleDelete(d.id);
                   }}
-                  className="rounded p-1 text-red-500 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="rounded p-1 text-red-500 hover:bg-gray-200:bg-gray-600"
                 >
                   <Trash2 size={14} />
                 </button>

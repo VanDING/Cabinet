@@ -79,7 +79,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
   if (isStreaming && running > 0) {
     return (
       <div className="my-1">
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500"></span>
             Running {running} tool{running > 1 ? 's' : ''}
@@ -89,7 +89,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
             .map((tc) => (
               <span
                 key={tc.id}
-                className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-blue-700"
               >
                 <span className="opacity-70">⟳</span>
                 {formatToolPreview(tc)}
@@ -103,10 +103,10 @@ const ToolCallSummary = memo(function ToolCallSummary({
   // After completion: compact summary with expand toggle
   return (
     <div className="my-1">
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-500">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-100:bg-gray-700"
         >
           <span>{expanded ? '▼' : '▶'}</span>
           {total} tool{total !== 1 ? 's' : ''}
@@ -115,7 +115,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
           toolCalls.slice(0, 4).map((tc) => (
             <span
               key={tc.id}
-              className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+              className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5"
             >
               <span>{tc.status === 'error' ? '✕' : '✓'}</span>
               {formatToolPreview(tc)}
@@ -126,11 +126,11 @@ const ToolCallSummary = memo(function ToolCallSummary({
         )}
       </div>
       {expanded && (
-        <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800/60">
+        <div className="mt-1 space-y-1 rounded border border-gray-200 bg-gray-50 p-2">
           {toolCalls.map((tc) => (
             <div key={tc.id} className="flex items-center gap-2 text-xs">
               <span>{tc.status === 'error' ? '✕' : tc.status === 'running' ? '⟳' : '✓'}</span>
-              <span className="font-mono text-gray-700 dark:text-gray-300">
+              <span className="font-mono text-gray-700">
                 {formatToolPreview(tc)}
               </span>
               {tc.status === 'error' && <span className="text-red-500">error</span>}
@@ -243,20 +243,20 @@ export const ChatView = memo(function ChatView({
   }, [messages]);
 
   return (
-    <div className="flex h-full flex-col bg-white dark:bg-gray-900">
-      <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50 px-5 py-2.5 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
+    <div className="flex h-full flex-col bg-white">
+      <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50 px-5 py-2.5">
+        <h2 className="truncate text-sm font-medium text-gray-700">
           {sessionTitle}
         </h2>
       </div>
 
       {attachedFiles.length > 0 && (
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-5 py-1.5 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-5 py-1.5">
           <span className="text-xs text-gray-500">{t('chat.attached')}</span>
           {attachedFiles.map((f) => (
             <span
               key={f.id}
-              className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+              className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700"
             >
               {f.type === 'project' ? f.path : f.name}
             </span>
@@ -267,7 +267,7 @@ export const ChatView = memo(function ChatView({
       <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4 pb-48">
         {messages.length === 0 && !isProcessing && (
           <div className="flex h-full flex-col items-center justify-center gap-4">
-            <div className="text-center text-gray-400 dark:text-gray-500">
+            <div className="text-center text-gray-400">
               <p className="text-base">{t('chat.startConversation')}</p>
               <p className="mt-1 text-xs">{t('chat.startHint')}</p>
             </div>
@@ -286,7 +286,7 @@ export const ChatView = memo(function ChatView({
                       new CustomEvent('quick-suggestion', { detail: suggestion }),
                     );
                   }}
-                  className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-500 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                  className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-500 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600:border-blue-700:bg-blue-900/20:text-blue-400"
                 >
                   {suggestion}
                 </button>
@@ -310,7 +310,7 @@ export const ChatView = memo(function ChatView({
         {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
           <div className="flex gap-3">
             <div className="flex-1">
-              <span className="text-sm italic text-gray-400 dark:text-gray-500">
+              <span className="text-sm italic text-gray-400">
                 {t('chat.thinking')}
               </span>
             </div>
@@ -358,18 +358,18 @@ const MessageRow = memo(function MessageRow({
 
   return (
     <div
-      className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-red-400 bg-red-50/50 pl-2 dark:border-red-600 dark:bg-red-900/10' : ''}`}
+      className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-red-400 bg-red-50/50 pl-2' : ''}`}
     >
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-xs font-medium text-gray-700">
             {msg.role === 'user' ? t('chat.you') : (msg.agentName ?? t('chat.secretary'))}
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="text-xs text-gray-400">
             {msg.timestamp.toLocaleTimeString()}
           </span>
           {msg.routing && (
-            <span className="inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+            <span className="inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700">
               <span>{msg.routing.from}</span>
               <span>→</span>
               <span>{msg.routing.to}</span>
@@ -383,7 +383,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(true);
                   }}
-                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600:bg-gray-700:text-gray-300"
                 >
                   {t('chat.edit')}
                 </button>
@@ -391,7 +391,7 @@ const MessageRow = memo(function MessageRow({
               {msg.role === 'assistant' && onRegenerate && (
                 <button
                   onClick={() => onRegenerate(msg.id)}
-                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600:bg-gray-700:text-gray-300"
                 >
                   {t('chat.regenerate')}
                 </button>
@@ -399,7 +399,7 @@ const MessageRow = memo(function MessageRow({
               {onForkMessage && (
                 <button
                   onClick={() => onForkMessage(msg.id)}
-                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600:bg-gray-700:text-gray-300"
                   title="Fork session from here"
                 >
                   Fork
@@ -408,13 +408,13 @@ const MessageRow = memo(function MessageRow({
             </div>
           )}
         </div>
-        <div className="text-gray-800 dark:text-gray-200">
+        <div className="text-gray-800">
           {editing ? (
             <div className="space-y-2">
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full rounded border border-blue-300 bg-white p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-blue-700 dark:bg-gray-800 dark:text-gray-200"
+                className="w-full rounded border border-blue-300 bg-white p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 rows={3}
                 autoFocus
               />
@@ -435,7 +435,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(false);
                   }}
-                  className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+                  className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50:bg-gray-700"
                 >
                   {t('chat.cancel')}
                 </button>
@@ -444,7 +444,7 @@ const MessageRow = memo(function MessageRow({
           ) : (
             <>
               {msg.isError && (
-                <div className="mb-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                <div className="mb-1 flex items-center gap-1 text-xs text-red-600">
                   <span>⚠</span>
                   <span>Error</span>
                 </div>
@@ -457,8 +457,8 @@ const MessageRow = memo(function MessageRow({
                   <div
                     className={`mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
                       msg.stepBudget.remaining <= 0
-                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300'
-                        : 'border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
+                        ? 'border-red-200 bg-red-50 text-red-700'
+                        : 'border-yellow-200 bg-yellow-50 text-yellow-700'
                     }`}
                   >
                     {msg.stepBudget.remaining <= 0
@@ -501,7 +501,7 @@ const MessageRow = memo(function MessageRow({
                 <button
                   onClick={() => onContinue(msg.id)}
                   disabled={isProcessing}
-                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                 >
                   <span>Continue</span>
                   <span>→</span>

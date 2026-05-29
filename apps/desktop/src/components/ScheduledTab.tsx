@@ -73,16 +73,16 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
   };
 
   const cardClasses =
-    'rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
+    'rounded-lg border border-gray-200 bg-white';
   const inputClasses =
-    'rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
-  const textClasses = 'text-gray-800 dark:text-gray-200';
-  const subClasses = 'text-gray-500 dark:text-gray-400';
+    'rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900';
+  const textClasses = 'text-gray-800';
+  const subClasses = 'text-gray-500';
 
   return (
     <div className="space-y-4">
       {tasks.length === 0 ? (
-        <div className="py-24 text-center text-gray-400 dark:text-gray-500">
+        <div className="py-24 text-center text-gray-400">
           <p className="text-lg">No scheduled tasks</p>
           <p className="mt-1 text-sm">Click &quot;+ New Task&quot; to create one.</p>
         </div>
@@ -98,14 +98,14 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleRun(t.id)}
-                    className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    className="rounded p-1 hover:bg-gray-200:bg-gray-700"
                     title="Run now"
                   >
                     <Clock size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="rounded p-1 text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    className="rounded p-1 text-red-500 hover:bg-gray-200:bg-gray-700"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -171,7 +171,7 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={onFormClose}
-                className="rounded border border-gray-200 px-3 py-1.5 text-sm dark:border-gray-700"
+                className="rounded border border-gray-200 px-3 py-1.5 text-sm"
               >
                 Cancel
               </button>

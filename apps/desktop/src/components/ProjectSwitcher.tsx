@@ -29,7 +29,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        className="flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50:bg-gray-700"
       >
         <span
           className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-gray-400'}`}
@@ -39,7 +39,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800">
+        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border bg-white py-1 shadow-lg">
           <div className="px-3 py-2 text-xs uppercase text-gray-400">Projects</div>
           {projects.map((p) => (
             <button
@@ -48,10 +48,10 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
                 onSwitch(p.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${
+              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50:bg-gray-700 ${
                 p.id === current?.id
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-200'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700'
               }`}
             >
               <span className={`h-2 w-2 rounded-full ${statusColors[p.status]}`} />

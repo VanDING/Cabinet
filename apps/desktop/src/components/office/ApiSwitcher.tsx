@@ -35,8 +35,8 @@ export function ApiSwitcher() {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4 dark:border-gray-600 dark:bg-gray-800">
-      <div className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">API Switcher</div>
+    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
+      <div className="mb-3 text-sm font-medium text-gray-700">API Switcher</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {keys.length === 0 ? (
           <div className="py-2 text-xs text-gray-400">No API keys configured.</div>
@@ -47,8 +47,8 @@ export function ApiSwitcher() {
               onClick={() => handleSelect(k)}
               className={`w-full rounded px-2 py-1.5 text-left text-xs transition-colors ${
                 active === k.id
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50:bg-gray-700'
               }`}
             >
               <div className="font-medium capitalize">{k.provider}</div>

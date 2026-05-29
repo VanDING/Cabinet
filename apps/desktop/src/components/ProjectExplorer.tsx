@@ -102,30 +102,30 @@ export function ProjectExplorer({
   if (!projectId) return null;
 
   const displayFiles = filteredFiles ?? files;
-  const bg = 'bg-white dark:bg-gray-900';
-  const border = 'border-gray-200 dark:border-gray-700';
+  const bg = 'bg-white';
+  const border = 'border-gray-200';
 
   return (
     <div className={`flex h-full w-56 flex-shrink-0 flex-col border-r ${border} ${bg}`}>
       {/* Header */}
       <div className={`flex-shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <Folder size={14} className="text-blue-600 dark:text-blue-400" />
-          <span className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
+          <Folder size={14} className="text-blue-600" />
+          <span className="truncate text-xs font-medium text-gray-700">
             {projectName ?? 'Project'}
           </span>
         </div>
         <div className="relative">
           <Search
             size={12}
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter files..."
-            className="w-full rounded border border-gray-200 bg-gray-50 py-0.5 pl-6 pr-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+            className="w-full rounded border border-gray-200 bg-gray-50 py-0.5 pl-6 pr-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -133,9 +133,9 @@ export function ProjectExplorer({
       {/* File tree */}
       <div className="flex-1 overflow-y-auto py-1">
         {loading ? (
-          <p className="px-3 py-2 text-xs italic text-gray-400 dark:text-gray-500">Loading...</p>
+          <p className="px-3 py-2 text-xs italic text-gray-400">Loading...</p>
         ) : displayFiles.length === 0 ? (
-          <p className="px-3 py-2 text-xs italic text-gray-400 dark:text-gray-500">
+          <p className="px-3 py-2 text-xs italic text-gray-400">
             {rootPath ? 'No files found' : 'No folder imported'}
           </p>
         ) : (
@@ -170,7 +170,7 @@ function FileTree({
       {nodes.map((node) => {
         const isExpanded = expanded.has(node.path);
         const isDir = node.type === 'directory';
-        const hoverClass = 'hover:bg-gray-100 dark:hover:bg-gray-800';
+        const hoverClass = 'hover:bg-gray-100:bg-gray-800';
 
         return (
           <div key={node.path}>
@@ -191,17 +191,17 @@ function FileTree({
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder size={12} className="flex-shrink-0 text-amber-600 dark:text-amber-500" />
+                  <Folder size={12} className="flex-shrink-0 text-amber-600" />
                 </>
               ) : (
                 <>
                   <span className="w-3 flex-shrink-0" />
-                  <File size={12} className="flex-shrink-0 text-gray-500 dark:text-gray-400" />
+                  <File size={12} className="flex-shrink-0 text-gray-500" />
                 </>
               )}
-              <span className="truncate text-gray-700 dark:text-gray-300">{node.name}</span>
+              <span className="truncate text-gray-700">{node.name}</span>
               {node.size !== undefined && (
-                <span className="ml-auto flex-shrink-0 text-[10px] text-gray-400 dark:text-gray-500">
+                <span className="ml-auto flex-shrink-0 text-[10px] text-gray-400">
                   {formatSize(node.size)}
                 </span>
               )}

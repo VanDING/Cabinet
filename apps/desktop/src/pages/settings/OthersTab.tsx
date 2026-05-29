@@ -8,10 +8,10 @@ export function OthersTab() {
       <section>
         <MaintenanceTab />
       </section>
-      <section className="border-t pt-6 dark:border-gray-700">
+      <section className="border-t pt-6">
         <BackupsTab />
       </section>
-      <section className="border-t pt-6 dark:border-gray-700">
+      <section className="border-t pt-6">
         <AuditTab />
       </section>
     </div>

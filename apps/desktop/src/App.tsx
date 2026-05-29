@@ -724,7 +724,7 @@ export function App() {
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
               }}
-              className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 transition-colors hover:bg-blue-400 dark:bg-gray-700 dark:hover:bg-blue-500"
+              className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 transition-colors hover:bg-blue-400:bg-blue-500"
             />
           )}
 
@@ -876,10 +876,10 @@ export function App() {
             onClick={() => setShowProjectActionModal(false)}
           >
             <div
-              className="mx-4 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800"
+              className="mx-4 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">
                 Add Project
               </h3>
               <div className="space-y-3">
@@ -888,12 +888,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleCreateNewProject();
                   }}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50:bg-gray-700"
                 >
-                  <span className="block text-base text-gray-900 dark:text-white">
+                  <span className="block text-base text-gray-900">
                     Create New Project
                   </span>
-                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                  <span className="mt-0.5 block text-xs text-gray-500">
                     Start with an empty project
                   </span>
                 </button>
@@ -902,12 +902,12 @@ export function App() {
                     setShowProjectActionModal(false);
                     handleImportProject();
                   }}
-                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                  className="w-full rounded-lg border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-50:bg-gray-700"
                 >
-                  <span className="block text-base text-gray-900 dark:text-white">
+                  <span className="block text-base text-gray-900">
                     Import Existing Folder
                   </span>
-                  <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                  <span className="mt-0.5 block text-xs text-gray-500">
                     Import a local folder as project
                   </span>
                 </button>
@@ -915,7 +915,7 @@ export function App() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowProjectActionModal(false)}
-                  className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300"
+                  className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700"
                 >
                   Cancel
                 </button>

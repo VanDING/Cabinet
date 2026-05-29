@@ -39,12 +39,12 @@ export function EvaluationTab({ activeProjectId }: Props) {
     })();
   }, [projectId]);
 
-  const borderClasses = 'border-gray-200 dark:border-gray-700';
-  const cardBg = 'bg-gray-50 dark:bg-gray-800/50';
-  const textClasses = 'text-gray-800 dark:text-gray-200';
-  const subClasses = 'text-gray-500 dark:text-gray-400';
-  const greenClasses = 'text-green-600 dark:text-green-400';
-  const redClasses = 'text-red-600 dark:text-red-400';
+  const borderClasses = 'border-gray-200';
+  const cardBg = 'bg-gray-50';
+  const textClasses = 'text-gray-800';
+  const subClasses = 'text-gray-500';
+  const greenClasses = 'text-green-600';
+  const redClasses = 'text-red-600';
 
   const scoreColor = (s: number) =>
     s >= 7 ? greenClasses : s >= 5 ? 'text-yellow-500' : redClasses;
@@ -79,7 +79,7 @@ export function EvaluationTab({ activeProjectId }: Props) {
           {evaluations.map((ev) => (
             <div
               key={ev.id}
-              className={`rounded-lg border ${borderClasses} bg-white dark:bg-gray-800`}
+              className={`rounded-lg border ${borderClasses} bg-white`}
             >
               <div
                 onClick={() => setExpandedId(expandedId === ev.id ? null : ev.id)}

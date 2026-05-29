@@ -26,7 +26,7 @@ export function AuditTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Audit Log</h2>
+      <h2 className="mb-4 text-lg font-semibold text-gray-900">Audit Log</h2>
 
       {/* Filters */}
       <div className="mb-4 flex gap-2">
@@ -35,7 +35,7 @@ export function AuditTab() {
           onChange={(e) => {
             setFilter((p) => ({ ...p, entityType: e.target.value }));
           }}
-          className="rounded border bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          className="rounded border bg-white px-3 py-1.5 text-sm text-gray-900"
         >
           <option value="">All types</option>
           <option value="decision">Decision</option>
@@ -58,7 +58,7 @@ export function AuditTab() {
           {entries.map((e: any, i: number) => (
             <div
               key={i}
-              className="flex items-center gap-3 border-b py-2 text-xs dark:border-gray-700"
+              className="flex items-center gap-3 border-b py-2 text-xs"
             >
               <span className="w-14 flex-shrink-0 text-gray-400">
                 {new Date(e.timestamp).toLocaleTimeString([], {
@@ -66,7 +66,7 @@ export function AuditTab() {
                   minute: '2-digit',
                 })}
               </span>
-              <span className="w-16 flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-center font-medium capitalize text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+              <span className="w-16 flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-center font-medium capitalize text-gray-600">
                 {e.action}
               </span>
               <span className="w-12 flex-shrink-0 text-gray-400">{e.entityType}</span>
