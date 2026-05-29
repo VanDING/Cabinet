@@ -18,6 +18,8 @@ import { verifyRouter } from './routes/verify.js';
 import { rulesRouter } from './routes/rules.js';
 import { progressRouter } from './routes/progress.js';
 import { observabilityRouter } from './routes/observability.js';
+import { insightsRouter } from './routes/insights.js';
+import { harnessRouter } from './routes/harness.js';
 import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
@@ -87,6 +89,8 @@ export function createApp() {
   app.route('/api/rules', rulesRouter);
   app.route('/api/progress', progressRouter);
   app.route('/api/observability', observabilityRouter);
+  app.route('/api/insights', insightsRouter);
+  app.route('/api/harness', harnessRouter);
   app.route('/api', openapiRouter());
 
   return app;

@@ -1,213 +1,198 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 
-interface CostPoint {
+interface HistoryPoint {
   date: string;
   cost: number;
-  calls: number;
-  byModel: Record<string, number>;
+  tokens: number;
 }
 
-interface BudgetInfo {
-  daily: number;
-  weekly: number;
-  monthly: number;
+type Period = 'daily' | 'weekly' | 'monthly';
+
+function formatTokens(n: number): string {
+  return n.toLocaleString('en-US');
 }
 
-interface Limits {
-  daily: number;
-  weekly: number;
-  monthly: number;
-}
-
-const MODEL_COLORS: Record<string, string> = {
-  'claude-haiku-4-5': 'var(--chart-2)',
-  'claude-sonnet-4-6': 'var(--chart-1)',
-  'claude-opus-4-7': 'var(--chart-4)',
-  'gpt-4o': 'var(--chart-3)',
-  'gpt-4o-mini': 'var(--chart-7)',
-  'gpt-4-turbo': 'var(--chart-5)',
-  'deepseek-chat': 'var(--chart-8)',
-  'deepseek-v3': 'var(--chart-7)',
-  'deepseek-r1': 'var(--chart-6)',
-  'gemini-2.0-flash': 'var(--chart-6)',
-  'gemini-2.0-pro': 'var(--chart-5)',
-};
-const FALLBACK_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-6)',
-  'var(--chart-7)',
-  'var(--chart-8)',
-];
-
-function modelColor(model: string, idx: number): string {
-  return MODEL_COLORS[model] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length]!;
+function formatCost(n: number): string {
+  return n.toFixed(2);
 }
 
 export function CostChart() {
-  const [history, setHistory] = useState<CostPoint[]>([]);
-  const [budget, setBudget] = useState<BudgetInfo>({ daily: 0, weekly: 0, monthly: 0 });
-  const [limits, setLimits] = useState<Limits>({ daily: 5, weekly: 25, monthly: 100 });
-  const [viewMode, setViewMode] = useState<'bar' | 'stacked'>('stacked');
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>('daily');
 
-  const fetchHistory = useCallback(() => {
-    apiFetch('/api/dashboard/cost-history?days=7', { headers: authHeaders() })
+  const fetchData = useCallback(() => {
+    apiFetch('/api/dashboard/cost-history?days=30', { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => {
-        if (d.history) setHistory(d.history);
-        if (d.budgetStatus) setBudget(d.budgetStatus);
-        if (d.limits) setLimits(d.limits);
+      .then((data) => {
+        if (data.history) setHistory(data.history);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
-    window.addEventListener('ws:cost_updated', fetchHistory);
-    window.addEventListener('ws:decision_updated', fetchHistory);
-    window.addEventListener('ws:meeting_created', fetchHistory);
-    window.addEventListener('ws:workflow_completed', fetchHistory);
+    window.addEventListener('ws:cost_updated', fetchData);
+    window.addEventListener('ws:workflow_completed', fetchData);
     return () => {
-      window.removeEventListener('ws:cost_updated', fetchHistory);
-      window.removeEventListener('ws:decision_updated', fetchHistory);
-      window.removeEventListener('ws:meeting_created', fetchHistory);
-      window.removeEventListener('ws:workflow_completed', fetchHistory);
+      window.removeEventListener('ws:cost_updated', fetchData);
+      window.removeEventListener('ws:workflow_completed', fetchData);
     };
-  }, [fetchHistory]);
+  }, [fetchData]);
 
-  // Collect all models across all days
-  const allModels = [...new Set(history.flatMap((h) => Object.keys(h.byModel)))];
-  const maxCost = Math.max(...history.map((h) => h.cost), limits.daily, 0.01);
+  const costSubtotal = useMemo(() => {
+    if (history.length === 0) return 0;
+    if (period === 'daily') return history[history.length - 1]!.cost;
+    if (period === 'weekly') return history.slice(-7).reduce((s, h) => s + h.cost, 0);
+    return history.reduce((s, h) => s + h.cost, 0);
+  }, [history, period]);
 
-  const totalCost = history.reduce((sum, h) => sum + h.cost, 0);
-  // `calls` is a running cumulative total from the backend, so take the last day's value
-  const totalCalls = history.length > 0 ? (history[history.length - 1]!.calls ?? 0) : 0;
+  const tokenSubtotal = useMemo(() => {
+    if (history.length === 0) return 0;
+    if (period === 'daily') return history[history.length - 1]!.tokens;
+    if (period === 'weekly') return history.slice(-7).reduce((s, h) => s + h.tokens, 0);
+    return history.reduce((s, h) => s + h.tokens, 0);
+  }, [history, period]);
+
+  const chartData = useMemo(() => {
+    return history.slice(-7).map((h) => ({
+      date: new Date(h.date).toLocaleDateString(undefined, { weekday: 'short' }),
+      cost: h.cost,
+      tokens: h.tokens,
+    }));
+  }, [history]);
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium text-content-secondary">Cost Analysis</div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setViewMode('stacked')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted bg-surface-input'}`}
-          >
-            By Model
-          </button>
-          <button
-            onClick={() => setViewMode('bar')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted bg-surface-input'}`}
-          >
-            Total
-          </button>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-content-primary">Cost Analysis</h3>
+        <div className="flex rounded bg-surface-muted p-0.5">
+          {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPeriod(p);
+              }}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                period === p
+                  ? 'bg-surface-primary text-content-primary shadow-sm'
+                  : 'text-content-tertiary hover:text-content-secondary'
+              }`}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Summary row */}
-      <div className="mb-3 flex gap-3 text-xs">
-        <span className="text-content-tertiary">
-          Total:{' '}
-          <span className="font-mono font-medium text-content-secondary">
-            ${totalCost.toFixed(3)}
-          </span>
-        </span>
-        <span className="text-content-tertiary">
-          Calls:{' '}
-          <span className="font-mono font-medium text-content-secondary">
-            {totalCalls}
-          </span>
-        </span>
-        <span className="text-content-tertiary">
-          Daily budget:{' '}
-          <span
-            className={`font-mono font-medium ${budget.daily > limits.daily * 0.8 ? 'text-intent-danger' : 'text-content-secondary'}`}
-          >
-            ${budget.daily.toFixed(2)} / ${limits.daily}
-          </span>
-        </span>
-      </div>
-
-      {history.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        </div>
+      ) : history.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           No data yet
         </div>
       ) : (
-        <>
-          {/* Chart area */}
-          <div className="flex flex-1 items-end gap-1">
-            {history.map((point, i) => (
-              <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="font-mono text-[10px] text-content-tertiary">
-                  ${point.cost.toFixed(2)}
-                </span>
-
-                {viewMode === 'bar' ? (
-                  <div
-                    className="min-h-[2px] w-full rounded-t-sm bg-accent transition-all"
-                    style={{ height: `${Math.max((point.cost / maxCost) * 100, 2)}%` }}
-                  />
-                ) : (
-                  <div
-                    className="flex min-h-[2px] w-full flex-col-reverse overflow-hidden rounded-t-sm"
-                    style={{ height: `${Math.max((point.cost / maxCost) * 100, 2)}%` }}
-                  >
-                    {allModels.map((model, mi) => {
-                      const modelCost = point.byModel[model] ?? 0;
-                      if (modelCost === 0) return null;
-                      return (
-                        <div
-                          key={model}
-                          title={`${model}: ${modelCost.toFixed(3)}`}
-                          style={{
-                            height: `${Math.max((modelCost / maxCost) * 100, 2)}%`,
-                            backgroundColor: modelColor(model, mi),
-                          }}
-                          className="min-h-[2px] w-full transition-all"
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-
-                <span className="text-[10px] text-content-tertiary">
-                  {new Date(point.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Model legend */}
-          {viewMode === 'stacked' && allModels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-border pt-2">
-              {allModels.map((model, mi) => {
-                const modelTotal = history.reduce((sum, h) => sum + (h.byModel[model] ?? 0), 0);
-                return (
-                  <div key={model} className="flex items-center gap-1 text-[10px] text-content-tertiary">
-                    <span
-                      className="h-2 w-2 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: modelColor(model, mi) }}
-                    />
-                    <span className="font-mono">{model}</span>
-                    <span>${modelTotal.toFixed(2)}</span>
-                  </div>
-                );
-              })}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Subtotals */}
+          <div className="mb-3 flex items-baseline justify-between">
+            <div>
+              <span className="text-xl font-bold text-accent">¥{formatCost(costSubtotal)}</span>
+              <span className="ml-2 text-xs text-content-tertiary">Cost</span>
             </div>
-          )}
-
-          {/* Budget limit line indicator */}
-          <div className="mt-1 text-[10px] text-content-tertiary">
-            Daily limit: ${limits.daily} | Weekly: ${limits.weekly} | Monthly: ${limits.monthly}
+            <div>
+              <span className="text-xl font-bold text-accent">{formatTokens(tokenSubtotal)}</span>
+              <span className="ml-2 text-xs text-content-tertiary">Tokens</span>
+            </div>
           </div>
-        </>
+
+          {/* Charts */}
+          <div className="flex flex-1 flex-col gap-2 overflow-hidden">
+            <div className="flex-1">
+              <div className="mb-0.5 text-[10px] text-content-tertiary">Cost (7-day)</div>
+              <div style={{ height: 'calc(100% - 12px)' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => `$${v}`}
+                      width={32}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--surface-overlay)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        fontSize: 11,
+                      }}
+                      formatter={(value) => [`$${Number(value).toFixed(3)}`, 'Cost']}
+                    />
+                    <Bar dataKey="cost" fill="var(--accent)" radius={[2, 2, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <div className="mb-0.5 text-[10px] text-content-tertiary">Tokens (7-day)</div>
+              <div style={{ height: 'calc(100% - 12px)' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v))}
+                      width={32}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--surface-overlay)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        fontSize: 11,
+                      }}
+                      formatter={(value) => [formatTokens(Number(value)), 'Tokens']}
+                    />
+                    <Bar dataKey="tokens" fill="var(--accent)" radius={[2, 2, 0, 0]} maxBarSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

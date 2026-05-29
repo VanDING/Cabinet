@@ -35,6 +35,10 @@ export class AutoAdjuster {
     private readonly notifyCallback?: AdjustmentNotifyCallback,
   ) {}
 
+  getRecentActions(limit = 20): AdjustmentAction[] {
+    return this.actionHistory.slice(-limit).reverse();
+  }
+
   async runHealthCheck(tier: DelegationTier): Promise<AdjustmentAction[]> {
     const health = this.observability.getHealth();
     const actions: AdjustmentAction[] = [];

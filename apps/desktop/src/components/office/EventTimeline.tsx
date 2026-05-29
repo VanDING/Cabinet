@@ -5,14 +5,16 @@ import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface Event {
   message: string;
+  type: string;
   time: Date;
 }
 
 interface Props {
   projectId?: string;
+  onExpand?: () => void;
 }
 
-export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
+export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }: Props) {
   const { addToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,11 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
       .then((res) => res.json())
       .then((data) => {
         if (data.recentEvents) {
-          setEvents(data.recentEvents.map((e: any) => ({ ...e, time: new Date(e.time) })));
+          setEvents(data.recentEvents.map((e: any) => ({
+            message: e.message,
+            type: e.type,
+            time: new Date(e.time),
+          })));
         }
       })
       .catch(() => {
@@ -54,7 +60,6 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
     window.addEventListener('ws:task_updated', handler);
     window.addEventListener('ws:deliverable_created', handler);
 
-    // Replay buffered events that arrived before mount
     const buffered = getBufferedEvents();
     const hasRelevant = buffered.some((e) =>
       [
@@ -84,20 +89,33 @@ export const EventTimeline = memo(function EventTimeline({ projectId }: Props) {
     };
   }, [fetchEvents]);
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEvents([]);
+  };
+
   return (
-    <div className="h-full overflow-y-auto rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-content-primary">Recent Events</h3>
+    <div
+      onClick={onExpand}
+      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-content-primary">Recent Events</h3>
+        <button
+          onClick={handleClear}
+          className="rounded px-2 py-0.5 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+        >
+          Clear
+        </button>
+      </div>
       {loading ? (
         <p className="text-xs text-content-tertiary">Loading...</p>
       ) : events.length === 0 ? (
-        <>
-          <p className="text-xs text-content-tertiary">No recent events.</p>
-          <p className="mt-1 text-xs text-content-tertiary">
-            Activity appears as agents run tasks, meetings, and workflows
-          </p>
-        </>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-xs text-content-tertiary">No recent events</p>
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="flex-1 space-y-2 overflow-y-auto">
           {events.map((event, i) => (
             <div
               key={i}

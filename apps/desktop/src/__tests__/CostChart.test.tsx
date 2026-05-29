@@ -14,14 +14,20 @@ vi.mock('../utils/pin.js', () => ({
 
 const { CostChart } = await import('../components/office/CostChart');
 
-const mockCostHistory = [
-  {
-    date: '2026-05-10',
-    cost: 1.2,
-    calls: 50,
-    byModel: { 'claude-sonnet-4-6': 1.0, 'gpt-4o': 0.2 },
-  },
-  { date: '2026-05-11', cost: 0.8, calls: 80, byModel: { 'claude-sonnet-4-6': 0.8 } },
+const lastWeek = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() - 6 + i);
+  return d.toISOString().slice(0, 10);
+});
+
+const mockHistory = [
+  { date: lastWeek[0]!, cost: 0.5, tokens: 3200 },
+  { date: lastWeek[1]!, cost: 1.2, tokens: 8500 },
+  { date: lastWeek[2]!, cost: 0.8, tokens: 5200 },
+  { date: lastWeek[3]!, cost: 2.0, tokens: 14300 },
+  { date: lastWeek[4]!, cost: 1.5, tokens: 10200 },
+  { date: lastWeek[5]!, cost: 0.3, tokens: 1800 },
+  { date: lastWeek[6]!, cost: 1.1, tokens: 7600 },
 ];
 
 describe('CostChart', () => {
@@ -31,12 +37,7 @@ describe('CostChart', () => {
 
   it('shows "No data yet" when history is empty', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: [],
-          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
+      json: () => Promise.resolve({ history: [] }),
     });
     render(<CostChart />);
     await waitFor(() => {
@@ -44,97 +45,81 @@ describe('CostChart', () => {
     });
   });
 
-  it('renders cost summary after data loads', async () => {
+  it('renders Cost Analysis header after data loads', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: mockCostHistory,
-          budgetStatus: { daily: 2.0, weekly: 10, monthly: 40 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
+      json: () => Promise.resolve({ history: mockHistory }),
     });
     render(<CostChart />);
     await waitFor(() => {
       expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
     });
-    // Total cost: 1.2 + 0.8 = 2.0
-    // Total cost = $1.2 + $0.8 = $2.0, rendered with toFixed(2) or toFixed(3)
-    const costEls = screen.getAllByText(/\$2\.00/);
-    expect(costEls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders total calls count', async () => {
+  it('renders period switcher buttons', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: mockCostHistory,
-          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
+      json: () => Promise.resolve({ history: mockHistory }),
     });
     render(<CostChart />);
     await waitFor(() => {
-      expect(screen.getByText('80')).toBeInTheDocument();
+      expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
     });
+    expect(screen.getByText('Daily')).toBeInTheDocument();
+    expect(screen.getByText('Weekly')).toBeInTheDocument();
+    expect(screen.getByText('Monthly')).toBeInTheDocument();
   });
 
-  it('toggles between stacked and bar view modes', async () => {
+  it('shows cost subtotal in Daily mode (last day)', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: mockCostHistory,
-          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
+      json: () => Promise.resolve({ history: mockHistory }),
+    });
+    render(<CostChart />);
+    await waitFor(() => {
+      expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
+    });
+    // Last day cost is 1.10
+    expect(screen.getByText('¥1.10')).toBeInTheDocument();
+  });
+
+  it('shows token subtotal in Daily mode (last day)', async () => {
+    mockApiFetch.mockResolvedValue({
+      json: () => Promise.resolve({ history: mockHistory }),
+    });
+    render(<CostChart />);
+    await waitFor(() => {
+      expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
+    });
+    // Last day tokens is 7600
+    expect(screen.getByText('7,600')).toBeInTheDocument();
+  });
+
+  it('switches to Weekly and shows weekly sum', async () => {
+    mockApiFetch.mockResolvedValue({
+      json: () => Promise.resolve({ history: mockHistory }),
     });
     render(<CostChart />);
     await waitFor(() => {
       expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
     });
 
-    const totalBtn = screen.getByText('Total');
-    const byModelBtn = screen.getByText('By Model');
+    fireEvent.click(screen.getByText('Weekly'));
 
-    fireEvent.click(totalBtn);
-    // Total button should become active
-    expect(totalBtn.className).toContain('bg-blue');
-
-    fireEvent.click(byModelBtn);
-    expect(byModelBtn.className).toContain('bg-blue');
+    // Weekly cost sum: 0.5+1.2+0.8+2.0+1.5+0.3+1.1 = 7.4
+    await waitFor(() => {
+      expect(screen.getByText('¥7.40')).toBeInTheDocument();
+    });
+    // Weekly token sum: 3200+8500+5200+14300+10200+1800+7600 = 50800
+    expect(screen.getByText('50,800')).toBeInTheDocument();
   });
 
-  it('shows budget limits', async () => {
+  it('has chart section labels', async () => {
     mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: mockCostHistory,
-          budgetStatus: { daily: 1.5, weekly: 8, monthly: 30 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
+      json: () => Promise.resolve({ history: mockHistory }),
     });
     render(<CostChart />);
     await waitFor(() => {
       expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Daily limit: \$5/)).toBeInTheDocument();
-    expect(screen.getByText(/Weekly: \$25/)).toBeInTheDocument();
-    expect(screen.getByText(/Monthly: \$100/)).toBeInTheDocument();
-  });
-
-  it('shows model legend in stacked mode', async () => {
-    mockApiFetch.mockResolvedValue({
-      json: () =>
-        Promise.resolve({
-          history: mockCostHistory,
-          budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
-          limits: { daily: 5, weekly: 25, monthly: 100 },
-        }),
-    });
-    render(<CostChart />);
-    await waitFor(() => {
-      expect(screen.getByText('Cost Analysis')).toBeInTheDocument();
-    });
-    // Default is stacked mode, legend should show model names
-    expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
+    expect(screen.getByText('Cost (7-day)')).toBeInTheDocument();
+    expect(screen.getByText('Tokens (7-day)')).toBeInTheDocument();
   });
 });

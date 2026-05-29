@@ -18,13 +18,17 @@ import { Calendar } from '../components/office/Calendar';
 import { Clock } from '../components/office/Clock';
 import { Weather } from '../components/office/Weather';
 import { ProgressBoard } from '../components/office/ProgressBoard';
-import { ObservabilityWidget } from '../components/office/ObservabilityWidget';
-import { ProjectSwitcherWidget } from '../components/office/ProjectSwitcherWidget';
-import { TokensWidget } from '../components/office/TokensWidget';
 import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
 import { MeetingList } from '../components/office/MeetingList';
 import { CostOverviewModal } from '../components/office/CostOverviewModal';
 import { ActiveWorkflowsModal } from '../components/office/ActiveWorkflowsModal';
+import { EventTimelineModal } from '../components/office/EventTimelineModal';
+import { WeatherForecastModal } from '../components/office/WeatherForecastModal';
+import { DeliverablesModal } from '../components/office/DeliverablesModal';
+import { InsightsWidget } from '../components/office/InsightsWidget';
+import { InsightsModal } from '../components/office/InsightsModal';
+import { HarnessWidget } from '../components/office/HarnessWidget';
+import { HarnessModal } from '../components/office/HarnessModal';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/pin.js';
 
@@ -33,11 +37,8 @@ type WidgetType =
   | 'active-workflows'
   | 'decision-list'
   | 'event-timeline'
-  | 'project-switcher'
   | 'cost-chart'
   | 'system-health'
-  | 'llm-stats'
-  | 'agent-health'
   | 'calendar'
   | 'clock'
   | 'weather'
@@ -45,8 +46,9 @@ type WidgetType =
   | 'project-list'
   | 'api-switcher'
   | 'progress-board'
-  | 'tokens-usage'
-  | 'meeting-list';
+  | 'meeting-list'
+  | 'insights'
+  | 'harness';
 
 interface WidgetDef {
   type: WidgetType;
@@ -61,11 +63,8 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'active-workflows', label: 'Active Workflows', w: 3, h: 1, available: true },
   { type: 'decision-list', label: 'Decision List', w: 6, h: 3, available: true },
   { type: 'event-timeline', label: 'Event Timeline', w: 6, h: 2, available: true },
-  { type: 'project-switcher', label: 'Project Switcher', w: 4, h: 2, available: true },
   { type: 'cost-chart', label: 'Cost Trend', w: 6, h: 3, available: true },
   { type: 'system-health', label: 'System Health', w: 4, h: 2, available: true },
-  { type: 'llm-stats', label: 'LLM Statistics', w: 4, h: 2, available: true },
-  { type: 'agent-health', label: 'Agent Health', w: 4, h: 3, available: true },
   { type: 'calendar', label: 'Calendar', w: 4, h: 3, available: true },
   { type: 'clock', label: 'Clock', w: 2, h: 2, available: true },
   { type: 'weather', label: 'Weather', w: 3, h: 2, available: true },
@@ -73,8 +72,9 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'project-list', label: 'Project List', w: 4, h: 3, available: true },
   { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: true },
   { type: 'progress-board', label: 'Task Board', w: 6, h: 4, available: true },
-  { type: 'tokens-usage', label: 'Tokens Usage', w: 3, h: 2, available: true },
   { type: 'meeting-list', label: 'Meetings', w: 4, h: 3, available: true },
+  { type: 'insights', label: 'Insights', w: 4, h: 3, available: true },
+  { type: 'harness', label: 'Harness', w: 4, h: 3, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -83,8 +83,9 @@ const DEFAULT_LAYOUT = [
   { i: 'decision-list', x: 0, y: 1, w: 6, h: 3 },
   { i: 'event-timeline', x: 6, y: 1, w: 6, h: 2 },
   { i: 'deliverables', x: 0, y: 3, w: 6, h: 3 },
-  { i: 'project-switcher', x: 0, y: 6, w: 4, h: 2 },
-  { i: 'progress-board', x: 4, y: 6, w: 6, h: 4 },
+  { i: 'progress-board', x: 0, y: 4, w: 6, h: 4 },
+  { i: 'insights', x: 6, y: 4, w: 4, h: 3 },
+  { i: 'harness', x: 0, y: 7, w: 4, h: 3 },
 ];
 
 function getLayoutKey(projectId?: string): string {
@@ -224,6 +225,16 @@ export function OfficePage() {
       setExpandedWidget('today-cost');
     } else if (type === 'active-workflows') {
       setExpandedWidget('active-workflows');
+    } else if (type === 'event-timeline') {
+      setExpandedWidget('event-timeline');
+    } else if (type === 'deliverables') {
+      setExpandedWidget('deliverables');
+    } else if (type === 'insights') {
+      setExpandedWidget('insights');
+    } else if (type === 'harness') {
+      setExpandedWidget('harness');
+    } else if (type === 'weather') {
+      setExpandedWidget('weather');
     } else if (type === 'decision-list') {
       setExpandedWidget('decision-list');
     }
@@ -254,35 +265,41 @@ export function OfficePage() {
           <DecisionList onSelectDecision={(id) => setReviewDecisionId(id)} projectId={projectId} />
         );
       case 'event-timeline':
-        return <EventTimeline projectId={projectId} />;
-      case 'project-switcher':
-        return <ProjectSwitcherWidget />;
+        return (
+          <EventTimeline
+            projectId={projectId}
+            onExpand={() => handleWidgetClick('event-timeline')}
+          />
+        );
       case 'cost-chart':
         return <CostChart />;
       case 'system-health':
         return <SystemHealth />;
-      case 'llm-stats':
-        return <SystemHealth />;
-      case 'agent-health':
-        return <ObservabilityWidget />;
       case 'deliverables':
-        return <Deliverables projectId={projectId} />;
+        return (
+          <Deliverables
+            projectId={projectId}
+            onExpand={() => handleWidgetClick('deliverables')}
+          />
+        );
       case 'project-list':
         return <ProjectList />;
       case 'api-switcher':
         return <ApiSwitcher />;
       case 'progress-board':
         return <ProgressBoard projectId={projectId} />;
-      case 'tokens-usage':
-        return <TokensWidget />;
       case 'meeting-list':
         return <MeetingList projectId={projectId} />;
+      case 'insights':
+        return <InsightsWidget onExpand={() => handleWidgetClick('insights')} />;
+      case 'harness':
+        return <HarnessWidget onExpand={() => handleWidgetClick('harness')} />;
       case 'calendar':
-        return <Calendar projectId={projectId} />;
+        return <Calendar />;
       case 'clock':
         return <Clock />;
       case 'weather':
-        return <Weather />;
+        return <Weather onExpand={() => handleWidgetClick('weather')} />;
       default: {
         const def = WIDGET_POOL.find((w) => w.type === type);
         return <PlaceholderWidget title={def?.label ?? type} />;
@@ -394,7 +411,22 @@ export function OfficePage() {
       {expandedWidget === 'active-workflows' && (
         <ActiveWorkflowsModal onClose={() => setExpandedWidget(null)} />
       )}
-      {expandedWidget && expandedWidget !== 'today-cost' && expandedWidget !== 'active-workflows' && (
+      {expandedWidget === 'event-timeline' && (
+        <EventTimelineModal onClose={() => setExpandedWidget(null)} projectId={projectId} />
+      )}
+      {expandedWidget === 'weather' && (
+        <WeatherForecastModal onClose={() => setExpandedWidget(null)} />
+      )}
+      {expandedWidget === 'deliverables' && (
+        <DeliverablesModal onClose={() => setExpandedWidget(null)} projectId={projectId} />
+      )}
+      {expandedWidget === 'insights' && (
+        <InsightsModal onClose={() => setExpandedWidget(null)} />
+      )}
+      {expandedWidget === 'harness' && (
+        <HarnessModal onClose={() => setExpandedWidget(null)} />
+      )}
+      {expandedWidget && expandedWidget !== 'today-cost' && expandedWidget !== 'active-workflows' && expandedWidget !== 'event-timeline' && expandedWidget !== 'weather' && expandedWidget !== 'deliverables' && expandedWidget !== 'insights' && expandedWidget !== 'harness' && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={() => setExpandedWidget(null)}

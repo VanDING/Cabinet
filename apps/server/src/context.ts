@@ -3,6 +3,16 @@ import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
+
+let activeApiKeyId: string | null = null;
+
+export function setActiveApiKeyId(id: string | null) {
+  activeApiKeyId = id;
+}
+
+export function getActiveApiKeyId(): string | null {
+  return activeApiKeyId;
+}
 import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher } from './watchers.js';
 import {
   createConnection,
@@ -84,6 +94,7 @@ import {
   AutoAdjuster,
   QualityResponseService,
   SubconsciousLoop,
+  HarnessAnalyst,
 } from '@cabinet/harness';
 import type {
   PreferenceAnalysisCallback,
@@ -618,6 +629,19 @@ export function getServerContext(): ServerContext {
     for (const [name, entry] of Object.entries(providerConfigsFromSettings)) {
       if (entry?.apiKey) {
         providerConfigs[name] = { apiKey: entry.apiKey, baseUrl: entry.baseUrl };
+      }
+    }
+
+    // Apply active API key preference (set by ApiSwitcher widget)
+    if (activeApiKeyId) {
+      try {
+        const pref = apiKeyRepo.findById(activeApiKeyId);
+        if (pref) {
+          const decrypted = decryptApiKey(pref.encrypted_key, mpw);
+          providerConfigs[pref.provider] = { apiKey: decrypted, baseUrl: pref.base_url ?? undefined };
+        }
+      } catch {
+        activeApiKeyId = null; // expired/deleted key, clear preference
       }
     }
 
@@ -1718,6 +1742,14 @@ export function getServerContext(): ServerContext {
     adjustmentNotifyCallback,
   );
 
+  // Harness analyst — periodic LLM-based harness health summaries
+  const harnessAnalyst = new HarnessAnalyst(
+    observability,
+    autoAdjuster,
+    gateway,
+    longTerm,
+  );
+
   // Skill extraction
   const skillExtractor = new SkillExtractor(gateway);
 
@@ -1760,16 +1792,30 @@ export function getServerContext(): ServerContext {
       .catch(() => {});
   });
 
-  // Subscribe to subconscious insights — surface high-relevance ones via broadcast
+  // Subscribe to subconscious insights — persist high-relevance ones to long-term memory
   eventBus.subscribe(MessageType.SystemNotification, (msg) => {
     const payload = msg.payload as unknown as Record<string, unknown> | undefined;
     if (payload?.type === 'subconscious_insight') {
       const insight = payload.insight as Record<string, unknown> | undefined;
-      if ((insight?.relevance as number) ?? 0 > 0.7) {
+      const relevance = (insight?.relevance as number) ?? 0;
+      if (relevance > 0.7) {
+        const text = (insight?.text as string) ?? '';
+        const relatedEntities = (insight?.relatedEntities as string[]) ?? [];
+        longTerm.store({
+          content: text,
+          metadata: {
+            type: 'insight',
+            relevance,
+            relatedEntities,
+            sourceMemoryId: insight?.sourceMemoryId ?? '',
+          },
+          timestamp: msg.timestamp,
+        }).catch(() => {});
         broadcast('subconscious_insight', {
-          text: insight?.text,
-          relevance: insight?.relevance,
-          sourceMemoryId: insight?.sourceMemoryId,
+          text,
+          relevance,
+          relatedEntities,
+          timestamp: msg.timestamp.toISOString(),
         });
       }
     }
@@ -1856,20 +1902,33 @@ export function getServerContext(): ServerContext {
   sessionCleanupTimer.unref();
   logger.info('Session cleanup scheduled (6h)');
 
-  // Subconscious loop: runs every hour
-  const subconsciousTimer = setInterval(
-    async () => {
-      try {
-        await subconsciousLoop.tick();
-        logger.info('Subconscious loop tick completed');
-      } catch (e: any) {
-        logger.warn('Subconscious loop tick failed', { error: e.message });
-      }
-    },
-    60 * 60 * 1000,
-  );
+  // Subconscious loop: via Curator queue every hour
+  const subconsciousTimer = setInterval(() => {
+    enqueueCuratorTask(async () => {
+      await subconsciousLoop.tick();
+      logger.info('Curator: subconscious loop tick completed');
+    }, 'subconscious');
+  }, 60 * 60 * 1000);
   subconsciousTimer.unref();
-  logger.info('Subconscious loop scheduled (1h)');
+  logger.info('Curator: subconscious loop scheduled (1h)');
+
+  // Harness analysis: via Curator queue every 3 hours
+  const harnessAnalystTimer = setInterval(() => {
+    enqueueCuratorTask(async () => {
+      const insight = await harnessAnalyst.analyze();
+      if (insight) {
+        logger.info('Curator: harness analysis generated insight');
+        broadcast('subconscious_insight', {
+          text: insight,
+          relevance: 0.9,
+          relatedEntities: [],
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, 'harness_analysis');
+  }, 3 * 60 * 60 * 1000);
+  harnessAnalystTimer.unref();
+  logger.info('Curator: harness analyst scheduled (3h)');
 
   // Garbage collection: weekly scan on Sunday 4 AM
   const gcTimer = setInterval(
