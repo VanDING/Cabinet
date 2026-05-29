@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cabinet</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem('cabinet-theme');
+        document.documentElement.setAttribute('data-theme', t || 'light-default');
+      })();
+    </script>
     <style>
       html,
       body,
