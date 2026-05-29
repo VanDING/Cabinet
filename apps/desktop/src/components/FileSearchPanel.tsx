@@ -59,7 +59,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20" onClick={onClose}>
       <div
-        className="max-h-80 w-96 overflow-hidden rounded-lg border bg-white shadow-xl"
+        className="max-h-80 w-96 overflow-hidden rounded-lg border bg-surface-primary shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b p-3">
@@ -69,14 +69,14 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search project files..."
-            className="w-full rounded border bg-gray-50 px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded border bg-surface-elevated px-3 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         <div className="max-h-60 overflow-y-auto">
           {loading ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">Loading file tree...</div>
+            <div className="px-4 py-6 text-center text-sm text-content-tertiary">Loading file tree...</div>
           ) : filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">No files found</div>
+            <div className="px-4 py-6 text-center text-sm text-content-tertiary">No files found</div>
           ) : (
             filtered.map((f) => (
               <button
@@ -85,10 +85,10 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
                   onSelect(f);
                   onClose();
                 }}
-                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100:bg-gray-700"
+                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-surface-muted:bg-surface-input"
               >
-                <span className="font-medium text-gray-800">{f.name}</span>
-                <span className="ml-2 max-w-[200px] truncate text-xs text-gray-400">{f.path}</span>
+                <span className="font-medium text-content-primary">{f.name}</span>
+                <span className="ml-2 max-w-[200px] truncate text-xs text-content-tertiary">{f.path}</span>
               </button>
             ))
           )}

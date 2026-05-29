@@ -6,12 +6,12 @@ export function ThemeTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">
+      <h2 className="mb-4 text-lg font-semibold text-content-primary">
         Theme
       </h2>
       <div className="max-w-md space-y-4">
-        <div className="rounded-lg border bg-white p-4">
-          <div className="mb-3 text-sm font-medium text-gray-900">
+        <div className="rounded-lg border bg-surface-primary p-4">
+          <div className="mb-3 text-sm font-medium text-content-primary">
             Select Theme
           </div>
           <div className="space-y-1">
@@ -21,8 +21,8 @@ export function ThemeTab() {
                 onClick={() => setTheme(t.id)}
                 className={`block w-full rounded px-3 py-2 text-left text-sm transition-colors ${
                   t.id === currentTheme
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-accent-muted text-accent'
+                    : 'text-content-secondary hover:bg-surface-elevated'
                 }`}
               >
                 {t.name}

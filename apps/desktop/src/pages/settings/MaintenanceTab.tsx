@@ -39,10 +39,10 @@ export function MaintenanceTab() {
 
   const severityColor = (s: string) =>
     s === 'error'
-      ? 'text-red-600 bg-red-50'
+      ? 'text-intent-danger bg-intent-danger-muted'
       : s === 'warning'
         ? 'text-amber-600 bg-amber-50'
-        : 'text-blue-600 bg-blue-50';
+        : 'text-accent bg-accent-muted';
 
   const categoryLabel = (c: string) =>
     c === 'orphan_file'
@@ -60,7 +60,7 @@ export function MaintenanceTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-semibold text-content-primary">
           System Maintenance
         </h2>
         <div className="flex gap-2">
@@ -86,32 +86,32 @@ export function MaintenanceTab() {
 
       {lastReport && (
         <div className="mb-4 flex gap-4">
-          <div className="flex-1 rounded-lg border bg-white p-3">
-            <div className="text-2xl font-bold text-gray-900">
+          <div className="flex-1 rounded-lg border bg-surface-primary p-3">
+            <div className="text-2xl font-bold text-content-primary">
               {lastReport.summary?.total ?? 0}
             </div>
-            <div className="text-xs text-gray-500">Total Issues</div>
+            <div className="text-xs text-content-tertiary">Total Issues</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3">
-            <div className="text-2xl font-bold text-red-600">{lastReport.summary?.errors ?? 0}</div>
-            <div className="text-xs text-gray-500">Errors</div>
+          <div className="flex-1 rounded-lg border bg-surface-primary p-3">
+            <div className="text-2xl font-bold text-intent-danger">{lastReport.summary?.errors ?? 0}</div>
+            <div className="text-xs text-content-tertiary">Errors</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3">
+          <div className="flex-1 rounded-lg border bg-surface-primary p-3">
             <div className="text-2xl font-bold text-amber-600">
               {lastReport.summary?.warnings ?? 0}
             </div>
-            <div className="text-xs text-gray-500">Warnings</div>
+            <div className="text-xs text-content-tertiary">Warnings</div>
           </div>
-          <div className="flex-1 rounded-lg border bg-white p-3">
-            <div className="text-2xl font-bold text-gray-500">{lastReport.filesScanned ?? 0}</div>
-            <div className="text-xs text-gray-500">Files Scanned</div>
+          <div className="flex-1 rounded-lg border bg-surface-primary p-3">
+            <div className="text-2xl font-bold text-content-tertiary">{lastReport.filesScanned ?? 0}</div>
+            <div className="text-xs text-content-tertiary">Files Scanned</div>
           </div>
         </div>
       )}
 
       {summary && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <pre className="whitespace-pre-wrap font-mono text-xs text-gray-700">
+        <div className="mb-4 rounded-lg border bg-surface-primary p-4">
+          <pre className="whitespace-pre-wrap font-mono text-xs text-content-secondary">
             {summary}
           </pre>
         </div>
@@ -122,7 +122,7 @@ export function MaintenanceTab() {
           {issues.slice(0, 20).map((issue, i) => (
             <div
               key={i}
-              className="rounded-lg border bg-white p-3"
+              className="rounded-lg border bg-surface-primary p-3"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -130,20 +130,20 @@ export function MaintenanceTab() {
                 >
                   {issue.severity.toUpperCase()}
                 </span>
-                <span className="text-xs text-gray-500">{categoryLabel(issue.category)}</span>
-                {issue.autoFixable && <span className="text-xs text-green-600">auto-fixable</span>}
+                <span className="text-xs text-content-tertiary">{categoryLabel(issue.category)}</span>
+                {issue.autoFixable && <span className="text-xs text-intent-success">auto-fixable</span>}
               </div>
-              <p className="text-sm text-gray-900">{issue.description}</p>
-              <p className="mt-1 font-mono text-xs text-gray-400">{issue.location}</p>
+              <p className="text-sm text-content-primary">{issue.description}</p>
+              <p className="mt-1 font-mono text-xs text-content-tertiary">{issue.location}</p>
               {issue.suggestedFix && (
-                <p className="mt-1 text-xs text-blue-600">
+                <p className="mt-1 text-xs text-accent">
                   Fix: {issue.suggestedFix}
                 </p>
               )}
             </div>
           ))}
           {issues.length > 20 && (
-            <p className="py-2 text-center text-xs text-gray-500">
+            <p className="py-2 text-center text-xs text-content-tertiary">
               ... and {issues.length - 20} more issues
             </p>
           )}
@@ -151,7 +151,7 @@ export function MaintenanceTab() {
       )}
 
       {!lastReport && !scanning && (
-        <p className="py-4 text-sm text-gray-400">
+        <p className="py-4 text-sm text-content-tertiary">
           Run a garbage collection scan to detect dead code, orphan files, expired data, and
           documentation drift.
         </p>

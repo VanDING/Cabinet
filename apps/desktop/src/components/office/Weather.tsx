@@ -79,24 +79,24 @@ export function Weather() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-white p-3">
+    <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border bg-surface-primary p-3">
       {data ? (
         <>
           <span className="text-2xl">{weatherEmoji(data.code)}</span>
-          <span className="mt-1 text-xl font-bold text-gray-800">
+          <span className="mt-1 text-xl font-bold text-content-primary">
             {data.temp}&deg;C
           </span>
-          <span className="truncate text-xs text-gray-500">{data.desc}</span>
-          <span className="mt-0.5 text-[10px] text-gray-400">Humidity {data.humidity}%</span>
-          <span className="truncate text-[10px] text-gray-400">{data.city}</span>
+          <span className="truncate text-xs text-content-tertiary">{data.desc}</span>
+          <span className="mt-0.5 text-[10px] text-content-tertiary">Humidity {data.humidity}%</span>
+          <span className="truncate text-[10px] text-content-tertiary">{data.city}</span>
         </>
       ) : error ? (
-        <div className="text-center text-xs text-gray-400">
+        <div className="text-center text-xs text-content-tertiary">
           <span className="text-xl">{'☀️'}</span>
           <div>{error}</div>
         </div>
       ) : (
-        <div className="text-center text-xs text-gray-400">
+        <div className="text-center text-xs text-content-tertiary">
           <span className="animate-pulse text-xl">{'\u{1F321}️'}</span>
           <div>Loading...</div>
         </div>

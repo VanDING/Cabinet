@@ -34,21 +34,21 @@ export function ProjectList() {
   }, [fetchProjects]);
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
-      <div className="mb-3 text-sm font-medium text-gray-700">Projects</div>
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
+      <div className="mb-3 text-sm font-medium text-content-secondary">Projects</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {projects.length === 0 ? (
-          <div className="py-2 text-xs text-gray-400">No projects. Create in sidebar.</div>
+          <div className="py-2 text-xs text-content-tertiary">No projects. Create in sidebar.</div>
         ) : (
           projects.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-gray-50:bg-gray-700"
+              className="flex items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-surface-elevated:bg-surface-input"
             >
               <div>
-                <div className="font-medium text-gray-700">{p.name}</div>
+                <div className="font-medium text-content-secondary">{p.name}</div>
                 {(p.workflowCount ?? 0) > 0 && (
-                  <div className="text-gray-400">{p.workflowCount} workflows</div>
+                  <div className="text-content-tertiary">{p.workflowCount} workflows</div>
                 )}
               </div>
             </div>

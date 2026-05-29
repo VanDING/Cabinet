@@ -54,30 +54,30 @@ export function RulesTab() {
 
   const modeColor = (mode: string) =>
     mode === 'always'
-      ? 'bg-green-100 text-green-700'
+      ? 'bg-intent-success-muted text-intent-success'
       : mode === 'auto'
-        ? 'bg-blue-100 text-blue-700'
-        : 'bg-gray-100 text-gray-600';
+        ? 'bg-accent-muted text-accent'
+        : 'bg-surface-muted text-content-secondary';
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">Project Rules</h2>
-      <p className="mb-4 text-xs text-gray-500">
+      <h2 className="mb-4 text-lg font-semibold text-content-primary">Project Rules</h2>
+      <p className="mb-4 text-xs text-content-tertiary">
         Rules are loaded from{' '}
-        <code className="rounded bg-gray-100 px-1">.cabinet/rules/</code>. Each
+        <code className="rounded bg-surface-muted px-1">.cabinet/rules/</code>. Each
         file has YAML frontmatter controlling when it activates.
       </p>
 
       {status && (
         <div
-          className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
+          className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') ? 'bg-intent-danger-muted text-intent-danger' : 'bg-intent-success-muted text-intent-success'}`}
         >
           {status}
         </div>
       )}
 
       {rules.length === 0 ? (
-        <p className="py-4 text-sm text-gray-400">
+        <p className="py-4 text-sm text-content-tertiary">
           No rules found. Create .md files in .cabinet/rules/ to define project conventions.
         </p>
       ) : (
@@ -85,12 +85,12 @@ export function RulesTab() {
           {rules.map((rule) => (
             <div
               key={rule.filename}
-              className="overflow-hidden rounded-lg border bg-white"
+              className="overflow-hidden rounded-lg border bg-surface-primary"
             >
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-gray-900">
+                    <span className="font-mono text-sm font-medium text-content-primary">
                       {rule.filename}
                     </span>
                     <span
@@ -99,21 +99,21 @@ export function RulesTab() {
                       {rule.mode}
                     </span>
                     {rule.alwaysApply && (
-                      <span className="text-xs text-green-600">alwaysApply</span>
+                      <span className="text-xs text-intent-success">alwaysApply</span>
                     )}
                   </div>
-                  {rule.description && <p className="text-xs text-gray-500">{rule.description}</p>}
+                  {rule.description && <p className="text-xs text-content-tertiary">{rule.description}</p>}
                   <div className="mt-1 flex gap-2">
                     {rule.globs.map((g) => (
                       <span
                         key={g}
-                        className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600"
+                        className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
                       >
                         {g}
                       </span>
                     ))}
                     {rule.tags.map((t) => (
-                      <span key={t} className="text-xs text-blue-500">
+                      <span key={t} className="text-xs text-accent">
                         #{t}
                       </span>
                     ))}
@@ -123,19 +123,19 @@ export function RulesTab() {
                   onClick={() =>
                     editingFile === rule.filename ? setEditingFile(null) : handleEdit(rule)
                   }
-                  className="ml-3 flex-shrink-0 text-xs text-blue-500 hover:underline"
+                  className="ml-3 flex-shrink-0 text-xs text-accent hover:underline"
                 >
                   {editingFile === rule.filename ? 'Cancel' : 'Edit'}
                 </button>
               </div>
 
               {editingFile === rule.filename && (
-                <div className="border-t bg-gray-50 p-3">
+                <div className="border-t bg-surface-elevated p-3">
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={12}
-                    className="w-full rounded border bg-white px-3 py-2 font-mono text-sm text-gray-900"
+                    className="w-full rounded border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
                   />
                   <div className="mt-2 flex justify-end">
                     <Button size="sm" onClick={() => handleSave(rule.filename)}>

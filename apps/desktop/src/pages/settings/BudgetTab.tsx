@@ -22,11 +22,11 @@ export function BudgetTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">Budget</h2>
+      <h2 className="mb-4 text-lg font-semibold text-content-primary">Budget</h2>
       <div className="max-w-md space-y-4">
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
-            <label className="mb-1 block text-sm capitalize text-gray-600">
+            <label className="mb-1 block text-sm capitalize text-content-secondary">
               {period} Budget (RMB)
             </label>
             <input
@@ -35,13 +35,13 @@ export function BudgetTab() {
               onChange={(e) =>
                 setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
               }
-              className="w-full rounded border bg-white px-3 py-2 text-sm text-gray-900"
+              className="w-full rounded border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
           </div>
         ))}
         <button
           onClick={handleSave}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+          className="rounded-lg bg-accent px-4 py-2 text-sm text-content-inverse hover:bg-accent-hover"
         >
           Save Budget
         </button>

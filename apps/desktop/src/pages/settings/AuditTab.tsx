@@ -26,7 +26,7 @@ export function AuditTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">Audit Log</h2>
+      <h2 className="mb-4 text-lg font-semibold text-content-primary">Audit Log</h2>
 
       {/* Filters */}
       <div className="mb-4 flex gap-2">
@@ -35,7 +35,7 @@ export function AuditTab() {
           onChange={(e) => {
             setFilter((p) => ({ ...p, entityType: e.target.value }));
           }}
-          className="rounded border bg-white px-3 py-1.5 text-sm text-gray-900"
+          className="rounded border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
         >
           <option value="">All types</option>
           <option value="decision">Decision</option>
@@ -50,9 +50,9 @@ export function AuditTab() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-content-tertiary">Loading...</p>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-gray-400">No audit entries found.</p>
+        <p className="text-sm text-content-tertiary">No audit entries found.</p>
       ) : (
         <div className="max-h-[60vh] space-y-1 overflow-y-auto">
           {entries.map((e: any, i: number) => (
@@ -60,18 +60,18 @@ export function AuditTab() {
               key={i}
               className="flex items-center gap-3 border-b py-2 text-xs"
             >
-              <span className="w-14 flex-shrink-0 text-gray-400">
+              <span className="w-14 flex-shrink-0 text-content-tertiary">
                 {new Date(e.timestamp).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </span>
-              <span className="w-16 flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-center font-medium capitalize text-gray-600">
+              <span className="w-16 flex-shrink-0 rounded bg-surface-muted px-1.5 py-0.5 text-center font-medium capitalize text-content-secondary">
                 {e.action}
               </span>
-              <span className="w-12 flex-shrink-0 text-gray-400">{e.entityType}</span>
-              <span className="flex-1 truncate font-mono text-gray-500">{e.entityId}</span>
-              <span className="text-gray-400">{e.actor}</span>
+              <span className="w-12 flex-shrink-0 text-content-tertiary">{e.entityType}</span>
+              <span className="flex-1 truncate font-mono text-content-tertiary">{e.entityId}</span>
+              <span className="text-content-tertiary">{e.actor}</span>
             </div>
           ))}
         </div>

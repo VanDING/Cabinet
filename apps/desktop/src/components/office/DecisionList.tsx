@@ -60,27 +60,27 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
 
   const levelBadge = (level: string) => {
     const colors: Record<string, string> = {
-      L0: 'bg-green-100 text-green-700',
-      L1: 'bg-blue-100 text-blue-700',
+      L0: 'bg-intent-success-muted text-intent-success',
+      L1: 'bg-accent-muted text-accent',
       L2: 'bg-amber-100 text-amber-700',
-      L3: 'bg-red-100 text-red-700',
+      L3: 'bg-intent-danger-muted text-intent-danger',
     };
-    return colors[level] ?? 'bg-gray-100 text-gray-500';
+    return colors[level] ?? 'bg-surface-muted text-content-tertiary';
   };
 
   const statusBadge = (status: string) => {
     if (status === 'pending')
       return 'bg-amber-100 text-amber-700';
     if (status === 'approved')
-      return 'bg-green-100 text-green-700';
+      return 'bg-intent-success-muted text-intent-success';
     if (status === 'rejected')
-      return 'bg-red-100 text-red-700';
-    return 'bg-gray-100 text-gray-500';
+      return 'bg-intent-danger-muted text-intent-danger';
+    return 'bg-surface-muted text-content-tertiary';
   };
 
   return (
-    <div className="h-full overflow-y-auto rounded-lg border bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-800">
+    <div className="h-full overflow-y-auto rounded-lg border bg-surface-primary p-4">
+      <h3 className="mb-3 text-sm font-semibold text-content-primary">
         Decisions
         {pending.length > 0 && (
           <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
@@ -89,11 +89,11 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
         )}
       </h3>
       {loading ? (
-        <p className="text-xs text-gray-400">Loading...</p>
+        <p className="text-xs text-content-tertiary">Loading...</p>
       ) : decisions.length === 0 ? (
         <>
-          <p className="text-xs text-gray-400">No decisions yet</p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-xs text-content-tertiary">No decisions yet</p>
+          <p className="mt-1 text-xs text-content-tertiary">
             Agents create decisions during meetings and task execution
           </p>
         </>
@@ -104,7 +104,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
             <button
               key={d.id}
               onClick={() => onSelectDecision?.(d.id)}
-              className="w-full rounded border p-3 text-left transition-colors hover:border-blue-300 hover:bg-gray-50:border-blue-700:bg-gray-800/50"
+              className="w-full rounded border p-3 text-left transition-colors hover:border-accent hover:bg-surface-elevated:border-accent:bg-surface-primary/50"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -117,24 +117,24 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 >
                   {d.status}
                 </span>
-                <span className="truncate text-sm font-medium text-gray-700">
+                <span className="truncate text-sm font-medium text-content-secondary">
                   {d.title}
                 </span>
               </div>
-              <div className="mt-0.5 truncate text-xs text-gray-400">
+              <div className="mt-0.5 truncate text-xs text-content-tertiary">
                 {d.description?.slice(0, 100)}
               </div>
               <div className="mt-2 flex gap-1">
                 {d.options?.slice(0, 3).map((opt: any) => (
                   <span
                     key={opt.id}
-                    className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500"
+                    className="rounded bg-surface-muted px-2 py-0.5 text-[10px] text-content-tertiary"
                   >
                     {opt.label}
                   </span>
                 ))}
                 {(d.options?.length ?? 0) > 3 && (
-                  <span className="text-[10px] text-gray-400">+{d.options!.length - 3} more</span>
+                  <span className="text-[10px] text-content-tertiary">+{d.options!.length - 3} more</span>
                 )}
               </div>
             </button>
@@ -144,14 +144,14 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
           {resolved.length > 0 && (
             <>
               <div className="my-2 border-t" />
-              <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-content-tertiary">
                 Recently resolved
               </p>
               {resolved.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => onSelectDecision?.(d.id)}
-                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-blue-300 hover:bg-gray-50 hover:opacity-100:border-blue-700:bg-gray-800/50"
+                  className="w-full rounded border p-2 text-left opacity-70 transition-colors hover:border-accent hover:bg-surface-elevated hover:opacity-100:border-accent:bg-surface-primary/50"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -159,7 +159,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                     >
                       {d.status}
                     </span>
-                    <span className="text-xs font-medium text-gray-700">
+                    <span className="text-xs font-medium text-content-secondary">
                       {d.title}
                     </span>
                   </div>

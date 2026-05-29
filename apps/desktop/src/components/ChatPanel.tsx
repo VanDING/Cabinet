@@ -113,16 +113,16 @@ export function ChatPanel({
   const active = activeSession;
   const attachedFiles = active?.attachedFiles ?? [];
 
-  const borderClass = 'border-gray-200';
-  const bgClass = 'bg-white';
-  const tabBgClass = 'bg-gray-50';
-  const inputBgClass = 'bg-white';
-  const textClass = 'text-gray-800';
-  const subtextClass = 'text-gray-500';
-  const hoverClass = 'hover:bg-gray-100 hover:text-gray-700:bg-gray-700:text-gray-200';
-  const btnBaseClass = 'text-gray-500';
-  const dropdownBgClass = 'bg-white border-gray-200';
-  const dropdownItemClass = 'text-gray-700 hover:bg-gray-100:bg-gray-700';
+  const borderClass = 'border-border';
+  const bgClass = 'bg-surface-primary';
+  const tabBgClass = 'bg-surface-elevated';
+  const inputBgClass = 'bg-surface-primary';
+  const textClass = 'text-content-primary';
+  const subtextClass = 'text-content-tertiary';
+  const hoverClass = 'hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
+  const btnBaseClass = 'text-content-tertiary';
+  const dropdownBgClass = 'bg-surface-primary border-border';
+  const dropdownItemClass = 'text-content-secondary hover:bg-surface-muted:bg-surface-input';
 
   useEffect(() => {
     setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window);
@@ -259,9 +259,9 @@ export function ChatPanel({
   };
 
   const activeTabClass =
-    'bg-white text-gray-800 border-blue-500';
+    'bg-surface-primary text-content-primary border-accent';
   const inactiveTabClass =
-    'text-gray-500 hover:bg-gray-200:bg-gray-700';
+    'text-content-tertiary hover:bg-surface-muted:bg-surface-input';
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
@@ -277,7 +277,7 @@ export function ChatPanel({
             <button
               ref={agentBtnRef}
               onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className="flex items-center gap-0.5 rounded bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200:bg-blue-900/60"
+              className="flex items-center gap-0.5 rounded bg-accent-muted px-1.5 py-0.5 text-xs font-bold text-accent transition-colors hover:bg-accent:bg-accent-hover/60"
               title="Switch agent"
             >
               @{activeAgent}
@@ -285,10 +285,10 @@ export function ChatPanel({
             </button>
             {agentMenuOpen && (
               <div
-                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-xl"
+                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-border bg-surface-primary py-1 shadow-xl"
               >
                 <div
-                  className="border-b border-gray-200 px-3 py-1 text-xs text-gray-500"
+                  className="border-b border-border px-3 py-1 text-xs text-content-tertiary"
                 >
                   Switch Agent
                 </div>
@@ -305,8 +305,8 @@ export function ChatPanel({
                     }}
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       activeAgent === a.id
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-100:bg-gray-700'
+                        ? 'bg-accent-muted text-accent'
+                        : 'text-content-secondary hover:bg-surface-muted:bg-surface-input'
                     }`}
                   >
                     @{a.id}
@@ -322,8 +322,8 @@ export function ChatPanel({
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
               className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold transition-colors ${
                 activeProjectId
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200:bg-green-900/60'
-                  : 'text-gray-500 hover:bg-gray-200:bg-gray-700'
+                  ? 'bg-intent-success-muted text-intent-success hover:bg-intent-success-muted:bg-intent-success/60'
+                  : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'
               }`}
               title="Select project"
             >
@@ -345,7 +345,7 @@ export function ChatPanel({
                     onSwitchProject?.(null);
                     setProjectMenuOpen(false);
                   }}
-                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? 'bg-blue-50 text-blue-600' : dropdownItemClass}`}
+                  className={`w-full px-3 py-1.5 text-left text-xs ${!activeProjectId ? 'bg-accent-muted text-accent' : dropdownItemClass}`}
                 >
                   Global (no project)
                 </button>
@@ -360,7 +360,7 @@ export function ChatPanel({
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs ${
                         activeProjectId === p.id
-                          ? 'bg-blue-50 text-blue-600'
+                          ? 'bg-accent-muted text-accent'
                           : dropdownItemClass
                       }`}
                     >
@@ -400,8 +400,8 @@ export function ChatPanel({
                     <span
                       className={`h-2 w-2 flex-shrink-0 rounded-full ${
                         hasActivity
-                          ? 'animate-pulse bg-blue-500'
-                          : `border border-gray-400`
+                          ? 'animate-pulse bg-accent'
+                          : `border border-border`
                       }`}
                     />
                     <span className="flex-1 truncate">{session.title}</span>
@@ -410,7 +410,7 @@ export function ChatPanel({
                         e.stopPropagation();
                         onCloseSession(session.id);
                       }}
-                      className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded text-gray-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                      className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
                     >
                       &times;
                     </button>
@@ -419,7 +419,7 @@ export function ChatPanel({
               })}
             {activeProjectId &&
               sessions.filter((s) => s.projectId === activeProjectId).length === 0 && (
-                <span className="px-2 text-[10px] text-gray-400">No sessions in this project</span>
+                <span className="px-2 text-[10px] text-content-tertiary">No sessions in this project</span>
               )}
           </div>
 
@@ -463,7 +463,7 @@ export function ChatPanel({
             {attachedFiles.map((file) => (
               <span
                 key={file.id}
-                className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
+                className="inline-flex items-center gap-1 rounded bg-accent-muted px-2 py-0.5 text-xs text-accent"
               >
                 <span className="max-w-[160px] truncate" title={file.path}>
                   {file.type === 'project' ? file.path : file.name}
@@ -472,7 +472,7 @@ export function ChatPanel({
                   onClick={() => {
                     if (active) onRemoveFile(active.id, file.id);
                   }}
-                  className="text-blue-500 hover:text-red-500"
+                  className="text-accent hover:text-intent-danger"
                 >
                   &times;
                 </button>
@@ -546,7 +546,7 @@ export function ChatPanel({
                   Select a skill
                 </div>
                 {skills.length === 0 ? (
-                  <div className="px-3 py-3 text-center text-xs text-gray-400">
+                  <div className="px-3 py-3 text-center text-xs text-content-tertiary">
                     No skills registered.
                   </div>
                 ) : (
@@ -556,7 +556,7 @@ export function ChatPanel({
                       onClick={() => handleSelectSkill(skill.name)}
                       className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                     >
-                      <span className="mr-1.5 inline-block rounded bg-gray-200 px-1 py-0.5 text-gray-700">
+                      <span className="mr-1.5 inline-block rounded bg-surface-muted px-1 py-0.5 text-content-secondary">
                         /
                       </span>
                       {skill.name}
@@ -602,14 +602,14 @@ export function ChatPanel({
                     }}
                     className={`w-full px-4 py-1.5 text-left transition-colors ${
                       delegationTier === t.id
-                        ? 'bg-blue-50 text-blue-600'
+                        ? 'bg-accent-muted text-accent'
                         : dropdownItemClass
                     }`}
                   >
                     <div className="text-xs font-medium">
                       {t.id} — {t.label}
                     </div>
-                    <div className="text-[10px] text-gray-400">{t.desc}</div>
+                    <div className="text-[10px] text-content-tertiary">{t.desc}</div>
                   </button>
                 ))}
               </div>
@@ -648,7 +648,7 @@ export function ChatPanel({
                         }}
                         className={`w-full px-5 py-1 text-left font-mono text-xs transition-colors ${
                           selectedModel === model
-                            ? 'bg-blue-50 text-blue-600'
+                            ? 'bg-accent-muted text-accent'
                             : dropdownItemClass
                         }`}
                       >
@@ -681,10 +681,10 @@ export function ChatPanel({
             disabled={!isProcessing && !input.trim()}
             className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
               isProcessing
-                ? 'bg-red-500 text-white hover:bg-red-600'
+                ? 'bg-intent-danger text-content-inverse hover:bg-intent-danger'
                 : input.trim()
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'cursor-not-allowed bg-gray-300 text-gray-400'
+                  ? 'bg-accent text-content-inverse hover:bg-accent-hover'
+                  : 'cursor-not-allowed bg-surface-muted text-content-tertiary'
             }`}
             aria-label={isProcessing ? 'Stop' : 'Send'}
           >

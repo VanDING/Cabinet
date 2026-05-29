@@ -39,15 +39,15 @@ export function EvaluationTab({ activeProjectId }: Props) {
     })();
   }, [projectId]);
 
-  const borderClasses = 'border-gray-200';
-  const cardBg = 'bg-gray-50';
-  const textClasses = 'text-gray-800';
-  const subClasses = 'text-gray-500';
-  const greenClasses = 'text-green-600';
-  const redClasses = 'text-red-600';
+  const borderClasses = 'border-border';
+  const cardBg = 'bg-surface-elevated';
+  const textClasses = 'text-content-primary';
+  const subClasses = 'text-content-tertiary';
+  const greenClasses = 'text-intent-success';
+  const redClasses = 'text-intent-danger';
 
   const scoreColor = (s: number) =>
-    s >= 7 ? greenClasses : s >= 5 ? 'text-yellow-500' : redClasses;
+    s >= 7 ? greenClasses : s >= 5 ? 'text-intent-warning' : redClasses;
 
   return (
     <div className="space-y-4 overflow-auto p-6">
@@ -79,7 +79,7 @@ export function EvaluationTab({ activeProjectId }: Props) {
           {evaluations.map((ev) => (
             <div
               key={ev.id}
-              className={`rounded-lg border ${borderClasses} bg-white`}
+              className={`rounded-lg border ${borderClasses} bg-surface-primary`}
             >
               <div
                 onClick={() => setExpandedId(expandedId === ev.id ? null : ev.id)}

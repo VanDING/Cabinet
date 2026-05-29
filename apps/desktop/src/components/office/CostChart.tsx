@@ -91,20 +91,20 @@ export function CostChart() {
   const totalCalls = history.length > 0 ? (history[history.length - 1]!.calls ?? 0) : 0;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border bg-white p-4">
+    <div className="flex h-full flex-col rounded-lg border bg-surface-primary p-4">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-700">Cost Analysis</div>
+        <div className="text-sm font-medium text-content-secondary">Cost Analysis</div>
         <div className="flex gap-1">
           <button
             onClick={() => setViewMode('stacked')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100:bg-gray-700'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'stacked' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'}`}
           >
             By Model
           </button>
           <button
             onClick={() => setViewMode('bar')}
-            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100:bg-gray-700'}`}
+            className={`rounded px-2 py-0.5 text-xs ${viewMode === 'bar' ? 'bg-accent-muted text-accent' : 'text-content-tertiary hover:bg-surface-muted:bg-surface-input'}`}
           >
             Total
           </button>
@@ -113,22 +113,22 @@ export function CostChart() {
 
       {/* Summary row */}
       <div className="mb-3 flex gap-3 text-xs">
-        <span className="text-gray-500">
+        <span className="text-content-tertiary">
           Total:{' '}
-          <span className="font-mono font-medium text-gray-700">
+          <span className="font-mono font-medium text-content-secondary">
             ${totalCost.toFixed(3)}
           </span>
         </span>
-        <span className="text-gray-500">
+        <span className="text-content-tertiary">
           Calls:{' '}
-          <span className="font-mono font-medium text-gray-700">
+          <span className="font-mono font-medium text-content-secondary">
             {totalCalls}
           </span>
         </span>
-        <span className="text-gray-500">
+        <span className="text-content-tertiary">
           Daily budget:{' '}
           <span
-            className={`font-mono font-medium ${budget.daily > limits.daily * 0.8 ? 'text-red-500' : 'text-gray-700'}`}
+            className={`font-mono font-medium ${budget.daily > limits.daily * 0.8 ? 'text-intent-danger' : 'text-content-secondary'}`}
           >
             ${budget.daily.toFixed(2)} / ${limits.daily}
           </span>
@@ -136,7 +136,7 @@ export function CostChart() {
       </div>
 
       {history.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-gray-400">
+        <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           No data yet
         </div>
       ) : (
@@ -145,13 +145,13 @@ export function CostChart() {
           <div className="flex flex-1 items-end gap-1">
             {history.map((point, i) => (
               <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span className="font-mono text-[10px] text-gray-500">
+                <span className="font-mono text-[10px] text-content-tertiary">
                   ${point.cost.toFixed(2)}
                 </span>
 
                 {viewMode === 'bar' ? (
                   <div
-                    className="min-h-[2px] w-full rounded-t-sm bg-blue-500 transition-all"
+                    className="min-h-[2px] w-full rounded-t-sm bg-accent transition-all"
                     style={{ height: `${Math.max((point.cost / maxCost) * 100, 2)}%` }}
                   />
                 ) : (
@@ -177,7 +177,7 @@ export function CostChart() {
                   </div>
                 )}
 
-                <span className="text-[10px] text-gray-400">
+                <span className="text-[10px] text-content-tertiary">
                   {new Date(point.date).toLocaleDateString(undefined, { weekday: 'short' })}
                 </span>
               </div>
@@ -190,7 +190,7 @@ export function CostChart() {
               {allModels.map((model, mi) => {
                 const modelTotal = history.reduce((sum, h) => sum + (h.byModel[model] ?? 0), 0);
                 return (
-                  <div key={model} className="flex items-center gap-1 text-[10px] text-gray-500">
+                  <div key={model} className="flex items-center gap-1 text-[10px] text-content-tertiary">
                     <span
                       className="h-2 w-2 flex-shrink-0 rounded-full"
                       style={{ backgroundColor: modelColor(model, mi) }}
@@ -204,7 +204,7 @@ export function CostChart() {
           )}
 
           {/* Budget limit line indicator */}
-          <div className="mt-1 text-[10px] text-gray-400">
+          <div className="mt-1 text-[10px] text-content-tertiary">
             Daily limit: ${limits.daily} | Weekly: ${limits.weekly} | Monthly: ${limits.monthly}
           </div>
         </>
