@@ -43,7 +43,7 @@ export function ProjectList() {
           projects.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between rounded px-2 py-1.5 text-xs hover:bg-surface-elevated bg-surface-input"
+              className="flex items-center justify-between rounded px-2 py-1.5 text-xs bg-surface-input hover:bg-surface-elevated"
             >
               <div>
                 <div className="font-medium text-content-secondary">{p.name}</div>
