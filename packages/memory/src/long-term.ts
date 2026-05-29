@@ -35,7 +35,7 @@ interface IndexMeta {
 }
 
 const DEFAULT_DIMENSION = 1536;
-const SIMILARITY_THRESHOLD = 0.3;
+const SIMILARITY_THRESHOLD = 0.15;
 const INDEX_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.index');
 const META_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.meta.json');
 const INITIAL_MAX_ELEMENTS = 100_000;
@@ -265,12 +265,13 @@ export class LongTermMemory {
    * Hybrid search: RRF fusion of semantic + BM25 text search.
    * Results are ranked by RRF score and decay-weighted relevance.
    */
-  async search(query: string, limit = 5, queryEmbedding?: number[]): Promise<LongTermEntry[]> {
+  async search(query: string, limit = 20, queryEmbedding?: number[]): Promise<LongTermEntry[]> {
     const semanticResults: Array<{ entry: LongTermEntry; rank: number; score: number }> = [];
     const textResults: Array<{ entry: LongTermEntry; rank: number }> = [];
+    const fetchCount = Math.max(limit * 3, 50);
 
     if (queryEmbedding) {
-      const semantic = await this.semanticSearch(queryEmbedding, limit * 2);
+      const semantic = await this.semanticSearch(queryEmbedding, fetchCount);
       for (let i = 0; i < semantic.length; i++) {
         const r = semantic[i]!;
         const status = r.metadata.status as string | undefined;
@@ -290,7 +291,7 @@ export class LongTermMemory {
     }
 
     // BM25 text search via FTS5
-    const textRows = this.repo.searchByBM25(query, limit * 2);
+    const textRows = this.repo.searchByBM25(query, fetchCount);
     for (let i = 0; i < textRows.length; i++) {
       const r = textRows[i]!;
       const metadata = JSON.parse(r.metadata ?? '{}') as Record<string, unknown>;
@@ -403,10 +404,10 @@ export class LongTermMemory {
   /**
    * Semantic vector similarity search using HNSW index.
    */
-  async semanticSearch(queryEmbedding: number[], limit = 5): Promise<SimilarityResult[]> {
+  async semanticSearch(queryEmbedding: number[], limit = 20): Promise<SimilarityResult[]> {
     if (!this.hnsw) return [];
 
-    const k = Math.min(limit * 2, this.hnsw.getCurrentCount() || 1);
+    const k = Math.min(Math.max(limit * 3, 50), this.hnsw.getCurrentCount() || 1);
     if (k === 0) return [];
 
     let raw: { neighbors: number[]; distances: number[] };
@@ -468,6 +469,18 @@ export class LongTermMemory {
       }
     }
     return this.repo.count() < before;
+  }
+
+  /** Paginated list of all long-term memory entries (no embedding needed). */
+  findAll(limit = 20, offset = 0): Array<{ id: string; content: string; metadata: Record<string, unknown>; timestamp: Date }> {
+    const rows = this.repo.findAll();
+    const sliced = rows.slice(offset, offset + limit);
+    return sliced.map((r) => ({
+      id: r.id,
+      content: r.content,
+      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
+      timestamp: new Date(r.timestamp),
+    }));
   }
 
   size(): number {

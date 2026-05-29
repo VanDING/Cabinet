@@ -32,6 +32,7 @@ import {
 } from '@cabinet/meeting';
 import { broadcast } from '../ws/handler.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../agent-factory.js';
+import { runWorkflowById } from './workflows.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
 import { buildEnvironmentSection, createSystemKnowledgeCapabilities } from '../capabilities.js';
@@ -1443,172 +1444,14 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 }
 
 // ── Workflow execution helper ──
+// Delegates to the full WorkflowEngine (same path as HTTP API) for proper
+// steps-format support, AgentLoop execution with system prompts, and tools.
 async function executeWorkflowById(
   workflowId: string,
-  ctx: ServerContext,
+  _ctx: ServerContext,
 ): Promise<{ runId: string; status: string; steps?: unknown[] }> {
-  const wf = ctx.workflowRepo.findById(workflowId);
-  if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
-
-  const def = JSON.parse(wf.definition ?? '{}');
-  const nodes: { id: string; type: string; data: any }[] = def.nodes ?? [];
-  const edges: { source: string; target: string }[] = def.edges ?? [];
-  const runId = `run_${Date.now()}`;
-
-  if (nodes.length === 0) throw new Error('Workflow has no nodes');
-
-  ctx.workflowRepo.updateStatus(workflowId, 'running');
-
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const graph = new Map<string, string[]>();
-  for (const n of nodes) graph.set(n.id, []);
-  for (const e of edges) {
-    if (!graph.has(e.source)) graph.set(e.source, []);
-    graph.get(e.source)!.push(e.target);
-  }
-
-  const results: { nodeId: string; type: string; output: string }[] = [];
-  const visited = new Set<string>();
-
-  async function executeNode(nodeId: string): Promise<void> {
-    if (visited.has(nodeId)) return;
-    const node = nodeMap.get(nodeId);
-    if (!node) return;
-    visited.add(nodeId);
-
-    const d = node.data ?? {};
-    let output = '';
-
-    switch (node.type) {
-      case 'start':
-        output = 'Workflow started';
-        break;
-      case 'end':
-        output = 'Workflow ended';
-        break;
-      case 'aiAgent':
-      case 'llmCall':
-        if (!ctx.gateway) {
-          output = 'No LLM available';
-          break;
-        }
-        try {
-          const response = await ctx.gateway.generateText({
-            model: d.model ?? 'claude-haiku-4-5',
-            messages: [{ role: 'user', content: d.prompt ?? d.label ?? 'Process this step' }],
-            maxTokens: 200,
-          });
-          output = response.content;
-          ctx.metrics.increment('llm_call', {
-            model: d.model ?? 'claude-haiku-4-5',
-            purpose: 'workflow_tool',
-          });
-        } catch (e: any) {
-          output = `Error: ${e.message}`;
-        }
-        break;
-      case 'humanApproval':
-        output = `Approval pending: ${d.label ?? nodeId}`;
-        ctx.workflowRepo.updateStatus(workflowId, 'awaiting_approval');
-        broadcast('workflow_approval_needed', { workflowId, runId, nodeId, label: d.label });
-        break;
-      case 'condition': {
-        const prevOutputs = results.map((r) => r.output.toLowerCase()).join(' ');
-        const isTrue = prevOutputs.includes('approved') || prevOutputs.includes('true');
-        const children = graph.get(nodeId) ?? [];
-        if (children.length >= 2) {
-          const targetIdx = isTrue ? 0 : Math.min(1, children.length - 1);
-          const targetNode = children[targetIdx];
-          if (targetNode) await executeNode(targetNode);
-        } else {
-          for (const child of children) await executeNode(child);
-        }
-        results.push({ nodeId, type: 'condition', output: `Condition: ${isTrue}` });
-        return;
-      }
-      case 'dataQuery':
-        output = 'Data query executed';
-        break;
-      case 'notification':
-        output = d.message ?? 'Notification sent';
-        broadcast('workflow_notification', { workflowId, runId, nodeId, message: output });
-        break;
-      case 'wait':
-        output = `Waited ${d.duration ?? '5s'}`;
-        break;
-      case 'skill':
-        if (ctx.skillRegistry) {
-          try {
-            const skill = ctx.skillRegistry.load(d.skillName ?? nodeId);
-            if (skill) {
-              const skillResult = await ctx.skillRegistry.executeSkill(skill, d.input ?? {});
-              output = JSON.stringify(skillResult);
-            } else {
-              output = `Skill not found: ${d.skillName ?? nodeId}`;
-            }
-          } catch (e: any) {
-            output = `Skill error: ${e.message}`;
-          }
-        } else {
-          output = 'No skill registry available';
-        }
-        break;
-      case 'parallel': {
-        const branches = graph.get(nodeId) ?? [];
-        const branchResults: string[] = [];
-        for (const child of branches) {
-          await executeNode(child);
-          const childResult = results.find((r) => r.nodeId === child);
-          branchResults.push(childResult?.output ?? '');
-        }
-        output = `Parallel branches completed: ${branchResults.length}`;
-        break;
-      }
-      case 'human':
-        output = `Human input required at: ${d.label ?? nodeId}`;
-        ctx.workflowRepo.updateStatus(workflowId, 'awaiting_approval');
-        broadcast('workflow_human_input_needed', { workflowId, runId, nodeId, label: d.label });
-        break;
-      default:
-        output = `Unknown node type: ${node.type}`;
-        break;
-    }
-
-    results.push({ nodeId, type: node.type ?? 'unknown', output });
-
-    const children = graph.get(nodeId) ?? [];
-    for (const child of children) await executeNode(child);
-  }
-
-  const startNodes = nodes.filter((n) => n.type === 'start');
-  try {
-    if (startNodes.length > 0 && startNodes[0]) {
-      await executeNode(startNodes[0].id);
-    } else {
-      for (const n of nodes) await executeNode(n.id);
-    }
-
-    const finalStatus = results.some(
-      (r) => r.type === 'humanApproval' && r.output.includes('pending'),
-    )
-      ? 'awaiting_approval'
-      : 'completed';
-    ctx.workflowRepo.updateStatus(workflowId, finalStatus);
-    ctx.auditLogRepo.insert('workflow', workflowId, 'run', 'system', {
-      status: finalStatus,
-      steps: results,
-      runId,
-    });
-    ctx.logger.info('Workflow executed via tool', {
-      workflowId,
-      nodes: results.length,
-      status: finalStatus,
-    });
-    return { runId, status: finalStatus, steps: results };
-  } catch (e) {
-    ctx.workflowRepo.updateStatus(workflowId, 'failed');
-    throw e;
-  }
+  const result = await runWorkflowById(workflowId);
+  return { runId: result.runId, status: result.status, steps: result.steps };
 }
 
 // ── Meeting result capture (request-scoped via AsyncLocalStorage) ──

@@ -706,7 +706,7 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
   return { nodes, edges };
 }
 
-function normalizeDefinition(def: any): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
+export function normalizeDefinition(def: any): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
   // New format: WorkflowDefinition with steps array
   if (def.steps && Array.isArray(def.steps)) {
     return convertStepsToNodes(def.steps);
@@ -915,72 +915,81 @@ workflowsRouter.put('/:id', async (c) => {
   return c.json({ id, status: 'updated' });
 });
 
-workflowsRouter.post('/:id/run', async (c) => {
+/** Run a workflow by ID using the full engine (used by both HTTP API and MCP tool). */
+export async function runWorkflowById(workflowId: string): Promise<{
+  runId: string;
+  status: string;
+  steps: unknown[];
+  handoffs: Record<string, unknown>;
+}> {
   const { workflowRepo, auditLogRepo, logger } = getServerContext();
-  const id = c.req.param('id');
-
-  const wf = workflowRepo.findById(id);
-  if (!wf) return c.json({ error: 'Workflow not found' }, 404);
+  const wf = workflowRepo.findById(workflowId);
+  if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
 
   const def = JSON.parse(wf.definition ?? '{}');
   const { nodes, edges } = normalizeDefinition(def);
 
-  // Cache capabilities for createAgentLoop
   pendingCapabilities = (def.capabilities as WorkflowCapabilities) ?? {};
-  capabilityCache.set(id, pendingCapabilities);
+  capabilityCache.set(workflowId, pendingCapabilities);
 
-  if (nodes.length === 0) {
-    return c.json({ error: 'Workflow has no nodes' }, 400);
-  }
+  if (nodes.length === 0) throw new Error('Workflow has no nodes');
 
-  workflowRepo.updateStatus(id, 'running');
+  workflowRepo.updateStatus(workflowId, 'running');
 
   const eng = getEngine();
   const entryNodeId = findEntryNode(nodes);
 
-  try {
-    const run = await eng.startRun(id, nodes, edges, entryNodeId);
+  const run = await eng.startRun(workflowId, nodes, edges, entryNodeId);
 
-    const finalStatus = run.status;
-    workflowRepo.updateStatus(id, finalStatus);
-    auditLogRepo.insert('workflow', id, 'run', 'system', {
-      status: finalStatus,
-      steps: run.steps,
-      runId: run.runId,
-    });
+  const finalStatus = run.status;
+  workflowRepo.updateStatus(workflowId, finalStatus);
+  auditLogRepo.insert('workflow', workflowId, 'run', 'system', {
+    status: finalStatus,
+    steps: run.steps,
+    runId: run.runId,
+  });
 
-    // Collect handoff docs from segment boundaries
-    const handoffs: Record<string, unknown> = {};
-    for (const [key, value] of run.results) {
-      if (key.startsWith('_handoff:')) {
-        handoffs[key.replace('_handoff:', '')] = value;
-      }
+  const handoffs: Record<string, unknown> = {};
+  for (const [key, value] of run.results) {
+    if (key.startsWith('_handoff:')) {
+      handoffs[key.replace('_handoff:', '')] = value;
     }
+  }
 
-    broadcast('workflow_started', {
-      workflowId: id,
-      runId: run.runId,
-      name: wf.name,
-      timestamp: new Date().toISOString(),
-    });
-    broadcast('workflow_completed', {
-      workflowId: id,
-      runId: run.runId,
-      status: finalStatus,
-      timestamp: new Date().toISOString(),
-    });
-    logger.info('Workflow executed', {
-      id,
-      nodes: run.steps.length,
-      status: finalStatus,
-      segments: Object.keys(handoffs).length,
-    });
+  broadcast('workflow_started', {
+    workflowId,
+    runId: run.runId,
+    name: wf.name,
+    timestamp: new Date().toISOString(),
+  });
+  broadcast('workflow_completed', {
+    workflowId,
+    runId: run.runId,
+    status: finalStatus,
+    timestamp: new Date().toISOString(),
+  });
+  logger.info('Workflow executed', {
+    id: workflowId,
+    nodes: run.steps.length,
+    runId: run.runId,
+    status: finalStatus,
+  });
+
+  return { runId: run.runId, status: finalStatus, steps: run.steps, handoffs };
+}
+
+workflowsRouter.post('/:id/run', async (c) => {
+  const { workflowRepo, logger } = getServerContext();
+  const id = c.req.param('id');
+
+  try {
+    const result = await runWorkflowById(id);
     return c.json({
-      runId: run.runId,
+      runId: result.runId,
       workflowId: id,
-      status: finalStatus,
-      steps: run.steps,
-      handoffs: Object.keys(handoffs).length > 0 ? handoffs : undefined,
+      status: result.status,
+      steps: result.steps,
+      handoffs: Object.keys(result.handoffs).length > 0 ? result.handoffs : undefined,
     });
   } catch (e) {
     workflowRepo.updateStatus(id, 'failed');
