@@ -338,12 +338,13 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
 
   const handleNodeAdd = (type: CanvasNodeType, position?: { x: number; y: number }) => {
     const id = `${type}_${Date.now()}`;
-    const pos = position ?? { x: 250, y: 250 };
+    // If an AgentGroup is selected, nest inside it
+    const parentGroup = canvasNodes.find((n) => n.id === selectedNodeId && n.type === 'agentGroup');
+    const parentId = parentGroup?.id;
+    const pos = position ?? (parentGroup ? { x: 40, y: 50 } : { x: 250, y: 250 });
     const newNode: CanvasNode = {
-      id,
-      type,
-      position: pos,
-      data: { title: type },
+      id, type, position: pos, data: { title: type },
+      ...(parentId ? { parentId, extent: 'parent' as const } : {}),
     };
     setCanvasNodes((prev) => {
       const updated = [...prev, newNode];

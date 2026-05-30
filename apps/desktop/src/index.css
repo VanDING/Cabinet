@@ -235,52 +235,47 @@ body {
 }
 
 /* ── Theme-aware opacity utilities (color-mix) ── */
-/* Backgrounds */
-.wf-bg-accent-5  { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-.wf-bg-accent-10 { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.wf-bg-accent-20 { background: color-mix(in srgb, var(--accent) 20%, transparent); }
-.wf-bg-accent-30 { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-.wf-bg-success-5  { background: color-mix(in srgb, var(--intent-success) 5%, transparent); }
-.wf-bg-success-10 { background: color-mix(in srgb, var(--intent-success) 10%, transparent); }
-.wf-bg-success-20 { background: color-mix(in srgb, var(--intent-success) 20%, transparent); }
-.wf-bg-success-30 { background: color-mix(in srgb, var(--intent-success) 30%, transparent); }
-.wf-bg-danger-5  { background: color-mix(in srgb, var(--intent-danger) 5%, transparent); }
-.wf-bg-danger-10 { background: color-mix(in srgb, var(--intent-danger) 10%, transparent); }
-.wf-bg-danger-20 { background: color-mix(in srgb, var(--intent-danger) 20%, transparent); }
-.wf-bg-warning-5  { background: color-mix(in srgb, var(--intent-warning) 5%, transparent); }
-.wf-bg-warning-10 { background: color-mix(in srgb, var(--intent-warning) 10%, transparent); }
-.wf-bg-warning-20 { background: color-mix(in srgb, var(--intent-warning) 20%, transparent); }
-.wf-bg-info-5  { background: color-mix(in srgb, var(--intent-info) 5%, transparent); }
-.wf-bg-info-10 { background: color-mix(in srgb, var(--intent-info) 10%, transparent); }
-.wf-bg-info-20 { background: color-mix(in srgb, var(--intent-info) 20%, transparent); }
-.wf-bg-purple-5  { background: color-mix(in srgb, var(--intent-purple) 5%, transparent); }
-.wf-bg-purple-10 { background: color-mix(in srgb, var(--intent-purple) 10%, transparent); }
-.wf-bg-purple-20 { background: color-mix(in srgb, var(--intent-purple) 20%, transparent); }
-.wf-bg-surface-5  { background: color-mix(in srgb, var(--surface-muted) 5%, transparent); }
-.wf-bg-surface-10 { background: color-mix(in srgb, var(--surface-muted) 10%, transparent); }
-.wf-bg-surface-20 { background: color-mix(in srgb, var(--surface-muted) 20%, transparent); }
-.wf-bg-surface-30 { background: color-mix(in srgb, var(--surface-muted) 30%, transparent); }
-.wf-bg-surface-40 { background: color-mix(in srgb, var(--surface-muted) 40%, transparent); }
+/* Backgrounds — minimum 15% for visibility */
+.wf-bg-accent-15  { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.wf-bg-accent-25  { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+.wf-bg-accent-35  { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.wf-bg-accent-50  { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+.wf-bg-success-15  { background: color-mix(in srgb, var(--intent-success) 15%, transparent); }
+.wf-bg-success-25  { background: color-mix(in srgb, var(--intent-success) 25%, transparent); }
+.wf-bg-success-35  { background: color-mix(in srgb, var(--intent-success) 35%, transparent); }
+.wf-bg-danger-15  { background: color-mix(in srgb, var(--intent-danger) 15%, transparent); }
+.wf-bg-danger-25  { background: color-mix(in srgb, var(--intent-danger) 25%, transparent); }
+.wf-bg-warning-15  { background: color-mix(in srgb, var(--intent-warning) 15%, transparent); }
+.wf-bg-warning-25  { background: color-mix(in srgb, var(--intent-warning) 25%, transparent); }
+.wf-bg-warning-35  { background: color-mix(in srgb, var(--intent-warning) 35%, transparent); }
+.wf-bg-info-15  { background: color-mix(in srgb, var(--intent-info) 15%, transparent); }
+.wf-bg-info-25  { background: color-mix(in srgb, var(--intent-info) 25%, transparent); }
+.wf-bg-info-35  { background: color-mix(in srgb, var(--intent-info) 35%, transparent); }
+.wf-bg-purple-15  { background: color-mix(in srgb, var(--intent-purple) 15%, transparent); }
+.wf-bg-purple-25  { background: color-mix(in srgb, var(--intent-purple) 25%, transparent); }
+.wf-bg-purple-35  { background: color-mix(in srgb, var(--intent-purple) 35%, transparent); }
+.wf-bg-surface-15  { background: color-mix(in srgb, var(--surface-muted) 15%, transparent); }
+.wf-bg-surface-25  { background: color-mix(in srgb, var(--surface-muted) 25%, transparent); }
+.wf-bg-surface-35  { background: color-mix(in srgb, var(--surface-muted) 35%, transparent); }
+.wf-bg-surface-50  { background: color-mix(in srgb, var(--surface-muted) 50%, transparent); }
 
 /* Borders */
-.wf-border-accent-20  { border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
-.wf-border-accent-30  { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
-.wf-border-accent-40  { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
-.wf-border-success-30 { border-color: color-mix(in srgb, var(--intent-success) 30%, transparent); }
+.wf-border-accent-35  { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.wf-border-accent-50  { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 .wf-border-success-40 { border-color: color-mix(in srgb, var(--intent-success) 40%, transparent); }
-.wf-border-danger-30  { border-color: color-mix(in srgb, var(--intent-danger) 30%, transparent); }
-.wf-border-warning-30 { border-color: color-mix(in srgb, var(--intent-warning) 30%, transparent); }
-.wf-border-info-30    { border-color: color-mix(in srgb, var(--intent-info) 30%, transparent); }
-.wf-border-purple-20  { border-color: color-mix(in srgb, var(--intent-purple) 20%, transparent); }
-.wf-border-purple-30  { border-color: color-mix(in srgb, var(--intent-purple) 30%, transparent); }
+.wf-border-success-50 { border-color: color-mix(in srgb, var(--intent-success) 50%, transparent); }
+.wf-border-danger-40  { border-color: color-mix(in srgb, var(--intent-danger) 40%, transparent); }
+.wf-border-warning-40 { border-color: color-mix(in srgb, var(--intent-warning) 40%, transparent); }
+.wf-border-info-40    { border-color: color-mix(in srgb, var(--intent-info) 40%, transparent); }
+.wf-border-purple-35  { border-color: color-mix(in srgb, var(--intent-purple) 35%, transparent); }
 
 /* Ring */
-.wf-ring-accent-40   { --tw-ring-color: color-mix(in srgb, var(--accent) 40%, transparent); }
-.wf-ring-success-40  { --tw-ring-color: color-mix(in srgb, var(--intent-success) 40%, transparent); }
-.wf-ring-danger-40   { --tw-ring-color: color-mix(in srgb, var(--intent-danger) 40%, transparent); }
-.wf-ring-warning-40  { --tw-ring-color: color-mix(in srgb, var(--intent-warning) 40%, transparent); }
-.wf-ring-info-40     { --tw-ring-color: color-mix(in srgb, var(--intent-info) 40%, transparent); }
-.wf-ring-purple-40   { --tw-ring-color: color-mix(in srgb, var(--intent-purple) 40%, transparent); }
+.wf-ring-accent-50   { --tw-ring-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.wf-ring-success-50  { --tw-ring-color: color-mix(in srgb, var(--intent-success) 50%, transparent); }
+.wf-ring-danger-50   { --tw-ring-color: color-mix(in srgb, var(--intent-danger) 50%, transparent); }
+.wf-ring-warning-50  { --tw-ring-color: color-mix(in srgb, var(--intent-warning) 50%, transparent); }
+.wf-ring-info-50     { --tw-ring-color: color-mix(in srgb, var(--intent-info) 50%, transparent); }
+.wf-ring-purple-50   { --tw-ring-color: color-mix(in srgb, var(--intent-purple) 50%, transparent); }
 
 /* xyflow node font */
 .react-flow__node {

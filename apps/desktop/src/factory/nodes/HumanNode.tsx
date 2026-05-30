@@ -10,12 +10,12 @@ export function HumanNode({ data, selected }: NodeProps) {
       </NodeToolbar>
       <div
         className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-sm transition-shadow
-          ${selected ? 'shadow-md ring-2 wf-ring-danger-40' : ''}
-          wf-border-danger-30 wf-bg-danger-5 border-dashed`}
+          ${selected ? 'shadow-md ring-2 wf-ring-danger-50' : ''}
+          wf-border-danger-40 wf-bg-danger-15 border-dashed`}
       >
-        <div className="flex items-center gap-1.5 wf-bg-danger-20 px-3 py-1.5">
+        <div className="flex items-center gap-1.5 wf-bg-danger-25 px-3 py-1.5">
           <span className="text-sm">⊚</span>
-          <span className="text-xs font-semibold text-intent-danger-foreground">Human</span>
+          <span className="text-xs font-semibold text-content-primary">Human</span>
           {d?.humanDeadline ? (
             <span className="ml-auto text-[10px] text-content-tertiary">◷</span>
           ) : null}

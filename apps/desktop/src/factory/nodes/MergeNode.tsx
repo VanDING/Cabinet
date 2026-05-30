@@ -9,10 +9,10 @@ export function MergeNode({ data, selected }: NodeProps) {
       <NodeToolbar isVisible={selected} position={Position.Top}>
         <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Merge</span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[140px] overflow-hidden shadow-sm transition-shadow wf-border-purple-30 wf-bg-purple-5 ${selected ? 'shadow-md ring-2 wf-ring-purple-40' : ''}`}>
-        <div className="flex items-center gap-1.5 wf-bg-purple-20 px-3 py-1.5">
-          <span className="text-sm text-intent-purple-foreground">∪</span>
-          <span className="text-xs font-semibold text-intent-purple-foreground">Merge</span>
+      <div className={`rounded-xl border-2 min-w-[140px] overflow-hidden shadow-sm transition-shadow wf-border-purple-35 wf-bg-purple-15 ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}`}>
+        <div className="flex items-center gap-1.5 wf-bg-purple-35 px-3 py-1.5">
+          <span className="text-sm text-content-primary">∪</span>
+          <span className="text-xs font-semibold text-content-primary">Merge</span>
         </div>
         <div className="px-3 py-2">
           <p className="text-xs font-medium text-content-primary">{title}</p>

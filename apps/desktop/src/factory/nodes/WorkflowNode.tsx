@@ -10,12 +10,12 @@ export function WorkflowNode({ data, selected }: NodeProps) {
       </NodeToolbar>
       <div
         className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-sm transition-shadow
-          ${selected ? 'shadow-md ring-2 wf-ring-purple-40' : ''}
-          wf-border-purple-30 wf-bg-purple-5 border-dashed`}
+          ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}
+          wf-border-purple-35 wf-bg-purple-15 border-dashed`}
       >
-        <div className="flex items-center gap-1.5 wf-bg-purple-20 px-3 py-1.5">
+        <div className="flex items-center gap-1.5 wf-bg-purple-35 px-3 py-1.5">
           <span className="text-sm">⊞</span>
-          <span className="text-xs font-semibold text-intent-purple-foreground">Workflow</span>
+          <span className="text-xs font-semibold text-content-primary">Workflow</span>
         </div>
         <div className="px-3 py-2">
           <p className="text-xs font-medium text-content-primary truncate">{wfId}</p>
