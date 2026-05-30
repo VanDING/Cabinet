@@ -149,8 +149,9 @@ export function ProjectExplorer({
 
   const buildMenuEntries = useCallback(
     (node: FileNode): ContextMenuEntry[] => {
+      const sep = navigator.platform.startsWith('Win') ? '\\' : '/';
       const absolutePath = rootPath
-        ? `${rootPath.replace(/[/\\]$/, '')}/${node.path}`
+        ? `${rootPath.replace(/[/\\]$/, '')}${sep}${node.path.replace(/\//g, sep)}`
         : node.path;
 
       if (node.type === 'file') {

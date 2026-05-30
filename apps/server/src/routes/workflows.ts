@@ -58,6 +58,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     logger: ctx.logger,
     taskScheduler: ctx.taskScheduler,
     workflowRepo: ctx.workflowRepo,
+    projectRepo: ctx.projectRepo,
   };
   const shared = createAllCapabilities(capabilitiesCtx);
 
@@ -88,7 +89,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
       return ctx.decisionService.reject(decisionId, captainId);
     },
     listWorkflows() {
-      const rows = ctx.workflowRepo.listByProject('default');
+      const rows = ctx.workflowRepo.listAll();
       return rows.map((r) => {
         const def = JSON.parse(r.definition ?? '{}');
         return {
@@ -947,7 +948,7 @@ export async function runWorkflowById(workflowId: string): Promise<{
   steps: unknown[];
   handoffs: Record<string, unknown>;
 }> {
-  const { workflowRepo, auditLogRepo, logger } = getServerContext();
+  const { workflowRepo, auditLogRepo, logger, db } = getServerContext();
   const wf = workflowRepo.findById(workflowId);
   if (!wf) throw new Error(`Workflow not found: ${workflowId}`);
 
@@ -993,6 +994,37 @@ export async function runWorkflowById(workflowId: string): Promise<{
     status: finalStatus,
     timestamp: new Date().toISOString(),
   });
+
+  // Auto-create deliverable for completed workflows
+  if (finalStatus === 'completed') {
+    try {
+      const deliverableId = `d_${Date.now()}`;
+      const lastStep = run.steps[run.steps.length - 1];
+      const output = lastStep ? String(lastStep.output ?? '') : '';
+      db.prepare(
+        `INSERT INTO project_deliverables (id, project_id, meeting_id, title, type, file_path, tags)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        deliverableId,
+        wf.project_id,
+        null,
+        wf.name || `Workflow ${workflowId}`,
+        'workflow_output',
+        '',
+        JSON.stringify(['workflow', 'auto']),
+      );
+      broadcast('deliverable_created', {
+        id: deliverableId,
+        projectId: wf.project_id,
+        title: wf.name || `Workflow ${workflowId}`,
+        type: 'workflow_output',
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      /* ignore deliverable creation errors */
+    }
+  }
+
   logger.info('Workflow executed', {
     id: workflowId,
     nodes: run.steps.length,

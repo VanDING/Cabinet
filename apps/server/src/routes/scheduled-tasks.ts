@@ -32,10 +32,10 @@ scheduledTasksRouter.post('/', async (c) => {
     }
     const id = `wf_${Date.now()}`;
     const def = JSON.stringify({
-      steps: [{ type: 'llmCall', title: name, data: { prompt } }],
+      steps: [{ type: 'llm', title: name, data: { prompt } }],
       nodes: [
         { id: 'start', type: 'start' },
-        { id: 'exec', type: 'llmCall', title: name, data: { prompt } },
+        { id: 'exec', type: 'llm', title: name, data: { prompt } },
         { id: 'end', type: 'end' },
       ],
       edges: [
@@ -43,7 +43,9 @@ scheduledTasksRouter.post('/', async (c) => {
         { from: 'exec', to: 'end' },
       ],
     });
-    ctx.workflowRepo.create(id, 'default', name, def, 'draft', recurring ? cron : undefined);
+    const projects = ctx.projectRepo.listAll();
+    const projectId = projects[0]?.id ?? 'default';
+    ctx.workflowRepo.create(id, projectId, name, def, 'draft', recurring ? cron : undefined);
     if (recurring) {
       ctx.taskScheduler.schedule(id, name, cron);
     }

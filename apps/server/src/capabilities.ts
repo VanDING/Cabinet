@@ -332,6 +332,7 @@ export interface CapabilitiesContext {
   logger: ServerContext['logger'];
   taskScheduler: ServerContext['taskScheduler'];
   workflowRepo: ServerContext['workflowRepo'];
+  projectRepo: ServerContext['projectRepo'];
 }
 
 export function createFileCapabilities(_ctx: CapabilitiesContext) {
@@ -795,10 +796,10 @@ export function createSchedulerCapabilities(ctx: CapabilitiesContext) {
     ) => {
       const id = `wf_${Date.now()}`;
       const def = {
-        steps: [{ type: 'llmCall', title: name, data: { prompt } }],
+        steps: [{ type: 'llm', title: name, data: { prompt } }],
         nodes: [
           { id: 'start', type: 'start' },
-          { id: 'exec', type: 'llmCall', title: name, data: { prompt } },
+          { id: 'exec', type: 'llm', title: name, data: { prompt } },
           { id: 'end', type: 'end' },
         ],
         edges: [
@@ -806,7 +807,9 @@ export function createSchedulerCapabilities(ctx: CapabilitiesContext) {
           { from: 'exec', to: 'end' },
         ],
       };
-      ctx.workflowRepo.create(id, 'default', name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
+      const projects = ctx.projectRepo.listAll();
+      const projectId = projects[0]?.id ?? 'default';
+      ctx.workflowRepo.create(id, projectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
       if (recurring) {
         ctx.taskScheduler.schedule(id, name, cronExpression);
       }

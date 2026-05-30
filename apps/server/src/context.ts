@@ -1798,7 +1798,7 @@ export function getServerContext(): ServerContext {
     if (payload?.type === 'subconscious_insight') {
       const insight = payload.insight as Record<string, unknown> | undefined;
       const relevance = (insight?.relevance as number) ?? 0;
-      if (relevance > 0.7) {
+      if (relevance > 0.5) {
         const text = (insight?.text as string) ?? '';
         const relatedEntities = (insight?.relatedEntities as string[]) ?? [];
         longTerm.store({
@@ -2012,10 +2012,10 @@ export function getServerContext(): ServerContext {
     if (oldTasks.length > 0) {
       for (const t of oldTasks) {
         const wfDef = {
-          steps: [{ type: 'llmCall', title: t.name, data: { prompt: t.prompt } }],
+          steps: [{ type: 'llm', title: t.name, data: { prompt: t.prompt } }],
           nodes: [
             { id: 'start', type: 'start' },
-            { id: 'exec', type: 'llmCall', title: t.name, data: { prompt: t.prompt } },
+            { id: 'exec', type: 'llm', title: t.name, data: { prompt: t.prompt } },
             { id: 'end', type: 'end' },
           ],
           edges: [

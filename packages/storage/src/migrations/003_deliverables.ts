@@ -8,7 +8,7 @@ export function runMigration003(db: Database.Database): void {
       meeting_id TEXT,
       title TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'meeting_report',
-      file_path TEXT NOT NULL,
+      file_path TEXT,
       tags TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
