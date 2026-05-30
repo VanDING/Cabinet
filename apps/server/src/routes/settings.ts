@@ -199,10 +199,20 @@ settingsRouter.post('/api-keys/:id/test', async (c) => {
     [provider]: { apiKey: decryptedKey, ...(baseUrl ? { baseUrl } : {}) },
   };
 
-  const tempAdapter = new AISDKAdapter(providerConfigs as any, {});
+  // Provider-specific fast test models — avoids hardcoded Anthropic fallback in ModelRouter
+  const FAST_TEST_MODELS: Record<string, string> = {
+    anthropic: 'anthropic/claude-haiku-4-5',
+    openai: 'openai/gpt-4o-mini',
+    google: 'google/gemini-2.5-flash',
+    deepseek: 'deepseek/deepseek-v4-flash',
+    qwen: 'qwen/qwen-turbo',
+    moonshot: 'moonshot/moonshot-v1-8k',
+    zhipu: 'zhipu/glm-4-flash',
+    baichuan: 'baichuan/baichuan3-turbo',
+  };
+  const testModel = FAST_TEST_MODELS[provider] ?? `${provider}/default`;
 
-  // Use the actual fastest model for testing, not the literal string "default"
-  const testModel = tempAdapter.resolveModelString('fast_execution');
+  const tempAdapter = new AISDKAdapter(providerConfigs as any, {});
 
   const start = Date.now();
   try {
