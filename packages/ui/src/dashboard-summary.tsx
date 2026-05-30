@@ -1,3 +1,5 @@
+import { CountUp } from './animations/CountUp';
+
 export interface DashboardStats {
   pendingDecisions: number;
   todayCost: number;
@@ -13,30 +15,42 @@ export interface DashboardSummaryProps {
 }
 
 export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
-  const cards = [
+  const cards: Array<{
+    label: string;
+    value: number | string;
+    numericValue: number | null;
+    color: string;
+    target: 'office' | 'factory' | null;
+    prefix?: string;
+  }> = [
     {
       label: 'Pending Decisions',
       value: stats.pendingDecisions,
+      numericValue: stats.pendingDecisions,
       color: 'text-intent-warning',
-      target: 'office' as const,
+      target: 'office',
     },
     {
       label: "Today's Cost",
       value: `${stats.todayCost.toFixed(2)}`,
+      numericValue: stats.todayCost,
       color: 'text-accent',
       target: null,
+      prefix: '$',
     },
     {
       label: 'Active Projects',
       value: stats.activeProjects,
+      numericValue: stats.activeProjects,
       color: 'text-intent-success',
       target: null,
     },
     {
       label: 'Workflows',
       value: stats.activeWorkflows,
+      numericValue: stats.activeWorkflows,
       color: 'text-intent-purple',
-      target: 'factory' as const,
+      target: 'factory',
     },
   ];
 
@@ -54,7 +68,18 @@ export function DashboardSummary({ stats, onNavigate }: DashboardSummaryProps) {
             onClick={() => card.target && onNavigate?.(card.target)}
             className={`rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${card.target ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
           >
-            <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
+            <div className={`text-2xl font-bold ${card.color}`}>
+              {card.numericValue != null ? (
+                <CountUp
+                  to={card.numericValue}
+                  duration={0.8}
+                  prefix={card.prefix}
+                  separator=","
+                />
+              ) : (
+                card.value
+              )}
+            </div>
             <div className="mt-1 text-sm text-content-tertiary">{card.label}</div>
           </div>
         ))}
