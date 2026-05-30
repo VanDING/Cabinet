@@ -12,8 +12,8 @@ describe('validateBlueprint', () => {
       ],
       workflow: {
         steps: [
-          { id: 's1', type: 'aiAgent', agent: 'secretary', input: { from: 'trigger' } },
-          { id: 's2', type: 'humanApproval', agent: 'captain', input: { from: 's1' } },
+          { id: 's1', type: 'agentGroup', agent: 'secretary', input: { from: 'trigger' } },
+          { id: 's2', type: 'approval', agent: 'captain', input: { from: 's1' } },
         ],
       },
       authorization: {
@@ -73,20 +73,20 @@ describe('validateBlueprint', () => {
     expect(result.issues.filter((i) => i.type === 'invalid_branch')).toHaveLength(2);
   });
 
-  it('detects missing authorization for humanApproval without default', () => {
+  it('detects missing authorization for approval without default', () => {
     const bp: Blueprint = {
       workflow: {
-        steps: [{ id: 's1', type: 'humanApproval' }],
+        steps: [{ id: 's1', type: 'approval' }],
       },
     };
     const result = validateBlueprint(bp);
     expect(result.issues.some((i) => i.type === 'missing_auth')).toBe(true);
   });
 
-  it('default authorization rule covers all humanApproval steps', () => {
+  it('default authorization rule covers all approval steps', () => {
     const bp: Blueprint = {
       workflow: {
-        steps: [{ id: 's1', type: 'humanApproval' }],
+        steps: [{ id: 's1', type: 'approval' }],
       },
       authorization: {
         rules: [{ default: 'L2', description: 'Default auth' }],

@@ -187,7 +187,7 @@ export const SECRETARY_ROLE: AgentRole = {
     'get_system_knowledge',
     // Note: destructive tools (delete_file, delete_workflow, delete_agent,
     // approve_decision, reject_decision, clear_index) are
-    // intentionally excluded — they belong in workflow humanApproval nodes.
+    // intentionally excluded — they belong in workflow approval nodes.
   ],
   contextBudget: 0.5,
   maxSteps: 500,
@@ -444,7 +444,7 @@ export const ORGANIZE_ROLE: AgentRole = {
     '- Prefer reusing existing agents over creating new ones. Use list_agents before register_agent.',
     '- Default model: fast for routine, reasoning for complex analysis.',
     '- Keep workflows to 4-8 steps. Split larger processes.',
-    '- Add humanApproval before destructive or high-cost actions.',
+    '- Add approval nodes before destructive or high-cost actions.',
     '- Present plan in plain language first, then the structured blueprint.',
     '- Be proactive within safety boundaries — drive through steps, but always call create_decision for L2+ approval before deploying.',
     '- When the goal is simple (single agent, no new workflow), skip Deliberate (Step 3) and Validate (Step 4): Clarify → Draft → Deploy directly.',

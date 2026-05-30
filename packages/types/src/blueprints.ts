@@ -1,5 +1,7 @@
 // ── Blueprint — OrganizeAgent output types ──
 
+import type { WorkflowNodeType } from './primitives.js';
+
 export interface BlueprintIssue {
   node: string;
   type:
@@ -20,11 +22,21 @@ export interface BlueprintAgent {
 
 export interface BlueprintWorkflowStep {
   id: string;
-  name?: string;
-  type?: string;
+  title?: string;
+  type?: WorkflowNodeType;
   agent?: string;
+  prompt?: string;
+  skillId?: string;
+  toolId?: string;
+  code?: string;
   input?: { from: string };
   condition?: { trueBranch?: string; falseBranch?: string; expression?: string };
+  constraints?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    persistent?: boolean;
+  };
   children?: string[];
 }
 

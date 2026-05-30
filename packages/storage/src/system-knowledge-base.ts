@@ -97,24 +97,51 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'workflow_node_types',
     topic: 'Workflow 节点类型',
     category: 'capability',
-    version: 1,
+    version: 2,
     content: `## Workflow 支持的节点类型
-Workflow 由节点（node）和边（edge）组成。节点类型必须是以下之一，不能使用自定义类型：
+Workflow 由节点（node）和边（edge）组成 DAG。节点类型必须是以下之一，不能使用自定义类型：
 
-- **start** — 流程起点，无实际操作
-- **end** — 流程终点，无实际操作
-- **aiAgent** — 调用指定 Agent 执行一段任务。可设置 agent 字段指定角色名
-- **llmCall** — 直接调用 LLM 生成内容
-- **skill** — 调用已注册的技能（Skill）
-- **condition** — 条件分支，根据上游输出决定走哪条边
+### 流程控制（7 种）
+- **start** — 流程起点
+- **end** — 流程终点
+- **ifElse** — 条件分支，根据 branches 配置或 loopCondition 决定走哪条边
+- **loop** — 循环执行，支持 count/condition 两种模式，children 内为循环体
 - **parallel** — 并行分支，同时执行多个下游节点
-- **human** — 暂停流程，等待用户输入
-- **humanApproval** — 暂停流程，等待用户审批
-- **dataQuery** — 执行数据查询
-- **notification** — 发送通知（WebSocket 广播）
-- **wait** — 等待指定时长
+- **merge** — 合并多个上游分支的输出（object/array/concat/firstNotNull）
+- **pass** — 透传第一个上游节点的输出
 
-**Segment（执行段）**：连续的 aiAgent / llmCall 节点且 agent 字段相同，会被自动合并为一个 Segment，由同一个 AgentLoop 执行，保持上下文连贯。`,
+### 执行容器（1 种）
+- **agentGroup** — Agent 执行组。内部的 llm/skill/tool 节点由同一个 AgentLoop 执行，保持上下文连贯。通过 role 字段指定 Agent 角色名，persistent 控制是否跨组保留上下文。
+
+### 执行节点（5 种）
+- **llm** — 直接调用 LLM 生成内容。prompt 字段传入提示词
+- **skill** — 调用已注册的技能（Skill）。skillId 指定技能名
+- **tool** — 调用单个工具。toolId 指定工具名，inputMapping 映射参数
+- **code** — 执行一段代码。code 字段传入代码字符串，codeTimeout 控制超时
+- **workflow** — 调用子工作流。workflowId 指定目标工作流
+
+### AI 节点（2 种）
+- **intentClassify** — 意图分类。intents 定义候选意图，输出匹配的标签用于分支路由
+- **knowledgeBase** — 知识库检索。kbId/queryTemplate/topK 配置检索参数
+
+### Human-in-the-loop（2 种）
+- **approval** — 暂停流程，等待用户审批。审批通过后经 approval polling 恢复执行
+- **human** — 暂停流程，等待用户输入任务结果
+
+### 旧名称映射（向后兼容）
+旧版 steps 格式中的部分名称已更改：aiAgent → agentGroup, llmCall → llm, condition → ifElse, humanApproval → approval。
+
+### Capabilities 系统
+Workflow 定义可包含 capabilities 字段，声明该工作流 Agent 可访问的工具类别：
+- files: { read, write } — 文件系统读写
+- web: { fetch, http } — 网络请求
+- shell — 命令行执行
+- knowledge: { search, index } — 知识库检索/索引
+- evaluation — 输出评估
+未声明的能力会被自动拦截（stub 抛出错误）。
+
+### Cron 集成
+Workflow 支持 cron_expression 字段，使用标准 5 字段 cron 表达式。带 cron 的工作流在 server 启动时由 TaskScheduler 自动加载并调度执行。`,
   },
 ];
 

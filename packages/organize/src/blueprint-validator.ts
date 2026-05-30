@@ -91,13 +91,13 @@ export function validateBlueprint(
     if (rule.node_id) authorizedNodes.add(rule.node_id);
   }
   for (const step of steps) {
-    if (step.type === 'humanApproval' && !authorizedNodes.has(step.id)) {
+    if ((step.type === 'approval' || step.type === 'humanApproval') && !authorizedNodes.has(step.id)) {
       const hasDefault = rules.some((r) => r.default !== undefined);
       if (!hasDefault) {
         issues.push({
           node: step.id,
           type: 'missing_auth',
-          detail: `humanApproval step "${step.id}" has no authorization rule and no default rule exists.`,
+          detail: `approval step "${step.id}" has no authorization rule and no default rule exists.`,
         });
       }
     }

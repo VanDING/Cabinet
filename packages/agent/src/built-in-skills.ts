@@ -14,19 +14,20 @@ export const WORKFLOW_DESIGNER_SKILL: SkillEntry = {
 You are using the Workflow Designer skill. Help the user design and modify Cabinet workflows — multi-step automated processes.
 
 ### Quick Reference
-- **Step types**: aiAgent | humanApproval | condition | parallel | notification | wait | llmCall
+- **Node types**: start | end | agentGroup | llm | skill | tool | code | workflow | ifElse | loop | parallel | merge | pass | intentClassify | knowledgeBase | approval | human
 - **Connections**: Steps connect via \`input.from\`: \`"trigger"\` (first step) or another step id.
-- **Segments**: Consecutive steps with the same agent share context as a "segment".
-- **Conditions**: Expression syntax supports \`{{steps.X.output}}\`, comparisons, AND/OR/NOT.
-- **Parallel**: Specify \`children[]\` and aggregation (\`all\` | \`first\` | \`merge\`).
-- **Human approval**: Set \`retryTarget\` and actions (\`continue\` | \`retry\` | \`halt\`).
-- **Capabilities**: Must be declared per step — files.read/write, web.fetch/http, shell, knowledge.search, evaluation.
+- **AgentGroup**: Use \`agentGroup\` to wrap consecutive llm/skill/tool nodes that share the same agent context. The agentLoop persists inside the group.
+- **Conditions**: \`ifElse\` nodes use \`branches\` with \`field\`, \`operator\`, \`value\` conditions, or legacy \`loopCondition\` expression.
+- **Parallel**: \`parallel\` node executes all downstream branches concurrently. \`failStrategy\`: failAll | continue.
+- **Approval**: \`approval\` node pauses for human decision. Server polls every 30s to auto-resume.
+- **Capabilities**: Declared at workflow definition level (not per step) via \`capabilities\` field — files.read/write, web.fetch/http, shell, knowledge.search/index, evaluation.
+- **Cron**: Workflows support \`cronExpression\` for scheduled execution.
 
 For the full WorkflowDefinition JSON schema, request the on-demand rule "workflow-schema".
 
 ### Creation Process
 1. Understand the goal. Ask clarifying questions if steps are ambiguous.
-2. Use \`list_agents\` to see available roles. Consecutive steps with same agent = shared context segment.
+2. Use \`list_agents\` to see available roles. Group related steps under an \`agentGroup\` node for shared context.
 3. Design step-by-step. If the workflow needs file/web/shell access, ASK the user first.
 4. Generate the WorkflowDefinition JSON and present for review.
 5. After confirmation, call \`create_workflow\` to save.
@@ -40,11 +41,11 @@ For the full WorkflowDefinition JSON schema, request the on-demand rule "workflo
 - Same agent for consecutive steps = shared context (efficient).
 - Different agent only when: different model, expertise domain, or service boundary.
 - Default: \`"secretary"\` if no specialized agent fits.
-- Every \`aiAgent\` step MUST have an \`agent\` field.
+- Every \`agentGroup\` node MUST have a \`role\` field specifying the agent name.
 
 ### Guidelines
 - Keep workflows to 4-8 steps. Split larger processes into sub-workflows.
-- Add \`humanApproval\` before destructive or high-cost actions.
+- Add \`approval\` nodes before destructive or high-cost actions.
 - Use fast model for routine steps, reasoning model for complex analysis.
 - Check for similar workflows with \`list_workflows\` before creating duplicates.
 - Present the plan in plain language first, then show the JSON.`,

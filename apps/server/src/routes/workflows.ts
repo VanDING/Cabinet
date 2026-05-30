@@ -8,7 +8,7 @@ import {
   type WorkflowRun,
   type AgentLoopHandle,
 } from '@cabinet/workflow';
-import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
+import { DEFAULT_CAPTAIN_ID, type WorkflowNodeType } from '@cabinet/types';
 import {
   AgentLoop,
   ToolExecutor,
@@ -613,6 +613,19 @@ export const workflowsRouter = new Hono();
  *   - condition steps → no sequential out-edges; trueBranch/falseBranch create explicit edges
  *   - humanApproval with retryTarget → condition edge back to retry target
  */
+function normalizeNodeType(type: string | undefined): string {
+  switch (type) {
+    case 'aiAgent': return 'agentGroup';
+    case 'llmCall': return 'llm';
+    case 'condition': return 'ifElse';
+    case 'humanApproval': return 'approval';
+    case 'dataQuery': return 'tool';
+    case 'notification': return 'pass';
+    case 'wait': return 'pass';
+    default: return type ?? 'agentGroup';
+  }
+}
+
 function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: WorkflowEdge[] } {
   const nodes: WorkflowNodeDef[] = [];
   const edges: WorkflowEdge[] = [];
@@ -622,9 +635,12 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
     const step = steps[i];
     const prevStep = i > 0 ? steps[i - 1] : null;
 
+    // Normalize legacy step type names to current engine node types
+    const normalizedType = normalizeNodeType(step.type);
+
     nodes.push({
       id: step.id,
-      type: step.type ?? 'aiAgent',
+      type: normalizedType as WorkflowNodeType,
       title: step.title,
       skillId: step.skillId,
       loopCondition: (step as any).condition?.expression ?? (step as any).condition,

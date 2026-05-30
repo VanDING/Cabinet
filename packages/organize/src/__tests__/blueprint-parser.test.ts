@@ -9,7 +9,7 @@ describe('parseBlueprint', () => {
       '{',
       '  "meta": { "goal": "Test" },',
       '  "agents": [{ "action": "create_new", "name": "TestAgent" }],',
-      '  "workflow": { "steps": [{ "id": "s1", "type": "aiAgent" }] }',
+      '  "workflow": { "steps": [{ "id": "s1", "type": "agentGroup" }] }',
       '}',
       '```',
     ].join('\n');
