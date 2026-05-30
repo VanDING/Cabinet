@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 
 interface Insight {
@@ -47,10 +46,7 @@ export function InsightsWidget({ onExpand }: Props) {
       }`}
     >
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Lightbulb size={14} className="text-accent" />
-          <h3 className="text-sm font-medium text-content-secondary">Insights</h3>
-        </div>
+        <h3 className="text-xs font-semibold text-content-secondary">Insights</h3>
         {!loading && insights.length > 0 && (
           <span className="text-xs text-content-tertiary">{insights.length}</span>
         )}
