@@ -19,6 +19,10 @@ Thumbs.db
 
 # Claude local
 .claude/*.local.*
+.claude/settings.json
+
+# Superpowers (brainstorm artifacts)
+.superpowers/
 
 # Database (runtime)
 *.db
