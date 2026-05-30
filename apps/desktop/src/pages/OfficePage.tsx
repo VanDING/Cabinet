@@ -59,22 +59,22 @@ interface WidgetDef {
 }
 
 const WIDGET_POOL: WidgetDef[] = [
-  { type: 'today-cost', label: "Today's Cost", w: 3, h: 1, available: true },
-  { type: 'active-workflows', label: 'Active Workflows', w: 3, h: 1, available: true },
-  { type: 'decision-list', label: 'Decision List', w: 6, h: 3, available: true },
-  { type: 'event-timeline', label: 'Event Timeline', w: 6, h: 2, available: true },
-  { type: 'cost-chart', label: 'Cost Trend', w: 6, h: 3, available: true },
-  { type: 'system-health', label: 'System Health', w: 4, h: 2, available: true },
-  { type: 'calendar', label: 'Calendar', w: 4, h: 3, available: true },
-  { type: 'clock', label: 'Clock', w: 2, h: 2, available: true },
-  { type: 'weather', label: 'Weather', w: 3, h: 2, available: true },
-  { type: 'deliverables', label: 'Deliverables', w: 6, h: 3, available: true },
-  { type: 'project-list', label: 'Project List', w: 4, h: 3, available: true },
-  { type: 'api-switcher', label: 'API Switcher', w: 4, h: 2, available: true },
-  { type: 'progress-board', label: 'Task Board', w: 6, h: 4, available: true },
-  { type: 'meeting-list', label: 'Meetings', w: 4, h: 3, available: true },
-  { type: 'insights', label: 'Insights', w: 4, h: 3, available: true },
-  { type: 'harness', label: 'Harness', w: 4, h: 3, available: true },
+  { type: 'today-cost', label: "Today's Cost", w: 6, h: 2, available: true },
+  { type: 'active-workflows', label: 'Active Workflows', w: 6, h: 2, available: true },
+  { type: 'decision-list', label: 'Decision List', w: 12, h: 5, available: true },
+  { type: 'event-timeline', label: 'Event Timeline', w: 12, h: 3, available: true },
+  { type: 'cost-chart', label: 'Cost Trend', w: 12, h: 5, available: true },
+  { type: 'system-health', label: 'System Health', w: 8, h: 3, available: true },
+  { type: 'calendar', label: 'Calendar', w: 8, h: 5, available: true },
+  { type: 'clock', label: 'Clock', w: 4, h: 3, available: true },
+  { type: 'weather', label: 'Weather', w: 6, h: 3, available: true },
+  { type: 'deliverables', label: 'Deliverables', w: 12, h: 5, available: true },
+  { type: 'project-list', label: 'Project List', w: 8, h: 5, available: true },
+  { type: 'api-switcher', label: 'API Switcher', w: 8, h: 3, available: true },
+  { type: 'progress-board', label: 'Task Board', w: 12, h: 7, available: true },
+  { type: 'meeting-list', label: 'Meetings', w: 8, h: 5, available: true },
+  { type: 'insights', label: 'Insights', w: 8, h: 5, available: true },
+  { type: 'harness', label: 'Harness', w: 8, h: 5, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -372,8 +372,8 @@ export function OfficePage() {
             layout={layout}
             width={containerWidth}
             gridConfig={{
-              cols: 12,
-              rowHeight: 100,
+              cols: 24,
+              rowHeight: 60,
               margin: [12, 12],
               containerPadding: null,
               maxRows: Infinity,
