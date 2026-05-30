@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, authHeaders } from '../../utils/pin.js';
 
@@ -66,10 +65,7 @@ export function HarnessWidget({ onExpand }: Props) {
         onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
       }`}
     >
-      <div className="mb-3 flex items-center gap-2">
-        <Shield size={14} className="text-accent" />
-        <h3 className="text-sm font-medium text-content-secondary">Harness</h3>
-      </div>
+      <h3 className="mb-3 text-xs font-semibold text-content-secondary">Harness</h3>
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center">

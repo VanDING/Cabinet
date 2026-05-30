@@ -80,7 +80,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
 
   return (
     <div className="h-full overflow-y-auto rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-content-primary">
+      <h3 className="mb-3 text-xs font-semibold text-content-secondary">
         Decisions
         {pending.length > 0 && (
           <span className="ml-1.5 rounded-full bg-intent-warning-muted px-1.5 py-0.5 text-[10px] text-intent-warning">

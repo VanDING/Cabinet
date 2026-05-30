@@ -79,7 +79,7 @@ export function CostChart() {
     <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-content-primary">Cost Analysis</h3>
+        <h3 className="text-xs font-semibold text-content-secondary">Cost Analysis</h3>
         <div className="flex rounded bg-surface-muted p-0.5">
           {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
             <button
