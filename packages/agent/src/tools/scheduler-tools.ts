@@ -12,7 +12,7 @@ export interface SchedulerToolDeps {
       id: string;
       name: string;
       cronExpression: string;
-      prompt: string;
+      prompt?: string;
       recurring: boolean;
       enabled: boolean;
       lastRunAt?: string;

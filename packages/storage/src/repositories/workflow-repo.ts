@@ -6,6 +6,7 @@ export interface WorkflowRow {
   name: string;
   definition: string;
   status: string;
+  cron_expression: string | null;
   created_at: string;
 }
 
@@ -25,12 +26,12 @@ export class WorkflowRepository {
 
   // ── Workflows ──
 
-  create(id: string, projectId: string, name: string, definition: string, status = 'draft'): void {
+  create(id: string, projectId: string, name: string, definition: string, status = 'draft', cronExpression?: string): void {
     this.db
       .prepare(
-        'INSERT INTO workflows (id, project_id, name, definition, status) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO workflows (id, project_id, name, definition, status, cron_expression) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(id, projectId, name, definition, status);
+      .run(id, projectId, name, definition, status, cronExpression ?? null);
   }
 
   findById(id: string): WorkflowRow | null {
@@ -93,6 +94,19 @@ export class WorkflowRepository {
     return row?.count ?? 0;
   }
 
+  findByCron(): WorkflowRow[] {
+    const rows = this.db
+      .prepare('SELECT * FROM workflows WHERE cron_expression IS NOT NULL')
+      .all() as Record<string, unknown>[];
+    return rows.map((r) => this.rowToWorkflow(r));
+  }
+
+  updateCron(id: string, cronExpression: string | null): void {
+    this.db
+      .prepare('UPDATE workflows SET cron_expression = ? WHERE id = ?')
+      .run(cronExpression, id);
+  }
+
   private rowToWorkflow(row: Record<string, unknown>): WorkflowRow {
     return {
       id: row.id as string,
@@ -100,6 +114,7 @@ export class WorkflowRepository {
       name: row.name as string,
       definition: row.definition as string,
       status: row.status as string,
+      cron_expression: (row.cron_expression as string) ?? null,
       created_at: row.created_at as string,
     };
   }

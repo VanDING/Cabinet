@@ -17,6 +17,7 @@ import { runMigration017 } from './017_api_keys_columns.js';
 import { runMigration018 } from './018_decision_analysis.js';
 import { runMigration019 } from './019_project_name_unique.js';
 import { runMigration020 } from './020_route_feedback.js';
+import { runMigration021 } from './021_workflow_cron.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -42,6 +43,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 18, name: '018_decision_analysis', up: runMigration018 },
   { version: 19, name: '019_project_name_unique', up: runMigration019 },
   { version: 20, name: '020_route_feedback', up: runMigration020 },
+  { version: 21, name: '021_workflow_cron', up: runMigration021 },
 ];
 
 /**

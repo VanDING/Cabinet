@@ -1414,13 +1414,31 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── Scheduler callbacks ──
     scheduleTask: async (name, cronExpression, prompt, recurring) => {
-      return ctx.taskScheduler.schedule(name, cronExpression, prompt, recurring);
+      const id = `wf_${Date.now()}`;
+      const def = {
+        steps: [{ type: 'llmCall', title: name, data: { prompt } }],
+        nodes: [
+          { id: 'start', type: 'start' },
+          { id: 'exec', type: 'llmCall', title: name, data: { prompt } },
+          { id: 'end', type: 'end' },
+        ],
+        edges: [
+          { from: 'start', to: 'exec' },
+          { from: 'exec', to: 'end' },
+        ],
+      };
+      ctx.workflowRepo.create(id, 'default', name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
+      if (recurring) {
+        ctx.taskScheduler.schedule(id, name, cronExpression);
+      }
+      return { id };
     },
     listScheduledTasks: async () => {
       return ctx.taskScheduler.list();
     },
     cancelScheduledTask: async (id) => {
-      ctx.taskScheduler.cancel(id);
+      ctx.taskScheduler.unschedule(id);
+      ctx.workflowRepo.updateCron(id, null);
     },
 
     // ── System knowledge callbacks ──
@@ -1430,6 +1448,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         gateway: ctx.gateway,
         logger: ctx.logger,
         taskScheduler: ctx.taskScheduler,
+        workflowRepo: ctx.workflowRepo,
       }).querySystemKnowledge(query, limit);
     },
     getSystemKnowledge: async (topic) => {
@@ -1438,6 +1457,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         gateway: ctx.gateway,
         logger: ctx.logger,
         taskScheduler: ctx.taskScheduler,
+        workflowRepo: ctx.workflowRepo,
       }).getSystemKnowledge(topic);
     },
   };

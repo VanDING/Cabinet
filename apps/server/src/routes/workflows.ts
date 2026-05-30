@@ -57,6 +57,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     gateway: ctx.gateway,
     logger: ctx.logger,
     taskScheduler: ctx.taskScheduler,
+    workflowRepo: ctx.workflowRepo,
   };
   const shared = createAllCapabilities(capabilitiesCtx);
 
@@ -110,14 +111,19 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     },
     createWorkflow(input) {
       const id = `wf_${Date.now()}`;
+      const cronExpr = (input as any).cronExpression as string | undefined;
       ctx.workflowRepo.create(
         id,
         input.projectId ?? 'default',
         input.name,
         JSON.stringify(input.definition ?? {}),
         'draft',
+        cronExpr,
       );
-      return { id };
+      if (cronExpr) {
+        ctx.taskScheduler.schedule(id, input.name, cronExpr);
+      }
+      return { id, cronExpression: cronExpr ?? null };
     },
     updateWorkflow(id, input) {
       if (input.name !== undefined || input.definition !== undefined) {
@@ -584,14 +590,6 @@ function getEngine(): WorkflowEngine {
       return result.output;
     },
 
-    notification: async (node: WorkflowNodeDef) => {
-      const d = node.data ?? {};
-      broadcast('workflow_notification', {
-        workflowId: '',
-        nodeId: node.id,
-        message: (d.message as string) ?? 'Notification sent',
-      });
-    },
   });
 
   return engine;
@@ -629,7 +627,7 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
       type: step.type ?? 'aiAgent',
       title: step.title,
       skillId: step.skillId,
-      condition: step.condition?.expression ?? step.condition,
+      loopCondition: (step as any).condition?.expression ?? (step as any).condition,
       data: {
         label: step.title,
         prompt: step.prompt ?? step.description,
@@ -641,11 +639,8 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
         message: step.notification?.message,
         template: step.template,
       },
-      agentId: step.agent,
-      agentConfig: {
-        persistent: step.constraints?.persistent,
-        segmentId: step.constraints?.segmentId,
-      },
+      role: step.agent,
+      persistent: step.constraints?.persistent,
     });
 
     // ── Edge generation ──
@@ -695,7 +690,7 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
     }
 
     // humanApproval retry target
-    if (step.type === 'humanApproval' && step.approvalOptions?.retryTarget) {
+    if ((step.type === 'approval' || (step.type as string) === 'humanApproval') && (step as any).approvalOptions?.retryTarget) {
       const retryId = step.approvalOptions.retryTarget as string;
       if (nodeIds.has(retryId)) {
         edges.push({ from: step.id, to: retryId, condition: 'retry' });
@@ -753,7 +748,7 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   const def = JSON.parse(wf.definition ?? '{}');
   const { nodes, edges } = normalizeDefinition(def);
 
-  const approvalNode = nodes.find((n) => n.type === 'humanApproval');
+  const approvalNode = nodes.find((n) => n.type === 'approval' || (n.type as string) === 'humanApproval');
   if (!approvalNode) {
     logger.warn('No approval node found for resume', { workflowId });
     return;
@@ -876,19 +871,21 @@ workflowsRouter.get('/', (c) => {
     status: r.status,
     definition: JSON.parse(r.definition ?? '{}'),
     projectId: r.project_id,
+    cronExpression: r.cron_expression ?? null,
     createdAt: r.created_at,
   }));
   return c.json({ workflows });
 });
 
 workflowsRouter.post('/', async (c) => {
-  const { workflowRepo } = getServerContext();
+  const { workflowRepo, taskScheduler } = getServerContext();
   const body = await c.req.json();
   if (!body.projectId) {
     return c.json({ error: 'projectId is required' }, 400);
   }
   const id = `wf_${Date.now()}`;
   const definition = body.definition ?? { nodes: body.nodes ?? [], edges: body.edges ?? [] };
+  const cronExpression: string | undefined = body.cronExpression;
   try {
     workflowRepo.create(
       id,
@@ -896,7 +893,11 @@ workflowsRouter.post('/', async (c) => {
       body.name ?? 'Untitled',
       JSON.stringify(definition),
       'draft',
+      cronExpression,
     );
+    if (cronExpression) {
+      taskScheduler.schedule(id, body.name ?? 'Untitled', cronExpression);
+    }
     return c.json({ id, status: 'created' });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -904,7 +905,7 @@ workflowsRouter.post('/', async (c) => {
 });
 
 workflowsRouter.put('/:id', async (c) => {
-  const { workflowRepo } = getServerContext();
+  const { workflowRepo, taskScheduler } = getServerContext();
   const id = c.req.param('id');
   const body = await c.req.json();
   workflowRepo.updateNameAndDefinition(
@@ -912,6 +913,14 @@ workflowsRouter.put('/:id', async (c) => {
     body.name ?? 'Untitled',
     JSON.stringify(body.definition ?? {}),
   );
+  if (body.cronExpression !== undefined) {
+    if (body.cronExpression) {
+      taskScheduler.schedule(id, body.name ?? 'Untitled', body.cronExpression as string);
+    } else {
+      workflowRepo.updateCron(id, null);
+      taskScheduler.unschedule(id);
+    }
+  }
   return c.json({ id, status: 'updated' });
 });
 
@@ -1013,8 +1022,9 @@ workflowsRouter.post('/:id/run', async (c) => {
 });
 
 workflowsRouter.delete('/:id', (c) => {
-  const { workflowRepo, logger } = getServerContext();
+  const { workflowRepo, taskScheduler, logger } = getServerContext();
   const id = c.req.param('id');
+  taskScheduler.unschedule(id);
   workflowRepo.delete(id);
   logger.info('Workflow deleted', { id });
   return c.json({ status: 'deleted' });

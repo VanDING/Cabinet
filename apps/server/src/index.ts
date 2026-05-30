@@ -24,7 +24,8 @@ import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
 import { meetingsRouter } from './routes/meetings.js';
-import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
+// Scheduled tasks have been merged into workflows (cron_expression column).
+// import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
 
 import { documentsRouter } from './routes/documents.js';
@@ -68,7 +69,7 @@ export function createApp() {
   app.route('/api/deliverables', deliverablesRouter);
   app.route('/api/projects', deliverablesRouter);
   app.route('/api/projects', documentsRouter);
-  app.route('/api/scheduled-tasks', scheduledTasksRouter);
+  // Scheduled tasks merged into workflows — /api/scheduled-tasks removed
   app.route('/api/evaluations', evaluationsRouter);
   app.route('/api/secretary', secretaryRouter);
   app.route('/api/decisions', decisionsRouter);

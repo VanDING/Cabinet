@@ -46,78 +46,58 @@ describe('Cron expression parsing with cron-parser', () => {
 
   it('handles invalid expressions with fallback', () => {
     const mockRepo = {
-      insert: vi.fn(),
-      findAll: vi.fn(() => []),
-      disable: vi.fn(),
-      findDue: vi.fn(() => []),
-      updateLastRun: vi.fn(),
-      updateRunTimings: vi.fn(),
+      updateCron: vi.fn(),
+      findById: vi.fn(() => null),
+      findByCron: vi.fn(() => []),
     };
     const mockDecisionRepo = { expireOlderThan: vi.fn(), archiveExpired: vi.fn() };
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const scheduler = new TaskScheduler(mockRepo as any, mockDecisionRepo as any, logger as any);
 
-    // Invalid expression should still schedule (fallback to +1 min)
-    scheduler.schedule('bad-task', 'not-a-cron', 'prompt', false);
-    expect(mockRepo.insert).toHaveBeenCalledOnce();
-    const call = mockRepo.insert.mock.calls[0]![0];
-    const nextRun = new Date(call.next_run_at);
-    const now = Date.now();
-    expect(nextRun.getTime()).toBeGreaterThanOrEqual(now - 5000);
-    expect(nextRun.getTime()).toBeLessThanOrEqual(now + 120000);
+    // Invalid expression should still schedule (fallback to every minute)
+    scheduler.schedule('wf-1', 'bad-task', 'not-a-cron');
+    expect(mockRepo.updateCron).toHaveBeenCalledWith('wf-1', 'not-a-cron');
   });
 });
 
 describe('TaskScheduler CRUD', () => {
   interface MockRepo {
-    insert: ReturnType<typeof vi.fn>;
-    findAll: ReturnType<typeof vi.fn>;
-    disable: ReturnType<typeof vi.fn>;
-    findDue: ReturnType<typeof vi.fn>;
-    updateLastRun: ReturnType<typeof vi.fn>;
-    updateRunTimings: ReturnType<typeof vi.fn>;
+    updateCron: ReturnType<typeof vi.fn>;
+    findById: ReturnType<typeof vi.fn>;
+    findByCron: ReturnType<typeof vi.fn>;
   }
 
   const makeMockRepo = (): MockRepo => ({
-    insert: vi.fn(),
-    findAll: vi.fn(() => []),
-    disable: vi.fn(),
-    findDue: vi.fn(() => []),
-    updateLastRun: vi.fn(),
-    updateRunTimings: vi.fn(),
+    updateCron: vi.fn(),
+    findById: vi.fn(() => null),
+    findByCron: vi.fn(() => []),
   });
   const makeMockDecisionRepo = () => ({ expireOlderThan: vi.fn(), archiveExpired: vi.fn() });
   const makeLogger = () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
-  it('schedule creates a task with ISO nextRunAt', () => {
+  it('schedule updates cron on the workflow', () => {
     const repo = makeMockRepo();
     const scheduler = new TaskScheduler(
       repo as any,
       makeMockDecisionRepo() as any,
       makeLogger() as any,
     );
-    scheduler.schedule('daily', '0 9 * * *', 'prompt', true);
+    scheduler.schedule('wf-daily', 'daily', '0 9 * * *');
 
-    expect(repo.insert).toHaveBeenCalledOnce();
-    const row = repo.insert.mock.calls[0]![0];
-    expect(row.name).toBe('daily');
-    expect(row.cron_expression).toBe('0 9 * * *');
-    expect(row.next_run_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-    expect(row.enabled).toBe(1);
+    expect(repo.updateCron).toHaveBeenCalledWith('wf-daily', '0 9 * * *');
   });
 
-  it('list returns mapped tasks', () => {
+  it('list returns workflows with cron', () => {
     const repo = makeMockRepo();
-    repo.findAll = vi.fn(() => [
+    repo.findByCron = vi.fn(() => [
       {
-        id: 't1',
-        name: 'a',
-        cron_expression: '* * * * *',
-        prompt: 'p',
-        recurring: 1,
-        enabled: 1,
-        last_run_at: null,
-        next_run_at: null,
+        id: 'wf-1',
+        name: 'Daily Report',
+        cron_expression: '0 9 * * *',
+        project_id: 'default',
+        definition: '{}',
+        status: 'draft',
+        created_at: '2026-01-01',
       },
     ]);
     const scheduler = new TaskScheduler(
@@ -127,17 +107,18 @@ describe('TaskScheduler CRUD', () => {
     );
     const list = scheduler.list();
     expect(list).toHaveLength(1);
-    expect(list[0]).toMatchObject({ id: 't1', name: 'a', recurring: true, enabled: true });
+    expect(list[0]).toMatchObject({ id: 'wf-1', workflowId: 'wf-1', name: 'Daily Report' });
   });
 
-  it('cancel disables task', () => {
+  it('unschedule stops the cron job', () => {
     const repo = makeMockRepo();
     const scheduler = new TaskScheduler(
       repo as any,
       makeMockDecisionRepo() as any,
       makeLogger() as any,
     );
-    scheduler.cancel('t1');
-    expect(repo.disable).toHaveBeenCalledWith('t1');
+    // Should not throw — unschedule on non-existent job is a no-op
+    scheduler.unschedule('wf-1');
+    // No repo method called (only stops internal job)
   });
 });
