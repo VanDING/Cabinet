@@ -114,30 +114,127 @@ export interface SkillDefinition {
   dependencies?: string[];
 }
 
-// ── Workflow (Declarative, LLM-friendly) ──
+// ── Workflow (Unified node types — engine = canvas) ──
 
-export type WorkflowStepType =
-  | 'start'
-  | 'end'
-  | 'skill'
-  | 'aiAgent'
-  | 'llmCall'
-  | 'condition'
-  | 'parallel'
-  | 'human'
-  | 'humanApproval'
-  | 'dataQuery'
-  | 'notification'
-  | 'wait';
+export type WorkflowNodeType =
+  // Flow control (7)
+  | 'start' | 'end'
+  | 'ifElse' | 'loop' | 'parallel' | 'merge' | 'pass'
+  // Container (1)
+  | 'agentGroup'
+  // Execution (5)
+  | 'llm' | 'skill' | 'tool' | 'code' | 'workflow'
+  // AI (2)
+  | 'intentClassify' | 'knowledgeBase'
+  // Human-in-the-loop (2)
+  | 'approval' | 'human';
 
-/** Runtime node type — alias for WorkflowStepType. Used by the workflow engine. */
-export type WorkflowNodeType = WorkflowStepType;
+/** @deprecated Use WorkflowNodeType directly. Kept for backward compat. */
+export type WorkflowStepType = WorkflowNodeType;
 
+export interface WorkflowNodeDef {
+  id: string;
+  type: WorkflowNodeType;
+  title?: string;
+  description?: string;
+
+  // ── AgentGroup config ──
+  /** Agent role name (secretary, curator, etc.) */
+  role?: string;
+  /** Override the role's system prompt */
+  systemPrompt?: string;
+  /** Model tier override */
+  model?: string;
+  /** AgentLoop persistence across group boundary */
+  persistent?: boolean;
+  /** Allowed tool names */
+  allowedTools?: string[];
+  /** Nodes inside this agentGroup */
+  children?: WorkflowNodeDef[];
+
+  // ── LLM / Agent config ──
+  prompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  outputFormat?: 'text' | 'json' | 'markdown';
+
+  // ── Skill / Tool config ──
+  skillId?: string;
+  toolId?: string;
+  /** Map input fields to Skill/Tool params */
+  inputMapping?: Record<string, string>;
+
+  // ── Code config ──
+  code?: string;
+  codeTimeout?: number;
+
+  // ── Workflow ref ──
+  workflowId?: string;
+
+  // ── If-else config ──
+  branches?: Array<{
+    label: string;
+    conditions: Array<{
+      field: string;
+      operator: string;
+      value: string;
+      logic: 'AND' | 'OR';
+    }>;
+    priority: number;
+  }>;
+  defaultBranch?: string;
+
+  // ── Loop config ──
+  loopType?: 'count' | 'condition';
+  loopCount?: number;
+  loopCondition?: string;
+  loopMaxIterations?: number;
+  loopOutputMode?: 'array' | 'last' | 'merge';
+
+  // ── Parallel config ──
+  waitStrategy?: 'all' | 'first';
+  failStrategy?: 'failAll' | 'continue';
+
+  // ── Merge / Pass config ──
+  mergeStrategy?: 'object' | 'array' | 'concat' | 'firstNotNull';
+  mergeTimeout?: number;
+
+  // ── Intent Classify config ──
+  intents?: Array<{
+    name: string;
+    description: string;
+    examples?: string[];
+  }>;
+  intentThreshold?: number;
+
+  // ── Knowledge Base config ──
+  kbId?: string;
+  queryTemplate?: string;
+  topK?: number;
+  scoreThreshold?: number;
+
+  // ── Approval / Human config ──
+  approvalTitle?: string;
+  options?: string[];
+  outputSchema?: Record<string, unknown>;
+  humanDeadline?: string;
+
+  // ── Generic I/O ──
+  input?: { source: 'previous' | 'named' | 'none'; mapping?: Record<string, string> };
+  output?: { schema?: Record<string, string>; passThrough?: boolean };
+  /** Variable name for referencing this node's output */
+  outputAs?: string;
+
+  // Extra
+  data?: Record<string, unknown>;
+}
+
+/** @deprecated Use WorkflowNodeDef. Kept for backward compat. */
 export interface WorkflowStep {
   id: string;
   title: string;
   description?: string;
-  type: WorkflowStepType;
+  type: WorkflowNodeType;
   agent?: string;
   input?: { from: 'trigger' | string };
   prompt?: string;

@@ -1,30 +1,9 @@
 import { WorkflowRepository, type Database } from '@cabinet/storage';
-import type { WorkflowNodeType } from '@cabinet/types';
+import type { WorkflowNodeDef, WorkflowNodeType } from '@cabinet/types';
 import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
-export type { WorkflowNodeType };
+export type { WorkflowNodeType, WorkflowNodeDef };
 
-export interface WorkflowNodeDef {
-  id: string;
-  type: WorkflowNodeType;
-  skillId?: string;
-  condition?: string;
-  title?: string;
-  children?: string[];
-  /** Arbitrary data attached to the node (prompt, model, label, duration, message, etc.). */
-  data?: Record<string, unknown>;
-  /** Reference to a role in AgentRoleRegistry. Consecutive nodes with same agentId form a segment. */
-  agentId?: string;
-  /** Runtime configuration for this node's agent segment. */
-  agentConfig?: {
-    /** Keep context alive across segment boundaries (for persistent service agents). */
-    persistent?: boolean;
-    /** Explicit segment grouping key (auto-detected from consecutive agentId if omitted). */
-    segmentId?: string;
-  };
-}
-
-/** Lightweight handle for an AgentLoop instance. Keeps engine decoupled from @cabinet/agent. */
 export interface AgentLoopHandle {
   run(message: string): Promise<string>;
   dispose(): Promise<void>;
@@ -36,15 +15,12 @@ export interface WorkflowEdge {
   to: string;
   condition?: string;
   branch?: 'true' | 'false';
+  label?: string;
 }
 
 export type WorkflowRunStatus =
-  | 'pending'
-  | 'running'
-  | 'paused'
-  | 'completed'
-  | 'failed'
-  | 'awaiting_approval';
+  | 'pending' | 'running' | 'paused' | 'completed' | 'failed'
+  | 'awaiting_approval' | 'awaiting_human';
 
 export interface WorkflowRun {
   runId: string;
@@ -52,30 +28,33 @@ export interface WorkflowRun {
   status: WorkflowRunStatus;
   currentNodeId: string;
   results: Map<string, unknown>;
-  /** Ordered steps executed so far. */
   steps: { nodeId: string; type: WorkflowNodeType; output: string }[];
   startedAt: Date;
-  /** @internal Active AgentLoop segment during execution. */
   _agentLoop?: { agentId: string; handle: AgentLoopHandle } | null;
 }
 
 export interface WorkflowHandlers {
-  /** @deprecated Use createAgentLoop for segment-based agent execution. */
-  aiAgent?: (node: WorkflowNodeDef, previousOutputs: string) => Promise<string>;
-  /** Create an AgentLoop instance from a registered agent role. Segment-based replacement for aiAgent. */
+  // Agent
   createAgentLoop?: (
-    agentId: string,
-    runId: string,
-    options: { persistent?: boolean; segmentId?: string },
+    role: string, runId: string,
+    opts: { persistent?: boolean; segmentId?: string; systemPrompt?: string; model?: string; allowedTools?: string[] },
   ) => Promise<AgentLoopHandle>;
-  humanApproval?: (
-    node: WorkflowNodeDef,
-    run: WorkflowRun,
-  ) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
-  dataQuery?: (node: WorkflowNodeDef) => Promise<string>;
-  notification?: (node: WorkflowNodeDef) => Promise<void>;
-  wait?: (node: WorkflowNodeDef) => Promise<void>;
+  // Skill / Tool
   skill?: (skillId: string, input: unknown) => Promise<unknown>;
+  tool?: (toolId: string, params: Record<string, unknown>) => Promise<unknown>;
+  // Code
+  runCode?: (code: string, input: unknown, timeout: number) => Promise<unknown>;
+  // Workflow nesting
+  runSubWorkflow?: (workflowId: string, input: unknown) => Promise<unknown>;
+  // Human
+  humanApproval?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
+  humanTask?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ taskId: string; status: 'submitted' }>;
+  // AI
+  intentClassify?: (node: WorkflowNodeDef, input: unknown) => Promise<{ intent: string; confidence: number }>;
+  knowledgeBase?: (node: WorkflowNodeDef, input: unknown) => Promise<Array<{ content: string; score: number }>>;
+
+  /** @deprecated Legacy fallback */
+  aiAgent?: (node: WorkflowNodeDef, previousOutputs: string) => Promise<string>;
 }
 
 export class WorkflowEngine {
@@ -93,20 +72,12 @@ export class WorkflowEngine {
   }
 
   async startRun(
-    workflowId: string,
-    nodes: WorkflowNodeDef[],
-    edges: WorkflowEdge[],
-    entryNodeId: string,
+    workflowId: string, nodes: WorkflowNodeDef[], edges: WorkflowEdge[], entryNodeId: string,
   ): Promise<WorkflowRun> {
     const runId = `run_${Date.now()}`;
     const run: WorkflowRun = {
-      runId,
-      workflowId,
-      status: 'running',
-      currentNodeId: entryNodeId,
-      results: new Map(),
-      steps: [],
-      startedAt: new Date(),
+      runId, workflowId, status: 'running', currentNodeId: entryNodeId,
+      results: new Map(), steps: [], startedAt: new Date(),
     };
     this.runs.set(runId, run);
     this.saveRun(run);
@@ -117,7 +88,6 @@ export class WorkflowEngine {
 
     try {
       await this.executeNode(entryNodeId, nodeMap, graph, run, new Set());
-      // Finalize any remaining AgentLoop segment
       await this.finalizeAgentSegment(run);
     } catch (error) {
       await this.finalizeAgentSegment(run);
@@ -126,50 +96,36 @@ export class WorkflowEngine {
       return run;
     }
 
-    if (run.status === 'running') {
-      run.status = 'completed';
-      this.saveRun(run);
-    }
+    if (run.status === 'running') { run.status = 'completed'; this.saveRun(run); }
     return run;
   }
 
-  /**
-   * Continue a paused run (e.g., after human approval) from its currentNodeId.
-   */
   async continueRun(
-    runId: string,
-    nodes: WorkflowNodeDef[],
-    edges: WorkflowEdge[],
+    runId: string, nodes: WorkflowNodeDef[], edges: WorkflowEdge[],
   ): Promise<WorkflowRun> {
     let run = this.runs.get(runId);
     if (!run) {
-      // Attempt to load from persistent storage (e.g. after process restart)
       const loaded = this.loadRun(runId);
       if (!loaded) throw new Error(`Run not found: ${runId}`);
       run = loaded;
       this.runs.set(runId, run);
     }
-    if (run.status !== 'awaiting_approval' && run.status !== 'paused') {
+    if (run.status !== 'awaiting_approval' && run.status !== 'paused' && run.status !== 'awaiting_human') {
       throw new Error(`Cannot continue run with status: ${run.status}`);
     }
 
     run.status = 'running';
-    run._agentLoop = null; // Clear any stale agent segment from before the pause
+    run._agentLoop = null;
 
     const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     this.currentEdges = edges;
-
-    // Execute children of the current (just-approved) node
     const children = graph.get(run.currentNodeId) ?? [];
-    // Do not reuse global visited from previous steps — allow loops and re-execution after resume
     const visited = new Set<string>();
 
     try {
       for (const child of children) {
-        if (!visited.has(child)) {
-          await this.executeNode(child, nodeMap, graph, run, visited);
-        }
+        if (!visited.has(child)) await this.executeNode(child, nodeMap, graph, run, visited);
       }
     } catch (error) {
       run.status = 'failed';
@@ -177,10 +133,7 @@ export class WorkflowEngine {
       return run;
     }
 
-    if (run.status === 'running') {
-      run.status = 'completed';
-      this.saveRun(run);
-    }
+    if (run.status === 'running') { run.status = 'completed'; this.saveRun(run); }
     return run;
   }
 
@@ -190,95 +143,17 @@ export class WorkflowEngine {
     return this.loadRun(runId);
   }
 
-  // ── Segment Helpers ───────────────────────────────────────────
-
-  /**
-   * Group consecutive aiAgent/llmCall nodes with the same agentId into segments.
-   * Non-AI nodes act as segment boundaries.
-   */
-  groupNodesIntoSegments(nodes: WorkflowNodeDef[], orderedIds: string[]): WorkflowNodeDef[][] {
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-    const segments: WorkflowNodeDef[][] = [];
-    let current: WorkflowNodeDef[] = [];
-    let currentAgentId: string | undefined;
-
-    for (const id of orderedIds) {
-      const node = nodeMap.get(id);
-      if (!node) continue;
-
-      if (node.type === 'aiAgent' || node.type === 'llmCall') {
-        const agentId = node.agentId ?? 'secretary';
-        if (agentId !== currentAgentId) {
-          if (current.length > 0) segments.push(current);
-          current = [node];
-          currentAgentId = agentId;
-        } else {
-          current.push(node);
-        }
-      } else {
-        // Non-AI node breaks the segment
-        if (current.length > 0) {
-          segments.push(current);
-          current = [];
-          currentAgentId = undefined;
-        }
-      }
-    }
-    if (current.length > 0) segments.push(current);
-    return segments;
-  }
-
-  /**
-   * Execute a segment of AI nodes using a shared AgentLoop instance.
-   * The same AgentLoop handles all nodes in the segment, maintaining context.
-   */
-  async executeSegment(
-    segmentNodes: WorkflowNodeDef[],
-    agentLoop: AgentLoopHandle,
-    previousOutputs: string,
-  ): Promise<{ outputs: string[]; handoffDoc?: string }> {
-    const outputs: string[] = [];
-    let accumulatedContext = previousOutputs;
-
-    for (let i = 0; i < segmentNodes.length; i++) {
-      const node = segmentNodes[i]!;
-      const d = node.data ?? {};
-      const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
-
-      // Build message with accumulated context from previous nodes in this segment
-      const message =
-        i === 0 && accumulatedContext
-          ? `${prompt}\n\n[Previous outputs]\n${accumulatedContext}`
-          : prompt;
-
-      const output = await agentLoop.run(message);
-      outputs.push(output);
-      accumulatedContext += `\n[${node.id} output]\n${output}`;
-    }
-
-    // Generate handoff at segment end
-    const handoffDoc = await agentLoop.handoff();
-    return { outputs, handoffDoc };
-  }
-
-  // ── Agent segment lifecycle ──
-
   private async finalizeAgentSegment(run: WorkflowRun): Promise<void> {
     if (run._agentLoop) {
       try {
         const handoffDoc = await run._agentLoop.handle.handoff();
         run.results.set(`_handoff:${run._agentLoop.agentId}`, handoffDoc);
         await run._agentLoop.handle.dispose();
-      } catch {
-        /* cleanup failure is non-fatal */
-      }
+      } catch { /* cleanup failure is non-fatal */ }
       run._agentLoop = null;
-      // Full save at segment boundary for durability
       this.saveRun(run);
     }
   }
-
-  // ── Private ──
 
   private buildGraph(nodes: WorkflowNodeDef[], edges: WorkflowEdge[]): Map<string, string[]> {
     const graph = new Map<string, string[]>();
@@ -290,36 +165,19 @@ export class WorkflowEngine {
     return graph;
   }
 
-  private async withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
-      ),
-    ]);
-  }
+  // ── Core execution ──
 
   private async executeNode(
-    nodeId: string,
-    nodeMap: Map<string, WorkflowNodeDef>,
-    graph: Map<string, string[]>,
-    run: WorkflowRun,
-    visited: Set<string>,
+    nodeId: string, nodeMap: Map<string, WorkflowNodeDef>,
+    graph: Map<string, string[]>, run: WorkflowRun, visited: Set<string>,
   ): Promise<void> {
     if (visited.has(nodeId)) return;
+    visited.add(nodeId);
     const node = nodeMap.get(nodeId);
     if (!node) return;
-    visited.add(nodeId);
-
-    // Non-AI nodes act as segment boundaries — finalize active AgentLoop
-    if (node.type !== 'aiAgent' && node.type !== 'llmCall') {
-      await this.finalizeAgentSegment(run);
-    }
 
     const previousOutputs = run.steps.map((s) => s.output).join('\n');
-
     let output = '';
-    const d = node.data ?? {};
 
     switch (node.type) {
       case 'start':
@@ -330,167 +188,255 @@ export class WorkflowEngine {
         output = 'Workflow ended';
         break;
 
+      // ── Agent Group ──
+      case 'agentGroup': {
+        const role = node.role ?? 'secretary';
+        await this.finalizeAgentSegment(run);
+
+        if (!this.handlers.createAgentLoop) {
+          output = 'No agent handler registered';
+          break;
+        }
+
+        const handle = await this.handlers.createAgentLoop(role, run.runId, {
+          persistent: node.persistent ?? true,
+          systemPrompt: node.systemPrompt,
+          model: node.model,
+          allowedTools: node.allowedTools,
+        });
+        run._agentLoop = { agentId: role, handle };
+
+        // Execute children inside the group
+        const childGraph = this.buildGraph(node.children ?? [], []);
+        const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
+        const entryChild = node.children?.[0]?.id;
+        if (entryChild) {
+          await this.executeNode(entryChild, childMap, childGraph, run, new Set());
+        }
+
+        await this.finalizeAgentSegment(run);
+        const handoffKey = `_handoff:${role}`;
+        const handoff = run.results.get(handoffKey);
+        output = handoff ? String(handoff) : `Agent group ${role} completed`;
+        break;
+      }
+
+      // ── LLM ──
+      case 'llm': {
+        // Prefer AgentLoop context; fall back to legacy aiAgent handler
+        if (run._agentLoop) {
+          const prompt = node.prompt ?? node.title ?? 'Process this step';
+          const timeoutMs = node.codeTimeout ?? 120_000;
+          output = await this.withTimeout(run._agentLoop.handle.run(prompt), timeoutMs, `LLM ${node.id}`);
+        } else if (this.handlers.aiAgent) {
+          const timeoutMs = node.codeTimeout ?? 120_000;
+          output = await this.withTimeout(this.handlers.aiAgent(node, previousOutputs), timeoutMs, `LLM ${node.id}`);
+        } else {
+          throw new Error('LLM node requires an AgentGroup or aiAgent handler');
+        }
+        break;
+      }
+
+      // ── Skill ──
       case 'skill': {
         if (!this.handlers.skill) throw new Error('No skill handler registered');
         const result = await this.handlers.skill(node.skillId ?? node.id, {
           nodeId,
           previousOutputs,
+          inputMapping: node.inputMapping ?? {},
         });
         output = typeof result === 'string' ? result : JSON.stringify(result);
         break;
       }
 
-      case 'aiAgent':
-      case 'llmCall': {
-        const agentId = node.agentId ?? 'secretary';
-        const children = graph.get(nodeId) ?? [];
-        const nextChildIsSameAgent = children.some((cid) => {
-          const child = nodeMap.get(cid);
-          return (
-            child &&
-            (child.type === 'aiAgent' || child.type === 'llmCall') &&
-            (child.agentId ?? 'secretary') === agentId
-          );
-        });
-
-        // Reuse or create AgentLoop for this segment
-        if (!run._agentLoop || run._agentLoop.agentId !== agentId) {
-          // Finalize previous segment if exists
-          if (run._agentLoop) {
-            const handoffDoc = await run._agentLoop.handle.handoff();
-            await run._agentLoop.handle.dispose();
-            run.results.set(`_handoff:${run._agentLoop.agentId}`, handoffDoc);
+      // ── Tool ──
+      case 'tool': {
+        if (!this.handlers.tool) throw new Error('No tool handler registered');
+        const params = node.inputMapping ?? {};
+        for (const [k, v] of Object.entries(params)) {
+          if (typeof v === 'string' && v.startsWith('{{')) {
+            params[k] = this.resolveVariable(v, run);
           }
-          // Create new segment
-          if (this.handlers.createAgentLoop) {
-            const handle = await this.handlers.createAgentLoop(agentId, run.runId, {
-              persistent: node.agentConfig?.persistent ?? true,
-              segmentId: node.agentConfig?.segmentId,
+        }
+        const result = await this.handlers.tool(node.toolId ?? node.id, params);
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+
+      // ── Code ──
+      case 'code': {
+        if (!this.handlers.runCode) throw new Error('No code handler registered');
+        const timeout = node.codeTimeout ?? 5000;
+        const result = await this.handlers.runCode(node.code ?? '', previousOutputs, timeout);
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+
+      // ── Workflow ──
+      case 'workflow': {
+        if (!this.handlers.runSubWorkflow) throw new Error('No sub-workflow handler');
+        if (!node.workflowId) throw new Error('workflowId is required');
+        const result = await this.handlers.runSubWorkflow(node.workflowId, { previousOutputs, inputMapping: node.inputMapping });
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+
+      // ── If-else ──
+      case 'ifElse': {
+        const branches = node.branches ?? [];
+        let matched = false;
+        if (branches.length > 0) {
+          for (const branch of branches) {
+            const allTrue = branch.conditions.every((c) => {
+              const val = this.resolveValue(c.field, run);
+              return this.evaluateOp(val, c.operator, c.value);
             });
-            run._agentLoop = { agentId, handle };
-          } else if (this.handlers.aiAgent) {
-            // Fallback to legacy per-node handler
-            const timeoutMs = typeof node.data?.timeout === 'number' ? node.data.timeout : 120_000;
-            output = await this.withTimeout(
-              this.handlers.aiAgent(node, previousOutputs),
-              timeoutMs,
-              `Step ${node.id}`,
-            );
-            break;
-          } else {
-            output = 'No agent handler registered';
-            break;
+            if (allTrue) {
+              output = `Matched branch: ${branch.label}`;
+              const childTarget = this.findChildForBranch(node.id, branch.label, graph);
+              if (childTarget) {
+                run.steps.push({ nodeId, type: node.type, output });
+                run.results.set(nodeId, output);
+                run.currentNodeId = nodeId;
+                await this.executeNode(childTarget, nodeMap, graph, run, visited);
+                return;
+              }
+              matched = true;
+              break;
+            }
           }
         }
-
-        // Execute with shared AgentLoop (respect node-level timeout)
-        const d = node.data ?? {};
-        const prompt = (d.prompt as string) ?? (d.label as string) ?? 'Process this step';
-        const timeoutMs = typeof d.timeout === 'number' ? d.timeout : 120_000;
-        output = await this.withTimeout(
-          run._agentLoop.handle.run(prompt),
-          timeoutMs,
-          `Step ${node.id}`,
-        );
-
-        // If no child shares this agent, finalize the segment
-        if (!nextChildIsSameAgent) {
-          const handoffDoc = await run._agentLoop.handle.handoff();
-          await run._agentLoop.handle.dispose();
-          run.results.set(`_handoff:${agentId}`, handoffDoc);
-          run._agentLoop = null;
+        if (!matched) {
+          // Fallback: simple condition string match (backward compat)
+          const conditionExpr = node.loopCondition ?? 'true';
+          const isTrue = this.evaluateCondition(conditionExpr, previousOutputs, run);
+          output = `Condition evaluated: ${isTrue}`;
+          const children = graph.get(nodeId) ?? [];
+          const targetChild = isTrue ? children[0] : (children.length >= 2 ? children[1] : undefined);
+          if (targetChild) {
+            run.steps.push({ nodeId, type: node.type, output });
+            run.results.set(nodeId, output);
+            run.currentNodeId = nodeId;
+            await this.executeNode(targetChild, nodeMap, graph, run, visited);
+            return;
+          }
+          output = 'No branch matched';
         }
         break;
       }
 
-      case 'condition': {
-        // Evaluate condition against previous outputs
-        const conditionExpr = (node.condition ?? d.condition ?? 'true') as string;
-        const isTrue = this.evaluateCondition(conditionExpr, previousOutputs, run);
-        output = `Condition evaluated: ${isTrue}`;
-
-        run.steps.push({ nodeId, type: node.type, output });
-        run.results.set(nodeId, output);
-        run.currentNodeId = nodeId;
-
-        // Execute matching branch only
-        const children = graph.get(nodeId) ?? [];
-        if (children.length > 0) {
-          // Prefer explicit edge.branch annotations; fall back to positional ordering
-          let targetNode: string | undefined;
-          if (
-            children.some(
-              (cid) => this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch,
-            )
-          ) {
-            targetNode = children.find(
-              (cid) =>
-                this.currentEdges.find((e) => e.from === nodeId && e.to === cid)?.branch ===
-                (isTrue ? 'true' : 'false'),
-            );
-          } else {
-            targetNode = isTrue ? children[0] : children.length >= 2 ? children[1] : undefined;
-          }
-          if (targetNode) {
-            await this.executeNode(targetNode, nodeMap, graph, run, visited);
+      // ── Loop ──
+      case 'loop': {
+        const maxIter = node.loopMaxIterations ?? 1000;
+        const exitIds: string[] = [];
+        // Find exit edges (edges from loop children to nodes outside the loop)
+        const childIds = new Set((node.children ?? []).map((c) => c.id));
+        for (const edge of this.currentEdges) {
+          if (childIds.has(edge.from) && !childIds.has(edge.to)) {
+            exitIds.push(edge.to);
           }
         }
-        return; // Already handled children
+        const results: unknown[] = [];
+        for (let i = 0; i < maxIter; i++) {
+          if (node.loopType === 'count' && i >= (node.loopCount ?? 1)) break;
+          if (node.loopType === 'condition' && node.loopCondition) {
+            const condResult = this.evaluateCondition(node.loopCondition, previousOutputs, run);
+            if (!condResult) break;
+          }
+          // Execute loop body children
+          const loopVisited = new Set<string>();
+          const entryChild = node.children?.[0]?.id;
+          if (entryChild) {
+            await this.executeNode(entryChild, nodeMap, graph, run, loopVisited);
+          }
+          const lastStep = run.steps[run.steps.length - 1];
+          if (lastStep) results.push({ iteration: i, result: lastStep.output });
+        }
+
+        output = node.loopOutputMode === 'merge'
+          ? results.map((r: any) => r.result).join('\n')
+          : JSON.stringify(results);
+        // Route to exit
+        for (const exitId of exitIds) {
+          await this.executeNode(exitId, nodeMap, graph, run, visited);
+        }
+        break;
       }
 
+      // ── Parallel ──
       case 'parallel': {
-        const children = node.children ?? [];
-        const aggregation = (d.aggregation as string) ?? 'all';
-
-        if (aggregation === 'first') {
-          // True concurrent first-completed using Promise.race
-          const promises = children.map(async (id) => {
-            await this.executeNode(id, nodeMap, graph, run, visited);
-            const childStep = run.steps.find((s) => s.nodeId === id);
-            return { id, output: childStep?.output ?? '' };
-          });
-          const winner = await Promise.race(promises);
-          output = winner.output || 'No child completed';
-          // Allow remaining promises to settle for state consistency
-          await Promise.allSettled(promises);
-        } else {
-          const childResults = await Promise.allSettled(
-            children.map((id) => this.executeNode(id, nodeMap, graph, run, visited)),
-          );
-
-          if (aggregation === 'merge') {
-            // Merge: collect all outputs into one string
-            const parts: string[] = [];
-            for (const childId of children) {
-              const childStep = run.steps.find((s) => s.nodeId === childId);
-              const childOutput = run.results.get(childId);
-              if (childStep) {
-                parts.push(`[${childId}]: ${childStep.output}`);
-              } else if (childOutput) {
-                parts.push(`[${childId}]: ${String(childOutput)}`);
-              }
-            }
-            output = parts.join('\n');
-          } else {
-            // "all" (default): store each output, generate summary
-            for (const childId of children) {
-              const childStep = run.steps.find((s) => s.nodeId === childId);
-              if (childStep) {
-                run.results.set(childId, childStep.output);
-              }
-            }
-            const statuses = childResults.map((r, i) =>
-              r.status === 'fulfilled' ? `${children[i]}: ok` : `${children[i]}: error`,
-            );
-            output = statuses.join(', ');
-          }
+        const children = graph.get(nodeId) ?? [];
+        const childResults = await Promise.allSettled(
+          children.map((id) => this.executeNode(id, nodeMap, graph, run, new Set(visited))),
+        );
+        const parts: string[] = [];
+        for (const childId of children) {
+          const childStep = run.steps.find((s) => s.nodeId === childId);
+          if (childStep) parts.push(`[${childId}]: ${childStep.output}`);
+        }
+        output = parts.join('\n');
+        if (node.failStrategy === 'failAll') {
+          const anyFailed = childResults.some((r) => r.status === 'rejected');
+          if (anyFailed) throw new Error('Parallel branch failed');
         }
         break;
       }
 
-      case 'human':
-      case 'humanApproval': {
-        if (!this.handlers.humanApproval) throw new Error('No humanApproval handler registered');
+      // ── Merge ──
+      case 'merge': {
+        const strategy = node.mergeStrategy ?? 'object';
+        const inputs = graph.get(nodeId) ?? [];
+        const merged: Record<string, unknown> = {};
+        for (const inputId of inputs) {
+          const val = run.results.get(inputId);
+          if (val != null) merged[inputId] = val;
+        }
+        output = strategy === 'array'
+          ? JSON.stringify(Object.values(merged))
+          : JSON.stringify(merged);
+        break;
+      }
+
+      // ── Pass ──
+      case 'pass': {
+        const inputs = graph.get(nodeId) ?? [];
+        const firstVal = inputs.length > 0 ? run.results.get(inputs[0]!) : null;
+        output = firstVal != null ? String(firstVal) : '';
+        break;
+      }
+
+      // ── Intent Classify ──
+      case 'intentClassify': {
+        if (!this.handlers.intentClassify) throw new Error('No intent classify handler');
+        const result = await this.handlers.intentClassify(node, previousOutputs);
+        output = JSON.stringify(result);
+        // Route to matching intent branch
+        const children = graph.get(nodeId) ?? [];
+        const targetChild = children.find((cid) => {
+          const edge = this.currentEdges.find((e) => e.from === nodeId && e.to === cid);
+          return edge?.label === result.intent;
+        });
+        if (targetChild) {
+          run.steps.push({ nodeId, type: node.type, output });
+          run.results.set(nodeId, output);
+          run.currentNodeId = nodeId;
+          await this.executeNode(targetChild, nodeMap, graph, run, visited);
+          return;
+        }
+        break;
+      }
+
+      // ── Knowledge Base ──
+      case 'knowledgeBase': {
+        if (!this.handlers.knowledgeBase) throw new Error('No knowledge base handler');
+        const chunks = await this.handlers.knowledgeBase(node, previousOutputs);
+        output = JSON.stringify({ query: node.queryTemplate ?? previousOutputs, chunks });
+        break;
+      }
+
+      // ── Approval ──
+      case 'approval': {
+        if (!this.handlers.humanApproval) throw new Error('No humanApproval handler');
         const decision = await this.handlers.humanApproval(node, run);
         if (decision.status === 'pending') {
           output = `Approval pending: decision ${decision.decisionId}`;
@@ -501,25 +447,20 @@ export class WorkflowEngine {
         break;
       }
 
-      case 'dataQuery': {
-        if (!this.handlers.dataQuery) throw new Error('No dataQuery handler registered');
-        output = await this.handlers.dataQuery(node);
-        break;
-      }
-
-      case 'notification': {
-        if (this.handlers.notification) {
-          await this.handlers.notification(node);
+      // ── Human ──
+      case 'human': {
+        if (this.handlers.humanTask) {
+          const task = await this.handlers.humanTask(node, run);
+          output = `Human task submitted: ${task.taskId}`;
+          run.status = 'awaiting_human';
+        } else if (this.handlers.humanApproval) {
+          // Backward compat: treat as approval
+          const decision = await this.handlers.humanApproval(node, run);
+          output = `Human task: decision ${decision.decisionId}`;
+          if (decision.status === 'pending') run.status = 'awaiting_approval';
+        } else {
+          throw new Error('No human handler registered');
         }
-        output = (d.message as string) ?? 'Notification sent';
-        break;
-      }
-
-      case 'wait': {
-        if (this.handlers.wait) {
-          await this.handlers.wait(node);
-        }
-        output = `Waited ${(d.duration as string) ?? '5s'}`;
         break;
       }
 
@@ -532,13 +473,12 @@ export class WorkflowEngine {
     run.currentNodeId = nodeId;
     this.appendStepAndResult(run, nodeId, node.type, output);
 
-    // If run was paused (humanApproval), do a full save for durability
-    if (run.status === 'awaiting_approval') {
+    if (run.status === 'awaiting_approval' || run.status === 'awaiting_human') {
       this.saveRun(run);
       return;
     }
 
-    // Execute downstream nodes
+    // Continue to children
     const children = graph.get(nodeId) ?? [];
     for (const child of children) {
       if (!visited.has(child)) {
@@ -547,101 +487,109 @@ export class WorkflowEngine {
     }
   }
 
-  private evaluateCondition(expr: string, previousOutputs: string, run: WorkflowRun): boolean {
-    if (!expr || expr === 'true') return true;
-    if (expr === 'false') return false;
+  // ── Helpers ──
 
-    const context: ConditionContext = {
-      resolve: (path: string) => {
-        // steps.<nodeId>.output[.field...]
-        if (path.startsWith('steps.')) {
-          const parts = path.slice(6).split('.');
-          const nodeId = parts[0]!;
-          const step = run.steps.find((s) => s.nodeId === nodeId);
-          if (!step) throw new Error(`Step not found: ${nodeId}`);
+  private findChildForBranch(nodeId: string, branchLabel: string, graph: Map<string, string[]>): string | undefined {
+    const children = graph.get(nodeId) ?? [];
+    for (const childId of children) {
+      const edge = this.currentEdges.find((e) => e.from === nodeId && e.to === childId);
+      if (!edge || edge.label === branchLabel) return childId;
+    }
+    return children[0];
+  }
 
-          let value: unknown = step.output;
-          // Try JSON parse for structured output
-          try {
-            value = JSON.parse(step.output);
-          } catch {
-            /* use raw string */
-          }
+  private resolveVariable(template: string, run: WorkflowRun): string {
+    return template.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, path: string) => {
+      const parts = path.split('.');
+      let val: unknown = run.results.get(parts[0]!);
+      for (let i = 1; i < parts.length; i++) {
+        if (val && typeof val === 'object') {
+          val = (val as Record<string, unknown>)[parts[i]!];
+        } else return '';
+      }
+      return val != null ? String(val) : '';
+    });
+  }
 
-          // Walk remaining path segments
-          for (let i = 1; i < parts.length; i++) {
-            if (value && typeof value === 'object') {
-              value = (value as Record<string, unknown>)[parts[i]!];
-            } else {
-              return 'undefined';
-            }
-          }
-          return String(value ?? '');
+  private resolveValue(field: string, run: WorkflowRun): string {
+    if (field.startsWith('{{') && field.endsWith('}}')) {
+      return this.resolveVariable(field, run);
+    }
+    // Try steps.<id>.output.field
+    const parts = field.split('.');
+    let val: unknown = null;
+    if (parts[0] === 'steps' && parts.length >= 3) {
+      const step = run.steps.find((s) => s.nodeId === parts[1]);
+      if (step) {
+        try { val = JSON.parse(step.output); } catch { val = step.output; }
+        for (let i = 2; i < parts.length; i++) {
+          if (val && typeof val === 'object') val = (val as any)[parts[i]!];
+          else break;
         }
+      }
+    }
+    return val != null ? String(val) : field;
+  }
 
-        // results.<key>
-        if (path.startsWith('results.')) {
-          const key = path.slice(8);
-          const val = run.results.get(key);
-          return val != null ? String(val) : 'undefined';
-        }
-
-        // run.status
-        if (path === 'run.status') return run.status;
-
-        throw new Error(`Unknown reference: {{${path}}}`);
-      },
-    };
-
-    try {
-      return evaluateExpr(expr, context);
-    } catch {
-      // Fallback to simple string match for backward compatibility
-      const lower = previousOutputs.toLowerCase();
-      return lower.includes(expr.toLowerCase());
+  private evaluateOp(val: string, op: string, expected: string): boolean {
+    switch (op) {
+      case '==': return val === expected;
+      case '!=': return val !== expected;
+      case '>': return parseFloat(val) > parseFloat(expected);
+      case '<': return parseFloat(val) < parseFloat(expected);
+      case '>=': return parseFloat(val) >= parseFloat(expected);
+      case '<=': return parseFloat(val) <= parseFloat(expected);
+      case 'contains': return val.includes(expected);
+      case 'startsWith': return val.startsWith(expected);
+      case 'endsWith': return val.endsWith(expected);
+      case 'matches': return new RegExp(expected).test(val);
+      default: return val === expected;
     }
   }
 
-  // ── Persistence ────────────────────────────────────────────
+  private evaluateCondition(expr: string, previousOutputs: string, run: WorkflowRun): boolean {
+    if (!expr || expr === 'true') return true;
+    if (expr === 'false') return false;
+    try {
+      return evaluateExpr(expr, {
+        resolve: (path: string) => this.resolveValue(path, run),
+      });
+    } catch {
+      return previousOutputs.toLowerCase().includes(expr.toLowerCase());
+    }
+  }
 
-  private appendStepAndResult(
-    run: WorkflowRun,
-    nodeId: string,
-    nodeType: string,
-    output: string,
-  ): void {
+  private async withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
+      ),
+    ]);
+  }
+
+  // ── Persistence ──
+
+  private appendStepAndResult(run: WorkflowRun, nodeId: string, nodeType: string, output: string): void {
     if (!this.repo) return;
     try {
       this.repo.appendStep(run.runId, nodeId, nodeType, output);
       this.repo.appendResult(run.runId, nodeId, output);
-    } catch (err) {
-      console.error(
-        `[WorkflowEngine] Failed to append step ${nodeId} for run ${run.runId}:`,
-        (err as Error).message,
-      );
-    }
+    } catch (err) { console.error('[WorkflowEngine] Failed to persist step:', (err as Error).message); }
   }
 
   private saveRun(run: WorkflowRun): void {
     if (!this.repo) return;
     try {
       const results: Record<string, unknown> = {};
-      for (const [k, v] of run.results) {
-        results[k] = v;
-      }
+      for (const [k, v] of run.results) results[k] = v;
       this.repo.saveRun({
-        run_id: run.runId,
-        workflow_id: run.workflowId,
-        status: run.status,
+        run_id: run.runId, workflow_id: run.workflowId, status: run.status,
         current_node_id: run.currentNodeId,
-        steps: JSON.stringify(run.steps),
-        results: JSON.stringify(results),
-        started_at: run.startedAt.toISOString(),
-        updated_at: new Date().toISOString(),
+        steps: JSON.stringify(run.steps), results: JSON.stringify(results),
+        started_at: run.startedAt.toISOString(), updated_at: new Date().toISOString(),
       });
-    } catch (err) {
-      console.error(`[WorkflowEngine] Failed to persist run ${run.runId}:`, (err as Error).message);
-    }
+    } catch (err) { console.error('[WorkflowEngine] Failed to persist run:', (err as Error).message); }
   }
 
   private loadRun(runId: string): WorkflowRun | null {
@@ -650,55 +598,17 @@ export class WorkflowEngine {
       const row = this.repo.findRunById(runId);
       if (!row) return null;
       const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
-      // Rebuild steps and results from incremental tables if available
-      const incrementalSteps = this.repo.findStepsByRunId(runId);
-      const incrementalResults = this.repo.findResultsByRunId(runId);
-      const steps =
-        incrementalSteps.length > 0
-          ? incrementalSteps.map((s) => ({
-              nodeId: s.nodeId,
-              type: s.type as WorkflowNodeType,
-              output: s.output,
-            }))
-          : JSON.parse(row.steps ?? '[]');
-      for (const [key, value] of Object.entries(incrementalResults)) {
-        results.set(key, value);
-      }
+      const incSteps = this.repo.findStepsByRunId(runId);
+      const incResults = this.repo.findResultsByRunId(runId);
+      const steps = incSteps.length > 0
+        ? incSteps.map((s) => ({ nodeId: s.nodeId, type: s.type as WorkflowNodeType, output: s.output }))
+        : JSON.parse(row.steps ?? '[]');
+      for (const [k, v] of Object.entries(incResults)) results.set(k, v);
       return {
-        runId: row.run_id,
-        workflowId: row.workflow_id,
-        status: row.status as WorkflowRunStatus,
-        currentNodeId: row.current_node_id ?? '',
-        results,
-        steps,
-        startedAt: new Date(row.started_at),
+        runId: row.run_id, workflowId: row.workflow_id,
+        status: row.status as WorkflowRunStatus, currentNodeId: row.current_node_id ?? '',
+        results, steps, startedAt: new Date(row.started_at),
       };
-    } catch {
-      return null;
-    }
-  }
-
-  private listIncompleteRuns(workflowId: string): WorkflowRun[] {
-    if (!this.repo) return [];
-    try {
-      const incompleteStatuses = new Set(['running', 'awaiting_approval', 'paused']);
-      const rows = this.repo.findRunsByWorkflow(workflowId);
-      return rows
-        .filter((row) => incompleteStatuses.has(row.status))
-        .map((row) => {
-          const results = new Map<string, unknown>(Object.entries(JSON.parse(row.results ?? '{}')));
-          return {
-            runId: row.run_id,
-            workflowId: row.workflow_id,
-            status: row.status as WorkflowRunStatus,
-            currentNodeId: row.current_node_id ?? '',
-            results,
-            steps: JSON.parse(row.steps ?? '[]'),
-            startedAt: new Date(row.started_at),
-          };
-        });
-    } catch {
-      return [];
-    }
+    } catch { return null; }
   }
 }
