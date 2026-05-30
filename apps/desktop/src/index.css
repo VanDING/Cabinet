@@ -211,6 +211,83 @@ body {
 .tool-group-count { color: var(--content-tertiary); font-size: 0.625rem; }
 .tool-group-errors { color: var(--intent-danger); font-size: 0.625rem; }
 
+/* React Flow (xyflow) CSS variable mappings — auto-switches via data-theme */
+.react-flow {
+  --xy-node-background-color-default: var(--surface-primary);
+  --xy-node-border-default: var(--border-width) var(--border-style) var(--border-color);
+  --xy-node-color-default: var(--content-primary);
+  --xy-node-boxshadow-selected-default: 0 0 0 2px var(--accent);
+  --xy-node-boxshadow-color-default: var(--accent);
+  --xy-edge-stroke-default: var(--graph-edge-inactive, #b1b1b7);
+  --xy-edge-stroke-width-default: 1.5;
+  --xy-edge-stroke-selected-default: var(--graph-edge-active, var(--accent));
+  --xy-connectionline-stroke-default: var(--accent);
+  --xy-selection-background-color-default: color-mix(in srgb, var(--accent) 8%, transparent);
+  --xy-selection-border-default: 1px solid var(--accent);
+  --xy-background-color-default: var(--surface-primary);
+  --xy-minimap-background-color-default: var(--surface-elevated);
+  --xy-minimap-mask-background-color-default: var(--graph-minimap-mask, rgba(0,0,0,0.1));
+  --xy-controls-button-background-color-default: var(--surface-primary);
+  --xy-controls-button-border-default: var(--border-width) var(--border-style) var(--border-color);
+  --xy-controls-button-color-default: var(--content-primary);
+  --xy-handle-background-color-default: var(--content-secondary);
+  --xy-handle-border-color-default: var(--surface-primary);
+}
+
+/* ── Theme-aware opacity utilities (color-mix) ── */
+/* Backgrounds */
+.wf-bg-accent-5  { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.wf-bg-accent-10 { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.wf-bg-accent-20 { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.wf-bg-accent-30 { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.wf-bg-success-5  { background: color-mix(in srgb, var(--intent-success) 5%, transparent); }
+.wf-bg-success-10 { background: color-mix(in srgb, var(--intent-success) 10%, transparent); }
+.wf-bg-success-20 { background: color-mix(in srgb, var(--intent-success) 20%, transparent); }
+.wf-bg-success-30 { background: color-mix(in srgb, var(--intent-success) 30%, transparent); }
+.wf-bg-danger-5  { background: color-mix(in srgb, var(--intent-danger) 5%, transparent); }
+.wf-bg-danger-10 { background: color-mix(in srgb, var(--intent-danger) 10%, transparent); }
+.wf-bg-danger-20 { background: color-mix(in srgb, var(--intent-danger) 20%, transparent); }
+.wf-bg-warning-5  { background: color-mix(in srgb, var(--intent-warning) 5%, transparent); }
+.wf-bg-warning-10 { background: color-mix(in srgb, var(--intent-warning) 10%, transparent); }
+.wf-bg-warning-20 { background: color-mix(in srgb, var(--intent-warning) 20%, transparent); }
+.wf-bg-info-5  { background: color-mix(in srgb, var(--intent-info) 5%, transparent); }
+.wf-bg-info-10 { background: color-mix(in srgb, var(--intent-info) 10%, transparent); }
+.wf-bg-info-20 { background: color-mix(in srgb, var(--intent-info) 20%, transparent); }
+.wf-bg-purple-5  { background: color-mix(in srgb, var(--intent-purple) 5%, transparent); }
+.wf-bg-purple-10 { background: color-mix(in srgb, var(--intent-purple) 10%, transparent); }
+.wf-bg-purple-20 { background: color-mix(in srgb, var(--intent-purple) 20%, transparent); }
+.wf-bg-surface-5  { background: color-mix(in srgb, var(--surface-muted) 5%, transparent); }
+.wf-bg-surface-10 { background: color-mix(in srgb, var(--surface-muted) 10%, transparent); }
+.wf-bg-surface-20 { background: color-mix(in srgb, var(--surface-muted) 20%, transparent); }
+.wf-bg-surface-30 { background: color-mix(in srgb, var(--surface-muted) 30%, transparent); }
+.wf-bg-surface-40 { background: color-mix(in srgb, var(--surface-muted) 40%, transparent); }
+
+/* Borders */
+.wf-border-accent-20  { border-color: color-mix(in srgb, var(--accent) 20%, transparent); }
+.wf-border-accent-30  { border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.wf-border-accent-40  { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.wf-border-success-30 { border-color: color-mix(in srgb, var(--intent-success) 30%, transparent); }
+.wf-border-success-40 { border-color: color-mix(in srgb, var(--intent-success) 40%, transparent); }
+.wf-border-danger-30  { border-color: color-mix(in srgb, var(--intent-danger) 30%, transparent); }
+.wf-border-warning-30 { border-color: color-mix(in srgb, var(--intent-warning) 30%, transparent); }
+.wf-border-info-30    { border-color: color-mix(in srgb, var(--intent-info) 30%, transparent); }
+.wf-border-purple-20  { border-color: color-mix(in srgb, var(--intent-purple) 20%, transparent); }
+.wf-border-purple-30  { border-color: color-mix(in srgb, var(--intent-purple) 30%, transparent); }
+
+/* Ring */
+.wf-ring-accent-40   { --tw-ring-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.wf-ring-success-40  { --tw-ring-color: color-mix(in srgb, var(--intent-success) 40%, transparent); }
+.wf-ring-danger-40   { --tw-ring-color: color-mix(in srgb, var(--intent-danger) 40%, transparent); }
+.wf-ring-warning-40  { --tw-ring-color: color-mix(in srgb, var(--intent-warning) 40%, transparent); }
+.wf-ring-info-40     { --tw-ring-color: color-mix(in srgb, var(--intent-info) 40%, transparent); }
+.wf-ring-purple-40   { --tw-ring-color: color-mix(in srgb, var(--intent-purple) 40%, transparent); }
+
+/* xyflow node font */
+.react-flow__node {
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page-container { padding: 0.75rem; }
