@@ -38,32 +38,17 @@ export function Weather({ onExpand }: Props) {
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchWeather(lat: number, lon: number) {
+    async function fetchWeather(lat: number, lon: number, city: string) {
       try {
-        const [weatherRes, geoRes] = await Promise.all([
-          fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`,
-          ),
-          fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
-          ),
-        ]);
-
+        const weatherRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`,
+        );
         if (!weatherRes.ok) throw new Error('API error');
         const j = await weatherRes.json();
         if (cancelled) return;
 
         const c = j.current;
         const info = weatherInfo(c.weather_code);
-
-        let city = `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
-        if (geoRes.ok) {
-          const geo = await geoRes.json();
-          if (geo.address) {
-            city = geo.address.city || geo.address.town || geo.address.village || geo.address.county || city;
-          }
-        }
-
         setData({
           temp: Math.round(c.temperature_2m),
           humidity: c.relative_humidity_2m,
@@ -76,23 +61,54 @@ export function Weather({ onExpand }: Props) {
       }
     }
 
-    function onPos(pos: GeolocationPosition) {
-      fetchWeather(pos.coords.latitude, pos.coords.longitude);
+    async function load() {
+      // Primary: IP geolocation gives matched city + coords (works in China, no GPS needed)
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 5000);
+        const ipRes = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+        clearTimeout(t);
+        if (ipRes.ok) {
+          const ip = await ipRes.json();
+          const ipCity = ip.city || ip.region || `${ip.latitude}deg, ${ip.longitude}deg`;
+          // Use GPS coords for better precision if available, but keep IP city
+          if ('geolocation' in navigator && !cancelled) {
+            const gpsTimeout = setTimeout(() => {
+              fetchWeather(ip.latitude, ip.longitude, ipCity);
+            }, 6000);
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                clearTimeout(gpsTimeout);
+                if (!cancelled) fetchWeather(pos.coords.latitude, pos.coords.longitude, ipCity);
+              },
+              () => {
+                clearTimeout(gpsTimeout);
+                if (!cancelled) fetchWeather(ip.latitude, ip.longitude, ipCity);
+              },
+              { timeout: 5000 },
+            );
+            return;
+          }
+          fetchWeather(ip.latitude, ip.longitude, ipCity);
+          return;
+        }
+      } catch { /* IP lookup failed */ }
+
+      // Fallback: GPS → hardcoded city
+      if ('geolocation' in navigator && !cancelled) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Unknown'),
+          () => fetchWeather(40.7, -74.0, 'New York'),
+          { timeout: 8000 },
+        );
+      } else {
+        fetchWeather(40.7, -74.0, 'New York');
+      }
     }
 
-    function onPosError() {
-      fetchWeather(40.7, -74.0);
-    }
+    load();
 
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(onPos, onPosError, { timeout: 8000 });
-    } else {
-      onPosError();
-    }
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const content = data ? (
