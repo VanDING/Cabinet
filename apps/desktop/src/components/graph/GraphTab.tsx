@@ -210,13 +210,13 @@ export function GraphTab() {
       {/* Main graph area */}
       <div className="flex flex-1 flex-col">
         {/* Toolbar */}
-        <div className="flex flex-shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
           <button
             onClick={() => {
               fetchGraph();
               setSelectedEntityId(null);
             }}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
             title="Refresh"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -269,7 +269,7 @@ export function GraphTab() {
                   }
                 }}
                 placeholder="Search entity..."
-                className="w-40 rounded border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-40 rounded-sm border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
               {searchResults.length > 0 && (
                 <div className="absolute left-0 top-full z-50 mt-1 max-h-40 w-56 overflow-y-auto rounded-md border border-border bg-surface-primary shadow-lg">
@@ -284,11 +284,11 @@ export function GraphTab() {
                       className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-content-secondary hover:bg-surface-muted"
                     >
                       <span
-                        className="h-2 w-2 flex-shrink-0 rounded-full"
+                        className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: entityColor(e.type) }}
                       />
                       <span className="truncate">{e.name}</span>
-                      <span className="ml-auto flex-shrink-0 text-[10px] text-content-tertiary">
+                      <span className="ml-auto shrink-0 text-[10px] text-content-tertiary">
                         {e.type}
                       </span>
                     </button>

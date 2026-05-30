@@ -67,13 +67,13 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
   const color = entity ? entityColor(entity.type) : entityColor('memory');
 
   return (
-    <div className="flex h-full w-64 flex-shrink-0 flex-col border-l border-border bg-surface-primary">
+    <div className="flex h-full w-64 shrink-0 flex-col border-l border-border bg-surface-primary">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-xs font-semibold text-content-secondary">Entity Detail</span>
         <button
           onClick={onClose}
-          className="rounded p-0.5 text-content-tertiary hover:text-content-secondary"
+          className="rounded-sm p-0.5 text-content-tertiary hover:text-content-secondary"
         >
           <X size={14} />
         </button>
@@ -87,7 +87,7 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
           <div className="border-b border-border px-3 py-3">
             <div className="mb-2 flex items-center gap-2">
               <span
-                className="h-3 w-3 flex-shrink-0 rounded-full"
+                className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: color }}
               />
               <span className="truncate text-sm font-medium text-content-primary">
@@ -97,7 +97,7 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
             <div className="space-y-1 text-[11px] text-content-tertiary">
               <div className="flex justify-between">
                 <span>Type</span>
-                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-content-secondary">
+                <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-content-secondary">
                   {entity.type}
                 </span>
               </div>
@@ -152,7 +152,7 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
                   <button
                     key={r.id}
                     onClick={() => onFocusEntity(r.direction === 'out' ? r.to : r.from)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-surface-muted"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-surface-muted"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
@@ -179,7 +179,7 @@ export function GraphDetailPanel({ entityId, onClose, onFocusEntity }: Props) {
                         </div>
                       </div>
                     </div>
-                    <ExternalLink size={10} className="flex-shrink-0 text-content-tertiary" />
+                    <ExternalLink size={10} className="shrink-0 text-content-tertiary" />
                   </button>
                 ))}
               </div>

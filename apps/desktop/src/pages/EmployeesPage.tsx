@@ -194,7 +194,7 @@ export function EmployeesPage() {
       </div>
 
       {showForm && (
-        <div className="mb-6 rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+        <div className="mb-6 rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
           <h2 className="mb-3 font-semibold text-content-primary">
             {editingId ? 'Edit Employee' : 'Create Employee'}
           </h2>
@@ -203,12 +203,12 @@ export function EmployeesPage() {
               placeholder="Name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <select
               value={form.kind}
               onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as 'ai' | 'human' }))}
-              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             >
               <option value="ai">AI</option>
               <option value="human">Human</option>
@@ -217,14 +217,14 @@ export function EmployeesPage() {
               placeholder="Role (e.g. advisor)"
               value={form.role}
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-              className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             {form.kind === 'ai' && (
               <input
                 placeholder="Model (e.g. claude-sonnet-4-6)"
                 value={form.model}
                 onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             )}
           </div>
@@ -233,7 +233,7 @@ export function EmployeesPage() {
               placeholder="Expertise (comma-separated)"
               value={form.expertise}
               onChange={(e) => setForm((f) => ({ ...f, expertise: e.target.value }))}
-              className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
           </div>
           <button
@@ -262,7 +262,7 @@ export function EmployeesPage() {
           <div
             key={emp.id}
             onClick={() => setSelected(selected === emp.id ? null : emp.id)}
-            className={`group cursor-pointer rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-all ${selected === emp.id ? 'border-accent ring-2 ring-accent' : 'hover:shadow-md'}`}
+            className={`group cursor-pointer rounded-lg border border-border bg-surface-primary p-4 shadow-xs transition-all ${selected === emp.id ? 'border-accent ring-2 ring-accent' : 'hover:shadow-md'}`}
           >
             <div className="mb-2 flex items-center justify-between">
               <div>
@@ -280,7 +280,7 @@ export function EmployeesPage() {
                     e.stopPropagation();
                     handleDelete(emp.id);
                   }}
-                  className="flex h-5 w-5 items-center justify-center rounded text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                  className="flex h-5 w-5 items-center justify-center rounded-sm text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
                   aria-label="Delete employee"
                 >
                   &times;
@@ -316,12 +316,12 @@ export function EmployeesPage() {
                       e.stopPropagation();
                       handleStartEdit(emp);
                     }}
-                    className="rounded border border-border px-3 py-1 text-xs hover:bg-surface-elevated bg-surface-input"
+                    className="rounded-sm border border-border px-3 py-1 text-xs hover:bg-surface-elevated bg-surface-input"
                   >
                     Configure
                   </button>
                   {emp.kind === 'ai' && (
-                    <button className="rounded bg-intent-warning-muted px-3 py-1 text-xs text-intent-warning hover:bg-intent-warning">
+                    <button className="rounded-sm bg-intent-warning-muted px-3 py-1 text-xs text-intent-warning hover:bg-intent-warning">
                       Test
                     </button>
                   )}

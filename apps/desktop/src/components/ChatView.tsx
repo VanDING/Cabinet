@@ -89,7 +89,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
             .map((tc) => (
               <span
                 key={tc.id}
-                className="inline-flex items-center gap-1 rounded bg-accent-muted px-1.5 py-0.5 text-accent"
+                className="inline-flex items-center gap-1 rounded-sm bg-accent-muted px-1.5 py-0.5 text-accent"
               >
                 <span className="opacity-70">⟳</span>
                 {formatToolPreview(tc)}
@@ -106,7 +106,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
       <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-muted bg-surface-input"
+          className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:bg-surface-muted bg-surface-input"
         >
           <span>{expanded ? '▼' : '▶'}</span>
           {total} tool{total !== 1 ? 's' : ''}
@@ -115,7 +115,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
           toolCalls.slice(0, 4).map((tc) => (
             <span
               key={tc.id}
-              className="inline-flex items-center gap-1 rounded bg-surface-muted px-1.5 py-0.5"
+              className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-0.5"
             >
               <span>{tc.status === 'error' ? '✕' : '✓'}</span>
               {formatToolPreview(tc)}
@@ -126,7 +126,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
         )}
       </div>
       {expanded && (
-        <div className="mt-1 space-y-1 rounded border border-border bg-surface-elevated p-2">
+        <div className="mt-1 space-y-1 rounded-sm border border-border bg-surface-elevated p-2">
           {toolCalls.map((tc) => (
             <div key={tc.id} className="flex items-center gap-2 text-xs">
               <span>{tc.status === 'error' ? '✕' : tc.status === 'running' ? '⟳' : '✓'}</span>
@@ -244,19 +244,19 @@ export const ChatView = memo(function ChatView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5">
+      <div className="shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5">
         <h2 className="truncate text-sm font-medium text-content-secondary">
           {sessionTitle}
         </h2>
       </div>
 
       {attachedFiles.length > 0 && (
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-border bg-surface-elevated px-5 py-1.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border bg-surface-elevated px-5 py-1.5">
           <span className="text-xs text-content-tertiary">{t('chat.attached')}</span>
           {attachedFiles.map((f) => (
             <span
               key={f.id}
-              className="rounded bg-accent-muted px-1.5 py-0.5 text-xs text-accent"
+              className="rounded-sm bg-accent-muted px-1.5 py-0.5 text-xs text-accent"
             >
               {f.type === 'project' ? f.path : f.name}
             </span>
@@ -369,7 +369,7 @@ const MessageRow = memo(function MessageRow({
             {msg.timestamp.toLocaleTimeString()}
           </span>
           {msg.routing && (
-            <span className="inline-flex items-center gap-1 rounded bg-intent-purple-muted px-1.5 py-0.5 text-[10px] text-intent-purple">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-intent-purple-muted px-1.5 py-0.5 text-[10px] text-intent-purple">
               <span>{msg.routing.from}</span>
               <span>→</span>
               <span>{msg.routing.to}</span>
@@ -383,7 +383,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(true);
                   }}
-                  className="rounded px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
                 >
                   {t('chat.edit')}
                 </button>
@@ -391,7 +391,7 @@ const MessageRow = memo(function MessageRow({
               {msg.role === 'assistant' && onRegenerate && (
                 <button
                   onClick={() => onRegenerate(msg.id)}
-                  className="rounded px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
                 >
                   {t('chat.regenerate')}
                 </button>
@@ -399,7 +399,7 @@ const MessageRow = memo(function MessageRow({
               {onForkMessage && (
                 <button
                   onClick={() => onForkMessage(msg.id)}
-                  className="rounded px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
                   title="Fork session from here"
                 >
                   Fork
@@ -414,7 +414,7 @@ const MessageRow = memo(function MessageRow({
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full rounded border border-accent bg-surface-primary p-2 text-sm text-content-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full rounded-sm border border-accent bg-surface-primary p-2 text-sm text-content-primary focus:outline-hidden focus:ring-1 focus:ring-accent"
                 rows={3}
                 autoFocus
               />
@@ -426,7 +426,7 @@ const MessageRow = memo(function MessageRow({
                     }
                     setEditing(false);
                   }}
-                  className="rounded bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
+                  className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
                 >
                   {t('chat.saveAndResend')}
                 </button>
@@ -435,7 +435,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(false);
                   }}
-                  className="rounded border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated bg-surface-input"
+                  className="rounded-sm border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated bg-surface-input"
                 >
                   {t('chat.cancel')}
                 </button>

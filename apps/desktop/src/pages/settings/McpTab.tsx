@@ -114,7 +114,7 @@ export function McpTab() {
                 placeholder="e.g. filesystem"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -124,7 +124,7 @@ export function McpTab() {
                 placeholder="npx"
                 value={form.command}
                 onChange={(e) => setForm((p) => ({ ...p, command: e.target.value }))}
-                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <div>
@@ -136,7 +136,7 @@ export function McpTab() {
                 placeholder="-y @anthropic/mcp-server-filesystem /path"
                 value={form.args}
                 onChange={(e) => setForm((p) => ({ ...p, args: e.target.value }))}
-                className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button
@@ -152,7 +152,7 @@ export function McpTab() {
       )}
 
       {testResult && (
-        <div className="mb-3 rounded bg-intent-success-muted px-3 py-2 text-sm text-intent-success">
+        <div className="mb-3 rounded-sm bg-intent-success-muted px-3 py-2 text-sm text-intent-success">
           {testResult}
         </div>
       )}

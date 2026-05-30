@@ -145,20 +145,20 @@ export function SkillsTab() {
               placeholder="Name"
               value={formData.name}
               onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-              className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <textarea
               placeholder="Description"
               value={formData.description}
               onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               rows={2}
-              className="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
             />
             <div className="flex gap-3">
               <select
                 value={formData.kind}
                 onChange={(e) => setFormData((p) => ({ ...p, kind: e.target.value }))}
-                className="rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               >
                 <option value="tool">Tool</option>
                 <option value="prompt">Prompt</option>
@@ -168,7 +168,7 @@ export function SkillsTab() {
                 placeholder="Prompt Template"
                 value={formData.promptTemplate}
                 onChange={(e) => setFormData((p) => ({ ...p, promptTemplate: e.target.value }))}
-                className="flex-1 rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="flex-1 rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
               />
             </div>
             <Button

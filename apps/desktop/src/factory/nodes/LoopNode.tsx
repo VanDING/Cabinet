@@ -7,10 +7,10 @@ export function LoopNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-info">Loop</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-info">Loop</span>
       </NodeToolbar>
       <div
-        className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-sm transition-shadow wf-border-info-40 wf-bg-info-15 ${selected ? 'shadow-md ring-2 wf-ring-info-50' : ''}`}
+        className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-xs transition-shadow wf-border-info-40 wf-bg-info-15 ${selected ? 'shadow-md ring-2 wf-ring-info-50' : ''}`}
         style={{ borderLeft: '3px solid var(--intent-info)' }}
       >
         <div className="flex items-center gap-1.5 px-3 py-1.5">

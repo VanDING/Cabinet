@@ -108,14 +108,14 @@ export function NotificationBell() {
                     className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHoverClasses} ${borderClasses} ${n.read ? 'opacity-60' : ''}`}
                   >
                     <span
-                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-content-inverse ${icon.color}`}
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-content-inverse ${icon.color}`}
                     >
                       {icon.label}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className={`truncate text-xs font-medium ${textClasses}`}>{n.title}</p>
-                        <span className={`flex-shrink-0 text-[10px] ${subtextClasses}`}>
+                        <span className={`shrink-0 text-[10px] ${subtextClasses}`}>
                           {timeAgo(n.timestamp)}
                         </span>
                       </div>
@@ -131,7 +131,7 @@ export function NotificationBell() {
                       )}
                     </div>
                     {!n.read && (
-                      <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
                     )}
                   </button>
                 );

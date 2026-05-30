@@ -76,11 +76,11 @@ export function CostChart() {
   }, [history]);
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-content-secondary">Cost Analysis</h3>
-        <div className="flex rounded bg-surface-muted p-0.5">
+        <div className="flex rounded-sm bg-surface-muted p-0.5">
           {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
             <button
               key={p}
@@ -90,7 +90,7 @@ export function CostChart() {
               }}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
                 period === p
-                  ? 'bg-surface-primary text-content-primary shadow-sm'
+                  ? 'bg-surface-primary text-content-primary shadow-xs'
                   : 'text-content-tertiary hover:text-content-secondary'
               }`}
             >

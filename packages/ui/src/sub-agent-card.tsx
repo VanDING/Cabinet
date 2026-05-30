@@ -75,7 +75,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           <span className="text-sm font-medium text-content-primary">
             {activity.agentName}
           </span>
-          <span className="rounded px-1.5 py-0.5 text-xs text-content-tertiary">
+          <span className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary">
             {config.label}
           </span>
         </div>
@@ -98,7 +98,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
               <div className="text-xs font-medium text-content-tertiary">思考过程</div>
-              <div className="mt-1 max-h-40 overflow-y-auto rounded border border-border bg-surface-primary p-2 whitespace-pre-wrap">
+              <div className="mt-1 max-h-40 overflow-y-auto rounded-sm border border-border bg-surface-primary p-2 whitespace-pre-wrap">
                 <p className="text-xs text-content-secondary">
                   {activity.thinking.join('')}
                 </p>
@@ -111,7 +111,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
                 <button
                   onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
-                  className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-muted"
+                  className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:bg-surface-muted"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
                   工具调用 ({activity.toolCalls.length})
@@ -120,7 +120,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                   activity.toolCalls.slice(0, 4).map((tc, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 rounded bg-surface-muted px-1.5 py-0.5"
+                      className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-0.5"
                     >
                       <span className="font-mono text-content-secondary">{tc.name}</span>
                     </span>
@@ -130,7 +130,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                 )}
               </div>
               {toolCallsExpanded && (
-                <div className="mt-1 space-y-1 rounded border border-border bg-surface-elevated p-2">
+                <div className="mt-1 space-y-1 rounded-sm border border-border bg-surface-elevated p-2">
                   {activity.toolCalls.map((tc, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
                       <span className="mt-0.5 font-mono text-content-secondary">

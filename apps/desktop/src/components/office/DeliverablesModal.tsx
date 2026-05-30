@@ -90,7 +90,7 @@ export function DeliverablesModal({ onClose, projectId }: Props) {
           <h3 className="text-lg font-semibold text-content-primary">Deliverables</h3>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>
@@ -113,7 +113,7 @@ export function DeliverablesModal({ onClose, projectId }: Props) {
                   onClick={() => handleOpen(d)}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-muted"
                 >
-                  <FileText size={14} className="flex-shrink-0 text-content-tertiary" />
+                  <FileText size={14} className="shrink-0 text-content-tertiary" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm text-content-primary">{d.title}</div>
                     <div className="mt-0.5 flex items-center gap-2 text-[10px] text-content-tertiary">
@@ -123,7 +123,7 @@ export function DeliverablesModal({ onClose, projectId }: Props) {
                       )}
                     </div>
                   </div>
-                  <span className="flex-shrink-0 text-xs text-content-tertiary">
+                  <span className="shrink-0 text-xs text-content-tertiary">
                     {new Date(d.createdAt).toLocaleDateString()}
                   </span>
                 </button>

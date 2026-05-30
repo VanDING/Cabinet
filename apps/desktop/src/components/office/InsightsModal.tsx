@@ -53,7 +53,7 @@ export function InsightsModal({ onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>
@@ -77,7 +77,7 @@ export function InsightsModal({ onClose }: Props) {
                 >
                   <p className="text-sm text-content-secondary leading-relaxed">{insight.text}</p>
                   <div className="mt-2 flex items-center gap-3 text-[10px] text-content-tertiary">
-                    <span className="rounded bg-accent-muted px-1.5 py-0.5 font-medium text-accent">
+                    <span className="rounded-sm bg-accent-muted px-1.5 py-0.5 font-medium text-accent">
                       {Math.round(insight.relevance * 100)}% relevance
                     </span>
                     {insight.relatedEntities.length > 0 && (

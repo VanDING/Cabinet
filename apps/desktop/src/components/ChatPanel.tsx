@@ -273,11 +273,11 @@ export function ChatPanel({
           className={`flex h-8 items-center gap-1 rounded-t-2xl border-b px-2 ${borderClass} ${tabBgClass}`}
         >
           {/* Fixed @agent label */}
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             <button
               ref={agentBtnRef}
               onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className="flex items-center gap-0.5 rounded bg-accent-muted px-1.5 py-0.5 text-xs font-bold text-accent transition-colors hover:bg-accent:bg-accent-hover/60"
+              className="flex items-center gap-0.5 rounded-sm bg-accent-muted px-1.5 py-0.5 text-xs font-bold text-accent transition-colors hover:bg-accent:bg-accent-hover/60"
               title="Switch agent"
             >
               @{activeAgent}
@@ -316,7 +316,7 @@ export function ChatPanel({
             )}
           </div>
           {/* Project selector */}
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             <button
               ref={projectBtnRef}
               onClick={() => setProjectMenuOpen(!projectMenuOpen)}
@@ -398,7 +398,7 @@ export function ChatPanel({
                     }`}
                   >
                     <span
-                      className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                      className={`h-2 w-2 shrink-0 rounded-full ${
                         hasActivity
                           ? 'animate-pulse bg-accent'
                           : `border border-border`
@@ -410,7 +410,7 @@ export function ChatPanel({
                         e.stopPropagation();
                         onCloseSession(session.id);
                       }}
-                      className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                      className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
                     >
                       &times;
                     </button>
@@ -423,7 +423,7 @@ export function ChatPanel({
               )}
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <div className="relative">
               <button
                 ref={historyBtnRef}
@@ -463,7 +463,7 @@ export function ChatPanel({
             {attachedFiles.map((file) => (
               <span
                 key={file.id}
-                className="inline-flex items-center gap-1 rounded bg-accent-muted px-2 py-0.5 text-xs text-accent"
+                className="inline-flex items-center gap-1 rounded-sm bg-accent-muted px-2 py-0.5 text-xs text-accent"
               >
                 <span className="max-w-[160px] truncate" title={file.path}>
                   {file.type === 'project' ? file.path : file.name}
@@ -492,7 +492,7 @@ export function ChatPanel({
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             disabled={isProcessing}
             rows={2}
-            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-content-tertiary focus:outline-none disabled:opacity-50 ${textClass}`}
+            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-content-tertiary focus:outline-hidden disabled:opacity-50 ${textClass}`}
             style={{ minHeight: '40px', maxHeight: '200px' }}
           />
         </div>
@@ -556,7 +556,7 @@ export function ChatPanel({
                       onClick={() => handleSelectSkill(skill.name)}
                       className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                     >
-                      <span className="mr-1.5 inline-block rounded bg-surface-muted px-1 py-0.5 text-content-secondary">
+                      <span className="mr-1.5 inline-block rounded-sm bg-surface-muted px-1 py-0.5 text-content-secondary">
                         /
                       </span>
                       {skill.name}

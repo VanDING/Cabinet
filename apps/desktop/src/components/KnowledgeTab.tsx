@@ -74,7 +74,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
   return (
     <div className="flex h-full">
       {/* Left: Document list */}
-      <div className="flex w-64 flex-shrink-0 flex-col border-r border-border">
+      <div className="flex w-64 shrink-0 flex-col border-r border-border">
         <div className="border-b border-border p-3">
           <input
             className={`w-full ${inputClasses}`}
@@ -100,10 +100,10 @@ export function KnowledgeTab({ activeProjectId }: Props) {
                 } hover:bg-surface-muted bg-surface-input`}
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <FileText size={12} className="flex-shrink-0" />
+                  <FileText size={12} className="shrink-0" />
                   <span className={`truncate ${textClasses}`}>{d.path.split('/').pop()}</span>
                 </div>
-                <span className={`ml-2 flex-shrink-0 ${subClasses}`}>{d.chunks}c</span>
+                <span className={`ml-2 shrink-0 ${subClasses}`}>{d.chunks}c</span>
               </div>
             ))
           )}

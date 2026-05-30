@@ -92,7 +92,7 @@ export function HarnessModal({ onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>
@@ -162,9 +162,9 @@ export function HarnessModal({ onClose }: Props) {
                     return (
                       <div
                         key={i}
-                        className="flex items-start gap-2 rounded border border-border bg-surface-muted p-2.5"
+                        className="flex items-start gap-2 rounded-sm border border-border bg-surface-muted p-2.5"
                       >
-                        <Icon size={14} className={`mt-0.5 flex-shrink-0 ${color}`} />
+                        <Icon size={14} className={`mt-0.5 shrink-0 ${color}`} />
                         <div className="min-w-0 flex-1">
                           <div className="text-xs text-content-secondary">{a.description}</div>
                           <div className="mt-1 flex items-center gap-2 text-[10px] text-content-tertiary">

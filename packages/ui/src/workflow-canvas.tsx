@@ -58,7 +58,7 @@ export function WorkflowCanvas({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-content-primary">{workflow.name}</h3>
@@ -81,7 +81,7 @@ export function WorkflowCanvas({
                 <button
                   key={type}
                   onClick={() => onAddNode(type)}
-                  className="rounded border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
+                  className="rounded-sm border border-border px-2 py-1 text-xs hover:bg-surface-elevated"
                 >
                   +{type}
                 </button>
@@ -91,7 +91,7 @@ export function WorkflowCanvas({
           {onSave && editable && (
             <button
               onClick={() => onSave(workflow)}
-              className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
+              className="rounded-sm bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
             >
               Save
             </button>
@@ -99,7 +99,7 @@ export function WorkflowCanvas({
           {onRun && (
             <button
               onClick={() => onRun(workflow.id)}
-              className="rounded bg-accent px-4 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
+              className="rounded-sm bg-accent px-4 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
             >
               Run
             </button>

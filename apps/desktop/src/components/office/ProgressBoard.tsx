@@ -96,7 +96,7 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
         <span className="text-xs text-content-tertiary">Loading progress...</span>
       </div>
     );
@@ -104,7 +104,7 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (!data || data.tasks.length === 0) {
     return (
-      <div className="h-full rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+      <div className="h-full rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
         <div className="mb-2 text-sm font-medium text-content-secondary">Task Board</div>
         <p className="text-xs text-content-tertiary">
           No tasks tracked yet. Use the secretary to create tasks.
@@ -117,7 +117,7 @@ export function ProgressBoard({ projectId }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-4">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-medium text-content-secondary">Task Board</div>
         <button onClick={fetchProgress} className="text-xs text-accent hover:underline">
@@ -143,7 +143,7 @@ export function ProgressBoard({ projectId }: Props) {
 
       {/* Next task */}
       {data.nextTask && (
-        <div className="mb-3 rounded border border-accent bg-accent-muted p-2">
+        <div className="mb-3 rounded-sm border border-accent bg-accent-muted p-2">
           <div className="text-[10px] font-medium uppercase text-accent">Next Up</div>
           <div className="text-sm font-medium text-content-primary">
             {data.nextTask.title}
@@ -156,7 +156,7 @@ export function ProgressBoard({ projectId }: Props) {
         {data.tasks.map((task) => (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-surface-elevated bg-surface-input/50"
+            className="group flex items-center gap-2 rounded-sm px-1 py-1 hover:bg-surface-elevated bg-surface-input/50"
           >
             <StatusIcon status={task.status} />
             <div className="min-w-0 flex-1">
@@ -172,7 +172,7 @@ export function ProgressBoard({ projectId }: Props) {
               {task.status === 'pending' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded bg-accent-muted p-0.5 text-accent hover:bg-accent"
+                  className="rounded-sm bg-accent-muted p-0.5 text-accent hover:bg-accent"
                   title="Start"
                 >
                   <Play size={12} />
@@ -182,14 +182,14 @@ export function ProgressBoard({ projectId }: Props) {
                 <>
                   <button
                     onClick={() => updateStatus(task.id, 'completed')}
-                    className="rounded bg-intent-success-muted p-0.5 text-intent-success hover:bg-intent-success"
+                    className="rounded-sm bg-intent-success-muted p-0.5 text-intent-success hover:bg-intent-success"
                     title="Complete"
                   >
                     <Check size={12} />
                   </button>
                   <button
                     onClick={() => updateStatus(task.id, 'blocked')}
-                    className="rounded bg-intent-danger-muted p-0.5 text-intent-danger hover:bg-intent-danger"
+                    className="rounded-sm bg-intent-danger-muted p-0.5 text-intent-danger hover:bg-intent-danger"
                     title="Block"
                   >
                     <Ban size={12} />
@@ -199,7 +199,7 @@ export function ProgressBoard({ projectId }: Props) {
               {task.status === 'blocked' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded bg-accent-muted p-0.5 text-accent hover:bg-accent"
+                  className="rounded-sm bg-accent-muted p-0.5 text-accent hover:bg-accent"
                   title="Unblock"
                 >
                   <RotateCcw size={12} />

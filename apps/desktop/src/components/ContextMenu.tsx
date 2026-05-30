@@ -83,7 +83,7 @@ export function ContextMenu({ x, y, title, entries, onClose }: Props) {
                   : 'text-content-secondary hover:bg-surface-muted'
             }`}
           >
-            {icon && <span className="flex-shrink-0">{icon}</span>}
+            {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 truncate">{label}</span>
           </button>
         );

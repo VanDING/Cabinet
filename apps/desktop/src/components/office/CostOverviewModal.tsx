@@ -96,14 +96,14 @@ export function CostOverviewModal({ onClose }: Props) {
           <h3 className="text-lg font-semibold text-content-primary">Cost Overview</h3>
 
           {/* Period switcher */}
-          <div className="flex rounded bg-surface-muted p-0.5">
+          <div className="flex rounded-sm bg-surface-muted p-0.5">
             {(['daily', 'weekly', 'monthly'] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
                   period === p
-                    ? 'bg-surface-primary text-content-primary shadow-sm'
+                    ? 'bg-surface-primary text-content-primary shadow-xs'
                     : 'text-content-tertiary hover:text-content-secondary'
                 }`}
               >
@@ -114,7 +114,7 @@ export function CostOverviewModal({ onClose }: Props) {
 
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>

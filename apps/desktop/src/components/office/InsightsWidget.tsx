@@ -41,7 +41,7 @@ export function InsightsWidget({ onExpand }: Props) {
   return (
     <div
       onClick={onExpand}
-      className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm ${
+      className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${
         onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
       }`}
     >
@@ -63,7 +63,7 @@ export function InsightsWidget({ onExpand }: Props) {
       ) : (
         <div className="flex-1 space-y-2 overflow-y-auto">
           {latest.map((insight) => (
-            <div key={insight.id} className="rounded bg-surface-muted p-2">
+            <div key={insight.id} className="rounded-sm bg-surface-muted p-2">
               <p className="line-clamp-2 text-xs text-content-secondary">{insight.text}</p>
               <div className="mt-1 flex items-center justify-between text-[10px] text-content-tertiary">
                 <span>
