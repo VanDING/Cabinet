@@ -10,15 +10,15 @@ export function ApprovalNode({ data, selected }: NodeProps) {
       <NodeToolbar isVisible={selected} position={Position.Top}>
         <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-danger">Approval</span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-sm transition-shadow wf-border-danger-30 wf-bg-danger-5 ${selected ? 'shadow-md ring-2 wf-ring-danger-40' : ''}`} style={{ borderLeft: leftStripe }}>
+      <div className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-sm transition-shadow wf-border-danger-40 wf-bg-danger-15 ${selected ? 'shadow-md ring-2 wf-ring-danger-50' : ''}`} style={{ borderLeft: leftStripe }}>
         <div className="flex items-center gap-1.5 px-3 py-2">
-          <span className="text-sm text-intent-danger-foreground">{'||'}</span>
-          <span className="text-xs font-semibold text-intent-danger-foreground">{title}</span>
+          <span className="text-sm text-content-primary">{'||'}</span>
+          <span className="text-xs font-semibold text-content-primary">{title}</span>
         </div>
         {options ? (
           <div className="px-3 pb-2 flex gap-1">
             {options.map((opt, i) => (
-              <span key={i} className="rounded-full wf-bg-danger-10 px-1.5 text-[10px] text-intent-danger">{opt}</span>
+              <span key={i} className="rounded-full wf-bg-danger-25 px-1.5 text-[10px] text-intent-danger">{opt}</span>
             ))}
           </div>
         ) : null}
