@@ -786,7 +786,7 @@ export function createShellCapabilities(_ctx: CapabilitiesContext) {
   };
 }
 
-export function createSchedulerCapabilities(ctx: CapabilitiesContext) {
+export function createSchedulerCapabilities(ctx: CapabilitiesContext, defaultProjectId?: string) {
   return {
     scheduleTask: async (
       name: string,
@@ -807,8 +807,7 @@ export function createSchedulerCapabilities(ctx: CapabilitiesContext) {
           { from: 'exec', to: 'end' },
         ],
       };
-      const projects = ctx.projectRepo.listAll();
-      const projectId = projects[0]?.id ?? 'default';
+      const projectId = defaultProjectId ?? (ctx.projectRepo.listAll()[0]?.id ?? 'default');
       ctx.workflowRepo.create(id, projectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
       if (recurring) {
         ctx.taskScheduler.schedule(id, name, cronExpression);
@@ -1031,12 +1030,13 @@ export function createLSPCapabilities() {
 export function createAllCapabilities(
   ctx: CapabilitiesContext,
   allowed?: Array<'file' | 'web' | 'shell' | 'scheduler' | 'knowledge' | 'evaluation' | 'lsp'>,
+  defaultProjectId?: string,
 ) {
   const all = {
     ...createFileCapabilities(ctx),
     ...createWebCapabilities(ctx),
     ...createShellCapabilities(ctx),
-    ...createSchedulerCapabilities(ctx),
+    ...createSchedulerCapabilities(ctx, defaultProjectId),
     ...createKnowledgeCapabilities(ctx),
     ...createEvaluationCapabilities(ctx),
     ...createLSPCapabilities(),
