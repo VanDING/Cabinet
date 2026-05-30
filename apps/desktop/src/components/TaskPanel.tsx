@@ -21,7 +21,7 @@ interface Props {
 }
 
 const cardClasses =
-  'mb-2 rounded-lg border border-border bg-surface-primary/90 p-2 shadow-sm backdrop-blur-sm';
+  'mb-2 rounded-lg border border-border bg-surface-primary/90 p-2 shadow-xs backdrop-blur-xs';
 const subtextClasses = 'text-content-tertiary';
 const textClasses = 'text-content-primary';
 
@@ -80,7 +80,7 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
           return (
             <div key={task.id} className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
-                <span className="flex-shrink-0 text-[10px]">
+                <span className="shrink-0 text-[10px]">
                   {task.status === 'done' && <span className="text-intent-success">✅</span>}
                   {task.status === 'running' && <span className="text-accent">⟳</span>}
                   {task.status === 'error' && <span className="text-intent-danger">✕</span>}

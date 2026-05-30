@@ -7,13 +7,13 @@ export function BranchNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <div className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-warning">
+        <div className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-warning">
           Branch
         </div>
       </NodeToolbar>
       <div
         className={`rounded-lg border-2 px-3 py-2 min-w-[160px] max-w-[200px] rotate-[2deg]
-          bg-surface-primary shadow-sm
+          bg-surface-primary shadow-xs
           ${selected ? 'border-intent-warning shadow-md' : 'border-border'}`}
       >
         <Handle type="target" position={Position.Top} className="!bg-intent-warning" />
@@ -25,13 +25,13 @@ export function BranchNode({ data, selected }: NodeProps) {
         <div className="mt-1 flex gap-2 text-[10px]">
           <Handle
             type="source" position={Position.Bottom} id="true"
-            className="!relative !left-auto !right-auto !top-auto !bottom-auto !transform-none !bg-intent-success"
+            className="!relative !left-auto !right-auto !top-auto !bottom-auto !scale-none !bg-intent-success"
             title="True"
           />
           <span className="text-intent-success">T</span>
           <Handle
             type="source" position={Position.Bottom} id="false"
-            className="!relative !left-auto !right-auto !top-auto !bottom-auto !transform-none !bg-intent-danger"
+            className="!relative !left-auto !right-auto !top-auto !bottom-auto !scale-none !bg-intent-danger"
             title="False"
           />
           <span className="text-intent-danger">F</span>

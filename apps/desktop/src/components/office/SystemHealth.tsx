@@ -37,7 +37,7 @@ export function SystemHealth() {
 
   if (!health) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm text-xs text-content-tertiary">
+      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-xs text-xs text-content-tertiary">
         {loading ? 'Loading...' : 'No data'}
       </div>
     );
@@ -63,7 +63,7 @@ export function SystemHealth() {
     : `${Math.floor(uptimeMin / 60)}h ${uptimeMin % 60}m`;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-3 text-sm font-medium text-content-secondary">System Health</div>
       <div className="flex-1 space-y-2.5 text-xs">
         {/* CPU */}

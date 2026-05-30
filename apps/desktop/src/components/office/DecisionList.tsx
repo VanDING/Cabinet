@@ -79,7 +79,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
   };
 
   return (
-    <div className="h-full overflow-y-auto rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="h-full overflow-y-auto rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <h3 className="mb-3 text-xs font-semibold text-content-secondary">
         Decisions
         {pending.length > 0 && (
@@ -104,7 +104,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
             <button
               key={d.id}
               onClick={() => onSelectDecision?.(d.id)}
-              className="w-full rounded border border-border p-3 text-left transition-colors hover:border-accent hover:bg-surface-elevated bg-surface-primary/50"
+              className="w-full rounded-sm border border-border p-3 text-left transition-colors hover:border-accent hover:bg-surface-elevated bg-surface-primary/50"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
@@ -128,7 +128,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 {d.options?.slice(0, 3).map((opt: any) => (
                   <span
                     key={opt.id}
-                    className="rounded bg-surface-muted px-2 py-0.5 text-[10px] text-content-tertiary"
+                    className="rounded-sm bg-surface-muted px-2 py-0.5 text-[10px] text-content-tertiary"
                   >
                     {opt.label}
                   </span>
@@ -151,7 +151,7 @@ export const DecisionList = memo(function DecisionList({ onSelectDecision, proje
                 <button
                   key={d.id}
                   onClick={() => onSelectDecision?.(d.id)}
-                  className="w-full rounded border border-border p-2 text-left opacity-70 transition-colors hover:border-accent hover:bg-surface-elevated hover:opacity-100 bg-surface-primary/50"
+                  className="w-full rounded-sm border border-border p-2 text-left opacity-70 transition-colors hover:border-accent hover:bg-surface-elevated hover:opacity-100 bg-surface-primary/50"
                 >
                   <div className="flex items-center gap-2">
                     <span

@@ -34,7 +34,7 @@ export function ProjectList() {
   }, [fetchProjects]);
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-3 text-sm font-medium text-content-secondary">Projects</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {projects.length === 0 ? (
@@ -43,7 +43,7 @@ export function ProjectList() {
           projects.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between rounded px-2 py-1.5 text-xs bg-surface-input hover:bg-surface-elevated"
+              className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs bg-surface-input hover:bg-surface-elevated"
             >
               <div>
                 <div className="font-medium text-content-secondary">{p.name}</div>

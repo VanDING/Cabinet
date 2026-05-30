@@ -31,10 +31,10 @@ export function Card({
     <Tag
       onClick={onClick}
       className={cn(
-        'rounded-lg border border-border bg-surface-primary shadow-sm',
+        'rounded-lg border border-border bg-surface-primary shadow-xs',
         paddingClasses[padding],
         onClick && 'cursor-pointer',
-        hoverable && 'transition-shadow hover:shadow-sm',
+        hoverable && 'transition-shadow hover:shadow-xs',
         className,
       )}
     >

@@ -86,7 +86,7 @@ export function TitleBar({
   return (
     <div
       data-tauri-drag-region
-      className="flex h-8 flex-shrink-0 select-none items-center justify-between border-b border-border bg-transparent"
+      className="flex h-8 shrink-0 select-none items-center justify-between border-b border-border bg-transparent"
     >
       <div data-tauri-drag-region className="flex items-center pl-4">
         <span className="text-xs font-semibold tracking-wide text-content-secondary">

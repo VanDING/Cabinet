@@ -439,7 +439,7 @@ export function WorkflowCanvas({
           color="var(--graph-bg-grid, #ccc)"
         />
         <Controls
-          className="[&>button]:bg-surface-primary [&>button]:border-border [&>button]:text-content-primary [&>button]:rounded [&>button]:shadow-sm"
+          className="[&>button]:bg-surface-primary [&>button]:border-border [&>button]:text-content-primary [&>button]:rounded-sm [&>button]:shadow-xs"
           showInteractive={false}
         />
         <MiniMap

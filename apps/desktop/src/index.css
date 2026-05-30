@@ -1,9 +1,132 @@
+@import "tailwindcss";
+@source "../../../packages/ui/";
 /* Generated theme CSS — all [data-theme="X"] blocks */
 @import './themes/generated.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ── @theme inline: 替代 tailwind.config.js 的全部 theme.extend ── */
+/* inline 让工具类直接引用 var(--surface-primary) 而非 var(--color-surface-primary) */
+@theme inline {
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-input: var(--surface-input);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-sidebar: var(--surface-sidebar);
+  --color-content-primary: var(--content-primary);
+  --color-content-secondary: var(--content-secondary);
+  --color-content-tertiary: var(--content-tertiary);
+  --color-content-inverse: var(--content-inverse);
+  --color-border: var(--border-color);
+  --color-border-subtle: var(--border-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-intent-success: var(--intent-success);
+  --color-intent-success-muted: var(--intent-success-muted);
+  --color-intent-success-foreground: var(--intent-success-foreground);
+  --color-intent-danger: var(--intent-danger);
+  --color-intent-danger-muted: var(--intent-danger-muted);
+  --color-intent-danger-foreground: var(--intent-danger-foreground);
+  --color-intent-warning: var(--intent-warning);
+  --color-intent-warning-muted: var(--intent-warning-muted);
+  --color-intent-warning-foreground: var(--intent-warning-foreground);
+  --color-intent-info: var(--intent-info);
+  --color-intent-info-muted: var(--intent-info-muted);
+  --color-intent-info-foreground: var(--intent-info-foreground);
+  --color-intent-purple: var(--intent-purple);
+  --color-intent-purple-muted: var(--intent-purple-muted);
+  --color-intent-purple-foreground: var(--intent-purple-foreground);
+  --color-code-block-bg: var(--code-block-bg);
+  --color-code-block-border: var(--code-block-border);
+  --color-code-block-color: var(--code-block-color);
+  --color-code-inline-bg: var(--code-inline-bg);
+  --color-code-inline-color: var(--code-inline-color);
+  --color-syntax-keyword: var(--syntax-keyword);
+  --color-syntax-string: var(--syntax-string);
+  --color-syntax-number: var(--syntax-number);
+  --color-syntax-comment: var(--syntax-comment);
+  --color-syntax-function: var(--syntax-function);
+  --color-syntax-variable: var(--syntax-variable);
+  --color-syntax-tag: var(--syntax-tag);
+  --color-graph-entity-person: var(--graph-entity-person);
+  --color-graph-entity-project: var(--graph-entity-project);
+  --color-graph-entity-concept: var(--graph-entity-concept);
+  --color-graph-entity-technology: var(--graph-entity-technology);
+  --color-graph-entity-decision: var(--graph-entity-decision);
+  --color-graph-entity-memory: var(--graph-entity-memory);
+  --color-graph-edge-active: var(--graph-edge-active);
+  --color-graph-edge-inactive: var(--graph-edge-inactive);
+  --color-graph-node-label: var(--graph-node-label);
+  --color-graph-bg-grid: var(--graph-bg-grid);
+  --color-graph-minimap-mask: var(--graph-minimap-mask);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  --radius: var(--radius-md);
+  --radius-xs: var(--radius-sm);
+  --radius-sm: var(--radius-md);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-xl);
+  --radius-3xl: var(--radius-xl);
+  --radius-ui-sm: var(--radius-sm);
+  --radius-ui-md: var(--radius-md);
+  --radius-ui-lg: var(--radius-lg);
+  --radius-ui-xl: var(--radius-xl);
+
+  --shadow-xs: var(--shadow-sm);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-lg);
+  --shadow-2xl: var(--shadow-lg);
+
+  --text-xs: var(--font-size-xs);
+  --text-xs--line-height: 1rem;
+  --text-sm: var(--font-size-sm);
+  --text-sm--line-height: 1.25rem;
+  --text-base: var(--font-size-base);
+  --text-base--line-height: 1.5rem;
+  --text-lg: var(--font-size-lg);
+  --text-lg--line-height: 1.75rem;
+  --text-xl: var(--font-size-xl);
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: var(--font-size-2xl);
+  --text-2xl--line-height: 2rem;
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-3xs: 0.6875rem;
+  --text-3xs--line-height: 0.875rem;
+
+  --font-weight-normal: var(--font-weight-normal);
+  --font-weight-medium: var(--font-weight-medium);
+  --font-weight-bold: var(--font-weight-bold);
+  --default-transition-duration: var(--duration);
+  --ease: var(--easing);
+  --font-sans: var(--font-family);
+  --font-mono: var(--font-family);
+  --font-serif: var(--font-family);
+  --font-display: var(--font-display);
+  --default-border-width: var(--border-width);
+}
+
+/* ── v4 默认值回退 (v3 兼容层) ── */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--border-color, currentColor);
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 /* Override Tailwind's hardcoded border-style with theme token */
 .border {

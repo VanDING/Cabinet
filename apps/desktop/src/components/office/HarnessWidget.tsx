@@ -61,7 +61,7 @@ export function HarnessWidget({ onExpand }: Props) {
   return (
     <div
       onClick={onExpand}
-      className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm ${
+      className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${
         onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
       }`}
     >
@@ -79,7 +79,7 @@ export function HarnessWidget({ onExpand }: Props) {
         <div className="flex-1 space-y-2 overflow-hidden">
           {/* Today stats */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded bg-surface-muted p-1.5">
+            <div className="rounded-sm bg-surface-muted p-1.5">
               <div className="text-sm font-bold text-content-primary">
                 {data.today.toolPassRate > 0
                   ? `${Math.round(data.today.toolPassRate * 100)}%`
@@ -87,7 +87,7 @@ export function HarnessWidget({ onExpand }: Props) {
               </div>
               <div className="text-[10px] text-content-tertiary">Tool Pass</div>
             </div>
-            <div className="rounded bg-surface-muted p-1.5">
+            <div className="rounded-sm bg-surface-muted p-1.5">
               <div className="text-sm font-bold text-content-primary">
                 {data.today.sessionSuccessRate > 0
                   ? `${Math.round(data.today.sessionSuccessRate * 100)}%`
@@ -95,7 +95,7 @@ export function HarnessWidget({ onExpand }: Props) {
               </div>
               <div className="text-[10px] text-content-tertiary">Success</div>
             </div>
-            <div className="rounded bg-surface-muted p-1.5">
+            <div className="rounded-sm bg-surface-muted p-1.5">
               <div className="text-sm font-bold text-content-primary">
                 {data.today.sessions}
               </div>
@@ -120,7 +120,7 @@ export function HarnessWidget({ onExpand }: Props) {
 
           {/* Last escalation */}
           {data.lastEscalation && (
-            <div className="rounded border border-border bg-surface-muted p-1.5">
+            <div className="rounded-sm border border-border bg-surface-muted p-1.5">
               <div className="text-[10px] text-content-tertiary">Last escalation</div>
               <div className="truncate text-xs text-content-secondary">
                 {data.lastEscalation.description}

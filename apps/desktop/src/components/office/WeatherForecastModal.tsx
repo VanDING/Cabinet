@@ -116,7 +116,7 @@ export function WeatherForecastModal({ onClose }: Props) {
           </h3>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>

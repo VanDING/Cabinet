@@ -86,7 +86,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
   const sub = 'text-content-tertiary';
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
         <span className="text-sm font-medium text-content-secondary">Deliverables</span>
         {items.length > 0 && (
@@ -112,9 +112,9 @@ export function Deliverables({ projectId, onExpand }: Props) {
               className={`flex cursor-pointer items-center gap-2 text-xs ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
               onClick={() => handleOpenDeliverable(d)}
             >
-              <FileText size={12} className="flex-shrink-0 text-content-tertiary" />
+              <FileText size={12} className="shrink-0 text-content-tertiary" />
               <span className={`truncate ${text}`}>{d.title}</span>
-              <span className={`ml-auto flex-shrink-0 ${sub}`}>
+              <span className={`ml-auto shrink-0 ${sub}`}>
                 {new Date(d.createdAt).toLocaleDateString()}
               </span>
             </div>

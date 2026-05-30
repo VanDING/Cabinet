@@ -63,7 +63,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
   }, [fetchMeetings]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs">
       <div className="flex items-center justify-between px-3 py-2">
         <h3 className="text-xs font-semibold text-content-secondary">Meetings</h3>
         {!loading && meetings.length > 0 && (
@@ -94,7 +94,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
                 <p className="truncate text-xs font-medium text-content-primary">
                   {m.title}
                 </p>
-                <span className="flex-shrink-0 text-xs text-content-tertiary">
+                <span className="shrink-0 text-xs text-content-tertiary">
                   {m.createdAt ? new Date(m.createdAt).toLocaleDateString() : ''}
                 </span>
               </div>
@@ -103,7 +103,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
                   {m.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded bg-intent-purple-muted px-1.5 py-0.5 text-xs text-intent-purple"
+                      className="rounded-sm bg-intent-purple-muted px-1.5 py-0.5 text-xs text-intent-purple"
                     >
                       {tag}
                     </span>

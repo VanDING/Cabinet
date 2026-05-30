@@ -6,10 +6,10 @@ export function IntentClassifyNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-accent">Intent</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-accent">Intent</span>
       </NodeToolbar>
       <div
-        className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-sm transition-shadow
+        className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-xs transition-shadow
           ${selected ? 'shadow-md ring-2 wf-ring-accent-50' : ''}
           wf-border-accent-50 wf-bg-accent-5`}
       >

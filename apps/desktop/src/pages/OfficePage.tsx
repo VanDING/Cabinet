@@ -333,7 +333,7 @@ export function OfficePage() {
       {/* Widget pool dropdown */}
       {showPool && (
         <div className="px-6 pb-2">
-          <div className="grid grid-cols-4 gap-2 rounded-lg border border-border bg-surface-primary p-3 shadow-sm lg:grid-cols-8">
+          <div className="grid grid-cols-4 gap-2 rounded-lg border border-border bg-surface-primary p-3 shadow-xs lg:grid-cols-8">
             {WIDGET_POOL.filter((w) => !addedTypes.has(w.type)).map((w) => (
               <button
                 key={w.type}
@@ -387,12 +387,12 @@ export function OfficePage() {
               <div key={item.i} className="group relative">
                 {/* Drag handle + remove button */}
                 <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
+                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
                     <Grip size={12} />
                   </div>
                   <button
                     onClick={() => handleRemoveWidget(item.i)}
-                    className="flex h-5 w-5 items-center justify-center rounded text-content-tertiary hover:text-intent-danger"
+                    className="flex h-5 w-5 items-center justify-center rounded-sm text-content-tertiary hover:text-intent-danger"
                   >
                     &times;
                   </button>

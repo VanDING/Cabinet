@@ -109,7 +109,7 @@ export function ServerLoading({ children }: { children: ReactNode }) {
 
         {(status === 'timeout' || status === 'fatal') && (
           <button
-            className="mt-2 inline-flex items-center gap-2 rounded bg-surface-primary px-4 py-2 text-sm text-content-tertiary hover:bg-surface-input"
+            className="mt-2 inline-flex items-center gap-2 rounded-sm bg-surface-primary px-4 py-2 text-sm text-content-tertiary hover:bg-surface-input"
             onClick={() => {
               setStatus('starting');
               setMessage('Retrying...');

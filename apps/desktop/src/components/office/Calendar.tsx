@@ -79,12 +79,12 @@ export function Calendar() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-3">
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs p-3">
       {/* Month navigation */}
       <div className="mb-1 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary"
+          className="rounded-sm px-1 text-xs text-content-tertiary hover:text-content-secondary"
         >
           &#8249;
         </button>
@@ -93,7 +93,7 @@ export function Calendar() {
         </div>
         <button
           onClick={nextMonth}
-          className="rounded px-1 text-xs text-content-tertiary hover:text-content-secondary"
+          className="rounded-sm px-1 text-xs text-content-tertiary hover:text-content-secondary"
         >
           &#8250;
         </button>
@@ -159,11 +159,11 @@ export function Calendar() {
               value={note}
               onChange={(e) => updateNote(i, e.target.value)}
               placeholder="..."
-              className="min-w-0 flex-1 rounded bg-surface-muted px-2 py-1 text-[11px] text-content-primary outline-none placeholder:text-content-tertiary"
+              className="min-w-0 flex-1 rounded-sm bg-surface-muted px-2 py-1 text-[11px] text-content-primary outline-hidden placeholder:text-content-tertiary"
             />
             <button
               onClick={() => deleteNote(i)}
-              className="flex-shrink-0 text-xs text-content-tertiary hover:text-intent-danger"
+              className="shrink-0 text-xs text-content-tertiary hover:text-intent-danger"
             >
               &#10005;
             </button>
@@ -171,7 +171,7 @@ export function Calendar() {
         ))}
         <button
           onClick={addNote}
-          className="flex w-full items-center gap-1 rounded px-2 py-1 text-[11px] text-content-tertiary hover:bg-surface-muted hover:text-content-secondary"
+          className="flex w-full items-center gap-1 rounded-sm px-2 py-1 text-[11px] text-content-tertiary hover:bg-surface-muted hover:text-content-secondary"
         >
           + Add note
         </button>

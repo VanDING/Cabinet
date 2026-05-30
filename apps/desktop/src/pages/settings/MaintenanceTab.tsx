@@ -86,23 +86,23 @@ export function MaintenanceTab() {
 
       {lastReport && (
         <div className="mb-4 flex gap-4">
-          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-sm">
+          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-xs">
             <div className="text-2xl font-bold text-content-primary">
               {lastReport.summary?.total ?? 0}
             </div>
             <div className="text-xs text-content-tertiary">Total Issues</div>
           </div>
-          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-sm">
+          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-xs">
             <div className="text-2xl font-bold text-intent-danger">{lastReport.summary?.errors ?? 0}</div>
             <div className="text-xs text-content-tertiary">Errors</div>
           </div>
-          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-sm">
+          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-xs">
             <div className="text-2xl font-bold text-intent-warning">
               {lastReport.summary?.warnings ?? 0}
             </div>
             <div className="text-xs text-content-tertiary">Warnings</div>
           </div>
-          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-sm">
+          <div className="flex-1 rounded-lg border border-border bg-surface-primary p-3 shadow-xs">
             <div className="text-2xl font-bold text-content-tertiary">{lastReport.filesScanned ?? 0}</div>
             <div className="text-xs text-content-tertiary">Files Scanned</div>
           </div>
@@ -110,7 +110,7 @@ export function MaintenanceTab() {
       )}
 
       {summary && (
-        <div className="mb-4 rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+        <div className="mb-4 rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
           <pre className="whitespace-pre-wrap font-mono text-xs text-content-secondary">
             {summary}
           </pre>
@@ -122,7 +122,7 @@ export function MaintenanceTab() {
           {issues.slice(0, 20).map((issue, i) => (
             <div
               key={i}
-              className="rounded-lg border border-border bg-surface-primary p-3 shadow-sm"
+              className="rounded-lg border border-border bg-surface-primary p-3 shadow-xs"
             >
               <div className="mb-1 flex items-center gap-2">
                 <span
