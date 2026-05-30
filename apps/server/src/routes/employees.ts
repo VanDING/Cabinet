@@ -72,6 +72,9 @@ employeesRouter.post('/', async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
 
   const d = parsed.data;
+  if (!d.projectId || d.projectId === 'global') {
+    return c.json({ error: 'projectId is required' }, 400);
+  }
   const id = `emp_${Date.now()}`;
   const persona = JSON.stringify({
     model: d.model ?? null,
@@ -79,11 +82,9 @@ employeesRouter.post('/', async (c) => {
     status: d.status ?? 'active',
   });
 
-  const projects = projectRepo.listAll();
-  const projectId = d.projectId ?? (projects[0]?.id ?? 'default');
   employeeRepo.insert({
     id,
-    project_id: projectId,
+    project_id: d.projectId,
     name: d.name,
     role: d.role ?? 'advisor',
     kind: d.kind ?? 'ai',

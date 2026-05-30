@@ -353,7 +353,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 // ── Build ToolDependencies from ServerContext ──
-function buildToolDependencies(ctx: ServerContext): ToolDependencies {
+function buildToolDependencies(ctx: ServerContext, activeProjectId?: string): ToolDependencies {
   return {
     // ── Read path ──
     decisionStore: ctx.decisionRepo,
@@ -394,11 +394,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
 
     // ── Workflow read callbacks ──
     listWorkflows() {
+      const targetProjectId = activeProjectId ?? 'default';
       const rows = ctx.db
         .prepare(
           'SELECT id, name, definition, status FROM workflows WHERE project_id = ? ORDER BY created_at DESC',
         )
-        .all('default') as any[];
+        .all(targetProjectId) as any[];
       return rows.map((r: any) => {
         const def = JSON.parse(r.definition ?? '{}');
         return {
@@ -526,11 +527,12 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     // ── Employee write callback ──
     createEmployee(input) {
       const id = `emp_${Date.now()}`;
+      const targetProjectId = activeProjectId ?? 'default';
       ctx.db
         .prepare(
           'INSERT INTO employees (id, project_id, name, role, kind, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?)',
         )
-        .run(id, 'default', input.name, input.role, input.kind, '{}', 'read');
+        .run(id, targetProjectId, input.name, input.role, input.kind, '{}', 'read');
       ctx.logger.info('Employee created via tool', { id, name: input.name });
     },
 
@@ -1427,9 +1429,8 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           { from: 'exec', to: 'end' },
         ],
       };
-      const projects = ctx.projectRepo.listAll();
-      const projectId = projects[0]?.id ?? 'default';
-      ctx.workflowRepo.create(id, projectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
+      const targetProjectId = activeProjectId ?? (ctx.projectRepo.listAll()[0]?.id ?? 'default');
+      ctx.workflowRepo.create(id, targetProjectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
       if (recurring) {
         ctx.taskScheduler.schedule(id, name, cronExpression);
       }
@@ -1903,7 +1904,7 @@ function getAgentLoopForRole(
   const role = registry.get(roleType);
   if (!role) return null;
 
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx), role.allowedTools);
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId), role.allowedTools);
 
   // Look up project root path for the system prompt
   let projectRootPath: string | undefined;
@@ -2318,7 +2319,7 @@ function getOrCreateAgent(
   }
 
   // Secretary's own executor (all tools)
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx));
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId));
   const memoryProvider = createStandardMemoryProvider(ctx, projectId);
 
   // Load secretary role for temperature and system prompt
@@ -2613,7 +2614,7 @@ secretaryRouter.post('/chat', async (c) => {
     if (ctx.gateway) {
       // ── Dispatch mode: pipeline or parallel ──
       if (dispatchMode === 'pipeline' || dispatchMode === 'parallel') {
-        const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx));
+        const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId));
 
         const rateLimitTracker = (ctx.gateway as any)?.getRateLimitTracker?.();
         const dispatcher = new AgentDispatcher(
