@@ -7,7 +7,7 @@ import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
 import { WorkflowRunCard } from './WorkflowRunCard';
 import { TaskPanel } from './TaskPanel';
-import { SubAgentCard } from '@cabinet/ui';
+import { SubAgentCard, DecryptedText } from '@cabinet/ui';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -311,7 +311,11 @@ export const ChatView = memo(function ChatView({
           <div className="flex gap-3">
             <div className="flex-1">
               <span className="text-sm italic text-content-tertiary">
-                {t('chat.thinking')}
+                <DecryptedText
+                  text={t('chat.thinking')}
+                  speed={50}
+                  maxIterations={8}
+                />
               </span>
             </div>
           </div>

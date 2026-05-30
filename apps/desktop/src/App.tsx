@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense, startTransition } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Navigation, type NavPage } from '@cabinet/ui';
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Navigation, type NavPage, AnimatedContent } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -69,6 +69,7 @@ export function App() {
   const [showProjectActionModal, setShowProjectActionModal] = useState(false);
   const abortRef = useRef<Map<string, AbortController>>(new Map());
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, themes, setTheme } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
@@ -743,8 +744,9 @@ export function App() {
               {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
               <div className={chatMode && activeSession ? 'hidden' : 'h-full overflow-auto'}>
                 <ErrorBoundary>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
+                  <AnimatedContent triggerKey={location.pathname} duration={180}>
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
                       <Route path="/" element={<OfficePage />} />
                       <Route path="/office" element={<OfficePage />} />
                       <Route path="/project/:id/office" element={<OfficePage />} />
@@ -781,6 +783,7 @@ export function App() {
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
+                  </AnimatedContent>
                 </ErrorBoundary>
               </div>
               {chatMode && activeSession && (

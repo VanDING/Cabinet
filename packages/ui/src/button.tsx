@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import { cn } from './cn.js';
+import { ClickSpark } from './animations/ClickSpark';
 
 type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost' | 'outline';
 type ButtonSize = 'xs' | 'sm' | 'md';
@@ -43,19 +44,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
-  return (
-    <button
-      ref={ref}
-      disabled={disabled || loading}
-      className={cn(
-        'inline-flex items-center justify-center gap-1.5 font-medium shadow-xs transition-colors focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
-        variantClasses[variant],
-        sizeClasses[size],
-        fullWidth && 'w-full',
-        className,
-      )}
-      {...rest}
-    >
+  const content = (
+    <>
       {loading && (
         <svg
           className="h-3.5 w-3.5 animate-spin"
@@ -73,6 +63,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         </svg>
       )}
       {children}
-    </button>
+    </>
+  );
+
+  return (
+    <ClickSpark sparkColor="var(--accent)" sparkCount={5} sparkSize={5} sparkRadius={10} duration={300}>
+      <button
+        ref={ref}
+        disabled={disabled || loading}
+        className={cn(
+          'inline-flex items-center justify-center gap-1.5 font-medium shadow-xs transition-colors focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+          variantClasses[variant],
+          sizeClasses[size],
+          fullWidth && 'w-full',
+          className,
+        )}
+        {...rest}
+      >
+        {content}
+      </button>
+    </ClickSpark>
   );
 });
