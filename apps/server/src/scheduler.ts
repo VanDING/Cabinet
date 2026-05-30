@@ -1,7 +1,7 @@
 import { DECISION_EXPIRY_HOURS } from '@cabinet/types';
 import { CronExpressionParser } from 'cron-parser';
 import cron from 'node-cron';
-import type { ScheduledTaskRepository, DecisionRepository } from '@cabinet/storage';
+import type { WorkflowRepository, DecisionRepository } from '@cabinet/storage';
 
 // Broadcast is injected lazily to avoid circular dependencies
 let broadcastFn: ((event: string, payload: unknown) => void) | null = null;
@@ -17,9 +17,10 @@ export interface SchedulerLogger {
 
 export interface ScheduledTask {
   id: string;
+  workflowId: string;
   name: string;
   cronExpression: string;
-  prompt: string;
+  prompt?: string;
   recurring: boolean;
   enabled: boolean;
   lastRunAt?: string;
@@ -28,43 +29,21 @@ export interface ScheduledTask {
 
 export type TaskExecutor = (task: ScheduledTask) => Promise<void>;
 
-function rowToScheduledTask(r: {
-  id: string;
-  name: string;
-  cron_expression: string;
-  prompt: string;
-  recurring: number;
-  enabled: number;
-  last_run_at: string | null;
-  next_run_at: string | null;
-}): ScheduledTask {
-  return {
-    id: r.id,
-    name: r.name,
-    cronExpression: r.cron_expression,
-    prompt: r.prompt,
-    recurring: r.recurring === 1,
-    enabled: r.enabled === 1,
-    lastRunAt: r.last_run_at ?? undefined,
-    nextRunAt: r.next_run_at ?? undefined,
-  };
-}
-
 export class TaskScheduler {
-  private scheduledTaskRepo: ScheduledTaskRepository;
+  private workflowRepo: WorkflowRepository;
   private decisionRepo: DecisionRepository;
   private logger: SchedulerLogger;
   private executor: TaskExecutor | null = null;
   private jobs = new Map<string, ReturnType<typeof cron.schedule>>();
   private autoArchiveJob: ReturnType<typeof cron.schedule> | null = null;
+  private lastRunMap = new Map<string, string>();
 
   constructor(
-    scheduledTaskRepo: ScheduledTaskRepository,
+    workflowRepo: WorkflowRepository,
     decisionRepo: DecisionRepository,
     logger: SchedulerLogger,
-    _pollIntervalMs = 30000,
   ) {
-    this.scheduledTaskRepo = scheduledTaskRepo;
+    this.workflowRepo = workflowRepo;
     this.decisionRepo = decisionRepo;
     this.logger = logger;
   }
@@ -73,68 +52,47 @@ export class TaskScheduler {
     this.executor = executor;
   }
 
-  // ── Task CRUD (called by secretary callbacks) ──
+  // ── Schedule / Unschedule ──
 
-  schedule(
-    name: string,
-    cronExpression: string,
-    prompt: string,
-    recurring: boolean,
-  ): { id: string } {
-    const id = `task_${Date.now()}`;
-    const nextRun = this.nextCronTime(cronExpression);
-    this.scheduledTaskRepo.insert({
-      id,
-      name,
-      cron_expression: cronExpression,
-      prompt,
-      recurring: recurring ? 1 : 0,
-      enabled: 1,
-      created_at: new Date().toISOString(),
-      last_run_at: null,
-      next_run_at: nextRun,
-    });
+  schedule(workflowId: string, name: string, cronExpression: string): void {
+    this.workflowRepo.updateCron(workflowId, cronExpression);
+
+    this.unschedule(workflowId);
 
     const effectiveCron = this.validateOrFallback(cronExpression);
-    const job = cron.schedule(effectiveCron, () => this.executeTask(id));
+    const job = cron.schedule(effectiveCron, () => this.executeTask(workflowId));
     job.start();
-    this.jobs.set(id, job);
+    this.jobs.set(workflowId, job);
 
-    this.logger.info('Scheduled task created', { id, name, cron: cronExpression });
-    return { id };
+    this.logger.info('Workflow scheduled', { workflowId, name, cron: cronExpression });
   }
 
-  list(): ScheduledTask[] {
-    return this.scheduledTaskRepo.findAll().map(rowToScheduledTask);
-  }
-
-  cancel(id: string): void {
-    const job = this.jobs.get(id);
+  unschedule(workflowId: string): void {
+    const job = this.jobs.get(workflowId);
     if (job) {
       job.stop();
       job.destroy();
-      this.jobs.delete(id);
+      this.jobs.delete(workflowId);
     }
-    this.scheduledTaskRepo.disable(id);
-    this.logger.info('Scheduled task cancelled', { id });
   }
 
   // ── Lifecycle ──
 
   start(): void {
-    // Reload all enabled tasks from SQLite and register node-cron jobs
-    const tasks = this.scheduledTaskRepo.findAll();
-    for (const task of tasks) {
-      const effectiveCron = this.validateOrFallback(task.cron_expression);
-      const job = cron.schedule(effectiveCron, () => this.executeTask(task.id));
+    // Load all workflows with cron_expression from database
+    const workflows = this.workflowRepo.findByCron();
+    for (const wf of workflows) {
+      if (!wf.cron_expression) continue;
+      const effectiveCron = this.validateOrFallback(wf.cron_expression);
+      const job = cron.schedule(effectiveCron, () => this.executeTask(wf.id));
       job.start();
-      this.jobs.set(task.id, job);
+      this.jobs.set(wf.id, job);
     }
 
     this.autoArchiveJob = cron.schedule('0 * * * *', () => this.runAutoArchive());
     this.autoArchiveJob.start();
 
-    this.logger.info('TaskScheduler started', { tasksLoaded: tasks.length });
+    this.logger.info('TaskScheduler started', { scheduledWorkflows: workflows.length });
   }
 
   stop(): void {
@@ -153,37 +111,45 @@ export class TaskScheduler {
     this.logger.info('TaskScheduler stopped');
   }
 
+  // ── CRUD compatibility ──
+
+  list(): ScheduledTask[] {
+    return this.workflowRepo.findByCron().map((wf) => ({
+      id: wf.id,
+      workflowId: wf.id,
+      name: wf.name,
+      cronExpression: wf.cron_expression ?? '',
+      recurring: true,
+      enabled: true,
+      lastRunAt: this.lastRunMap.get(wf.id),
+      nextRunAt: this.nextCronTime(wf.cron_expression ?? ''),
+    }));
+  }
+
   // ── Internal ──
 
-  private async executeTask(taskId: string): Promise<void> {
-    const rows = this.scheduledTaskRepo.findAll();
-    const row = rows.find((r) => r.id === taskId);
-    if (!row) return;
-    const task = rowToScheduledTask(row);
+  private async executeTask(workflowId: string): Promise<void> {
+    const wf = this.workflowRepo.findById(workflowId);
+    if (!wf) return;
 
     try {
       const now = new Date().toISOString();
-      this.scheduledTaskRepo.updateLastRun(task.id, now);
-
-      if (!task.recurring) {
-        this.scheduledTaskRepo.disable(task.id);
-        const job = this.jobs.get(task.id);
-        if (job) {
-          job.stop();
-          job.destroy();
-          this.jobs.delete(task.id);
-        }
-      } else {
-        const next = this.nextCronTime(task.cronExpression);
-        this.scheduledTaskRepo.updateRunTimings(task.id, now, next);
-      }
+      this.lastRunMap.set(workflowId, now);
 
       if (this.executor) {
-        await this.executor(task);
+        await this.executor({
+          id: workflowId,
+          workflowId,
+          name: wf.name,
+          cronExpression: wf.cron_expression ?? '',
+          recurring: true,
+          enabled: true,
+          lastRunAt: now,
+        });
       }
-      broadcastFn?.('task_executed', { taskId: task.id, name: task.name, executedAt: now });
+      broadcastFn?.('task_executed', { taskId: workflowId, name: wf.name, executedAt: now });
     } catch (err) {
-      this.logger.error('Task execution error', { id: task.id, error: (err as Error).message });
+      this.logger.error('Task execution error', { id: workflowId, error: (err as Error).message });
     }
   }
 
@@ -215,12 +181,11 @@ export class TaskScheduler {
 }
 
 export function startAutoArchive(
-  scheduledTaskRepo: ScheduledTaskRepository,
+  workflowRepo: WorkflowRepository,
   decisionRepo: DecisionRepository,
   logger: SchedulerLogger,
-  _checkIntervalMs: number = 3600000,
 ): () => void {
-  const scheduler = new TaskScheduler(scheduledTaskRepo, decisionRepo, logger);
+  const scheduler = new TaskScheduler(workflowRepo, decisionRepo, logger);
   scheduler.start();
   return () => scheduler.stop();
 }

@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 
+// This router is deprecated. Scheduled tasks have been merged into workflows
+// (cron_expression column on workflows table). Kept for reference / rollback.
 export const scheduledTasksRouter = new Hono();
 
-// GET /api/scheduled-tasks
+// GET /api/scheduled-tasks — now lists workflows with cron
 scheduledTasksRouter.get('/', (c) => {
   const ctx = getServerContext();
   try {
@@ -14,7 +16,7 @@ scheduledTasksRouter.get('/', (c) => {
   }
 });
 
-// POST /api/scheduled-tasks
+// POST /api/scheduled-tasks — now creates a workflow with cron
 scheduledTasksRouter.post('/', async (c) => {
   const ctx = getServerContext();
   try {
@@ -28,8 +30,24 @@ scheduledTasksRouter.post('/', async (c) => {
     if (!name || !cron || !prompt) {
       return c.json({ error: 'name, cron, and prompt are required' }, 400);
     }
-    const result = ctx.taskScheduler.schedule(name, cron, prompt, recurring ?? true);
-    return c.json({ created: true, ...result }, 201);
+    const id = `wf_${Date.now()}`;
+    const def = JSON.stringify({
+      steps: [{ type: 'llmCall', title: name, data: { prompt } }],
+      nodes: [
+        { id: 'start', type: 'start' },
+        { id: 'exec', type: 'llmCall', title: name, data: { prompt } },
+        { id: 'end', type: 'end' },
+      ],
+      edges: [
+        { from: 'start', to: 'exec' },
+        { from: 'exec', to: 'end' },
+      ],
+    });
+    ctx.workflowRepo.create(id, 'default', name, def, 'draft', recurring ? cron : undefined);
+    if (recurring) {
+      ctx.taskScheduler.schedule(id, name, cron);
+    }
+    return c.json({ created: true, id });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
   }
@@ -40,7 +58,8 @@ scheduledTasksRouter.delete('/:id', (c) => {
   const ctx = getServerContext();
   const id = c.req.param('id');
   try {
-    ctx.taskScheduler.cancel(id);
+    ctx.taskScheduler.unschedule(id);
+    ctx.workflowRepo.updateCron(id, null);
     return c.json({ cancelled: true, id });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
@@ -52,19 +71,12 @@ scheduledTasksRouter.post('/:id/run', async (c) => {
   const ctx = getServerContext();
   const id = c.req.param('id');
   try {
-    const tasks = ctx.taskScheduler.list().filter((t) => t.id === id);
-    if (tasks.length === 0) return c.json({ error: 'Task not found' }, 404);
-    // Execute via gateway if available
+    const wf = ctx.workflowRepo.findById(id);
+    if (!wf) return c.json({ error: 'Workflow not found' }, 404);
     if (!ctx.gateway) return c.json({ error: 'No LLM gateway available' }, 503);
-    const task = tasks[0]!;
-    const testModel =
-      (ctx.gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
-    const result = await ctx.gateway.generateText({
-      model: testModel,
-      systemPrompt: 'Execute this scheduled task. Be concise.',
-      messages: [{ role: 'user', content: task.prompt }],
-    });
-    return c.json({ executed: true, id, preview: result.content.slice(0, 500) });
+    const { runWorkflowById } = await import('./workflows.js');
+    const result = await runWorkflowById(id);
+    return c.json({ executed: true, id, status: result.status });
   } catch (e) {
     return c.json({ error: (e as Error).message }, 500);
   }

@@ -87,7 +87,7 @@ import { createStandardToolExecutor } from './agent-factory.js';
 import { SkillExtractor } from '@cabinet/agent';
 import { MCPManager } from './mcp/mcp-manager.js';
 import { TaskScheduler, setSchedulerBroadcast } from './scheduler.js';
-import { startApprovalPolling, stopApprovalPolling } from './routes/workflows.js';
+import { startApprovalPolling, stopApprovalPolling, runWorkflowById } from './routes/workflows.js';
 import {
   ObservabilityCollector,
   PreferenceLearner,
@@ -2002,8 +2002,43 @@ export function getServerContext(): ServerContext {
   };
 
   // Task scheduler
-  const taskScheduler = new TaskScheduler(new ScheduledTaskRepository(db), decisionRepo, logger);
+  const taskScheduler = new TaskScheduler(workflowRepo, decisionRepo, logger);
   setSchedulerBroadcast((event, payload) => broadcast(event as any, payload as any));
+
+  // Migrate legacy scheduled_tasks to workflows (one-shot, best-effort)
+  try {
+    const stRepo = new ScheduledTaskRepository(db);
+    const oldTasks = stRepo.findAll();
+    if (oldTasks.length > 0) {
+      for (const t of oldTasks) {
+        const wfDef = {
+          steps: [{ type: 'llmCall', title: t.name, data: { prompt: t.prompt } }],
+          nodes: [
+            { id: 'start', type: 'start' },
+            { id: 'exec', type: 'llmCall', title: t.name, data: { prompt: t.prompt } },
+            { id: 'end', type: 'end' },
+          ],
+          edges: [
+            { from: 'start', to: 'exec' },
+            { from: 'exec', to: 'end' },
+          ],
+        };
+        workflowRepo.create(
+          t.id,
+          'default',
+          t.name,
+          JSON.stringify(wfDef),
+          'draft',
+          t.cron_expression,
+        );
+        stRepo.delete(t.id);
+      }
+      logger.info('Migrated legacy scheduled tasks to workflows', { count: oldTasks.length });
+    }
+  } catch {
+    /* scheduled_tasks table may not exist — safe to ignore */
+  }
+
   taskScheduler.start();
 
   // Memory maintenance: decay cycle every hour, index rebuild weekly on Sunday 3 AM
@@ -2033,84 +2068,33 @@ export function getServerContext(): ServerContext {
     }
   }, 3600000); // every hour
 
-  // Wire TaskExecutor so scheduled tasks actually execute
+  // Wire TaskExecutor — runs the workflow via the workflow engine
   taskScheduler.setExecutor(async (task) => {
     if (!gateway) {
       logger.warn('Scheduled task skipped — no LLM gateway available', {
-        taskId: task.id,
+        workflowId: task.workflowId,
         name: task.name,
       });
       return;
     }
     try {
-      logger.info('Executing scheduled task', { taskId: task.id, name: task.name });
-      const taskModel =
-        (gateway as any).resolveModelString?.('fast_execution') ?? 'claude-haiku-4-5';
-      const result = await gateway.generateText({
-        model: taskModel,
-        systemPrompt:
-          'You are a proactive Cabinet assistant executing a scheduled task. Be concise and actionable.',
-        messages: [{ role: 'user', content: task.prompt }],
-      });
-      logger.info('Scheduled task completed', {
-        taskId: task.id,
+      logger.info('Executing scheduled workflow', { workflowId: task.workflowId, name: task.name });
+      const result = await runWorkflowById(task.workflowId);
+      logger.info('Scheduled workflow completed', {
+        workflowId: task.workflowId,
         name: task.name,
-        preview: result.content.slice(0, 200),
+        status: result.status,
+        steps: result.steps.length,
       });
-      // Store result in short-term memory for retrieval
-      shortTerm.set(
-        `system`,
-        `task_result:${task.id}`,
-        {
-          name: task.name,
-          prompt: task.prompt,
-          result: result.content,
-          executedAt: new Date().toISOString(),
-        },
-        86400000,
-      );
-      // Create a deliverable so the result appears in Office
-      try {
-        const did = `del_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-        deliverableRepo.insert({
-          id: did,
-          project_id: '',
-          meeting_id: null,
-          title: task.name,
-          type: 'scheduled_task',
-          file_path: null,
-          tags: JSON.stringify(['scheduled', 'automated']),
-          created_at: new Date().toISOString(),
-        });
-        broadcast('deliverable_created', {
-          id: did,
-          title: task.name,
-          type: 'scheduled_task',
-          projectId: '',
-          createdAt: new Date().toISOString(),
-        });
-      } catch {
-        /* non-fatal — deliverable creation is best-effort */
-      }
-      // Notify frontend via WebSocket
       broadcast('task_completed', {
-        taskId: task.id,
+        taskId: task.workflowId,
         name: task.name,
-        result: result.content,
+        status: result.status,
         executedAt: new Date().toISOString(),
       });
-      try {
-        broadcast('cost_updated', {
-          daily: costTracker.getDailyCost(),
-          model: taskModel,
-          timestamp: new Date().toISOString(),
-        });
-      } catch {
-        /* non-fatal */
-      }
     } catch (err) {
-      logger.error('Scheduled task failed', {
-        taskId: task.id,
+      logger.error('Scheduled workflow failed', {
+        workflowId: task.workflowId,
         name: task.name,
         error: (err as Error).message,
       });
