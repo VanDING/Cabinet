@@ -64,7 +64,7 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+      <div className="flex items-center justify-between px-3 py-2">
         <h3 className="text-xs font-semibold text-content-secondary">Meetings</h3>
         {!loading && meetings.length > 0 && (
           <span className="text-xs text-content-tertiary">{meetings.length}</span>
