@@ -623,6 +623,13 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'list_workflows',
+      description: 'List all workflows in a project.',
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID to filter by (omit for all)' },
+        },
+      },
       execute: async (_args: Record<string, unknown>) => {
         const workflows = deps.listWorkflows();
         return { workflows };
@@ -630,6 +637,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'get_workflow',
+      description: 'Retrieve a single workflow by ID, including its full definition.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workflowId: { type: 'string', description: 'ID of the workflow to retrieve' },
+        },
+        required: ['workflowId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
@@ -645,6 +660,25 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'create_workflow',
+      description: `Create a new workflow. The definition must contain either:
+- steps: array of WorkflowStep objects (declarative format, preferred for simple workflows)
+- OR nodes + edges: DAG format (preferred for complex/agentGroup/loop workflows)
+
+Supported node types: start, end, agentGroup, llm, skill, tool, code, workflow, ifElse, loop, parallel, merge, pass, intentClassify, knowledgeBase, approval, human.
+You may also include capabilities (files, web, shell, knowledge, evaluation) and cronExpression.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string', description: 'Project ID (required)' },
+          name: { type: 'string', description: 'Human-readable workflow name' },
+          definition: {
+            type: 'object',
+            description: 'Workflow definition object. Use { steps: [...], capabilities?: {...} } for declarative, or { nodes: [...], edges: [...], capabilities?: {...} } for DAG.',
+          },
+          cronExpression: { type: 'string', description: 'Optional cron expression for scheduled execution' },
+        },
+        required: ['projectId', 'name', 'definition'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
         if (!projectId) {
@@ -658,6 +692,19 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'update_workflow',
+      description: 'Update an existing workflow name or definition.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workflowId: { type: 'string', description: 'ID of the workflow to update' },
+          name: { type: 'string', description: 'New workflow name' },
+          definition: {
+            type: 'object',
+            description: 'New workflow definition (same format as create_workflow)',
+          },
+        },
+        required: ['workflowId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
@@ -669,6 +716,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'run_workflow',
+      description: 'Execute a workflow by ID immediately.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workflowId: { type: 'string', description: 'ID of the workflow to run' },
+        },
+        required: ['workflowId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
@@ -678,6 +733,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'delete_workflow',
+      description: 'Delete a workflow by ID.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workflowId: { type: 'string', description: 'ID of the workflow to delete' },
+        },
+        required: ['workflowId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
@@ -687,6 +750,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'get_workflow_run',
+      description: 'Retrieve details of a specific workflow run.',
+      parameters: {
+        type: 'object',
+        properties: {
+          runId: { type: 'string', description: 'ID of the run to retrieve' },
+        },
+        required: ['runId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const runId = args.runId as string;
         if (!runId) return { error: 'runId is required' };
@@ -697,6 +768,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'list_workflow_runs',
+      description: 'List all runs for a given workflow.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workflowId: { type: 'string', description: 'ID of the workflow' },
+        },
+        required: ['workflowId'],
+      },
       execute: async (args: Record<string, unknown>) => {
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
