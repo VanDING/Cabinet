@@ -42,18 +42,21 @@ export function WeatherForecastModal({ onClose }: Props) {
 
     async function fetchForecast(lat: number, lon: number) {
       try {
-        const [weatherRes, geoRes] = await Promise.all([
-          fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=7`,
-          ),
-          fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
-          ),
-        ]);
-
+        const weatherRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=7`,
+        );
         if (!weatherRes.ok) throw new Error('API error');
         const j = await weatherRes.json();
         if (cancelled) return;
+
+        let city = `${lat.toFixed(1)}deg, ${lon.toFixed(1)}deg`;
+        try {
+          const geoRes = await fetch('/api/geoip');
+          if (geoRes.ok) {
+            const geo = await geoRes.json();
+            if (geo.city) city = geo.city;
+          }
+        } catch { /* use coordinates fallback */ }
 
         const days: DailyForecast[] = [];
         for (let i = 0; i < j.daily.time.length; i++) {
@@ -66,16 +69,8 @@ export function WeatherForecastModal({ onClose }: Props) {
           });
         }
 
-        let cityName = '';
-        if (geoRes.ok) {
-          const geo = await geoRes.json();
-          if (geo.address) {
-            cityName = geo.address.city || geo.address.town || geo.address.village || geo.address.county || '';
-          }
-        }
-
         setForecast(days);
-        setCity(cityName);
+        setCity(city);
       } catch {
         if (!cancelled) setError('Unable to load forecast');
       } finally {
