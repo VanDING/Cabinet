@@ -126,7 +126,7 @@ export function CostChart() {
           <div className="flex flex-1 flex-col gap-2 overflow-hidden">
             <div className="flex-1">
               <div className="mb-0.5 text-[10px] text-content-tertiary">Cost (7-day)</div>
-              <div style={{ height: 'calc(100% - 12px)' }}>
+              <div style={{ height: 'calc(100% - 12px)', minHeight: 120 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
                     <XAxis
@@ -160,7 +160,7 @@ export function CostChart() {
 
             <div className="flex-1">
               <div className="mb-0.5 text-[10px] text-content-tertiary">Tokens (7-day)</div>
-              <div style={{ height: 'calc(100% - 12px)' }}>
+              <div style={{ height: 'calc(100% - 12px)', minHeight: 120 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
                     <XAxis

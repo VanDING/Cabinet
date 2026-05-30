@@ -1427,7 +1427,9 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
           { from: 'exec', to: 'end' },
         ],
       };
-      ctx.workflowRepo.create(id, 'default', name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
+      const projects = ctx.projectRepo.listAll();
+      const projectId = projects[0]?.id ?? 'default';
+      ctx.workflowRepo.create(id, projectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
       if (recurring) {
         ctx.taskScheduler.schedule(id, name, cronExpression);
       }
@@ -1449,6 +1451,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         logger: ctx.logger,
         taskScheduler: ctx.taskScheduler,
         workflowRepo: ctx.workflowRepo,
+        projectRepo: ctx.projectRepo,
       }).querySystemKnowledge(query, limit);
     },
     getSystemKnowledge: async (topic) => {
@@ -1458,6 +1461,7 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
         logger: ctx.logger,
         taskScheduler: ctx.taskScheduler,
         workflowRepo: ctx.workflowRepo,
+        projectRepo: ctx.projectRepo,
       }).getSystemKnowledge(topic);
     },
   };

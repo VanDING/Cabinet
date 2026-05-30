@@ -79,6 +79,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
       window.removeEventListener('ws:deliverable_created', handler);
       window.removeEventListener('ws:workflow_completed', handler);
       window.removeEventListener('ws:meeting_created', handler);
+      window.removeEventListener('ws:task_completed', handler);
     };
   }, [fetchDeliverables]);
 

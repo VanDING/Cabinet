@@ -97,7 +97,7 @@ deliverablesRouter.post('/:id/deliverables', async (c) => {
         meetingId ?? null,
         title,
         type ?? 'general',
-        filePath ?? null,
+        filePath ?? '',
         JSON.stringify(tags ?? []),
       );
 

@@ -66,7 +66,7 @@ const createSchema = z.object({
 });
 
 employeesRouter.post('/', async (c) => {
-  const { employeeRepo, logger } = getServerContext();
+  const { employeeRepo, projectRepo, logger } = getServerContext();
   const body = await c.req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -79,9 +79,11 @@ employeesRouter.post('/', async (c) => {
     status: d.status ?? 'active',
   });
 
+  const projects = projectRepo.listAll();
+  const projectId = d.projectId ?? (projects[0]?.id ?? 'default');
   employeeRepo.insert({
     id,
-    project_id: d.projectId ?? 'default',
+    project_id: projectId,
     name: d.name,
     role: d.role ?? 'advisor',
     kind: d.kind ?? 'ai',

@@ -109,7 +109,7 @@ dashboardRouter.get('/summary', (c) => {
 });
 
 dashboardRouter.get('/cost-history', (c) => {
-  const { costTracker, metricRepo, sessionMetricsRepo } = getServerContext();
+  const { costTracker, db } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
   const history: {
     date: string;
@@ -118,54 +118,44 @@ dashboardRouter.get('/cost-history', (c) => {
     tokens: number;
     byModel: Record<string, number>;
   }[] = [];
-  let totalCalls = 0;
 
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
-
-    // Per-model cost breakdown
-    const byModel: Record<string, number> = {};
-    try {
-      const rows = metricRepo.aggregateCostByDate(`%${dateStr}%`);
-
-      for (const row of rows) {
-        // Extract model from tags JSON: {"model":"claude-sonnet-4-6",...}
-        try {
-          const tags = JSON.parse(row.tags ?? '{}');
-          const model = tags.model ?? 'unknown';
-          byModel[model] = (byModel[model] ?? 0) + parseFloat(String(row.cost ?? 0));
-        } catch {
-          byModel['unknown'] = (byModel['unknown'] ?? 0) + parseFloat(String(row.cost ?? 0));
-        }
-      }
-
-      totalCalls += metricRepo.aggregateCallsByDate(`%${dateStr}%`);
-    } catch {
-      /* metrics aggregation error for this date */
-    }
-
-    const totalCost = Object.values(byModel).reduce((sum, c) => sum + c, 0);
-
-    // Tokens for this day from session_metrics
-    let tokens = 0;
-    try {
-      tokens = sessionMetricsRepo.sumTokensByDate(`${dateStr}%`);
-    } catch {
-      /* ignore */
-    }
-
-    history.push({
-      date: dateStr,
-      cost: Math.round(totalCost * 10000) / 10000,
-      calls: totalCalls,
-      tokens,
-      byModel,
-    });
+    history.push({ date: dateStr, cost: 0, calls: 0, tokens: 0, byModel: {} });
   }
 
-  // Budget status for trend comparison
+  try {
+    const rows = db
+      .prepare(
+        `SELECT date(timestamp) as date,
+                SUM(cost_rmb) as cost,
+                SUM(prompt_tokens + completion_tokens) as tokens,
+                COUNT(*) as calls
+         FROM cost_history
+         WHERE timestamp >= date('now', ?)
+         GROUP BY date(timestamp)`,
+      )
+      .all(`-${days} days`) as Array<{
+        date: string;
+        cost: number;
+        tokens: number;
+        calls: number;
+      }>;
+
+    for (const row of rows) {
+      const entry = history.find((h) => h.date === row.date);
+      if (entry) {
+        entry.cost = Math.round((row.cost ?? 0) * 10000) / 10000;
+        entry.tokens = row.tokens ?? 0;
+        entry.calls = row.calls ?? 0;
+      }
+    }
+  } catch {
+    /* cost_history table may be empty */
+  }
+
   const budgetStatus = costTracker
     ? {
         daily: costTracker.getDailyCost(),
