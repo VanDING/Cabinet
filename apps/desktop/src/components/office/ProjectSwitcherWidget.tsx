@@ -6,7 +6,7 @@ export function ProjectSwitcherWidget() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-content-primary">
+      <h3 className="mb-3 text-xs font-semibold text-content-secondary">
         Active Project
       </h3>
       <ProjectSwitcher projects={projects} current={current} onSwitch={setProject} />

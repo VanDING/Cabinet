@@ -67,7 +67,7 @@ export function ObservabilityWidget() {
 
   return (
     <div className="h-full overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm p-4">
-      <h3 className="mb-3 text-sm font-semibold text-content-primary">Agent Health</h3>
+      <h3 className="mb-3 text-xs font-semibold text-content-secondary">Agent Health</h3>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="rounded bg-surface-elevated p-2">
