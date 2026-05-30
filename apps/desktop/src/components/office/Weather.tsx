@@ -66,7 +66,7 @@ export function Weather({ onExpand }: Props) {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 5000);
-        const ipRes = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+        const ipRes = await fetch('/api/geoip', { signal: ctrl.signal });
         clearTimeout(t);
         if (ipRes.ok) {
           const ip = await ipRes.json();

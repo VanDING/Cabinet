@@ -92,6 +92,18 @@ export function createApp() {
   app.route('/api/observability', observabilityRouter);
   app.route('/api/insights', insightsRouter);
   app.route('/api/harness', harnessRouter);
+
+  // GeoIP proxy — avoids CORS issues with ipapi.co from browser
+  app.get('/api/geoip', async (c) => {
+    try {
+      const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+      const data = await res.json();
+      return c.json(data);
+    } catch {
+      return c.json({ city: null });
+    }
+  });
+
   app.route('/api', openapiRouter());
 
   return app;
