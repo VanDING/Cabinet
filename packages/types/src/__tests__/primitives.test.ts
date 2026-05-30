@@ -100,7 +100,7 @@ describe('WorkflowDefinition type', () => {
           id: 'data_collection',
           title: 'Data Collection',
           description: 'Collect market data from internal CRM and external sources',
-          type: 'aiAgent',
+          type: 'llm',
           agent: 'market_analyst',
           input: { from: 'trigger' },
           prompt: 'Collect and validate market data from {{dataSource}}',
@@ -110,7 +110,7 @@ describe('WorkflowDefinition type', () => {
           id: 'quality_check',
           title: 'Quality Check',
           description: 'Check if data quality meets threshold',
-          type: 'condition',
+          type: 'ifElse',
           condition: {
             expression: '{{steps.data_collection.output.confidence}} > 0.7',
             trueBranch: 'report_gen',
@@ -121,7 +121,7 @@ describe('WorkflowDefinition type', () => {
           id: 'human_review',
           title: 'Human Review',
           description: 'Captain reviews low-confidence analysis',
-          type: 'humanApproval',
+          type: 'approval',
           approvalOptions: {
             actions: ['continue', 'retry', 'halt'],
             retryTarget: 'data_collection',
@@ -131,7 +131,7 @@ describe('WorkflowDefinition type', () => {
           id: 'report_gen',
           title: 'Report Generation',
           description: 'Generate final report',
-          type: 'aiAgent',
+          type: 'llm',
           agent: 'report_writer',
           input: { from: 'data_collection' },
           prompt: 'Generate structured report from analysis results',
@@ -140,7 +140,7 @@ describe('WorkflowDefinition type', () => {
     };
     expect(wf.steps).toHaveLength(4);
     expect(wf.steps[0]!.agent).toBe('market_analyst');
-    expect(wf.steps[2]!.type).toBe('humanApproval');
+    expect(wf.steps[2]!.type).toBe('approval');
     expect(wf.steps[2]!.approvalOptions?.actions).toContain('retry');
   });
 });

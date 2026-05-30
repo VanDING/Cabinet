@@ -47,7 +47,7 @@ describe('WorkflowEngine', () => {
     });
     const nodes: WorkflowNodeDef[] = [
       { id: 'start', type: 'start' },
-      { id: 'ai', type: 'aiAgent', data: { prompt: 'Analyze this' } },
+      { id: 'ai', type: 'llm', data: { prompt: 'Analyze this' } },
       { id: 'end', type: 'end' },
     ];
     const edges: WorkflowEdge[] = [
@@ -65,10 +65,10 @@ describe('WorkflowEngine', () => {
     });
     const nodes: WorkflowNodeDef[] = [
       { id: 'start', type: 'start' },
-      { id: 'ai1', type: 'aiAgent', data: { prompt: 'Process' } },
-      { id: 'cond', type: 'condition', condition: 'approved' },
-      { id: 'ai2', type: 'aiAgent', data: { prompt: 'True branch' } },
-      { id: 'ai3', type: 'aiAgent', data: { prompt: 'False branch' } },
+      { id: 'ai1', type: 'llm', data: { prompt: 'Process' } },
+      { id: 'cond', type: 'ifElse', loopCondition: 'approved' },
+      { id: 'ai2', type: 'llm', data: { prompt: 'True branch' } },
+      { id: 'ai3', type: 'llm', data: { prompt: 'False branch' } },
     ];
     const edges: WorkflowEdge[] = [
       { from: 'start', to: 'ai1' },
