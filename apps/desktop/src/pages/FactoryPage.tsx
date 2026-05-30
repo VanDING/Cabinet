@@ -396,7 +396,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
   return (
     <div className="flex h-full">
       {/* ── Left panel: Workflow list ── */}
-      <div className="flex w-[340px] flex-shrink-0 flex-col overflow-y-auto border-r border-border p-4">
+      <div className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-r border-border p-4">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-lg font-bold text-content-primary">Factory</h1>
           <Button size="sm" onClick={handleNewWorkflow}>
@@ -426,7 +426,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                     {wf.name}
                   </h3>
                   {wf.cronExpression && (
-                    <span className="flex-shrink-0 rounded-full bg-intent-info-muted px-1.5 py-0.5 text-[10px] text-intent-info leading-none">
+                    <span className="shrink-0 rounded-full bg-intent-info-muted px-1.5 py-0.5 text-[10px] text-intent-info leading-none">
                       ⏱
                     </span>
                   )}
@@ -463,7 +463,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                   <h2 className="text-sm font-semibold text-content-primary">{selected.name}</h2>
                   <StatusBadge status={selected.status} />
                   {dirty && (
-                    <span className="rounded bg-intent-warning-muted px-1.5 py-0.5 text-[10px] text-intent-warning">
+                    <span className="rounded-sm bg-intent-warning-muted px-1.5 py-0.5 text-[10px] text-intent-warning">
                       Unsaved
                     </span>
                   )}
@@ -479,7 +479,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                     }
                     disabled={!undoRedo.canUndo}
                     title="Undo (Ctrl+Z)"
-                    className="rounded p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+                    className="rounded-sm p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
                   >
                     ↩
                   </button>
@@ -493,7 +493,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                     }
                     disabled={!undoRedo.canRedo}
                     title="Redo (Ctrl+Y)"
-                    className="rounded p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+                    className="rounded-sm p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
                   >
                     ↪
                   </button>
@@ -528,7 +528,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
             </div>
 
             {/* Side panel */}
-            <div className="w-[320px] flex-shrink-0">
+            <div className="w-[320px] shrink-0">
               <WorkflowPanel
                 tab={panelTab}
                 onTabChange={setPanelTab}

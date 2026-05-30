@@ -74,7 +74,7 @@ export function WorkflowRunCard({ data }: Props) {
   };
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-intent-purple bg-surface-primary shadow-sm">
+    <div className="my-3 overflow-hidden rounded-lg border border-intent-purple bg-surface-primary shadow-xs">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}

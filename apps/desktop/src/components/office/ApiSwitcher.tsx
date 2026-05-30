@@ -41,7 +41,7 @@ export function ApiSwitcher() {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-3 text-sm font-medium text-content-secondary">API Switcher</div>
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {keys.length === 0 ? (

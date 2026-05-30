@@ -10,7 +10,7 @@ export function AgentGroupNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <div className="flex gap-1 rounded bg-surface-overlay border border-border shadow-md p-1">
+        <div className="flex gap-1 rounded-sm bg-surface-overlay border border-border shadow-md p-1">
           <span className="text-[10px] text-accent px-1">
             {(d as any)?.role ?? 'Agent'}
           </span>
@@ -19,7 +19,7 @@ export function AgentGroupNode({ data, selected }: NodeProps) {
 
       {/* Group container */}
       <div
-        className={`rounded-xl border-2 border-dashed min-w-[300px] min-h-[140px] shadow-sm transition-shadow
+        className={`rounded-xl border-2 border-dashed min-w-[300px] min-h-[140px] shadow-xs transition-shadow
           ${selected ? 'shadow-md ring-2 wf-ring-accent-50' : ''}
           wf-bg-accent-15 wf-border-accent-35`}
       >

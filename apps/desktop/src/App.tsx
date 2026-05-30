@@ -724,7 +724,7 @@ export function App() {
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
               }}
-              className="w-1 flex-shrink-0 cursor-col-resize bg-surface-muted transition-colors hover:bg-accent:bg-accent"
+              className="w-1 shrink-0 cursor-col-resize bg-surface-muted transition-colors hover:bg-accent:bg-accent"
             />
           )}
 
@@ -915,7 +915,7 @@ export function App() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowProjectActionModal(false)}
-                  className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary"
+                  className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary"
                 >
                   Cancel
                 </button>

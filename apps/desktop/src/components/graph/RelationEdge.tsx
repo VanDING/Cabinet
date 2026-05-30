@@ -56,7 +56,7 @@ function RelationEdgeComp({
       {isActive && data?.relation && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan rounded bg-surface-primary px-1.5 py-0.5 text-[10px] text-content-secondary shadow-sm"
+            className="nodrag nopan rounded-sm bg-surface-primary px-1.5 py-0.5 text-[10px] text-content-secondary shadow-xs"
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,

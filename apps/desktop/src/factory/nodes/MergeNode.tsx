@@ -7,9 +7,9 @@ export function MergeNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Merge</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Merge</span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[140px] overflow-hidden shadow-sm transition-shadow wf-border-purple-35 wf-bg-purple-15 ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}`}>
+      <div className={`rounded-xl border-2 min-w-[140px] overflow-hidden shadow-xs transition-shadow wf-border-purple-35 wf-bg-purple-15 ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}`}>
         <div className="flex items-center gap-1.5 wf-bg-purple-35 px-3 py-1.5">
           <span className="text-sm text-content-primary">∪</span>
           <span className="text-xs font-semibold text-content-primary">Merge</span>

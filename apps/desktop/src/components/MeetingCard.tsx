@@ -42,7 +42,7 @@ export function MeetingCard({ data }: Props) {
   const hasProcess = !!process && process.analysisBrief.length > 0;
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-accent bg-surface-primary shadow-sm">
+    <div className="my-3 overflow-hidden rounded-lg border border-accent bg-surface-primary shadow-xs">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -140,7 +140,7 @@ function ResultTab({
             {perspectives.map((p, i) => (
               <div
                 key={i}
-                className="rounded border border-border bg-surface-elevated p-2.5"
+                className="rounded-sm border border-border bg-surface-elevated p-2.5"
               >
                 <div className="mb-1 flex items-center gap-2">
                   <span className="text-xs font-medium text-content-primary">
@@ -228,7 +228,7 @@ function ResultTab({
 
       {/* Auto-extracted Decision */}
       {decisionId && (
-        <div className="rounded border border-intent-success bg-intent-success-muted px-3 py-2 text-xs text-intent-success">
+        <div className="rounded-sm border border-intent-success bg-intent-success-muted px-3 py-2 text-xs text-intent-success">
           Decision <code className="font-mono">{decisionId}</code> was auto-extracted from this
           meeting. Review it in the Office or Decision Room.
         </div>
@@ -307,7 +307,7 @@ function ProcessTab({
 
       {/* Review issues detail */}
       {process.reviewIssues.length > 0 && (
-        <div className="rounded border border-intent-warning bg-intent-warning-muted p-2">
+        <div className="rounded-sm border border-intent-warning bg-intent-warning-muted p-2">
           <p className="mb-1 text-xs font-medium text-intent-warning">
             Reviewer Issues
           </p>
@@ -336,7 +336,7 @@ function ProcessTab({
           <summary className="cursor-pointer text-xs text-content-tertiary">
             Raw chair brief (JSON)
           </summary>
-          <pre className="mt-1 max-h-32 overflow-auto rounded bg-surface-muted p-2 text-[10px] text-content-secondary">
+          <pre className="mt-1 max-h-32 overflow-auto rounded-sm bg-surface-muted p-2 text-[10px] text-content-secondary">
             {process.analysisBrief}
           </pre>
         </details>

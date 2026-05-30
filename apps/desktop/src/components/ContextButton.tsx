@@ -102,7 +102,7 @@ export function ContextButton({
               <button
                 onClick={handleCompact}
                 disabled={compacting}
-                className="mt-2 w-full rounded bg-accent py-1 text-xs text-content-inverse hover:bg-accent-hover disabled:opacity-50"
+                className="mt-2 w-full rounded-sm bg-accent py-1 text-xs text-content-inverse hover:bg-accent-hover disabled:opacity-50"
               >
                 {compacting ? 'Compacting...' : 'Compact Context'}
               </button>

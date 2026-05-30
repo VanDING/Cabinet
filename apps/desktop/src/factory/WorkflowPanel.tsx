@@ -103,7 +103,7 @@ export function WorkflowPanel({
         </div>
         <button
           onClick={onClose}
-          className="rounded p-1 text-content-tertiary hover:text-content-primary"
+          className="rounded-sm p-1 text-content-tertiary hover:text-content-primary"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
@@ -140,14 +140,14 @@ export function WorkflowPanel({
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveWorkflow}
-                      className="rounded bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
+                      className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
                     >
                       Save
                     </button>
                     {onRunWorkflow && (
                       <button
                         onClick={onRunWorkflow}
-                        className="rounded bg-intent-success px-3 py-1 text-xs text-content-inverse hover:bg-intent-success"
+                        className="rounded-sm bg-intent-success px-3 py-1 text-xs text-content-inverse hover:bg-intent-success"
                       >
                         Run
                       </button>
@@ -457,9 +457,9 @@ function NodeEditor({
       </div>
 
       <div className="mt-3 flex gap-2">
-        <button onClick={onSave} className="rounded bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover">Apply</button>
+        <button onClick={onSave} className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover">Apply</button>
         {onDelete && (
-          <button onClick={onDelete} className="rounded px-3 py-1 text-xs text-intent-danger hover:bg-intent-danger-muted">Delete</button>
+          <button onClick={onDelete} className="rounded-sm px-3 py-1 text-xs text-intent-danger hover:bg-intent-danger-muted">Delete</button>
         )}
       </div>
     </section>
@@ -488,7 +488,7 @@ function AddNodeSection({ onAdd }: { onAdd?: (type: CanvasNodeType, position?: {
             draggable
             onDragStart={(e) => handleDragStart(e, type)}
             onClick={() => onAdd(type)}
-            className="cursor-grab active:cursor-grabbing rounded border border-border bg-surface-primary px-2 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated hover:text-content-primary transition-colors select-none"
+            className="cursor-grab active:cursor-grabbing rounded-sm border border-border bg-surface-primary px-2 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated hover:text-content-primary transition-colors select-none"
           >
             + {NODE_LABELS[type]}
           </div>

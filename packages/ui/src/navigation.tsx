@@ -79,7 +79,7 @@ export function Navigation({
   return (
     <nav
       aria-label="Main navigation"
-      className={`flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${sidebarBgClasses} ${borderClasses}`}
+      className={`flex h-full shrink-0 flex-col border-r transition-all duration-200 ${sidebarW} ${sidebarBgClasses} ${borderClasses}`}
       style={sidebarStyle}
     >
       {/* Nav items */}
@@ -118,7 +118,7 @@ export function Navigation({
                   key={p.id}
                   onClick={() => onNavigateToProject?.(p.id)}
                   title={p.name}
-                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors ${
                     activeProjectId === p.id
                       ? 'bg-accent text-white'
                       : 'bg-surface-muted text-content-secondary hover:bg-surface-elevated'
@@ -130,7 +130,7 @@ export function Navigation({
             <button
               onClick={onNewProject}
               title="New project"
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
             >
               +
             </button>
@@ -176,7 +176,7 @@ export function Navigation({
                           }
                           if (e.key === 'Escape') setRenamingId(null);
                         }}
-                        className="flex-1 rounded border border-border bg-surface-primary px-1 py-0.5 text-xs text-content-primary"
+                        className="flex-1 rounded-sm border border-border bg-surface-primary px-1 py-0.5 text-xs text-content-primary"
                       />
                     ) : (
                       <button
@@ -192,7 +192,7 @@ export function Navigation({
                         }`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                             (p as any).activeWorkflowCount > 0 ? 'bg-intent-success' : 'bg-surface-input'
                           }`}
                         />
@@ -205,7 +205,7 @@ export function Navigation({
                         if (!confirm(`Delete project "${p.name}"?`)) return;
                         onDeleteProject?.(p.id, p.name);
                       }}
-                      className="ml-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-xs text-content-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:text-intent-danger"
+                      className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-xs text-content-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:text-intent-danger"
                       aria-label={`Delete ${p.name}`}
                     >
                       &times;

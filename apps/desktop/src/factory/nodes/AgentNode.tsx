@@ -8,13 +8,13 @@ export function AgentNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <div className="flex gap-1 rounded bg-surface-overlay border border-border shadow-md p-1">
+        <div className="flex gap-1 rounded-sm bg-surface-overlay border border-border shadow-md p-1">
           <span className="text-[10px] text-content-secondary px-1">{label}</span>
         </div>
       </NodeToolbar>
       <div
         className={`rounded-lg border-2 px-3 py-2 min-w-[180px] max-w-[240px]
-          bg-surface-primary shadow-sm
+          bg-surface-primary shadow-xs
           ${selected ? 'border-accent shadow-md' : 'border-border'}`}
       >
         <Handle type="target" position={Position.Top} className="!bg-accent" />

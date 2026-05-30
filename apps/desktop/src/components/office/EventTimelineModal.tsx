@@ -144,7 +144,7 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
           <h3 className="text-lg font-semibold text-content-primary">Event Timeline</h3>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>
@@ -189,11 +189,11 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <span className="text-content-secondary">{event.message}</span>
-                    <span className="ml-2 rounded bg-surface-muted px-1.5 py-0.5 text-[10px] text-content-tertiary">
+                    <span className="ml-2 rounded-sm bg-surface-muted px-1.5 py-0.5 text-[10px] text-content-tertiary">
                       {CATEGORY_LABEL[event.type] ?? event.type}
                     </span>
                   </div>
-                  <span className="ml-3 flex-shrink-0 tabular-nums text-content-tertiary">
+                  <span className="ml-3 shrink-0 tabular-nums text-content-tertiary">
                     {event.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

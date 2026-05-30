@@ -64,7 +64,7 @@ export function ActiveWorkflowsModal({ onClose }: Props) {
           <h3 className="text-lg font-semibold text-content-primary">Active Workflows</h3>
           <button
             onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded text-content-tertiary hover:text-content-secondary"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
           >
             <X size={16} />
           </button>
@@ -89,11 +89,11 @@ export function ActiveWorkflowsModal({ onClose }: Props) {
                       key={w.id}
                       className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-muted"
                     >
-                      <span className={`h-2 w-2 flex-shrink-0 rounded-full ${cfg.color.split(' ')[0]}`} />
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.color.split(' ')[0]}`} />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-content-primary">
                         {w.name}
                       </span>
-                      <span className={`flex-shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${cfg.color}`}>
+                      <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${cfg.color}`}>
                         {cfg.label}
                       </span>
                     </div>
@@ -115,11 +115,11 @@ export function ActiveWorkflowsModal({ onClose }: Props) {
                         key={w.id}
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 opacity-60 hover:bg-surface-muted hover:opacity-100"
                       >
-                        <span className={`h-2 w-2 flex-shrink-0 rounded-full ${cfg.color.split(' ')[0]}`} />
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${cfg.color.split(' ')[0]}`} />
                         <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">
                           {w.name}
                         </span>
-                        <span className={`flex-shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${cfg.color}`}>
+                        <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${cfg.color}`}>
                           {cfg.label}
                         </span>
                       </div>

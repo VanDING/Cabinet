@@ -64,7 +64,7 @@ export function RulesTab() {
       <h2 className="mb-4 text-lg font-semibold text-content-primary">Project Rules</h2>
       <p className="mb-4 text-xs text-content-tertiary">
         Rules are loaded from{' '}
-        <code className="rounded bg-surface-muted px-1">.cabinet/rules/</code>. Each
+        <code className="rounded-sm bg-surface-muted px-1">.cabinet/rules/</code>. Each
         file has YAML frontmatter controlling when it activates.
       </p>
 
@@ -85,7 +85,7 @@ export function RulesTab() {
           {rules.map((rule) => (
             <div
               key={rule.filename}
-              className="overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm"
+              className="overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs"
             >
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export function RulesTab() {
                     {rule.globs.map((g) => (
                       <span
                         key={g}
-                        className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
+                        className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
                       >
                         {g}
                       </span>
@@ -123,7 +123,7 @@ export function RulesTab() {
                   onClick={() =>
                     editingFile === rule.filename ? setEditingFile(null) : handleEdit(rule)
                   }
-                  className="ml-3 flex-shrink-0 text-xs text-accent hover:underline"
+                  className="ml-3 shrink-0 text-xs text-accent hover:underline"
                 >
                   {editingFile === rule.filename ? 'Cancel' : 'Edit'}
                 </button>
@@ -135,7 +135,7 @@ export function RulesTab() {
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={12}
-                    className="w-full rounded border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
+                    className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
                   />
                   <div className="mt-2 flex justify-end">
                     <Button size="sm" onClick={() => handleSave(rule.filename)}>

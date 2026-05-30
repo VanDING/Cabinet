@@ -8,10 +8,10 @@ export function IfElseNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-warning">If-Else</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-warning">If-Else</span>
       </NodeToolbar>
       <div
-        className={`relative flex flex-col items-center justify-center min-w-[160px] h-[85px] shadow-sm transition-shadow wf-border-warning-40 wf-bg-warning-15 ${selected ? 'shadow-md' : ''}`}
+        className={`relative flex flex-col items-center justify-center min-w-[160px] h-[85px] shadow-xs transition-shadow wf-border-warning-40 wf-bg-warning-15 ${selected ? 'shadow-md' : ''}`}
         style={{
           clipPath: 'polygon(50% 0%, 95% 50%, 50% 100%, 5% 50%)',
           border: 'none',

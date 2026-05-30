@@ -59,7 +59,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20" onClick={onClose}>
       <div
-        className="max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-sm shadow-xl"
+        className="max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-border p-3">
@@ -69,7 +69,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search project files..."
-            className="w-full rounded border border-border bg-surface-elevated px-3 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-sm border border-border bg-surface-elevated px-3 py-1.5 text-sm text-content-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
           />
         </div>
         <div className="max-h-60 overflow-y-auto">

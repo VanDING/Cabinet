@@ -174,7 +174,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
             </div>
             <button
               onClick={onClose}
-              className="flex-shrink-0 text-xl leading-none text-content-tertiary hover:text-content-secondary"
+              className="shrink-0 text-xl leading-none text-content-tertiary hover:text-content-secondary"
             >
               &times;
             </button>
@@ -214,7 +214,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                     >
                       <div className="mb-1 flex items-center gap-2">
                         <div
-                          className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
                             isResolved && decision.chosenOptionId === opt.id
                               ? 'border-intent-success bg-intent-success'
                               : isSelected
@@ -283,7 +283,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                     )}
                     {/* Dot */}
                     <div
-                      className={`mt-0.5 h-3 w-3 flex-shrink-0 rounded-full ${
+                      className={`mt-0.5 h-3 w-3 shrink-0 rounded-full ${
                         entry.action === 'created'
                           ? 'bg-accent'
                           : entry.action === 'approved'
@@ -299,7 +299,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                           {entry.action}
                         </span>
                         <span className="text-content-tertiary">by {entry.actor}</span>
-                        <span className="ml-auto flex-shrink-0 text-content-tertiary">
+                        <span className="ml-auto shrink-0 text-content-tertiary">
                           {new Date(entry.timestamp).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -350,7 +350,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              className="w-full resize-none rounded border border-border bg-surface-elevated px-3 py-2 text-sm text-content-primary"
+              className="w-full resize-none rounded-sm border border-border bg-surface-elevated px-3 py-2 text-sm text-content-primary"
             />
 
             {/* Action buttons */}
@@ -359,7 +359,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
                 <select
                   value={selectedOption ?? ''}
                   onChange={(e) => setSelectedOption(e.target.value)}
-                  className="flex-1 rounded border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                  className="flex-1 rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
                 >
                   <option value="" disabled>
                     Select an option...

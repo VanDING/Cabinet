@@ -6,10 +6,10 @@ export function WorkflowNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Workflow</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Workflow</span>
       </NodeToolbar>
       <div
-        className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-sm transition-shadow
+        className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-xs transition-shadow
           ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}
           wf-border-purple-35 wf-bg-purple-15 border-dashed`}
       >

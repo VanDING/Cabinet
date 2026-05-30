@@ -28,7 +28,7 @@ export function DecisionCard({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-xs transition-shadow hover:shadow-md">
       <div className="mb-2 flex items-center justify-between">
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold ${levelColors[decision.level] ?? 'bg-surface-muted'}`}
@@ -70,7 +70,7 @@ export function DecisionCard({
         {onApprove && decision.status === 'pending' && (
           <button
             onClick={() => onApprove(decision.id, selectedOptionId)}
-            className="rounded bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
+            className="rounded-sm bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
           >
             Approve
           </button>
@@ -78,7 +78,7 @@ export function DecisionCard({
         {onReject && decision.status === 'pending' && (
           <button
             onClick={() => onReject(decision.id)}
-            className="rounded bg-intent-danger-muted px-3 py-1.5 text-sm text-intent-danger hover:bg-intent-danger-muted"
+            className="rounded-sm bg-intent-danger-muted px-3 py-1.5 text-sm text-intent-danger hover:bg-intent-danger-muted"
           >
             Reject
           </button>
@@ -86,7 +86,7 @@ export function DecisionCard({
         {onViewDetails && (
           <button
             onClick={() => onViewDetails(decision.id)}
-            className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
+            className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
           >
             Details
           </button>

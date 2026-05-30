@@ -67,7 +67,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
     >
       <div className={`flex items-center justify-between border-b p-4 ${border}`}>
         <h2 className={`text-lg font-semibold ${text}`}>Deliverables</h2>
-        <button onClick={onClose} className="rounded p-1 hover:bg-surface-muted bg-surface-input">
+        <button onClick={onClose} className="rounded-sm p-1 hover:bg-surface-muted bg-surface-input">
           <X size={18} />
         </button>
       </div>
@@ -122,7 +122,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-2">
-                  <FileText size={16} className="mt-0.5 flex-shrink-0" />
+                  <FileText size={16} className="mt-0.5 shrink-0" />
                   <div>
                     <span className={`text-sm font-medium ${text}`}>{d.title}</span>
                     <span
@@ -137,7 +137,7 @@ export function DeliverablesPanel({ projectId, onClose }: Props) {
                     e.stopPropagation();
                     handleDelete(d.id);
                   }}
-                  className="rounded p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
+                  className="rounded-sm p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
                 >
                   <Trash2 size={14} />
                 </button>

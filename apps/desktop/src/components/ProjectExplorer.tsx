@@ -398,9 +398,9 @@ export function ProjectExplorer({
   const border = 'border-border';
 
   return (
-    <div className={`flex h-full w-56 flex-shrink-0 flex-col border-r ${border} ${bg}`}>
+    <div className={`flex h-full w-56 shrink-0 flex-col border-r ${border} ${bg}`}>
       {/* Header */}
-      <div className={`flex-shrink-0 border-b px-3 py-2 ${border}`}>
+      <div className={`shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
           <Folder size={14} className="text-accent" />
           <span className="truncate text-xs font-medium text-content-secondary">
@@ -417,7 +417,7 @@ export function ProjectExplorer({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter files..."
-            className="w-full rounded border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full rounded-sm border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-hidden focus:ring-1 focus:ring-accent"
           />
         </div>
       </div>
@@ -504,7 +504,7 @@ function FileTree({
               {isDir ? (
                 <>
                   <span
-                    className="flex-shrink-0"
+                    className="shrink-0"
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggle(node.path);
@@ -512,12 +512,12 @@ function FileTree({
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder size={12} className="flex-shrink-0 text-intent-warning" />
+                  <Folder size={12} className="shrink-0 text-intent-warning" />
                 </>
               ) : (
                 <>
-                  <span className="w-3 flex-shrink-0" />
-                  <File size={12} className="flex-shrink-0 text-content-tertiary" />
+                  <span className="w-3 shrink-0" />
+                  <File size={12} className="shrink-0 text-content-tertiary" />
                 </>
               )}
               {renamingPath === node.path ? (
@@ -530,7 +530,7 @@ function FileTree({
                     if (e.key === 'Enter') onCommitRename(node.path);
                     if (e.key === 'Escape') onCommitRename(node.path);
                   }}
-                  className="min-w-0 flex-1 rounded border border-accent bg-surface-primary px-1 py-0 text-xs text-content-primary outline-none"
+                  className="min-w-0 flex-1 rounded-sm border border-accent bg-surface-primary px-1 py-0 text-xs text-content-primary outline-hidden"
                   onClick={(e) => e.stopPropagation()}
                   onContextMenu={(e) => e.stopPropagation()}
                 />
@@ -538,7 +538,7 @@ function FileTree({
                 <span className="truncate text-content-secondary">{node.name}</span>
               )}
               {node.size !== undefined && renamingPath !== node.path && (
-                <span className="ml-auto flex-shrink-0 text-[10px] text-content-tertiary">
+                <span className="ml-auto shrink-0 text-[10px] text-content-tertiary">
                   {formatSize(node.size)}
                 </span>
               )}

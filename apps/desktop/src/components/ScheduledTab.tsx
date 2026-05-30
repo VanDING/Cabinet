@@ -130,7 +130,7 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
   };
 
   const cardClasses =
-    'rounded-lg border border-border bg-surface-primary shadow-sm';
+    'rounded-lg border border-border bg-surface-primary shadow-xs';
   const inputClasses =
     'rounded border border-border bg-surface-elevated px-3 py-2 text-sm text-content-primary';
   const textClasses = 'text-content-primary';
@@ -155,14 +155,14 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleRun(t.id)}
-                    className="rounded p-1 hover:bg-surface-muted bg-surface-input"
+                    className="rounded-sm p-1 hover:bg-surface-muted bg-surface-input"
                     title="Run now"
                   >
                     <Clock size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="rounded p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
+                    className="rounded-sm p-1 text-intent-danger hover:bg-surface-muted bg-surface-input"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -228,14 +228,14 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={onFormClose}
-                className="rounded border border-border px-3 py-1.5 text-sm"
+                className="rounded-sm border border-border px-3 py-1.5 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 disabled={loading}
-                className="rounded bg-accent px-3 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
+                className="rounded-sm bg-accent px-3 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
               >
                 Create
               </button>

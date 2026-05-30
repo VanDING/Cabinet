@@ -108,7 +108,7 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border border-border px-2 py-1"
+                  className="flex items-center justify-between rounded-sm border border-border px-2 py-1"
                 >
                   <span
                     className="truncate text-[11px] text-content-secondary"
@@ -116,7 +116,7 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
                   >
                     {title}
                   </span>
-                  <div className="flex flex-shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     {date && (
                       <span className="text-[10px] text-content-tertiary">
                         {new Date(date).toLocaleDateString()}
@@ -187,7 +187,7 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded border border-border px-2 py-1"
+                  className="flex items-center justify-between rounded-sm border border-border px-2 py-1"
                 >
                   <span className="text-[11px] text-content-secondary">{title}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeColor}`}>
@@ -336,7 +336,7 @@ function ShortTermRenderer({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-1">
       {Object.entries(data).map(([k, v]) => (
         <div key={k} className="flex items-start gap-2">
-          <span className="flex-shrink-0 text-[11px] font-medium text-content-secondary">
+          <span className="shrink-0 text-[11px] font-medium text-content-secondary">
             {k}:
           </span>
           {typeof v === 'string' ? (
@@ -538,7 +538,6 @@ export function MemoryPage() {
             </Button>
             <Button
               size="xs"
-              className="bg-intent-purple hover:bg-intent-purple"
               onClick={handleConsolidate}
               disabled={consolidating}
             >
@@ -573,14 +572,14 @@ export function MemoryPage() {
                 <Card
                   key={m.id}
                   padding="none"
-                  className="group transition-shadow hover:shadow-sm"
+                  className="group transition-shadow hover:shadow-xs"
                 >
                   <div
                     className="flex cursor-pointer items-start gap-2 p-3"
                     onClick={() => toggleExpand(m.id)}
                   >
                     <span
-                      className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${layerColors[m.layer] || 'bg-surface-muted text-content-secondary'}`}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${layerColors[m.layer] || 'bg-surface-muted text-content-secondary'}`}
                     >
                       {m.layer.replace('_', ' ')}
                     </span>
@@ -621,7 +620,7 @@ export function MemoryPage() {
                         <span className="text-xs text-content-tertiary">Click to expand</span>
                       )}
                     </span>
-                    <span className="flex-shrink-0 text-xs text-content-tertiary">
+                    <span className="shrink-0 text-xs text-content-tertiary">
                       {new Date(m.timestamp).toLocaleString([], {
                         month: 'short',
                         day: 'numeric',
@@ -634,7 +633,7 @@ export function MemoryPage() {
                         e.stopPropagation();
                         handleDelete(m.id);
                       }}
-                      className="flex-shrink-0 text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                      className="shrink-0 text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
                       aria-label="Delete"
                     >
                       &times;
@@ -684,17 +683,17 @@ export function MemoryPage() {
                                 </div>
                               )}
                               {accessCount !== undefined && (
-                                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
+                                <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
                                   Accessed {accessCount} times
                                 </span>
                               )}
                               {validUntil && (
-                                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
+                                <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
                                   Valid until: {new Date(validUntil).toLocaleDateString()}
                                 </span>
                               )}
                               {supersededBy && (
-                                <span className="rounded bg-intent-warning-muted px-1.5 py-0.5 text-xs text-intent-warning">
+                                <span className="rounded-sm bg-intent-warning-muted px-1.5 py-0.5 text-xs text-intent-warning">
                                   Superseded by: {String(supersededBy).slice(0, 20)}
                                 </span>
                               )}
@@ -720,7 +719,7 @@ export function MemoryPage() {
                             .map(([k, v]) => (
                               <span
                                 key={k}
-                                className="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
+                                className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
                               >
                                 {k}:{' '}
                                 {typeof v === 'object'

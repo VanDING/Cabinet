@@ -6,10 +6,10 @@ export function HumanNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-danger">Human</span>
+        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-danger">Human</span>
       </NodeToolbar>
       <div
-        className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-sm transition-shadow
+        className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-xs transition-shadow
           ${selected ? 'shadow-md ring-2 wf-ring-danger-50' : ''}
           wf-border-danger-40 wf-bg-danger-15 border-dashed`}
       >

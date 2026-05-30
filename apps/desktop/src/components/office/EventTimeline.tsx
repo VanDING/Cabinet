@@ -97,13 +97,13 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
   return (
     <div
       onClick={onExpand}
-      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs transition-shadow hover:shadow-md"
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-content-secondary">Recent Events</h3>
         <button
           onClick={handleClear}
-          className="rounded px-2 py-0.5 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+          className="rounded-sm px-2 py-0.5 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
         >
           Clear
         </button>
@@ -122,7 +122,7 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
               className="flex justify-between border-b border-border pb-1.5 text-xs last:border-0 last:pb-0"
             >
               <span className="text-content-secondary">{event.message}</span>
-              <span className="ml-2 flex-shrink-0 text-content-tertiary">
+              <span className="ml-2 shrink-0 text-content-tertiary">
                 {event.time.toLocaleTimeString()}
               </span>
             </div>

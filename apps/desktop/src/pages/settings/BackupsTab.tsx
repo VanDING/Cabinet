@@ -91,7 +91,7 @@ export function BackupsTab() {
           {backups.map((b, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg border border-border bg-surface-primary p-3 shadow-sm"
+              className="flex items-center justify-between rounded-lg border border-border bg-surface-primary p-3 shadow-xs"
             >
               <div>
                 <div className="font-mono text-sm font-medium text-content-primary">
@@ -105,7 +105,7 @@ export function BackupsTab() {
               <button
                 onClick={() => handleRestore(b.path)}
                 disabled={restoring}
-                className="rounded border border-intent-warning px-2 py-1 text-xs text-intent-warning hover:text-intent-warning disabled:opacity-50"
+                className="rounded-sm border border-intent-warning px-2 py-1 text-xs text-intent-warning hover:text-intent-warning disabled:opacity-50"
               >
                 Restore
               </button>

@@ -155,7 +155,7 @@ export function FileViewer() {
   const tabBg = 'bg-surface-muted';
 
   return (
-    <div className="relative flex flex-shrink-0" style={{ width }}>
+    <div className="relative flex shrink-0" style={{ width }}>
       <div
         onMouseDown={handleMouseDown}
         className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize hover:bg-accent:bg-accent"
@@ -169,7 +169,7 @@ export function FileViewer() {
             <div
               key={tab.path}
               onClick={() => setActiveTab(tab.path)}
-              className={`flex flex-shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
+              className={`flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
                 activeTab === tab.path
                   ? `${bg} -mb-px border-l border-r border-t ${border}`
                   : 'text-content-tertiary hover:text-content-secondary:text-content-tertiary'
@@ -190,7 +190,7 @@ export function FileViewer() {
           ))}
           <button
             onClick={closeAll}
-            className="ml-auto mr-2 rounded p-1 hover:bg-surface-muted bg-surface-input"
+            className="ml-auto mr-2 rounded-sm p-1 hover:bg-surface-muted bg-surface-input"
             title="Close all"
           >
             <X size={14} />
