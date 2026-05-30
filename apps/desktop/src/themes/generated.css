@@ -67,7 +67,7 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 18px;
-  --shadow-sm: none;
+  --shadow-xs: none;
   --shadow-md: none;
   --shadow-lg: none;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -170,7 +170,7 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 18px;
-  --shadow-sm: none;
+  --shadow-xs: none;
   --shadow-md: none;
   --shadow-lg: none;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -273,7 +273,7 @@
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
-  --shadow-sm: none;
+  --shadow-xs: none;
   --shadow-md: none;
   --shadow-lg: none;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -376,7 +376,7 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.02);
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.04);
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -479,7 +479,7 @@
   --radius-md: 2px;
   --radius-lg: 4px;
   --radius-xl: 6px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.06);
   --font-family: 'Noto Serif JP', Georgia, 'Times New Roman', serif;
@@ -582,7 +582,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: none;
+  --shadow-xs: none;
   --shadow-md: none;
   --shadow-lg: none;
   --font-family: 'Times New Roman', Georgia, serif;
@@ -685,7 +685,7 @@
   --radius-md: 8px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  --shadow-sm: 0 0 8px rgba(255, 0, 127, 0.25);
+  --shadow-xs: 0 0 8px rgba(255, 0, 127, 0.25);
   --shadow-md: 0 0 20px rgba(255, 0, 127, 0.30), 0 0 4px rgba(0, 229, 255, 0.15);
   --shadow-lg: 0 0 40px rgba(255, 0, 127, 0.35), 0 0 8px rgba(255, 159, 75, 0.20);
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -788,7 +788,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: 3px 3px 0 #000000;
+  --shadow-xs: 3px 3px 0 #000000;
   --shadow-md: 4px 4px 0 #000000;
   --shadow-lg: 6px 6px 0 #000000;
   --font-family: 'VT323', 'Courier New', monospace;
@@ -891,7 +891,7 @@
   --radius-md: 1px;
   --radius-lg: 2px;
   --radius-xl: 4px;
-  --shadow-sm: 0 0 10px rgba(0, 255, 255, 0.20), 0 0 2px rgba(0, 255, 255, 0.10);
+  --shadow-xs: 0 0 10px rgba(0, 255, 255, 0.20), 0 0 2px rgba(0, 255, 255, 0.10);
   --shadow-md: 0 0 18px rgba(0, 255, 255, 0.25), 0 0 4px rgba(255, 0, 127, 0.08);
   --shadow-lg: 0 0 32px rgba(0, 255, 255, 0.22), 0 0 64px rgba(255, 0, 127, 0.12), 0 0 8px rgba(0, 255, 255, 0.08);
   --font-family: 'Share Tech Mono', 'Courier New', monospace;
@@ -994,7 +994,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: 3px 3px 0px #000000;
+  --shadow-xs: 3px 3px 0px #000000;
   --shadow-md: 4px 4px 0px #000000;
   --shadow-lg: 6px 6px 0px #000000;
   --font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace;
@@ -1097,7 +1097,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: 2px 2px 0 #000000;
+  --shadow-xs: 2px 2px 0 #000000;
   --shadow-md: 2px 2px 0 #000000;
   --shadow-lg: 3px 3px 0 #000000;
   --font-family: 'Share Tech Mono', 'Consolas', 'Courier New', monospace;
@@ -1200,7 +1200,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: 6px 6px 0px rgba(0, 0, 0, 0.70);
+  --shadow-xs: 6px 6px 0px rgba(0, 0, 0, 0.70);
   --shadow-md: 10px 10px 0px rgba(0, 0, 0, 0.80), -10px -10px 0px rgba(255, 255, 255, 0.02);
   --shadow-lg: 16px 16px 0px rgba(0, 0, 0, 0.85), -16px -16px 0px rgba(255, 255, 255, 0.03);
   --font-family: 'Courier Prime', 'Courier New', monospace;
@@ -1303,7 +1303,7 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
-  --shadow-sm: 0 4px 20px rgba(100, 180, 230, 0.18);
+  --shadow-xs: 0 4px 20px rgba(100, 180, 230, 0.18);
   --shadow-md: 0 8px 32px rgba(100, 200, 255, 0.25), 0 0 8px rgba(150, 220, 255, 0.35);
   --shadow-lg: 0 12px 48px rgba(100, 200, 255, 0.30), 0 0 16px rgba(150, 220, 255, 0.45);
   --font-family: 'Rajdhani', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1406,7 +1406,7 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
-  --shadow-sm: 3px 3px 0 #15294B;
+  --shadow-xs: 3px 3px 0 #15294B;
   --shadow-md: 4px 4px 0 #15294B;
   --shadow-lg: 6px 6px 0 #15294B;
   --font-family: 'Courier New', 'Fira Code', monospace;
@@ -1509,7 +1509,7 @@
   --radius-md: 4px;
   --radius-lg: 6px;
   --radius-xl: 8px;
-  --shadow-sm: 0 0 4px rgba(51, 255, 51, 0.1);
+  --shadow-xs: 0 0 4px rgba(51, 255, 51, 0.1);
   --shadow-md: 0 0 8px rgba(51, 255, 51, 0.15);
   --shadow-lg: 0 0 16px rgba(51, 255, 51, 0.2);
   --font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
@@ -1612,7 +1612,7 @@
   --radius-md: 4px;
   --radius-lg: 6px;
   --radius-xl: 8px;
-  --shadow-sm: 0 0 15px rgba(229, 198, 135, 0.15);
+  --shadow-xs: 0 0 15px rgba(229, 198, 135, 0.15);
   --shadow-md: 0 0 28px rgba(229, 198, 135, 0.25);
   --shadow-lg: 0 0 42px rgba(229, 198, 135, 0.32), 0 0 8px rgba(155, 77, 202, 0.18);
   --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
