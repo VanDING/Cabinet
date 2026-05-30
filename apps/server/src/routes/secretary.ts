@@ -1416,10 +1416,10 @@ function buildToolDependencies(ctx: ServerContext): ToolDependencies {
     scheduleTask: async (name, cronExpression, prompt, recurring) => {
       const id = `wf_${Date.now()}`;
       const def = {
-        steps: [{ type: 'llmCall', title: name, data: { prompt } }],
+        steps: [{ type: 'llm', title: name, data: { prompt } }],
         nodes: [
           { id: 'start', type: 'start' },
-          { id: 'exec', type: 'llmCall', title: name, data: { prompt } },
+          { id: 'exec', type: 'llm', title: name, data: { prompt } },
           { id: 'end', type: 'end' },
         ],
         edges: [

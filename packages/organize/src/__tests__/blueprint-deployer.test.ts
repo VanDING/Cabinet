@@ -62,7 +62,7 @@ describe('BlueprintDeployer', () => {
   it('creates workflow from blueprint steps', async () => {
     const bp: Blueprint = {
       meta: { goal: 'Test workflow' },
-      workflow: { steps: [{ id: 's1', type: 'aiAgent' }] },
+      workflow: { steps: [{ id: 's1', type: 'agentGroup' }] },
     };
     const result = await deployer.deploy(bp);
     expect(deps.createWorkflow).toHaveBeenCalledTimes(1);

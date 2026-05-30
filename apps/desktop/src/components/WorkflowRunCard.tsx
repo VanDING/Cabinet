@@ -38,13 +38,39 @@ export function WorkflowRunCard({ data }: Props) {
         return '▶';
       case 'end':
         return '■';
+      case 'agentGroup':
       case 'aiAgent':
+      case 'llm':
       case 'llmCall':
         return '🤖';
+      case 'approval':
       case 'humanApproval':
         return '👤';
+      case 'human':
+        return '✍️';
+      case 'ifElse':
       case 'condition':
         return '◆';
+      case 'loop':
+        return '🔁';
+      case 'parallel':
+        return '⚡';
+      case 'merge':
+        return '🔀';
+      case 'pass':
+        return '→';
+      case 'skill':
+        return '🛠';
+      case 'tool':
+        return '🔧';
+      case 'code':
+        return '💻';
+      case 'workflow':
+        return '🔗';
+      case 'intentClassify':
+        return '🏷';
+      case 'knowledgeBase':
+        return '📚';
       case 'dataQuery':
         return '📊';
       case 'notification':
@@ -58,12 +84,20 @@ export function WorkflowRunCard({ data }: Props) {
 
   const nodeTypeLabel = (type: string) => {
     switch (type) {
+      case 'agentGroup':
       case 'aiAgent':
-        return 'AI Agent';
+        return 'Agent Group';
+      case 'llm':
       case 'llmCall':
-        return 'LLM Call';
+        return 'LLM';
+      case 'approval':
       case 'humanApproval':
-        return 'Human Approval';
+        return 'Approval';
+      case 'human':
+        return 'Human Task';
+      case 'ifElse':
+      case 'condition':
+        return 'Condition';
       case 'dataQuery':
         return 'Data Query';
       case 'notification':
@@ -111,7 +145,7 @@ export function WorkflowRunCard({ data }: Props) {
                     className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
                       step.type === 'end' || status === 'completed'
                         ? 'bg-intent-success-muted text-intent-success'
-                        : step.type === 'humanApproval'
+                        : step.type === 'approval' || step.type === 'humanApproval'
                           ? 'bg-intent-warning-muted text-intent-warning'
                           : 'bg-surface-muted text-content-secondary'
                     }`}
