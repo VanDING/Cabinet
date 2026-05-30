@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm --filter @cabinet/server bundle && node scripts/copy-server.mjs && pnpm build"
+    "beforeBuildCommand": "pnpm build && pnpm --filter @cabinet/server bundle && node scripts/copy-server.mjs"
   },
   "app": {
     "windows": [
@@ -29,7 +29,8 @@
       "tooltip": "Cabinet AI Collaboration"
     },
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 http://tauri.localhost:3000 ws://localhost:3000 ws://tauri.localhost:3000 wss://localhost:3000 http://ipc.localhost https://api.open-meteo.com; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-src 'self' asset:"
+      "dangerousDisableAssetCspModification": true,
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:3000 http://tauri.localhost:3000 ws://localhost:3000 ws://tauri.localhost:3000 wss://localhost:3000 http://ipc.localhost https://api.open-meteo.com https://ipapi.co; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; frame-src 'self' asset:"
     }
   },
   "bundle": {
