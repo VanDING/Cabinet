@@ -20,15 +20,15 @@ export function AgentGroupNode({ data, selected }: NodeProps) {
       {/* Group container */}
       <div
         className={`rounded-xl border-2 border-dashed min-w-[300px] min-h-[140px] shadow-sm transition-shadow
-          ${selected ? 'shadow-md ring-2 wf-ring-accent-40' : ''}
-          wf-bg-accent-5 wf-border-accent-20`}
+          ${selected ? 'shadow-md ring-2 wf-ring-accent-50' : ''}
+          wf-bg-accent-15 wf-border-accent-35`}
       >
         {/* Header bar */}
-        <div className="flex items-center gap-1.5 wf-bg-accent-10 px-4 py-2 rounded-t-xl">
-          <span className="text-sm text-accent-foreground">{'[-]'}</span>
-          <span className="text-xs font-semibold text-accent-foreground">{role}</span>
+        <div className="flex items-center gap-1.5 wf-bg-accent-25 px-4 py-2 rounded-t-xl">
+          <span className="text-sm text-content-primary">{'[-]'}</span>
+          <span className="text-xs font-semibold text-content-primary">{role}</span>
           {model ? <span className="text-[10px] text-content-tertiary ml-1">{String(model)}</span> : null}
-          {persistent ? <span className="ml-auto rounded-full wf-bg-accent-30 px-1.5 text-[10px] text-accent">persistent</span> : null}
+          {persistent ? <span className="ml-auto rounded-full wf-bg-accent-50 px-1.5 text-[10px] text-accent">persistent</span> : null}
           {tools ? <span className="ml-auto text-[10px] text-content-tertiary">{tools.length} tools</span> : null}
         </div>
         {/* Body — children render here via xyflow parentId */}

@@ -10,19 +10,19 @@ export function IntentClassifyNode({ data, selected }: NodeProps) {
       </NodeToolbar>
       <div
         className={`rounded-xl border-2 min-w-[170px] overflow-hidden shadow-sm transition-shadow
-          ${selected ? 'shadow-md ring-2 wf-ring-accent-40' : ''}
-          wf-border-accent-30 wf-bg-accent-5`}
+          ${selected ? 'shadow-md ring-2 wf-ring-accent-50' : ''}
+          wf-border-accent-50 wf-bg-accent-5`}
       >
-        <div className="flex items-center gap-1.5 wf-bg-accent-20 px-3 py-1.5">
+        <div className="flex items-center gap-1.5 wf-bg-accent-35 px-3 py-1.5">
           <span className="text-sm">⊿</span>
-          <span className="text-xs font-semibold text-accent-foreground">Intent Classify</span>
+          <span className="text-xs font-semibold text-content-primary">Intent Classify</span>
         </div>
         <div className="px-3 py-2">
           <p className="text-xs font-medium text-content-primary">{String(d?.title ?? 'Classify intent')}</p>
           {intents && intents.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {intents.slice(0, 3).map((i, idx) => (
-                <span key={idx} className="rounded-full wf-bg-accent-30 px-1.5 text-[10px] text-accent">{i.name}</span>
+                <span key={idx} className="rounded-full wf-bg-accent-50 px-1.5 text-[10px] text-accent">{i.name}</span>
               ))}
               {intents.length > 3 && <span className="text-[10px] text-content-tertiary">+{intents.length - 3}</span>}
             </div>

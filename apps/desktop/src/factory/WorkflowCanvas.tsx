@@ -93,10 +93,22 @@ export function WorkflowCanvas({
   const prevNodesRef = useRef(initialNodes);
   const prevEdgesRef = useRef(initialEdges);
 
-  // Sync external changes
+  // Sync external changes — only apply when node IDs change (new/deleted nodes)
   if (initialNodes !== prevNodesRef.current) {
     prevNodesRef.current = initialNodes;
-    setNodes(initialNodes);
+    const currentIds = new Set(nodes.map((n) => n.id));
+    const newIds = new Set(initialNodes.map((n) => n.id));
+    const hasNewOrRemoved =
+      currentIds.size !== newIds.size || [...newIds].some((id) => !currentIds.has(id));
+    if (hasNewOrRemoved) {
+      // Merge: keep existing positions for unchanged nodes
+      const posMap = new Map(nodes.map((n) => [n.id, n.position]));
+      const merged = initialNodes.map((n) => ({
+        ...n,
+        position: posMap.get(n.id) ?? n.position,
+      }));
+      setNodes(merged);
+    }
   }
   if (initialEdges !== prevEdgesRef.current) {
     prevEdgesRef.current = initialEdges;
