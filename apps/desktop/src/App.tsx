@@ -776,7 +776,7 @@ export function App() {
                       />
                       <Route path="/skills" element={<Navigate to="/settings" replace />} />
                       <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/employees" element={<EmployeesPage />} />
+                      <Route path="/employees" element={<EmployeesPage activeProjectId={activeProjectId} />} />
                       <Route path="/memory" element={<MemoryPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

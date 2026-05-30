@@ -22,7 +22,7 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
   return data.employees ?? [];
 }
 
-export function EmployeesPage() {
+export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | null }) {
   const [employees, setEmployees] = useState<EmployeeItem[]>(() => {
     try {
       const raw = localStorage.getItem('cabinet-employees');
@@ -78,6 +78,10 @@ export function EmployeesPage() {
 
   const handleCreate = async () => {
     if (!form.name.trim()) return;
+    if (!activeProjectId) {
+      alert('Please select a project first');
+      return;
+    }
     const newEmp = {
       name: form.name,
       role: form.role || 'advisor',
@@ -89,6 +93,7 @@ export function EmployeesPage() {
         .filter(Boolean),
       permissionLevel: 'read',
       status: 'idle',
+      projectId: activeProjectId,
     };
     try {
       await apiFetch('/api/employees', {
