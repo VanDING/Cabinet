@@ -9,6 +9,7 @@ import {
   readdirSync,
 } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
+import type { AgentEvent } from '@cabinet/events';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -58,6 +59,12 @@ export interface Session {
   routingState?: RoutingState;
   createdAt: Date;
   updatedAt: Date;
+  // Sub-agent tree support
+  parentId?: string;
+  agentType?: string;
+  status?: 'active' | 'completed' | 'error';
+  events?: AgentEvent[];
+  deliverable?: unknown;
 }
 
 export type SessionCallback = (session: Session) => Promise<void> | void;
@@ -273,6 +280,60 @@ export class SessionManager {
 
   list(): Session[] {
     return [...this.sessions.values()];
+  }
+
+  /** Create a child session for a sub-agent. */
+  createChildSession(parentId: string, agentType: string, title?: string): Session {
+    const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const session: Session = {
+      id,
+      title: title ?? `${agentType} Agent`,
+      parentId,
+      agentType,
+      status: 'active',
+      messages: [],
+      events: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.sessions.set(id, session);
+    this.persist(session);
+    return session;
+  }
+
+  /** Get all child sessions for a given parent session. */
+  getChildSessions(parentId: string): Session[] {
+    return [...this.sessions.values()].filter((s) => s.parentId === parentId);
+  }
+
+  /** Append an event to a sub-agent session. */
+  addEvent(sessionId: string, event: AgentEvent): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.events = [...(session.events ?? []), event];
+      session.updatedAt = new Date();
+      this.persist(session);
+    }
+  }
+
+  /** Update the status of a sub-agent session. */
+  updateStatus(sessionId: string, status: Session['status']): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.status = status;
+      session.updatedAt = new Date();
+      this.persist(session);
+    }
+  }
+
+  /** Set the final deliverable for a completed sub-agent session. */
+  setDeliverable(sessionId: string, deliverable: unknown): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.deliverable = deliverable;
+      session.updatedAt = new Date();
+      this.persist(session);
+    }
   }
 
   getRoutingState(sessionId: string): RoutingState | null {
