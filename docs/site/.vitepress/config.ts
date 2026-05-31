@@ -23,6 +23,7 @@ export default defineConfig({
         { text: 'Agent System', link: '/concepts/agents' },
         { text: 'Decision L0-L3', link: '/concepts/decisions' },
         { text: 'Memory Layers', link: '/concepts/memory-layers' },
+        { text: 'Harness', link: '/concepts/harness' },
       ],
       '/api/': [
         { text: 'Overview', link: '/api/' },

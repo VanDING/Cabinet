@@ -22,7 +22,7 @@ Cabinet's memory system is designed around a simple insight: **not all informati
 
 **Purpose**: "What have we learned before?"
 
-- Semantic vector storage powered by **LanceDB**
+- Semantic vector storage powered by **HNSW** (hnswlib-node)
 - Cross-session retrieval via embedding similarity
 - Project-isolated by default (queries scoped to active project)
 - Persists indefinitely

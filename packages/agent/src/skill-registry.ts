@@ -100,6 +100,10 @@ export class SkillRegistry {
           type: 'object',
           properties: {
             skill: { type: 'string', description: `Skill name: ${skill.name}` },
+            arguments: {
+              type: 'string',
+              description: `Arguments to pass to the ${skill.name} skill (optional)`,
+            },
           },
         },
         execute: async (args: Record<string, unknown>) => {

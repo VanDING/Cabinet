@@ -97,7 +97,7 @@ Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture
 
 ```
 Layer 4 (Interface):   ui, server, desktop       ← user/network boundary
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness  ← business logic
+Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← business logic
 Layer 2 (Agent Core):  gateway, agent, memory     ← AI interaction core
 Layer 1 (Infra):       types, events, storage     ← infrastructure
 ```
@@ -109,8 +109,9 @@ Layer 1 (Infra):       types, events, storage     ← infrastructure
 | 4     | `@cabinet/ui`        | Shared React component library                             |
 | 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                         |
 | 3     | `@cabinet/secretary` | Natural-language entry point, session management           |
-| 3     | `@cabinet/workflow`  | Workflow engine (Skill, Condition, Parallel, Human nodes)  |
-| 3     | `@cabinet/harness`   | Quality gates, evaluators, verification                    |
+| 3     | `@cabinet/workflow`  | Workflow engine (17 node types incl. Agent, LLM, Skill, Human) |
+| 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability  |
+| 3     | `@cabinet/organize`  | Organization architecture and system design                |
 | 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |
 | 2     | `@cabinet/agent`     | TAOR agent loop (Think-Act-Observe-React)                  |
 | 2     | `@cabinet/memory`    | Four-layer memory (short-term, long-term, entity, project) |
@@ -138,19 +139,25 @@ Layer 1 (Infra):       types, events, storage     ← infrastructure
   Work that requires outsourcing or external human effort is abstracted as configurable nodes, ensuring human intervention never becomes a process black hole.
 
 - **Skills · Plug-and-Play Capabilities**
-  Specialized capabilities packaged as Markdown-format Skills, installable on demand and infinitely extensible.
+  Specialized capabilities packaged as Markdown-format Skills, installable on demand and infinitely extensible. Four built-in skills (Workflow Designer, Agent Creator, Skill Creator, MCP Builder) provide guided design assistants.
+
+- **MCP Integration · External Tool Ecosystem**
+  Connect to external MCP servers via stdio to dynamically register tools — open a door to the outside world without code changes.
+
+- **Interactive Sub-Agents · Multi-Turn Agent Sessions**
+  Spawn interactive sub-agents with dedicated sessions, mid-flight user input, and event-driven state synchronization.
 
 - **Four-Layer Memory · Your Externalized Mind**
   Short-term session context, long-term semantic retrieval, entity preferences, and project knowledge—consolidated and project-isolated.
 
 - **Harness Quality Assurance · Built-in Evaluation and Verification Gates**
-  Every output passes through evaluators and verification gates before delivery, ensuring quality is never an afterthought.
+  Every output passes through evaluators and quality gates before delivery, ensuring quality is never an afterthought.
 
 - **Multi-Project Support · Isolated Contexts**
   Each project maintains its own memory, employees, and decisions. Switch contexts without cross-contamination.
 
 - **Multi-Provider LLM Gateway · Budget-Aware Routing**
-  Anthropic and OpenAI support via Vercel AI SDK, with model routing by role, fallback chains, cost tracking, and budget guards.
+  8 providers via Vercel AI SDK (Anthropic, OpenAI, Google, DeepSeek, Qwen, Moonshot, Zhipu, Baichuan), with model routing by role, fallback chains, cost tracking, and budget guards.
 
 - **Desktop & Server · Tauri App + Hono API**
   A three-column strategic command center on desktop; REST and WebSocket APIs for integration.
@@ -258,7 +265,7 @@ curl -X POST http://localhost:3000/api/decisions \
   -d '{"title": "Hire new analyst", "type": "action"}'
 
 # Workflows — execute multi-step processes
-curl -X POST http://localhost:3000/api/factory \
+curl -X POST http://localhost:3000/api/workflows \
   -H "Content-Type: application/json" \
   -d '{"name": "Quarterly Report", "definition": {...}}'
 ```
@@ -291,19 +298,21 @@ curl -X POST http://localhost:3000/api/knowledge/query \
 
 ### Environment Variables
 
-| Variable                  | Default       | Description                                 |
-| :------------------------ | :------------ | :------------------------------------------ |
-| `ANTHROPIC_API_KEY`       | (empty)       | Anthropic API key                           |
-| `OPENAI_API_KEY`          | (empty)       | OpenAI API key                              |
-| `CABINET_MASTER_PASSWORD` | `change-me`   | Master encryption password for the database |
-| `PORT`                    | `3000`        | Server port                                 |
-| `NODE_ENV`                | `development` | Runtime environment                         |
+| Variable                       | Default       | Description                                 |
+| :----------------------------- | :------------ | :------------------------------------------ |
+| `ANTHROPIC_API_KEY`            | (empty)       | Anthropic API key                           |
+| `OPENAI_API_KEY`               | (empty)       | OpenAI API key                              |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | (empty)       | Google API key                              |
+| `DEEPSEEK_API_KEY`             | (empty)       | DeepSeek API key                            |
+| `CABINET_MASTER_PASSWORD`      | `change-me`   | Master encryption password for the database |
+| `PORT`                         | `3000`        | Server port                                 |
+| `NODE_ENV`                     | `development` | Runtime environment                         |
 
 ### Model Configuration
 
 Models are configured via the LLM gateway (`@cabinet/gateway`) with multi-provider support through Vercel AI SDK. The gateway supports:
 
-- **Role-based routing**: `deep_think`, `fast_execute`, `default` roles mapped to appropriate models
+- **Role-based routing**: `deep_reasoning`, `fast_execution`, `default` roles mapped to appropriate models
 - **Fallback chains**: Automatic failover on timeout (30s) or error
 - **Budget guards**: Daily ($5), weekly ($25), monthly ($100) spending limits
 - **Cost tracking**: Per-request and aggregate cost monitoring
@@ -351,8 +360,8 @@ pnpm test
 # Run E2E tests
 pnpm test:e2e
 
-# Architecture layer lint
-pnpm lint
+# Architecture layer lint (4-layer dependency rules)
+pnpm lint:arch
 
 # Build all packages
 pnpm build
@@ -368,6 +377,19 @@ cd docs/site && pnpm dev
 ```
 
 CI runs automatically on push and PR to `main` via GitHub Actions (Node 22, pnpm 9).
+
+---
+
+## System Architecture & Control Theory
+
+Cabinet's design is informed by cybernetic principles — recursive viable systems, closed-loop cognition, and variety matching. For a comprehensive architectural audit against 8 control principles (scoring 6.6/10 maturity), see [`CYBERNETIC_AUDIT.md`](./CYBERNETIC_AUDIT.md). It identifies critical systemic risks and a prioritized remediation roadmap (P0–P3).
+
+Key control layers:
+- **S1 (Operations)**: Agent loop, tool execution, memory I/O
+- **S2 (Coordination)**: Workflow engine, meeting protocol, decision state machine
+- **S3 (Control)**: Harness quality gates, observability, auto-adjustment
+- **S4 (Intelligence)**: Curator pattern extraction, preference learning, knowledge graph
+- **S5 (Policy)**: Decision authorization (L0–L3), safety checker, budget guard
 
 ---
 

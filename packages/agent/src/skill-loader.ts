@@ -7,7 +7,7 @@ import type { ParsedSkill } from '@cabinet/types';
  * Uses js-yaml for full YAML 1.2 compatibility including | literals, nested objects, and lists.
  */
 export function parseSkillMarkdown(content: string): ParsedSkill | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!match) return null;
 
   const frontmatter = match[1]!;

@@ -68,9 +68,9 @@ Cabinet uses a **4-layer memory system** that separates hot data from cold knowl
 | Layer | Purpose | Storage |
 | :---- | :------ | :------ |
 | **Short-term** | Current session context | In-memory + SQLite |
-| **Long-term** | Cross-session semantic retrieval | LanceDB (vector) |
+| **Long-term** | Cross-session semantic retrieval | SQLite + HNSW (hnswlib-node) |
 | **Entity** | Captain preferences, employee configs | SQLite |
-| **Project** | Project goals, milestones, key decisions | SQLite + LanceDB |
+| **Project** | Project goals, milestones, key decisions | SQLite |
 
 A background **ConsolidationService** periodically migrates information from short-term to long-term, removes duplicates, and extracts structured knowledge into the **KnowledgeGraph**.
 
@@ -82,12 +82,13 @@ The framework is model-driven: the LLM decides what to do next; the framework pr
 
 ## Meeting
 
-A **Meeting** is a structured multi-agent deliberation:
+A **Meeting** is a structured multi-agent deliberation with a four-phase protocol:
 
-1. The **Chair** receives the topic and selects advisors
-2. A **cost estimate** is produced; if it exceeds the threshold, Captain confirmation is required
-3. Advisors perform **parallel reasoning** on their domain
-4. A **cross-validator** compares outputs, detecting agreements, disagreements, contradictions, and gaps
-5. The Chair produces a **synthesis** with consensus, minority report, and unresolved分歧
+1. **Chair** — receives the topic, parses intent, selects advisors, constructs a structured Brief
+2. **Advisor** — advisors perform parallel reasoning on their domain based on the Brief
+3. **Reviewer** — independent quality review of all Advisor outputs for logic, evidence, and risks
+4. **Extraction** — consensus, minority report, and unresolved分歧 are extracted into a final deliverable
+
+A **cost estimate** is produced before phase 2; if it exceeds the threshold, Captain confirmation is required.
 
 Meetings are not chat rooms. They are bounded, cost-transparent reasoning sessions.

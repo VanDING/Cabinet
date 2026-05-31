@@ -8,7 +8,7 @@
 - E2E 测试: `cd tests/e2e && vitest run`
 - 桌面应用开发模式: `cd apps/desktop && pnpm tauri:dev`
 - 单个包操作: `pnpm -F @cabinet/<name> <script>`，例如 `pnpm -F @cabinet/agent test`
-- 架构检查: `pnpm lint` — 验证 4 层依赖规则，所有错误信息包含修复指令
+- 架构检查: `pnpm lint:arch` — 验证 4 层依赖规则，所有错误信息包含修复指令
 
 ## 架构约束（不可违反）
 
@@ -16,7 +16,7 @@
 
 ```
 Layer 4 (Interface):   ui, server, desktop    ← 用户/网络边界
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness  ← 业务逻辑
+Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← 业务逻辑
 Layer 2 (Agent Core):  gateway, agent, memory  ← AI 交互核心
 Layer 1 (Infra):       types, events, storage  ← 基础设施
 ```

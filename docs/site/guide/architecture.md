@@ -64,7 +64,7 @@ Cabinet uses three distinct validation layers, each with a clear, non-overlappin
 | :--- | :------ | :------ | :------------- |
 | **Safety Check** | `agent/safety.ts` | Before every tool call | "Can we do this?" — cache rules → auto mode → whitelist → AI classifier |
 | **Quality Gate** | `harness/quality-gate.ts` | After Agent output | "Was this done well?" — H-E-I format check; retry if needed |
-| **Verification Gate** | `workflow/verification-gate.ts` | After workflow node | "Can this pass to the next node?" — schema + type validation |
+| **Blueprint Validator** | `workflow/blueprint-validator.ts` | Workflow blueprint definition | "Can this pass to the next node?" — node connectivity, cycle detection, schema validation |
 
 **In short**: Safety says *can*, Harness says *good*, Workflow says *compatible*.
 
@@ -122,7 +122,7 @@ Secretary Agent (Intent Parsing)
      │                           │
      ├─► Meeting needed → MeetingService (cost estimate → parallel advisors → synthesis)
      │                           │
-     └─► Workflow needed → WorkflowEngine (node execution → verification gate)
+     └─► Workflow needed → WorkflowEngine (node execution → blueprint validation)
                                    │
                               Harness (quality gate)
                                    │

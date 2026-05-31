@@ -7,11 +7,11 @@ Cabinet is designed as a **local-first** application. The primary distribution m
 ### Building the Tauri App
 
 ```bash
-# Build production bundles for all platforms
-pnpm build:desktop
+# Build all packages first
+pnpm build
 
-# Or target a specific platform
-pnpm build:desktop --target aarch64-apple-darwin
+# Build production desktop bundles (Tauri)
+cd apps/desktop && pnpm tauri build
 ```
 
 Outputs appear in `apps/desktop/src-tauri/target/release/bundle/`:
@@ -60,11 +60,15 @@ docker run -p 3000:3000 \
 
 | Variable | Default | Description |
 | :------- | :------ | :---------- |
-| `CABINET_PORT` | `3000` | HTTP server port |
+| `PORT` | `3000` | HTTP server port |
 | `CABINET_DATA_DIR` | `~/.cabinet` | SQLite database and log storage |
 | `CABINET_LOG_LEVEL` | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
 | `CABINET_BACKUP_DIR` | `~/.cabinet/backups` | Automatic backup destination |
 | `CABINET_WEB_URL` | — | Allowed CORS origin for web frontend |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key |
+| `OPENAI_API_KEY` | — | OpenAI API key |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | — | Google API key |
+| `DEEPSEEK_API_KEY` | — | DeepSeek API key |
 
 ### Reverse Proxy (Nginx Example)
 

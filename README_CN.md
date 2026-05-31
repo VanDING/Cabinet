@@ -97,7 +97,7 @@ Cabinet V2.0 是一个 **TypeScript 单体仓库**，建立在严格的 4 层架
 
 ```
 Layer 4 (Interface):   ui, server, desktop       ← 用户/网络边界
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness  ← 业务逻辑
+Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← 业务逻辑
 Layer 2 (Agent Core):  gateway, agent, memory     ← AI 交互核心
 Layer 1 (Infra):       types, events, storage     ← 基础设施
 ```
@@ -109,8 +109,9 @@ Layer 1 (Infra):       types, events, storage     ← 基础设施
 | 4   | `@cabinet/ui`        | 共享 React 组件库                             |
 | 3   | `@cabinet/decision`  | 分级决策管理（L0–L3）                         |
 | 3   | `@cabinet/secretary` | 自然语言入口，会话管理                        |
-| 3   | `@cabinet/workflow`  | 工作流引擎（技能、条件、并行、人工节点）      |
-| 3   | `@cabinet/harness`   | 质量闸门、评估器、验证                        |
+| 3   | `@cabinet/workflow`  | 工作流引擎（17 种节点类型，含智能体、LLM、技能、人工节点） |
+| 3   | `@cabinet/harness`   | 质量闸门、评估器、自动调参、可观测性          |
+| 3   | `@cabinet/organize`  | 组织架构设计与系统规划                        |
 | 2   | `@cabinet/gateway`   | 多提供商 LLM 网关（Vercel AI SDK）            |
 | 2   | `@cabinet/agent`     | TAOR 智能体循环（思考-行动-观察-响应）        |
 | 2   | `@cabinet/memory`    | 四层记忆（短期、长期、实体、项目）            |
@@ -138,7 +139,13 @@ Layer 1 (Infra):       types, events, storage     ← 基础设施
   需要外包或外部人力完成的工作被抽象为可配置节点，保证人的介入不会成为流程黑洞。
 
 - **技能系统 · 即插即用的专项能力**
-  专项能力被封装为 Markdown 格式的 Skill，按需安装、无限拓展。
+  专项能力被封装为 Markdown 格式的 Skill，按需安装、无限拓展。四个内置技能（工作流设计师、智能体创建器、技能编写器、MCP 构建器）提供引导式设计助手。
+
+- **MCP 集成 · 外部工具生态**
+  通过 stdio 连接外部 MCP 服务器，动态注册工具——无需修改代码即可打开通往外部世界的门。
+
+- **交互式子代理 · 多轮智能体会话**
+  生成拥有独立会话状态的交互式子代理，支持中途用户输入、事件驱动状态同步，让复杂任务可中途修正航向。
 
 - **四层记忆 · 你的外挂大脑**
   短期会话上下文、长期语义检索、实体偏好、项目知识——整合沉淀，项目间隔离。
@@ -150,7 +157,7 @@ Layer 1 (Infra):       types, events, storage     ← 基础设施
   每个项目拥有独立的记忆、员工和决策。切换上下文而互不污染。
 
 - **多提供商 LLM 网关 · 预算感知路由**
-  通过 Vercel AI SDK 支持 Anthropic 与 OpenAI，按角色路由模型、自动故障转移、成本追踪与预算守护。
+  通过 Vercel AI SDK 支持 8 家提供商（Anthropic、OpenAI、Google、DeepSeek、Qwen、Moonshot、Zhipu、Baichuan），按角色路由模型、自动故障转移、成本追踪与预算守护。
 
 - **桌面端与服务器 · Tauri 应用 + Hono API**
   桌面端为三栏式战略指挥台；同时提供 REST 与 WebSocket API。
@@ -258,7 +265,7 @@ curl -X POST http://localhost:3000/api/decisions \
   -d '{"title": "招聘新分析师", "type": "action"}'
 
 # 工作流 — 执行多步骤流程
-curl -X POST http://localhost:3000/api/factory \
+curl -X POST http://localhost:3000/api/workflows \
   -H "Content-Type: application/json" \
   -d '{"name": "季度报告", "definition": {...}}'
 ```
@@ -291,19 +298,21 @@ curl -X POST http://localhost:3000/api/knowledge/query \
 
 ### 环境变量
 
-| 变量                      | 默认值        | 描述               |
-| :------------------------ | :------------ | :----------------- |
-| `ANTHROPIC_API_KEY`       | （空）        | Anthropic API 密钥 |
-| `OPENAI_API_KEY`          | （空）        | OpenAI API 密钥    |
-| `CABINET_MASTER_PASSWORD` | `change-me`   | 数据库主加密密码   |
-| `PORT`                    | `3000`        | 服务器端口         |
-| `NODE_ENV`                | `development` | 运行时环境         |
+| 变量                       | 默认值        | 描述               |
+| :------------------------- | :------------ | :----------------- |
+| `ANTHROPIC_API_KEY`        | （空）        | Anthropic API 密钥 |
+| `OPENAI_API_KEY`           | （空）        | OpenAI API 密钥    |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | （空）    | Google API 密钥    |
+| `DEEPSEEK_API_KEY`         | （空）        | DeepSeek API 密钥  |
+| `CABINET_MASTER_PASSWORD`  | `change-me`   | 数据库主加密密码   |
+| `PORT`                     | `3000`        | 服务器端口         |
+| `NODE_ENV`                 | `development` | 运行时环境         |
 
 ### 模型配置
 
 模型通过 LLM 网关（`@cabinet/gateway`）配置，基于 Vercel AI SDK 实现多提供商支持。网关特性：
 
-- **按角色路由**：`deep_think`、`fast_execute`、`default` 角色映射到合适的模型
+- **按角色路由**：`deep_reasoning`、`fast_execution`、`default` 角色映射到合适的模型
 - **故障转移链**：超时（30s）或出错时自动切换
 - **预算守护**：每日（$5）、每周（$25）、每月（$100）支出上限
 - **成本追踪**：单次请求与累计成本监控
@@ -351,8 +360,8 @@ pnpm test
 # 运行 E2E 测试
 pnpm test:e2e
 
-# 架构分层检查
-pnpm lint
+# 架构分层检查（四层依赖规则）
+pnpm lint:arch
 
 # 构建所有包
 pnpm build
@@ -368,6 +377,19 @@ cd docs/site && pnpm dev
 ```
 
 CI 在 push 和 PR 到 `main` 分支时通过 GitHub Actions 自动运行（Node 22，pnpm 9）。
+
+---
+
+## 系统架构与控制理论
+
+Cabinet 的设计深受控制论原则启发——递归可行系统、闭环认知和多样性匹配。针对 8 项控制原则的完整架构审计（成熟度评分 6.6/10）参见 [`CYBERNETIC_AUDIT.md`](./CYBERNETIC_AUDIT.md)。该审计识别了关键系统性风险并提供了优先级修复路线图（P0–P3）。
+
+关键控制层：
+- **S1（运营）**：智能体循环、工具执行、记忆 I/O
+- **S2（协调）**：工作流引擎、会议协议、决策状态机
+- **S3（控制）**：Harness 质量闸门、可观测性、自动调参
+- **S4（智能）**：Curator 模式提取、偏好学习、知识图谱
+- **S5（策略）**：决策授权（L0–L3）、安全检查器、预算守护
 
 ---
 

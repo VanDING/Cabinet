@@ -489,6 +489,7 @@ export class AgentLoop {
               model: this.options.model ?? 'claude-sonnet-4-6',
               systemPrompt: systemPrompt,
               messages: allMessages,
+              tools: this.toolExecutor.getToolDescriptors(),
               cacheSystemPrompt: true,
               ...(this.options.maxResponseTokens != null
                 ? { maxTokens: this.options.maxResponseTokens }

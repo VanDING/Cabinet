@@ -137,7 +137,7 @@ System health check including gateway status.
 {
   "status": "healthy",
   "gateway": {
-    "providers": ["anthropic", "openai"],
+    "providers": ["anthropic", "openai", "google", "deepseek", "qwen", "moonshot", "zhipu", "baichuan"],
     "activeModel": "anthropic/claude-sonnet-4-6"
   },
   "timestamp": "2026-05-20T10:00:00Z"
@@ -150,8 +150,12 @@ System health check including gateway status.
 | :------- | :----- | :---- |
 | **Anthropic** | `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5` | Primary recommended provider |
 | **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Good fallback |
-| **DeepSeek** | `deepseek-chat`, `deepseek-v3`, `deepseek-r1` | Cost-effective |
 | **Google** | `gemini-2.0-flash`, `gemini-2.0-pro` | Multimodal capable |
+| **DeepSeek** | `deepseek-v4-flash`, `deepseek-v4-pro`, `deepseek-v3`, `deepseek-r1` | Cost-effective |
+| **Qwen** | `qwen-turbo`, `qwen-plus`, `qwen-max` | Alibaba Cloud |
+| **Moonshot** | `moonshot-v1-8k`, `moonshot-v1-32k`, `moonshot-v1-128k` | Chinese context optimized |
+| **Zhipu** | `glm-4`, `glm-4-flash` | Zhipu AI |
+| **Baichuan** | `baichuan4`, `baichuan3-turbo` | Baichuan AI |
 
 ## Model Router
 
@@ -159,8 +163,8 @@ The `ModelRouter` maps roles to model chains:
 
 | Role | Primary | Fallbacks |
 | :--- | :------ | :-------- |
-| `deep_think` | `anthropic/claude-opus-4-7` | `anthropic/claude-sonnet-4-6` |
-| `fast_execute` | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` |
+| `deep_reasoning` | `anthropic/claude-opus-4-7` | `anthropic/claude-sonnet-4-6` |
+| `fast_execution` | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` |
 | `default` | `anthropic/claude-sonnet-4-6` | `openai/gpt-4o` |
 
 You can override these mappings via settings or per-request `model` parameter.

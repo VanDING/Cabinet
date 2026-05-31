@@ -22,10 +22,10 @@ pnpm test
 
 ```bash
 # Terminal 1 — backend with hot reload
-pnpm dev:server
+cd apps/server && pnpm dev
 
 # Terminal 2 — desktop app (Vite + Tauri dev mode)
-pnpm dev:desktop
+cd apps/desktop && pnpm tauri:dev
 ```
 
 The server runs on `http://localhost:3000`. The desktop app loads the UI from Vite's dev server and communicates with the backend via HTTP and WebSocket.
@@ -59,13 +59,10 @@ Runs the React app in the browser. Native APIs (system dialog, auto-updater) are
 ### Running Specific Test Suites
 
 ```bash
-# All unit tests
-pnpm test:unit
+# All package tests
+pnpm test
 
-# Integration tests (requires built packages)
-pnpm test:integration
-
-# E2E tests (requires dev server running)
+# E2E tests
 pnpm test:e2e
 
 # Watch mode for a specific package
@@ -145,8 +142,9 @@ Open the browser DevTools Network tab and filter by `WS` to observe real-time ev
 The `ContextMonitor` (`@cabinet/agent`) exposes snapshots of token usage per session. Access via:
 
 ```ts
-import { ContextMonitor } from '@cabinet/agent';
-const snapshot = ContextMonitor.getSnapshot(sessionId);
+import { ContextMonitor, DEFAULT_WINDOW_CONFIG } from '@cabinet/agent';
+const monitor = new ContextMonitor(DEFAULT_WINDOW_CONFIG);
+const snapshot = monitor.snapshot(messages, modelName);
 console.log(snapshot.zone); // 'smart' | 'warning' | 'critical' | 'dumb'
 ```
 
@@ -160,16 +158,7 @@ During development, budget limits are checked per-call. If you hit a limit, eith
 
 Migrations live in `packages/storage/src/migrations/`. They use better-sqlite3 and must be idempotent.
 
-```bash
-# Create a new migration
-pnpm migrate:create <name>
-
-# Run pending migrations
-pnpm migrate:up
-
-# Rollback one migration
-pnpm migrate:down
-```
+Migrations live in `packages/storage/src/migrations/`. They use better-sqlite3 and must be idempotent. Add new migrations by creating sequentially numbered `.sql` files in the migrations directory.
 
 ## Adding a New Package
 

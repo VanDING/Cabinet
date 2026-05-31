@@ -119,9 +119,9 @@ See [Memory Layers](../concepts/memory-layers) for a full conceptual overview.
 | Layer | Storage | Query Method | TTL |
 | :---- | :------ | :----------- | :-- |
 | **Short-term** | In-memory + SQLite | Substring search | Session |
-| **Long-term** | LanceDB (vector) | Semantic similarity | Permanent |
+| **Long-term** | SQLite + HNSW (hnswlib-node) | Semantic similarity | Permanent |
 | **Entity** | SQLite | Key lookup | Permanent |
-| **Project** | SQLite + LanceDB | Scoped query | Project lifetime |
+| **Project** | SQLite | Scoped query | Project lifetime |
 
 ## Project Isolation
 
