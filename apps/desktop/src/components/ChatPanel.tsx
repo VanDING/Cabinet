@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
+import type { InputTarget } from '../contexts/ChatContext';
 import { FileSearchPanel } from './FileSearchPanel';
 import { SessionHistoryPanel } from './SessionHistoryPanel';
 import { useSkills } from '../hooks/useSkills';
@@ -44,6 +45,9 @@ interface Props {
   onNewProject?: () => void;
   activeAgent?: string;
   onAgentChange?: (agent: string) => void;
+  inputTarget?: InputTarget;
+  onInputTargetChange?: (target: InputTarget) => void;
+  activeSessionId?: string | null;
 }
 
 export function ChatPanel({
@@ -68,6 +72,9 @@ export function ChatPanel({
   onNewProject,
   activeAgent = 'secretary',
   onAgentChange,
+  inputTarget,
+  onInputTargetChange,
+  activeSessionId,
 }: Props) {
   const [input, setInput] = useState('');
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -163,13 +170,18 @@ export function ChatPanel({
   }, []);
 
   const handleSend = useCallback(() => {
-    const trimmed = input.trim();
+    let trimmed = input.trim();
     if (!trimmed || isProcessing) return;
+    // Strip @mention prefix if present
+    const mentionMatch = trimmed.match(/^@(\w+)\s*/);
+    if (mentionMatch) {
+      trimmed = trimmed.slice(mentionMatch[0].length);
+    }
     const sessionId = active ? active.id : onCreateSession();
     onSend(sessionId, trimmed, attachedFiles, undefined, selectedModel);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [input, isProcessing, active, attachedFiles, onSend, onCreateSession]);
+  }, [input, isProcessing, active, attachedFiles, onSend, onCreateSession, selectedModel]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -481,12 +493,43 @@ export function ChatPanel({
           </div>
         )}
 
+        {/* Input target indicator */}
+        {inputTarget?.type === 'subagent' && (
+          <div className="flex items-center gap-1.5 px-3 pt-1">
+            <span className="rounded bg-accent-muted px-1.5 py-0.5 text-[10px] text-accent">
+              Send to {inputTarget.agentId} Agent
+            </span>
+            <button
+              onClick={() => {
+                if (activeSessionId) {
+                  onInputTargetChange?.({ type: 'secretary', sessionId: activeSessionId });
+                }
+              }}
+              className="text-[10px] text-content-tertiary hover:text-content-secondary"
+            >
+              (cancel)
+            </button>
+          </div>
+        )}
+
         {/* Input area */}
         <div className="px-3 pt-2">
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setInput(val);
+              // @mention detection
+              const mentionMatch = val.match(/^@(\w+)/);
+              if (mentionMatch && activeSessionId) {
+                onInputTargetChange?.({
+                  type: 'subagent',
+                  sessionId: activeSessionId,
+                  agentId: mentionMatch[1]!,
+                });
+              }
+            }}
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
