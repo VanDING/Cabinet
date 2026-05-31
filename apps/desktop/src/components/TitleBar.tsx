@@ -16,7 +16,7 @@ function useTauriWindow() {
         .then(() => {
           if (!cancelled) setAvailable(true);
         })
-        .catch(() => {});
+        .catch((err) => { console.warn('Operation failed', err); });
     } catch {
       /* Tauri API not available */
     }
@@ -55,7 +55,7 @@ export function TitleBar({
       .then((v) => {
         if (!cancelled) setIsMaximized(Boolean(v));
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
 
     import('@tauri-apps/api/event')
       .then(({ listen }) => {
@@ -63,22 +63,22 @@ export function TitleBar({
         const unlisten = listen('tauri://resize', () => {
           invoke('is_maximized')
             .then((v) => setIsMaximized(Boolean(v)))
-            .catch(() => {});
+            .catch((err) => { console.warn('Operation failed', err); });
         });
         return () => {
           unlisten.then((fn: () => void) => fn());
         };
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
 
     return () => {
       cancelled = true;
     };
   }, [available]);
 
-  const handleMinimize = useCallback(() => invoke('minimize').catch(() => {}), []);
-  const handleMaximize = useCallback(() => invoke('maximize').catch(() => {}), []);
-  const handleClose = useCallback(() => invoke('close').catch(() => {}), []);
+  const handleMinimize = useCallback(() => invoke('minimize').catch((err) => { console.warn('Operation failed', err); }), []);
+  const handleMaximize = useCallback(() => invoke('maximize').catch((err) => { console.warn('Operation failed', err); }), []);
+  const handleClose = useCallback(() => invoke('close').catch((err) => { console.warn('Operation failed', err); }), []);
 
   const btnHover =
     'text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';

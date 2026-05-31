@@ -15,7 +15,7 @@ export function ProjectList() {
     apiFetch('/api/projects?archived=false', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setProjects(d.projects ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   useEffect(() => {

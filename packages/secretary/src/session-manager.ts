@@ -103,9 +103,7 @@ export class SessionManager {
     this.persist(session);
     // Fire create callbacks asynchronously (non-blocking)
     for (const cb of this.onCreateCallbacks) {
-      Promise.resolve(cb(session)).catch(() => {
-        /* best-effort */
-      });
+      Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
     }
     return session;
   }
@@ -125,9 +123,7 @@ export class SessionManager {
       // Trigger compression callback when soft limit exceeded
       if (totalTokens > this.softLimit && totalTokens <= this.hardLimit) {
         for (const cb of this.onCompressionCallbacks) {
-          Promise.resolve(cb(session)).catch(() => {
-            /* best-effort */
-          });
+          Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
         }
       }
 
@@ -195,9 +191,7 @@ export class SessionManager {
       this.sessions.delete(sessionId);
       // Fire close callbacks asynchronously (non-blocking)
       for (const cb of this.onCloseCallbacks) {
-        Promise.resolve(cb(session)).catch(() => {
-          /* best-effort */
-        });
+        Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
       }
     }
   }

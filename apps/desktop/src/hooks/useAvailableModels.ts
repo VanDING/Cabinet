@@ -65,9 +65,7 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
             localStorage.removeItem('cabinet-available-models');
           }
         })
-        .catch(() => {
-          // Keep cached providers on fetch failure
-        });
+        .catch((err) => { console.warn('Operation failed', err); });
     }
     refresh();
     window.addEventListener('apikeys_changed', refresh);

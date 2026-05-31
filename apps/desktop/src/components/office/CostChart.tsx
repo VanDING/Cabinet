@@ -36,7 +36,7 @@ export function CostChart() {
       .then((data) => {
         if (data.history) setHistory(data.history);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 

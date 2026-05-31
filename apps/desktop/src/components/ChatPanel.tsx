@@ -97,7 +97,7 @@ export function ChatPanel({
       .then((d) => {
         if (d.tier) setDelegationTier(d.tier);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
   const [isTauri, setIsTauri] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
@@ -598,7 +598,7 @@ export function ChatPanel({
                         method: 'PUT',
                         headers: authJsonHeaders(),
                         body: JSON.stringify({ tier: t.id }),
-                      }).catch(() => {});
+                      }).catch((err) => { console.warn('Operation failed', err); });
                     }}
                     className={`w-full px-4 py-1.5 text-left transition-colors ${
                       delegationTier === t.id

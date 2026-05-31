@@ -24,7 +24,7 @@ export function RulesTab() {
     apiFetch('/api/rules', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setRules(d.rules ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   useEffect(() => {

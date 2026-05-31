@@ -24,7 +24,7 @@ export function InsightsModal({ onClose }: Props) {
       .then((data) => {
         if (data.insights) setInsights(data.insights);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 

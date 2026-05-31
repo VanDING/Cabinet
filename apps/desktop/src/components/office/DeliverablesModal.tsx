@@ -27,7 +27,7 @@ export function DeliverablesModal({ onClose, projectId }: Props) {
     apiFetch(url, { headers: authHeaders() })
       .then((r) => r.json())
       .then((data) => setItems(data.deliverables ?? []))
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, [projectId]);
 

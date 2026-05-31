@@ -82,7 +82,7 @@ export function useWebSocket(onEvent?: WSEventHandler) {
         .then((fn) => {
           unlisten = fn;
         })
-        .catch(() => {});
+        .catch((err) => { console.warn('Operation failed', err); });
     }
 
     return () => {

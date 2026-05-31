@@ -81,7 +81,7 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
           );
         }
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, [buildUrl]);
 

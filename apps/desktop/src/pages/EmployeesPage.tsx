@@ -73,7 +73,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
         setEmployees(emps);
         saveLocalEmployees(emps);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   const handleCreate = async () => {

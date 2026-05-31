@@ -18,7 +18,7 @@ export function DelegationTab() {
         setDescription(data.description);
         setAvailable(data.available ?? []);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   const handleChange = async (newTier: string) => {

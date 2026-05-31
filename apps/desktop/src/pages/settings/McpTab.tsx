@@ -22,7 +22,7 @@ export function McpTab() {
     apiFetch('/api/settings/mcp-servers', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setServers(d.servers ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   useEffect(() => {

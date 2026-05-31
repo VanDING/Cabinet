@@ -34,7 +34,7 @@ export function ActiveWorkflowsModal({ onClose }: Props) {
       .then((data) => {
         if (data.workflows) setWorkflows(data.workflows);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 

@@ -19,7 +19,7 @@ export function ApiSwitcher() {
         .then((d) => {
           if (d.keys) setKeys(d.keys);
         })
-        .catch(() => {});
+        .catch((err) => { console.warn('Operation failed', err); });
     };
     fetchKeys();
     window.addEventListener('ws:apikeys_changed', fetchKeys);

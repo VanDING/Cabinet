@@ -36,7 +36,7 @@ decisionsRouter.get('/:id', async (c) => {
 
   // Trigger background analysis if missing (non-blocking)
   const analysisService = new DecisionAnalysisService(getServerContext());
-  analysisService.ensureAnalysis(decision.id).catch(() => {});
+  analysisService.ensureAnalysis(decision.id).catch((err) => { console.warn('Operation failed', err); });
 
   return c.json({ decision });
 });

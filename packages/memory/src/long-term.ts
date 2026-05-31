@@ -337,9 +337,7 @@ export class LongTermMemory {
 
     // Async accessCount update (best-effort)
     for (const entry of fused) {
-      this.incrementAccessCount(entry.id).catch(() => {
-        /* best-effort */
-      });
+      this.incrementAccessCount(entry.id).catch((err) => { console.warn('Operation failed', err); });
     }
 
     return fused;

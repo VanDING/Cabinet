@@ -16,7 +16,7 @@ export function AuditTab() {
     apiFetch(`/api/audit?${params}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setEntries(d.entries ?? []))
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   };
 
