@@ -97,36 +97,51 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'workflow_node_types',
     topic: 'Workflow 节点类型',
     category: 'capability',
-    version: 2,
+    version: 3,
     content: `## Workflow 支持的节点类型
-Workflow 由节点（node）和边（edge）组成 DAG。节点类型必须是以下之一，不能使用自定义类型：
+Workflow 由节点（node）和边（edge）组成 DAG。节点类型必须是以下之一，不能使用自定义类型。
 
 ### 流程控制（7 种）
 - **start** — 流程起点
 - **end** — 流程终点
-- **ifElse** — 条件分支，根据 branches 配置或 loopCondition 决定走哪条边
-- **loop** — 循环执行，支持 count/condition 两种模式，children 内为循环体
-- **parallel** — 并行分支，同时执行多个下游节点
-- **merge** — 合并多个上游分支的输出（object/array/concat/firstNotNull）
+- **ifElse** — 条件分支。使用 \`branches\` 数组，每个分支包含 \`label\`、\`priority\` 和 \`conditions\`（条件数组，每个条件有 \`field\`、\`operator\`、\`value\`、\`logic\` AND | OR）。匹配第一个满足所有条件的分支。回退：\`defaultBranch\` 或 legacy \`loopCondition\` 表达式。
+- **loop** — 循环执行。配置：\`loopType\`: count | condition；\`loopCount\`（count 模式时的次数）；\`loopCondition\`（condition 模式时的表达式）；\`loopMaxIterations\`（安全上限，默认 1000）；\`loopOutputMode\`: array | last | merge（控制迭代结果收集方式）。循环体为 children 内的节点。
+- **parallel** — 并行分支，同时执行多个下游节点。\`failStrategy\`: failAll（任一失败则抛错） | continue（收集全部结果）。\`waitStrategy\` 字段已预留但未生效。
+- **merge** — 合并多个上游分支的输出。\`mergeStrategy\`: object（默认，以输入节点 id 为 key） | array（值为数组）。\`concat\` 和 \`firstNotNull\` 已预留但尚未实现。
 - **pass** — 透传第一个上游节点的输出
 
 ### 执行容器（1 种）
-- **agentGroup** — Agent 执行组。内部的 llm/skill/tool 节点由同一个 AgentLoop 执行，保持上下文连贯。通过 role 字段指定 Agent 角色名，persistent 控制是否跨组保留上下文。
+- **agentGroup** — Agent 执行组。内部的 llm/skill/tool 节点由同一个 AgentLoop 执行，保持上下文连贯。
+  - \`role\`（必填）：Agent 角色名，如 secretary、organize。
+  - \`persistent\`（默认 true）：是否跨组保留上下文。
+  - \`systemPrompt\`：覆盖该角色的默认 system prompt。
+  - \`model\`：覆盖模型选择。
+  - \`allowedTools\`：限制该组可使用的工具列表。
 
 ### 执行节点（5 种）
-- **llm** — 直接调用 LLM 生成内容。prompt 字段传入提示词
-- **skill** — 调用已注册的技能（Skill）。skillId 指定技能名
-- **tool** — 调用单个工具。toolId 指定工具名，inputMapping 映射参数
-- **code** — 执行一段代码。code 字段传入代码字符串，codeTimeout 控制超时
-- **workflow** — 调用子工作流。workflowId 指定目标工作流
+- **llm** — 直接调用 LLM 生成内容。
+  - \`prompt\`：提示词（必填）。
+  - \`temperature\`、\`maxTokens\`、\`outputFormat\`（text | json | markdown）：可选，当前引擎已预留但未读取。
+- **skill** — 调用已注册的技能。\`skillId\` 指定技能名。\`inputMapping\` 映射参数。
+- **tool** — 调用单个工具。\`toolId\` 指定工具名。\`inputMapping\` 映射参数；值以 \`{{\` 开头时会被解析为变量引用（如 \`"{{nodeId.output}}"\`）。
+- **code** — 执行一段代码。\`code\` 字段传入代码字符串，\`codeTimeout\` 控制超时（默认 5000ms）。
+- **workflow** — 调用子工作流。\`workflowId\` 指定目标工作流。
 
 ### AI 节点（2 种）
-- **intentClassify** — 意图分类。intents 定义候选意图，输出匹配的标签用于分支路由
-- **knowledgeBase** — 知识库检索。kbId/queryTemplate/topK 配置检索参数
+- **intentClassify** — 意图分类。
+  - \`intents\`：候选意图数组，每项含 \`name\`、\`description\`、\`examples\`。
+  - \`intentThreshold\`：最低置信度阈值。
+  - 输出匹配的标签，通过边 label 路由到对应分支。
+- **knowledgeBase** — 知识库检索。
+  - \`kbId\`、\`queryTemplate\`、\`topK\`、\`scoreThreshold\`。
 
 ### Human-in-the-loop（2 种）
-- **approval** — 暂停流程，等待用户审批。审批通过后经 approval polling 恢复执行
-- **human** — 暂停流程，等待用户输入任务结果
+- **approval** — 暂停流程，等待用户审批。
+  - \`approvalTitle\`、\`options\`（选项数组）。
+  - 审批通过后经 continueRun 恢复执行。
+- **human** — 暂停流程，等待用户输入任务结果。
+  - \`humanDeadline\`：截止日期。
+  - 完成后经 continueRun 恢复执行。
 
 ### 旧名称映射（向后兼容）
 旧版 steps 格式中的部分名称已更改：aiAgent → agentGroup, llmCall → llm, condition → ifElse, humanApproval → approval。

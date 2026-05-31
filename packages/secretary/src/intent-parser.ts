@@ -112,11 +112,6 @@ const INTENT_EXAMPLES: IntentExample[] = [
     excludeWords: [],
   },
   {
-    intent: 'review_request',
-    examples: ['审查代码', '检查质量', 'review一下', '复核结果', '审核方案', '评估一下', '把关'],
-    excludeWords: ['不要审查', '不用review', '别检查'],
-  },
-  {
     intent: 'schedule_request',
     examples: [
       '定时任务',
@@ -278,9 +273,6 @@ export class IntentParser {
       '所以',
       '还有吗',
       '然后呢',
-      'more',
-      'and',
-      'also',
     ];
     // startsWith gives stronger signal, even on longer messages
     const startsWithFollowUp = followUpPatterns.some((p) => trimmed.startsWith(p));
@@ -363,7 +355,20 @@ export class IntentParser {
         lower.includes('分析') ||
         lower.includes('会议') ||
         lower.includes('咨询'));
-    if ((hasOrganizeMeeting || hasAdvisorIntent) && !this.hasNegation(lower, 'meeting_request')) {
+    // Exclude messages that also contain design/architecture keywords (should go to organize)
+    const hasDesignContext =
+      lower.includes('系统') ||
+      lower.includes('流程') ||
+      lower.includes('agent') ||
+      lower.includes('工作流') ||
+      lower.includes('自动化') ||
+      lower.includes('架构') ||
+      lower.includes('方案');
+    if (
+      (hasOrganizeMeeting || hasAdvisorIntent) &&
+      !hasDesignContext &&
+      !this.hasNegation(lower, 'meeting_request')
+    ) {
       return {
         kind: 'meeting_request',
         topic: message,

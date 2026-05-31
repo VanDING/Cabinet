@@ -7,7 +7,7 @@ export const WORKFLOW_DESIGNER_SKILL: SkillEntry = {
   description:
     'Design and modify Cabinet workflows. Guides step-by-step workflow creation, agent assignment, and validation. Use when the user wants to create, edit, or review a multi-step automated process.',
   kind: 'prompt',
-  version: 1,
+  version: 2,
   status: 'active',
   promptTemplate: `## Workflow Designer Skill
 
@@ -16,10 +16,17 @@ You are using the Workflow Designer skill. Help the user design and modify Cabin
 ### Quick Reference
 - **Node types**: start | end | agentGroup | llm | skill | tool | code | workflow | ifElse | loop | parallel | merge | pass | intentClassify | knowledgeBase | approval | human
 - **Connections**: Steps connect via \`input.from\`: \`"trigger"\` (first step) or another step id.
-- **AgentGroup**: Use \`agentGroup\` to wrap consecutive llm/skill/tool nodes that share the same agent context. The agentLoop persists inside the group.
-- **Conditions**: \`ifElse\` nodes use \`branches\` with \`field\`, \`operator\`, \`value\` conditions, or legacy \`loopCondition\` expression.
-- **Parallel**: \`parallel\` node executes all downstream branches concurrently. \`failStrategy\`: failAll | continue.
-- **Approval**: \`approval\` node pauses for human decision. Server polls every 30s to auto-resume.
+- **AgentGroup**: Container node. Set \`role\` (required) to specify the agent name. Optionally override with \`systemPrompt\`, \`model\`, \`allowedTools\`. Set \`persistent: true\` (default) to keep context across the group. Child nodes (llm/skill/tool) run inside this group and share the same AgentLoop.
+- **LLM**: Set \`prompt\` for the instruction. Optional: \`temperature\`, \`maxTokens\`, \`outputFormat\` (text | json | markdown).
+- **Skill / Tool**: Set \`skillId\` or \`toolId\`. Use \`inputMapping\` to map params. Values starting with \`{{\` are resolved as variables from previous node outputs (e.g., \`"{{previousNodeId.output}}"\`).
+- **Conditions**: \`ifElse\` nodes use \`branches\` with \`field\`, \`operator\`, \`value\`, \`logic\` (AND | OR) conditions. Each branch has a \`label\` and \`priority\`. Fallback: \`defaultBranch\` or legacy \`loopCondition\` expression.
+- **Loop**: Set \`loopType\`: \`count\` (use \`loopCount\`) or \`condition\` (use \`loopCondition\`). Set \`loopMaxIterations\` (default 1000) as a safety cap. Set \`loopOutputMode\`: \`array\` | \`last\` | \`merge\` to control how iteration results are collected.
+- **Parallel**: \`parallel\` node executes all downstream branches concurrently. \`failStrategy\`: \`failAll\` (throw if any branch fails) | \`continue\` (collect results regardless).
+- **Merge**: \`mergeStrategy\`: \`object\` (default, keyed by input node id) | \`array\` (values as array). Input nodes feed into the merge via edges.
+- **Intent Classify**: Define \`intents\` array with \`name\`, \`description\`, \`examples\`. Set \`intentThreshold\` for minimum confidence. Routes to the child branch whose edge label matches the matched intent name.
+- **Knowledge Base**: Set \`kbId\`, \`queryTemplate\`, \`topK\`, \`scoreThreshold\`.
+- **Approval**: Set \`approvalTitle\` and \`options\` array. Pauses for human decision; resumes via \`continueRun\`.
+- **Human**: Set \`humanDeadline\`. Pauses for human input; resumes via \`continueRun\`.
 - **Capabilities**: Declared at workflow definition level (not per step) via \`capabilities\` field — files.read/write, web.fetch/http, shell, knowledge.search/index, evaluation.
 - **Cron**: Workflows support \`cronExpression\` for scheduled execution.
 
@@ -76,8 +83,13 @@ Define the core properties:
 - **Description**: one sentence explaining what it does.
 - **System prompt**: detailed instructions for the agent. Include its role, rules, and output format. 3-5 paragraphs max.
 - **Model Tier**: recommend fast_execution for lightweight tasks, deep_reasoning for complex ones.
-- **Tools**: which cabinet tools should it have access to? Start with the essentials, not everything.
-  - Note: skill tools appear as \`use_skill__{skillName}\` in the tool list. If this agent needs to invoke a skill, include the corresponding \`use_skill__xxx\` entry.
+- **Tools**: \`allowedTools\` — a list of tool names this agent is permitted to use.
+  - **This list must be derived from the agent's responsibilities defined in the design phase.** Do not guess. If you cannot determine the exact tools needed, return to the design phase and refine the agent's responsibility definition.
+  - Use \`list_agents\` to inspect existing agents with similar roles (e.g., secretary, meeting_chair) and study their \`allowedTools\` as a reference template.
+  - For each capability the agent must fulfill, identify which tools are required. Include only those tools — no more, no less.
+  - \`allowedTools\` must be a **string array**, e.g., \`["read_file", "write_file", "search_memory"]\`. Never pass a comma-separated string.
+  - Skill tools appear as \`use_skill__{skillName}\` in the tool list. If this agent needs to invoke skills, include the corresponding \`use_skill__xxx\` entries.
+  - **Empty array \`[]\` grants access to all tools.** Only use this for general-purpose coordinator agents (like Secretary) whose responsibilities span the entire system. For specialized agents, always specify a restricted list.
 
 **Step 3: Advanced configuration (optional)**
 Ask the user: "Do you want to adjust any advanced settings? (say 'default' to skip)"

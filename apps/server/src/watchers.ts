@@ -257,7 +257,9 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
             existing.description !== String(agentCard.description ?? '') ||
             existing.systemPrompt !==
               String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
-            existing.modelTier !== String(agentCard.modelTier ?? 'default');
+            existing.modelTier !== String(agentCard.modelTier ?? 'default') ||
+            JSON.stringify((existing.allowedTools ?? []).slice().sort()) !==
+              JSON.stringify((Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []).slice().sort());
 
           if (changed) {
             deps.agentRegistry.update(name, {

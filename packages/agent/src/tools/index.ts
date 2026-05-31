@@ -837,7 +837,16 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
         const modelTier = (args.modelTier as string) || 'default';
         const temperature = (args.temperature as number) ?? 0.3;
         const maxResponseTokens = (args.maxResponseTokens as number) ?? 4000;
-        const allowedTools = (args.allowedTools as string[]) ?? [];
+        const rawAllowedTools = args.allowedTools;
+        if (rawAllowedTools !== undefined && !Array.isArray(rawAllowedTools)) {
+          return { error: 'allowedTools must be an array of strings, e.g., ["read_file", "write_file"]. Got: ' + typeof rawAllowedTools };
+        }
+        const allowedTools = (rawAllowedTools as string[]) ?? [];
+        for (let i = 0; i < allowedTools.length; i++) {
+          if (typeof allowedTools[i] !== 'string') {
+            return { error: `allowedTools[${i}] must be a string. Got: ${typeof allowedTools[i]}` };
+          }
+        }
         const contextBudget = (args.contextBudget as number) ?? 0.3;
 
         if (!name) return { error: 'name is required' };
