@@ -69,7 +69,7 @@ export function CostChart() {
 
   const chartData = useMemo(() => {
     return history.slice(-7).map((h) => ({
-      date: new Date(h.date).toLocaleDateString(undefined, { weekday: 'short' }),
+      date: new Date(h.date).toLocaleDateString('en-US', { weekday: 'short' }),
       cost: h.cost,
       tokens: h.tokens,
     }));
