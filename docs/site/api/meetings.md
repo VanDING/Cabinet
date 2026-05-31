@@ -1,6 +1,6 @@
 # Meetings API
 
-Multi-agent deliberation meetings with parallel reasoning and cross-validation.
+Meetings are structured multi-agent deliberations with cost estimation, parallel reasoning, and cross-validation.
 
 ## Endpoints
 
@@ -8,56 +8,135 @@ Multi-agent deliberation meetings with parallel reasoning and cross-validation.
 
 List recent meetings.
 
-**Query params**: `projectId` (default: `"default"`)
+**Query params**:
+
+- `projectId` — Filter by project
+- `limit` — Max results (default: 20, max: 100)
 
 **Response**:
 
 ```json
 {
-  "meetings": [{ "id": "meeting_...", "topic": "...", "status": "completed" }]
+  "meetings": [
+    {
+      "id": "del_1716200000000",
+      "projectId": "proj-1",
+      "meetingId": "meeting_1716200000000",
+      "title": "Q3 Market Entry Strategy",
+      "tags": ["strategy", "market"],
+      "createdAt": "2026-05-20T10:00:00Z"
+    }
+  ]
 }
 ```
 
+> **Note**: Meetings are stored as deliverables of type `meeting_report`. The `meetingId` links to the original session.
+
 ### `POST /api/meetings`
 
-Create a new multi-agent meeting.
+Create and run a multi-agent meeting.
 
-**Body**:
+**Request**:
 
 ```json
 {
   "topic": "Q3 Market Entry Strategy",
-  "advisorIds": ["a1", "a2"],
-  "projectId": "proj-1"
+  "advisorIds": ["market_analyst", "risk_manager", "finance_advisor"],
+  "projectId": "proj-1",
+  "context": "We have completed Q2 research on EU consumer behavior...",
+  "maxRounds": 3
 }
 ```
+
+| Field | Type | Required | Description |
+| :---- | :--- | :------- | :---------- |
+| `topic` | string | Yes | Meeting topic |
+| `advisorIds` | string[] | Yes | Agent roles to invite as advisors |
+| `projectId` | string | No | Project scope |
+| `context` | string | No | Background information |
+| `maxRounds` | number | No | Debate rounds (default: 3, hard max: 3) |
 
 **Response**:
 
 ```json
 {
-  "meetingId": "meeting_...",
+  "meetingId": "meeting_1716200000000",
   "estimatedCost": 0.15,
-  "synthesis": "...",
+  "actualCost": 0.18,
+  "synthesis": "Consensus: Enter Germany and France first...",
   "perspectives": [
-    { "advisor": "Market Analyst", "role": "Analyst", "content": "..." },
-    { "advisor": "Risk Manager", "role": "Risk", "content": "..." }
+    {
+      "advisor": "Market Analyst",
+      "role": "market_analyst",
+      "content": "Germany offers the highest addressable market..."
+    },
+    {
+      "advisor": "Risk Manager",
+      "role": "risk_manager",
+      "content": "Regulatory risk in France is manageable if..."
+    }
   ],
   "crossValidation": {
-    "agreements": ["..."],
-    "disagreements": ["..."],
+    "agreements": ["Germany is the top priority", "Q4 timing is feasible"],
+    "disagreements": ["France vs Spain as second market"],
     "contradictions": [],
-    "gaps": ["..."],
+    "gaps": ["Local partnership strategy undefined"],
     "coherenceScore": 0.72
-  }
+  },
+  "decisionId": "dec_1716200000001"
+}
+```
+
+### `GET /api/meetings/:id`
+
+Retrieve a meeting report.
+
+**Response**:
+
+```json
+{
+  "id": "del_1716200000000",
+  "meetingId": "meeting_1716200000000",
+  "title": "Q3 Market Entry Strategy",
+  "content": "Full synthesis text...",
+  "tags": ["strategy", "market"],
+  "metadata": {
+    "advisorCount": 3,
+    "rounds": 2,
+    "coherenceScore": 0.72,
+    "decisionId": "dec_1716200000001"
+  },
+  "createdAt": "2026-05-20T10:00:00Z"
 }
 ```
 
 ## Meeting Flow
 
-1. **Cost Estimation** — pre-meeting estimate shown to Captain
-2. **Parallel Reasoning** — all advisors reason independently
-3. **Debate Rounds** — structured multi-round debate protocol
-4. **Cross Validation** — detect agreements, disagreements, contradictions, gaps
-5. **Synthesis** — chair produces final recommendation
-6. **Decision Extraction** — actionable decisions auto-extracted when possible
+1. **Cost Estimation** — Before execution, the system estimates token usage based on advisor count and topic complexity. If the estimate exceeds ¥0.50, Captain confirmation is required.
+2. **Parallel Reasoning** — Each advisor receives the topic and context, then reasons independently.
+3. **Debate Protocol** — Advisors share perspectives across rounds. Early termination occurs if `coherenceScore` exceeds 0.80.
+4. **Cross-Validation** — A reviewer agent compares outputs, detecting agreements, disagreements, contradictions, and gaps.
+5. **Synthesis** — The Chair produces a final recommendation.
+6. **Decision Extraction** — If the meeting yields a clear actionable decision, it is auto-extracted and sent to the DecisionService for L0-L3 classification.
+
+## Cost Controls
+
+| Parameter | Default | Description |
+| :-------- | :------ | :---------- |
+| Max advisors | 5 | Hard limit on parallel agents |
+| Max rounds | 3 | Hard limit on debate iterations |
+| Tokens per speech | 4,096 | Maximum per-advisor output |
+| Budget threshold | ¥0.50 | Confirmation required above this |
+| Rumination threshold | 0.85 | Semantic similarity limit for duplicate arguments |
+
+## Meeting vs Chat
+
+| | Meeting | Chat |
+| :- | :------ | :--- |
+| **Cost** | Pre-estimated and capped | Per-message, visible in real time |
+| **Structure** | Bounded rounds, formal synthesis | Open-ended conversation |
+| **Output** | Consensus + minority report + decision card | Direct answer or tool results |
+| **Agents** | Multiple advisors + chair | Secretary + routed specialist |
+| **Use case** | Complex trade-off analysis | Quick questions and tasks |
+
+Use meetings when the problem has multiple dimensions and you want structured disagreement. Use chat for everything else.
