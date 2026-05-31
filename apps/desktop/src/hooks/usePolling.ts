@@ -1,27 +1,56 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 export function usePolling<T>(
-  fetchFn: () => Promise<T>,
-  intervalMs: number = 30000,
-): { data: T | null; loading: boolean; refresh: () => void } {
+  fetcher: () => Promise<T>,
+  interval: number,
+): { data: T | null; error: Error | null; loading: boolean; refresh: () => void } {
   const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
-  const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
+  const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetch = useCallback(() => {
-    fetchFnRef
-      .current()
-      .then(setData)
-      .catch((err) => { console.warn('Operation failed', err); })
-      .finally(() => setLoading(false));
-  }, []);
+  const tick = useCallback(async () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    try {
+      const result = await fetcher();
+      if (ctrl.signal.aborted) return;
+      setData(result);
+      setError(null);
+    } catch (err) {
+      if (ctrl.signal.aborted) return;
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetcher]);
 
   useEffect(() => {
-    fetch();
-    const id = setInterval(fetch, intervalMs);
-    return () => clearInterval(id);
-  }, [fetch, intervalMs]);
+    let visible = true;
 
-  return { data, loading, refresh: fetch };
+    const run = () => {
+      if (!visible) return;
+      tick();
+      timerRef.current = setTimeout(run, interval);
+    };
+
+    run();
+
+    const onVis = () => {
+      visible = !document.hidden;
+      if (visible) tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      abortRef.current?.abort();
+    };
+  }, [tick, interval]);
+
+  return { data, error, loading, refresh: tick };
 }

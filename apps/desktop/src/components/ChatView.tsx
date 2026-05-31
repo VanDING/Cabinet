@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
-import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
+import type { ChatMessage, AttachedFile, Session } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
 import { MeetingCard } from './MeetingCard';
 import { WorkflowRunCard } from './WorkflowRunCard';
 import { TaskPanel } from './TaskPanel';
+import { SubAgentWindow } from './SubAgentWindow';
 import { SubAgentCard, DecryptedText } from '@cabinet/ui';
+import type { AgentEvent } from '../types/agent-events';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -19,6 +21,11 @@ interface Props {
   onRegenerate?: (messageId: string) => void;
   onForkMessage?: (messageId: string) => void;
   onContinue?: (messageId: string) => void;
+  childSessions?: Session[];
+  onSubAgentClick?: (sessionId: string) => void;
+  onSubAgentConfirm?: (sessionId: string) => void;
+  onSubAgentRegenerate?: (sessionId: string) => void;
+  onResetInputTarget?: () => void;
 }
 
 function escapeHtml(text: string): string {
@@ -214,6 +221,11 @@ export const ChatView = memo(function ChatView({
   onRegenerate,
   onForkMessage,
   onContinue,
+  childSessions,
+  onSubAgentClick,
+  onSubAgentConfirm,
+  onSubAgentRegenerate,
+  onResetInputTarget,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -241,7 +253,15 @@ export const ChatView = memo(function ChatView({
   }, [messages]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col"
+      onClick={(e) => {
+        // Only reset if clicking the background (not a message or sub-agent window)
+        if (e.currentTarget === e.target) {
+          onResetInputTarget?.();
+        }
+      }}
+    >
       <div className="shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5">
         <h2 className="truncate text-sm font-medium text-content-secondary">
           {sessionTitle}
@@ -304,6 +324,27 @@ export const ChatView = memo(function ChatView({
             onContinue={onContinue}
           />
         ))}
+
+        {childSessions && childSessions.length > 0 && (
+          <div className="space-y-2">
+            {childSessions.map((child) => (
+              <SubAgentWindow
+                key={child.id}
+                sessionId={child.id}
+                agentType={child.agentType ?? 'unknown'}
+                status={child.status ?? 'active'}
+                events={(child.events ?? []) as import('../types/agent-events').AgentEvent[]}
+                onClick={() => onSubAgentClick?.(child.id)}
+                onConfirm={
+                  child.status === 'active' ? () => onSubAgentConfirm?.(child.id) : undefined
+                }
+                onRegenerate={
+                  child.status === 'active' ? () => onSubAgentRegenerate?.(child.id) : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
 
         {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
           <div className="flex gap-3">

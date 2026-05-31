@@ -1,18 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
-import { getBufferedEvents } from '../../utils/eventBuffer.js';
+import { useCallback } from 'react';
 import { FileText } from 'lucide-react';
-
-interface Deliverable {
-  id: string;
-  projectId: string;
-  title: string;
-  type: string;
-  filePath?: string;
-  meetingId?: string;
-  tags: string[];
-  createdAt: string;
-}
+import { useDeliverables } from '../../hooks/useDeliverables';
+import { useEvent } from '../../hooks/useEvent';
 
 interface Props {
   projectId?: string;
@@ -20,19 +9,14 @@ interface Props {
 }
 
 export function Deliverables({ projectId, onExpand }: Props) {
-  const [items, setItems] = useState<Deliverable[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: items = [], isLoading, refetch } = useDeliverables(projectId);
 
-  const fetchDeliverables = useCallback(() => {
-    const url = projectId ? `/api/projects/${projectId}/deliverables` : '/api/deliverables';
-    apiFetch(url, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((data) => setItems((data.deliverables ?? []).slice(0, 5)))
-      .catch((err) => { console.warn('Operation failed', err); })
-      .finally(() => setLoading(false));
-  }, [projectId]);
+  useEvent('deliverable_created', () => refetch());
+  useEvent('workflow_completed', () => refetch());
+  useEvent('meeting_created', () => refetch());
+  useEvent('task_completed', () => refetch());
 
-  const handleOpenDeliverable = (d: Deliverable) => {
+  const handleOpenDeliverable = useCallback((d: (typeof items)[0]) => {
     if (d.filePath) {
       window.dispatchEvent(
         new CustomEvent('open-file-viewer', {
@@ -56,33 +40,9 @@ export function Deliverables({ projectId, onExpand }: Props) {
         }),
       );
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchDeliverables();
-  }, [fetchDeliverables]);
-
-  useEffect(() => {
-    const handler = () => fetchDeliverables();
-    window.addEventListener('ws:deliverable_created', handler);
-    window.addEventListener('ws:workflow_completed', handler);
-    window.addEventListener('ws:meeting_created', handler);
-    window.addEventListener('ws:task_completed', handler);
-
-    const buffered = getBufferedEvents();
-    const hasRelevant = buffered.some((e) =>
-      ['deliverable_created', 'workflow_completed', 'meeting_created', 'task_completed'].includes(e.type),
-    );
-    if (hasRelevant) fetchDeliverables();
-
-    return () => {
-      window.removeEventListener('ws:deliverable_created', handler);
-      window.removeEventListener('ws:workflow_completed', handler);
-      window.removeEventListener('ws:meeting_created', handler);
-      window.removeEventListener('ws:task_completed', handler);
-    };
-  }, [fetchDeliverables]);
-
+  const displayItems = items.slice(0, 5);
   const text = 'text-content-primary';
   const sub = 'text-content-tertiary';
 
@@ -90,15 +50,15 @@ export function Deliverables({ projectId, onExpand }: Props) {
     <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
         <span className="text-sm font-medium text-content-secondary">Deliverables</span>
-        {items.length > 0 && (
+        {displayItems.length > 0 && (
           <span className="text-xs text-accent hover:underline">View all</span>
         )}
       </div>
-      {loading ? (
+      {isLoading ? (
         <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           Loading...
         </div>
-      ) : items.length === 0 ? (
+      ) : displayItems.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
           No deliverables yet
           <span className="mt-1 block text-[10px] text-content-tertiary">
@@ -107,7 +67,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
         </div>
       ) : (
         <div className="flex-1 space-y-1.5 overflow-auto">
-          {items.map((d) => (
+          {displayItems.map((d) => (
             <div
               key={d.id}
               className={`flex cursor-pointer items-center gap-2 text-xs ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
