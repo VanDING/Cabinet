@@ -34,7 +34,13 @@ export function createStandardToolExecutor(
 
   if (allowedTools && allowedTools.length > 0) {
     for (const toolName of executor.listTools()) {
-      if (!allowedTools.includes(toolName)) {
+      const isPermitted = allowedTools.some((at) => {
+        if (at === toolName) return true;
+        if (at.endsWith('*') && toolName.startsWith(at.slice(0, -1))) return true;
+        if (at === 'use_skill' && toolName.startsWith('use_skill__')) return true;
+        return false;
+      });
+      if (!isPermitted) {
         executor.unregister(toolName);
       }
     }

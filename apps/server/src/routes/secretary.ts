@@ -17,6 +17,8 @@ import {
   IntentParser,
   GreetingService,
   type FeedbackStore,
+  type ParsedIntent,
+  type AgentRouteResult,
 } from '@cabinet/secretary';
 import {
   buildChairPrompt,
@@ -1830,6 +1832,7 @@ const agentLoopCache = new Map<string, AgentLoop>();
 const MAX_CACHE_SIZE = 100;
 // Per-session secretary agents (keyed by sessionId)
 const secretaryAgentCache = new Map<string, SecretaryAgent>();
+const secretaryAgentLoopCache = new Map<string, AgentLoop>();
 // Reviewer AgentLoop cache (keyed by delegation tier)
 const reviewerLoopCache = new Map<string, AgentLoop>();
 const REVIEWER_CACHE_SIZE = 20;
@@ -2410,7 +2413,7 @@ function getOrCreateAgent(
   const cacheKey = `${sessionId}:${projectId}`;
   const cached = secretaryAgentCache.get(cacheKey);
   if (cached) {
-    return { agent: cached };
+    return { agent: cached, agentLoop: secretaryAgentLoopCache.get(cacheKey) ?? null };
   }
 
   // Secretary's own executor (all tools)
@@ -2448,11 +2451,16 @@ function getOrCreateAgent(
       sessionId,
       projectId,
       captainId,
-      systemPrompt: buildSystemPrompt(
-        'secretary',
-        secretaryRole?.systemPrompt ?? '',
-        projectRootPath,
-      ),
+      systemPrompt: (() => {
+        const base = buildSystemPrompt(
+          'secretary',
+          secretaryRole?.systemPrompt ?? '',
+          projectRootPath,
+        );
+        const skillList = ctx.skillRegistry.describeForRouting();
+        if (!skillList) return base;
+        return `${base}\n\n## Available Skills\nYou can invoke any of the following skills using the /skillName command or the use_skill tool:\n${skillList}`;
+      })(),
       model: model ?? resolveModel(secretaryRole ?? { modelTier: 'default' }),
       maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,
@@ -2558,8 +2566,11 @@ function getOrCreateAgent(
     if (firstKey) secretaryAgentCache.delete(firstKey);
   }
   secretaryAgentCache.set(cacheKey, agent);
+  if (secretaryLoop) {
+    secretaryAgentLoopCache.set(cacheKey, secretaryLoop);
+  }
 
-  return { agent };
+  return { agent, agentLoop: secretaryLoop };
 }
 
 const fileSchema = z
@@ -2582,6 +2593,9 @@ const chatSchema = z.object({
   dispatchMode: z.enum(['single', 'pipeline', 'parallel']).optional(),
   thinkingBudget: z.number().min(1024).max(128000).nullable().optional(),
   targetAgent: z.string().optional(),
+  type: z.enum(['chat', 'skill_invoke']).optional().default('chat'),
+  skillName: z.string().optional(),
+  skillArgs: z.string().optional(),
 });
 
 secretaryRouter.post('/chat', async (c) => {
@@ -2660,7 +2674,7 @@ secretaryRouter.post('/chat', async (c) => {
   }
 
   try {
-    const { agent } = getOrCreateAgent(
+    const { agent, agentLoop } = getOrCreateAgent(
       sessionId,
       projectId || 'global',
       captainId,
@@ -2693,14 +2707,53 @@ secretaryRouter.post('/chat', async (c) => {
     }
 
     // Direct skill invocation: if message starts with /skillName, load and inject skill prompt
-    const skillMatch = augmentedMessage.trim().match(/^\/([a-zA-Z0-9_-]+)\b/);
-    if (skillMatch) {
-      const skillName = skillMatch[1];
-      if (!skillName) return;
+    let skillInvokeContext: { skillName: string; args: string } | null = null;
+    if (parsed.data.type === 'skill_invoke' && parsed.data.skillName) {
+      const skillName = parsed.data.skillName;
+      const skillArgs = parsed.data.skillArgs ?? '';
       const skill = ctx.skillRegistry.load(skillName);
       if (skill) {
-        const skillResult = await ctx.skillRegistry.executeSkill(skill, {});
-        augmentedMessage = `${skillResult.output}\n\n[User request]\n${augmentedMessage.slice(skillMatch[0].length).trim()}`;
+        const skillResult = await ctx.skillRegistry.executeSkill(skill, { arguments: skillArgs });
+        agentLoop?.setSkillContext(skillResult.output);
+        skillInvokeContext = { skillName, args: skillArgs };
+      } else {
+        return c.json({
+          sessionId,
+          projectId,
+          captainId,
+          response: `Skill not found: /${skillName}. Available skills: ${ctx.skillRegistry.listNames().join(', ')}`,
+          intent: { kind: 'unknown', raw: message },
+          mode: 'single',
+          dispatchMode: 'single',
+          model: model ?? 'claude-sonnet-4-6',
+          agentName: 'Secretary',
+        });
+      }
+    } else {
+      const skillMatch = augmentedMessage.trim().match(/^\/(\S+)/);
+      if (skillMatch) {
+        const skillName = skillMatch[1];
+        const skillArgs = augmentedMessage.slice(skillMatch[0].length).trim();
+        if (skillName) {
+          const skill = ctx.skillRegistry.load(skillName);
+          if (skill) {
+            const skillResult = await ctx.skillRegistry.executeSkill(skill, { arguments: skillArgs });
+            agentLoop?.setSkillContext(skillResult.output);
+            skillInvokeContext = { skillName, args: skillArgs };
+          } else {
+            return c.json({
+              sessionId,
+              projectId,
+              captainId,
+              response: `Skill not found: /${skillName}. Available skills: ${ctx.skillRegistry.listNames().join(', ')}`,
+              intent: { kind: 'unknown', raw: message },
+              mode: 'single',
+              dispatchMode: 'single',
+              model: model ?? 'claude-sonnet-4-6',
+              agentName: 'Secretary',
+            });
+          }
+        }
       }
     }
 
@@ -2923,89 +2976,103 @@ secretaryRouter.post('/chat', async (c) => {
 
                 let streamedContent = '';
 
-                const streamResult = await agent.handleMessageStreaming(
-                  sessionId,
-                  augmentedMessage,
-                  {
-                    onRoutingStart(targetAgent) {
-                      emit('routing_start', { targetAgent });
-                    },
-                    onChunk(content) {
-                      streamedContent += content;
-                      emit('chunk', { content });
-                    },
-                    onThinking(content) {
-                      emit('thinking', { content });
-                    },
-                    onThinkingDone() {
-                      emit('thinking_done', {});
-                    },
-                    onToolCall(name, args) {
-                      emit('tool_status', {
-                        message: `Using tool: ${name}...`,
-                        toolType: 'call',
-                        detail: { name, args },
-                      });
-                    },
-                    onToolResult(name, result) {
-                      emit('tool_status', {
-                        message: `Tool completed: ${name}`,
-                        toolType: 'result',
-                        detail: { name, result },
-                      });
-                    },
-                    onTaskUpdate(tasks) {
-                      emit('task_status', { tasks });
-                    },
-                    onSemanticTaskUpdate(tasks) {
-                      emit('semantic_task_status', { tasks });
-                    },
-                    onStepBudgetWarning(remaining, maxSteps) {
-                      emit('step_budget_warning', { remaining, maxSteps });
-                    },
-                    onUsage(usage) {
-                      ctx.costTracker.record(
-                        model ?? 'claude-sonnet-4-6',
-                        usage.promptTokens,
-                        usage.completionTokens,
-                      );
-                      emit('usage', {
-                        promptTokens: usage.promptTokens,
-                        completionTokens: usage.completionTokens,
-                      });
-                    },
-                    onSubAgentStart(agentName, taskDescription) {
-                      emit('sub_agent_start', { agentName, taskDescription });
-                    },
-                    onSubAgentToolCall(agentName, toolName, args) {
-                      emit('sub_agent_tool_call', { agentName, toolName, args });
-                    },
-                    onSubAgentThinking(agentName, content) {
-                      emit('sub_agent_thinking', { agentName, content });
-                    },
-                    onSubAgentDone(agentName, result) {
-                      emit('sub_agent_done', { agentName, result });
-                    },
-                    onSubAgentError(agentName, error) {
-                      emit('sub_agent_error', { agentName, error });
-                    },
-                    onDone(fullContent) {
-                      streamedContent = fullContent;
-                      // Done event is emitted after routing below
-                    },
-                    onQualityReview(result) {
-                      emit('quality_review', {
-                        pass: result.pass,
-                        score: result.score,
-                        issues: result.issues,
-                      });
-                      resolveQualityReview?.();
-                    },
-                    onError(error) {
-                      emit('error', { message: error });
-                    },
+                const streamingCb = {
+                  onRoutingStart(targetAgent: string) {
+                    emit('routing_start', { targetAgent });
                   },
-                );
+                  onChunk(content: string) {
+                    streamedContent += content;
+                    emit('chunk', { content });
+                  },
+                  onThinking(content: string) {
+                    emit('thinking', { content });
+                  },
+                  onThinkingDone() {
+                    emit('thinking_done', {});
+                  },
+                  onToolCall(name: string, args: Record<string, unknown>) {
+                    emit('tool_status', {
+                      message: `Using tool: ${name}...`,
+                      toolType: 'call',
+                      detail: { name, args },
+                    });
+                  },
+                  onToolResult(name: string, result: unknown) {
+                    emit('tool_status', {
+                      message: `Tool completed: ${name}`,
+                      toolType: 'result',
+                      detail: { name, result },
+                    });
+                  },
+                  onTaskUpdate(tasks: unknown[]) {
+                    emit('task_status', { tasks });
+                  },
+                  onSemanticTaskUpdate(tasks: unknown[]) {
+                    emit('semantic_task_status', { tasks });
+                  },
+                  onStepBudgetWarning(remaining: number, maxSteps: number) {
+                    emit('step_budget_warning', { remaining, maxSteps });
+                  },
+                  onUsage(usage: { promptTokens: number; completionTokens: number }) {
+                    ctx.costTracker.record(
+                      model ?? 'claude-sonnet-4-6',
+                      usage.promptTokens,
+                      usage.completionTokens,
+                    );
+                    emit('usage', {
+                      promptTokens: usage.promptTokens,
+                      completionTokens: usage.completionTokens,
+                    });
+                  },
+                  onSubAgentStart(agentName: string, taskDescription: string) {
+                    emit('sub_agent_start', { agentName, taskDescription });
+                  },
+                  onSubAgentToolCall(agentName: string, toolName: string, args: Record<string, unknown>) {
+                    emit('sub_agent_tool_call', { agentName, toolName, args });
+                  },
+                  onSubAgentThinking(agentName: string, content: string) {
+                    emit('sub_agent_thinking', { agentName, content });
+                  },
+                  onSubAgentDone(agentName: string, result: string) {
+                    emit('sub_agent_done', { agentName, result });
+                  },
+                  onSubAgentError(agentName: string, error: string) {
+                    emit('sub_agent_error', { agentName, error });
+                  },
+                  onDone(fullContent: string) {
+                    streamedContent = fullContent;
+                  },
+                  onQualityReview(result: { pass: boolean; score: number; issues: unknown[] }) {
+                    emit('quality_review', {
+                      pass: result.pass,
+                      score: result.score,
+                      issues: result.issues,
+                    });
+                    resolveQualityReview?.();
+                  },
+                  onError(error: string) {
+                    emit('error', { message: error });
+                  },
+                };
+
+                let streamResult: { routeResult?: { targetAgent: string; confidence: number; reasoning: string }; response: string };
+                if (skillInvokeContext && agentLoop) {
+                  const result = await agentLoop.runStreaming(skillInvokeContext.args, streamingCb);
+                  streamResult = {
+                    response: result.content,
+                    routeResult: {
+                      targetAgent: 'secretary',
+                      confidence: 1,
+                      reasoning: `Direct skill invocation: ${skillInvokeContext.skillName}`,
+                    },
+                  };
+                } else {
+                  streamResult = await agent.handleMessageStreaming(
+                    sessionId,
+                    augmentedMessage,
+                    streamingCb,
+                  );
+                }
 
                 const targetAgent = streamResult.routeResult?.targetAgent ?? 'secretary';
                 const isRouted = targetAgent !== 'secretary';
@@ -3111,11 +3178,30 @@ secretaryRouter.post('/chat', async (c) => {
       }
 
       // ── Non-streaming single mode ──
-      const store = { result: null as MeetingResult | null };
-      const result = await meetingResultStore.run(store, () =>
-        agent.handleMessage(sessionId, augmentedMessage),
-      );
-      const meeting = store.result; // Capture any meeting created by tools
+      let result: { response: string; intent: ParsedIntent; routeResult?: AgentRouteResult; usage?: { promptTokens: number; completionTokens: number } };
+      let meeting: MeetingResult | null = null;
+      if (skillInvokeContext && agentLoop) {
+        ctx.sessionManager.addMessage(sessionId, 'user', message);
+        const loopResult = await agentLoop.run(skillInvokeContext.args);
+        ctx.sessionManager.addMessage(sessionId, 'assistant', loopResult.content);
+        result = {
+          response: loopResult.content,
+          intent: { kind: 'invoke_skill', skillName: skillInvokeContext.skillName, args: skillInvokeContext.args, raw: message } as ParsedIntent,
+          routeResult: {
+            targetAgent: 'secretary',
+            confidence: 1,
+            reasoning: `Direct skill invocation: ${skillInvokeContext.skillName}`,
+            intent: { kind: 'invoke_skill', skillName: skillInvokeContext.skillName, args: skillInvokeContext.args, raw: message } as ParsedIntent,
+          },
+          usage: loopResult.usage,
+        };
+      } else {
+        const store = { result: null as MeetingResult | null };
+        result = await meetingResultStore.run(store, () =>
+          agent.handleMessage(sessionId, augmentedMessage),
+        );
+        meeting = store.result;
+      }
 
       // Record cost if available
       if (result.usage) {
