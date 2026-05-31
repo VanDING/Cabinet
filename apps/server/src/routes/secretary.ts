@@ -2385,7 +2385,7 @@ function getOrCreateAgent(
     };
   }
 
-  const intentParser = new IntentParser(hasGateway ? ctx.gateway! : undefined);
+  const intentParser = ctx.intentParser ?? new IntentParser(hasGateway ? ctx.gateway! : undefined);
 
   // Initialize the router with agent descriptions and valid types (includes custom agents)
   const registry = getServerContext().agentRegistry;
@@ -3060,8 +3060,7 @@ secretaryRouter.post('/chat', async (c) => {
         agentName: 'Secretary',
       });
     } else {
-      const parser = new IntentParser();
-      const intent = parser.parse(message);
+      const intent = (ctx.intentParser ?? new IntentParser()).parse(message);
       ctx.sessionManager.addMessage(sessionId, 'user', message);
       const response = `[No API key] Intent: ${intent.kind}. Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env for LLM mode.`;
       ctx.sessionManager.addMessage(sessionId, 'assistant', response);

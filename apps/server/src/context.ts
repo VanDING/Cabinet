@@ -62,7 +62,7 @@ import {
   MemoryDecayService,
 } from '@cabinet/memory';
 import { SqliteEventStore } from '@cabinet/events';
-import { SessionManager } from '@cabinet/secretary';
+import { SessionManager, IntentParser } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
 import {
@@ -166,6 +166,8 @@ export interface ServerContext {
   memoryDecay: MemoryDecayService;
   // Subconscious loop
   subconsciousLoop: SubconsciousLoop;
+  // Intent parser (pre-created for fast routing)
+  intentParser?: import('@cabinet/secretary').IntentParser;
   // Infrastructure
   eventBus: import('@cabinet/events').EventBus;
   metrics: MetricsCollector;
@@ -2153,6 +2155,13 @@ export function getServerContext(): ServerContext {
     backupManager,
     shutdown,
   };
+
+  // Pre-create and warm up IntentParser so first request doesn't pay initialization cost
+  if (ctx) {
+    const parser = new IntentParser(ctx.gateway ?? undefined);
+    ctx.intentParser = parser;
+    void parser.warmupEmbeddings();
+  }
 
   return ctx;
 }
