@@ -74,7 +74,7 @@ export class SecretaryAgent {
     };
 
     // Route with conversation context for follow-up detection
-    const routeResult = await this.intentParser.routeToAgent(message, conversationContext);
+    const routeResult = await this.intentParser.routeToAgent(message, conversationContext, sessionId);
 
     // Update routing state
     await this.updateRoutingState(sessionId, routeResult, message);
@@ -177,7 +177,7 @@ export class SecretaryAgent {
       topicEmbedding: routingState?.topicEmbedding,
     };
 
-    const routeResult = await this.intentParser.routeToAgent(message, conversationContext);
+    const routeResult = await this.intentParser.routeToAgent(message, conversationContext, sessionId);
     await this.updateRoutingState(sessionId, routeResult, message);
 
     if (feedback === 'negative' && routingState?.lastRoute) {

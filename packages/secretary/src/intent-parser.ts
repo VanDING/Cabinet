@@ -188,7 +188,22 @@ export class IntentParser {
     new Map();
   private exampleEmbeddingsWarmed = false;
 
+  /** Per-session routing cache for short-circuit optimization. */
+  private sessionRoutingCache = new Map<
+    string,
+    { lastAgent: string; lastTimestamp: number; topicHash: string }
+  >();
+
   constructor(private readonly gateway?: LLMGateway) {}
+
+  private computeTopicHash(message: string): string {
+    const normalized = message.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80);
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) {
+      hash = ((hash << 5) - hash + normalized.charCodeAt(i)) | 0;
+    }
+    return String(hash);
+  }
 
   /** Set agent descriptions for routing (called by server layer). */
   setAgentDescriptions(desc: string): void {
@@ -576,7 +591,32 @@ Message: "${message}"`;
   async routeToAgent(
     message: string,
     conversationContext?: ConversationContext,
+    sessionId?: string,
   ): Promise<AgentRouteResult> {
+    // Short-circuit: if previous route was secretary and message looks like a continuation
+    if (sessionId) {
+      const cached = this.sessionRoutingCache.get(sessionId);
+      if (cached && cached.lastAgent === 'secretary') {
+        const noAgentMention = !message.includes('@');
+        const noSkillPrefix = !message.startsWith('/');
+        const withinWindow = Date.now() - cached.lastTimestamp < 5 * 60 * 1000;
+        const topicStable = this.computeTopicHash(message) === cached.topicHash;
+        if (noAgentMention && noSkillPrefix && withinWindow && topicStable) {
+          return {
+            targetAgent: 'secretary',
+            confidence: 0.95,
+            reasoning: 'Short-circuit: continuing with Secretary (no agent mention, no skill prefix, topic stable).',
+            intent: {
+              kind: 'follow_up',
+              previousKind: conversationContext?.lastIntent ?? 'unknown',
+              raw: message,
+            },
+            topicContinuity: true,
+          };
+        }
+      }
+    }
+
     // Ensure embeddings are warmed up
     await this.warmupEmbeddings();
 
@@ -724,6 +764,15 @@ Message: "${message}"`;
     if (best.score < 0.5) {
       result.suggestion =
         'The request is unclear. Try rephrasing with more specific keywords (e.g., "decide", "workflow", "review").';
+    }
+
+    // Update routing cache for short-circuit on next turn
+    if (sessionId) {
+      this.sessionRoutingCache.set(sessionId, {
+        lastAgent: result.targetAgent,
+        lastTimestamp: Date.now(),
+        topicHash: this.computeTopicHash(message),
+      });
     }
 
     return result;
