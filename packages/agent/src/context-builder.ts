@@ -63,7 +63,7 @@ export class ContextBuilder {
       timestamp: number;
     }
   >();
-  private readonly CONTEXT_CACHE_TTL_MS = 5_000;
+  private readonly CONTEXT_CACHE_TTL_MS = 60_000;
 
   constructor(private readonly memory: MemoryProvider) {}
 

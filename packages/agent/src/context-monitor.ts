@@ -77,11 +77,25 @@ function getEncoderName(model: string): TiktokenEncoding {
   return MODEL_TO_ENCODER[model] ?? 'cl100k_base';
 }
 
+const tokenEstimateCache = new Map<string, number>();
+const MAX_TOKEN_CACHE_SIZE = 200;
+
 function estimateTokens(text: string, model?: string): number {
   if (!text) return 0;
+  const cacheKey = (model ?? 'claude-sonnet-4-6') + ':' + text;
+  const cached = tokenEstimateCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
   const encoderName = getEncoderName(model ?? 'claude-sonnet-4-6');
   const enc = getCachedEncoder(encoderName);
-  return enc.encode(text).length;
+  const result = enc.encode(text).length;
+
+  if (tokenEstimateCache.size >= MAX_TOKEN_CACHE_SIZE) {
+    const firstKey = tokenEstimateCache.keys().next().value;
+    if (firstKey !== undefined) tokenEstimateCache.delete(firstKey);
+  }
+  tokenEstimateCache.set(cacheKey, result);
+  return result;
 }
 
 // ── Snapshot ───────────────────────────────────────────────────
