@@ -8,6 +8,7 @@ import {
   unlinkSync,
   readdirSync,
 } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -69,11 +70,23 @@ export class SessionManager {
   private readonly softLimit: number;
   private readonly hardLimit: number;
 
+  private pendingWrites = new Map<string, Session>();
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(maxTokens = 200_000) {
     this.maxTokens = maxTokens;
     this.softLimit = Math.floor(maxTokens * 0.6);
     this.hardLimit = Math.floor(maxTokens * 0.8);
     this.restoreSessions();
+  }
+
+  /** Flush pending writes and stop the background timer. */
+  async shutdown(): Promise<void> {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    await this.flush();
   }
 
   onSessionClose(cb: SessionCallback): void {
@@ -276,16 +289,43 @@ export class SessionManager {
     }
   }
 
-  /** Persist a session to ~/.cabinet/sessions/<id>.json */
+  /** Persist a session to ~/.cabinet/sessions/<id>.json (batched async). */
   private persist(session: Session): void {
+    this.pendingWrites.set(session.id, session);
+    this.scheduleFlush();
+  }
+
+  private scheduleFlush(): void {
+    if (this.flushTimer) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      void this.flush();
+    }, 500);
+  }
+
+  private async flush(): Promise<void> {
+    const batch = new Map(this.pendingWrites);
+    this.pendingWrites.clear();
+
     try {
       if (!existsSync(SESSIONS_DIR)) {
         mkdirSync(SESSIONS_DIR, { recursive: true });
       }
-      writeFileSync(this.sessionPath(session.id), JSON.stringify(session, null, 2), 'utf-8');
     } catch {
-      /* readonly filesystem — graceful degradation */
+      // readonly filesystem — skip batch
+      return;
     }
+
+    const promises: Promise<void>[] = [];
+    for (const [id, session] of batch) {
+      const path = this.sessionPath(id);
+      promises.push(
+        writeFile(path, JSON.stringify(session, null, 2), 'utf-8').catch((err) => {
+          console.warn(`Session persist failed for ${id}`, err);
+        }),
+      );
+    }
+    await Promise.all(promises);
   }
 
   /** Restore active sessions from ~/.cabinet/sessions/ on startup */

@@ -194,7 +194,14 @@ export class IntentParser {
     { lastAgent: string; lastTimestamp: number; topicHash: string }
   >();
 
-  constructor(private readonly gateway?: LLMGateway) {}
+  private model: string;
+
+  constructor(
+    private readonly gateway?: LLMGateway,
+    model?: string,
+  ) {
+    this.model = model ?? 'claude-sonnet-4-6';
+  }
 
   private computeTopicHash(message: string): string {
     const normalized = message.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80);
@@ -574,7 +581,7 @@ Respond with ONLY a JSON object:
 Message: "${message}"`;
 
       const response = await this.gateway.generateText({
-        model: 'claude-sonnet-4-6',
+        model: this.model,
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 400,
         temperature: 0.1,
@@ -834,7 +841,7 @@ Message: "${message}"`;
 
     try {
       const response = await this.gateway!.generateText({
-        model: 'claude-sonnet-4-6',
+        model: this.model,
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 300,
         temperature: 0.1,
