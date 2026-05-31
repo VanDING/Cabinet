@@ -184,6 +184,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       // Always use streaming for responsive chat
       const streamId = `a_${Date.now()}`;
       try {
+        // Detect skill invocation for structured payload
+        const skillInvokeMatch = message.trim().match(/^\/(\S+)/);
+        const isSkillInvoke = !!skillInvokeMatch;
+        const skillName = isSkillInvoke ? skillInvokeMatch[1] : undefined;
+        const skillArgs = isSkillInvoke ? message.trim().slice(skillInvokeMatch[0].length).trim() : undefined;
+
         const res = await apiFetch('/api/secretary/chat', {
           method: 'POST',
           headers: authJsonHeaders(),
@@ -197,6 +203,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
             ...(model ? { model } : {}),
             ...(activeAgent !== 'secretary' ? { targetAgent: activeAgent } : {}),
+            ...(isSkillInvoke
+              ? { type: 'skill_invoke', skillName, skillArgs }
+              : {}),
           }),
         });
 
