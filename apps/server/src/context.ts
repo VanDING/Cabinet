@@ -521,7 +521,7 @@ export function getServerContext(): ServerContext {
           promptTokens: r.prompt_tokens,
           completionTokens: r.completion_tokens,
           cachedPromptTokens: 0,
-          costRmb: r.cost_rmb,
+          costRmb: r.cost_usd,
         })),
       );
       logger.info('Cost history restored', { entries: recentRows.length });
