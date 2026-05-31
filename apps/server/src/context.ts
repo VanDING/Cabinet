@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
+import { createFileCapabilities, createKnowledgeCapabilities } from './capabilities.js';
 
 let activeApiKeyId: string | null = null;
 
@@ -690,6 +691,7 @@ export function getServerContext(): ServerContext {
         enqueueCuratorTask(
           () => runCuratorConsolidation(session.id, messages),
           'consolidation',
+          'high',
         ).catch((e) =>
           logger.warn('Curator on-close consolidation failed', { error: (e as Error).message }),
         );
@@ -697,11 +699,14 @@ export function getServerContext(): ServerContext {
     }
   });
 
-  sessionManager.onSessionCreate((session) => {
+  sessionManager.onFirstUserMessage((session) => {
     if (gateway) {
-      enqueueCuratorTask(() => runCuratorBrief(session.id), 'brief').catch((e) =>
-        logger.warn('Curator on-create brief failed', { error: (e as Error).message }),
-      );
+      // Delay brief generation by 30s so the Curator has the first user message as context
+      setTimeout(() => {
+        enqueueCuratorTask(() => runCuratorBrief(session.id), 'brief', 'high').catch((e) =>
+          logger.warn('Curator first-message brief failed', { error: (e as Error).message }),
+        );
+      }, 30000);
     }
   });
 
@@ -743,6 +748,18 @@ export function getServerContext(): ServerContext {
 
     const role = agentRegistry.get('curator');
     if (!role) return null;
+
+    // Reuse real file/knowledge capabilities for Curator background tasks
+    const capCtx = {
+      db: ctx!.db,
+      gateway: ctx!.gateway,
+      logger: ctx!.logger,
+      taskScheduler: ctx!.taskScheduler,
+      workflowRepo: ctx!.workflowRepo,
+      projectRepo: ctx!.projectRepo,
+    };
+    const fileCaps = createFileCapabilities(capCtx);
+    const knowledgeCaps = createKnowledgeCapabilities(capCtx);
 
     // Build tool dependencies focused on Curator's needs (memory, decisions, events, project)
     const curatorDeps: ToolDependencies = {
@@ -845,73 +862,59 @@ export function getServerContext(): ServerContext {
       getWorkflowRun: () => null,
       listWorkflowRuns: () => [],
       // File / web / shell / scheduler / knowledge / eval — stubs for curator
-      readFile: async () => {
-        throw new Error('File access not available for Curator background task');
+      readFile: async (path, offset, limit) => {
+        try {
+          const content = readFileSync(path, 'utf-8');
+          const lines = content.split('\\n');
+          const start = offset ?? 0;
+          const end = limit ? start + limit : lines.length;
+          const sliced = lines.slice(start, end).join('\\n');
+          return { content: sliced, size: content.length, encoding: 'utf-8' };
+        } catch (e) {
+          throw new Error(String(e));
+        }
       },
-      writeFile: async () => {
-        throw new Error('File write not available');
+      writeFile: async () => { throw new Error('File write not available'); },
+      editFile: async () => { throw new Error('File edit not available'); },
+      applyPatch: async () => { throw new Error('Patch not available'); },
+      moveFile: async () => { throw new Error('File move not available'); },
+      copyFile: async () => { throw new Error('File copy not available'); },
+      makeDirectory: async () => { throw new Error('Directory creation not available'); },
+      fileInfo: async () => { throw new Error('File info not available'); },
+      listDirectory: async (path) => {
+        try {
+          const entries = readdirSync(path, { withFileTypes: true });
+          return entries.map((e) => ({ name: e.name, path: join(path, e.name), isDir: e.isDirectory() }));
+        } catch (e) {
+          throw new Error(String(e));
+        }
       },
-      editFile: async () => {
-        throw new Error('File edit not available');
-      },
-      applyPatch: async () => {
-        throw new Error('Patch not available');
-      },
-      moveFile: async () => {
-        throw new Error('File move not available');
-      },
-      copyFile: async () => {
-        throw new Error('File copy not available');
-      },
-      makeDirectory: async () => {
-        throw new Error('Directory creation not available');
-      },
-      fileInfo: async () => {
-        throw new Error('File info not available');
-      },
-      listDirectory: async () => {
-        throw new Error('Directory listing not available');
-      },
-      searchFiles: async () => {
-        throw new Error('File search not available');
-      },
-      searchContent: async () => {
-        throw new Error('Content search not available');
-      },
-      deleteFile: async () => {
-        throw new Error('File deletion not available');
-      },
+      searchFiles: fileCaps.searchFiles,
+      searchContent: fileCaps.searchContent,
+      deleteFile: async () => { throw new Error('File deletion not available'); },
       recentFiles: async () => [],
       watchFile: async () => ({ changed: false, size: 0 }),
       indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
-      webFetch: async () => {
-        throw new Error('Web access not available');
+      webFetch: async (url) => {
+        try {
+          const res = await fetch(url);
+          const text = await res.text();
+          const contentType = res.headers.get('content-type') ?? 'text/plain';
+          const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+          return { content: text, status: res.status, contentType, title: titleMatch?.[1]?.trim() };
+        } catch (e) {
+          throw new Error(String(e));
+        }
       },
-      httpRequest: async () => {
-        throw new Error('HTTP not available');
-      },
-      execCommand: async () => {
-        throw new Error('Shell not available');
-      },
-      scheduleTask: async () => {
-        throw new Error('Scheduler not available');
-      },
+      httpRequest: async () => { throw new Error('HTTP not available'); },
+      execCommand: async () => { throw new Error('Shell not available'); },
+      scheduleTask: async () => { throw new Error('Scheduler not available'); },
       listScheduledTasks: async () => [],
-      cancelScheduledTask: async () => {
-        throw new Error('Scheduler not available');
-      },
-      indexDocument: async () => {
-        throw new Error('Indexing not available');
-      },
-      searchDocuments: async () => {
-        throw new Error('Document search not available');
-      },
-      clearDocumentIndex: async () => {
-        throw new Error('Index management not available');
-      },
-      evaluateOutput: async () => {
-        throw new Error('Evaluation not available');
-      },
+      cancelScheduledTask: async () => { throw new Error('Scheduler not available'); },
+      indexDocument: async () => { throw new Error('Indexing not available'); },
+      searchDocuments: knowledgeCaps.searchDocuments,
+      clearDocumentIndex: async () => { throw new Error('Index management not available'); },
+      evaluateOutput: async () => { return { overallScore: 0, dimensions: {}, feedback: 'Evaluation not available', evaluatorModel: 'none' }; },
       workspaceSymbols: async () => ({
         available: false,
         error: 'LSP not available for Curator background task',
@@ -928,8 +931,12 @@ export function getServerContext(): ServerContext {
         available: false,
         error: 'LSP not available for Curator background task',
       }),
-      querySystemKnowledge: async () => [],
-      getSystemKnowledge: async () => null,
+      querySystemKnowledge: async (query) => {
+        return ctx!.systemKnowledgeRepo.search(query, 5);
+      },
+      getSystemKnowledge: async (topic) => {
+        return ctx!.systemKnowledgeRepo.findByTopic(topic) ?? null;
+      },
       generateEmbeddings: async (texts) => {
         if (!gateway) throw new Error('No LLM gateway available');
         const result = await gateway.generateEmbeddings({ texts });
@@ -999,18 +1006,24 @@ export function getServerContext(): ServerContext {
     });
   }
 
-  // ── Curator concurrency control ──
+  // ── Curator dual-queue priority concurrency control ──
   let curatorBusy = false;
-  const curatorQueue: Array<{ task: () => Promise<void>; label: string }> = [];
+  const highPriorityQueue: Array<{ task: () => Promise<void>; label: string }> = [];
+  const lowPriorityQueue: Array<{ task: () => Promise<void>; label: string }> = [];
 
-  async function enqueueCuratorTask(task: () => Promise<void>, label: string): Promise<void> {
+  async function enqueueCuratorTask(
+    task: () => Promise<void>,
+    label: string,
+    priority: 'high' | 'low' = 'low',
+  ): Promise<void> {
     if (curatorBusy) {
+      const queue = priority === 'high' ? highPriorityQueue : lowPriorityQueue;
       // Replace existing queued task of the same label (debounce)
-      const existingIdx = curatorQueue.findIndex((t) => t.label === label);
+      const existingIdx = queue.findIndex((t) => t.label === label);
       if (existingIdx !== -1) {
-        curatorQueue[existingIdx] = { task, label };
+        queue[existingIdx] = { task, label };
       } else {
-        curatorQueue.push({ task, label });
+        queue.push({ task, label });
       }
       return;
     }
@@ -1019,10 +1032,10 @@ export function getServerContext(): ServerContext {
       await task();
     } finally {
       curatorBusy = false;
-      // Process next queued task
-      const next = curatorQueue.shift();
+      // Always prefer high-priority tasks; low-priority only runs when high queue is empty
+      const next = highPriorityQueue.shift() ?? lowPriorityQueue.shift();
       if (next) {
-        enqueueCuratorTask(next.task, next.label).catch((e) =>
+        enqueueCuratorTask(next.task, next.label, priority).catch((e) =>
           logger.warn('Curator queued task failed', {
             label: next.label,
             error: (e as Error).message,
@@ -1059,7 +1072,7 @@ export function getServerContext(): ServerContext {
         action,
         preview: result.content.slice(0, 150),
       });
-    }, 'preference').catch((e: any) => {
+    }, 'preference', 'low').catch((e: any) => {
       logger.warn('Curator decision preference update failed', { decisionId, error: e.message });
     });
   };
@@ -1296,7 +1309,7 @@ export function getServerContext(): ServerContext {
           if (s.messages.length > 0) {
             const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
             if (messages.length > 200) {
-              await enqueueCuratorTask(() => runCuratorConsolidation(s.id, messages), 'nudge');
+              await enqueueCuratorTask(() => runCuratorConsolidation(s.id, messages), 'nudge', 'low');
             }
           }
         }
@@ -1315,7 +1328,7 @@ export function getServerContext(): ServerContext {
     async () => {
       if (!gateway) return;
       try {
-        await enqueueCuratorTask(() => runCuratorPatternExtraction(), 'pattern');
+        await enqueueCuratorTask(() => runCuratorPatternExtraction(), 'pattern', 'low');
       } catch (e: any) {
         logger.warn('Curator pattern extraction failed', { error: e.message });
         broadcast('background_error', { task: 'curator_pattern', error: e.message });
@@ -1368,7 +1381,7 @@ export function getServerContext(): ServerContext {
             error: e.message,
           });
         }
-      }, 'compress').catch((e) =>
+      }, 'compress', 'high').catch((e) =>
         logger.warn('Session compression failed', {
           sessionId: session.id,
           error: (e as Error).message,
@@ -1912,7 +1925,7 @@ export function getServerContext(): ServerContext {
     enqueueCuratorTask(async () => {
       await subconsciousLoop.tick();
       logger.info('Curator: subconscious loop tick completed');
-    }, 'subconscious');
+    }, 'subconscious', 'low');
   }, 60 * 60 * 1000);
   subconsciousTimer.unref();
   logger.info('Curator: subconscious loop scheduled (1h)');
@@ -1930,7 +1943,7 @@ export function getServerContext(): ServerContext {
           timestamp: new Date().toISOString(),
         });
       }
-    }, 'harness_analysis');
+    }, 'harness_analysis', 'low');
   }, 3 * 60 * 60 * 1000);
   harnessAnalystTimer.unref();
   logger.info('Curator: harness analyst scheduled (3h)');

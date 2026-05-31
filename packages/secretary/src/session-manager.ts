@@ -73,6 +73,7 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private onCloseCallbacks: SessionCallback[] = [];
   private onCreateCallbacks: SessionCallback[] = [];
+  private onFirstUserMessageCallbacks: SessionCallback[] = [];
   private readonly maxTokens: number;
   private readonly softLimit: number;
   private readonly hardLimit: number;
@@ -102,6 +103,10 @@ export class SessionManager {
 
   onSessionCreate(cb: SessionCallback): void {
     this.onCreateCallbacks.push(cb);
+  }
+
+  onFirstUserMessage(cb: SessionCallback): void {
+    this.onFirstUserMessageCallbacks.push(cb);
   }
 
   private onCompressionCallbacks: SessionCallback[] = [];
@@ -135,8 +140,15 @@ export class SessionManager {
   addMessage(sessionId: string, role: 'user' | 'assistant', content: string): void {
     const session = this.sessions.get(sessionId);
     if (session) {
+      const isFirstUserMessage = role === 'user' && !session.messages.some((m) => m.role === 'user');
       session.messages.push({ role, content, timestamp: new Date() });
       session.updatedAt = new Date();
+
+      if (isFirstUserMessage) {
+        for (const cb of this.onFirstUserMessageCallbacks) {
+          Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
+        }
+      }
 
       const totalTokens = estimateMessagesTokens(session.messages);
 
