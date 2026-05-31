@@ -17,10 +17,8 @@ import { vaporwave } from './vaporwave';
 import { cyberpunk } from './cyberpunk';
 
 // Dark Industrial
-import { dieselpunk } from './dieselpunk';
 import { techno } from './techno';
 // Atmospheric & Mood
-import { filmNoir } from './film-noir';
 import { polar } from './polar';
 
 // Gaming & Terminal
@@ -29,6 +27,12 @@ import { geek } from './geek';
 
 // Cultural
 import { afrofuturism } from './afrofuturism';
+
+// Eastern Ink
+import { sumie } from './sumi-e';
+
+// Nostalgic
+import { showaRetro } from './showa-retro';
 
 export const registry: Theme[] = [
   lightDefault,
@@ -39,13 +43,13 @@ export const registry: Theme[] = [
   synthwave,
   vaporwave,
   cyberpunk,
-  dieselpunk,
   techno,
-  filmNoir,
   polar,
   pixelBY,
   geek,
   afrofuturism,
+  sumie,
+  showaRetro,
 ];
 
 export const defaultTheme = lightDefault;

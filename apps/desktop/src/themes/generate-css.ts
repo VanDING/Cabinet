@@ -91,6 +91,7 @@ function flattenTokens(theme: Theme): Record<string, string> {
 
   // Style: shadow
   vars['--shadow-xs'] = style.shadow.sm;
+  vars['--shadow-sm'] = style.shadow.sm;
   vars['--shadow-md'] = style.shadow.md;
   vars['--shadow-lg'] = style.shadow.lg;
 
