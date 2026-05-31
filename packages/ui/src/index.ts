@@ -16,7 +16,6 @@ export {
   type DashboardSummaryProps,
   type DashboardStats,
 } from './dashboard-summary.js';
-export { WorkflowCanvas, type WorkflowCanvasProps } from './workflow-canvas.js';
 export { Navigation, type NavigationProps, type NavPage } from './navigation.js';
 export { Button, type ButtonProps } from './button.js';
 export { Card, type CardProps } from './card.js';

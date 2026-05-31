@@ -21,11 +21,6 @@ describe('UI Components', () => {
     expect(mod.DashboardSummary).toBeDefined();
   });
 
-  it('WorkflowCanvas export exists', async () => {
-    const mod = await import('../workflow-canvas.js');
-    expect(mod.WorkflowCanvas).toBeDefined();
-  });
-
   it('Navigation export exists', async () => {
     const mod = await import('../navigation.js');
     expect(mod.Navigation).toBeDefined();
