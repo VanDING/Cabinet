@@ -61,7 +61,7 @@ import {
   KnowledgeGraph,
   MemoryDecayService,
 } from '@cabinet/memory';
-import { SqliteEventStore } from '@cabinet/events';
+import { SqliteEventStore, AgentEventBus, AgentEventRepository } from '@cabinet/events';
 import { SessionManager, IntentParser } from '@cabinet/secretary';
 import { config } from './config.js';
 import type { LLMGateway, ModelMapping, ProviderEntry, ModelTier } from '@cabinet/gateway';
@@ -128,6 +128,9 @@ export interface ServerContext {
   settingsRepo: SettingsRepository;
   systemKnowledgeRepo: SystemKnowledgeRepository;
   routeFeedbackRepo: RouteFeedbackRepository;
+  // Sub-agent interaction
+  agentEventRepo: AgentEventRepository;
+  agentEventBus: AgentEventBus;
   // Decision service
   decisionService: DecisionService;
   // Memory
@@ -2104,6 +2107,27 @@ export function getServerContext(): ServerContext {
   });
 
   const routeFeedbackRepo = new RouteFeedbackRepository(db);
+  const agentEventRepo = new AgentEventRepository(db);
+  const agentEventBus = new AgentEventBus(
+    broadcast,
+    agentEventRepo,
+    (parentSessionId, deliverable) => {
+      // Track C: inject deliverable back into parent secretary session
+      try {
+        const deliverableText =
+          typeof deliverable === 'string'
+            ? deliverable
+            : JSON.stringify(deliverable);
+        sessionManager.addMessage(
+          parentSessionId,
+          'assistant',
+          `[Sub-agent completed]\n${deliverableText}`,
+        );
+      } catch {
+        /* parent session may be closed */
+      }
+    },
+  );
   const fileTracker = new FileAccessTracker();
   const taskTracker = new TaskTracker();
 
@@ -2126,6 +2150,8 @@ export function getServerContext(): ServerContext {
     settingsRepo,
     systemKnowledgeRepo,
     routeFeedbackRepo,
+    agentEventRepo,
+    agentEventBus,
     decisionService,
     shortTerm,
     longTerm,

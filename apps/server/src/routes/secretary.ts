@@ -103,6 +103,17 @@ async function readTextFile(filePath: string): Promise<string> {
 
 export const secretaryRouter = new Hono();
 
+// ── Active sub-agent sessions (for mid-flight interaction) ──
+const activeSubAgents = new Map<
+  string,
+  {
+    loop: import('@cabinet/agent').AgentLoop;
+    parentSessionId: string;
+    roleType: string;
+    status: 'running' | 'waiting_for_user' | 'completed' | 'error';
+  }
+>();
+
 // ── File tool helpers ──
 
 const MIME_MAP: Record<string, string> = {
@@ -2193,8 +2204,96 @@ async function dispatchToSpecialistStreaming(
     return;
   }
 
+  // Create a child session for this sub-agent run
+  const childSession = ctx.sessionManager.createChildSession(sessionId, roleType);
+  const childSessionId = childSession.id;
+
+  // Wrap callback to dual-track events via AgentEventBus
+  const wrappedCallback: import('@cabinet/agent').StreamingCallback = {
+    ...callback,
+    onChunk(content) {
+      callback.onChunk?.(content);
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'stream_chunk',
+        content,
+        timestamp: Date.now(),
+      });
+    },
+    onThinking(content) {
+      callback.onThinking?.(content);
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'thinking',
+        content,
+        timestamp: Date.now(),
+      });
+    },
+    onToolCall(name, args) {
+      callback.onToolCall?.(name, args);
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'tool_call',
+        name,
+        args,
+        timestamp: Date.now(),
+      });
+    },
+    onToolResult(name, result) {
+      callback.onToolResult?.(name, result);
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'tool_result',
+        name,
+        result,
+        timestamp: Date.now(),
+      });
+    },
+    onDone(fullContent) {
+      callback.onDone?.(fullContent);
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'output',
+        content: fullContent,
+        timestamp: Date.now(),
+      });
+    },
+    onError(error) {
+      callback.onError?.(error);
+      ctx.sessionManager.updateStatus(childSessionId, 'error');
+      ctx.agentEventBus.publish(childSessionId, sessionId, {
+        type: 'error',
+        message: error,
+        timestamp: Date.now(),
+      });
+      activeSubAgents.delete(childSessionId);
+    },
+  };
+
+  // Publish start event
+  ctx.agentEventBus.publish(childSessionId, sessionId, {
+    type: 'started',
+    timestamp: Date.now(),
+  });
+
+  // Register in active map so mid-flight input can reach this loop
+  activeSubAgents.set(childSessionId, {
+    loop,
+    parentSessionId: sessionId,
+    roleType,
+    status: 'running',
+  });
+
   try {
-    const result = await loop.runStreaming(message, callback);
+    const result = await loop.runStreaming(message, wrappedCallback);
+    ctx.sessionManager.updateStatus(childSessionId, 'completed');
+    ctx.sessionManager.setDeliverable(childSessionId, {
+      agentType: roleType,
+      content: result.content,
+      toolCalls: result.toolCalls,
+    });
+    ctx.agentEventBus.publish(childSessionId, sessionId, {
+      type: 'completed',
+      deliverable: result.content,
+      timestamp: Date.now(),
+    });
+    // Keep in active map until explicitly finalized (or auto-finalize after a timeout)
+    // For now, leave it so user can still send "regenerate" if desired.
     // Async quality review after streaming completes (does not block the stream)
     if (roleType !== 'secretary' && roleType !== 'reviewer') {
       const reviewerLoop = createReviewerLoop(ctx);
@@ -2230,7 +2329,7 @@ async function dispatchToSpecialistStreaming(
               ? JSON.parse(reviewMatch[0])
               : { pass: true, score: 1.0, issues: [] };
             persistReviewResult(ctx, roleType, sessionId, review);
-            callback.onQualityReview?.({
+            wrappedCallback.onQualityReview?.({
               pass: !!review.pass,
               score: typeof review.score === 'number' ? review.score : 1.0,
               issues: Array.isArray(review.issues) ? review.issues : [],
@@ -2263,8 +2362,8 @@ async function dispatchToSpecialistStreaming(
       }
     }
   } catch (e: any) {
-    callback.onError?.(e.message ?? 'Unknown error');
-    callback.onDone('');
+    wrappedCallback.onError?.(e.message ?? 'Unknown error');
+    wrappedCallback.onDone('');
   }
 }
 
@@ -3247,4 +3346,146 @@ secretaryRouter.get('/greeting', (c) => {
   });
 
   return c.json(result);
+});
+
+// ── Sub-agent interaction endpoints ──
+
+/** POST /subagent/input — send mid-flight user input to a running sub-agent */
+secretaryRouter.post('/subagent/input', async (c) => {
+  const ctx = getServerContext();
+  const body = await c.req.json().catch(() => ({}));
+  const { subAgentSessionId, input } = body;
+
+  if (!subAgentSessionId || typeof input !== 'string') {
+    return c.json({ error: 'Missing subAgentSessionId or input' }, 400);
+  }
+
+  const entry = activeSubAgents.get(subAgentSessionId);
+  if (!entry) {
+    return c.json({ error: 'Sub-agent session not found or already finalized' }, 404);
+  }
+
+  // Publish user input received event
+  ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+    type: 'user_input_received',
+    content: input,
+    timestamp: Date.now(),
+  });
+
+  try {
+    // Build a minimal streaming callback that forwards events to the event bus
+    const wrappedCallback: import('@cabinet/agent').StreamingCallback = {
+      onChunk(content) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'stream_chunk',
+          content,
+          timestamp: Date.now(),
+        });
+      },
+      onThinking(content) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'thinking',
+          content,
+          timestamp: Date.now(),
+        });
+      },
+      onToolCall(name, args) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'tool_call',
+          name,
+          args,
+          timestamp: Date.now(),
+        });
+      },
+      onToolResult(name, result) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'tool_result',
+          name,
+          result,
+          timestamp: Date.now(),
+        });
+      },
+      onDone(fullContent) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'output',
+          content: fullContent,
+          timestamp: Date.now(),
+        });
+      },
+      onError(error) {
+        ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+          type: 'error',
+          message: error,
+          timestamp: Date.now(),
+        });
+      },
+    };
+
+    const result = await entry.loop.continueWithUserInput(input, wrappedCallback);
+    ctx.sessionManager.setDeliverable(subAgentSessionId, {
+      agentType: entry.roleType,
+      content: result.content,
+      toolCalls: result.toolCalls,
+    });
+
+    return c.json({ success: true, content: result.content });
+  } catch (e: any) {
+    ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+      type: 'error',
+      message: e.message ?? 'Unknown error',
+      timestamp: Date.now(),
+    });
+    return c.json({ error: e.message ?? 'Unknown error' }, 500);
+  }
+});
+
+/** POST /subagent/finalize — confirm sub-agent completion and return deliverable */
+secretaryRouter.post('/subagent/finalize', async (c) => {
+  const ctx = getServerContext();
+  const body = await c.req.json().catch(() => ({}));
+  const { subAgentSessionId } = body;
+
+  if (!subAgentSessionId) {
+    return c.json({ error: 'Missing subAgentSessionId' }, 400);
+  }
+
+  const entry = activeSubAgents.get(subAgentSessionId);
+  const session = ctx.sessionManager.get(subAgentSessionId);
+
+  if (!session) {
+    return c.json({ error: 'Sub-agent session not found' }, 404);
+  }
+
+  ctx.sessionManager.updateStatus(subAgentSessionId, 'completed');
+
+  // Publish completion event
+  ctx.agentEventBus.publish(subAgentSessionId, session.parentId ?? undefined, {
+    type: 'completed',
+    deliverable: session.deliverable,
+    timestamp: Date.now(),
+  });
+
+  // Clean up active map
+  if (entry) {
+    activeSubAgents.delete(subAgentSessionId);
+  }
+
+  return c.json({ success: true, deliverable: session.deliverable });
+});
+
+/** GET /sessions/:id/children — list child sub-agent sessions */
+secretaryRouter.get('/sessions/:id/children', (c) => {
+  const ctx = getServerContext();
+  const parentId = c.req.param('id');
+  const children = ctx.sessionManager.getChildSessions(parentId);
+  return c.json({
+    sessions: children.map((s) => ({
+      id: s.id,
+      agentType: s.agentType,
+      status: s.status,
+      title: s.title,
+      createdAt: s.createdAt,
+      deliverable: s.deliverable,
+    })),
+  });
 });
