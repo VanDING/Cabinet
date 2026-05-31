@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Card, Tag } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { useToast } from '../../components/Toast.js';
 
 // ── Skills Tab ──
 interface SkillItem {
@@ -13,6 +14,7 @@ interface SkillItem {
 }
 
 export function SkillsTab() {
+  const { addToast } = useToast();
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -106,7 +108,7 @@ export function SkillsTab() {
                     });
                     if (!res.ok) {
                       const err = await res.json().catch(() => ({ error: 'Import failed' }));
-                      alert(`Import failed: ${(err as any).error ?? res.statusText}`);
+                      addToast('error', `Import failed: ${(err as any).error ?? res.statusText}`);
                       return;
                     }
                   } else {
@@ -118,13 +120,13 @@ export function SkillsTab() {
                     });
                     if (!res.ok) {
                       const err = await res.json().catch(() => ({ error: 'Import failed' }));
-                      alert(`Import failed: ${(err as any).error ?? res.statusText}`);
+                      addToast('error', `Import failed: ${(err as any).error ?? res.statusText}`);
                       return;
                     }
                   }
                   fetchSkills();
                 } catch {
-                  alert('Failed to import skill. Check file format and try again.');
+                  addToast('error', 'Failed to import skill. Check file format and try again.');
                 }
               };
               input.click();
