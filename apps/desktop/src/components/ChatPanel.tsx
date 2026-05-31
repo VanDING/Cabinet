@@ -77,6 +77,8 @@ export function ChatPanel({
   activeSessionId,
 }: Props) {
   const [input, setInput] = useState('');
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const slashMenuRef = useRef<HTMLDivElement>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -144,6 +146,7 @@ export function ChatPanel({
   useOutsideClick(agentBtnRef, () => setAgentMenuOpen(false), agentMenuOpen);
   useOutsideClick(addBtnRef, () => setAddMenuOpen(false), addMenuOpen);
   useOutsideClick(skillBtnRef, () => setSkillMenuOpen(false), skillMenuOpen);
+  useOutsideClick(slashMenuRef, () => setSlashMenuOpen(false), slashMenuOpen);
   useOutsideClick(modelBtnRef, () => setModelMenuOpen(false), modelMenuOpen);
   useOutsideClick(projectBtnRef, () => setProjectMenuOpen(false), projectMenuOpen);
 
@@ -529,6 +532,13 @@ export function ChatPanel({
                   agentId: mentionMatch[1]!,
                 });
               }
+              // /skill detection
+              const slashMatch = val.match(/^\/(\S*)/);
+              if (slashMatch) {
+                setSlashMenuOpen(true);
+              } else {
+                setSlashMenuOpen(false);
+              }
             }}
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
@@ -538,6 +548,41 @@ export function ChatPanel({
             className={`w-full resize-none border-0 bg-transparent text-sm placeholder-content-tertiary focus:outline-hidden disabled:opacity-50 ${textClass}`}
             style={{ minHeight: '40px', maxHeight: '200px' }}
           />
+          {slashMenuOpen && (
+            <div
+              ref={slashMenuRef}
+              className={`absolute bottom-full left-3 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+            >
+              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                Select a skill
+              </div>
+              {skills.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-content-tertiary">
+                  No skills registered.
+                </div>
+              ) : (
+                skills.map((skill) => (
+                  <button
+                    key={skill.id}
+                    onClick={() => {
+                      setInput(`/${skill.name} `);
+                      setSlashMenuOpen(false);
+                      setTimeout(() => textareaRef.current?.focus(), 50);
+                    }}
+                    className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
+                  >
+                    <span className="mr-1.5 inline-block rounded-sm bg-surface-muted px-1 py-0.5 text-content-secondary">
+                      /
+                    </span>
+                    {skill.name}
+                    {skill.description && (
+                      <span className="ml-2 text-content-tertiary">— {skill.description}</span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}
