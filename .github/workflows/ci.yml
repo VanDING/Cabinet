@@ -18,6 +18,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format
+      - name: Architecture Lint
+        run: pnpm exec tsx tools/arch-lint.ts
       - run: pnpm audit || true
       - name: Commit message (conventional commits)
         if: github.event_name == 'push'
