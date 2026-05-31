@@ -181,6 +181,27 @@ export const SECRETARY_ROLE: AgentRole = {
     'get_system_knowledge',
     'use_skill',
     'update_skill',
+    // Document tools
+    'read_pdf',
+    'read_docx',
+    'read_xlsx',
+    'read_pptx',
+    'read_zip',
+    'extract_zip',
+    // Browser tools
+    'browser_navigate',
+    'browser_click',
+    'browser_type',
+    'browser_read',
+    'browser_screenshot',
+    'browser_evaluate',
+    // Communication tools
+    'fetch_rss',
+    'send_email',
+    // System tools (safe)
+    'read_clipboard',
+    'write_clipboard',
+    'send_notification',
     // Note: destructive tools (delete_file, delete_workflow, delete_agent,
     // approve_decision, reject_decision, clear_index) are
     // intentionally excluded — they belong in workflow approval nodes.
@@ -288,6 +309,8 @@ export const CURATOR_ROLE: AgentRole = {
     'web_fetch',
     'query_system_knowledge',
     'get_system_knowledge',
+    // Document tools
+    'read_pdf',
   ],
   contextBudget: 0.4,
   maxSteps: 150,
@@ -349,6 +372,12 @@ export const REVIEWER_ROLE: AgentRole = {
     'web_fetch',
     'query_system_knowledge',
     'get_system_knowledge',
+    // Document tools
+    'read_pdf',
+    // Browser tools
+    'browser_navigate',
+    'browser_read',
+    'browser_screenshot',
   ],
   contextBudget: 0.35,
   maxSteps: 50,
@@ -510,6 +539,30 @@ export const ORGANIZE_ROLE: AgentRole = {
     'use_skill__skillCreator',
     'use_skill__mcpBuilder',
     'write_file',
+    // Document & Archive tools
+    'read_pdf',
+    'read_docx',
+    'read_xlsx',
+    'read_pptx',
+    'read_zip',
+    'extract_zip',
+    // Browser tools
+    'browser_navigate',
+    'browser_click',
+    'browser_type',
+    'browser_read',
+    'browser_screenshot',
+    'browser_evaluate',
+    // Communication tools
+    'fetch_rss',
+    'send_email',
+    // System tools
+    'read_clipboard',
+    'write_clipboard',
+    'send_notification',
+    'start_process',
+    'kill_process',
+    'show_open_dialog',
   ],
   contextBudget: 0.5,
   maxSteps: 150,

@@ -9,6 +9,7 @@ import {
   statSync,
 } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -199,6 +200,56 @@ try {
   }
 } catch (e) {
   console.warn('hnswlib-node native binary root copy failed:', e.message);
+}
+
+// ── Playwright support ──────────────────────────────────────────
+// Playwright is needed for BrowserPool (Phase 2 browser automation).
+// We copy the npm packages and the Chromium binary so the bundled
+// server can launch browsers without requiring a separate install.
+
+try {
+  const harnessPkgPath = join(workspaceRoot, 'packages', 'harness', 'package.json');
+  const harnessRequire = createRequire(harnessPkgPath);
+
+  // Copy playwright and playwright-core packages
+  const playwrightEntry = harnessRequire.resolve('playwright');
+  copyPackage('playwright', playwrightEntry);
+
+  // Resolve playwright-core from within the playwright package
+  const playwrightPkgRequire = createRequire(join(playwrightEntry, '..', 'package.json'));
+  const pcEntry = playwrightPkgRequire.resolve('playwright-core');
+  copyPackage('playwright-core', pcEntry);
+
+  // Also copy fsevents (optional dep of playwright-core on macOS)
+  try {
+    const fseventsEntry = harnessRequire.resolve('fsevents');
+    copyPackage('fsevents', fseventsEntry);
+  } catch {
+    /* fsevents is macOS-only optional dep */
+  }
+
+  // Copy Chromium binary from the Playwright browser cache
+  const chromiumCache = join(homedir(), 'AppData', 'Local', 'ms-playwright');
+  if (existsSync(chromiumCache)) {
+    const chromiumDirs = readdirSync(chromiumCache).filter((d) =>
+      d.startsWith('chromium-'),
+    );
+    if (chromiumDirs.length > 0) {
+      // Copy the newest chromium build
+      chromiumDirs.sort();
+      const srcChromium = join(chromiumCache, chromiumDirs[chromiumDirs.length - 1]);
+      const destChromium = join(dest, 'ms-playwright', chromiumDirs[chromiumDirs.length - 1]);
+      mkdirSync(dirname(destChromium), { recursive: true });
+      cpSync(srcChromium, destChromium, { recursive: true, dereference: true });
+      console.log(`  Chromium copied: ${chromiumDirs[chromiumDirs.length - 1]}`);
+    } else {
+      console.warn('  No Chromium build found in Playwright cache');
+    }
+  } else {
+    console.warn('  Playwright browser cache not found, Chromium will need manual install');
+  }
+} catch (e) {
+  console.warn('Playwright copy failed:', e.message);
 }
 
 console.log('Standalone server ready');

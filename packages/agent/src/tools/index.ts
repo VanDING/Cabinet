@@ -20,6 +20,11 @@ import {
   createSystemKnowledgeTools,
   type SystemKnowledgeToolDeps,
 } from './system-knowledge-tools.js';
+import { createDocumentTools, type DocumentToolDeps } from './document-tools.js';
+import { createArchiveTools, type ArchiveToolDeps } from './archive-tools.js';
+import { createBrowserTools, type BrowserToolDeps } from './browser-tools.js';
+import { createCommunicationTools, type CommunicationToolDeps } from './communication-tools.js';
+import { createSystemTools, type SystemToolDeps } from './system-tools.js';
 
 export interface ToolDependencies
   extends
@@ -30,7 +35,12 @@ export interface ToolDependencies
     KnowledgeToolDeps,
     EvaluationToolDeps,
     LSPToolDeps,
-    SystemKnowledgeToolDeps {
+    SystemKnowledgeToolDeps,
+    DocumentToolDeps,
+    ArchiveToolDeps,
+    BrowserToolDeps,
+    CommunicationToolDeps,
+    SystemToolDeps {
   // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
@@ -1065,6 +1075,31 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // System Knowledge Tools
     // ═══════════════════════════════════════════════════════════
     ...createSystemKnowledgeTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Document Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createDocumentTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Archive Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createArchiveTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Browser Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createBrowserTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // Communication Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createCommunicationTools(deps),
+
+    // ═══════════════════════════════════════════════════════════
+    // System Tools
+    // ═══════════════════════════════════════════════════════════
+    ...createSystemTools(deps),
   ];
 }
 

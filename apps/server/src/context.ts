@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
-import { createFileCapabilities, createKnowledgeCapabilities } from './capabilities.js';
+import { createFileCapabilities, createKnowledgeCapabilities, getBrowserPool } from './capabilities.js';
 
 let activeApiKeyId: string | null = null;
 
@@ -945,6 +945,28 @@ export function getServerContext(): ServerContext {
       getSystemKnowledge: async (topic) => {
         return ctx!.systemKnowledgeRepo.findByTopic(topic) ?? null;
       },
+      // Document / Archive — stubs for curator
+      readPdf: async () => { throw new Error('PDF read not available for Curator background task'); },
+      readDocx: async () => { throw new Error('DOCX read not available for Curator background task'); },
+      readXlsx: async () => { throw new Error('XLSX read not available for Curator background task'); },
+      readPptx: async () => { throw new Error('PPTX read not available for Curator background task'); },
+      listZip: async () => { throw new Error('ZIP list not available for Curator background task'); },
+      extractZip: async () => { throw new Error('ZIP extract not available for Curator background task'); },
+      // Browser — stubs for curator
+      browserNavigate: async () => { throw new Error('Browser not available for Curator background task'); },
+      browserClick: async () => { throw new Error('Browser not available for Curator background task'); },
+      browserType: async () => { throw new Error('Browser not available for Curator background task'); },
+      browserRead: async () => { throw new Error('Browser not available for Curator background task'); },
+      browserScreenshot: async () => { throw new Error('Browser not available for Curator background task'); },
+      browserEvaluate: async () => { throw new Error('Browser not available for Curator background task'); },
+      fetchRss: async () => { throw new Error('RSS fetch not available for Curator background task'); },
+      sendEmail: async () => { throw new Error('Email not available for Curator background task'); },
+      readClipboard: async () => { throw new Error('Clipboard not available for Curator background task'); },
+      writeClipboard: async () => { throw new Error('Clipboard not available for Curator background task'); },
+      sendNotification: async () => { throw new Error('Notification not available for Curator background task'); },
+      startProcess: async () => { throw new Error('Process start not available for Curator background task'); },
+      killProcess: async () => { throw new Error('Process kill not available for Curator background task'); },
+      showOpenDialog: async () => { throw new Error('Dialog not available for Curator background task'); },
       generateEmbeddings: async (texts) => {
         if (!gateway) throw new Error('No LLM gateway available');
         const result = await gateway.generateEmbeddings({ texts });
@@ -2060,6 +2082,15 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     logger,
   });
 
+  // BrowserPool idle session cleanup (every 10 minutes)
+  const browserPoolCleanupTimer = setInterval(() => {
+    getBrowserPool()
+      .pruneIdleSessions(10 * 60 * 1000)
+      .catch(() => {});
+  }, 10 * 60 * 1000);
+  browserPoolCleanupTimer.unref?.();
+  logger.info('BrowserPool idle cleanup scheduled (10min)');
+
   const shutdown = () => {
     logger.info('Shutting down server context...');
     clearInterval(consolidationTimer);
@@ -2070,8 +2101,14 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     clearInterval(sessionCleanupTimer);
     clearInterval(subconsciousTimer);
     clearInterval(memoryMaintenanceTimer);
+    clearInterval(browserPoolCleanupTimer);
     stopApprovalPolling();
     taskScheduler.stop();
+    try {
+      getBrowserPool().shutdown().catch(() => {});
+    } catch {
+      /* BrowserPool may not be initialized */
+    }
     try {
       backupManager?.stopAutoBackup();
     } catch {
@@ -2211,7 +2248,27 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   const taskTracker = new TaskTracker();
 
   const toolPruner = gateway
-    ? new ToolPruner({ gateway, maxTools: 16, minTools: 8 })
+    ? new ToolPruner({
+        gateway,
+        maxTools: 24,
+        minTools: 8,
+        alwaysInclude: [
+          // Core file tools
+          'read_file',
+          'write_file',
+          'edit_file',
+          'list_directory',
+          'glob',
+          'grep',
+          // Core context tools
+          'query_system_knowledge',
+          'recall',
+          'remember',
+          // Core project tools
+          'get_project_context',
+          'set_project_context',
+        ],
+      })
     : undefined;
 
   ctx = {
