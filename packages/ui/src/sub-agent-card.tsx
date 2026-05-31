@@ -25,19 +25,19 @@ const statusConfig: Record<
   { label: string; border: string; bg: string; icon: string }
 > = {
   running: {
-    label: '运行中',
+    label: 'Running',
     border: 'border-accent',
     bg: 'bg-accent-muted',
     icon: '●',
   },
   completed: {
-    label: '已完成',
+    label: 'Completed',
     border: 'border-intent-success',
     bg: 'bg-intent-success-muted',
     icon: '✓',
   },
   error: {
-    label: '出错',
+    label: 'Error',
     border: 'border-intent-danger',
     bg: 'bg-intent-danger-muted',
     icon: '✕',
@@ -80,7 +80,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
           </span>
         </div>
         <span className="text-xs text-content-tertiary">
-          {expanded ? '收起' : '展开'}
+          {expanded ? 'Collapse' : 'Expand'}
         </span>
       </button>
 
@@ -97,7 +97,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
         <div className="mt-2 space-y-2">
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-content-tertiary">思考过程</div>
+              <div className="text-xs font-medium text-content-tertiary">Thinking process</div>
               <div className="mt-1 max-h-40 overflow-y-auto rounded-sm border border-border bg-surface-primary p-2 whitespace-pre-wrap">
                 <p className="text-xs text-content-secondary">
                   {activity.thinking.join('')}
@@ -114,7 +114,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                   className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:bg-surface-muted"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
-                  工具调用 ({activity.toolCalls.length})
+                  Tool calls ({activity.toolCalls.length})
                 </button>
                 {!toolCallsExpanded &&
                   activity.toolCalls.slice(0, 4).map((tc, i) => (
@@ -150,7 +150,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.result && (
             <div>
-              <div className="text-xs font-medium text-content-tertiary">结果</div>
+              <div className="text-xs font-medium text-content-tertiary">Result</div>
               <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-content-secondary">
                 {activity.result}
               </p>
@@ -159,7 +159,7 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.error && (
             <div>
-              <div className="text-xs font-medium text-intent-danger">错误</div>
+              <div className="text-xs font-medium text-intent-danger">Error</div>
               <p className="mt-1 text-xs text-intent-danger">{activity.error}</p>
             </div>
           )}

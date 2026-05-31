@@ -1,7 +1,6 @@
 import type { NavPage } from '@cabinet/ui';
-import { useTranslation } from 'react-i18next';
 
-const navKeys = ['office', 'factory', 'staff', 'memory'] as const;
+const navLabels = ['Office', 'Factory', 'Staff', 'Memory'];
 const navIds: NavPage[] = ['office', 'factory', 'employees', 'memory'];
 
 interface Props {
@@ -10,16 +9,14 @@ interface Props {
 }
 
 export function MobileNav({ activePage, onNavigate }: Props) {
-  const { t } = useTranslation();
-
   const items = navIds.map((id, i) => ({
     id,
-    label: t(`nav.${navKeys[i]}`),
+    label: navLabels[i],
   }));
 
   return (
     <nav
-      aria-label={t('nav.mobileNavLabel')}
+      aria-label="Mobile navigation"
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface-primary text-content-primary md:hidden"
     >
       <div className="flex justify-around py-1">

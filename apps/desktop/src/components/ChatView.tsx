@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { marked } from 'marked';
-import { useTranslation } from 'react-i18next';
 import hljs from 'highlight.js';
 import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
@@ -216,7 +215,6 @@ export const ChatView = memo(function ChatView({
   onForkMessage,
   onContinue,
 }: Props) {
-  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -252,7 +250,7 @@ export const ChatView = memo(function ChatView({
 
       {attachedFiles.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border bg-surface-elevated px-5 py-1.5">
-          <span className="text-xs text-content-tertiary">{t('chat.attached')}</span>
+          <span className="text-xs text-content-tertiary">{'Attached:'}</span>
           {attachedFiles.map((f) => (
             <span
               key={f.id}
@@ -268,15 +266,15 @@ export const ChatView = memo(function ChatView({
         {messages.length === 0 && !isProcessing && (
           <div className="flex h-full flex-col items-center justify-center gap-4">
             <div className="text-center text-content-tertiary">
-              <p className="text-base">{t('chat.startConversation')}</p>
-              <p className="mt-1 text-xs">{t('chat.startHint')}</p>
+              <p className="text-base">{'Start a conversation'}</p>
+              <p className="mt-1 text-xs">{'Ask a question, analyze a decision, or design a workflow.'}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {[
-                t('chat.suggestions.analyzeDecision'),
-                t('chat.suggestions.designWorkflow'),
-                t('chat.suggestions.checkStatus'),
-                t('chat.suggestions.whatCanYouDo'),
+                'Help me analyze a decision',
+                'Design a workflow for me',
+                'Check project status',
+                'What can you help me with?',
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -312,7 +310,7 @@ export const ChatView = memo(function ChatView({
             <div className="flex-1">
               <span className="text-sm italic text-content-tertiary">
                 <DecryptedText
-                  text={t('chat.thinking')}
+                  text={'Thinking...'}
                   speed={50}
                   maxIterations={8}
                 />
@@ -356,7 +354,6 @@ const MessageRow = memo(function MessageRow({
   onForkMessage?: (messageId: string) => void;
   onContinue?: (messageId: string) => void;
 }) {
-  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
 
@@ -367,7 +364,7 @@ const MessageRow = memo(function MessageRow({
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
           <span className="text-xs font-medium text-content-secondary">
-            {msg.role === 'user' ? t('chat.you') : (msg.agentName ?? t('chat.secretary'))}
+            {msg.role === 'user' ? 'You' : (msg.agentName ?? 'Secretary')}
           </span>
           <span className="text-xs text-content-tertiary">
             {msg.timestamp.toLocaleTimeString()}
@@ -389,7 +386,7 @@ const MessageRow = memo(function MessageRow({
                   }}
                   className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
                 >
-                  {t('chat.edit')}
+                  {'Edit'}
                 </button>
               )}
               {msg.role === 'assistant' && onRegenerate && (
@@ -397,7 +394,7 @@ const MessageRow = memo(function MessageRow({
                   onClick={() => onRegenerate(msg.id)}
                   className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
                 >
-                  {t('chat.regenerate')}
+                  {'Regenerate'}
                 </button>
               )}
               {onForkMessage && (
@@ -432,7 +429,7 @@ const MessageRow = memo(function MessageRow({
                   }}
                   className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
                 >
-                  {t('chat.saveAndResend')}
+                  {'Save & Resend'}
                 </button>
                 <button
                   onClick={() => {
@@ -441,7 +438,7 @@ const MessageRow = memo(function MessageRow({
                   }}
                   className="rounded-sm border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated bg-surface-input"
                 >
-                  {t('chat.cancel')}
+                  {'Cancel'}
                 </button>
               </div>
             </div>
@@ -466,8 +463,8 @@ const MessageRow = memo(function MessageRow({
                     }`}
                   >
                     {msg.stepBudget.remaining <= 0
-                      ? `步骤预算已耗尽 (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps})，任务可能未完成。`
-                      : `步骤预算即将耗尽 (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
+                      ? `Step budget exhausted (${msg.stepBudget.maxSteps}/${msg.stepBudget.maxSteps}), task may be incomplete.`
+                      : `Step budget running low (${msg.stepBudget.remaining}/${msg.stepBudget.maxSteps})`}
                   </div>
                 )}
               {msg.subAgentActivities && msg.subAgentActivities.length > 0 && (
@@ -489,7 +486,7 @@ const MessageRow = memo(function MessageRow({
                   return (
                     <details className="thinking-block mb-2">
                       <summary className="thinking-summary">
-                        {t('chat.thinking')} {duration}
+                        {'Thinking...'} {duration}
                       </summary>
                       <pre className="thinking-content">
                         {msg.thinking.replace(/\n?<!--segment-->\n?/g, '\n')}

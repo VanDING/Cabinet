@@ -49,7 +49,7 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
     <div className={cardClasses}>
       <div className="mb-1.5 flex items-center justify-between">
         <span className={`text-[10px] font-semibold uppercase tracking-wider ${subtextClasses}`}>
-          {displaySemantic ? '任务进度' : 'Tasks'}
+          {displaySemantic ? 'Task Progress' : 'Tasks'}
         </span>
         <span className={`text-[10px] ${subtextClasses}`}>
           {done}
@@ -98,7 +98,7 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
                   {title}
                 </span>
                 {steps !== undefined && steps > 0 && (
-                  <span className={`ml-auto text-[10px] ${subtextClasses}`}>{steps}步</span>
+                  <span className={`ml-auto text-[10px] ${subtextClasses}`}>{steps} steps</span>
                 )}
               </div>
             </div>

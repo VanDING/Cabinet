@@ -130,7 +130,7 @@ dashboardRouter.get('/cost-history', (c) => {
     const rows = db
       .prepare(
         `SELECT date(timestamp) as date,
-                SUM(cost_rmb) as cost,
+                SUM(cost_usd) as cost,
                 SUM(prompt_tokens + completion_tokens) as tokens,
                 COUNT(*) as calls
          FROM cost_history
