@@ -362,6 +362,36 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     // ── System knowledge (always available) ──
     querySystemKnowledge: shared.querySystemKnowledge,
     getSystemKnowledge: shared.getSystemKnowledge,
+
+    // ── Document (capabilities-gated under files) ──
+    readPdf: caps.files?.read ? shared.readPdf : stub('PDF read'),
+    readDocx: caps.files?.read ? shared.readDocx : stub('DOCX read'),
+    readXlsx: caps.files?.read ? shared.readXlsx : stub('XLSX read'),
+    readPptx: caps.files?.read ? shared.readPptx : stub('PPTX read'),
+
+    // ── Archive (capabilities-gated under files) ──
+    listZip: caps.files?.read ? shared.listZip : stub('ZIP listing'),
+    extractZip: caps.files?.write ? shared.extractZip : stub('ZIP extraction'),
+
+    // ── Browser (capabilities-gated under web) ──
+    browserNavigate: caps.web?.fetch ? shared.browserNavigate : stub('Browser navigation'),
+    browserClick: caps.web?.fetch ? shared.browserClick : stub('Browser click'),
+    browserType: caps.web?.fetch ? shared.browserType : stub('Browser type'),
+    browserRead: caps.web?.fetch ? shared.browserRead : stub('Browser read'),
+    browserScreenshot: caps.web?.fetch ? shared.browserScreenshot : stub('Browser screenshot'),
+    browserEvaluate: caps.web?.fetch ? shared.browserEvaluate : stub('Browser evaluate'),
+
+    // ── Communication (capabilities-gated under web) ──
+    fetchRss: caps.web?.fetch ? shared.fetchRss : stub('RSS fetch'),
+    sendEmail: caps.web?.fetch ? shared.sendEmail : stub('Email send'),
+
+    // ── System (always available) ──
+    readClipboard: shared.readClipboard,
+    writeClipboard: shared.writeClipboard,
+    sendNotification: shared.sendNotification,
+    startProcess: shared.startProcess,
+    killProcess: shared.killProcess,
+    showOpenDialog: shared.showOpenDialog,
   };
 }
 

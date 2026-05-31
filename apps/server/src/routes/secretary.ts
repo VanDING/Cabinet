@@ -37,7 +37,15 @@ import { createStandardToolExecutor, createStandardMemoryProvider } from '../age
 import { runWorkflowById } from './workflows.js';
 import type { DispatchMode } from '@cabinet/agent';
 import type { Decision } from '@cabinet/types';
-import { buildEnvironmentSection, createSystemKnowledgeCapabilities } from '../capabilities.js';
+import {
+  buildEnvironmentSection,
+  createSystemKnowledgeCapabilities,
+  createDocumentCapabilities,
+  createArchiveCapabilities,
+  createBrowserCapabilities,
+  createCommunicationCapabilities,
+  createSystemCapabilities,
+} from '../capabilities.js';
 import {
   getWorkspaceSymbols,
   getDefinition,
@@ -367,6 +375,12 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // ── Build ToolDependencies from ServerContext ──
 function buildToolDependencies(ctx: ServerContext, activeProjectId?: string): ToolDependencies {
+  const docCaps = createDocumentCapabilities();
+  const archiveCaps = createArchiveCapabilities();
+  const browserCaps = createBrowserCapabilities();
+  const commCaps = createCommunicationCapabilities();
+  const sysCaps = createSystemCapabilities();
+
   return {
     // ── Read path ──
     decisionStore: ctx.decisionRepo,
@@ -1478,6 +1492,36 @@ function buildToolDependencies(ctx: ServerContext, activeProjectId?: string): To
         projectRepo: ctx.projectRepo,
       }).getSystemKnowledge(topic);
     },
+
+    // ── Document capabilities ──
+    readPdf: docCaps.readPdf,
+    readDocx: docCaps.readDocx,
+    readXlsx: docCaps.readXlsx,
+    readPptx: docCaps.readPptx,
+
+    // ── Archive capabilities ──
+    listZip: archiveCaps.listZip,
+    extractZip: archiveCaps.extractZip,
+
+    // ── Browser capabilities ──
+    browserNavigate: browserCaps.browserNavigate,
+    browserClick: browserCaps.browserClick,
+    browserType: browserCaps.browserType,
+    browserRead: browserCaps.browserRead,
+    browserScreenshot: browserCaps.browserScreenshot,
+    browserEvaluate: browserCaps.browserEvaluate,
+
+    // ── Communication capabilities ──
+    fetchRss: commCaps.fetchRss,
+    sendEmail: commCaps.sendEmail,
+
+    // ── System capabilities ──
+    readClipboard: sysCaps.readClipboard,
+    writeClipboard: sysCaps.writeClipboard,
+    sendNotification: sysCaps.sendNotification,
+    startProcess: sysCaps.startProcess,
+    killProcess: sysCaps.killProcess,
+    showOpenDialog: sysCaps.showOpenDialog,
   };
 }
 

@@ -14,8 +14,16 @@ import {
 } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, dirname, extname, resolve, isAbsolute } from 'node:path';
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
+import { BrowserPool } from '@cabinet/harness';
 import { promisify } from 'node:util';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+import AdmZip from 'adm-zip';
+import clipboardy from 'clipboardy';
+import notifier from 'node-notifier';
+import Parser from 'rss-parser';
+import nodemailer from 'nodemailer';
 
 const execAsync = promisify(exec);
 
@@ -335,10 +343,14 @@ export interface CapabilitiesContext {
   projectRepo: ServerContext['projectRepo'];
 }
 
-export function createFileCapabilities(_ctx: CapabilitiesContext) {
+export function createFileCapabilities(
+  _ctx: CapabilitiesContext,
+  onFileAccess?: (path: string, operation: 'read' | 'write' | 'edit' | 'delete' | 'move' | 'copy') => void,
+) {
   return {
     readFile: async (filePath: string, offset?: number, limit?: number) => {
       const safePath = await resolveSafePath(filePath);
+      onFileAccess?.(safePath, 'read');
       const ext = extname(filePath).toLowerCase();
       const mimeType = MIME_MAP[ext] ?? null;
       const isText = isTextFile(ext);
@@ -374,6 +386,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
 
     writeFile: async (filePath: string, content: string, overwrite?: boolean) => {
       const safePath = await resolveSafePath(filePath);
+      onFileAccess?.(safePath, 'write');
       if (content.length > 50 * 1024 * 1024) throw new Error('Content exceeds 50MB limit');
       if (overwrite === false && existsSync(safePath)) {
         return { written: false, skipped: true };
@@ -390,6 +403,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
       replaceAll?: boolean,
     ) => {
       const safePath = await resolveSafePath(filePath);
+      onFileAccess?.(safePath, 'edit');
       const content = await readTextFile(safePath);
       if (!content.includes(oldString)) return { changed: false, occurrences: 0 };
       if (replaceAll) {
@@ -570,6 +584,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
     indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
     deleteFile: async (filePath: string) => {
       const safePath = await resolveSafePath(filePath);
+      onFileAccess?.(safePath, 'delete');
       const s = await stat(safePath);
       if (s.isDirectory()) {
         await rmdir(safePath);
@@ -581,6 +596,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
     moveFile: async (source: string, destination: string) => {
       const safeSrc = await resolveSafePath(source);
       const safeDest = await resolveSafePath(destination);
+      onFileAccess?.(safeDest, 'move');
       await mkdir(dirname(safeDest), { recursive: true });
       await rename(safeSrc, safeDest);
     },
@@ -588,6 +604,7 @@ export function createFileCapabilities(_ctx: CapabilitiesContext) {
     copyFile: async (source: string, destination: string) => {
       const safeSrc = await resolveSafePath(source);
       const safeDest = await resolveSafePath(destination);
+      onFileAccess?.(safeDest, 'copy');
       await mkdir(dirname(safeDest), { recursive: true });
       await fsCopyFile(safeSrc, safeDest);
     },
@@ -1026,6 +1043,203 @@ export function createLSPCapabilities() {
   };
 }
 
+// ── Document Capabilities ────────────────────────────────────
+
+export function createDocumentCapabilities() {
+  return {
+    readPdf: async (path: string) => {
+      const buffer = await readFile(path);
+      // Dynamic import to avoid loading pdfjs-dist in test environments
+      const pdfParse = await import('pdf-parse').then((m) => (m as any).default ?? m);
+      const data = await pdfParse(buffer);
+      return { text: data.text, pages: data.numpages, info: data.info };
+    },
+    readDocx: async (path: string) => {
+      const result = await mammoth.extractRawText({ path });
+      return { text: result.value, styles: [] };
+    },
+    readXlsx: async (path: string, sheetName?: string) => {
+      const workbook = XLSX.readFile(path);
+      const sheet = sheetName || workbook.SheetNames[0]!;
+      const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheet]!, { header: 1 }) as unknown[][];
+      return { sheets: workbook.SheetNames, data };
+    },
+    readPptx: async (path: string) => {
+      const zip = new AdmZip(path);
+      const entries = zip.getEntries();
+      const slideEntries = entries
+        .filter(
+          (e) => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'),
+        )
+        .sort((a, b) => a.entryName.localeCompare(b.entryName));
+
+      const slides: { text: string; notes: string }[] = [];
+      for (const entry of slideEntries) {
+        const xml = zip.readAsText(entry);
+        const texts: string[] = [];
+        const textMatches = xml.matchAll(/<a:t>([^<]*)<\/a:t>/g);
+        for (const match of textMatches) {
+          if (match[1]) texts.push(match[1]);
+        }
+        slides.push({ text: texts.join(' ').trim(), notes: '' });
+      }
+      return { slides };
+    },
+  };
+}
+
+// ── Archive Capabilities ─────────────────────────────────────
+
+export function createArchiveCapabilities() {
+  return {
+    listZip: async (path: string) => {
+      const zip = new AdmZip(path);
+      return zip.getEntries().map((e) => ({
+        name: e.entryName,
+        size: e.header.size,
+        isDirectory: e.isDirectory,
+      }));
+    },
+    extractZip: async (path: string, targetDir: string, entries?: string[]) => {
+      const zip = new AdmZip(path);
+      zip.extractAllTo(targetDir, true);
+      return { extracted: entries ?? zip.getEntries().map((e) => e.entryName) };
+    },
+  };
+}
+
+// ── Browser Capabilities ───────────────────────────────────────
+
+let sharedBrowserPool: BrowserPool | null = null;
+
+export function getBrowserPool(): BrowserPool {
+  if (!sharedBrowserPool) {
+    sharedBrowserPool = new BrowserPool({ maxContexts: 3 });
+  }
+  return sharedBrowserPool;
+}
+
+export function createBrowserCapabilities() {
+  const pool = getBrowserPool();
+  return {
+    browserNavigate: async (sessionId: string, url: string, waitFor?: string) => {
+      await pool.initialize();
+      return pool.navigate(sessionId, url, { waitFor });
+    },
+    browserClick: async (sessionId: string, selector: string) => {
+      return { clicked: await pool.click(sessionId, selector) };
+    },
+    browserType: async (sessionId: string, selector: string, text: string, submit?: boolean) => {
+      return { typed: await pool.type(sessionId, selector, text, submit) };
+    },
+    browserRead: async (sessionId: string, selector?: string) => {
+      return pool.read(sessionId, selector);
+    },
+    browserScreenshot: async (sessionId: string, selector?: string) => {
+      return pool.screenshot(sessionId, selector);
+    },
+    browserEvaluate: async (sessionId: string, script: string) => {
+      return { result: await pool.evaluate(sessionId, script) };
+    },
+  };
+}
+
+// ── Communication Capabilities ───────────────────────────────
+
+export function createCommunicationCapabilities() {
+  const rssParser = new Parser();
+  return {
+    fetchRss: async (url: string, limit?: number) => {
+      const feed = await rssParser.parseURL(url);
+      return {
+        entries: (feed.items ?? []).slice(0, limit ?? 20).map((item: any) => ({
+          title: item.title ?? '',
+          link: item.link ?? '',
+          pubDate: item.pubDate ?? item.isoDate,
+          content: item.content ?? item.contentSnippet ?? '',
+        })),
+      };
+    },
+    sendEmail: async (
+      to: string,
+      subject: string,
+      body: string,
+      bodyType?: 'text' | 'html',
+    ) => {
+      // SMTP config is read from environment or settings at runtime
+      const smtpConfig = process.env.SMTP_CONFIG
+        ? JSON.parse(process.env.SMTP_CONFIG)
+        : null;
+      if (!smtpConfig) {
+        throw new Error(
+          'SMTP not configured. Set SMTP_CONFIG env var with JSON transport config.',
+        );
+      }
+      const transporter = nodemailer.createTransport(smtpConfig);
+      const result = await transporter.sendMail({
+        from: smtpConfig.from,
+        to,
+        subject,
+        [bodyType === 'html' ? 'html' : 'text']: body,
+      });
+      return { sent: true, messageId: result.messageId };
+    },
+  };
+}
+
+// ── System Capabilities ──────────────────────────────────────
+
+export function createSystemCapabilities(_isDesktopMode = false) {
+  return {
+    readClipboard: async () => {
+      const text = await clipboardy.read();
+      return { text };
+    },
+    writeClipboard: async (text: string) => {
+      await clipboardy.write(text);
+      return { written: true };
+    },
+    sendNotification: async (title: string, message: string) => {
+      notifier.notify({ title, message });
+      return { sent: true };
+    },
+    startProcess: async (command: string, args?: string[], cwd?: string) => {
+      const fullCommand = args ? `${command} ${args.join(' ')}` : command;
+      const blocked = detectDangerousCommand(fullCommand);
+      if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
+
+      const child = spawn(command, args ?? [], {
+        cwd,
+        detached: true,
+        shell: false,
+        windowsHide: true,
+      });
+      return { pid: child.pid! };
+    },
+    killProcess: async (pid: number) => {
+      if (pid < 100) throw new Error('Refusing to kill system process');
+      try {
+        process.kill(pid);
+        return { killed: true };
+      } catch (e: any) {
+        return { killed: false, error: e.message };
+      }
+    },
+    showOpenDialog: async (
+      _options?: {
+        multiple?: boolean;
+        filters?: { name: string; extensions: string[] }[];
+      },
+    ) => {
+      return {
+        paths: [],
+        error:
+          'Dialog only available in desktop mode. Use read_file with a known path instead.',
+      };
+    },
+  };
+}
+
 /** Build capabilities from server context. Pass `allowed` to restrict capability areas. */
 export function createAllCapabilities(
   ctx: CapabilitiesContext,
@@ -1041,6 +1255,11 @@ export function createAllCapabilities(
     ...createEvaluationCapabilities(ctx),
     ...createLSPCapabilities(),
     ...createSystemKnowledgeCapabilities(ctx),
+    ...createDocumentCapabilities(),
+    ...createArchiveCapabilities(),
+    ...createBrowserCapabilities(),
+    ...createCommunicationCapabilities(),
+    ...createSystemCapabilities(),
   };
   if (!allowed || allowed.length === 0) return all;
   const areaMap: Record<string, string[]> = {

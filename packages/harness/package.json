@@ -17,11 +17,11 @@
     "@cabinet/gateway": "workspace:*",
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
-    "@cabinet/types": "workspace:*"
+    "@cabinet/types": "workspace:*",
+    "playwright": "^1.50.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "playwright": "^1.50.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   }

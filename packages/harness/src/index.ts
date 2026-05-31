@@ -15,6 +15,7 @@ export {
   type VerificationResult,
   type VerificationReport,
 } from './browser-verifier.js';
+export { BrowserPool, type BrowserPoolOptions } from './browser-pool.js';
 export {
   GarbageCollector,
   type GCIssue,
