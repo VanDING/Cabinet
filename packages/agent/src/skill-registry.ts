@@ -128,6 +128,14 @@ export class SkillRegistry {
   ): Promise<{ skillName: string; output: string }> {
     this.usageCounts.set(skill.name, (this.usageCounts.get(skill.name) ?? 0) + 1);
     let prompt = skill.promptTemplate;
+    // Positional argument substitution ($ARGUMENTS, $0, $1, ...)
+    const argumentStr = String(args.arguments ?? '');
+    prompt = prompt.replace(/\$ARGUMENTS/g, argumentStr);
+    const positionalArgs = argumentStr.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < positionalArgs.length; i++) {
+      prompt = prompt.replace(new RegExp(`\\\$${i}`, 'g'), positionalArgs[i]!);
+    }
+    // Named argument substitution ({{key}})
     for (const [key, value] of Object.entries(args)) {
       prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
     }
