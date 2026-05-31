@@ -1091,6 +1091,8 @@ export function registerMCPTools(
     const fullName = `mcp__${tool.name}`;
     executor.register({
       name: fullName,
+      description: tool.description,
+      parameters: tool.inputSchema,
       execute: async (args: Record<string, unknown>) => {
         const result = await mcpCallTool(fullName, args);
         return result;

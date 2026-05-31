@@ -16,6 +16,7 @@ import { ContextMonitor, type ContextBreakdown } from './context-monitor.js';
 import { ContextHandoff } from './context-handoff.js';
 import { TaskTracker, type AgentTask, SemanticTaskTracker } from './task-tracker.js';
 import { ProjectSnapshot } from './project-snapshot.js';
+import { ToolPruner } from './tool-pruner.js';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -111,6 +112,8 @@ export interface AgentLoopOptions {
   prebuiltContext?: PrebuiltContext;
   /** User-configurable trust level (T0-T3) for error tolerance and tool limits. */
   trustLevel?: TrustLevel;
+  /** Optional dynamic tool pruner — reduces exposed tools per-turn by task relevance. */
+  toolPruner?: ToolPruner;
 }
 
 export interface AgentResult {
@@ -301,6 +304,23 @@ export class AgentLoop {
     this.options = options;
   }
 
+  /** Resolve the active tool executor, applying dynamic pruning if configured.
+   *  Falls back to the full tool set on any pruning failure to avoid blocking execution. */
+  private async resolveToolExecutor(taskDescription?: string): Promise<ToolExecutor> {
+    if (!this.options.toolPruner || !taskDescription) {
+      return this.toolExecutor;
+    }
+    try {
+      if (!this.options.toolPruner.isIndexed()) {
+        await this.options.toolPruner.indexTools(this.toolExecutor);
+      }
+      const pruned = await this.options.toolPruner.prune(taskDescription);
+      return this.toolExecutor.createView(pruned.allowedTools);
+    } catch {
+      return this.toolExecutor;
+    }
+  }
+
   /** Set a callback for session observability (after construction). */
   set onSessionComplete(callback: SessionCompleteCallback | undefined) {
     this.options.onSessionComplete = callback;
@@ -363,6 +383,7 @@ export class AgentLoop {
     let warnedThreshold = false;
     let consecutiveErrors = 0;
     const trust = TRUST_THRESHOLDS[this.options.trustLevel ?? 'T1'];
+    const activeToolExecutor = await this.resolveToolExecutor(this.options.taskDescription);
     while (steps < maxSteps) {
       if (consecutiveErrors >= trust.maxConsecutiveErrors) {
         const msg = `Agent stopped after ${consecutiveErrors} consecutive errors (trust level: ${this.options.trustLevel ?? 'T1'}).`;
@@ -489,7 +510,7 @@ export class AgentLoop {
               model: this.options.model ?? 'claude-sonnet-4-6',
               systemPrompt: systemPrompt,
               messages: allMessages,
-              tools: this.toolExecutor.getToolDescriptors(),
+              tools: activeToolExecutor.getToolDescriptors(),
               cacheSystemPrompt: true,
               ...(this.options.maxResponseTokens != null
                 ? { maxTokens: this.options.maxResponseTokens }
@@ -912,6 +933,9 @@ export class AgentLoop {
       prebuiltContext: this.options.prebuiltContext,
     });
 
+    // Resolve pruned tool set for this task
+    const activeToolExecutor = await this.resolveToolExecutor(this.options.taskDescription);
+
     // Inject project snapshot into system prompt for streaming too
     let streamingSystemPrompt = ctx.systemPrompt;
     const streamingRoot = this.options.projectRoot ?? process.cwd();
@@ -933,7 +957,7 @@ export class AgentLoop {
     ];
 
     // Convert ToolExecutor tools to StreamingToolDefinition
-    const toolDescriptors = this.toolExecutor.getToolDescriptors();
+    const toolDescriptors = activeToolExecutor.getToolDescriptors();
     const streamingTools: StreamingToolDefinition[] = toolDescriptors.map((td) => ({
       name: td.name,
       description: td.description,

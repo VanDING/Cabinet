@@ -394,6 +394,9 @@ importers:
       '@cabinet/agent':
         specifier: workspace:*
         version: link:../agent
+      '@cabinet/decision':
+        specifier: workspace:*
+        version: link:../decision
       '@cabinet/events':
         specifier: workspace:*
         version: link:../events
@@ -2033,7 +2036,6 @@ packages:
   '@tailwindcss/oxide-win32-x64-msvc@4.3.0':
     resolution: {integrity: sha512-Mvrf2kXW/yeW/OTezZlCGOirXRcUuLIBx/5Y12BaPM7wJoryG6dfS/NJL8aBPqtTEx/Vm4T4vKzFUcKDT+TKUA==}
     engines: {node: '>= 20'}
-    cpu: [x64]
     os: [win32]
 
   '@tailwindcss/oxide@4.3.0':

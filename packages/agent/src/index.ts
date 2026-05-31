@@ -58,6 +58,11 @@ export {
   type TrustLevel,
 } from './agent-loop.js';
 export {
+  ToolPruner,
+  type ToolPrunerOptions,
+  type PrunedToolSet,
+} from './tool-pruner.js';
+export {
   type InteractiveSubAgent,
   type InitContext,
   type Deliverable,

@@ -144,5 +144,22 @@ export function createStandardMemoryProvider(
         : await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
       return results.map((r) => `[Memory] ${r.content}`);
     },
+    async getRecentInsights(count: number) {
+      const results = await ctx.longTerm.search('', count * 3);
+      const insights = results
+        .filter(
+          (r) =>
+            r.metadata.type === 'insight' ||
+            r.metadata.type === 'harness_insight' ||
+            r.metadata.type === 'subconscious_insight',
+        )
+        .slice(0, count)
+        .map((r) => ({
+          text: r.content,
+          relevance: (r.metadata.relevance as number) ?? 0.5,
+          source: (r.metadata.source as string) ?? 'unknown',
+        }));
+      return insights;
+    },
   };
 }

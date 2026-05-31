@@ -1953,6 +1953,7 @@ function getAgentLoopForRole(
     contextBudget: role.contextBudget,
     thinkingBudget,
     trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
+    toolPruner: ctx.toolPruner,
   });
 
   // FIFO eviction
@@ -2032,6 +2033,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
+    toolPruner: ctx.toolPruner,
   });
 
   // FIFO eviction
@@ -2468,6 +2470,7 @@ function getOrCreateAgent(
       contextBudget: secretaryRole?.contextBudget,
       thinkingBudget,
       trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
+      toolPruner: ctx.toolPruner,
     });
     secretaryLoop.onSessionComplete = (summary) => {
       const obs = getServerContext().observability;
