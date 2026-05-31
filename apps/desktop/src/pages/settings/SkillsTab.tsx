@@ -27,7 +27,7 @@ export function SkillsTab() {
     apiFetch('/api/skills', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setSkills(d.skills ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   useEffect(() => {

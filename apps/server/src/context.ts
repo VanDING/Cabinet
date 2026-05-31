@@ -481,7 +481,7 @@ export function getServerContext(): ServerContext {
         });
 
         // Trigger semantic preference analysis (throttled internally)
-        preferenceLearner.learnFromDecisions(cid).catch(() => {});
+        preferenceLearner.learnFromDecisions(cid).catch((err) => { console.warn('Operation failed', err); });
 
         // Trigger Curator preference update (fire-and-forget)
         triggerCuratorPreferenceUpdate(decisionId, action, title, chosenOptionId, captainId);
@@ -1789,7 +1789,7 @@ export function getServerContext(): ServerContext {
           message: `A new memory may contradict an existing one (${Math.round(contradiction.confidence * 100)}% confidence).`,
         } as any,
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   });
 
   // Subscribe to subconscious insights — persist high-relevance ones to long-term memory
@@ -1810,7 +1810,7 @@ export function getServerContext(): ServerContext {
             sourceMemoryId: insight?.sourceMemoryId ?? '',
           },
           timestamp: msg.timestamp,
-        }).catch(() => {});
+        }).catch((err) => { console.warn('Operation failed', err); });
         broadcast('subconscious_insight', {
           text,
           relevance,

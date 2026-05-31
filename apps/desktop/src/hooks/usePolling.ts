@@ -13,7 +13,7 @@ export function usePolling<T>(
     fetchFnRef
       .current()
       .then(setData)
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 

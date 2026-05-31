@@ -1977,9 +1977,7 @@ function getAgentLoopForRole(
           ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
         }
       })
-      .catch(() => {
-        /* best-effort */
-      });
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   agentLoopCache.set(cacheKey, loop);
@@ -2143,7 +2141,7 @@ async function dispatchToSpecialist(
                   severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
                 },
               })
-              .catch(() => {});
+              .catch((err) => { console.warn('Operation failed', err); });
 
             broadcast('quality_alert', {
               source: roleType,
@@ -2251,7 +2249,7 @@ async function dispatchToSpecialistStreaming(
                     severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
                   },
                 })
-                .catch(() => {});
+                .catch((err) => { console.warn('Operation failed', err); });
               broadcast('quality_alert', {
                 source: roleType,
                 sessionId,
@@ -2261,9 +2259,7 @@ async function dispatchToSpecialistStreaming(
               });
             }
           })
-          .catch(() => {
-            /* Review failure is non-fatal */
-          });
+          .catch((err) => { console.warn('Operation failed', err); });
       }
     }
   } catch (e: any) {
@@ -2428,9 +2424,7 @@ function getOrCreateAgent(
 
   // Warm up embeddings eagerly so the first request doesn't pay the latency cost
   if (hasGateway) {
-    intentParser.warmupEmbeddings().catch(() => {
-      /* best-effort; fallback to keyword routing if it fails */
-    });
+    intentParser.warmupEmbeddings().catch((err) => { console.warn('Operation failed', err); });
   }
 
   const agent = new SecretaryAgent(

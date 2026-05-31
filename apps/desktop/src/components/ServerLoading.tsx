@@ -79,7 +79,7 @@ export function ServerLoading({ children }: { children: ReactNode }) {
       .then((fn) => {
         unlisten = fn;
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
 
     return () => {
       unlisten?.();

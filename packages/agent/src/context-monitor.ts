@@ -182,9 +182,7 @@ export class ContextMonitor {
             },
           },
         })
-        .catch(() => {
-          /* fire-and-forget */
-        });
+        .catch((err) => { console.warn('Operation failed', err); });
     }
 
     return snap;

@@ -17,7 +17,7 @@ export function BackupsTab() {
     apiFetch('/api/backups', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setBackups(d.backups ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   useEffect(() => {

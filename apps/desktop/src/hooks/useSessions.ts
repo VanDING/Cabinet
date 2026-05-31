@@ -173,7 +173,7 @@ export function useSessions() {
       apiFetch(`/api/secretary/sessions/${id}/close`, {
         method: 'POST',
         headers: authHeaders(),
-      }).catch(() => {});
+      }).catch((err) => { console.warn('Operation failed', err); });
       setSessions((prev) => {
         const session = prev.find((s) => s.id === id);
         if (session && session.messages.length > 0) {

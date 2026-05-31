@@ -26,7 +26,7 @@ export function useProject() {
         }));
         setProjects(list);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   useEffect(() => {

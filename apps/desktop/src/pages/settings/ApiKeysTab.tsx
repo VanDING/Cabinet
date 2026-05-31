@@ -29,7 +29,7 @@ export function ApiKeysTab() {
     apiFetch('/api/settings/api-keys', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setKeys(d.keys ?? []))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   };
 
   useEffect(() => {
@@ -245,7 +245,7 @@ function ModelMappingSection() {
           fast_execution: m.fast_execution ?? '',
         });
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -346,7 +346,7 @@ function BudgetSection() {
         setBudget({ daily: d.daily ?? 5, weekly: d.weekly ?? 25, monthly: d.monthly ?? 100 });
         setCurrentSpend(d.currentSpend ?? 0);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   const handleSave = async () => {

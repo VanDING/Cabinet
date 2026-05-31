@@ -28,7 +28,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
     apiFetch(url, { headers: authHeaders() })
       .then((r) => r.json())
       .then((data) => setItems((data.deliverables ?? []).slice(0, 5)))
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, [projectId]);
 

@@ -9,7 +9,7 @@ export function BudgetTab() {
     apiFetch('/api/settings/budget', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setBudget(d))
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   const handleSave = async () => {

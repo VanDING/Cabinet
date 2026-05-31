@@ -20,7 +20,7 @@ export function TokensWidget() {
         setTotalTokens(total);
         setTodayTokens(today);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Operation failed', err); });
   }, []);
 
   useEffect(() => {

@@ -57,7 +57,7 @@ export function HarnessModal({ onClose }: Props) {
       .then((d) => {
         if (!d.error) setData(d);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, []);
 

@@ -39,7 +39,7 @@ export function ProgressBoard({ projectId }: Props) {
       .then((d) => {
         if (!d.error) setData(d);
       })
-      .catch(() => {})
+      .catch((err) => { console.warn('Operation failed', err); })
       .finally(() => setLoading(false));
   }, [projectId]);
 
