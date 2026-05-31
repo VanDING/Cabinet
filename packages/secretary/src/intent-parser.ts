@@ -19,6 +19,7 @@ export type ParsedIntent =
   | { kind: 'review_request'; target: string; context: string }
   | { kind: 'organize_request'; topic: string; context: string }
   | { kind: 'skill_request'; topic: string; context: string }
+  | { kind: 'invoke_skill'; skillName: string; args: string; raw: string }
   | { kind: 'mcp_request'; topic: string; context: string }
   | { kind: 'schedule_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
@@ -296,6 +297,17 @@ export class IntentParser {
       };
     }
 
+    // Direct skill invocation via /skillName prefix (highest priority)
+    const skillInvokeMatch = message.trim().match(/^\/(\S+)/);
+    if (skillInvokeMatch) {
+      return {
+        kind: 'invoke_skill',
+        skillName: skillInvokeMatch[1]!,
+        args: message.trim().slice(skillInvokeMatch[0].length).trim(),
+        raw: message,
+      };
+    }
+
     if (
       lower.includes('什么') ||
       lower.includes('如何') ||
@@ -545,7 +557,9 @@ Examples:
    → {"kind": "skill_request", "topic": "写一个skill", "context": "..."}
 10. Message: "搭一个mcp server"
     → {"kind": "mcp_request", "topic": "搭一个mcp server", "context": "..."}
-11. Message: "继续"
+11. Message: "/workflow-designer"
+    → {"kind": "invoke_skill", "skillName": "workflow-designer", "args": "", "raw": "/workflow-designer"}
+12. Message: "继续"
     → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
 
       const historyConstraint = conversationContext?.lastIntent
@@ -561,6 +575,7 @@ Examples:
 - review_request: user wants to review/audit/check quality of something
 - organize_request: user wants to design/build/architect an organization, system, workflow, or agent
 - skill_request: user wants to create/edit/optimize a skill or SKILL.md
+- invoke_skill: user wants to invoke/run an existing skill (message starts with /skillName)
 - mcp_request: user wants to build an MCP server
 - schedule_request: user wants to create a scheduled/recurring task
 - follow_up: user is continuing or elaborating on a previous topic
@@ -979,6 +994,10 @@ Message: "${message}"`;
         targetAgent = 'organize';
         reasoning = 'Creation/design request routed to Organize Agent.';
         break;
+      case 'invoke_skill':
+        targetAgent = 'secretary';
+        reasoning = 'Skill invocation handled by Secretary.';
+        break;
       case 'schedule_request':
         targetAgent = 'secretary';
         reasoning = 'Scheduling request — Secretary has schedule_task tools.';
@@ -1006,7 +1025,7 @@ Message: "${message}"`;
       const match = json.match(/\{[\s\S]*\}/);
       if (!match) return { kind: 'unknown', raw: json };
       const parsed = JSON.parse(match[0]);
-      return {
+      const base = {
         kind: parsed.kind ?? 'unknown',
         topic: parsed.topic ?? '',
         context: parsed.context ?? '',
@@ -1016,7 +1035,11 @@ Message: "${message}"`;
         question: parsed.question,
         filters: parsed.filters ?? {},
         raw: json,
-      } as ParsedIntent;
+      };
+      if (base.kind === 'invoke_skill') {
+        return { ...base, skillName: parsed.skillName ?? '', args: parsed.args ?? '' } as ParsedIntent;
+      }
+      return base as ParsedIntent;
     } catch {
       return { kind: 'unknown', raw: json };
     }

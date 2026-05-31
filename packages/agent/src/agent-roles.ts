@@ -185,6 +185,8 @@ export const SECRETARY_ROLE: AgentRole = {
     'execute_command',
     'query_system_knowledge',
     'get_system_knowledge',
+    'use_skill',
+    'update_skill',
     // Note: destructive tools (delete_file, delete_workflow, delete_agent,
     // approve_decision, reject_decision, clear_index) are
     // intentionally excluded — they belong in workflow approval nodes.

@@ -279,6 +279,8 @@ export class AgentLoop {
   private lastSavedStep = 0;
   /** Conversation history persisted across continueWithUserInput calls. */
   private conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [];
+  /** One-shot skill context to inject into the system prompt on the next run. */
+  private skillContext: string | null = null;
 
   constructor(options: AgentLoopOptions) {
     this.gateway = options.gateway;
@@ -407,6 +409,12 @@ export class AgentLoop {
         })();
       if (snapshot && !this.options.systemPrompt) {
         systemPrompt = `${systemPrompt}\n\n## Project Structure\n${snapshot.summary}\n\nKey directories:\n${snapshot.tree.slice(0, 20).join('\n')}`;
+      }
+
+      // One-shot skill context injection
+      if (this.skillContext) {
+        systemPrompt = `${systemPrompt}\n\n## Active Skill Context\n${this.skillContext}`;
+        this.skillContext = null;
       }
 
       // Combine system context messages with conversation messages
@@ -911,6 +919,12 @@ export class AgentLoop {
       streamingSystemPrompt = `${streamingSystemPrompt}\n\n## Project Structure\n${snap.summary}\n\nKey directories:\n${snap.tree.slice(0, 20).join('\n')}`;
     }
 
+    // One-shot skill context injection
+    if (this.skillContext) {
+      streamingSystemPrompt = `${streamingSystemPrompt}\n\n## Active Skill Context\n${this.skillContext}`;
+      this.skillContext = null;
+    }
+
     const messages: { role: 'user' | 'assistant'; content: string }[] = [
       ...ctx.messages.map((m) => ({ role: m.role, content: m.content })),
       ...this.conversationHistory,
@@ -1127,5 +1141,10 @@ export class AgentLoop {
   /** Clear conversation history (e.g. when sub-agent is finalized). */
   clearConversationHistory(): void {
     this.conversationHistory = [];
+  }
+
+  /** Set one-shot skill context to be injected into the system prompt on the next run. */
+  setSkillContext(context: string | null): void {
+    this.skillContext = context;
   }
 }
