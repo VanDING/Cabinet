@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { useToast } from '../components/Toast.js';
 
 interface EmployeeItem {
   id: string;
@@ -23,6 +24,7 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
 }
 
 export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | null }) {
+  const { addToast } = useToast();
   const [employees, setEmployees] = useState<EmployeeItem[]>(() => {
     try {
       const raw = localStorage.getItem('cabinet-employees');
@@ -79,7 +81,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const handleCreate = async () => {
     if (!form.name.trim()) return;
     if (!activeProjectId) {
-      alert('Please select a project first');
+      addToast('warning', 'Please select a project first');
       return;
     }
     const newEmp = {
