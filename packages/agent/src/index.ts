@@ -57,6 +57,11 @@ export {
   type StreamingCallback,
   type TrustLevel,
 } from './agent-loop.js';
+export {
+  type InteractiveSubAgent,
+  type InitContext,
+  type Deliverable,
+} from './interactive-sub-agent.js';
 export { ProjectSnapshot, type Snapshot } from './project-snapshot.js';
 export { SkillExtractor, type ExtractedSkill } from './skill-extractor.js';
 export { TaskTracker, type AgentTask, type TaskStatus } from './task-tracker.js';
