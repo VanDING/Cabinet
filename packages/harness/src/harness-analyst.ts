@@ -1,5 +1,7 @@
 import type { LLMGateway } from '@cabinet/gateway';
 import type { LongTermMemory } from '@cabinet/memory';
+import type { EventBus } from '@cabinet/events';
+import { MessageType } from '@cabinet/types';
 import type { ObservabilityCollector } from './observability.js';
 import type { AutoAdjuster } from './auto-adjuster.js';
 
@@ -11,6 +13,7 @@ export class HarnessAnalyst {
     private readonly autoAdjuster: AutoAdjuster,
     private readonly gateway: LLMGateway | null,
     private readonly longTerm: LongTermMemory | null,
+    private readonly eventBus?: EventBus,
   ) {}
 
   async analyze(): Promise<string | null> {
@@ -49,6 +52,20 @@ export class HarnessAnalyst {
         },
         timestamp: now,
       });
+
+      if (this.eventBus) {
+        await this.eventBus.publish({
+          messageId: `ha_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          correlationId: `ha_${Date.now()}`,
+          causationId: null,
+          timestamp: new Date(),
+          messageType: MessageType.SystemNotification,
+          payload: {
+            type: 'harness_insight',
+            insight: { text: insight, relevance: 0.9, source: 'HarnessAnalyst' },
+          } as any,
+        });
+      }
 
       this.lastAnalysisTime = now;
       return insight;

@@ -51,6 +51,7 @@ import {
   LevelClassifier,
   AuditLogger,
   EscalationService,
+  PolicyEngine,
 } from '@cabinet/decision';
 import { AISDKAdapter, CostTracker, BudgetGuard } from '@cabinet/gateway';
 import {
@@ -82,6 +83,7 @@ import {
   AgentLoop,
   SafetyChecker,
   CheckpointManager,
+  ToolPruner,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import { createStandardToolExecutor } from './agent-factory.js';
@@ -177,6 +179,8 @@ export interface ServerContext {
   metrics: MetricsCollector;
   logger: ReturnType<typeof getLogger>;
   backupManager: BackupManager | null;
+  /** Dynamic tool pruner — shared across all agent loops. */
+  toolPruner?: ToolPruner;
   /** Clean up all timers, close DB, stop backup. Call on process exit. */
   shutdown: () => void;
 }
@@ -414,6 +418,9 @@ export function getServerContext(): ServerContext {
     }
   }
 
+  // S5 Policy layer — mission-driven arbitration between control (S3) and intelligence (S4)
+  const policyEngine = new PolicyEngine();
+
   // Decision resolved callback: preference learning + workflow resumption
   const decisionService = new DecisionService(
     stateMachine,
@@ -496,6 +503,7 @@ export function getServerContext(): ServerContext {
       }
     },
     getCurrentTier,
+    policyEngine,
   );
 
   // Memory (shared DB for long-term)
@@ -993,6 +1001,22 @@ export function getServerContext(): ServerContext {
           const results = await longTerm.search(query, RAG_CURATOR_TOP_K, embedding);
           return results.map((r) => `[Memory] ${r.content}`);
         },
+        getRecentInsights: async (count) => {
+          const results = await longTerm.search('', count * 3);
+          return results
+            .filter(
+              (r) =>
+                r.metadata.type === 'insight' ||
+                r.metadata.type === 'harness_insight' ||
+                r.metadata.type === 'subconscious_insight',
+            )
+            .slice(0, count)
+            .map((r) => ({
+              text: r.content,
+              relevance: (r.metadata.relevance as number) ?? 0.5,
+              source: (r.metadata.source as string) ?? 'unknown',
+            }));
+        },
       },
       sessionId: `curator_bg_${Date.now()}`,
       projectId: 'default',
@@ -1003,6 +1027,7 @@ export function getServerContext(): ServerContext {
       maxResponseTokens: role.maxResponseTokens,
       temperature: role.temperature,
       contextBudget: role.contextBudget,
+      toolPruner: ctx?.toolPruner,
     });
   }
 
@@ -1796,7 +1821,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       }
     },
     adjustmentNotifyCallback,
+    policyEngine,
   );
+  autoAdjuster.startListening();
 
   // Harness analyst — periodic LLM-based harness health summaries
   const harnessAnalyst = new HarnessAnalyst(
@@ -1804,6 +1831,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     autoAdjuster,
     gateway,
     longTerm,
+    eventBus,
   );
 
   // Skill extraction
@@ -2182,6 +2210,10 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   const fileTracker = new FileAccessTracker();
   const taskTracker = new TaskTracker();
 
+  const toolPruner = gateway
+    ? new ToolPruner({ gateway, maxTools: 16, minTools: 8 })
+    : undefined;
+
   ctx = {
     db,
     decisionRepo,
@@ -2230,6 +2262,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     metrics,
     logger,
     backupManager,
+    toolPruner,
     shutdown,
   };
 

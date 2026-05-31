@@ -475,6 +475,7 @@ function getEngine(): WorkflowEngine {
         maxResponseTokens: role.maxResponseTokens,
         temperature: role.temperature,
         contextBudget: role.contextBudget,
+        toolPruner: ctx.toolPruner,
       });
 
       // Add to pool with LRU eviction

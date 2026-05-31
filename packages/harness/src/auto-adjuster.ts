@@ -1,6 +1,7 @@
 import type { EventBus } from '@cabinet/events';
 import { MessageType, type DelegationTier } from '@cabinet/types';
 import type { AgentRoleRegistry } from '@cabinet/agent';
+import type { PolicyEngine } from '@cabinet/decision';
 import type { ObservabilityCollector } from './observability.js';
 
 export interface AdjustmentAction {
@@ -33,6 +34,7 @@ export class AutoAdjuster {
     private readonly eventBus: EventBus,
     private readonly modelMappingUpdater?: (tier: string, model: string) => void,
     private readonly notifyCallback?: AdjustmentNotifyCallback,
+    private readonly policyEngine?: PolicyEngine,
   ) {}
 
   getRecentActions(limit = 20): AdjustmentAction[] {
@@ -59,7 +61,16 @@ export class AutoAdjuster {
       actions.push(...successActions);
     }
 
-    for (const a of actions) {
+    // Policy filtering: block or modify actions that violate S5 mission constraints
+    const filteredActions: AdjustmentAction[] = [];
+    for (const action of actions) {
+      const evaluated = this.policyEngine
+        ? (this.policyEngine.evaluateAdjustment(action as any) as AdjustmentAction | null)
+        : action;
+      if (evaluated) filteredActions.push(evaluated);
+    }
+
+    for (const a of filteredActions) {
       if (a.applied) {
         await this.eventBus.publish({
           messageId: `adj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -72,15 +83,37 @@ export class AutoAdjuster {
       }
     }
 
-    this.actionHistory.push(...actions);
+    this.actionHistory.push(...filteredActions);
     if (this.actionHistory.length > 100) {
       this.actionHistory.splice(0, this.actionHistory.length - 100);
     }
-    return actions;
+    return filteredActions;
   }
 
   getHistory(): readonly AdjustmentAction[] {
     return this.actionHistory;
+  }
+
+  /** Subscribe to insight events and trigger reactive adjustments.
+   *  Call once after construction (e.g., in server context initialization). */
+  startListening(): void {
+    this.eventBus.subscribe(
+      MessageType.SystemNotification,
+      async (msg) => {
+        const payload = msg.payload as unknown as Record<string, unknown> | undefined;
+        if (payload?.type === 'subconscious_insight' || payload?.type === 'harness_insight') {
+          const insight = payload.insight as Record<string, unknown> | undefined;
+          const relevance = (insight?.relevance as number) ?? 0;
+          if (relevance > 0.7) {
+            // Trigger a targeted health check when a high-relevance insight arrives.
+            // We use the current tier from the payload if available, otherwise default to T2.
+            const tier = (payload.tier as DelegationTier) ?? 'T2';
+            await this.runHealthCheck(tier);
+          }
+        }
+      },
+      'auto_adjuster_reactive',
+    );
   }
 
   private async handleToolDegradation(
