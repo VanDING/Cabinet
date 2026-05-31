@@ -1,32 +1,24 @@
-import { useState, useCallback, useEffect, useRef, lazy, Suspense, startTransition } from 'react';
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef, lazy, Suspense, startTransition } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerLoading } from './components/ServerLoading';
 import { useTheme } from './hooks/useTheme';
-import { useSessions, type ChatMessage, type AttachedFile } from './hooks/useSessions';
 import { useToast } from './components/Toast';
 import { useNotifications } from './components/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { MobileNav } from './components/MobileNav';
-import { apiFetch, authJsonHeaders, authHeaders } from './utils/pin.js';
 import { addToEventBuffer } from './utils/eventBuffer.js';
-import type { MeetingData } from './components/MeetingCard';
-import type { SubAgentActivity } from '@cabinet/ui';
-import { readSSEStream } from './utils/streaming.js';
+import { authJsonHeaders } from './utils/pin.js';
+import { useEventBus } from './contexts/EventBusContext';
 import { ProjectExplorer } from './components/ProjectExplorer';
+import { apiFetch } from './utils/pin.js';
 import { FileViewer } from './components/FileViewer';
-
-interface ProjectInfo {
-  id: string;
-  name: string;
-  lastActivityAt?: string;
-  activeWorkflowCount?: number;
-  archived?: boolean;
-  rootPath?: string;
-}
+import { useChat } from './contexts/ChatContext';
+import { useProject } from './contexts/ProjectContext';
+import { useLayout } from './contexts/LayoutContext';
 
 // Lazy-loaded pages
 const OfficePage = lazy(() =>
@@ -58,51 +50,131 @@ function PageLoader() {
 }
 
 export function App() {
-  const [activePage, setActivePage] = useState<NavPage>('office');
-  const [chatMode, setChatMode] = useState(false);
-  const [processingSessions, setProcessingSessions] = useState<Set<string>>(new Set());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(160);
-  const [activeAgent, setActiveAgent] = useState('secretary');
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [projects, setProjects] = useState<ProjectInfo[]>([]);
-  const [showProjectActionModal, setShowProjectActionModal] = useState(false);
-  const abortRef = useRef<Map<string, AbortController>>(new Map());
-  const navigate = useNavigate();
   const { theme, themes, setTheme } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
+  const prevWsConnected = useRef(false);
+  const { emit } = useEventBus();
 
-  // Fetch projects
-  const refreshProjects = useCallback(() => {
-    apiFetch('/api/projects?archived=false', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => setProjects(d.projects ?? []))
-      .catch((err) => { console.warn('Operation failed', err); });
-  }, []);
+  const {
+    sessions,
+    activeSession,
+    history,
+    chatMode,
+    setChatMode,
+    activeAgent,
+    setActiveAgent,
+    isSessionActive,
+    handleSend,
+    handleCreateSession,
+    handleStop,
+    handleEnterChat,
+    createSession,
+    switchSession,
+    addFile,
+    removeFile,
+    editMessage,
+    forkSession,
+    closeSession,
+    reopenSession,
+    deleteHistorySession,
+    updateSubAgentEvents,
+    updateSubAgentStatus,
+    getChildSessions,
+    inputTarget,
+    setInputTarget,
+  } = useChat();
 
+  const {
+    projects,
+    activeProjectId,
+    deleteProject,
+    renameProject,
+    switchProject,
+    showProjectActionModal,
+    setShowProjectActionModal,
+    handleCreateNewProject,
+    handleImportProject,
+    handleOpenProjectActionModal,
+  } = useProject();
+
+  const {
+    activePage,
+    sidebarCollapsed,
+    sidebarWidth,
+    navigate,
+    navigateToProject,
+    toggleSidebar,
+    setSidebarWidth,
+  } = useLayout();
+
+  const isActiveSessionProcessing = activeSession ? isSessionActive(activeSession.id) : false;
+
+  const handleNavigate = useCallback(
+    (page: NavPage) => {
+      navigate(page);
+      switchProject(null);
+      setChatMode(false);
+    },
+    [navigate, switchProject, setChatMode],
+  );
+
+  const handleNavigateToProject = useCallback(
+    (projectId: string) => {
+      switchProject(projectId);
+      setChatMode(false);
+      navigateToProject(projectId);
+    },
+    [switchProject, setChatMode, navigateToProject],
+  );
+
+  // Keyboard shortcuts
   useEffect(() => {
-    refreshProjects();
-  }, [refreshProjects]);
-
-  // Listen for project deletion from Navigation
-  useEffect(() => {
-    const handler = (e: Event) => {
-      refreshProjects();
-      if ((e as CustomEvent).detail === activeProjectId) setActiveProjectId(null);
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'b') {
+          e.preventDefault();
+          toggleSidebar();
+        }
+        if (e.key === 'n') {
+          e.preventDefault();
+          handleCreateSession();
+        }
+        if (e.key === 'k') {
+          e.preventDefault();
+          navigate('office');
+        }
+      }
     };
-    window.addEventListener('project_deleted', handler);
-    return () => window.removeEventListener('project_deleted', handler);
-  }, [refreshProjects, activeProjectId]);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggleSidebar, handleCreateSession, navigate]);
 
   // WebSocket for real-time events — batched as low-priority updates
   const { connected: wsConnected } = useWebSocket((type, data) => {
     // Buffer event for late-mounting widgets
     addToEventBuffer(type, data.data ?? {});
-    window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
-    // Also dispatch project_deleted without prefix for Navigation listener
+    // Emit via EventBus for new-style listeners
+    emit(type, data);
+    // Also dispatch project_deleted without prefix for legacy listeners
     if (type === 'project_deleted') {
       window.dispatchEvent(new CustomEvent('project_deleted', { detail: data.data?.name }));
+    }
+    // Keep ws: prefixed window events for backward compatibility (deprecated)
+    window.dispatchEvent(new CustomEvent(`ws:${type}`, { detail: data }));
+    // Handle sub-agent execution events
+    if (type === 'agent_event' && data?.sessionId && data?.event) {
+      try {
+        const event = data.event as import('./types/agent-events').AgentEvent;
+        updateSubAgentEvents(data.sessionId as string, event);
+        if (event.type === 'completed') {
+          updateSubAgentStatus(data.sessionId as string, 'completed');
+        } else if (event.type === 'error') {
+          updateSubAgentStatus(data.sessionId as string, 'error');
+        }
+      } catch {
+        /* ignore malformed agent_event */
+      }
     }
     startTransition(() => {
       if (type === 'decision_created')
@@ -165,7 +237,6 @@ export function App() {
   });
 
   // Toast on WebSocket disconnect / reconnect
-  const prevWsConnected = useRef(wsConnected);
   useEffect(() => {
     if (prevWsConnected.current && !wsConnected) {
       addToast('warning', 'Real-time connection lost. Reconnecting...');
@@ -175,503 +246,6 @@ export function App() {
     }
     prevWsConnected.current = wsConnected;
   }, [wsConnected, addToast]);
-
-  const {
-    sessions,
-    activeSession,
-    history,
-    isSessionActive,
-    createSession,
-    closeSession,
-    switchSession,
-    addMessage,
-    updateMessage,
-    addFile,
-    removeFile,
-    setSessionActive,
-    reopenSession,
-    deleteHistorySession,
-    editMessage,
-    forkSession,
-  } = useSessions();
-
-  const isActiveSessionProcessing = activeSession
-    ? processingSessions.has(activeSession.id)
-    : false;
-
-  const handleNavigate = useCallback(
-    (page: NavPage) => {
-      setActivePage(page);
-      setActiveProjectId(null);
-      setChatMode(false);
-      navigate(`/${page === 'office' ? '' : page}`);
-    },
-    [navigate],
-  );
-
-  const handleNavigateToProject = useCallback(
-    (projectId: string) => {
-      setActiveProjectId(projectId);
-      setActivePage('office' as NavPage);
-      setChatMode(false);
-      navigate(`/project/${projectId}/office`);
-    },
-    [navigate],
-  );
-
-  const handleOpenProjectActionModal = useCallback(() => {
-    setShowProjectActionModal(true);
-  }, []);
-
-  const handleCreateNewProject = useCallback(async () => {
-    const name = prompt('Project name:') || '';
-    if (!name.trim()) return;
-    try {
-      const r = await apiFetch('/api/projects', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ name: name.trim(), rootPath: '' }),
-      });
-      if (r.ok) {
-        const data = await r.json();
-        const newProjectId = data.project?.id;
-        refreshProjects();
-        if (newProjectId) {
-          setActiveProjectId(newProjectId);
-          navigate(`/project/${newProjectId}/office`);
-        }
-      }
-    } catch {
-      addToast('error', 'Failed to create project');
-    }
-  }, [refreshProjects, addToast]);
-
-  const handleImportProject = useCallback(async () => {
-    let name = '';
-    let rootPath = '';
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog');
-      const selected = await open({
-        directory: true,
-        title: 'Select project folder',
-        multiple: false,
-      });
-      if (selected && typeof selected === 'string') {
-        rootPath = selected;
-        name = selected.split(/[/\\]/).pop() || selected;
-      }
-    } catch {
-      /* Tauri dialog not available */
-    }
-    if (!name.trim()) return;
-    try {
-      const r = await apiFetch('/api/projects', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ name: name.trim(), rootPath }),
-      });
-      if (r.ok) {
-        const data = await r.json();
-        const newProjectId = data.project?.id;
-        refreshProjects();
-        if (newProjectId) {
-          setActiveProjectId(newProjectId);
-          navigate(`/project/${newProjectId}/office`);
-        }
-      }
-    } catch {
-      addToast('error', 'Failed to import project');
-    }
-  }, [refreshProjects, addToast]);
-
-  const handleDeleteProject = useCallback(
-    async (projectId: string, name: string) => {
-      try {
-        const r = await apiFetch(`/api/projects/${projectId}`, {
-          method: 'DELETE',
-          headers: authHeaders(),
-        });
-        if (r.ok) {
-          refreshProjects();
-          if (projectId === activeProjectId) setActiveProjectId(null);
-          // Notification handled by WebSocket broadcast (ws:project_deleted)
-        }
-      } catch {
-        addToast('error', 'Failed to delete project');
-      }
-    },
-    [refreshProjects, activeProjectId, addToast, addNotification],
-  );
-
-  const handleRenameProject = useCallback(
-    async (projectId: string, name: string) => {
-      try {
-        const r = await apiFetch(`/api/projects/${projectId}`, {
-          method: 'PUT',
-          headers: authJsonHeaders(),
-          body: JSON.stringify({ name }),
-        });
-        if (r.ok) {
-          refreshProjects();
-        }
-      } catch {
-        addToast('error', 'Failed to rename project');
-      }
-    },
-    [refreshProjects, addToast],
-  );
-
-  const handleEnterChat = useCallback(() => {
-    setChatMode(true);
-  }, []);
-
-  const handleCreateSession = useCallback((): string => {
-    const id = createSession({ projectId: activeProjectId ?? undefined });
-    setChatMode(true);
-    return id;
-  }, [createSession, activeProjectId]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'b') {
-          e.preventDefault();
-          setSidebarCollapsed((c) => !c);
-        }
-        if (e.key === 'n') {
-          e.preventDefault();
-          handleCreateSession();
-        }
-        if (e.key === 'k') {
-          e.preventDefault();
-          setActivePage('office');
-        }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handleCreateSession]);
-
-  const handleStop = useCallback((sessionId: string) => {
-    abortRef.current.get(sessionId)?.abort();
-    abortRef.current.delete(sessionId);
-  }, []);
-
-  const handleSend = useCallback(
-    async (
-      sessionId: string,
-      message: string,
-      files: AttachedFile[],
-      _dispatchMode?: string,
-      model?: string,
-    ) => {
-      if (!message.trim() && files.length === 0) return;
-
-      // Abort any in-flight request for THIS session before starting a new one
-      abortRef.current.get(sessionId)?.abort();
-      const controller = new AbortController();
-      abortRef.current.set(sessionId, controller);
-
-      setChatMode(true);
-      setSessionActive(sessionId, true);
-
-      const userMsg: ChatMessage = {
-        id: `u_${Date.now()}`,
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      };
-      addMessage(sessionId, userMsg);
-      setProcessingSessions((prev) => new Set(prev).add(sessionId));
-
-      // Always use streaming for responsive chat
-      const streamId = `a_${Date.now()}`;
-      try {
-        const res = await apiFetch('/api/secretary/chat', {
-          method: 'POST',
-          headers: authJsonHeaders(),
-          body: JSON.stringify({
-            sessionId,
-            message,
-            stream: true,
-            ...((activeSession?.projectId ?? activeProjectId)
-              ? { projectId: activeSession?.projectId ?? activeProjectId }
-              : {}),
-            files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
-            ...(model ? { model } : {}),
-            ...(activeAgent !== 'secretary' ? { targetAgent: activeAgent } : {}),
-          }),
-        });
-
-        const contentType = res.headers.get('content-type') ?? '';
-        if (contentType.includes('text/event-stream') && res.body) {
-          const reader = res.body.getReader();
-
-          let meetingData: MeetingData | undefined;
-          let streamAgent = activeAgent;
-          let thinkingAccumulated = '';
-          let toolCallsAccumulated: NonNullable<ChatMessage['toolCalls']> = [];
-          let lastContent = '';
-          let toolsSinceLastSegment = false;
-          let thinkingStart: number | undefined;
-          const streamStart = Date.now();
-
-          const subAgentMap = new Map<string, SubAgentActivity>();
-          const flushSubAgents = () => {
-            updateMessage(sessionId, streamId, {
-              subAgentActivities: Array.from(subAgentMap.values()),
-            });
-          };
-
-          const AGENT_DISPLAY: Record<string, string> = {
-            secretary: 'Secretary',
-            meeting_chair: 'Meeting Chair',
-            organize: 'Organize',
-          };
-
-          // Create skeleton message once; update incrementally during streaming
-          addMessage(sessionId, {
-            id: streamId,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            isStreaming: true,
-            agentName: streamAgent,
-          });
-
-          await readSSEStream(
-            reader,
-            {
-              onRoutingStart(targetAgent) {
-                const sourceDisplay = AGENT_DISPLAY[streamAgent] || streamAgent;
-                const targetDisplay = AGENT_DISPLAY[targetAgent] || targetAgent;
-                streamAgent = targetAgent;
-                updateMessage(sessionId, streamId, {
-                  routing: { from: sourceDisplay, to: targetDisplay },
-                });
-              },
-              onThinking(content) {
-                if (thinkingStart === undefined) thinkingStart = Date.now();
-                thinkingAccumulated += content;
-                updateMessage(sessionId, streamId, {
-                  thinking: thinkingAccumulated,
-                  toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
-                });
-              },
-              onThinkingDone() {
-                if (thinkingStart !== undefined) {
-                  const thinkingDurationMs = Date.now() - thinkingStart;
-                  updateMessage(sessionId, streamId, { thinkingDurationMs });
-                  thinkingStart = undefined;
-                }
-              },
-              onContent(_, fullContent) {
-                lastContent = fullContent;
-                updateMessage(sessionId, streamId, {
-                  content: fullContent,
-                  thinking: thinkingAccumulated || undefined,
-                  toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
-                });
-              },
-              onTaskUpdate(tasks) {
-                updateMessage(sessionId, streamId, { tasks });
-              },
-              onSemanticTaskUpdate(tasks) {
-                updateMessage(sessionId, streamId, { semanticTasks: tasks });
-              },
-              onStepBudgetWarning(remaining, maxSteps) {
-                updateMessage(sessionId, streamId, { stepBudget: { remaining, maxSteps } });
-              },
-              onToolStatus(message, type, detail) {
-                toolsSinceLastSegment = true;
-                const toolName = detail?.name ?? 'unknown';
-                if (type === 'result') {
-                  const idx = toolCallsAccumulated
-                    .map((tc) => tc.name === toolName && tc.status === 'running')
-                    .lastIndexOf(true);
-                  if (idx >= 0) {
-                    toolCallsAccumulated = toolCallsAccumulated.map((tc, i) =>
-                      i === idx
-                        ? {
-                            ...tc,
-                            status: 'completed' as const,
-                            result:
-                              typeof detail?.result === 'string'
-                                ? detail.result
-                                : JSON.stringify(detail?.result),
-                          }
-                        : tc,
-                    );
-                  } else {
-                    toolCallsAccumulated = [
-                      ...toolCallsAccumulated,
-                      {
-                        id: `${toolName}_${Date.now()}`,
-                        name: toolName,
-                        status: 'completed' as const,
-                        args: detail?.args as Record<string, unknown> | undefined,
-                        result:
-                          typeof detail?.result === 'string'
-                            ? detail.result
-                            : JSON.stringify(detail?.result),
-                      },
-                    ];
-                  }
-                } else if (type === 'error') {
-                  const idx = toolCallsAccumulated
-                    .map((tc) => tc.name === toolName && tc.status === 'running')
-                    .lastIndexOf(true);
-                  if (idx >= 0) {
-                    toolCallsAccumulated = toolCallsAccumulated.map((tc, i) =>
-                      i === idx ? { ...tc, status: 'error' as const } : tc,
-                    );
-                  }
-                } else {
-                  toolCallsAccumulated = [
-                    ...toolCallsAccumulated,
-                    {
-                      id: `${toolName}_${Date.now()}`,
-                      name: toolName,
-                      status: 'running' as const,
-                      args: detail?.args as Record<string, unknown> | undefined,
-                    },
-                  ];
-                }
-                updateMessage(sessionId, streamId, {
-                  thinking: thinkingAccumulated || undefined,
-                  toolCalls: toolCallsAccumulated,
-                });
-              },
-              onSubAgentStart(agentName, taskDescription) {
-                subAgentMap.set(agentName, {
-                  agentName,
-                  status: 'running',
-                  taskDescription,
-                  startedAt: new Date(),
-                });
-                flushSubAgents();
-              },
-              onSubAgentThinking(agentName, content) {
-                const existing = subAgentMap.get(agentName);
-                if (existing) {
-                  existing.thinking = [...(existing.thinking ?? []), content];
-                  flushSubAgents();
-                }
-              },
-              onSubAgentToolCall(agentName, toolName, args) {
-                const existing = subAgentMap.get(agentName);
-                if (existing) {
-                  existing.toolCalls = [
-                    ...(existing.toolCalls ?? []),
-                    { name: toolName, args: args as Record<string, unknown> },
-                  ];
-                  flushSubAgents();
-                }
-              },
-              onSubAgentDone(agentName, result) {
-                const existing = subAgentMap.get(agentName);
-                if (existing) {
-                  existing.status = 'completed';
-                  existing.result = result;
-                  existing.completedAt = new Date();
-                  flushSubAgents();
-                }
-              },
-              onSubAgentError(agentName, error) {
-                const existing = subAgentMap.get(agentName);
-                if (existing) {
-                  existing.status = 'error';
-                  existing.error = error;
-                  existing.completedAt = new Date();
-                  flushSubAgents();
-                }
-              },
-              onDone(fullContent, event) {
-                if (event?.meeting) meetingData = event.meeting as MeetingData;
-                if ((event as any)?.targetAgent) streamAgent = (event as any).targetAgent;
-                flushSubAgents();
-                subAgentMap.clear();
-                updateMessage(sessionId, streamId, {
-                  content: fullContent,
-                  isStreaming: false,
-                  meeting: meetingData,
-                  agentName: (event as any)?.agentName ?? streamAgent,
-                  toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
-                  durationMs: Date.now() - streamStart,
-                });
-              },
-              onError(error) {
-                flushSubAgents();
-                subAgentMap.clear();
-                updateMessage(sessionId, streamId, {
-                  content: `Error: ${error}`,
-                  isStreaming: false,
-                  isError: true,
-                  durationMs: Date.now() - streamStart,
-                });
-              },
-              onRouting(targetAgent) {
-                streamAgent = targetAgent;
-                // routing_start already emitted prefix; no message update needed here
-              },
-            },
-            controller.signal,
-          );
-        } else {
-          // Fallback to JSON (non-streaming)
-          const data = await res.json();
-          const content = data.response ?? 'I received your message.';
-
-          addMessage(sessionId, {
-            id: streamId,
-            role: 'assistant',
-            content,
-            timestamp: new Date(),
-            meeting: data.meeting ?? undefined,
-            agentName: data.agentName ?? activeAgent,
-          });
-        }
-      } catch {
-        addToast('error', 'Failed to send message. Server may be offline.');
-        const session = sessions.find((s) => s.id === sessionId);
-        const hasSkeleton = session?.messages.some((m) => m.id === streamId);
-        if (hasSkeleton) {
-          updateMessage(sessionId, streamId, {
-            content: 'Sorry, I could not connect to the server.',
-            isStreaming: false,
-            isError: true,
-          });
-        } else {
-          addMessage(sessionId, {
-            id: `e_${Date.now()}`,
-            role: 'assistant',
-            content: 'Sorry, I could not connect to the server.',
-            timestamp: new Date(),
-            agentName: activeAgent,
-            isError: true,
-          });
-        }
-      } finally {
-        if (abortRef.current.get(sessionId) === controller) abortRef.current.delete(sessionId);
-        setProcessingSessions((prev) => {
-          const next = new Set(prev);
-          next.delete(sessionId);
-          return next;
-        });
-        setSessionActive(sessionId, false);
-      }
-    },
-    [
-      addMessage,
-      addToast,
-      setSessionActive,
-      setChatMode,
-      activeProjectId,
-      activeAgent,
-      activeSession,
-    ],
-  );
 
   return (
     <ServerLoading>
@@ -687,7 +261,7 @@ export function App() {
               activePage={activePage}
               onNavigate={handleNavigate}
               collapsed={sidebarCollapsed}
-              onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+              onToggleCollapse={toggleSidebar}
               onNavigateToSession={(sessionId) => {
                 switchSession(sessionId);
                 setChatMode(true);
@@ -696,8 +270,8 @@ export function App() {
               activeProjectId={activeProjectId}
               projects={projects}
               onNewProject={handleOpenProjectActionModal}
-              onDeleteProject={handleDeleteProject}
-              onRenameProject={handleRenameProject}
+              onDeleteProject={deleteProject}
+              onRenameProject={renameProject}
               sidebarWidth={sidebarCollapsed ? undefined : sidebarWidth}
             />
           </div>
@@ -752,7 +326,11 @@ export function App() {
                         path="/project/:id/factory"
                         element={
                           <FactoryPage
-                            onCreateChatSession={(options) => createSession(options)}
+                            onCreateChatSession={(options) => {
+                              const id = createSession(options);
+                              setChatMode(true);
+                              return id;
+                            }}
                             onSwitchSession={(id) => {
                               switchSession(id);
                               setChatMode(true);
@@ -765,7 +343,11 @@ export function App() {
                         path="/factory"
                         element={
                           <FactoryPage
-                            onCreateChatSession={(options) => createSession(options)}
+                            onCreateChatSession={(options) => {
+                              const id = createSession(options);
+                              setChatMode(true);
+                              return id;
+                            }}
                             onSwitchSession={(id) => {
                               switchSession(id);
                               setChatMode(true);
@@ -823,6 +405,43 @@ export function App() {
                           activeSession.attachedFiles,
                         );
                       }}
+                      childSessions={getChildSessions(activeSession.id)}
+                      onSubAgentClick={(sessionId) => {
+                        const child = sessions.find((s) => s.id === sessionId);
+                        if (child) {
+                          setInputTarget({
+                            type: 'subagent',
+                            sessionId: child.id,
+                            agentId: child.agentType ?? 'unknown',
+                          });
+                        }
+                      }}
+                      onSubAgentConfirm={(sessionId) => {
+                        apiFetch('/api/secretary/subagent/finalize', {
+                          method: 'POST',
+                          headers: authJsonHeaders(),
+                          body: JSON.stringify({ subAgentSessionId: sessionId }),
+                        })
+                          .then(() => {
+                            updateSubAgentStatus(sessionId, 'completed');
+                            setInputTarget({
+                              type: 'secretary',
+                              sessionId: activeSession.id,
+                            });
+                          })
+                          .catch(() => {
+                            addToast('error', 'Failed to finalize sub-agent');
+                          });
+                      }}
+                      onSubAgentRegenerate={(sessionId) => {
+                        // Placeholder: regenerate would require restarting the specialist flow
+                        addToast('info', 'Regenerate not yet implemented');
+                      }}
+                      onResetInputTarget={() => {
+                        if (activeSession) {
+                          setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+                        }
+                      }}
                     />
                   </Suspense>
                 </ErrorBoundary>
@@ -840,7 +459,7 @@ export function App() {
               onSwitchSession={(id) => {
                 const targetSession = sessions.find((s) => s.id === id);
                 if (targetSession?.projectId) {
-                  setActiveProjectId(targetSession.projectId);
+                  switchProject(targetSession.projectId);
                 }
                 switchSession(id);
                 setChatMode(true);
@@ -855,10 +474,13 @@ export function App() {
               onStop={handleStop}
               activeProjectId={activeProjectId}
               projects={projects}
-              onSwitchProject={(id) => setActiveProjectId(id)}
+              onSwitchProject={(id) => switchProject(id)}
               onNewProject={handleOpenProjectActionModal}
               activeAgent={activeAgent}
               onAgentChange={setActiveAgent}
+              inputTarget={inputTarget}
+              onInputTargetChange={setInputTarget}
+              activeSessionId={activeSession?.id ?? null}
             />
           </div>
 
