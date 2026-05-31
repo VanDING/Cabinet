@@ -30,10 +30,10 @@ Start the full stack in development mode:
 
 ```bash
 # Terminal 1 — start the backend server
-pnpm dev:server
+cd apps/server && pnpm dev
 
 # Terminal 2 — start the desktop app (Vite + Tauri)
-pnpm dev:desktop
+cd apps/desktop && pnpm tauri:dev
 ```
 
 The desktop app will connect to the local server at `http://localhost:3000`.
@@ -52,7 +52,7 @@ This starts the React app in browser mode. Some native features (file system acc
 ## First Steps
 
 1. **Create a Project** — On first launch, create or import a project folder. Projects are the top-level containers for all work.
-2. **Configure API Keys** — Go to **Settings > API Keys** and add your LLM provider keys. Supported providers include Anthropic, OpenAI, and Google.
+2. **Configure API Keys** — Go to **Settings > API Keys** and add your LLM provider keys. Supported providers include Anthropic, OpenAI, Google, DeepSeek, Qwen, Moonshot, Zhipu, and Baichuan.
 3. **Set Delegation Tier** — In **Settings > Delegation**, choose your comfort level:
    - **T0 CaptainReview** — Every write and decision needs your confirmation.
    - **T1 StrategicGuard** (default) — Low-risk actions auto-execute; high-risk ones ask.

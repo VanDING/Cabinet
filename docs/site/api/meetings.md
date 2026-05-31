@@ -110,13 +110,13 @@ Retrieve a meeting report.
 }
 ```
 
-## Meeting Flow
+## Meeting Flow (Four-Phase Protocol)
 
 1. **Cost Estimation** — Before execution, the system estimates token usage based on advisor count and topic complexity. If the estimate exceeds ¥0.50, Captain confirmation is required.
-2. **Parallel Reasoning** — Each advisor receives the topic and context, then reasons independently.
-3. **Debate Protocol** — Advisors share perspectives across rounds. Early termination occurs if `coherenceScore` exceeds 0.80.
-4. **Cross-Validation** — A reviewer agent compares outputs, detecting agreements, disagreements, contradictions, and gaps.
-5. **Synthesis** — The Chair produces a final recommendation.
+2. **Chair Phase** — The Meeting Chair receives the topic, parses intent, selects advisors, and constructs a structured Brief specifying what each advisor should focus on.
+3. **Advisor Phase** — Each advisor receives the Brief and reasons independently on their assigned domain.
+4. **Reviewer Phase** — A reviewer agent independently reviews all advisor outputs for logical completeness, evidence quality, risk assessment, and factual accuracy.
+5. **Extraction Phase** — Consensus, disagreements, contradictions, and gaps are extracted into a final deliverable with coherence score.
 6. **Decision Extraction** — If the meeting yields a clear actionable decision, it is auto-extracted and sent to the DecisionService for L0-L3 classification.
 
 ## Cost Controls

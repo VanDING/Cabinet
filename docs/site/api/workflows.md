@@ -177,7 +177,7 @@ Get a single run's status and step outputs.
 
 ## Node Types
 
-Workflow definitions support 19 node types:
+Workflow definitions support 17 node types:
 
 | Category | Types | Purpose |
 | :------- | :---- | :------ |

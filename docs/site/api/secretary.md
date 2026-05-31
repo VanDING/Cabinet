@@ -106,7 +106,8 @@ The Secretary uses `IntentParser` to classify requests before routing:
 | :----- | :-------- | :-------------- |
 | `decision_request` | DecisionService | "Should we...", "Analyze whether..." |
 | `meeting_request` | MeetingService | "Get advisors to discuss...", "Meeting on..." |
-| `workflow_request` | WorkflowDesigner | "Create a workflow that...", "Automate..." |
+| `skill_request` | SkillRegistry / Organize | "Design a workflow...", "Create an agent...", "Write a skill..." |
+| `workflow_request` | WorkflowEngine | "Create a workflow that...", "Automate..." |
 | `task_request` | AgentDispatcher | "Write a script to...", "Generate..." |
 | `query` | Secretary (direct) | "What is...", "Show me..." |
 

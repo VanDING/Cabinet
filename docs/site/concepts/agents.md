@@ -32,10 +32,10 @@ Cabinet defines several built-in roles, each with a specialized system prompt an
 | Role | Purpose | Default Tier |
 | :--- | :------ | :----------- |
 | **secretary** | Front-door agent; intent parsing, routing, greeting | `default` |
-| **meeting_chair** | Orchestrates multi-agent meetings | `deep_think` |
-| **curator** | Memory consolidation, knowledge graph maintenance | `deep_think` |
-| **organize** | Project organization, file indexing, structure analysis | `default` |
-| **reviewer** | Output quality review, cross-validation | `deep_think` |
+| **meeting_chair** | Orchestrates multi-agent meetings | `fast_execution` |
+| **curator** | Memory consolidation, knowledge graph maintenance | `fast_execution` |
+| **organize** | Organization architect; workflow/agent/skill/MCP design | `deep_reasoning` |
+| **reviewer** | Output quality review, cross-validation | `fast_execution` |
 
 Roles are registered in `AgentRoleRegistry` (`@cabinet/agent`). Custom roles can be added at runtime via the `AgentCreator` flow.
 
@@ -96,10 +96,10 @@ Tracks token usage in real time and classifies the session into zones:
 
 | Zone | Usage | Action |
 | :--- | :---- | :----- |
-| **Smart** | <50% | Normal operation |
-| **Warning** | 50-75% | Begin summarizing older messages |
-| **Critical** | 75-90% | Aggressive pruning; trigger consolidation |
-| **Dumb** | >90% | Halt new tool calls; request user direction |
+| **Smart** | <40% | Normal operation |
+| **Warning** | 40-60% | Begin summarizing older messages |
+| **Critical** | 60-80% | Aggressive pruning; trigger consolidation |
+| **Dumb** | >80% | Halt new tool calls; request user direction |
 
 ### Context Handoff
 
@@ -111,14 +111,21 @@ Tools are the agent's hands. They are registered in a `ToolRegistry` and invoked
 
 ### Built-in Tools
 
-The `createCabinetTools` function registers system tools including:
+The `createCabinetTools` function registers 50+ system tools across categories:
 
-- Memory read/write (`remember`, `recall`)
-- Decision creation (`create_decision`)
-- Workflow management (`create_workflow`, `run_workflow`)
-- File operations (`read_file`, `write_file`, `list_directory`)
-- Meeting operations (`start_meeting`)
-- Project queries (`get_project_summary`)
+- **Memory** — `remember`, `recall`, `search_memory`, `write_memory`
+- **Decisions** — `create_decision`, `query_decisions`, `get_decision`, `approve_decision`, `reject_decision`
+- **Workflows** — `create_workflow`, `run_workflow`, `list_workflows`, `get_workflow`
+- **Files** — `read_file`, `write_file`, `edit_file`, `list_directory`, `glob`, `grep`
+- **Meetings** — `start_meeting`, `get_meeting_status`
+- **Projects** — `get_project_context`, `update_project_summary`, `add_milestone`
+- **Web** — `web_fetch`, `http_request`
+- **Shell** — `execute_command`
+- **System** — `query_system_knowledge`, `get_system_knowledge`, `get_status`
+- **Scheduler** — `schedule_task`, `cancel_scheduled_task`
+- **Skills** — `use_skill`, `update_skill`, `list_skills`
+- **Agents** — `register_agent`, `update_agent`, `list_agents`
+- **Evaluation** — `evaluate`
 
 ### Skill Tools
 
@@ -127,6 +134,28 @@ Skills are loaded from `SKILL.md` files and converted into callable tools. The `
 ### MCP Tools
 
 External capabilities via Model Context Protocol (MCP) servers are registered via `registerMCPTools`. These appear as ordinary tools to the agent but execute in external processes.
+
+### Built-in Skills
+
+Four system skills provide guided design assistants, invoked via `use_skill__*` tools:
+
+| Skill | Purpose |
+| :---- | :------ |
+| **workflowDesigner** | Guides workflow node selection and process design |
+| **agentCreator** | Validates and guides custom agent configuration |
+| **skillCreator** | Generates standard `SKILL.md` format definitions |
+| **mcpBuilder** | Assists with MCP server development |
+
+## Interactive Sub-Agents
+
+The `InteractiveSubAgent` system enables multi-turn agent sessions with dedicated state and mid-flight user input:
+
+- **Session isolation** — each sub-agent has its own message history and checkpoint
+- **Event-driven synchronization** — state changes broadcast via `AgentEventBus` to parent agents and UI
+- **Mid-flight input** — users can interject during long-running sub-agent tasks without losing context
+- **Deliverable tracking** — sub-agents produce structured deliverables that feed back into the main conversation
+
+Use cases include deep research sessions, iterative code generation, and multi-step workflow design where the Captain needs to course-correct along the way.
 
 ## Agent Dispatcher
 

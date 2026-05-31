@@ -1111,6 +1111,14 @@ export function registerSkillTools(executor: ToolExecutor): ToolExecutor {
   // Also register the generic use_skill dispatcher
   executor.register({
     name: 'use_skill',
+    parameters: {
+      type: 'object',
+      properties: {
+        skill: { type: 'string', description: 'Name of the skill to invoke' },
+        arguments: { type: 'string', description: 'Arguments to pass to the skill (optional)' },
+      },
+      required: ['skill'],
+    },
     execute: async (args: Record<string, unknown>) => {
       const skillName = args.skill as string;
       if (!skillName) return { error: 'skill name is required' };

@@ -1,0 +1,193 @@
+    const curatorDeps: ToolDependencies = {
+      decisionStore: decisionRepo,
+      eventBus: eventBus!,
+      shortTerm,
+      longTerm,
+      entity,
+      project,
+      createDecision(input) {
+        const id = `dec_${Date.now()}`;
+        return decisionService.create({
+          id,
+          projectId: input.projectId,
+          type: input.type,
+          title: input.title,
+          description: input.description,
+          options: input.options,
+          classification: input.classification,
+          captainId: input.captainId,
+        }) as any;
+      },
+      approveDecision: (decisionId, captainId, chosenOptionId) =>
+        decisionService.approve(decisionId, captainId, chosenOptionId),
+      rejectDecision: (decisionId, captainId) => decisionService.reject(decisionId, captainId),
+      listWorkflows: () => [],
+      getWorkflow: () => undefined,
+      createWorkflow: () => ({ id: '' }),
+      updateWorkflow: () => {},
+      deleteWorkflow: () => {},
+      runWorkflow: async () => ({ runId: '', status: 'not_implemented' }),
+      startMeeting: async (topic) => ({ meetingId: '', topic, synthesis: '', perspectives: [] }),
+      writeLongTermMemory: async (content, metadata) => {
+        let embedding: number[] | undefined;
+        if (gateway) {
+          try {
+            const result = await gateway.generateEmbeddings({ texts: [content] });
+            embedding = result.embeddings[0];
+          } catch {
+            /* embedding generation failed — store without */
+          }
+        }
+        return longTerm.store({
+          content,
+          metadata: metadata ?? {},
+          embedding,
+          timestamp: new Date(),
+        });
+      },
+      createEmployee: () => {},
+      registerAgent: (input) => {
+        agentRegistry.register({
+          type: 'custom' as const,
+          name: input.name,
+          description: input.description,
+          systemPrompt: input.systemPrompt,
+          modelTier: (input as any).modelTier ?? 'default',
+          temperature: input.temperature,
+          maxResponseTokens: input.maxResponseTokens,
+          allowedTools: input.allowedTools,
+          contextBudget: input.contextBudget,
+        });
+        return { type: 'custom', name: input.name };
+      },
+      updateAgent: () => {},
+      deleteAgent: () => {},
+      invokeAgent: async () => {
+        throw new Error('Agent invocation not available for Curator background task');
+      },
+      listAgents: () =>
+        agentRegistry.list().map((r) => ({
+          type: r.type,
+          name: r.name,
+          description: r.description,
+          builtIn: r.type !== 'custom',
+        })),
+      setProjectContext: (pid) => ({ id: pid, name: pid }),
+      createProject: (input) => ({ id: `proj_${Date.now()}`, name: input.name }),
+      listProjects: () => [],
+      getProjectContext: (pid) => {
+        const p = project.get(pid);
+        return p ? { id: pid, name: p.summary } : null;
+      },
+      getDashboardStats: () => ({
+        pendingDecisions: 0,
+        activeWorkflows: 0,
+        activeProjects: 0,
+        todayCost: 0,
+        totalLLMCalls: 0,
+        totalTokens: 0,
+        totalDecisions: 0,
+        errors: 0,
+        recentEvents: [],
+      }),
+      delegateTask: () => 'task_stub',
+      getTaskStatus: () => null,
+      listActiveTasks: () => [],
+      getDecisionAudit: () => [],
+      getSystemMetrics: () => ({ totalLLMCalls: 0, totalTokens: 0, totalDecisions: 0, errors: 0 }),
+      getWorkflowRun: () => null,
+      listWorkflowRuns: () => [],
+      // File / web / shell / scheduler / knowledge / eval — stubs for curator
+      readFile: async () => {
+        throw new Error('File access not available for Curator background task');
+      },
+      writeFile: async () => {
+        throw new Error('File write not available');
+      },
+      editFile: async () => {
+        throw new Error('File edit not available');
+      },
+      applyPatch: async () => {
+        throw new Error('Patch not available');
+      },
+      moveFile: async () => {
+        throw new Error('File move not available');
+      },
+      copyFile: async () => {
+        throw new Error('File copy not available');
+      },
+      makeDirectory: async () => {
+        throw new Error('Directory creation not available');
+      },
+      fileInfo: async () => {
+        throw new Error('File info not available');
+      },
+      listDirectory: async () => {
+        throw new Error('Directory listing not available');
+      },
+      searchFiles: async () => {
+        throw new Error('File search not available');
+      },
+      searchContent: async () => {
+        throw new Error('Content search not available');
+      },
+      deleteFile: async () => {
+        throw new Error('File deletion not available');
+      },
+      recentFiles: async () => [],
+      watchFile: async () => ({ changed: false, size: 0 }),
+      indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
+      webFetch: async () => {
+        throw new Error('Web access not available');
+      },
+      httpRequest: async () => {
+        throw new Error('HTTP not available');
+      },
+      execCommand: async () => {
+        throw new Error('Shell not available');
+      },
+      scheduleTask: async () => {
+        throw new Error('Scheduler not available');
+      },
+      listScheduledTasks: async () => [],
+      cancelScheduledTask: async () => {
+        throw new Error('Scheduler not available');
+      },
+      indexDocument: async () => {
+        throw new Error('Indexing not available');
+      },
+      searchDocuments: async () => {
+        throw new Error('Document search not available');
+      },
+      clearDocumentIndex: async () => {
+        throw new Error('Index management not available');
+      },
+      evaluateOutput: async () => {
+        throw new Error('Evaluation not available');
+      },
+      workspaceSymbols: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      goToDefinition: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      findReferences: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      diagnostics: async () => ({
+        available: false,
+        error: 'LSP not available for Curator background task',
+      }),
+      querySystemKnowledge: async () => [],
+      getSystemKnowledge: async () => null,
+      generateEmbeddings: async (texts) => {
+        if (!gateway) throw new Error('No LLM gateway available');
+        const result = await gateway.generateEmbeddings({ texts });
+        return result.embeddings;
+      },
+    };
+
+    const executor = createStandardToolExecutor(ctx!, curatorDeps, role.allowedTools);
