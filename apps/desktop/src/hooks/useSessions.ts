@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { SubAgentActivity } from '@cabinet/ui';
 import { apiFetch, authHeaders } from '../utils/pin.js';
+import type { AgentEvent } from '../types/agent-events';
 
 export interface AttachedFile {
   id: string;
@@ -60,6 +61,12 @@ export interface Session {
   attachedFiles: AttachedFile[];
   createdAt: Date;
   updatedAt: Date;
+  // Sub-agent tree support
+  parentId?: string;
+  agentType?: string;
+  status?: 'active' | 'completed' | 'error';
+  events?: AgentEvent[];
+  deliverable?: unknown;
 }
 
 function generateId(): string {
@@ -126,6 +133,32 @@ export function useSessions() {
     sessionsSaveTimer.current = setTimeout(() => saveSessions(sessions), 500);
     return () => clearTimeout(sessionsSaveTimer.current);
   }, [sessions]);
+
+  // Restore child sessions from server when active session changes
+  const restoredParents = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!activeSessionId || restoredParents.current.has(activeSessionId)) return;
+    restoredParents.current.add(activeSessionId);
+    apiFetch(`/api/sessions/${activeSessionId}/children`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((data: { sessions: Session[] }) => {
+        if (!data.sessions?.length) return;
+        setSessions((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const newChildren = data.sessions
+            .filter((s) => !existingIds.has(s.id))
+            .map((s) => ({
+              ...s,
+              createdAt: new Date(s.createdAt),
+              updatedAt: new Date(s.updatedAt),
+            }));
+          return [...prev, ...newChildren];
+        });
+      })
+      .catch(() => {
+        /* best-effort restore */
+      });
+  }, [activeSessionId]);
 
   const historySaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
@@ -327,6 +360,64 @@ export function useSessions() {
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
   const isSessionActive = useCallback((id: string) => activeSessionIds.has(id), [activeSessionIds]);
 
+  // ── Sub-agent session helpers ──
+
+  const createChildSession = useCallback(
+    (parentId: string, agentType: string, title?: string): string => {
+      const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const session: Session = {
+        id,
+        title: title ?? `${agentType} Agent`,
+        parentId,
+        agentType,
+        status: 'active',
+        messages: [],
+        attachedFiles: [],
+        events: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      setSessions((prev) => [...prev, session]);
+      return id;
+    },
+    [],
+  );
+
+  const getChildSessions = useCallback(
+    (parentId: string) => sessions.filter((s) => s.parentId === parentId),
+    [sessions],
+  );
+
+  const updateSubAgentEvents = useCallback((sessionId: string, event: AgentEvent) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, events: [...(s.events ?? []), event], updatedAt: new Date() }
+          : s,
+      ),
+    );
+  }, []);
+
+  const updateSubAgentStatus = useCallback(
+    (sessionId: string, status: Session['status']) => {
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, status, updatedAt: new Date() } : s)),
+      );
+    },
+    [],
+  );
+
+  const setSubAgentDeliverable = useCallback(
+    (sessionId: string, deliverable: unknown) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, deliverable, updatedAt: new Date() } : s,
+        ),
+      );
+    },
+    [],
+  );
+
   return {
     sessions,
     history,
@@ -346,5 +437,10 @@ export function useSessions() {
     updateMessage,
     deleteMessagesFrom,
     forkSession,
+    createChildSession,
+    getChildSessions,
+    updateSubAgentEvents,
+    updateSubAgentStatus,
+    setSubAgentDeliverable,
   };
 }
