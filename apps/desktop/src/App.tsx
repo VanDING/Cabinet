@@ -819,7 +819,7 @@ export function App() {
                       onContinue={(msgId) => {
                         handleSend(
                           activeSession.id,
-                          '请继续完成上述任务',
+                          'Please continue to complete the above tasks',
                           activeSession.attachedFiles,
                         );
                       }}

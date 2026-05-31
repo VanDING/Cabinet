@@ -95,10 +95,10 @@ export function ApiKeysTab() {
                 <option value="openai">OpenAI</option>
                 <option value="google">Google</option>
                 <option value="deepseek">DeepSeek</option>
-                <option value="qwen">Qwen (通义千问)</option>
-                <option value="moonshot">Moonshot (月之暗面)</option>
-                <option value="zhipu">Zhipu (智谱GLM)</option>
-                <option value="baichuan">Baichuan (百川)</option>
+                <option value="qwen">Qwen</option>
+                <option value="moonshot">Moonshot</option>
+                <option value="zhipu">Zhipu</option>
+                <option value="baichuan">Baichuan</option>
               </select>
             </div>
             <div>

@@ -5,7 +5,7 @@ export interface CostHistoryRow {
   model: string;
   prompt_tokens: number;
   completion_tokens: number;
-  cost_rmb: number;
+  cost_usd: number;
 }
 
 export class CostHistoryRepository {
@@ -19,7 +19,7 @@ export class CostHistoryRepository {
         model TEXT NOT NULL,
         prompt_tokens INTEGER NOT NULL DEFAULT 0,
         completion_tokens INTEGER NOT NULL DEFAULT 0,
-        cost_rmb REAL NOT NULL DEFAULT 0.0
+        cost_usd REAL NOT NULL DEFAULT 0.0
       );
       CREATE INDEX IF NOT EXISTS idx_cost_history_ts ON cost_history(timestamp);
     `);
@@ -28,7 +28,7 @@ export class CostHistoryRepository {
   insert(model: string, promptTokens: number, completionTokens: number, costRmb: number): void {
     this.db
       .prepare(
-        "INSERT INTO cost_history (timestamp, model, prompt_tokens, completion_tokens, cost_rmb) VALUES (datetime('now'), ?, ?, ?, ?)",
+        "INSERT INTO cost_history (timestamp, model, prompt_tokens, completion_tokens, cost_usd) VALUES (datetime('now'), ?, ?, ?, ?)",
       )
       .run(model, promptTokens, completionTokens, costRmb);
   }
@@ -36,7 +36,7 @@ export class CostHistoryRepository {
   findSince(days: number): CostHistoryRow[] {
     const rows = this.db
       .prepare(
-        `SELECT timestamp, model, prompt_tokens, completion_tokens, cost_rmb FROM cost_history WHERE timestamp >= date('now', ?) ORDER BY timestamp DESC`,
+        `SELECT timestamp, model, prompt_tokens, completion_tokens, cost_usd FROM cost_history WHERE timestamp >= date('now', ?) ORDER BY timestamp DESC`,
       )
       .all(`-${days} days`) as Record<string, unknown>[];
     return rows.map((r) => this.rowToCost(r));
@@ -48,7 +48,7 @@ export class CostHistoryRepository {
       model: row.model as string,
       prompt_tokens: row.prompt_tokens as number,
       completion_tokens: row.completion_tokens as number,
-      cost_rmb: row.cost_rmb as number,
+      cost_usd: row.cost_usd as number,
     };
   }
 }

@@ -5,7 +5,6 @@ import { ToastProvider } from './components/Toast';
 import { NotificationProvider } from './components/NotificationContext';
 import { ThemeProvider } from './hooks/useTheme';
 import { App } from './App';
-import './i18n';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
