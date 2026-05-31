@@ -277,6 +277,8 @@ export class AgentLoop {
   /** In-memory checkpoint buffer for async batch writes. */
   private pendingCheckpoint: CheckpointState | null = null;
   private lastSavedStep = 0;
+  /** Conversation history persisted across continueWithUserInput calls. */
+  private conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [];
 
   constructor(options: AgentLoopOptions) {
     this.gateway = options.gateway;
@@ -572,6 +574,7 @@ export class AgentLoop {
         this.flushCheckpoint();
         this.checkpointManager.delete(this.options.sessionId);
         this.pendingCheckpoint = null;
+        this.conversationHistory = [...messages];
         return {
           content: finalContent,
           steps: steps + 1,
@@ -812,6 +815,7 @@ export class AgentLoop {
     this.flushCheckpoint();
     this.checkpointManager.delete(this.options.sessionId);
     this.pendingCheckpoint = null;
+    this.conversationHistory = [...messages];
     return {
       content: finalContent,
       steps,
@@ -909,6 +913,7 @@ export class AgentLoop {
 
     const messages: { role: 'user' | 'assistant'; content: string }[] = [
       ...ctx.messages.map((m) => ({ role: m.role, content: m.content })),
+      ...this.conversationHistory,
       { role: 'user' as const, content: userMessage },
     ];
 
@@ -1068,6 +1073,16 @@ export class AgentLoop {
       toolCounts,
       true,
     );
+    // Reconstruct conversation history from streaming context
+    this.conversationHistory = [
+      ...this.conversationHistory,
+      { role: 'user', content: userMessage },
+      { role: 'assistant', content: fullText },
+      ...executedToolCalls.map((tc) => ({
+        role: 'user' as const,
+        content: `Tool result for ${tc.name}: ${JSON.stringify(tc.result)}`,
+      })),
+    ];
     return {
       content: fullText,
       steps: estimatedSteps,
@@ -1090,5 +1105,27 @@ export class AgentLoop {
       return this.run(userMessage);
     }
     return this.run(userMessage, state);
+  }
+
+  /**
+   * Continue an ongoing interactive session with additional user input.
+   * Preserves conversation history and re-uses the same AgentLoop configuration.
+   * Suitable for sub-agents that support mid-flight user refinement.
+   */
+  async continueWithUserInput(
+    input: string,
+    callback: StreamingCallback,
+  ): Promise<AgentResult> {
+    return this.runStreaming(input, callback);
+  }
+
+  /** Expose the accumulated conversation history (for debugging / external inspection). */
+  getConversationHistory(): ReadonlyArray<{ role: 'user' | 'assistant'; content: string }> {
+    return this.conversationHistory;
+  }
+
+  /** Clear conversation history (e.g. when sub-agent is finalized). */
+  clearConversationHistory(): void {
+    this.conversationHistory = [];
   }
 }
