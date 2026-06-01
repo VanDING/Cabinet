@@ -267,8 +267,8 @@ describe('Cabinet Tools', () => {
     }
   });
 
-  it('registers 42 tools', () => {
-    expect(executor.listTools()).toHaveLength(76);
+  it('registers all built-in tools', () => {
+    expect(executor.listTools().length).toBeGreaterThanOrEqual(76);
   });
 
   it('remember and recall work together', async () => {

@@ -52,7 +52,7 @@ export function createApp() {
         return null;
       },
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'x-cabinet-pin'],
+      allowHeaders: ['Content-Type', 'x-cabinet-pin', 'Authorization'],
       maxAge: 86400,
     }),
   );

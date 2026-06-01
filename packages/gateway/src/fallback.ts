@@ -32,22 +32,30 @@ export class FallbackChain {
     const models = this.router.getModelChain(this.role);
     let lastError: Error | null = null;
 
-    for (let i = 0; i < models.length && i <= this.maxRetries; i++) {
-      const model = models[i]!;
-      try {
-        const result = await this.withTimeout(
-          this.gateway.generateText({ ...options, model }),
-          this.timeoutMs,
-        );
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-        const nextModel = models[i + 1];
-        if (nextModel && this.onFallback) {
-          this.onFallback(model, nextModel, error as Error);
+    for (const model of models) {
+      for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+        try {
+          const result = await this.withTimeout(
+            this.gateway.generateText({ ...options, model }),
+            this.timeoutMs,
+          );
+          return result;
+        } catch (error) {
+          lastError = error as Error;
+          if (attempt < this.maxRetries) {
+            // Exponential backoff before retrying same model
+            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          // Current model exhausted, trigger fallback to next
+          const modelIdx = models.indexOf(model);
+          const nextModel = models[modelIdx + 1];
+          if (nextModel && this.onFallback) {
+            this.onFallback(model, nextModel, error as Error);
+          }
+          break; // Move to next model
         }
-        // Continue to next model if available
-        if (!nextModel) break;
       }
     }
 
@@ -62,11 +70,12 @@ export class FallbackChain {
       timer = setTimeout(() => reject(new Error(`LLM call timed out after ${ms}ms`)), ms);
     });
     return Promise.race([
-      promise.then((result) => {
-        clearTimeout(timer);
-        return result;
+      promise.finally(() => {
+        if (timer !== undefined) clearTimeout(timer);
       }),
-      timeoutPromise,
+      timeoutPromise.finally(() => {
+        if (timer !== undefined) clearTimeout(timer);
+      }),
     ]);
   }
 }

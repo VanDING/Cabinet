@@ -130,6 +130,84 @@ describe('FallbackChain', () => {
     expect(fallbackLog[0]).toBe('model-a→model-b');
   });
 
+  it('retries same model maxRetries times before falling back', async () => {
+    const callOrder: string[] = [];
+    const mockGateway: LLMGateway = {
+      async generateText(options: LLMCallOptions): Promise<LLMResponse> {
+        callOrder.push(options.model);
+        if (callOrder.filter((m) => m === 'model-a').length <= 2) {
+          throw new Error('Transient error');
+        }
+        return {
+          content: `Response from ${options.model}`,
+          usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 },
+          model: options.model,
+        };
+      },
+      async *streamText() { yield { type: 'done' }; },
+      async listModels() { return []; },
+      async generateEmbeddings() { return { embeddings: [], model: 'mock', usage: { tokens: 0 } }; },
+    };
+
+    const router = new ModelRouter();
+    router.setRoleModels('default', ['model-a', 'model-b']);
+
+    const chain = new FallbackChain({
+      gateway: mockGateway,
+      router,
+      maxRetries: 2,
+      timeoutMs: 5000,
+    });
+
+    const response = await chain.generateText({
+      messages: [{ role: 'user', content: 'Hi' }],
+    });
+
+    // model-a should be tried 3 times (original + 2 retries), then succeed
+    expect(callOrder.filter((m) => m === 'model-a')).toHaveLength(3);
+    expect(response.model).toBe('model-a');
+  });
+
+  it('falls back to next model after retries exhausted', async () => {
+    const callOrder: string[] = [];
+    const mockGateway: LLMGateway = {
+      async generateText(options: LLMCallOptions): Promise<LLMResponse> {
+        callOrder.push(options.model);
+        if (options.model === 'model-a') throw new Error('Persistent error');
+        return {
+          content: `Response from ${options.model}`,
+          usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 },
+          model: options.model,
+        };
+      },
+      async *streamText() { yield { type: 'done' }; },
+      async listModels() { return []; },
+      async generateEmbeddings() { return { embeddings: [], model: 'mock', usage: { tokens: 0 } }; },
+    };
+
+    const router = new ModelRouter();
+    router.setRoleModels('default', ['model-a', 'model-b']);
+    const fallbackLog: string[] = [];
+
+    const chain = new FallbackChain({
+      gateway: mockGateway,
+      router,
+      maxRetries: 1,
+      timeoutMs: 5000,
+      onFallback: (from, to) => fallbackLog.push(`${from}→${to}`),
+    });
+
+    const response = await chain.generateText({
+      messages: [{ role: 'user', content: 'Hi' }],
+    });
+
+    // model-a tried 2 times (original + 1 retry), then falls back to model-b
+    expect(callOrder.filter((m) => m === 'model-a')).toHaveLength(2);
+    expect(callOrder).toContain('model-b');
+    expect(response.model).toBe('model-b');
+    expect(fallbackLog).toHaveLength(1);
+  });
+
   it('throws when all models exhausted', async () => {
     const mockGateway: LLMGateway = {
       async generateText(): Promise<LLMResponse> {

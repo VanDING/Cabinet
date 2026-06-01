@@ -1,10 +1,17 @@
 import { serve } from '@hono/node-server';
 import type { Server } from 'node:http';
 import { createApp } from './index.js';
-import { config } from './config.js';
+import { config, validateEnv } from './config.js';
 import { createWSServer } from './ws/handler.js';
 import { getServerContext } from './context.js';
 import type { WebSocketServer } from 'ws';
+
+const envCheck = validateEnv();
+if (!envCheck.success) {
+  console.error('Environment validation failed:');
+  for (const issue of envCheck.issues!) console.error(`  - ${issue}`);
+  process.exit(1);
+}
 
 const app = createApp();
 const port = config.port;

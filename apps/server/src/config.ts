@@ -74,13 +74,17 @@ const envSchema = z.object({
 });
 
 const result = envSchema.safeParse(process.env);
-if (!result.success) {
-  const issues = result.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
-  console.error(`Environment validation failed:\n${issues}`);
-  process.exit(1);
-}
+const parsedEnv = result.success ? result.data : ({} as z.infer<typeof envSchema>);
 
-const parsedEnv = result.data;
+export function validateEnv(): { success: boolean; issues?: string[] } {
+  if (!result.success) {
+    return {
+      success: false,
+      issues: result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+    };
+  }
+  return { success: true };
+}
 
 export const config = {
   port: parsedEnv.PORT,

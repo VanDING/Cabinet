@@ -33,6 +33,10 @@ import {
   type AdvisorFinding,
 } from '@cabinet/meeting';
 import { broadcast } from '../ws/handler.js';
+import { detectDangerousCommand } from '../utils/security.js';
+import { chunkText, cosineSimilarity, extractTitle, type ChunkResult } from '../utils/text-utils.js';
+import { globToRegex, safeRegex } from '../utils/regex-utils.js';
+import { isInternalIP } from '../utils/net-utils.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../agent-factory.js';
 import { runWorkflowById } from './workflows.js';
 import type { DispatchMode } from '@cabinet/agent';
@@ -218,49 +222,6 @@ async function resolveSafePath(filePath: string): Promise<string> {
   }
 }
 
-function globToRegex(pattern: string): RegExp {
-  let re = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  if (pattern.startsWith('*')) re = '.*' + re.slice(2);
-  return new RegExp('^' + re + '$');
-}
-
-function safeRegex(pattern: string): RegExp {
-  try {
-    return new RegExp(pattern, 'i');
-  } catch {
-    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(escaped, 'i');
-  }
-}
-
-function isInternalIP(hostname: string): boolean {
-  if (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '0.0.0.0'
-  )
-    return true;
-  if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
-  if (
-    hostname === '[::1]' ||
-    hostname === '[fe80::]' ||
-    hostname.startsWith('[fc') ||
-    hostname.startsWith('[fd')
-  )
-    return true;
-  return false;
-}
-
-function extractTitle(html: string, contentType: string): string | undefined {
-  if (!contentType.includes('html')) return undefined;
-  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  return match?.[1]?.trim().slice(0, 200);
-}
 
 const SAFE_ENV_KEYS = new Set([
   'PATH',
@@ -308,70 +269,7 @@ function buildSafeEnv(): Record<string, string> {
   return safe;
 }
 
-function detectDangerousCommand(command: string): string | null {
-  const lower = command.toLowerCase();
-  if (/\brm\s+-rf\s+\//.test(lower)) return 'rm -rf /';
-  if (/\bdd\s+if=/.test(lower)) return 'dd';
-  if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
-  if (/>\s*\/dev\/sda/.test(lower)) return 'raw device write';
-  if (/\bmkfs\./.test(lower)) return 'mkfs';
-  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow'))
-    return 'sensitive system file';
-  if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
-  return null;
-}
-
 // ── Chunking helpers ──
-
-interface ChunkResult {
-  content: string;
-  startChar: number;
-  endChar: number;
-}
-
-function chunkText(text: string, chunkSize = 800, overlap = 100): ChunkResult[] {
-  const chunks: ChunkResult[] = [];
-  const paragraphs = text.split(/\n\s*\n/);
-  let current = '';
-  let startChar = 0;
-  let currentStart = 0;
-
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) continue;
-
-    if (current.length + trimmed.length > chunkSize && current.length > 0) {
-      chunks.push({ content: current.trim(), startChar: currentStart, endChar: startChar });
-      // Overlap: keep last `overlap` chars of previous chunk
-      const overlapText = current.length > overlap ? current.slice(-overlap) : current;
-      current = overlapText + '\n\n' + trimmed;
-      currentStart = startChar - overlapText.length;
-    } else {
-      current = current ? current + '\n\n' + trimmed : trimmed;
-      if (!current || current.length === trimmed.length) currentStart = startChar;
-    }
-    startChar += para.length + 2; // +2 for the double newline
-  }
-
-  if (current.trim()) {
-    chunks.push({ content: current.trim(), startChar: currentStart, endChar: text.length });
-  }
-
-  return chunks;
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += (a[i] ?? 0) * (b[i] ?? 0);
-    normA += (a[i] ?? 0) ** 2;
-    normB += (b[i] ?? 0) ** 2;
-  }
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom === 0 ? 0 : dot / denom;
-}
 
 // ── Build ToolDependencies from ServerContext ──
 function buildToolDependencies(ctx: ServerContext, activeProjectId?: string): ToolDependencies {
