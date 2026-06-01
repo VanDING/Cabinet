@@ -21,7 +21,20 @@ export function McpTab() {
   const fetchServers = () => {
     apiFetch('/api/settings/mcp-servers', { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => setServers(d.servers ?? []))
+      .then((d) => {
+        const configs: MCPServer[] = (d.configs ?? []);
+        const statuses = d.servers ?? [];
+        const merged = configs.map((c) => {
+          const s = statuses.find((st: { name: string }) => st.name === c.name);
+          return {
+            ...c,
+            args: c.args ?? [],
+            status: s?.connected ? 'connected' : 'disconnected',
+            toolCount: s?.toolCount ?? 0,
+          };
+        });
+        setServers(merged);
+      })
       .catch((err) => { console.warn('Operation failed', err); });
   };
 
@@ -180,7 +193,7 @@ export function McpTab() {
                   )}
                 </div>
                 <p className="mt-0.5 font-mono text-xs text-content-tertiary">
-                  {s.command} {s.args.join(' ')}
+                  {s.command} {(s.args ?? []).join(' ')}
                 </p>
               </div>
               <div className="flex items-center gap-1">
