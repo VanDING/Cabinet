@@ -25,12 +25,24 @@ export function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   return fetch(input, init);
 }
 
-/** Returns empty headers — localhost needs no auth. */
-export function authHeaders(): Record<string, string> {
-  return {};
+/** Persisted PIN for local API authentication. Generated once on first run. */
+function getPin(): string {
+  const key = 'cabinet:local-pin';
+  if (typeof window === 'undefined') return 'cabinet-default';
+  let pin = window.localStorage.getItem(key);
+  if (!pin) {
+    pin = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    window.localStorage.setItem(key, pin);
+  }
+  return pin;
 }
 
-/** Returns headers with Content-Type for JSON requests. */
-export function authJsonHeaders(): { 'Content-Type': string } {
-  return { 'Content-Type': 'application/json' };
+/** Returns auth headers including the local PIN for API access. */
+export function authHeaders(): Record<string, string> {
+  return { 'x-cabinet-pin': getPin() };
+}
+
+/** Returns headers with Content-Type and auth PIN for JSON requests. */
+export function authJsonHeaders(): Record<string, string> {
+  return { 'Content-Type': 'application/json', 'x-cabinet-pin': getPin() };
 }

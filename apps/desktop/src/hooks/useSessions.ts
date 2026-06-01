@@ -139,7 +139,7 @@ export function useSessions() {
   useEffect(() => {
     if (!activeSessionId || restoredParents.current.has(activeSessionId)) return;
     restoredParents.current.add(activeSessionId);
-    apiFetch(`/api/sessions/${activeSessionId}/children`, { headers: authHeaders() })
+    apiFetch(`/api/secretary/sessions/${activeSessionId}/children`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((data: { sessions: Session[] }) => {
         if (!data.sessions?.length) return;
@@ -149,6 +149,8 @@ export function useSessions() {
             .filter((s) => !existingIds.has(s.id))
             .map((s) => ({
               ...s,
+              messages: s.messages ?? [],
+              attachedFiles: s.attachedFiles ?? [],
               createdAt: new Date(s.createdAt),
               updatedAt: new Date(s.updatedAt),
             }));
