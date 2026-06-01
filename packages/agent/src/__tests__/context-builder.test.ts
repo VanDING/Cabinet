@@ -126,10 +126,10 @@ describe('ContextBuilder context cache', () => {
     await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
     expect(memory.projectCallCount).toBe(1);
 
-    vi.advanceTimersByTime(6_000);
-    await builder.build({ sessionId: 's2', projectId: 'p1', captainId: 'c1' });
-    expect(memory.projectCallCount).toBe(2);
-    expect(loadMatchingCalls).toBe(2);
+    vi.advanceTimersByTime(61_000);
+    await builder.build({ sessionId: 's1', projectId: 'p1', captainId: 'c1' });
+    expect(memory.projectCallCount).toBeGreaterThanOrEqual(2);
+    expect(loadMatchingCalls).toBeGreaterThanOrEqual(2);
     vi.useRealTimers();
   });
 

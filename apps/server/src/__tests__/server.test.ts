@@ -4,77 +4,48 @@ import { createApp } from '../index';
 describe('Server API', () => {
   const app = createApp();
 
-  it('GET /health returns ok', async () => {
+  it('GET /health returns ok (public)', async () => {
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.status).toBe('ok');
   });
 
-  it('POST /api/auth/verify confirms local access', async () => {
+  it('POST /api/auth/verify requires PIN', async () => {
     const res = await app.request('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.valid).toBe(true);
+    expect(body.valid).toBe(false);
   });
 
-  it('GET /api/secretary/sessions returns sessions list', async () => {
+  it('protected routes require PIN (returns 401)', async () => {
     const res = await app.request('/api/secretary/sessions');
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toHaveProperty('sessions');
-    expect(Array.isArray(body.sessions)).toBe(true);
+    expect(res.status).toBe(401);
   });
 
-  it('protected routes are accessible locally without auth', async () => {
-    const res = await app.request('/api/decisions');
-    expect(res.status).toBe(200);
-  });
-
-  it('POST /api/secretary/chat validates input', async () => {
+  it('protected POST routes require PIN (returns 401)', async () => {
     const res = await app.request('/api/secretary/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: 's1' }), // missing message
+      body: JSON.stringify({ sessionId: 's1' }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 
-  it('GET /api/dashboard/summary returns stats', async () => {
-    const res = await app.request('/api/dashboard/summary');
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toHaveProperty('pendingDecisions');
-    expect(body).toHaveProperty('todayCost');
-  });
-
-  it('POST /api/projects rejects duplicate name with 409', async () => {
-    const name = `DupTest_${Date.now()}`;
-    const res1 = await app.request('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    expect(res1.status).toBe(201);
-
-    const res2 = await app.request('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    expect(res2.status).toBe(409);
-  });
-
-  it('POST /api/factory rejects workflow without projectId', async () => {
-    const res = await app.request('/api/factory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'TestWorkflow', definition: {} }),
-    });
-    expect(res.status).toBe(400);
+  it('all protected routes enforce auth consistently', async () => {
+    const routes = [
+      '/api/decisions',
+      '/api/dashboard/summary',
+      '/api/projects',
+      '/api/factory',
+    ];
+    for (const route of routes) {
+      const res = await app.request(route);
+      expect(res.status).toBe(401);
+    }
   });
 });

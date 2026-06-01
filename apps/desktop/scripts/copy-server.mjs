@@ -137,7 +137,7 @@ function copyPackage(packageName, resolvedEntry) {
   console.log(`  ${packageName} copied`);
 }
 
-// Seed with better-sqlite3 (the sole native module kept external by esbuild)
+// Seed with externalized packages
 const bsql3Entry = serverRequire.resolve('better-sqlite3');
 copyPackage('better-sqlite3', bsql3Entry);
 

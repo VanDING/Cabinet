@@ -1,4 +1,5 @@
 import type { ServerContext } from './context.js';
+import { detectDangerousCommand } from './utils/security.js';
 import { DocumentChunkRepository, SystemKnowledgeRepository } from '@cabinet/storage';
 import {
   readFile,
@@ -20,7 +21,6 @@ import { promisify } from 'node:util';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import AdmZip from 'adm-zip';
-import clipboardy from 'clipboardy';
 import notifier from 'node-notifier';
 import Parser from 'rss-parser';
 import nodemailer from 'nodemailer';
@@ -265,37 +265,6 @@ export function buildEnvironmentSection(projectRootPath?: string): string {
     `- If you need information about system capabilities, directories, or agent roles, use the query_system_knowledge tool.`,
   );
   return parts.join('\n');
-}
-
-function detectDangerousCommand(command: string): string | null {
-  const lower = command.toLowerCase();
-
-  // Destructive filesystem operations
-  if (/\brm\s+-rf\s+\//.test(lower)) return 'rm -rf /';
-  if (/\bdd\s+if=/.test(lower)) return 'dd';
-  if (/:\s*\(\)\s*\{/.test(lower)) return 'fork bomb pattern';
-  if (/>\s*\/dev\/sda/.test(lower)) return 'raw device write';
-  if (/\bmkfs\./.test(lower)) return 'mkfs';
-  if (lower.includes('/etc/passwd') || lower.includes('/etc/shadow'))
-    return 'sensitive system file';
-  if (lower.includes('~/.ssh') || lower.includes('/root/.ssh')) return 'SSH key access';
-
-  // Pipeline to interpreter execution (curl/wget | sh/bash)
-  if (/(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/.test(lower)) return 'pipe to shell';
-
-  if (/\bpowershell\b.*-encodedcommand/.test(lower)) return 'encoded powershell';
-
-  // Persistence vectors
-  if (/>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/.test(lower))
-    return 'shell persistence';
-  if (/\becho\b.*>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile)/.test(lower))
-    return 'shell persistence';
-
-  // Credential harvesting
-  if (/\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/.test(lower)) return 'SSH key exfil';
-  if (/\bfind\b.*-name\s*id_rsa/.test(lower)) return 'SSH key search';
-
-  return null;
 }
 
 // ── Chunking helpers ──
@@ -780,25 +749,90 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
   };
 }
 
+// ── Command allowlist & safe execution ──
+
+const ALLOWED_COMMANDS = new Set([
+  'git', 'npm', 'npx', 'node', 'python3', 'python',
+  'rustc', 'cargo', 'go', 'javac', 'java',
+  'docker',
+  'ls', 'cat', 'echo', 'mkdir', 'touch', 'cp', 'mv', 'rm',
+  'grep', 'find', 'wc', 'head', 'tail', 'sort', 'uniq',
+  'chmod', 'chown',
+]);
+
+/** Sub-command restrictions for commands that need extra guarding. */
+const COMMAND_RESTRICTIONS: Record<string, string[]> = {
+  docker: ['ps', 'logs', 'images', 'info', 'version', 'inspect'],
+  rm: [], // only rm <file>, no flags like -rf
+};
+
+const SHELL_META = /[;&|><$(){}\[\]*?`\n\r]/;
+
+function parseCommand(command: string): string[] | null {
+  if (SHELL_META.test(command)) return null;
+  return command.trim().split(/\s+/).filter(Boolean);
+}
+
+function isAllowedCommand(cmd: string, args: string[]): boolean {
+  if (!ALLOWED_COMMANDS.has(cmd)) return false;
+  const restrictions = COMMAND_RESTRICTIONS[cmd];
+  if (restrictions) {
+    // git clone → "clone" must be in restrictions
+    const sub = args[0];
+    if (sub && !restrictions.includes(sub)) return false;
+    // rm with no sub-command restriction: only allow if no flags
+    if (restrictions.length === 0 && args.some((a) => a.startsWith('-'))) return false;
+  }
+  return true;
+}
+
 export function createShellCapabilities(_ctx: CapabilitiesContext) {
   return {
     execCommand: async (command: string, cwd?: string, timeout?: number) => {
+      // 1. Also run the blacklist as secondary defense
       const blocked = detectDangerousCommand(command);
       if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
+
+      // 2. Parse into [cmd, ...args], reject shell metacharacters
+      const parts = parseCommand(command);
+      if (!parts || parts.length === 0) {
+        throw new Error(
+          'Shell metacharacters not allowed. Use simple command with space-separated arguments.',
+        );
+      }
+      const [cmd, ...args] = parts;
+
+      // 3. Allowlist check
+      if (!isAllowedCommand(cmd!, args)) {
+        throw new Error(
+          `Command '${cmd}' not in allowlist or sub-command restricted. Allowed: ${[...ALLOWED_COMMANDS].join(', ')}`,
+        );
+      }
+
       const workDir = cwd ? await resolveSafePath(cwd) : process.cwd();
 
-      try {
-        const { stdout, stderr } = await execAsync(command, {
+      return new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve, reject) => {
+        const child = spawn(cmd!, args, {
           cwd: workDir,
-          timeout: timeout ?? 60000,
-          maxBuffer: 10 * 1024 * 1024,
+          shell: false,
           env: buildSafeEnv(),
-          shell: process.platform === 'win32' ? process.env.COMSPEC || 'cmd.exe' : '/bin/bash',
+          timeout: timeout ?? 60000,
         });
-        return { stdout, stderr, exitCode: 0 };
-      } catch (err: any) {
-        return { stdout: err.stdout ?? '', stderr: err.stderr ?? '', exitCode: err.code ?? 1 };
-      }
+
+        let stdout = '';
+        let stderr = '';
+
+        child.stdout?.on('data', (data: Buffer) => { stdout += data.toString(); });
+        child.stderr?.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+        child.on('close', (code: number | null) => {
+          resolve({ stdout, stderr, exitCode: code ?? 0 });
+        });
+
+        child.on('error', (err: Error) => {
+          reject(new Error(`Command failed: ${err.message}`));
+        });
+      });
     },
   };
 }
@@ -1192,11 +1226,11 @@ export function createCommunicationCapabilities() {
 export function createSystemCapabilities(_isDesktopMode = false) {
   return {
     readClipboard: async () => {
-      const text = await clipboardy.read();
-      return { text };
+      const { stdout } = await execAsync('powershell -Command "Get-Clipboard"', { timeout: 5000 });
+      return { text: stdout.trim() };
     },
     writeClipboard: async (text: string) => {
-      await clipboardy.write(text);
+      await execAsync(`echo ${text.replace(/"/g, '\\"')} | clip`, { timeout: 5000 });
       return { written: true };
     },
     sendNotification: async (title: string, message: string) => {

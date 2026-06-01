@@ -1,38 +1,55 @@
-import { createHash, timingSafeEqual, scryptSync } from 'node:crypto';
+import { createHash, timingSafeEqual, scrypt, randomBytes } from 'node:crypto';
+import { promisify } from 'node:util';
 import { MetricRepository } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 
-const SALT = 'cabinet-salt';
-const KEYLEN = 64; // scrypt key length
+const scryptAsync = promisify(scrypt);
+const KEYLEN = 64;
 
-/** Hash a PIN using scrypt (computationally expensive → brute-force resistant). */
-export function hashPin(pin: string): string {
-  return 'scrypt:' + scryptSync(pin, SALT, KEYLEN).toString('hex');
+/** Hash a PIN with per-PIN random salt. Format: scrypt:<salt_hex>:<hash_hex> */
+export async function hashPin(pin: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const hash = (await scryptAsync(pin, salt, KEYLEN) as Buffer).toString('hex');
+  return `scrypt:${salt}:${hash}`;
 }
 
 function hashPinLegacy(pin: string): string {
   return createHash('sha256')
-    .update(pin + SALT)
+    .update(pin + 'cabinet-salt')
     .digest('hex');
 }
 
-/** Verify a PIN against a stored hash. Supports both scrypt and legacy SHA-256. */
-export function verifyPin(
+/** Verify a PIN against a stored hash. Supports new scrypt, legacy scrypt, and SHA-256. */
+export async function verifyPin(
   input: string,
   storedHash: string,
-): { valid: boolean; needsRehash: boolean } {
+): Promise<{ valid: boolean; needsRehash: boolean }> {
   if (storedHash.startsWith('scrypt:')) {
+    const parts = storedHash.slice(7).split(':');
+    if (parts.length === 2) {
+      // New format: scrypt:<salt>:<hash>
+      const [salt, expectedHash] = parts;
+      try {
+        const computed = (await scryptAsync(input, salt!, KEYLEN) as Buffer).toString('hex');
+        return {
+          valid: timingSafeEqual(Buffer.from(computed), Buffer.from(expectedHash!)),
+          needsRehash: false,
+        };
+      } catch {
+        return { valid: false, needsRehash: false };
+      }
+    }
+    // Legacy format: scrypt:<hash> (global hardcoded salt) — needs migration
     const expected = storedHash.slice(7);
     try {
-      return {
-        valid: timingSafeEqual(Buffer.from(hashPin(input).slice(7)), Buffer.from(expected)),
-        needsRehash: false,
-      };
+      const legacyHash = (await scryptAsync(input, 'cabinet-salt', KEYLEN) as Buffer).toString('hex');
+      const valid = timingSafeEqual(Buffer.from(legacyHash), Buffer.from(expected));
+      return { valid, needsRehash: valid };
     } catch {
       return { valid: false, needsRehash: false };
     }
   }
-  // Legacy SHA-256 fallback
+  // Legacy SHA-256 fallback (synchronous — SHA-256 is fast)
   const legacyHash = hashPinLegacy(input);
   try {
     const valid = timingSafeEqual(Buffer.from(legacyHash), Buffer.from(storedHash));
@@ -52,8 +69,6 @@ export function getStoredHash(db: Database): string | null {
 }
 
 /** Store a new PIN hash in the database. */
-export function storePinHash(db: Database, pin: string): void {
-  new MetricRepository(db).insert('pin_hash', hashPin(pin), {});
+export async function storePinHash(db: Database, pin: string): Promise<void> {
+  new MetricRepository(db).insert('pin_hash', await hashPin(pin), {});
 }
-
-export { SALT };

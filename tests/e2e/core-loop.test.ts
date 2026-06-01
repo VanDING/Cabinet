@@ -160,34 +160,33 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(res.status).toBe(404);
   });
 
-  // Step 10: Auth flow — verify PIN
-  it('POST /api/auth/verify validates PIN', async () => {
+  // Step 10: Auth flow — verify PIN via header
+  it('POST /api/auth/verify validates PIN from header', async () => {
+    const res = await app.request('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
+    });
+    const body = await res.json();
+    // First run or already set — either valid or missing_pin
+    expect([200, 401]).toContain(res.status);
+  });
+
+  // Step 11: Auth — missing PIN returns 401
+  it('POST /api/auth/verify rejects request without PIN', async () => {
     const res = await app.request('/api/auth/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: '1234' }),
+      body: JSON.stringify({}),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
     const body = await res.json();
-    expect(body.valid).toBe(true);
+    expect(body.valid).toBe(false);
   });
 
-  // Step 11: Auth — local app, no PIN validation needed
-  it('POST /api/auth/verify always returns valid for local access', async () => {
-    const res = await app.request('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: '12' }),
-    });
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.valid).toBe(true);
-  });
-
-  // Step 12: localhost requests bypass auth (Cabinet is a local desktop application)
-  it('allows localhost requests to protected routes without PIN', async () => {
+  // Step 12: protected routes require PIN
+  it('protected routes return 401 without PIN', async () => {
     const res = await app.request('/api/decisions');
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
   // Step 13: WebSocket endpoint

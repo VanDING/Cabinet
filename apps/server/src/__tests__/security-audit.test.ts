@@ -70,9 +70,9 @@ describe('Security Audit', () => {
     expect(result.tier).toBe('delegation_block');
   });
 
-  // ---- Local access — no PIN required ----
+  // ---- PIN authentication enforced ----
 
-  it('auth: local access bypasses authentication', async () => {
+  it('auth: requires PIN for protected endpoints', async () => {
     const { createApp } = await import('../index');
     const app = createApp();
     const res = await app.request('/api/auth/verify', {
@@ -80,9 +80,10 @@ describe('Security Audit', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
     const body = (await res.json()) as any;
-    expect(body.valid).toBe(true);
+    expect(body.valid).toBe(false);
+    expect(body.reason).toBe('missing_pin');
   });
 
   // ---- Backup plaintext safety ----

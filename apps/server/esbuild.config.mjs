@@ -14,6 +14,7 @@ await esbuild.build({
     'playwright',
     'playwright-core',
     'chromium-bidi',
+    'thread-stream',
   ],
   sourcemap: false,
   minify: false,
