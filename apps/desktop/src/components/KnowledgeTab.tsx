@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Trash2, FileText, RefreshCw } from 'lucide-react';
-import { apiFetch, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
 
 interface DocumentInfo {
   path: string;
@@ -30,7 +30,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
 
   const fetchDocs = async () => {
     try {
-      const res = await apiFetch(`/api/projects/${projectId}/documents`);
+      const res = await apiFetch(`/api/projects/${projectId}/documents`, { headers: authHeaders() });
       if (res.ok) setDocs((await res.json()).documents ?? []);
     } catch {
       /* ignore */
@@ -46,6 +46,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
     try {
       const res = await apiFetch(
         `/api/projects/${projectId}/documents/${encodeURIComponent(path)}`,
+        { headers: authHeaders() },
       );
       if (res.ok) setChunks((await res.json()).chunks ?? []);
     } catch {

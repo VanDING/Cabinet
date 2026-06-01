@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-import { apiFetch } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/pin.js';
 
 interface EvaluationItem {
   id: string;
@@ -28,8 +28,8 @@ export function EvaluationTab({ activeProjectId }: Props) {
     (async () => {
       try {
         const [listRes, summaryRes] = await Promise.all([
-          apiFetch(`/api/evaluations?projectId=${projectId}&limit=50`),
-          apiFetch(`/api/evaluations/summary?projectId=${projectId}`),
+          apiFetch(`/api/evaluations?projectId=${projectId}&limit=50`, { headers: authHeaders() }),
+          apiFetch(`/api/evaluations/summary?projectId=${projectId}`, { headers: authHeaders() }),
         ]);
         if (listRes.ok) setEvaluations((await listRes.json()).evaluations ?? []);
         if (summaryRes.ok) setSummary(await summaryRes.json());

@@ -3517,6 +3517,8 @@ secretaryRouter.get('/sessions/:id/children', (c) => {
       title: s.title,
       createdAt: s.createdAt,
       deliverable: s.deliverable,
+      messages: [],
+      attachedFiles: [],
     })),
   });
 });
