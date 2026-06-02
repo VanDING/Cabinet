@@ -2,7 +2,7 @@ import type { Context, Next } from 'hono';
 import { getServerContext } from '../context.js';
 import { verifyPin, getStoredHash, storePinHash } from '../auth-utils.js';
 
-const PUBLIC_PATHS = ['/health', '/api/auth/verify', '/api/openapi.json', '/api/docs'];
+const PUBLIC_PATHS = ['/health', '/api/auth/verify', '/api/auth/status', '/api/auth/reset', '/api/openapi.json', '/api/docs'];
 
 /** Serializes first-run PIN initialization so concurrent requests don't race. */
 let initLock: Promise<void> | null = null;

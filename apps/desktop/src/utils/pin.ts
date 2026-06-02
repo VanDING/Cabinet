@@ -46,3 +46,36 @@ export function authHeaders(): Record<string, string> {
 export function authJsonHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', 'x-cabinet-pin': getPin() };
 }
+
+/** Check if the server's PIN matches ours. Returns { valid, firstRun }. */
+export async function checkPinStatus(): Promise<{ valid: boolean; firstRun: boolean }> {
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    if (!res.ok) return { valid: false, firstRun: false };
+    return (await res.json()) as { valid: boolean; firstRun: boolean };
+  } catch {
+    return { valid: false, firstRun: false };
+  }
+}
+
+/** Reset the server's stored PIN hash so the current client PIN becomes the new PIN. */
+export async function resetServerPin(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/auth/reset', { method: 'POST' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Generate a new PIN, update localStorage, and return the new value. */
+export function regeneratePin(): string {
+  const pin = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('cabinet:local-pin', pin);
+  }
+  return pin;
+}
