@@ -11,6 +11,7 @@
     { "path": "../events" },
     { "path": "../storage" },
     { "path": "../gateway" },
+    { "path": "../graph" },
     { "path": "../memory" }
   ]
 }
