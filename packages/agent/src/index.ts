@@ -69,6 +69,15 @@ export {
 } from './interactive-sub-agent.js';
 export { ProjectSnapshot, type Snapshot } from './project-snapshot.js';
 export { SkillExtractor, type ExtractedSkill } from './skill-extractor.js';
+export {
+  createAgentNodeFactory,
+  createSelector,
+  type AgentNodeDeps,
+  type AgentNodeConfig,
+  type AgentNodeFn,
+  type SelectorConfig,
+  type AgentHandoff,
+} from './agent-node.js';
 export { TaskTracker, type AgentTask, type TaskStatus } from './task-tracker.js';
 export {
   createCabinetTools,
