@@ -53,6 +53,10 @@ export class MCPManager {
 
   /** Connect to a single MCP server and register its tools. */
   async connectServer(config: MCPServerConfig): Promise<void> {
+    if (!config.command || typeof config.command !== 'string') {
+      throw new Error(`MCP server "${config.name}" requires a valid command string`);
+    }
+
     if (this.clients.has(config.name)) {
       await this.disconnectServer(config.name);
     }

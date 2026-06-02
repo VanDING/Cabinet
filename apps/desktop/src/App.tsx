@@ -172,7 +172,7 @@ export function App() {
         } else if (event.type === 'error') {
           updateSubAgentStatus(data.sessionId as string, 'error');
         } else if (event.type === 'status') {
-          updateSubAgentStatus(data.sessionId as string, event.status);
+          updateSubAgentStatus(data.sessionId as string, event.status === 'running' ? 'active' : event.status);
           if (event.status === 'waiting_for_user') {
             setInputTarget({ type: 'subagent', sessionId: data.sessionId as string, agentId: 'organize' });
           }

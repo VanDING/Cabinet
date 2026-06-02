@@ -1,5 +1,7 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ToolDefinition } from './tool-executor.js';
+import { parseSkillMarkdown } from './skill-loader.js';
 
 // ── Skill Metadata (L1 — always loaded, ~50 tokens each) ──
 
@@ -26,6 +28,8 @@ export interface SkillEntry extends SkillMetadata {
   scriptsPath?: string;
   /** Claude Code extended fields (model, effort, context, agent, etc.). */
   metadata?: Record<string, unknown>;
+  /** Scope: global (shared) or project (local to a project). */
+  scope?: 'global' | 'project';
 }
 
 // ── Skill Registry ──
@@ -112,6 +116,57 @@ export class SkillRegistry {
       });
     }
     return tools;
+  }
+
+  /** Load all skills from a directory (e.g., ~/.cabinet/skills/ or project/.cabinet/skills/). */
+  loadFromDirectory(dir: string, scope: 'global' | 'project' = 'global'): number {
+    let count = 0;
+    if (!existsSync(dir)) return count;
+    const entries = readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory());
+    for (const entry of entries) {
+      const skillMdPath = join(dir, entry.name, 'SKILL.md');
+      if (!existsSync(skillMdPath)) continue;
+      try {
+        const content = readFileSync(skillMdPath, 'utf-8');
+        const parsed = parseSkillMarkdown(content);
+        if (!parsed) continue;
+        const refsDir = join(dir, entry.name, 'references');
+        const scriptsDir = join(dir, entry.name, 'scripts');
+        const refsPath = existsSync(refsDir) ? refsDir : '';
+        const scriptsPath = existsSync(scriptsDir) ? scriptsDir : '';
+        this.register({
+          id: `skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          name: parsed.name,
+          description: parsed.description,
+          kind: parsed.kind ?? 'prompt',
+          promptTemplate: parsed.body,
+          inputSchema: {},
+          outputSchema: {},
+          version: parsed.version ?? 1,
+          status: 'active',
+          referencesPath: refsPath,
+          scriptsPath,
+          metadata: parsed.metadata ?? {},
+          scope,
+        });
+        count++;
+      } catch {
+        /* skip malformed skill */
+      }
+    }
+    return count;
+  }
+
+  /** Remove all project-scoped skills. Call when switching away from a project. */
+  clearProjectSkills(): number {
+    let count = 0;
+    for (const [name, skill] of this.skills) {
+      if (skill.scope === 'project') {
+        this.skills.delete(name);
+        count++;
+      }
+    }
+    return count;
   }
 
   private usageCounts = new Map<string, number>();

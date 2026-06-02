@@ -71,7 +71,7 @@ import {
   copyFile as fsCopyFile,
   realpath,
 } from 'node:fs/promises';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile, readFileSync, statSync } from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { exec } from 'node:child_process';
@@ -88,15 +88,57 @@ const ROLES_NEEDING_ENV = new Set([
   'reviewer',
 ]);
 
+// ── CABINET.md auto-injection cache ──
+const cabinetMdCache = new Map<string, { content: string; mtime: number }>();
+
+function loadCabinetMd(projectRootPath: string): string | null {
+  const cabinetPath = join(projectRootPath, 'CABINET.md');
+  const localPath = join(projectRootPath, 'CABINET.local.md');
+  if (!existsSync(cabinetPath) && !existsSync(localPath)) return null;
+
+  try {
+    let mtime = 0;
+    if (existsSync(cabinetPath)) {
+      mtime = Math.max(mtime, statSync(cabinetPath).mtimeMs);
+    }
+    if (existsSync(localPath)) {
+      mtime = Math.max(mtime, statSync(localPath).mtimeMs);
+    }
+    const cached = cabinetMdCache.get(projectRootPath);
+    if (cached && cached.mtime === mtime) return cached.content;
+
+    const parts: string[] = [];
+    if (existsSync(cabinetPath)) {
+      parts.push(readFileSync(cabinetPath, 'utf-8'));
+    }
+    if (existsSync(localPath)) {
+      parts.push(readFileSync(localPath, 'utf-8'));
+    }
+    const content = parts.join('\n\n');
+    cabinetMdCache.set(projectRootPath, { content, mtime });
+    return content;
+  } catch {
+    return null;
+  }
+}
+
 function buildSystemPrompt(
   roleType: string,
   roleSystemPrompt: string,
   projectRootPath?: string,
 ): string {
+  const parts: string[] = [];
   if (ROLES_NEEDING_ENV.has(roleType)) {
-    return buildEnvironmentSection(projectRootPath) + '\n\n' + roleSystemPrompt;
+    parts.push(buildEnvironmentSection(projectRootPath));
   }
-  return roleSystemPrompt;
+  if (projectRootPath) {
+    const cabinetMd = loadCabinetMd(projectRootPath);
+    if (cabinetMd) {
+      parts.push(`## Project Context (from CABINET.md)\n${cabinetMd}`);
+    }
+  }
+  parts.push(roleSystemPrompt);
+  return parts.join('\n\n');
 }
 
 /** Read a text file with auto-detected encoding (UTF-8 → GBK fallback). */
@@ -1875,6 +1917,15 @@ function getAgentLoopForRole(
     /* best-effort */
   }
 
+  // Load project-level skills for this session's project
+  if (projectRootPath) {
+    ctx.skillRegistry.clearProjectSkills();
+    const projectSkillsDir = join(projectRootPath, '.cabinet', 'skills');
+    if (existsSync(projectSkillsDir)) {
+      ctx.skillRegistry.loadFromDirectory(projectSkillsDir, 'project');
+    }
+  }
+
   const checkpointManager = new CheckpointManager(ctx.db);
   const rulesLoader = buildRulesLoader(projectRootPath);
   const loop = new AgentLoop({
@@ -2159,9 +2210,10 @@ async function dispatchToSpecialistStreaming(
       }
     };
 
+    const toolExecutor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId));
     const interactiveAgent = new OrganizeInteractiveAgent(
       ctx.gateway!,
-      ctx.toolExecutor,
+      toolExecutor,
       resolveModel,
     );
 
@@ -2184,7 +2236,8 @@ async function dispatchToSpecialistStreaming(
       else if (event.type === 'output') callback.onDone?.(event.content);
       else if (event.type === 'error') callback.onError?.(event.message);
       else if (event.type === 'status') {
-        ctx.sessionManager.updateStatus(childSessionId, event.status);
+        const mappedStatus = event.status === 'running' ? 'active' : event.status;
+        ctx.sessionManager.updateStatus(childSessionId, mappedStatus);
         const entry = activeSubAgents.get(childSessionId);
         if (entry) entry.status = event.status;
       }
@@ -2453,6 +2506,15 @@ function getOrCreateAgent(
       }
     } catch {
       /* best-effort */
+    }
+
+    // Load project-level skills for this session's project
+    if (projectRootPath) {
+      ctx.skillRegistry.clearProjectSkills();
+      const projectSkillsDir = join(projectRootPath, '.cabinet', 'skills');
+      if (existsSync(projectSkillsDir)) {
+        ctx.skillRegistry.loadFromDirectory(projectSkillsDir, 'project');
+      }
     }
 
     const checkpointManager = new CheckpointManager(ctx.db);
