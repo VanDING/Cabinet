@@ -22,3 +22,18 @@ authRouter.post('/verify', async (c) => {
   }
   return c.json({ valid: result.valid });
 });
+
+/** Check if PIN has been initialized (no auth required). */
+authRouter.get('/status', (c) => {
+  const { db } = getServerContext();
+  const storedHash = getStoredHash(db);
+  return c.json({ initialized: !!storedHash });
+});
+
+/** Reset stored PIN hash so the next request re-initializes.
+ *  Origin-restricted by authMiddleware Layer 1. No PIN required. */
+authRouter.post('/reset', async (c) => {
+  const { db } = getServerContext();
+  db.prepare("DELETE FROM metrics WHERE key = 'pin_hash'").run();
+  return c.json({ success: true });
+});
