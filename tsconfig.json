@@ -5,6 +5,7 @@
     { "path": "packages/events" },
     { "path": "packages/storage" },
     { "path": "packages/gateway" },
+    { "path": "packages/graph" },
     { "path": "packages/memory" },
     { "path": "packages/decision" },
     { "path": "packages/workflow" },
