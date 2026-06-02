@@ -297,6 +297,11 @@ settingsRouter.put('/mcp-servers', async (c) => {
   const { mcpManager, settingsRepo, logger } = getServerContext();
   const body = await c.req.json();
   const configs = body.configs ?? [];
+  for (const cfg of configs) {
+    if (!cfg.command || typeof cfg.command !== 'string') {
+      return c.json({ error: `MCP server "${cfg.name}" requires a command string` }, 400);
+    }
+  }
   // Persist to DB and settings.json
   settingsRepo.set('mcp_servers', JSON.stringify(configs));
   saveSettings({ mcpServers: configs });

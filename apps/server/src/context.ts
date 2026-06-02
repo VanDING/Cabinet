@@ -1513,7 +1513,14 @@ export function getServerContext(): ServerContext {
       const dbConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = JSON.parse(value ?? '[]');
       for (const dbCfg of dbConfigs) {
         if (!mcpConfigs.some((fc) => fc.name === dbCfg.name)) {
-          mcpConfigs.push(dbCfg);
+          mcpConfigs.push({
+            name: dbCfg.name,
+            transport: 'stdio',
+            command: dbCfg.command ?? 'npx',
+            args: dbCfg.args ?? [],
+            enabled: dbCfg.enabled ?? true,
+            env: dbCfg.env,
+          });
         }
       }
     } catch {

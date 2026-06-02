@@ -38,8 +38,10 @@ export class OrganizeInteractiveAgent implements InteractiveSubAgent {
       safetyChecker: new SafetyChecker(),
       checkpointManager: new CheckpointManager(null as any),
       memoryProvider: {
-        getShortTerm: () => null,
-        getLongTerm: async () => [],
+        getShortTerm: async () => [],
+        getProjectContext: async () => '',
+        getEntityPreferences: async () => ({}),
+        searchLongTerm: async () => [],
       },
     };
     if (typeof resolveModel === 'string') {
@@ -243,7 +245,7 @@ with the updated blueprint and a summary of what changed.`);
 
     // Copy conversation history from planning loop
     const history = this.planningLoop.getConversationHistory();
-    this.deployLoop.setConversationHistory(history);
+    this.deployLoop.setConversationHistory([...history]);
 
     // Inject deployment instructions
     this.deployLoop.setSkillContext(`## INTERACTIVE MODE — DEPLOYMENT PHASE
