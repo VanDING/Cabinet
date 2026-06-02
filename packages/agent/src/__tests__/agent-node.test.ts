@@ -119,7 +119,14 @@ describe('createAgentNodeFactory', () => {
       },
     };
 
-    const testDeps = { ...deps, gateway };
+    // Register a tool that's actually in REVIEWER_ROLE.allowedTools
+    const testExec = new ToolExecutor();
+    testExec.register({
+      name: 'read_file',
+      execute: async () => 'content',
+    });
+
+    const testDeps = { ...deps, gateway, toolExecutor: testExec };
     const factory = createAgentNodeFactory<TestState>(testDeps);
     const nodeFn = factory({
       role: REVIEWER_ROLE,
@@ -128,7 +135,8 @@ describe('createAgentNodeFactory', () => {
     });
 
     await nodeFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
-    expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.systemPrompt);
+    expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.modules.identity);
+    expect(capturedSystemPrompt).toContain('Available Tools');  // auto-generated
     expect(capturedSystemPrompt).toContain('Focus on risks.');
   });
 
