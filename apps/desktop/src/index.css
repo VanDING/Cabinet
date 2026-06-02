@@ -214,10 +214,15 @@ body {
 }
 
 /* Markdown content */
+.markdown-body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "WenQuanYi Micro Hei", var(--font-family);
+  line-height: var(--line-height);
+  letter-spacing: 0;
+}
 .markdown-body h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.5rem; }
 .markdown-body h2 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
 .markdown-body h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-body p { margin: 0.25rem 0; }
+.markdown-body p { margin: 0.5rem 0; }
 .markdown-body ul, .markdown-body ol { padding-left: 1.25rem; margin: 0.25rem 0; }
 .markdown-body li { margin: 0.125rem 0; }
 .markdown-body a { color: var(--accent); text-decoration: underline; }

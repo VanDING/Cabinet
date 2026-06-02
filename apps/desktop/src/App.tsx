@@ -237,13 +237,15 @@ export function App() {
   });
 
   // Toast on WebSocket disconnect / reconnect
+  const wasEverConnected = useRef(false);
   useEffect(() => {
-    if (prevWsConnected.current && !wsConnected) {
+    if (wasEverConnected.current && !wsConnected) {
       addToast('warning', 'Real-time connection lost. Reconnecting...');
     }
-    if (!prevWsConnected.current && wsConnected) {
+    if (wasEverConnected.current && wsConnected && !prevWsConnected.current) {
       addToast('success', 'Real-time connection restored.');
     }
+    if (wsConnected) wasEverConnected.current = true;
     prevWsConnected.current = wsConnected;
   }, [wsConnected, addToast]);
 

@@ -11,12 +11,21 @@ export function useWebSocket(onEvent?: WSEventHandler) {
   const [connected, setConnected] = useState(false);
 
   const connect = useCallback(() => {
+    // Already connected — skip to avoid duplicate connections
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
     if (reconnecting.current) return;
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname || 'localhost';
     const url = `${protocol}//${host}:3000/ws/events`;
 
     try {
+      // Close existing socket before creating a new one
+      if (wsRef.current) {
+        wsRef.current.onclose = null; // suppress reconnect
+        wsRef.current.close();
+      }
+
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
