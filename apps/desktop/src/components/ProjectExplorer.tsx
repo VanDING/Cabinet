@@ -17,7 +17,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import type { AttachedFile } from '../hooks/useSessions';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 import { ContextMenu } from './ContextMenu';
 import type { ContextMenuEntry } from './ContextMenu';
 import { useToast } from './Toast';

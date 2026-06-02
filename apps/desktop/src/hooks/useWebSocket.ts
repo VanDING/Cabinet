@@ -14,9 +14,7 @@ export function useWebSocket(onEvent?: WSEventHandler) {
     if (reconnecting.current) return;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname || 'localhost';
-    // Read persisted PIN for WebSocket auth (same key as utils/pin.ts)
-    const pin = typeof window !== 'undefined' ? window.localStorage.getItem('cabinet:local-pin') : null;
-    const url = `${protocol}//${host}:3000/ws/events${pin ? '?token=' + encodeURIComponent(pin) : ''}`;
+    const url = `${protocol}//${host}:3000/ws/events`;
 
     try {
       const ws = new WebSocket(url);

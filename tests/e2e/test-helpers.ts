@@ -1,7 +1,6 @@
 import { createApp } from '../../apps/server/src/index';
 
-export const PIN = '1234';
-export const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
+export const headers = { 'Content-Type': 'application/json' };
 
 export function createTestApp() {
   return createApp();

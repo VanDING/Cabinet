@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 // ── Maintenance Tab (Garbage Collection) ──
 interface GCIssueItem {

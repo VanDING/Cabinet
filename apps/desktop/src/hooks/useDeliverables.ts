@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 export interface Deliverable {
   id: string;

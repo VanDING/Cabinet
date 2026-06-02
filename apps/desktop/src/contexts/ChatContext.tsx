@@ -16,7 +16,7 @@ import {
 } from '../hooks/useSessions';
 import { useProject } from './ProjectContext';
 import { readSSEStream } from '../utils/streaming.js';
-import { apiFetch, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authJsonHeaders } from '../utils/api.js';
 import type { MeetingData } from '../components/MeetingCard';
 import type { SubAgentActivity } from '@cabinet/ui';
 import type { AgentEvent } from '../types/agent-events';

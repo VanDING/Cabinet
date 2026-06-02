@@ -30,7 +30,7 @@ import { InsightsModal } from '../components/office/InsightsModal';
 import { HarnessWidget } from '../components/office/HarnessWidget';
 import { HarnessModal } from '../components/office/HarnessModal';
 import { useToast } from '../components/Toast';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 type WidgetType =
   | 'today-cost'

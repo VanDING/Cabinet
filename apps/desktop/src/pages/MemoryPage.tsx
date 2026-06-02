@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button, Card, Tabs } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 import { KnowledgeTab } from '../components/KnowledgeTab';
 import { EvaluationTab } from '../components/EvaluationTab';
 import { GraphTab } from '../components/graph/GraphTab';

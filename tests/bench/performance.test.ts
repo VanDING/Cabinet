@@ -14,8 +14,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 
-const PIN = '1234';
-const h = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
+
+const h = { 'Content-Type': 'application/json' };
 
 describe('Performance Benchmarks', () => {
   const app = createApp();

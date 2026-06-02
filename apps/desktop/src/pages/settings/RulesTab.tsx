@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 // ── Rules Tab ──
 interface RuleItem {

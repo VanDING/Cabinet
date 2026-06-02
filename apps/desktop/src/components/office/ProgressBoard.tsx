@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, RefreshCw, CheckCircle2, XCircle, Play, Check, Ban, RotateCcw } from 'lucide-react';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface ProgressTask {

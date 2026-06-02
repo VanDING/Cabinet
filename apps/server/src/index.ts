@@ -6,7 +6,6 @@ import { decisionsRouter } from './routes/decisions.js';
 import { workflowsRouter } from './routes/workflows.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { settingsRouter } from './routes/settings.js';
-import { authRouter } from './routes/auth.js';
 import { skillsRouter } from './routes/skills.js';
 import { memoryRouter } from './routes/memory.js';
 import { employeesRouter } from './routes/employees.js';
@@ -52,14 +51,12 @@ export function createApp() {
         return null;
       },
       allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'x-cabinet-pin', 'Authorization'],
+      allowHeaders: ['Content-Type', 'Authorization'],
       maxAge: 86400,
     }),
   );
   // Global rate limit: 100 req/min per IP
   app.use('/api/*', rateLimiter(100, 60_000));
-  // Stricter rate limit for auth endpoint: 5 req/min per IP
-  app.use('/api/auth/verify', rateLimiter(5, 60_000));
   app.use('/api/*', authMiddleware);
 
   app.route('/health', healthRouter);
@@ -78,7 +75,6 @@ export function createApp() {
   app.route('/api/dashboard', dashboardRouter);
 
   app.route('/api/settings', settingsRouter);
-  app.route('/api/auth', authRouter);
   app.route('/api/skills', skillsRouter);
   app.route('/api/memory', memoryRouter);
   app.route('/api/employees', employeesRouter);

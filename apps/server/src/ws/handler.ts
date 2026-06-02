@@ -1,7 +1,5 @@
 import type { Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { getServerContext } from '../context.js';
-import { verifyPin, getStoredHash } from '../auth-utils.js';
 
 let wss: WebSocketServer | null = null;
 const clients = new Set<WebSocket>();
@@ -9,29 +7,11 @@ const clients = new Set<WebSocket>();
 export function createWSServer(server: Server): WebSocketServer {
   wss = new WebSocketServer({ server, path: '/ws/events' });
 
-  wss.on('connection', async (ws, req) => {
+  wss.on('connection', (ws, req) => {
     const clientKey =
       (req.headers['x-forwarded-for'] as string) ?? req.socket.remoteAddress ?? '127.0.0.1';
 
     if (clientKey === '127.0.0.1' || clientKey === '::1' || clientKey === 'localhost') {
-      // Verify PIN from query parameter
-      const url = new URL(req.url ?? '', 'http://localhost');
-      const token = url.searchParams.get('token');
-      if (!token) {
-        ws.close(4001, 'Token required');
-        return;
-      }
-
-      const { db } = getServerContext();
-      const storedHash = getStoredHash(db);
-      if (storedHash) {
-        const result = await verifyPin(token, storedHash);
-        if (!result.valid) {
-          ws.close(4001, 'Invalid token');
-          return;
-        }
-      }
-
       clients.add(ws);
       ws.send(JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() }));
       setupClient(ws);

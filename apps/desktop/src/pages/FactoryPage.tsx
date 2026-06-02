@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { Button } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 import { WorkflowCanvas } from '../factory/WorkflowCanvas';
 import { WorkflowPanel } from '../factory/WorkflowPanel';
 import { definitionToCanvas, canvasToDefinition } from '../factory/converter';

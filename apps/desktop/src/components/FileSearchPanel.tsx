@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 interface Props {
   isOpen: boolean;

@@ -5,7 +5,7 @@ const { mockApiFetch } = vi.hoisted(() => ({
   mockApiFetch: vi.fn(),
 }));
 
-vi.mock('../utils/pin.js', () => ({
+vi.mock('../utils/api.js', () => ({
   apiFetch: (...args: any[]) => mockApiFetch(...args),
   authHeaders: () => ({}),
   authJsonHeaders: () => ({ 'Content-Type': 'application/json' }),

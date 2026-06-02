@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
 import { seedProject, resetTier } from './test-helpers';
 
-const PIN = '1234';
-const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
+
+const headers = { 'Content-Type': 'application/json' };
 
 describe('Cabinet Core Loop (E2E)', () => {
   const app = createApp();
@@ -160,36 +160,7 @@ describe('Cabinet Core Loop (E2E)', () => {
     expect(res.status).toBe(404);
   });
 
-  // Step 10: Auth flow — verify PIN via header
-  it('POST /api/auth/verify validates PIN from header', async () => {
-    const res = await app.request('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-cabinet-pin': '1234' },
-    });
-    const body = await res.json();
-    // First run or already set — either valid or missing_pin
-    expect([200, 401]).toContain(res.status);
-  });
-
-  // Step 11: Auth — missing PIN returns 401
-  it('POST /api/auth/verify rejects request without PIN', async () => {
-    const res = await app.request('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.valid).toBe(false);
-  });
-
-  // Step 12: protected routes require PIN
-  it('protected routes return 401 without PIN', async () => {
-    const res = await app.request('/api/decisions');
-    expect(res.status).toBe(401);
-  });
-
-  // Step 13: WebSocket endpoint
+  // Step 10: WebSocket endpoint
   it('GET /ws/events requires WebSocket upgrade', async () => {
     const res = await app.request('/ws/events', { headers });
     expect([404, 426]).toContain(res.status);

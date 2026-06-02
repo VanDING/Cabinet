@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
-import { apiFetch, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authJsonHeaders } from '../utils/api.js';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { SubAgentActivity } from '@cabinet/ui';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 import type { AgentEvent } from '../types/agent-events';
 
 export interface AttachedFile {

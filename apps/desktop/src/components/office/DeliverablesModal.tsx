@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, FileText } from 'lucide-react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 
 interface Deliverable {
   id: string;
