@@ -9,7 +9,8 @@ export type AgentEvent =
   | { type: 'started'; timestamp: number }
   | { type: 'user_input_received'; content: string; timestamp: number }
   | { type: 'completed'; deliverable?: unknown; timestamp: number }
-  | { type: 'error'; message: string; timestamp: number };
+  | { type: 'error'; message: string; timestamp: number }
+  | { type: 'status'; status: 'running' | 'waiting_for_user' | 'completed' | 'error'; timestamp: number };
 
 export interface AgentEventStore {
   appendEvent(sessionId: string, event: AgentEvent): void;

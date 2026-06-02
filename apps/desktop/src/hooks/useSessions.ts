@@ -64,7 +64,7 @@ export interface Session {
   // Sub-agent tree support
   parentId?: string;
   agentType?: string;
-  status?: 'active' | 'completed' | 'error';
+  status?: 'active' | 'waiting_for_user' | 'completed' | 'error';
   events?: AgentEvent[];
   deliverable?: unknown;
 }

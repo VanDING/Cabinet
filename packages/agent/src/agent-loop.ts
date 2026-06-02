@@ -1123,6 +1123,11 @@ export class AgentLoop {
     this.conversationHistory = [];
   }
 
+  /** Replace conversation history (e.g. for phase transition in interactive mode). */
+  setConversationHistory(history: { role: 'user' | 'assistant'; content: string }[]): void {
+    this.conversationHistory = [...history];
+  }
+
   /** Set one-shot skill context to be injected into the system prompt on the next run. */
   setSkillContext(context: string | null): void {
     this.skillContext = context;

@@ -10,8 +10,9 @@ import {
   CheckpointManager,
   AgentRoleRegistry,
   RulesLoader,
+  OrganizeInteractiveAgent,
 } from '@cabinet/agent';
-import type { ToolDependencies, AgentRoleType } from '@cabinet/agent';
+import type { ToolDependencies, AgentRoleType, InteractiveSubAgent } from '@cabinet/agent';
 import {
   SecretaryAgent,
   IntentParser,
@@ -122,6 +123,7 @@ const activeSubAgents = new Map<
   string,
   {
     loop: import('@cabinet/agent').AgentLoop;
+    interactive?: InteractiveSubAgent;
     parentSessionId: string;
     roleType: string;
     status: 'running' | 'waiting_for_user' | 'completed' | 'error';
@@ -2135,8 +2137,79 @@ async function dispatchToSpecialistStreaming(
   callback: import('@cabinet/agent').StreamingCallback,
   thinkingBudget?: number,
   model?: string,
+  interactive?: boolean,
 ): Promise<void> {
   const ctx = getServerContext();
+
+  // ── Interactive mode for Organize agent ──
+  if (interactive && roleType === 'organize') {
+    const childSession = ctx.sessionManager.createChildSession(sessionId, roleType);
+    const childSessionId = childSession.id;
+
+    const resolveModel = (tier: string) => {
+      try {
+        const role = { modelTier: tier };
+        const adapter = ctx.gateway as any;
+        if (adapter?.resolveModelString) {
+          return adapter.resolveModelString(tier);
+        }
+        return tier;
+      } catch {
+        return tier;
+      }
+    };
+
+    const interactiveAgent = new OrganizeInteractiveAgent(
+      ctx.gateway!,
+      ctx.toolExecutor,
+      resolveModel,
+    );
+
+    // Register in active map
+    activeSubAgents.set(childSessionId, {
+      loop: null as any,
+      interactive: interactiveAgent,
+      parentSessionId: sessionId,
+      roleType,
+      status: 'running',
+    });
+
+    // Forward events from interactive agent to AgentEventBus + SSE callback
+    interactiveAgent.onEvent.on('event', (event: import('@cabinet/events').AgentEvent) => {
+      ctx.agentEventBus.publish(childSessionId, sessionId, event);
+      if (event.type === 'stream_chunk') callback.onChunk?.(event.content);
+      else if (event.type === 'thinking') callback.onThinking?.(event.content);
+      else if (event.type === 'tool_call') callback.onToolCall?.(event.name, event.args as Record<string, unknown>);
+      else if (event.type === 'tool_result') callback.onToolResult?.(event.name, event.result);
+      else if (event.type === 'output') callback.onDone?.(event.content);
+      else if (event.type === 'error') callback.onError?.(event.message);
+      else if (event.type === 'status') {
+        ctx.sessionManager.updateStatus(childSessionId, event.status);
+        const entry = activeSubAgents.get(childSessionId);
+        if (entry) entry.status = event.status;
+      }
+    });
+
+    try {
+      await interactiveAgent.init({
+        sessionId: childSessionId,
+        parentSessionId: sessionId,
+        projectId,
+        captainId,
+        message,
+        model: model ?? undefined,
+      });
+      const status = interactiveAgent.getStatus();
+      const entry = activeSubAgents.get(childSessionId);
+      if (entry) entry.status = status;
+      callback.onDone?.('Blueprint ready for review');
+    } catch (e: any) {
+      callback.onError?.(e.message ?? 'Unknown error');
+      activeSubAgents.delete(childSessionId);
+    }
+    return;
+  }
+
   const loop = getAgentLoopForRole(
     roleType,
     sessionId,
@@ -2541,6 +2614,7 @@ const chatSchema = z.object({
   type: z.enum(['chat', 'skill_invoke']).optional().default('chat'),
   skillName: z.string().optional(),
   skillArgs: z.string().optional(),
+  interactive: z.boolean().optional(),
 });
 
 secretaryRouter.post('/chat', async (c) => {
@@ -2860,6 +2934,7 @@ secretaryRouter.post('/chat', async (c) => {
                   },
                   thinkingBudget,
                   model ?? undefined,
+                  parsed.data.interactive,
                 );
                 ctx.metrics.increment('llm_call', {
                   model: model ?? 'claude-sonnet-4-6',
@@ -3403,6 +3478,30 @@ secretaryRouter.post('/subagent/input', async (c) => {
     timestamp: Date.now(),
   });
 
+  // Interactive sub-agent path
+  if (entry.interactive) {
+    const forwardHandler = (event: import('@cabinet/events').AgentEvent) => {
+      ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, event);
+    };
+    entry.interactive.onEvent.on('event', forwardHandler);
+
+    try {
+      await entry.interactive.onUserInput(input);
+    } catch (e: any) {
+      entry.interactive.onEvent.off('event', forwardHandler);
+      ctx.agentEventBus.publish(subAgentSessionId, entry.parentSessionId, {
+        type: 'error',
+        message: e.message ?? 'Unknown error',
+        timestamp: Date.now(),
+      });
+      return c.json({ error: e.message ?? 'Unknown error' }, 500);
+    }
+
+    entry.interactive.onEvent.off('event', forwardHandler);
+    entry.status = entry.interactive.getStatus();
+    return c.json({ success: true, status: entry.status });
+  }
+
   try {
     // Build a minimal streaming callback that forwards events to the event bus
     const wrappedCallback: import('@cabinet/agent').StreamingCallback = {
@@ -3487,6 +3586,20 @@ secretaryRouter.post('/subagent/finalize', async (c) => {
     return c.json({ error: 'Sub-agent session not found' }, 404);
   }
 
+  // Interactive sub-agent path
+  if (entry?.interactive) {
+    const deliverable = await entry.interactive.finalize();
+    ctx.sessionManager.setDeliverable(subAgentSessionId, deliverable);
+    ctx.sessionManager.updateStatus(subAgentSessionId, 'completed');
+    activeSubAgents.delete(subAgentSessionId);
+    ctx.agentEventBus.publish(subAgentSessionId, session.parentId ?? undefined, {
+      type: 'completed',
+      deliverable,
+      timestamp: Date.now(),
+    });
+    return c.json({ success: true, deliverable });
+  }
+
   ctx.sessionManager.updateStatus(subAgentSessionId, 'completed');
 
   // Publish completion event
@@ -3521,4 +3634,13 @@ secretaryRouter.get('/sessions/:id/children', (c) => {
       attachedFiles: [],
     })),
   });
+});
+
+/** GET /subagent/:id/status — get current status of a running sub-agent */
+secretaryRouter.get('/subagent/:id/status', (c) => {
+  const id = c.req.param('id');
+  const entry = activeSubAgents.get(id);
+  if (!entry) return c.json({ error: 'Not found' }, 404);
+  const status = entry.interactive ? entry.interactive.getStatus() : entry.status;
+  return c.json({ status });
 });
