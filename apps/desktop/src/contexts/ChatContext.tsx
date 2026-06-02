@@ -146,6 +146,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       // ── Sub-agent mid-flight input routing ──
       if (inputTarget.type === 'subagent') {
+        const userMsg: ChatMessage = {
+          id: `subuser_${Date.now()}`,
+          role: 'user',
+          content: `[to ${inputTarget.agentId}] ${message}`,
+          timestamp: new Date(),
+        };
+        addMessage(sessionId, userMsg);
         try {
           setSessionActive(sessionId, true);
           await apiFetch('/api/secretary/subagent/input', {
