@@ -124,7 +124,7 @@ export class ToolExecutor {
     return [...this.tools.entries()].map(([name, def]) => ({
       name,
       description: def.description ?? `Execute the ${name} tool`,
-      parameters: def.parameters ?? { type: 'object', properties: {} },
+      parameters: normalizeParameters(def.parameters),
       execute: def.execute,
       timeoutMs: def.timeoutMs,
     }));
@@ -137,7 +137,7 @@ export class ToolExecutor {
     return {
       name,
       description: def.description ?? `Execute the ${name} tool`,
-      parameters: def.parameters ?? { type: 'object', properties: {} },
+      parameters: normalizeParameters(def.parameters),
       execute: def.execute,
       timeoutMs: def.timeoutMs,
     };
@@ -158,4 +158,19 @@ export class ToolExecutor {
     }
     return view;
   }
+}
+
+/** Ensure parameters conform to a valid JSON Schema object with type: "object". */
+function normalizeParameters(
+  params: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (
+    !params ||
+    typeof params !== 'object' ||
+    Array.isArray(params) ||
+    params.type !== 'object'
+  ) {
+    return { type: 'object', properties: {} };
+  }
+  return params;
 }

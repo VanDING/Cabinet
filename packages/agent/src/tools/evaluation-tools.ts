@@ -20,6 +20,7 @@ export function createEvaluationTools(deps: EvaluationToolDeps): ToolDefinition[
     {
       name: 'evaluate',
       timeoutMs: 60000,
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const content = args.content as string;
         const sourceType = (args.sourceType as string) ?? 'agent_output';

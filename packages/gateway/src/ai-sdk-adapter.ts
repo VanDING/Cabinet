@@ -6,6 +6,7 @@ import {
   generateText as aiGenerateText,
   streamText as aiStreamText,
   embed,
+  jsonSchema,
   tool,
   stepCountIs,
 } from 'ai';
@@ -214,7 +215,7 @@ export class AISDKAdapter implements LLMGateway {
       for (const td of options.tools) {
         aiTools[td.name] = tool({
           description: td.description,
-          parameters: td.parameters as any,
+          inputSchema: jsonSchema(normalizeToolSchema(td.parameters) as any),
           execute: td.execute as any,
         }) as any;
       }
@@ -544,12 +545,30 @@ export class AISDKAdapter implements LLMGateway {
     return Number.isNaN(num) ? null : num;
   }
 
-  private convertTools(tools: ToolDefinition[]): any {
-    return tools.map((t) => ({
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters,
-    }));
+  private convertTools(tools: ToolDefinition[]): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const t of tools) {
+      result[t.name] = tool({
+        description: t.description,
+        inputSchema: jsonSchema(normalizeToolSchema(t.parameters) as any),
+      });
+    }
+    return result;
   }
+}
+
+/** Defensively coerce a value into a valid JSON Schema object with type: "object". */
+function normalizeToolSchema(
+  params: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  if (
+    !params ||
+    typeof params !== 'object' ||
+    Array.isArray(params) ||
+    params.type !== 'object'
+  ) {
+    return { type: 'object', properties: {} };
+  }
+  return params;
 }
 

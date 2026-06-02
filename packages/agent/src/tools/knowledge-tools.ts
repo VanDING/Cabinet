@@ -20,6 +20,7 @@ export function createKnowledgeTools(deps: KnowledgeToolDeps): ToolDefinition[] 
     {
       name: 'index_document',
       timeoutMs: 120000,
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const filePath = args.path as string;
         const projectId = (args.projectId as string) ?? 'default';
@@ -35,6 +36,7 @@ export function createKnowledgeTools(deps: KnowledgeToolDeps): ToolDefinition[] 
     {
       name: 'search_documents',
       timeoutMs: 30000,
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const query = args.query as string;
         const projectId = (args.projectId as string) ?? 'default';
@@ -59,6 +61,7 @@ export function createKnowledgeTools(deps: KnowledgeToolDeps): ToolDefinition[] 
     },
     {
       name: 'clear_index',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const projectId = (args.projectId as string) ?? 'default';
         const filePath = args.path as string | undefined;
