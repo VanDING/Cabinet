@@ -1,5 +1,6 @@
 import { WorkflowRepository, type Database } from '@cabinet/storage';
 import type { WorkflowNodeDef, WorkflowNodeType } from '@cabinet/types';
+import { StateGraph, Annotation } from '@cabinet/graph';
 import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
 export type { WorkflowNodeType, WorkflowNodeDef };
@@ -82,12 +83,19 @@ export class WorkflowEngine {
     this.runs.set(runId, run);
     this.saveRun(run);
 
-    const graph = this.buildGraph(nodes, edges);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     this.currentEdges = edges;
 
     try {
-      await this.executeNode(entryNodeId, nodeMap, graph, run, new Set());
+      const sg = this.buildStateGraph(nodes, edges, entryNodeId, run, nodeMap);
+      const compiled = sg.compile({ entry: entryNodeId });
+      if (compiled.ok) {
+        await compiled.graph!.invoke({});
+      } else {
+        // Fallback to legacy execution on compile failure
+        const adjGraph = this.buildGraph(nodes, edges);
+        await this.executeNode(entryNodeId, nodeMap, adjGraph, run, new Set());
+      }
       await this.finalizeAgentSegment(run);
     } catch (error) {
       await this.finalizeAgentSegment(run);
@@ -165,7 +173,274 @@ export class WorkflowEngine {
     return graph;
   }
 
-  // ── Core execution ──
+  private buildStateGraph(
+    nodes: WorkflowNodeDef[],
+    edges: WorkflowEdge[],
+    _entryNodeId: string,
+    run: WorkflowRun,
+    nodeMap: Map<string, WorkflowNodeDef>,
+  ): StateGraph<Record<string, Annotation<any>>> {
+    const schema: Record<string, Annotation<any>> = {};
+    for (const node of nodes) {
+      schema[node.id] = Annotation<unknown>({
+        reducer: (_a, b) => b,
+        default: () => null,
+      });
+    }
+
+    const sg = new StateGraph(schema);
+    const self = this;
+
+    for (const node of nodes) {
+      sg.addNode(node.id, async () => {
+        await self.runNode(node, run, nodeMap);
+        return {};
+      });
+    }
+
+    // Add edges, replacing ifElse static edges with conditional edges
+    const ifElseNodes = new Set(nodes.filter((n) => n.type === 'ifElse').map((n) => n.id));
+
+    for (const edge of edges) {
+      if (ifElseNodes.has(edge.from)) continue; // handled below
+      sg.addEdge(edge.from, edge.to);
+    }
+
+    // Add conditional edges for ifElse nodes
+    for (const nodeId of ifElseNodes) {
+      const children = edges.filter((e) => e.from === nodeId).map((e) => e.to);
+      const trueChild = children[0];
+      const falseChild = children.length >= 2 ? children[1] : undefined;
+
+      const targets: Record<string, string> = {};
+      if (trueChild) targets['true'] = trueChild;
+      if (falseChild) targets['false'] = falseChild;
+      targets['__default__'] = trueChild ?? falseChild ?? '__END__';
+
+      sg.addConditionalEdges(nodeId, () => {
+        const matchingSteps = run.steps.filter((s: { nodeId: string }) => s.nodeId === nodeId);
+        const step = matchingSteps[matchingSteps.length - 1];
+        if (!step) return '__default__';
+        const output = step.output;
+        if (output.includes('Matched branch:')) {
+          // Use the first child for "matched" condition
+          return 'true';
+        }
+        if (output.includes('Condition evaluated: true')) return 'true';
+        if (output.includes('Condition evaluated: false')) return 'false';
+        return '__default__';
+      }, targets);
+    }
+
+    return sg;
+  }
+
+  /**
+   * Execute a single node's logic and return output.
+   * Does NOT recurse into children — graph edges handle traversal.
+   */
+  private async runNode(
+    node: WorkflowNodeDef, run: WorkflowRun, nodeMap: Map<string, WorkflowNodeDef>,
+  ): Promise<string> {
+    const previousOutputs = run.steps.map((s) => s.output).join('\n');
+    let output = '';
+
+    switch (node.type) {
+      case 'start':
+        output = 'Workflow started';
+        break;
+      case 'end':
+        output = 'Workflow ended';
+        break;
+      case 'agentGroup': {
+        const role = node.role ?? 'secretary';
+        await this.finalizeAgentSegment(run);
+        if (!this.handlers.createAgentLoop) { output = 'No agent handler registered'; break; }
+        const handle = await this.handlers.createAgentLoop(role, run.runId, {
+          persistent: node.persistent ?? true,
+          systemPrompt: node.systemPrompt,
+          model: node.model,
+          allowedTools: node.allowedTools,
+        });
+        run._agentLoop = { agentId: role, handle };
+        const childGraph = this.buildGraph(node.children ?? [], []);
+        const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
+        const entryChild = node.children?.[0]?.id;
+        if (entryChild) {
+          await this.executeNode(entryChild, childMap, childGraph, run, new Set());
+        }
+        await this.finalizeAgentSegment(run);
+        const handoffKey = `_handoff:${role}`;
+        const handoff = run.results.get(handoffKey);
+        output = handoff ? String(handoff) : `Agent group ${role} completed`;
+        break;
+      }
+      case 'llm': {
+        if (run._agentLoop) {
+          const prompt = node.prompt ?? node.title ?? 'Process this step';
+          const timeoutMs = node.codeTimeout ?? 120_000;
+          output = await this.withTimeout(run._agentLoop.handle.run(prompt), timeoutMs, `LLM ${node.id}`);
+        } else if (this.handlers.aiAgent) {
+          const timeoutMs = node.codeTimeout ?? 120_000;
+          output = await this.withTimeout(this.handlers.aiAgent(node, previousOutputs), timeoutMs, `LLM ${node.id}`);
+        } else { throw new Error('LLM node requires an AgentGroup or aiAgent handler'); }
+        break;
+      }
+      case 'skill': {
+        if (!this.handlers.skill) throw new Error('No skill handler registered');
+        const result = await this.handlers.skill(node.skillId ?? node.id, {
+          nodeId: node.id, previousOutputs, inputMapping: node.inputMapping ?? {},
+        });
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+      case 'tool': {
+        if (!this.handlers.tool) throw new Error('No tool handler registered');
+        const params = { ...(node.inputMapping ?? {}) };
+        for (const [k, v] of Object.entries(params)) {
+          if (typeof v === 'string' && v.startsWith('{{')) {
+            params[k] = this.resolveVariable(v, run);
+          }
+        }
+        const result = await this.handlers.tool(node.toolId ?? node.id, params);
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+      case 'code': {
+        if (!this.handlers.runCode) throw new Error('No code handler registered');
+        const timeout = node.codeTimeout ?? 5000;
+        const result = await this.handlers.runCode(node.code ?? '', previousOutputs, timeout);
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+      case 'workflow': {
+        if (!this.handlers.runSubWorkflow) throw new Error('No sub-workflow handler');
+        if (!node.workflowId) throw new Error('workflowId is required');
+        const result = await this.handlers.runSubWorkflow(node.workflowId, { previousOutputs, inputMapping: node.inputMapping });
+        output = typeof result === 'string' ? result : JSON.stringify(result);
+        break;
+      }
+      case 'ifElse': {
+        const branches = node.branches ?? [];
+        let matched = false;
+        if (branches.length > 0) {
+          for (const branch of branches) {
+            const allTrue = branch.conditions.every((c) => {
+              const val = this.resolveValue(c.field, run);
+              return this.evaluateOp(val, c.operator, c.value);
+            });
+            if (allTrue) { output = `Matched branch: ${branch.label}`; matched = true; break; }
+          }
+        }
+        if (!matched) {
+          const conditionExpr = node.loopCondition ?? 'true';
+          const isTrue = this.evaluateCondition(conditionExpr, previousOutputs, run);
+          output = `Condition evaluated: ${isTrue}`;
+        }
+        break;
+      }
+      case 'loop': {
+        const maxIter = node.loopMaxIterations ?? 1000;
+        const exitIds: string[] = [];
+        const childIds = new Set((node.children ?? []).map((c) => c.id));
+        for (const edge of this.currentEdges) {
+          if (childIds.has(edge.from) && !childIds.has(edge.to)) exitIds.push(edge.to);
+        }
+        const results: unknown[] = [];
+        const childGraph = this.buildGraph(node.children ?? [], []);
+        const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
+        for (let i = 0; i < maxIter; i++) {
+          if (node.loopType === 'count' && i >= (node.loopCount ?? 1)) break;
+          if (node.loopType === 'condition' && node.loopCondition) {
+            const condResult = this.evaluateCondition(node.loopCondition, previousOutputs, run);
+            if (!condResult) break;
+          }
+          const entryChild = node.children?.[0]?.id;
+          if (entryChild) {
+            await this.executeNode(entryChild, childMap, childGraph, run, new Set());
+          }
+          const lastStep = run.steps[run.steps.length - 1];
+          if (lastStep) results.push({ iteration: i, result: lastStep.output });
+        }
+        output = node.loopOutputMode === 'merge'
+          ? results.map((r: any) => r.result).join('\n')
+          : JSON.stringify(results);
+        for (const exitId of exitIds) {
+          await this.executeNode(exitId, nodeMap, this.buildGraph([], []), run, new Set());
+        }
+        break;
+      }
+      case 'parallel': {
+        const children = this.buildGraph(node.children ?? [], []).get(node.id) ?? [];
+        const childResults = await Promise.allSettled(
+          children.map((id) => this.executeNode(id, nodeMap, this.buildGraph([], []), run, new Set())),
+        );
+        const parts: string[] = [];
+        for (const childId of children) {
+          const childStep = run.steps.find((s) => s.nodeId === childId);
+          if (childStep) parts.push(`[${childId}]: ${childStep.output}`);
+        }
+        output = parts.join('\n');
+        if (node.failStrategy === 'failAll') {
+          if (childResults.some((r) => r.status === 'rejected')) throw new Error('Parallel branch failed');
+        }
+        break;
+      }
+      case 'merge': {
+        const strategy = node.mergeStrategy ?? 'object';
+        const merged: Record<string, unknown> = {};
+        for (const [k, v] of run.results) {
+          if (k !== node.id) merged[k] = v;
+        }
+        output = strategy === 'array' ? JSON.stringify(Object.values(merged)) : JSON.stringify(merged);
+        break;
+      }
+      case 'pass':
+        output = '';
+        break;
+      case 'intentClassify': {
+        if (!this.handlers.intentClassify) throw new Error('No intent classify handler');
+        const result = await this.handlers.intentClassify(node, previousOutputs);
+        output = JSON.stringify(result);
+        break;
+      }
+      case 'knowledgeBase': {
+        if (!this.handlers.knowledgeBase) throw new Error('No knowledge base handler');
+        const chunks = await this.handlers.knowledgeBase(node, previousOutputs);
+        output = JSON.stringify({ query: node.queryTemplate ?? previousOutputs, chunks });
+        break;
+      }
+      case 'approval': {
+        if (!this.handlers.humanApproval) throw new Error('No humanApproval handler');
+        const decision = await this.handlers.humanApproval(node, run);
+        if (decision.status === 'pending') {
+          output = `Approval pending: decision ${decision.decisionId}`;
+          run.status = 'awaiting_approval';
+        } else { output = 'Approval granted'; }
+        break;
+      }
+      case 'human': {
+        if (this.handlers.humanTask) {
+          const task = await this.handlers.humanTask(node, run);
+          output = `Human task submitted: ${task.taskId}`;
+          run.status = 'awaiting_human';
+        } else if (this.handlers.humanApproval) {
+          const decision = await this.handlers.humanApproval(node, run);
+          output = `Human task: decision ${decision.decisionId}`;
+          if (decision.status === 'pending') run.status = 'awaiting_approval';
+        } else { throw new Error('No human handler registered'); }
+        break;
+      }
+      default:
+        throw new Error(`Unknown node type: ${(node as any).type}`);
+    }
+
+    run.steps.push({ nodeId: node.id, type: node.type, output });
+    run.results.set(node.id, output);
+    run.currentNodeId = node.id;
+    this.appendStepAndResult(run, node.id, node.type, output);
+    return output;
+  }
 
   private async executeNode(
     nodeId: string, nodeMap: Map<string, WorkflowNodeDef>,
@@ -176,302 +451,7 @@ export class WorkflowEngine {
     const node = nodeMap.get(nodeId);
     if (!node) return;
 
-    const previousOutputs = run.steps.map((s) => s.output).join('\n');
-    let output = '';
-
-    switch (node.type) {
-      case 'start':
-        output = 'Workflow started';
-        break;
-
-      case 'end':
-        output = 'Workflow ended';
-        break;
-
-      // ── Agent Group ──
-      case 'agentGroup': {
-        const role = node.role ?? 'secretary';
-        await this.finalizeAgentSegment(run);
-
-        if (!this.handlers.createAgentLoop) {
-          output = 'No agent handler registered';
-          break;
-        }
-
-        const handle = await this.handlers.createAgentLoop(role, run.runId, {
-          persistent: node.persistent ?? true,
-          systemPrompt: node.systemPrompt,
-          model: node.model,
-          allowedTools: node.allowedTools,
-        });
-        run._agentLoop = { agentId: role, handle };
-
-        // Execute children inside the group
-        const childGraph = this.buildGraph(node.children ?? [], []);
-        const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
-        const entryChild = node.children?.[0]?.id;
-        if (entryChild) {
-          await this.executeNode(entryChild, childMap, childGraph, run, new Set());
-        }
-
-        await this.finalizeAgentSegment(run);
-        const handoffKey = `_handoff:${role}`;
-        const handoff = run.results.get(handoffKey);
-        output = handoff ? String(handoff) : `Agent group ${role} completed`;
-        break;
-      }
-
-      // ── LLM ──
-      case 'llm': {
-        // Prefer AgentLoop context; fall back to legacy aiAgent handler
-        if (run._agentLoop) {
-          const prompt = node.prompt ?? node.title ?? 'Process this step';
-          const timeoutMs = node.codeTimeout ?? 120_000;
-          output = await this.withTimeout(run._agentLoop.handle.run(prompt), timeoutMs, `LLM ${node.id}`);
-        } else if (this.handlers.aiAgent) {
-          const timeoutMs = node.codeTimeout ?? 120_000;
-          output = await this.withTimeout(this.handlers.aiAgent(node, previousOutputs), timeoutMs, `LLM ${node.id}`);
-        } else {
-          throw new Error('LLM node requires an AgentGroup or aiAgent handler');
-        }
-        break;
-      }
-
-      // ── Skill ──
-      case 'skill': {
-        if (!this.handlers.skill) throw new Error('No skill handler registered');
-        const result = await this.handlers.skill(node.skillId ?? node.id, {
-          nodeId,
-          previousOutputs,
-          inputMapping: node.inputMapping ?? {},
-        });
-        output = typeof result === 'string' ? result : JSON.stringify(result);
-        break;
-      }
-
-      // ── Tool ──
-      case 'tool': {
-        if (!this.handlers.tool) throw new Error('No tool handler registered');
-        const params = node.inputMapping ?? {};
-        for (const [k, v] of Object.entries(params)) {
-          if (typeof v === 'string' && v.startsWith('{{')) {
-            params[k] = this.resolveVariable(v, run);
-          }
-        }
-        const result = await this.handlers.tool(node.toolId ?? node.id, params);
-        output = typeof result === 'string' ? result : JSON.stringify(result);
-        break;
-      }
-
-      // ── Code ──
-      case 'code': {
-        if (!this.handlers.runCode) throw new Error('No code handler registered');
-        const timeout = node.codeTimeout ?? 5000;
-        const result = await this.handlers.runCode(node.code ?? '', previousOutputs, timeout);
-        output = typeof result === 'string' ? result : JSON.stringify(result);
-        break;
-      }
-
-      // ── Workflow ──
-      case 'workflow': {
-        if (!this.handlers.runSubWorkflow) throw new Error('No sub-workflow handler');
-        if (!node.workflowId) throw new Error('workflowId is required');
-        const result = await this.handlers.runSubWorkflow(node.workflowId, { previousOutputs, inputMapping: node.inputMapping });
-        output = typeof result === 'string' ? result : JSON.stringify(result);
-        break;
-      }
-
-      // ── If-else ──
-      case 'ifElse': {
-        const branches = node.branches ?? [];
-        let matched = false;
-        if (branches.length > 0) {
-          for (const branch of branches) {
-            const allTrue = branch.conditions.every((c) => {
-              const val = this.resolveValue(c.field, run);
-              return this.evaluateOp(val, c.operator, c.value);
-            });
-            if (allTrue) {
-              output = `Matched branch: ${branch.label}`;
-              const childTarget = this.findChildForBranch(node.id, branch.label, graph);
-              if (childTarget) {
-                run.steps.push({ nodeId, type: node.type, output });
-                run.results.set(nodeId, output);
-                run.currentNodeId = nodeId;
-                await this.executeNode(childTarget, nodeMap, graph, run, visited);
-                return;
-              }
-              matched = true;
-              break;
-            }
-          }
-        }
-        if (!matched) {
-          // Fallback: simple condition string match (backward compat)
-          const conditionExpr = node.loopCondition ?? 'true';
-          const isTrue = this.evaluateCondition(conditionExpr, previousOutputs, run);
-          output = `Condition evaluated: ${isTrue}`;
-          const children = graph.get(nodeId) ?? [];
-          const targetChild = isTrue ? children[0] : (children.length >= 2 ? children[1] : undefined);
-          if (targetChild) {
-            run.steps.push({ nodeId, type: node.type, output });
-            run.results.set(nodeId, output);
-            run.currentNodeId = nodeId;
-            await this.executeNode(targetChild, nodeMap, graph, run, visited);
-            return;
-          }
-          output = 'No branch matched';
-        }
-        break;
-      }
-
-      // ── Loop ──
-      case 'loop': {
-        const maxIter = node.loopMaxIterations ?? 1000;
-        const exitIds: string[] = [];
-        // Find exit edges (edges from loop children to nodes outside the loop)
-        const childIds = new Set((node.children ?? []).map((c) => c.id));
-        for (const edge of this.currentEdges) {
-          if (childIds.has(edge.from) && !childIds.has(edge.to)) {
-            exitIds.push(edge.to);
-          }
-        }
-        const results: unknown[] = [];
-        for (let i = 0; i < maxIter; i++) {
-          if (node.loopType === 'count' && i >= (node.loopCount ?? 1)) break;
-          if (node.loopType === 'condition' && node.loopCondition) {
-            const condResult = this.evaluateCondition(node.loopCondition, previousOutputs, run);
-            if (!condResult) break;
-          }
-          // Execute loop body children
-          const loopVisited = new Set<string>();
-          const entryChild = node.children?.[0]?.id;
-          if (entryChild) {
-            await this.executeNode(entryChild, nodeMap, graph, run, loopVisited);
-          }
-          const lastStep = run.steps[run.steps.length - 1];
-          if (lastStep) results.push({ iteration: i, result: lastStep.output });
-        }
-
-        output = node.loopOutputMode === 'merge'
-          ? results.map((r: any) => r.result).join('\n')
-          : JSON.stringify(results);
-        // Route to exit
-        for (const exitId of exitIds) {
-          await this.executeNode(exitId, nodeMap, graph, run, visited);
-        }
-        break;
-      }
-
-      // ── Parallel ──
-      case 'parallel': {
-        const children = graph.get(nodeId) ?? [];
-        const childResults = await Promise.allSettled(
-          children.map((id) => this.executeNode(id, nodeMap, graph, run, new Set(visited))),
-        );
-        const parts: string[] = [];
-        for (const childId of children) {
-          const childStep = run.steps.find((s) => s.nodeId === childId);
-          if (childStep) parts.push(`[${childId}]: ${childStep.output}`);
-        }
-        output = parts.join('\n');
-        if (node.failStrategy === 'failAll') {
-          const anyFailed = childResults.some((r) => r.status === 'rejected');
-          if (anyFailed) throw new Error('Parallel branch failed');
-        }
-        break;
-      }
-
-      // ── Merge ──
-      case 'merge': {
-        const strategy = node.mergeStrategy ?? 'object';
-        const inputs = graph.get(nodeId) ?? [];
-        const merged: Record<string, unknown> = {};
-        for (const inputId of inputs) {
-          const val = run.results.get(inputId);
-          if (val != null) merged[inputId] = val;
-        }
-        output = strategy === 'array'
-          ? JSON.stringify(Object.values(merged))
-          : JSON.stringify(merged);
-        break;
-      }
-
-      // ── Pass ──
-      case 'pass': {
-        const inputs = graph.get(nodeId) ?? [];
-        const firstVal = inputs.length > 0 ? run.results.get(inputs[0]!) : null;
-        output = firstVal != null ? String(firstVal) : '';
-        break;
-      }
-
-      // ── Intent Classify ──
-      case 'intentClassify': {
-        if (!this.handlers.intentClassify) throw new Error('No intent classify handler');
-        const result = await this.handlers.intentClassify(node, previousOutputs);
-        output = JSON.stringify(result);
-        // Route to matching intent branch
-        const children = graph.get(nodeId) ?? [];
-        const targetChild = children.find((cid) => {
-          const edge = this.currentEdges.find((e) => e.from === nodeId && e.to === cid);
-          return edge?.label === result.intent;
-        });
-        if (targetChild) {
-          run.steps.push({ nodeId, type: node.type, output });
-          run.results.set(nodeId, output);
-          run.currentNodeId = nodeId;
-          await this.executeNode(targetChild, nodeMap, graph, run, visited);
-          return;
-        }
-        break;
-      }
-
-      // ── Knowledge Base ──
-      case 'knowledgeBase': {
-        if (!this.handlers.knowledgeBase) throw new Error('No knowledge base handler');
-        const chunks = await this.handlers.knowledgeBase(node, previousOutputs);
-        output = JSON.stringify({ query: node.queryTemplate ?? previousOutputs, chunks });
-        break;
-      }
-
-      // ── Approval ──
-      case 'approval': {
-        if (!this.handlers.humanApproval) throw new Error('No humanApproval handler');
-        const decision = await this.handlers.humanApproval(node, run);
-        if (decision.status === 'pending') {
-          output = `Approval pending: decision ${decision.decisionId}`;
-          run.status = 'awaiting_approval';
-        } else {
-          output = 'Approval granted';
-        }
-        break;
-      }
-
-      // ── Human ──
-      case 'human': {
-        if (this.handlers.humanTask) {
-          const task = await this.handlers.humanTask(node, run);
-          output = `Human task submitted: ${task.taskId}`;
-          run.status = 'awaiting_human';
-        } else if (this.handlers.humanApproval) {
-          // Backward compat: treat as approval
-          const decision = await this.handlers.humanApproval(node, run);
-          output = `Human task: decision ${decision.decisionId}`;
-          if (decision.status === 'pending') run.status = 'awaiting_approval';
-        } else {
-          throw new Error('No human handler registered');
-        }
-        break;
-      }
-
-      default:
-        throw new Error(`Unknown node type: ${(node as any).type}`);
-    }
-
-    run.steps.push({ nodeId, type: node.type, output });
-    run.results.set(nodeId, output);
-    run.currentNodeId = nodeId;
-    this.appendStepAndResult(run, nodeId, node.type, output);
+    await this.runNode(node, run, nodeMap);
 
     if (run.status === 'awaiting_approval' || run.status === 'awaiting_human') {
       this.saveRun(run);
