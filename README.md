@@ -93,13 +93,13 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Architecture
 
-Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Thirteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
+Cabinet V2.0 is a **TypeScript monorepo** built on a strict 5-layer architecture. Fourteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
 
 ```
 Layer 4 (Interface):   ui, server, desktop       ← user/network boundary
 Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← business logic
 Layer 2 (Agent Core):  gateway, agent, memory     ← AI interaction core
-Layer 1 (Infra):       types, events, storage     ← infrastructure
+Layer 1 (Infra):       graph, types, events, storage  ← infrastructure
 ```
 
 | Layer | Package              | Role                                                       |
@@ -113,8 +113,9 @@ Layer 1 (Infra):       types, events, storage     ← infrastructure
 | 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability  |
 | 3     | `@cabinet/organize`  | Organization architecture and system design                |
 | 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |
-| 2     | `@cabinet/agent`     | TAOR agent loop (Think-Act-Observe-React)                  |
+| 2     | `@cabinet/agent`     | Graph-based agent loop, SafetyChecker, ToolExecutor, roles |
 | 2     | `@cabinet/memory`    | Four-layer memory (short-term, long-term, entity, project) |
+| 1     | `@cabinet/graph`     | StateGraph engine, Annotation, CheckpointStore, validation |
 | 1     | `@cabinet/events`    | Event bus with causation-chain tracking                    |
 | 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)               |
 | 1     | `@cabinet/types`     | Shared TypeScript types—universal dependency               |
@@ -360,7 +361,7 @@ pnpm test
 # Run E2E tests
 pnpm test:e2e
 
-# Architecture layer lint (4-layer dependency rules)
+# Architecture layer lint (5-layer dependency rules)
 pnpm lint:arch
 
 # Build all packages
