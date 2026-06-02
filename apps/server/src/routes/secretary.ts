@@ -467,7 +467,7 @@ function buildToolDependencies(ctx: ServerContext, activeProjectId?: string): To
         type: 'custom' as const,
         name: input.name,
         description: input.description,
-        systemPrompt: input.systemPrompt,
+        modules: { identity: input.systemPrompt },
         modelTier: ((input as any).modelTier as string) || 'default',
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
@@ -1887,7 +1887,7 @@ function getAgentLoopForRole(
     memorySessionId: memorySessionId ?? sessionId,
     projectId,
     captainId,
-    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt, projectRootPath),
+    roleModules: { identity: buildSystemPrompt(role.type, role.modules.identity, projectRootPath) },
     model: model ?? resolveModel(role),
     maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
@@ -1969,7 +1969,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     sessionId: `reviewer_${Date.now()}`,
     projectId: 'default',
     captainId: DEFAULT_CAPTAIN_ID,
-    systemPrompt: buildSystemPrompt(role.type, role.systemPrompt),
+    roleModules: { identity: buildSystemPrompt(role.type, role.modules.identity) },
     model: resolveModel(role),
     maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
@@ -2398,7 +2398,7 @@ function getOrCreateAgent(
       systemPrompt: (() => {
         const base = buildSystemPrompt(
           'secretary',
-          secretaryRole?.systemPrompt ?? '',
+          secretaryRole?.modules.identity ?? '',
           projectRootPath,
         );
         const skillList = ctx.skillRegistry.describeForRouting();

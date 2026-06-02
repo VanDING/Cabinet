@@ -214,7 +214,7 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
             type: 'custom' as const,
             name,
             description: String(agentCard.description ?? ''),
-            systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
+            modules: { identity: String(agentCard.systemPrompt ?? agentCard.instructions ?? '') },
             modelTier: ((agentCard.modelTier as string) || 'default') as any,
             temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
             maxResponseTokens: parseInt(
@@ -238,7 +238,7 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               type: name,
               name,
               description: role.description,
-              system_prompt: role.systemPrompt,
+              system_prompt: role.modules.identity,
               model_tier: role.modelTier,
               temperature: role.temperature,
               max_response_tokens: role.maxResponseTokens,
@@ -255,7 +255,7 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
           // Existing custom agent — check if content changed
           const changed =
             existing.description !== String(agentCard.description ?? '') ||
-            existing.systemPrompt !==
+            existing.modules.identity !==
               String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
             existing.modelTier !== String(agentCard.modelTier ?? 'default') ||
             JSON.stringify((existing.allowedTools ?? []).slice().sort()) !==
@@ -264,7 +264,7 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
           if (changed) {
             deps.agentRegistry.update(name, {
               description: String(agentCard.description ?? ''),
-              systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
+              modules: { identity: String(agentCard.systemPrompt ?? agentCard.instructions ?? '') },
               modelTier: ((agentCard.modelTier as string) || 'default') as any,
               temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
               maxResponseTokens: parseInt(
