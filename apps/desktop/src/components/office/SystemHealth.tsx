@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 import { usePolling } from '../../hooks/usePolling';
 
 interface HealthData {

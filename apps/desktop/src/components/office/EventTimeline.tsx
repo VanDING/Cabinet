@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useToast } from '../Toast';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 interface Event {

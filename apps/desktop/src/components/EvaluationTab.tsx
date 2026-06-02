@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 interface EvaluationItem {
   id: string;

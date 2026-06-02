@@ -16,27 +16,10 @@ export function openapiRouter() {
         '/health': {
           get: { summary: 'Health check', responses: { '200': { description: 'OK' } } },
         },
-        '/api/auth/verify': {
-          post: {
-            summary: 'Verify Captain PIN',
-            requestBody: {
-              content: {
-                'application/json': {
-                  schema: { type: 'object', properties: { pin: { type: 'string' } } },
-                },
-              },
-            },
-            responses: {
-              '200': { description: 'Valid/Invalid' },
-              '400': { description: 'Bad request' },
-            },
-          },
-        },
         '/api/dashboard/summary': {
           get: {
             summary: 'Dashboard stats',
             responses: { '200': { description: 'Stats object' } },
-            security: [{ pinAuth: [] }],
           },
         },
         '/api/secretary/chat': {
@@ -53,7 +36,6 @@ export function openapiRouter() {
               },
             },
             responses: { '200': { description: 'Response with parsed intent' } },
-            security: [{ pinAuth: [] }],
           },
         },
         '/api/decisions': {
@@ -61,7 +43,6 @@ export function openapiRouter() {
             summary: 'List decisions',
             parameters: [{ name: 'status', in: 'query', schema: { type: 'string' } }],
             responses: { '200': { description: 'Decision list' } },
-            security: [{ pinAuth: [] }],
           },
         },
         '/api/decisions/{id}': {
@@ -69,7 +50,6 @@ export function openapiRouter() {
             summary: 'Decision detail',
             parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
             responses: { '200': { description: 'Decision object' } },
-            security: [{ pinAuth: [] }],
           },
           post: { summary: 'Approve decision (at /approve)' },
         },
@@ -77,41 +57,26 @@ export function openapiRouter() {
           post: {
             summary: 'Create meeting',
             responses: { '200': { description: 'Meeting with cost estimate' } },
-            security: [{ pinAuth: [] }],
           },
         },
         '/api/factory/workflows': {
           get: { summary: 'List workflows' },
           post: { summary: 'Create workflow' },
-          security: [{ pinAuth: [] }],
         },
         '/api/settings/budget': { get: { summary: 'Get budget config' } },
         '/api/settings/api-keys': {
           get: { summary: 'List API keys (masked)' },
           post: { summary: 'Add API key' },
-          security: [{ pinAuth: [] }],
         },
         '/api/events/stream': {
           get: {
             summary: 'SSE event stream',
             responses: { '200': { description: 'text/event-stream' } },
-            security: [{ pinAuth: [] }],
           },
         },
         '/api/skills': {
           get: { summary: 'List skills' },
           post: { summary: 'Register skill' },
-          security: [{ pinAuth: [] }],
-        },
-      },
-      components: {
-        securitySchemes: {
-          pinAuth: {
-            type: 'apiKey',
-            in: 'header',
-            name: 'x-cabinet-pin',
-            description: 'Captain PIN (4-8 characters)',
-          },
         },
       },
     });

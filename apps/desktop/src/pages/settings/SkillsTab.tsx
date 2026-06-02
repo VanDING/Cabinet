@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Card, Tag } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 import { useToast } from '../../components/Toast.js';
 
 // ── Skills Tab ──

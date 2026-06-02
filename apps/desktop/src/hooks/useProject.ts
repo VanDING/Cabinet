@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 export interface ProjectItem {
   id: string;

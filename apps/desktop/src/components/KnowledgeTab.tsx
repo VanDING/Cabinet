@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Trash2, FileText, RefreshCw } from 'lucide-react';
-import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 
 interface DocumentInfo {
   path: string;

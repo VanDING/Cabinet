@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, ChevronRight, File, Image, FileCode } from 'lucide-react';
-import { apiFetch } from '../utils/pin.js';
+import { apiFetch } from '../utils/api.js';
 
 interface FileTab {
   path: string;

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FileText } from 'lucide-react';
-import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 
 export function ContextButton({
   sessionId,

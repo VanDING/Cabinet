@@ -8,7 +8,7 @@ import { useSkills } from '../hooks/useSkills';
 import { useAvailableModels } from '../hooks/useAvailableModels';
 import { useOutsideClick } from '../hooks/useOutsideClick';
 import { ContextButton } from './ContextButton';
-import { apiFetch, authHeaders, authJsonHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 
 interface ProjectInfo {
   id: string;

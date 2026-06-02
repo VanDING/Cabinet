@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@cabinet/ui';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 
 // ── Audit Log Tab ──
 export function AuditTab() {

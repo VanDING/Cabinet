@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 // ── Budget Tab ──
 export function BudgetTab() {

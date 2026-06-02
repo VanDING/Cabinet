@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch, authHeaders } from '../utils/pin.js';
+import { apiFetch, authHeaders } from '../utils/api.js';
 import type { Decision } from '@cabinet/types';
 
 export function useDecisions(projectId?: string | null) {

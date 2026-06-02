@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw, Search } from 'lucide-react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 import { computeForceLayout } from './force-layout';
 import { EntityNodeComponent, entityColor } from './EntityNode';
 import type { EntityNode } from './EntityNode';

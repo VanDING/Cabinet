@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 
 interface HistoryPoint {
   date: string;

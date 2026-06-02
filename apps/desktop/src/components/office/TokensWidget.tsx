@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 
 interface TokenPoint {
   date: string;

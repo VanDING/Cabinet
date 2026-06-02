@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Decision, DecisionOption } from '@cabinet/types';
 import { useToast } from '../Toast';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 interface AuditEntry {
   action: string;

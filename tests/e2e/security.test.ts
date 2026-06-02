@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
 
-const PIN = '1234';
-const headers = { 'Content-Type': 'application/json', 'x-cabinet-pin': PIN };
+
+const headers = { 'Content-Type': 'application/json' };
 
 describe('Security Checks', () => {
   const app = createApp();
@@ -39,18 +39,6 @@ describe('Security Checks', () => {
     }
   });
 
-  // Pin brute force simulation
-  it('handles multiple failed auth attempts', async () => {
-    for (let i = 0; i < 7; i++) {
-      const res = await app.request('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: '0000' }),
-      });
-      // Should respond (not crash) even after many attempts
-      expect([200, 401, 429]).toContain(res.status);
-    }
-  });
 
   // Invalid JSON body
   it('handles malformed JSON gracefully', async () => {

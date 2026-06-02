@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Shield, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { apiFetch, authHeaders } from '../../utils/pin.js';
+import { apiFetch, authHeaders } from '../../utils/api.js';
 
 interface HarnessData {
   today: {
