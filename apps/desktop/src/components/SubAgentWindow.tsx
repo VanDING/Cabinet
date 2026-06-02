@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import type { AgentEvent } from '../types/agent-events';
 
 type SubAgentStatus = 'active' | 'waiting_for_user' | 'completed' | 'error';
@@ -9,32 +9,54 @@ interface Props {
   status: SubAgentStatus;
   events: AgentEvent[];
   onClick: () => void;
-  onConfirm?: () => void;
-  onRegenerate?: () => void;
-  onSendFeedback?: (feedback: string) => void;
   onApprove?: () => void;
 }
 
-function formatEvent(event: AgentEvent): { icon: string; label: string; content: string } {
-  switch (event.type) {
-    case 'thinking':
-      return { icon: '💭', label: 'thinking', content: event.content };
-    case 'tool_call':
-      return { icon: '🔧', label: `tool_call: ${event.name}`, content: JSON.stringify(event.args) };
-    case 'tool_result':
-      return { icon: '✓', label: `tool_result: ${event.name}`, content: JSON.stringify(event.result) };
-    case 'stream_chunk':
-    case 'output':
-      return { icon: '📄', label: 'output', content: event.content };
-    case 'user_input_received':
-      return { icon: '👤', label: 'User input', content: event.content };
-    case 'error':
-      return { icon: '⚠', label: 'error', content: event.message };
-    case 'status':
-      return { icon: '🔄', label: `status: ${event.status}`, content: '' };
-    default:
-      return { icon: '•', label: event.type, content: '' };
+interface Turn {
+  user?: string;
+  assistant?: string;
+  thinking: string[];
+  toolCalls: { name: string; args: Record<string, unknown>; result?: unknown }[];
+}
+
+function eventsToTurns(events: AgentEvent[]): Turn[] {
+  const turns: Turn[] = [];
+  let currentTurn: Turn | null = null;
+
+  for (const event of events) {
+    if (event.type === 'user_input_received') {
+      if (currentTurn) turns.push(currentTurn);
+      currentTurn = {
+        user: event.content,
+        assistant: undefined,
+        thinking: [],
+        toolCalls: [],
+      };
+    } else if (event.type === 'output' || event.type === 'stream_chunk') {
+      if (!currentTurn) {
+        currentTurn = { thinking: [], toolCalls: [] };
+      }
+      currentTurn.assistant = (currentTurn.assistant ?? '') + event.content;
+    } else if (event.type === 'thinking') {
+      if (!currentTurn) currentTurn = { thinking: [], toolCalls: [] };
+      currentTurn.thinking.push(event.content);
+    } else if (event.type === 'tool_call') {
+      if (!currentTurn) currentTurn = { thinking: [], toolCalls: [] };
+      currentTurn.toolCalls.push({
+        name: event.name,
+        args: event.args as Record<string, unknown>,
+      });
+    } else if (event.type === 'tool_result') {
+      if (!currentTurn) currentTurn = { thinking: [], toolCalls: [] };
+      const last = currentTurn.toolCalls[currentTurn.toolCalls.length - 1];
+      if (last && last.name === event.name) {
+        last.result = event.result;
+      }
+    }
   }
+
+  if (currentTurn) turns.push(currentTurn);
+  return turns;
 }
 
 export function SubAgentWindow({
@@ -42,20 +64,10 @@ export function SubAgentWindow({
   status,
   events,
   onClick,
-  onConfirm,
-  onRegenerate,
-  onSendFeedback,
   onApprove,
 }: Props) {
   const [expanded, setExpanded] = useState(status === 'active' || status === 'waiting_for_user');
-  const [feedback, setFeedback] = useState('');
-  const feedbackRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleSendFeedback = useCallback(() => {
-    if (!feedback.trim()) return;
-    onSendFeedback?.(feedback.trim());
-    setFeedback('');
-  }, [feedback, onSendFeedback]);
+  const [showThinking, setShowThinking] = useState<Record<number, boolean>>({});
 
   const statusDot =
     status === 'active'
@@ -77,24 +89,7 @@ export function SubAgentWindow({
 
   const isHistoryCard = status === 'completed' || status === 'error';
 
-  const renderEvents = useMemo(() => {
-    return events.map((event, idx) => {
-      const { icon, label, content } = formatEvent(event);
-      return (
-        <div key={idx} className="flex items-start gap-1.5 text-xs">
-          <span className="mt-0.5 select-none">{icon}</span>
-          <div className="min-w-0 flex-1">
-            <span className="font-mono text-[10px] text-content-tertiary">{label}</span>
-            {content && (
-              <div className="mt-0.5 break-words text-content-secondary">
-                {content.length > 200 ? content.slice(0, 200) + '…' : content}
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    });
-  }, [events]);
+  const turns = useMemo(() => eventsToTurns(events), [events]);
 
   return (
     <div
@@ -123,82 +118,123 @@ export function SubAgentWindow({
 
       {/* Body */}
       {expanded && (
-        <div className="space-y-2 border-t border-border px-3 py-2">
-          {events.length === 0 && (
+        <div className="space-y-3 border-t border-border px-3 py-2">
+          {turns.length === 0 && events.length === 0 && (
             <div className="text-xs italic text-content-tertiary">Waiting for events...</div>
           )}
-          {renderEvents}
 
-          {/* Feedback input when waiting for user review */}
-          {status === 'waiting_for_user' && (
-            <div className="flex flex-col gap-2 pt-1">
-              <textarea
-                ref={feedbackRef}
-                placeholder="Provide feedback (e.g., 'change X', 'add Y', 'approved', 'cancel')"
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendFeedback();
-                  }
-                }}
-                className="w-full rounded border border-border bg-surface-muted px-2 py-1 text-xs text-content-primary placeholder:text-content-tertiary resize-none"
-                rows={2}
-              />
-              <div className="flex gap-2">
-                {onApprove && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onApprove();
-                    }}
-                    className="rounded bg-accent px-2 py-0.5 text-[10px] text-content-inverse hover:bg-accent-hover"
-                  >
-                    Approve &amp; Deploy
-                  </button>
-                )}
-                {onSendFeedback && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSendFeedback();
-                    }}
-                    disabled={!feedback.trim()}
-                    className="rounded border border-border px-2 py-0.5 text-[10px] text-content-secondary hover:bg-surface-muted disabled:opacity-40"
-                  >
-                    Send Feedback
-                  </button>
-                )}
-              </div>
+          {turns.map((turn, idx) => (
+            <div key={idx} className="space-y-2">
+              {turn.user && (
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-lg bg-accent-muted px-3 py-2 text-xs text-accent">
+                    {turn.user}
+                  </div>
+                </div>
+              )}
+
+              {turn.assistant && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] space-y-1">
+                    <div className="rounded-lg border border-border bg-surface-primary px-3 py-2 text-xs text-content-secondary whitespace-pre-wrap">
+                      {turn.assistant}
+                    </div>
+
+                    {(turn.thinking.length > 0 || turn.toolCalls.length > 0) && (
+                      <div className="pl-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowThinking((prev) => ({
+                              ...prev,
+                              [idx]: !prev[idx],
+                            }));
+                          }}
+                          className="text-[10px] text-content-tertiary hover:text-content-secondary"
+                        >
+                          {showThinking[idx] ? '▼' : '▶'}{' '}
+                          {turn.thinking.length > 0 && `${turn.thinking.length} thinking`}
+                          {turn.thinking.length > 0 && turn.toolCalls.length > 0 && ' + '}
+                          {turn.toolCalls.length > 0 && `${turn.toolCalls.length} tool calls`}
+                        </button>
+
+                        {showThinking[idx] && (
+                          <div className="mt-1 space-y-1 rounded border border-border bg-surface-muted p-2">
+                            {turn.thinking.map((t, i) => (
+                              <div
+                                key={`th-${i}`}
+                                className="text-[10px] text-content-tertiary whitespace-pre-wrap"
+                              >
+                                {t}
+                              </div>
+                            ))}
+                            {turn.toolCalls.map((tc, i) => (
+                              <div
+                                key={`tc-${i}`}
+                                className="flex items-start gap-1.5 text-[10px]"
+                              >
+                                <span className="font-mono text-content-secondary">{tc.name}</span>
+                                <span className="text-content-tertiary">
+                                  {Object.entries(tc.args)
+                                    .map(([k, v]) => `${k}=${String(v).slice(0, 30)}`)
+                                    .join(', ')}
+                                </span>
+                                {tc.result !== undefined && (
+                                  <span className="text-intent-success">
+                                    → {typeof tc.result === 'string' ? tc.result.slice(0, 30) : JSON.stringify(tc.result).slice(0, 30)}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Unpaired events (thinking/tool calls without a turn yet) */}
+          {events.length > 0 && turns.length === 0 && (
+            <div className="space-y-1">
+              {events.map((event, idx) => {
+                if (event.type === 'user_input_received' || event.type === 'output' || event.type === 'stream_chunk') return null;
+                return (
+                  <div key={`raw-${idx}`} className="flex items-start gap-1.5 text-xs">
+                    <span className="mt-0.5 select-none">
+                      {event.type === 'thinking' ? '💭' : event.type === 'tool_call' ? '🔧' : event.type === 'tool_result' ? '✓' : '•'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono text-[10px] text-content-tertiary">
+                        {event.type}
+                      </span>
+                      {'content' in event && event.content && (
+                        <div className="mt-0.5 break-words text-content-secondary">
+                          {event.content.slice(0, 200)}
+                          {event.content.length > 200 ? '…' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Action buttons (only while active) */}
-          {status === 'active' && (
-            <div className="flex items-center gap-2 pt-1">
-              {onConfirm && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onConfirm();
-                  }}
-                  className="rounded bg-accent px-2 py-0.5 text-[10px] text-content-inverse hover:bg-accent-hover"
-                >
-                  Confirm
-                </button>
-              )}
-              {onRegenerate && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRegenerate();
-                  }}
-                  className="rounded border border-border px-2 py-0.5 text-[10px] text-content-secondary hover:bg-surface-muted"
-                >
-                  Regenerate
-                </button>
-              )}
+          {/* Approve button when waiting for user */}
+          {status === 'waiting_for_user' && onApprove && (
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove();
+                }}
+                className="rounded bg-accent px-3 py-1 text-[10px] text-content-inverse hover:bg-accent-hover"
+              >
+                Approve &amp; Deploy
+              </button>
             </div>
           )}
         </div>

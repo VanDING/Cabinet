@@ -23,9 +23,6 @@ interface Props {
   onContinue?: (messageId: string) => void;
   childSessions?: Session[];
   onSubAgentClick?: (sessionId: string) => void;
-  onSubAgentConfirm?: (sessionId: string) => void;
-  onSubAgentRegenerate?: (sessionId: string) => void;
-  onSubAgentFeedback?: (sessionId: string, feedback: string) => void;
   onSubAgentApprove?: (sessionId: string) => void;
   onResetInputTarget?: () => void;
 }
@@ -225,9 +222,6 @@ export const ChatView = memo(function ChatView({
   onContinue,
   childSessions,
   onSubAgentClick,
-  onSubAgentConfirm,
-  onSubAgentRegenerate,
-  onSubAgentFeedback,
   onSubAgentApprove,
   onResetInputTarget,
 }: Props) {
@@ -339,17 +333,6 @@ export const ChatView = memo(function ChatView({
                 status={(child.status ?? 'active') as 'active' | 'waiting_for_user' | 'completed' | 'error'}
                 events={(child.events ?? []) as import('../types/agent-events').AgentEvent[]}
                 onClick={() => onSubAgentClick?.(child.id)}
-                onConfirm={
-                  child.status === 'active' ? () => onSubAgentConfirm?.(child.id) : undefined
-                }
-                onRegenerate={
-                  child.status === 'active' ? () => onSubAgentRegenerate?.(child.id) : undefined
-                }
-                onSendFeedback={
-                  child.status === 'waiting_for_user'
-                    ? (feedback: string) => onSubAgentFeedback?.(child.id, feedback)
-                    : undefined
-                }
                 onApprove={
                   child.status === 'waiting_for_user'
                     ? () => onSubAgentApprove?.(child.id)

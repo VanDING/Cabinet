@@ -169,8 +169,14 @@ export function App() {
         updateSubAgentEvents(data.sessionId as string, event);
         if (event.type === 'completed') {
           updateSubAgentStatus(data.sessionId as string, 'completed');
+          if (activeSession) {
+            setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+          }
         } else if (event.type === 'error') {
           updateSubAgentStatus(data.sessionId as string, 'error');
+          if (activeSession) {
+            setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+          }
         } else if (event.type === 'status') {
           updateSubAgentStatus(data.sessionId as string, event.status === 'running' ? 'active' : event.status);
           if (event.status === 'waiting_for_user') {
@@ -422,36 +428,6 @@ export function App() {
                             agentId: child.agentType ?? 'unknown',
                           });
                         }
-                      }}
-                      onSubAgentConfirm={(sessionId) => {
-                        apiFetch('/api/secretary/subagent/finalize', {
-                          method: 'POST',
-                          headers: authJsonHeaders(),
-                          body: JSON.stringify({ subAgentSessionId: sessionId }),
-                        })
-                          .then(() => {
-                            updateSubAgentStatus(sessionId, 'completed');
-                            setInputTarget({
-                              type: 'secretary',
-                              sessionId: activeSession.id,
-                            });
-                          })
-                          .catch(() => {
-                            addToast('error', 'Failed to finalize sub-agent');
-                          });
-                      }}
-                      onSubAgentRegenerate={(sessionId) => {
-                        // Placeholder: regenerate would require restarting the specialist flow
-                        addToast('info', 'Regenerate not yet implemented');
-                      }}
-                      onSubAgentFeedback={(sessionId, feedback) => {
-                        apiFetch('/api/secretary/subagent/input', {
-                          method: 'POST',
-                          headers: authJsonHeaders(),
-                          body: JSON.stringify({ subAgentSessionId: sessionId, input: feedback }),
-                        }).catch(() => {
-                          addToast('error', 'Failed to send feedback to sub-agent');
-                        });
                       }}
                       onSubAgentApprove={(sessionId) => {
                         apiFetch('/api/secretary/subagent/input', {

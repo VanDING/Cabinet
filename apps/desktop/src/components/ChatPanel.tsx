@@ -398,7 +398,7 @@ export function ChatPanel({
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-1">
             {sessions
-              .filter((s) => !activeProjectId || s.projectId === activeProjectId)
+              .filter((s) => !s.parentId && (!activeProjectId || s.projectId === activeProjectId))
               .map((session) => {
                 const isActive = session.id === active?.id;
                 const hasActivity = isSessionActive(session.id);
@@ -433,7 +433,7 @@ export function ChatPanel({
                 );
               })}
             {activeProjectId &&
-              sessions.filter((s) => s.projectId === activeProjectId).length === 0 && (
+              sessions.filter((s) => !s.parentId && s.projectId === activeProjectId).length === 0 && (
                 <span className="px-2 text-[10px] text-content-tertiary">No sessions in this project</span>
               )}
           </div>
@@ -493,25 +493,6 @@ export function ChatPanel({
                 </button>
               </span>
             ))}
-          </div>
-        )}
-
-        {/* Input target indicator */}
-        {inputTarget?.type === 'subagent' && (
-          <div className="flex items-center gap-1.5 px-3 pt-1">
-            <span className="rounded bg-accent-muted px-1.5 py-0.5 text-[10px] text-accent">
-              Send to {inputTarget.agentId} Agent
-            </span>
-            <button
-              onClick={() => {
-                if (activeSessionId) {
-                  onInputTargetChange?.({ type: 'secretary', sessionId: activeSessionId });
-                }
-              }}
-              className="text-[10px] text-content-tertiary hover:text-content-secondary"
-            >
-              (cancel)
-            </button>
           </div>
         )}
 
