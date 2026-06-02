@@ -7,6 +7,7 @@ import { CheckpointManager } from './checkpoint.js';
 import type { MemoryProvider } from './context-builder.js';
 import type { AgentRole } from './agent-roles.js';
 import { buildHandoffFromResult, buildSimpleHandoff, type AgentHandoff } from './agent-handoff.js';
+import { assemblePrompt } from './prompt-assembler.js';
 import { END } from '@cabinet/graph';
 
 export type { AgentHandoff };
@@ -32,12 +33,15 @@ export function createAgentNodeFactory<S>(deps: AgentNodeDeps) {
   return function createAgentNode(config: AgentNodeConfig<S>): AgentNodeFn<S> {
     return async (state: S) => {
       const { message, systemPrompt: override } = config.input(state);
-
-      const systemPrompt = override
-        ? `${config.role.systemPrompt}\n\n${override}`
-        : config.role.systemPrompt;
-
       const toolView = deps.toolExecutor.createView(config.role.allowedTools);
+
+      let systemPrompt = assemblePrompt({
+        modules: config.role.modules,
+        toolExecutor: toolView,
+      });
+      if (override) {
+        systemPrompt = `${systemPrompt}\n\n${override}`;
+      }
 
       const loop = new AgentLoop({
         gateway: deps.gateway,
