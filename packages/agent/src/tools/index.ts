@@ -345,6 +345,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     // ═══════════════════════════════════════════════════════════
     {
       name: 'get_recent_events',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const correlationId = args.correlationId as string | undefined;
         if (correlationId) {
@@ -355,6 +356,7 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
     },
     {
       name: 'publish_notification',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const messageId = `tool_notify_${Date.now()}`;
         await deps.eventBus.publish({
@@ -798,6 +800,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // ═══════════════════════════════════════════════════════════
     {
       name: 'start_meeting',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const topic = args.topic as string;
         if (!topic) return { error: 'topic is required' };
@@ -819,6 +822,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // ═══════════════════════════════════════════════════════════
     {
       name: 'create_employee',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         const role = (args.role as string) ?? 'advisor';
@@ -834,12 +838,14 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // ═══════════════════════════════════════════════════════════
     {
       name: 'list_agents',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         return deps.listAgents();
       },
     },
     {
       name: 'register_agent',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         const description = (args.description as string) ?? '';
@@ -882,6 +888,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'update_agent',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         if (!name) return { error: 'name is required' };
@@ -900,6 +907,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'delete_agent',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         if (!name) return { error: 'name is required' };
@@ -909,6 +917,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'invoke_agent',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>, context) => {
         const agentName = args.agentName as string;
         const message = args.message as string;
@@ -944,6 +953,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'create_project',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         if (!name) return { error: 'name is required' };
@@ -957,12 +967,14 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'list_projects',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         return { projects: deps.listProjects() };
       },
     },
     {
       name: 'get_project_context',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const projectId = args.projectId as string;
         const chairBrief = args.brief as string | undefined;
@@ -976,6 +988,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // ═══════════════════════════════════════════════════════════
     {
       name: 'get_status',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         const metrics = deps.getSystemMetrics();
         return {
@@ -988,6 +1001,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'get_dashboard_stats',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         return deps.getDashboardStats();
       },
@@ -995,6 +1009,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
 
     {
       name: 'get_memory_stats',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         const shortTermCount = deps.shortTerm.size?.() ?? 0;
         const longTermCount = (deps.longTerm as any).size?.() ?? 0;
@@ -1010,6 +1025,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     // ═══════════════════════════════════════════════════════════
     {
       name: 'delegate_task',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const name = args.name as string;
         const agentName = args.agentName as string | undefined;
@@ -1021,6 +1037,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'get_task_status',
+      parameters: { type: 'object', properties: {} },
       execute: async (args: Record<string, unknown>) => {
         const taskId = args.taskId as string;
         if (!taskId) return { error: 'taskId is required' };
@@ -1031,6 +1048,7 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
     },
     {
       name: 'list_active_tasks',
+      parameters: { type: 'object', properties: {} },
       execute: async (_args: Record<string, unknown>) => {
         return { tasks: deps.listActiveTasks() };
       },

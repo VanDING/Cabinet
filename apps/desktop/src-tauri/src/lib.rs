@@ -4,14 +4,10 @@ use std::path::PathBuf;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use tauri::{
-    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
-
-#[path = "../icons/icon_rgba.rs"]
-mod icon_rgba;
 
 struct ServerProcess(Arc<Mutex<Option<Child>>>);
 
@@ -394,16 +390,6 @@ pub fn run() {
             // Start crash monitor (only when we own the server process)
             if server_running {
                 monitor_server(app.handle().clone());
-            }
-
-            // Set window icon from pre-decoded RGBA
-            if let Some(window) = app.get_webview_window("main") {
-                let icon = Image::new_owned(
-                    icon_rgba::ICON_RGBA.to_vec(),
-                    icon_rgba::ICON_WIDTH,
-                    icon_rgba::ICON_HEIGHT,
-                );
-                let _ = window.set_icon(icon);
             }
 
             // Open devtools only when TAURI_DEVTOOLS=1 is set
