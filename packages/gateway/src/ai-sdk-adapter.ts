@@ -9,7 +9,6 @@ import {
   tool,
   stepCountIs,
 } from 'ai';
-import { z } from 'zod';
 import { ModelRouter } from './model-router.js';
 import type { ModelRole } from './model-router.js';
 import type {
@@ -213,10 +212,9 @@ export class AISDKAdapter implements LLMGateway {
     const aiTools: Record<string, any> = {};
     if (options.tools && options.tools.length > 0) {
       for (const td of options.tools) {
-        const zodSchema = jsonSchemaToZod(td.parameters);
         aiTools[td.name] = tool({
           description: td.description,
-          inputSchema: zodSchema,
+          parameters: td.parameters as any,
           execute: td.execute as any,
         }) as any;
       }
@@ -555,51 +553,3 @@ export class AISDKAdapter implements LLMGateway {
   }
 }
 
-/** Convert a basic JSON Schema object to a Zod schema for AI SDK tool definitions. */
-function jsonSchemaToZod(schema: Record<string, unknown>): z.ZodType {
-  const type = schema.type as string | undefined;
-  const description = schema.description as string | undefined;
-
-  switch (type) {
-    case 'string': {
-      if (schema.enum) {
-        const e = z.enum(schema.enum as [string, ...string[]]);
-        return description ? e.describe(description) : e;
-      }
-      const s = z.string();
-      return description ? s.describe(description) : s;
-    }
-    case 'number':
-    case 'integer': {
-      let n = z.number();
-      if (description) n = n.describe(description);
-      return n;
-    }
-    case 'boolean': {
-      let b = z.boolean();
-      if (description) b = b.describe(description);
-      return b;
-    }
-    case 'object': {
-      const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
-      const required = new Set((schema.required as string[]) ?? []);
-      const shape: Record<string, z.ZodType> = {};
-      for (const [key, propSchema] of Object.entries(properties)) {
-        let zodProp = jsonSchemaToZod(propSchema);
-        if (!required.has(key)) zodProp = zodProp.optional();
-        shape[key] = zodProp;
-      }
-      let obj = Object.keys(shape).length > 0 ? z.object(shape, {}) : z.record(z.string(), z.any());
-      if (description) obj = obj.describe(description);
-      return obj;
-    }
-    case 'array': {
-      const items = schema.items as Record<string, unknown> | undefined;
-      let arr = z.array(items ? jsonSchemaToZod(items) : z.any());
-      if (description) arr = arr.describe(description);
-      return arr;
-    }
-    default:
-      return z.any();
-  }
-}
