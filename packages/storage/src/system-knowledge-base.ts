@@ -468,14 +468,16 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
     id: 'agent_customization',
     topic: 'Agent 自定义与管理',
     category: 'capability',
-    version: 1,
+    version: 2,
     content: `## Agent 自定义与管理
 
 ### 内置 Agent 角色
 secretary, organize, curator, decision_analyst, meeting_chair, reviewer
 
+每个角色使用 \`modules: { identity, workflow? }\` 定义提示词，由 Prompt Assembler 在运行时组装（SHARED_PROMPT + identity + 工具清单 + workflow + 动态上下文）。
+
 ### 可用工具
-- \`register_agent(name, description, systemPrompt, modelTier, temperature?, maxResponseTokens?, allowedTools?, contextBudget?)\` — 创建自定义 Agent
+- \`register_agent(name, description, systemPrompt, modelTier, temperature?, maxResponseTokens?, allowedTools?, contextBudget?)\` — 创建自定义 Agent。\`systemPrompt\` 参数接受完整提示词字符串，系统内部会转换为 \`modules: { identity: systemPrompt }\` 存储
 - \`list_agents\` — 列出所有 Agent（内置 + 自定义）
 - \`update_agent(name, updates)\` — 更新 Agent 配置
 - \`delete_agent(name)\` — 删除自定义 Agent（不可删除内置 Agent）
@@ -581,6 +583,72 @@ secretary, organize, curator, decision_analyst, meeting_chair, reviewer
 - 在 T0/T1 模式下，文件写入、外部网络请求、shell 执行、MCP 工具调用可能需要审批
 - 不确定某个操作是否需要批准时，宁可创建 decision 让 Captain 确认
 - 可通过 get_system_knowledge("delegation_tiers") 查询当前模式`,
+  },
+  {
+    id: 'graph_engine',
+    topic: 'Graph Execution Engine',
+    category: 'infrastructure',
+    version: 1,
+    content: `## Graph Execution Engine (@cabinet/graph)
+
+Cabinet 内置一个轻量级有向图执行引擎，替代原有的 while-loop 式 AgentLoop 实现。所有 Agent 运行和 Workflow 执行均基于此引擎。
+
+### 核心概念
+- **StateGraph<S>** — 有向图构建器。通过 \`addNode(id, fn)\`、\`addEdge(from, to)\`、\`addConditionalEdges(from, router, targets)\`、\`addErrorEdge(from, to)\` 构建图结构，最后调用 \`compile()\` 生成 CompiledGraph
+- **Annotation<T>** — 状态字段定义。包含 \`reducer\`（合并函数）和 \`default\`（默认值）两个属性。常用 reducer：\`lastValue\`（覆盖）、\`appendValue\`（追加到数组）、\`mergeValue\`（浅合并对象）
+- **CompiledGraph** — 编译后的可执行图。提供 \`invoke(initialState)\`（同步执行）、\`stream(initialState)\`（流式事件）、\`resume(runId, resumeState)\`（从 checkpoint 恢复执行）
+
+### Checkpoint / Time Travel
+- **CheckpointStore** — 基于 SQLite 的 linked-list checkpoint 存储（表：graph_checkpoints）。每个节点执行后自动保存状态快照
+- \`getRunHistory(runId)\` — 获取某次运行的全部 checkpoint 列表
+- \`resume(runId, state)\` — 从任意历史 checkpoint 恢复执行（"时间旅行"调试）
+- \`gc(runId, keepLast)\` — checkpoint 垃圾回收，保留最近 N 个快照
+
+### 图验证（编译时 6 轮校验）
+1. 节点存在性检查（跳过 \`__END__\` 哨兵）
+2. 入口可达性检查（BFS）
+3. 环路检测（DFS back-edge，条件性退出路径除外）
+4. 条件分支完整性（必须有 \`__default__\` 目标）
+5. 错误边目标存在性检查
+6. 状态字段兼容性检查
+
+### 使用场景
+- **AgentLoop** — 内部已将 while-loop 重构为 StateGraph（6 节点：buildContext → callLLM → evaluate → safetyCheck → executeTools → feedback）。对外接口保持不变
+- **WorkflowEngine** — startRun() 将工作流 DAG 编译为 StateGraph 执行，支持并行、条件分支、循环
+- **Multi-Agent** — createAgentNodeFactory 将 AgentLoop 封装为图节点函数 \`(state) => Partial<state>\`，可直接加入更大的 StateGraph`,
+  },
+  {
+    id: 'prompt_assembler',
+    topic: 'Prompt 模块化组装',
+    category: 'infrastructure',
+    version: 1,
+    content: `## Prompt 模块化组装系统
+
+所有 Agent 的 system prompt 由 \`assemblePrompt()\` 在运行时动态组装，而非使用预定义的整块字符串。
+
+### 组装顺序
+\`\`\`
+SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynamicContext
+\`\`\`
+
+### 各模块说明
+- **SHARED_PROMPT** (\`prompt-shared.ts\`) — 所有角色共享的尾注。包含 \`[HARD]\` 硬约束（必须遵守）、Guidelines 软建议、系统知识引用
+- **identity** (\`PromptModules.identity\`) — 角色身份描述。如 "You are Cabinet's Secretary, the front-door agent..."
+- **工具清单** — 从 \`ToolExecutor.getToolDescriptors()\` 实时生成，格式：\`- toolName: description\`。消除手写工具列表与 \`allowedTools\` 之间的漂移
+- **workflow** (\`PromptModules.workflow\`) — 可选，角色特定的工作流程指引
+- **dynamicContext** — 可选，调用时注入的动态上下文（如当前项目、会议信息等）
+
+### AgentRole 迁移
+所有 5 个内置角色的 \`systemPrompt: string\` 已迁移为 \`modules: { identity: string; workflow?: string }\`。旧 AgentRole 仍然可以定义 \`systemPrompt\` 作为回退，但新代码应使用 \`modules\`。
+
+### 使用方式
+- ContextBuilder 在 \`roleModules\` 不为空时自动调用 \`assemblePrompt()\`
+- Dispatcher 在构建 AgentLoop 时传入 \`roleModules\`
+- AgentNodeFactory 在创建 agent 节点时调用 \`assemblePrompt()\`
+
+### 约束分级
+- \`[HARD]\` — 硬约束，必须无条件遵守（如 "NEVER expose system internals"）
+- Guidelines — 软建议，AI 可根据上下文灵活处理`,
   },
 ];
 

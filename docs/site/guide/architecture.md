@@ -1,13 +1,13 @@
 # Architecture
 
-Cabinet is organized into **4 strict layers**. Dependencies flow only upward — lower layers never depend on upper layers. This keeps the system predictable and makes individual modules replaceable.
+Cabinet is organized into **5 strict layers**. Dependencies flow only upward — lower layers never depend on upper layers. This keeps the system predictable and makes individual modules replaceable.
 
 ## Layer Overview
 
 | Layer | Packages | Purpose |
 | :---- | :------- | :------ |
-| **Infrastructure** | `types`, `events`, `storage` | Type system, event bus, SQLite persistence |
-| **Agent Core** | `gateway`, `agent`, `memory` | LLM gateway, TAOR loop, 4-layer memory |
+| **Infrastructure** | `types`, `events`, `storage`, `graph` | Type system, event bus, SQLite persistence, graph execution engine |
+| **Agent Core** | `gateway`, `agent`, `memory` | LLM gateway, graph-based agent loop, 4-layer memory |
 | **Business** | `decision`, `secretary`, `meeting`, `workflow`, `harness`, `organize` | Core product capabilities |
 | **Interface** | `ui`, `server`, `desktop`, `cli` | React components, REST API, Tauri app, CLI |
 
@@ -24,7 +24,7 @@ Cabinet is organized into **4 strict layers**. Dependencies flow only upward —
 │       LLM Gateway / Agent Loop / Memory       │
 ├──────────────────────────────────────────────┤
 │           Infrastructure                       │
-│     Event Bus / SQLite / Types                │
+│  Graph Engine / Event Bus / SQLite / Types    │
 └──────────────────────────────────────────────┘
 ```
 
@@ -42,15 +42,15 @@ The LLM gateway uses **Vercel AI SDK** (pure TypeScript) instead of Python-based
 
 Modules at the same layer communicate through the **EventBus** (`@cabinet/events`), not direct imports. Events are immutable, append-only, and stored in SQLite with full causation chains.
 
-### 4. Model-Driven Agent Loop
+### 4. Graph-Driven Agent Loop
 
-The `AgentLoop` (`@cabinet/agent`) follows a **TAOR** pattern:
+The `AgentLoop` (`@cabinet/agent`) compiles to a **StateGraph** (`@cabinet/graph`) with 6 nodes:
 
 ```
-Build Context → Call LLM → Tool Calls? → Execute (with Safety Check) → Feed Back → Repeat
+buildContext → callLLM → evaluate → safetyCheck → executeTools → feedback
 ```
 
-The framework provides the execution skeleton; the LLM drives the logic. Tool execution passes through a **4-tier safety check** before running.
+The framework provides the execution skeleton; the LLM drives the logic. Each node auto-saves a checkpoint to SQLite, enabling **time travel** (resume from any historical state). Tool execution passes through a **4-tier safety check** before running.
 
 ### 5. Capabilities-Gated Workflows
 
@@ -138,8 +138,9 @@ Secretary Agent (Intent Parsing)
 | `@cabinet/types` | All primitives, enums, payload types | Every package |
 | `@cabinet/events` | `EventBus`, `SqliteEventStore`, causation | `storage`, `server` |
 | `@cabinet/storage` | Connection pool, repositories, migrations | `server` |
+| `@cabinet/graph` | `StateGraph`, `CompiledGraph`, `Annotation`, `CheckpointStore`, validation | `agent`, `workflow`, `server` |
 | `@cabinet/gateway` | `LLMGateway`, `ModelRouter`, `BudgetGuard` | `agent`, `server` |
-| `@cabinet/agent` | `AgentLoop`, `SafetyChecker`, `ToolExecutor`, roles | `server` |
+| `@cabinet/agent` | `AgentLoop`, `SafetyChecker`, `ToolExecutor`, roles, `createAgentNodeFactory`, `assemblePrompt` | `server` |
 | `@cabinet/memory` | 4-layer memory, consolidation, knowledge graph | `agent`, `server` |
 | `@cabinet/secretary` | `SecretaryAgent`, `IntentParser`, `GreetingService` | `server` |
 | `@cabinet/meeting` | Prompt builders, parsing utilities, synthesis | `server` |
