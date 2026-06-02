@@ -308,6 +308,11 @@ export class CompiledGraph<S> {
     return state;
   }
 
+  /** List all checkpoints for a run, ordered from first to last. */
+  getRunHistory(runId: string, checkpointStore: CheckpointStore) {
+    return checkpointStore.listRun(runId);
+  }
+
   private resolveNextNode(state: S, edges: CompiledEdge[]): string | typeof END {
     for (const edge of edges) {
       if (edge.type === 'conditional' && edge.router && edge.targets) {

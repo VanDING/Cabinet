@@ -135,6 +135,34 @@ describe('CompiledGraph resume', () => {
     await expect(compiled.resume('any-id')).rejects.toThrow('CheckpointStore');
   });
 
+  it('time travel: list history and resume from earlier checkpoint', async () => {
+    const store = createCheckpointStore();
+    const graph = new StateGraph(TestState)
+      .addNode('a', () => ({ value: 'first', counter: 1 }))
+      .addNode('b', () => ({ value: 'second', counter: 2 }))
+      .addNode('c', () => ({ value: 'third', counter: 3 }))
+      .addEdge('a', 'b')
+      .addEdge('b', 'c')
+      .addEdge('c', END);
+
+    const compiled = graph.compile({ entry: 'a' }).graph!;
+
+    // Full run
+    await compiled.invoke({}, { checkpointStore: store, runId: 'time-travel' });
+
+    // Check history
+    const history = compiled.getRunHistory('time-travel', store);
+    expect(history.length).toBe(3); // a, b, c
+
+    // Time travel: resume from checkpoint after node 'a', override state
+    const afterA = history.find((r) => r.nodeId === 'a');
+    const state = await compiled.resume(afterA!.id, { value: 'overridden' }, { checkpointStore: store });
+    // Should have executed b and c with the overridden state
+    expect(state.value).toBe('third');
+    // counter: first run saved 1 at node 'a', resume from there executes b(+2) and c(+3) = 6
+    expect(state.counter).toBe(6);
+  });
+
   it('throws when checkpoint not found', async () => {
     const store = createCheckpointStore();
     const graph = new StateGraph(TestState)
