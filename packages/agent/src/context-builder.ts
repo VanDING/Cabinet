@@ -1,4 +1,6 @@
 import type { RulesLoader, RulesContext } from './rules-loader.js';
+import type { ToolExecutor } from './tool-executor.js';
+import { assemblePrompt, type PromptModules } from './prompt-assembler.js';
 
 export interface MemoryProvider {
   getShortTerm(sessionId: string): Promise<{ role: 'user' | 'assistant'; content: string }[]>;
@@ -38,6 +40,8 @@ export interface ContextBuilderOptions {
   memorySessionId?: string;
   /** Pre-built context for strict consistency (skips self-collection). */
   prebuiltContext?: PrebuiltContext;
+  /** Role modules for modular prompt assembly (replaces legacy systemPrompt). */
+  roleModules?: PromptModules;
 }
 
 export interface ContextBuildResult {
@@ -67,7 +71,10 @@ export class ContextBuilder {
   >();
   private readonly CONTEXT_CACHE_TTL_MS = 60_000;
 
-  constructor(private readonly memory: MemoryProvider) {}
+  constructor(
+    private readonly memory: MemoryProvider,
+    private readonly toolExecutor: ToolExecutor,
+  ) {}
 
   /** Attach a rules loader for hierarchical context. */
   withRules(rulesLoader: RulesLoader): this {
@@ -137,6 +144,14 @@ export class ContextBuilder {
     if (options.systemPrompt && !options.roleSystemPrompt) {
       // Legacy full-override mode: skip all tiered assembly
       systemPrompt = options.systemPrompt;
+    } else if (options.roleModules) {
+      systemPrompt = assemblePrompt({
+        modules: options.roleModules,
+        toolExecutor: this.toolExecutor,
+        dynamicContext: projectContext
+          ? `## Project Context\n${projectContext}\n\nCaptain preferences: ${this.stableStringify(preferences)}`
+          : undefined,
+      });
     } else {
       systemPrompt = this.buildDefaultSystemPrompt(
         projectContext,

@@ -17,6 +17,7 @@ import { ContextHandoff } from './context-handoff.js';
 import { TaskTracker, type AgentTask, SemanticTaskTracker } from './task-tracker.js';
 import { ProjectSnapshot } from './project-snapshot.js';
 import { ToolPruner } from './tool-pruner.js';
+import type { PromptModules } from './prompt-assembler.js';
 import { StateGraph, Annotation, END } from '@cabinet/graph';
 
 export interface AgentSessionSummary {
@@ -115,6 +116,8 @@ export interface AgentLoopOptions {
   trustLevel?: TrustLevel;
   /** Optional dynamic tool pruner — reduces exposed tools per-turn by task relevance. */
   toolPruner?: ToolPruner;
+  /** Role modules for modular prompt assembly (preferred over systemPrompt). */
+  roleModules?: PromptModules;
 }
 
 export interface AgentResult {
@@ -330,7 +333,7 @@ export class AgentLoop {
     this.toolExecutor = options.toolExecutor;
     this.safetyChecker = options.safetyChecker;
     this.checkpointManager = options.checkpointManager;
-    this.contextBuilder = new ContextBuilder(options.memoryProvider);
+    this.contextBuilder = new ContextBuilder(options.memoryProvider, this.toolExecutor);
     if (options.rulesLoader) {
       this.contextBuilder.withRules(options.rulesLoader);
     }
@@ -557,13 +560,14 @@ export class AgentLoop {
           taskDescription: s.stepCount === 0 ? self.options.taskDescription : undefined,
           memorySessionId: self.options.memorySessionId,
           prebuiltContext: self.options.prebuiltContext,
+          roleModules: self.options.roleModules,
         });
 
         let sysPrompt = ctx.systemPrompt;
         const projectRoot = self.options.projectRoot ?? process.cwd();
         const snapshot = ProjectSnapshot.getCached(projectRoot)
           ?? (() => { const c = ProjectSnapshot.capture(projectRoot); ProjectSnapshot.store(projectRoot, c); return c; })();
-        if (snapshot && !self.options.systemPrompt) {
+        if (snapshot && !self.options.systemPrompt && !self.options.roleModules) {
           sysPrompt = `${sysPrompt}\n\n## Project Structure\n${snapshot.summary}\n\nKey directories:\n${snapshot.tree.slice(0, 20).join('\n')}`;
         }
         if (self['skillContext']) {
@@ -881,6 +885,7 @@ export class AgentLoop {
       taskDescription: this.options.taskDescription,
       memorySessionId: this.options.memorySessionId,
       prebuiltContext: this.options.prebuiltContext,
+      roleModules: this.options.roleModules,
     });
 
     // Resolve pruned tool set for this task
