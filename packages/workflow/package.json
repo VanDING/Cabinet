@@ -15,6 +15,7 @@
     "@cabinet/events": "workspace:*",
     "@cabinet/decision": "workspace:*",
     "@cabinet/storage": "workspace:*",
+    "@cabinet/graph": "workspace:*",
     "@cabinet/organize": "workspace:*"
   },
   "devDependencies": {
