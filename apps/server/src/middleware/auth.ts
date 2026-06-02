@@ -4,6 +4,9 @@ import { verifyPin, getStoredHash, storePinHash } from '../auth-utils.js';
 
 const PUBLIC_PATHS = ['/health', '/api/auth/verify', '/api/openapi.json', '/api/docs'];
 
+/** Serializes first-run PIN initialization so concurrent requests don't race. */
+let initLock: Promise<void> | null = null;
+
 function isLocalOrigin(origin: string | undefined): boolean {
   if (!origin) return true;
   try {
@@ -48,8 +51,12 @@ export async function authMiddleware(c: Context, next: Next) {
       await storePinHash(db, pin);
     }
   } else {
-    // First run: auto-initialize with the provided PIN
-    await storePinHash(db, pin);
+    // First run: serialize initialization to prevent race conditions
+    // when concurrent requests arrive before the PIN hash is stored.
+    if (!initLock) {
+      initLock = storePinHash(db, pin).finally(() => { initLock = null; });
+    }
+    await initLock;
   }
 
   await next();
