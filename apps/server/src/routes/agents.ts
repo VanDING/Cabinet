@@ -128,7 +128,7 @@ agentsRouter.post('/import', async (c) => {
       type: 'custom' as const,
       name,
       description: String(agentCard.description ?? ''),
-      systemPrompt: String(agentCard.systemPrompt ?? agentCard.instructions ?? ''),
+      modules: { identity: String(agentCard.systemPrompt ?? agentCard.instructions ?? '') },
       modelTier: ((agentCard.modelTier as string) || 'default') as any,
       temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
       maxResponseTokens: parseInt(
@@ -187,7 +187,7 @@ agentsRouter.post('/import', async (c) => {
     type: 'custom' as const,
     name,
     description: String(agentJson.description),
-    systemPrompt: String(agentJson.systemPrompt),
+    modules: { identity: String(agentJson.systemPrompt) },
     modelTier: ((agentJson.modelTier as string) || 'default') as any,
     temperature: agentJson.temperature as number,
     maxResponseTokens: agentJson.maxResponseTokens as number,
