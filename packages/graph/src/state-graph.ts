@@ -1,5 +1,7 @@
 import type { Annotation } from './annotation.js';
 import { validateGraph, type EdgeDef, type ValidationResult } from './validation.js';
+import type { CheckpointStore } from './checkpoint-store.js';
+import type { StreamEvent } from './events.js';
 
 export const END = Symbol('END');
 
@@ -34,6 +36,8 @@ export interface CompileResult<S> {
 
 export interface InvokeConfig {
   maxSteps?: number;
+  checkpointStore?: CheckpointStore;
+  runId?: string;
 }
 
 export class CompiledGraph<S> {
@@ -63,12 +67,16 @@ export class CompiledGraph<S> {
 
   async invoke(input: Partial<S>, config?: InvokeConfig): Promise<S> {
     const maxSteps = config?.maxSteps ?? 100;
+    const checkpointStore = config?.checkpointStore;
+    const runId = config?.runId ?? `run_${Date.now()}`;
     let state = this.applyDefaults(input);
     let currentNode: string | typeof END = this.entryNode;
     let steps = 0;
+    let parentCheckpointId: string | null = null;
 
     while (currentNode !== END && steps < maxSteps) {
-      const node = this.nodes.get(currentNode);
+      const nodeId = currentNode as string;
+      const node = this.nodes.get(nodeId);
       if (!node) break;
 
       let update: Partial<S>;
@@ -86,7 +94,23 @@ export class CompiledGraph<S> {
 
       state = this.mergeState(state, update);
 
-      const edges: CompiledEdge[] = this.outgoingEdges.get(currentNode) ?? [];
+      // Auto-checkpoint after each node
+      if (checkpointStore) {
+        const ckptId = `ckpt_${runId}_${steps}`;
+        checkpointStore.save({
+          id: ckptId,
+          runId,
+          parentId: parentCheckpointId,
+          nodeId,
+          state: JSON.stringify(state),
+          pendingTasks: null,
+          metadata: JSON.stringify({ source: 'invoke', step: steps }),
+          createdAt: new Date().toISOString(),
+        });
+        parentCheckpointId = ckptId;
+      }
+
+      const edges: CompiledEdge[] = this.outgoingEdges.get(nodeId) ?? [];
       steps++;
 
       if (edges.length === 0) break;
@@ -110,6 +134,189 @@ export class CompiledGraph<S> {
     }
 
     return state;
+  }
+
+  /** Stream node boundary events as the graph executes. */
+  async *stream(input: Partial<S>, config?: InvokeConfig): AsyncGenerator<StreamEvent> {
+    const maxSteps = config?.maxSteps ?? 100;
+    const checkpointStore = config?.checkpointStore;
+    const runId = config?.runId ?? `run_${Date.now()}`;
+    let state = this.applyDefaults(input);
+    let currentNode: string | typeof END = this.entryNode;
+    let steps = 0;
+    let parentCheckpointId: string | null = null;
+
+    while (currentNode !== END && steps < maxSteps) {
+      const nodeId = currentNode as string;
+      const node = this.nodes.get(nodeId);
+      if (!node) break;
+
+      yield { type: 'node:start', nodeId };
+
+      let update: Partial<S>;
+      try {
+        update = await this.executeWithRetry(node, state);
+      } catch (e) {
+        if (node.errorEdge) {
+          yield { type: 'error', nodeId, error: (e as Error).message };
+          state = this.mergeState(state, {});
+          currentNode = node.errorEdge;
+          steps++;
+          continue;
+        }
+        yield { type: 'error', nodeId, error: (e as Error).message };
+        throw e;
+      }
+
+      state = this.mergeState(state, update);
+      yield { type: 'node:end', nodeId, update: update as Record<string, unknown> };
+
+      // Auto-checkpoint after each node
+      if (checkpointStore) {
+        const ckptId = `ckpt_${runId}_${steps}`;
+        checkpointStore.save({
+          id: ckptId,
+          runId,
+          parentId: parentCheckpointId,
+          nodeId,
+          state: JSON.stringify(state),
+          pendingTasks: null,
+          metadata: JSON.stringify({ source: 'stream', step: steps }),
+          createdAt: new Date().toISOString(),
+        });
+        parentCheckpointId = ckptId;
+        yield { type: 'checkpoint:saved', checkpointId: ckptId };
+      }
+
+      const edges: CompiledEdge[] = this.outgoingEdges.get(nodeId) ?? [];
+      steps++;
+
+      if (edges.length === 0) break;
+
+      let nextNode: string | typeof END = END;
+      for (const edge of edges) {
+        if (edge.type === 'conditional' && edge.router && edge.targets) {
+          const target = edge.router(state);
+          nextNode = edge.targets[target] ?? edge.targets['__default__'] ?? END;
+          break;
+        }
+      }
+      if (nextNode === END) {
+        const staticEdge: CompiledEdge | undefined = edges.find(
+          (e: CompiledEdge) => e.type === 'static',
+        );
+        nextNode = staticEdge?.to ?? END;
+      }
+
+      currentNode = nextNode;
+    }
+  }
+
+  /** Resume execution from a saved checkpoint. */
+  async resume(checkpointId: string, override?: Partial<S>, config?: InvokeConfig): Promise<S> {
+    const checkpointStore = config?.checkpointStore;
+    if (!checkpointStore) throw new Error('CheckpointStore is required for resume()');
+
+    const ckpt = checkpointStore.load(checkpointId);
+    if (!ckpt) throw new Error(`Checkpoint not found: ${checkpointId}`);
+
+    let state: S;
+    try {
+      state = JSON.parse(ckpt.state) as S;
+    } catch {
+      throw new Error(`Corrupt checkpoint state: ${checkpointId}`);
+    }
+
+    if (override) {
+      state = this.mergeState(state, override);
+    }
+
+    // Find the node AFTER the checkpointed node
+    const edges: CompiledEdge[] = this.outgoingEdges.get(ckpt.nodeId) ?? [];
+    if (edges.length === 0) return state;
+
+    const currentNode = this.resolveNextNode(state, edges);
+    if (currentNode === END) return state;
+
+    // Create a new graph with the same nodes/edges, starting from the resumed node
+    // We use invoke() internally, starting from the resolved node
+    // Since invoke always starts from entryNode, we need a different approach.
+    // Instead, re-invoke from scratch with the restored state and skip to the right node.
+    // Simplest approach: just continue execution manually.
+    const maxSteps = config?.maxSteps ?? 100;
+    let current: string | typeof END = currentNode;
+    let steps = 0;
+    let parentCkptId: string | null = ckpt.id;
+
+    while (current !== END && steps < maxSteps) {
+      const nodeId = current as string;
+      const node = this.nodes.get(nodeId);
+      if (!node) break;
+
+      let update: Partial<S>;
+      try {
+        update = await this.executeWithRetry(node, state);
+      } catch (e) {
+        if (node.errorEdge) {
+          state = this.mergeState(state, {});
+          current = node.errorEdge;
+          steps++;
+          continue;
+        }
+        throw e;
+      }
+
+      state = this.mergeState(state, update);
+
+      if (checkpointStore) {
+        const ckptId = `ckpt_${ckpt.runId}_resume_${steps}`;
+        checkpointStore.save({
+          id: ckptId,
+          runId: ckpt.runId,
+          parentId: parentCkptId,
+          nodeId,
+          state: JSON.stringify(state),
+          pendingTasks: null,
+          metadata: JSON.stringify({ source: 'resume', step: steps }),
+          createdAt: new Date().toISOString(),
+        });
+        parentCkptId = ckptId;
+      }
+
+      const outEdges: CompiledEdge[] = this.outgoingEdges.get(nodeId) ?? [];
+      steps++;
+      if (outEdges.length === 0) break;
+
+      let nextNode: string | typeof END = END;
+      for (const edge of outEdges) {
+        if (edge.type === 'conditional' && edge.router && edge.targets) {
+          const target = edge.router(state);
+          nextNode = edge.targets[target] ?? edge.targets['__default__'] ?? END;
+          break;
+        }
+      }
+      if (nextNode === END) {
+        const staticEdge: CompiledEdge | undefined = outEdges.find(
+          (e: CompiledEdge) => e.type === 'static',
+        );
+        nextNode = staticEdge?.to ?? END;
+      }
+
+      current = nextNode;
+    }
+
+    return state;
+  }
+
+  private resolveNextNode(state: S, edges: CompiledEdge[]): string | typeof END {
+    for (const edge of edges) {
+      if (edge.type === 'conditional' && edge.router && edge.targets) {
+        const target = edge.router(state);
+        return edge.targets[target] ?? edge.targets['__default__'] ?? END;
+      }
+    }
+    const staticEdge = edges.find((e: CompiledEdge) => e.type === 'static');
+    return staticEdge?.to ?? END;
   }
 
   private async executeWithRetry(node: NodeEntry<S>, state: S): Promise<Partial<S>> {
