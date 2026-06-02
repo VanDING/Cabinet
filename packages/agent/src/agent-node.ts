@@ -86,14 +86,14 @@ export interface SelectorConfig<S> {
 export function createSelector<S>(config: SelectorConfig<S>): AgentNodeFn<S> {
   let round = 0;
 
-  return () => {
+  return (state: S) => {
     round++;
     if (round > config.maxRounds) {
       return Promise.resolve({
         nextSpeaker: '__END__',
       } as unknown as Partial<S>);
     }
-    const chosen = config.decide({} as S);
+    const chosen = config.decide(state);
     return Promise.resolve({
       nextSpeaker: chosen === END ? '__END__' : chosen,
     } as unknown as Partial<S>);

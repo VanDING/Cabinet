@@ -143,3 +143,50 @@ describe('createAgentNodeFactory', () => {
     await nodeFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
   });
 });
+
+// ── createSelector tests ──
+
+import { createSelector } from '../agent-node.js';
+import { END } from '@cabinet/graph';
+
+describe('createSelector', () => {
+  it('routes based on decide function reading real state', async () => {
+    const selectorFn = createSelector<TestState>({
+      targets: ['chair', 'advisor'],
+      decide: (s) => {
+        if (!(s.agentHandoffs as any)['chair']) return 'chair';
+        return END;
+      },
+      maxRounds: 5,
+    });
+
+    const state1: TestState = { topic: 'x', agentHandoffs: {}, agentId: '' };
+    const update1 = await selectorFn(state1);
+    expect((update1 as any).nextSpeaker).toBe('chair');
+
+    const state2: TestState = {
+      topic: 'x',
+      agentHandoffs: { chair: { from: 'chair', confidence: 0.8 } },
+      agentId: '',
+    };
+    const update2 = await selectorFn(state2);
+    expect((update2 as any).nextSpeaker).toBe('__END__');
+  });
+
+  it('terminates after maxRounds', async () => {
+    const selectorFn = createSelector<TestState>({
+      targets: ['chair'],
+      decide: () => 'chair',
+      maxRounds: 2,
+    });
+
+    const u1 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+    expect((u1 as any).nextSpeaker).toBe('chair');
+
+    const u2 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+    expect((u2 as any).nextSpeaker).toBe('chair');
+
+    const u3 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+    expect((u3 as any).nextSpeaker).toBe('__END__');
+  });
+});
