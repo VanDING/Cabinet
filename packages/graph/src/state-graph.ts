@@ -3,7 +3,8 @@ import { validateGraph, type EdgeDef, type ValidationResult } from './validation
 
 export const END = Symbol('END');
 
-type StateSchema = Record<string, Annotation<unknown>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StateSchema = Record<string, Annotation<any>>;
 type StateFromSchema<S extends StateSchema> = {
   [K in keyof S]: ReturnType<S[K]['default']>;
 };
