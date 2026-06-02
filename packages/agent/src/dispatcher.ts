@@ -13,6 +13,7 @@
 //   - Context budget
 //
 
+import { assemblePrompt } from './prompt-assembler.js';
 import type { LLMGateway } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
 import type { ToolExecutor } from './tool-executor.js';
@@ -347,7 +348,10 @@ export class AgentDispatcher {
         memorySessionId: options.sessionId,
         projectId: options.projectId,
         captainId: options.captainId,
-        systemPrompt: role.systemPrompt,
+        systemPrompt: assemblePrompt({
+          modules: role.modules,
+          toolExecutor: this.baseOptions.toolExecutor,
+        }),
         model: (this.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
         maxSteps: options.maxStepsPerAgent ?? role.maxSteps ?? this.baseOptions.maxSteps,
         eventBus: this.eventBus,
