@@ -68,6 +68,7 @@ export {
   type Deliverable,
 } from './interactive-sub-agent.js';
 export { ProjectSnapshot, type Snapshot } from './project-snapshot.js';
+export { trace, type TraceOptions } from './trace.js';
 export { SkillExtractor, type ExtractedSkill } from './skill-extractor.js';
 export {
   createAgentNodeFactory,
