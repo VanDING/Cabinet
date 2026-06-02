@@ -26,7 +26,7 @@ export function validateGraph(
   const errors: CompileError[] = [];
   const warnings: CompileError[] = [];
 
-  // Pass 1: Node existence
+  // Pass 1: Node existence (skip __END__ sentinel)
   for (const edge of edges) {
     if (!nodeIds.has(edge.from)) {
       errors.push({
@@ -36,7 +36,7 @@ export function validateGraph(
         context: { edgeFrom: edge.from, edgeTo: edge.to },
       });
     }
-    if (!nodeIds.has(edge.to)) {
+    if (edge.to !== '__END__' && !nodeIds.has(edge.to)) {
       errors.push({
         pass: 'pass_1_nodes',
         severity: 'error',
@@ -62,7 +62,7 @@ export function validateGraph(
     if (reachable.has(current)) continue;
     reachable.add(current);
     for (const edge of edges) {
-      if (edge.from === current && !reachable.has(edge.to)) {
+      if (edge.from === current && edge.to !== '__END__' && !reachable.has(edge.to)) {
         queue.push(edge.to);
       }
     }
@@ -134,7 +134,7 @@ function findCycles(nodeIds: Set<string>, edges: EdgeDef[]): Set<string>[] {
     color.set(node, GRAY);
     path.add(node);
 
-    const neighbors = edges.filter((e) => e.from === node).map((e) => e.to);
+    const neighbors = edges.filter((e) => e.from === node && e.to !== '__END__').map((e) => e.to);
     for (const neighbor of neighbors) {
       if (path.has(neighbor)) {
         const cycleNodes = new Set<string>();
