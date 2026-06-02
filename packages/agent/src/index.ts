@@ -37,6 +37,8 @@ export {
   CURATOR_ROLE,
   REVIEWER_ROLE,
   ORGANIZE_ROLE,
+  ORGANIZE_DEPLOY_TOOLS,
+  getOrganizePlanningTools,
   type AgentRole,
   type AgentRoleType,
   type ModelTier,
@@ -67,6 +69,7 @@ export {
   type InitContext,
   type Deliverable,
 } from './interactive-sub-agent.js';
+export { OrganizeInteractiveAgent } from './interactive/index.js';
 export { ProjectSnapshot, type Snapshot } from './project-snapshot.js';
 export { trace, type TraceOptions } from './trace.js';
 export { SkillExtractor, type ExtractedSkill } from './skill-extractor.js';

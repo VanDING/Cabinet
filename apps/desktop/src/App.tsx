@@ -171,6 +171,11 @@ export function App() {
           updateSubAgentStatus(data.sessionId as string, 'completed');
         } else if (event.type === 'error') {
           updateSubAgentStatus(data.sessionId as string, 'error');
+        } else if (event.type === 'status') {
+          updateSubAgentStatus(data.sessionId as string, event.status);
+          if (event.status === 'waiting_for_user') {
+            setInputTarget({ type: 'subagent', sessionId: data.sessionId as string, agentId: 'organize' });
+          }
         }
       } catch {
         /* ignore malformed agent_event */
@@ -438,6 +443,31 @@ export function App() {
                       onSubAgentRegenerate={(sessionId) => {
                         // Placeholder: regenerate would require restarting the specialist flow
                         addToast('info', 'Regenerate not yet implemented');
+                      }}
+                      onSubAgentFeedback={(sessionId, feedback) => {
+                        apiFetch('/api/secretary/subagent/input', {
+                          method: 'POST',
+                          headers: authJsonHeaders(),
+                          body: JSON.stringify({ subAgentSessionId: sessionId, input: feedback }),
+                        }).catch(() => {
+                          addToast('error', 'Failed to send feedback to sub-agent');
+                        });
+                      }}
+                      onSubAgentApprove={(sessionId) => {
+                        apiFetch('/api/secretary/subagent/input', {
+                          method: 'POST',
+                          headers: authJsonHeaders(),
+                          body: JSON.stringify({ subAgentSessionId: sessionId, input: 'approved' }),
+                        })
+                          .then(() => {
+                            // Route back to secretary after approval
+                            if (activeSession) {
+                              setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+                            }
+                          })
+                          .catch(() => {
+                            addToast('error', 'Failed to approve sub-agent');
+                          });
                       }}
                       onResetInputTarget={() => {
                         if (activeSession) {

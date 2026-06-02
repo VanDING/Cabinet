@@ -490,6 +490,21 @@ export const ORGANIZE_ROLE: AgentRole = {
   maxSteps: 150,
 };
 
+/** Tools that deploy changes — excluded from the planning phase of interactive mode. */
+export const ORGANIZE_DEPLOY_TOOLS = [
+  'register_agent',
+  'update_agent',
+  'create_workflow',
+  'update_workflow',
+  'run_workflow',
+] as const;
+
+/** Returns the Organize role's allowed tools minus deploy-only tools, for the planning phase. */
+export function getOrganizePlanningTools(): string[] {
+  const deploySet = new Set<string>(ORGANIZE_DEPLOY_TOOLS);
+  return ORGANIZE_ROLE.allowedTools.filter((t) => !deploySet.has(t));
+}
+
 // ── Role Registry ──────────────────────────────────────────────
 
 export class AgentRoleRegistry {
