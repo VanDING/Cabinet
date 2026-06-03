@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Card, Tag } from '@cabinet/ui';
+import { ModalOverlay } from '../../components/ModalOverlay';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 import { useToast } from '../../components/Toast.js';
 
@@ -119,11 +120,11 @@ function InstallModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        className="w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay
+      isOpen={true}
+      onClose={onClose}
+      contentClassName="w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
+    >
         <h3 className="mb-1 text-lg font-semibold text-content-primary">
           {server.installType === 'direct' ? 'Install' : 'Configure'} {server.name}
         </h3>
@@ -179,8 +180,7 @@ function InstallModal({
             {server.installType === 'direct' ? 'Install' : 'Install'}
           </Button>
         </div>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }
 

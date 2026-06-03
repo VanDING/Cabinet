@@ -30,6 +30,7 @@ import { InsightsModal } from '../components/office/InsightsModal';
 import { HarnessWidget } from '../components/office/HarnessWidget';
 import { HarnessModal } from '../components/office/HarnessModal';
 import { useToast } from '../components/Toast';
+import { ModalOverlay } from '../components/ModalOverlay';
 import { apiFetch, authHeaders } from '../utils/api.js';
 
 type WidgetType =
@@ -427,37 +428,33 @@ export function OfficePage() {
         <HarnessModal onClose={() => setExpandedWidget(null)} />
       )}
       {expandedWidget && expandedWidget !== 'today-cost' && expandedWidget !== 'active-workflows' && expandedWidget !== 'event-timeline' && expandedWidget !== 'weather' && expandedWidget !== 'deliverables' && expandedWidget !== 'insights' && expandedWidget !== 'harness' && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setExpandedWidget(null)}
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setExpandedWidget(null)}
+          contentClassName="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-lg"
         >
-          <div
-            className="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-content-primary">
-                {'Details'}
-              </h3>
-              <button
-                onClick={() => setExpandedWidget(null)}
-                className="text-xl leading-none text-content-tertiary hover:text-content-secondary"
-              >
-                &times;
-              </button>
-            </div>
-
-            {expandedWidget === 'decision-list' && (
-              <DecisionList
-                projectId={projectId}
-                onSelectDecision={(id) => {
-                  setReviewDecisionId(id);
-                  setExpandedWidget(null);
-                }}
-              />
-            )}
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-content-primary">
+              {'Details'}
+            </h3>
+            <button
+              onClick={() => setExpandedWidget(null)}
+              className="text-xl leading-none text-content-tertiary hover:text-content-secondary"
+            >
+              &times;
+            </button>
           </div>
-        </div>
+
+          {expandedWidget === 'decision-list' && (
+            <DecisionList
+              projectId={projectId}
+              onSelectDecision={(id) => {
+                setReviewDecisionId(id);
+                setExpandedWidget(null);
+              }}
+            />
+          )}
+        </ModalOverlay>
       )}
 
       {/* Decision Review Panel */}

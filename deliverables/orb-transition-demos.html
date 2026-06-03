@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secretary Orb → ChatPanel 共享元素过渡演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181a21;
+      --surface-elevated: #20232d;
+      --border: #2a2d3a;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --text: #e2e4ea;
+      --text-secondary: #8b90a1;
+      --orb-size: 56px;
+      --panel-h: 420px;
+      --panel-w: 520px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app { display: flex; height: 100vh; }
+    .sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      flex-shrink: 0;
+    }
+    .sidebar-logo { font-weight: 700; font-size: 18px; color: var(--accent-light); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+    .sidebar-item { padding: 10px 12px; border-radius: 8px; color: var(--text-secondary); font-size: 14px; margin-bottom: 4px; cursor: default; }
+    .sidebar-item.active { background: var(--surface-elevated); color: var(--text); }
+    .main { flex: 1; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+    .content { flex: 1; padding: 32px; overflow: auto; }
+    .content h1 { font-size: 28px; margin-bottom: 12px; }
+    .content p { color: var(--text-secondary); line-height: 1.6; max-width: 600px; }
+
+    .scheme-bar {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 1000;
+      background: rgba(15, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      padding: 6px; border-radius: 12px;
+    }
+    .scheme-btn {
+      padding: 8px 16px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text-secondary);
+      font-size: 13px; cursor: pointer; transition: all 0.2s;
+      font-weight: 500; white-space: nowrap;
+    }
+    .scheme-btn:hover { color: var(--text); }
+    .scheme-btn.active { background: var(--accent); color: #fff; }
+
+    /* ===== Orb ===== */
+    .orb-wrap {
+      position: fixed;
+      right: 32px; bottom: 32px;
+      z-index: 50;
+      width: var(--orb-size);
+      height: var(--orb-size);
+    }
+    .orb {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      border: none; cursor: pointer;
+      background: radial-gradient(120% 120% at 30% 30%, var(--accent-light), var(--accent));
+      box-shadow: 0 4px 24px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .orb-face { display: flex; gap: 5px; }
+    .orb-eye {
+      width: 7px; height: 7px; border-radius: 50%; background: #fff;
+      animation: blink 4s infinite;
+    }
+    .orb-eye:nth-child(2) { animation-delay: 0.08s; }
+    @keyframes blink {
+      0%, 96%, 100% { transform: scaleY(1); }
+      98% { transform: scaleY(0.1); }
+    }
+    .orb-wrap.breathing .orb { animation: breathe 3s ease-in-out infinite; }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
+
+    /* ===== ChatPanel ===== */
+    .chat-panel {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: var(--panel-w);
+      height: var(--panel-h);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      z-index: 40;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .chat-header {
+      height: 52px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+    }
+    .chat-header-left { display: flex; align-items: center; gap: 10px; }
+    .chat-header-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: radial-gradient(120% 120% at 30% 30%, var(--accent-light), var(--accent));
+    }
+    .chat-header-title { font-size: 14px; font-weight: 600; }
+    .chat-minimize {
+      width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; line-height: 1;
+    }
+    .chat-minimize:hover { background: var(--border); color: var(--text); }
+    .chat-body {
+      flex: 1; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      overflow: auto;
+    }
+    .chat-msg {
+      max-width: 80%; padding: 10px 14px; border-radius: 14px;
+      font-size: 13px; line-height: 1.5;
+    }
+    .chat-msg.ai { align-self: flex-start; background: var(--surface); color: var(--text); border-bottom-left-radius: 4px; }
+    .chat-msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .chat-input-wrap {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      display: flex; gap: 10px;
+    }
+    .chat-input {
+      flex: 1; height: 40px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); padding: 0 14px; font-size: 13px;
+      outline: none;
+    }
+    .chat-send {
+      width: 40px; height: 40px; border-radius: 10px;
+      border: none; background: var(--accent); color: #fff;
+      cursor: pointer; font-size: 16px;
+    }
+
+    .status-pill {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(15,17,23,0.9); border: 1px solid var(--border);
+      color: var(--text-secondary); padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; z-index: 1000; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    /* ================================================================
+       SCHEME 1: Shared Element（共享元素 / FLIP）
+       ================================================================ */
+    .scheme-shared .orb-wrap {
+      transition: right 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  bottom 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  width 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  height 0.55s cubic-bezier(0.32, 0, 0.2, 1);
+    }
+    .scheme-shared .orb {
+      transition: border-radius 0.5s cubic-bezier(0.32, 0, 0.2, 1),
+                  width 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  height 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  background 0.35s ease,
+                  box-shadow 0.35s ease;
+      overflow: hidden;
+    }
+    .scheme-shared .orb-face {
+      transition: opacity 0.2s ease, transform 0.25s ease;
+    }
+
+    .scheme-shared.opening .orb-wrap,
+    .scheme-shared.open .orb-wrap {
+      right: 24px; bottom: calc(24px + var(--panel-h) - 52px);
+      width: var(--panel-w); height: 52px;
+    }
+    .scheme-shared.opening .orb,
+    .scheme-shared.open .orb {
+      border-radius: 16px 16px 0 0;
+      width: var(--panel-w); height: 52px;
+      background: var(--surface-elevated);
+      box-shadow: none;
+      cursor: default;
+    }
+    .scheme-shared.opening .orb-face,
+    .scheme-shared.open .orb-face {
+      opacity: 0; transform: scale(0.6);
+    }
+    .scheme-shared .chat-panel {
+      transition: opacity 0.3s ease 0.25s, transform 0.35s ease 0.2s;
+      transform: translateY(8px);
+    }
+    .scheme-shared.open .chat-panel {
+      opacity: 1; pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    /* Closing: reverse */
+    .scheme-shared.closing .orb-wrap {
+      right: 32px; bottom: 32px;
+      width: var(--orb-size); height: var(--orb-size);
+    }
+    .scheme-shared.closing .orb {
+      border-radius: 50%;
+      width: var(--orb-size); height: var(--orb-size);
+      background: radial-gradient(120% 120% at 30% 30%, var(--accent-light), var(--accent));
+      box-shadow: 0 4px 24px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    .scheme-shared.closing .orb-face {
+      opacity: 1; transform: scale(1);
+    }
+    .scheme-shared.closing .chat-panel {
+      opacity: 0; pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    /* ================================================================
+       SCHEME 2: Orb Morph（形变展开）— 参考对比
+       ================================================================ */
+    .scheme-morph .orb-wrap {
+      transition: right 0.6s cubic-bezier(0.32, 0, 0.2, 1),
+                  bottom 0.6s cubic-bezier(0.32, 0, 0.2, 1),
+                  width 0.6s cubic-bezier(0.32, 0, 0.2, 1),
+                  height 0.6s cubic-bezier(0.32, 0, 0.2, 1);
+    }
+    .scheme-morph .orb {
+      transition: border-radius 0.55s cubic-bezier(0.32, 0, 0.2, 1),
+                  width 0.6s cubic-bezier(0.32, 0, 0.2, 1),
+                  height 0.6s cubic-bezier(0.32, 0, 0.2, 1),
+                  background 0.4s ease;
+      overflow: hidden;
+    }
+    .scheme-morph .orb-face {
+      transition: opacity 0.25s ease, transform 0.3s ease;
+    }
+    .scheme-morph.opening .orb-wrap,
+    .scheme-morph.open .orb-wrap {
+      right: 24px; bottom: 24px;
+      width: var(--panel-w); height: var(--panel-h);
+    }
+    .scheme-morph.opening .orb,
+    .scheme-morph.open .orb {
+      border-radius: 16px;
+      width: var(--panel-w); height: var(--panel-h);
+      background: var(--surface-elevated);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      cursor: default;
+    }
+    .scheme-morph.opening .orb-face,
+    .scheme-morph.open .orb-face {
+      opacity: 0; transform: scale(0.6);
+    }
+    .scheme-morph .chat-panel {
+      transition: opacity 0.35s ease 0.2s;
+    }
+    .scheme-morph.open .chat-panel {
+      opacity: 1; pointer-events: auto;
+    }
+    .scheme-morph.closing .orb-wrap {
+      right: 32px; bottom: 32px;
+      width: var(--orb-size); height: var(--orb-size);
+    }
+    .scheme-morph.closing .orb {
+      border-radius: 50%;
+      width: var(--orb-size); height: var(--orb-size);
+      background: radial-gradient(120% 120% at 30% 30%, var(--accent-light), var(--accent));
+    }
+    .scheme-morph.closing .chat-panel {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    /* ================================================================
+       SCHEME 3: Slide Up（底部滑入）
+       ================================================================ */
+    .scheme-slide .orb-wrap {
+      transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease;
+    }
+    .scheme-slide .chat-panel {
+      transform: translateY(40px) scale(0.96);
+      transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1),
+                  opacity 0.35s ease,
+                  pointer-events 0s;
+    }
+    .scheme-slide.open .orb-wrap {
+      transform: translateY(30px);
+      opacity: 0; pointer-events: none;
+    }
+    .scheme-slide.open .chat-panel {
+      transform: translateY(0) scale(1);
+      opacity: 1; pointer-events: auto;
+    }
+    .scheme-slide.closing .orb-wrap {
+      transform: translateY(0);
+      opacity: 1; pointer-events: auto;
+    }
+    .scheme-slide.closing .chat-panel {
+      transform: translateY(40px) scale(0.96);
+      opacity: 0; pointer-events: none;
+    }
+
+    /* ================================================================
+       SCHEME 4: Elastic Pop（弹性弹出）
+       ================================================================ */
+    .scheme-elastic .orb-wrap {
+      transition: transform 0.5s cubic-bezier(0.68, -0.3, 0.32, 1.3),
+                  opacity 0.25s ease;
+    }
+    .scheme-elastic .chat-panel {
+      transform: translateY(80px) scale(0.5);
+      transform-origin: 95% 95%;
+      transition: transform 0.55s cubic-bezier(0.68, -0.3, 0.32, 1.3),
+                  opacity 0.3s ease,
+                  pointer-events 0s;
+    }
+    .scheme-elastic.open .orb-wrap {
+      transform: scale(0.3);
+      opacity: 0; pointer-events: none;
+    }
+    .scheme-elastic.open .chat-panel {
+      transform: translateY(0) scale(1);
+      opacity: 1; pointer-events: auto;
+    }
+    .scheme-elastic.closing .orb-wrap {
+      transform: scale(1);
+      opacity: 1; pointer-events: auto;
+    }
+    .scheme-elastic.closing .chat-panel {
+      transform: translateY(80px) scale(0.5);
+      opacity: 0; pointer-events: none;
+    }
+
+    /* ================================================================
+       SCHEME 5: Blur & Scale（模糊缩放）
+       ================================================================ */
+    .scheme-blur .orb-wrap {
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease,
+                  filter 0.4s ease;
+    }
+    .scheme-blur .chat-panel {
+      transform: scale(0.88);
+      filter: blur(10px);
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                  filter 0.45s ease,
+                  opacity 0.4s ease,
+                  pointer-events 0s;
+    }
+    .scheme-blur.open .orb-wrap {
+      transform: scale(0.7);
+      opacity: 0;
+      filter: blur(6px);
+      pointer-events: none;
+    }
+    .scheme-blur.open .chat-panel {
+      transform: scale(1);
+      filter: blur(0px);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .scheme-blur.closing .orb-wrap {
+      transform: scale(1);
+      opacity: 1;
+      filter: blur(0px);
+      pointer-events: auto;
+    }
+    .scheme-blur.closing .chat-panel {
+      transform: scale(0.88);
+      filter: blur(10px);
+      opacity: 0; pointer-events: none;
+    }
+
+    .compare-table {
+      position: fixed; right: 24px; top: 80px;
+      width: 300px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; font-size: 12px; z-index: 30;
+    }
+    .compare-table h3 { font-size: 13px; margin-bottom: 10px; color: var(--text); }
+    .compare-row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--border); color: var(--text-secondary); }
+    .compare-row.active { color: var(--accent-light); font-weight: 600; }
+    .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface-elevated); }
+  </style>
+</head>
+<body>
+
+  <div class="scheme-bar">
+    <button class="scheme-btn active" data-scheme="slide">1. 底部滑入</button>
+    <button class="scheme-btn" data-scheme="shared">2. 共享元素</button>
+    <button class="scheme-btn" data-scheme="morph">3. 形变展开</button>
+    <button class="scheme-btn" data-scheme="elastic">4. 弹性弹出</button>
+    <button class="scheme-btn" data-scheme="blur">5. 模糊缩放</button>
+  </div>
+
+  <div class="compare-table">
+    <h3>方案对比</h3>
+    <div class="compare-row active" data-scheme="slide">
+      <span>底部滑入 Slide</span>
+      <span class="tag">简洁高效</span>
+    </div>
+    <div class="compare-row" data-scheme="shared">
+      <span>共享元素 Shared</span>
+      <span class="tag">空间叙事感</span>
+    </div>
+    <div class="compare-row" data-scheme="morph">
+      <span>形变展开 Morph</span>
+      <span class="tag">视觉最连贯</span>
+    </div>
+    <div class="compare-row" data-scheme="elastic">
+      <span>弹性弹出 Elastic</span>
+      <span class="tag">活泼俏皮</span>
+    </div>
+    <div class="compare-row" data-scheme="blur">
+      <span>模糊缩放 Blur</span>
+      <span class="tag">现代质感</span>
+    </div>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-logo">◈ Cabinet</div>
+      <div class="sidebar-item active">Office</div>
+      <div class="sidebar-item">Factory</div>
+      <div class="sidebar-item">Discovery</div>
+      <div class="sidebar-item">Memory</div>
+      <div class="sidebar-item">Settings</div>
+    </aside>
+    <main class="main">
+      <div class="content">
+        <h1>过渡动画方案演示（v3）</h1>
+        <p>点击右下角悬浮球查看展开动画，点击 ChatPanel 的「—」收起按钮查看收起动画。<br>使用顶部导航切换不同方案。<br><br><strong>当前默认：底部滑入</strong> — 悬浮球向下滑出，面板从底部滑入，简洁直接。</p>
+      </div>
+    </main>
+  </div>
+
+  <div class="orb-wrap breathing" id="orbWrap">
+    <button class="orb" id="orb" aria-label="Open chat">
+      <div class="orb-face">
+        <div class="orb-eye"></div>
+        <div class="orb-eye"></div>
+      </div>
+    </button>
+  </div>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-header-avatar"></div>
+        <span class="chat-header-title">Secretary</span>
+      </div>
+      <button class="chat-minimize" id="minimizeBtn" title="Minimize">—</button>
+    </div>
+    <div class="chat-body">
+      <div class="chat-msg ai">你好！我是 Cabinet 的 Secretary。有什么可以帮你的吗？</div>
+      <div class="chat-msg user">帮我梳理一下今天的任务进度。</div>
+      <div class="chat-msg ai">正在为您检查今日任务，请稍候...</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input class="chat-input" placeholder="输入消息..." readonly />
+      <button class="chat-send">↑</button>
+    </div>
+  </div>
+
+  <div class="status-pill" id="statusPill">当前方案：共享元素 Shared — 悬浮球化作面板头部，内容随后滑入</div>
+
+  <script>
+    const schemes = ['shared', 'morph', 'slide', 'elastic', 'blur'];
+    let current = 'shared';
+    let isOpen = false;
+
+    const orbWrap = document.getElementById('orbWrap');
+    const orb = document.getElementById('orb');
+    const chatPanel = document.getElementById('chatPanel');
+    const minimizeBtn = document.getElementById('minimizeBtn');
+    const statusPill = document.getElementById('statusPill');
+    const body = document.body;
+    const schemeBtns = document.querySelectorAll('.scheme-btn');
+    const compareRows = document.querySelectorAll('.compare-row');
+
+    function setScheme(name) {
+      current = name;
+      body.className = '';
+      body.classList.add(`scheme-${name}`);
+      if (isOpen) body.classList.add('open');
+
+      schemeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scheme === name);
+      });
+      compareRows.forEach(row => {
+        row.classList.toggle('active', row.dataset.scheme === name);
+      });
+
+      const labels = {
+        shared: '共享元素 Shared — 悬浮球化作面板头部，内容随后滑入',
+        morph: '形变展开 Morph — 悬浮球直接形变为 ChatPanel',
+        slide: '底部滑入 Slide — 悬浮球下滑消失，面板滑入',
+        elastic: '弹性弹出 Elastic — 弹簧物理感',
+        blur: '模糊缩放 Blur — 模糊+缩放切换'
+      };
+      statusPill.textContent = `当前方案：${labels[name]}`;
+      statusPill.style.opacity = '1';
+      clearTimeout(statusPill._t);
+      statusPill._t = setTimeout(() => { statusPill.style.opacity = '0.6'; }, 2000);
+    }
+
+    function openPanel() {
+      if (isOpen) return;
+      isOpen = true;
+      body.classList.add('opening');
+      void body.offsetWidth;
+      body.classList.remove('opening');
+      body.classList.add('open');
+    }
+
+    function closePanel() {
+      if (!isOpen) return;
+      isOpen = false;
+      body.classList.remove('open');
+      body.classList.add('closing');
+      setTimeout(() => body.classList.remove('closing'), 600);
+    }
+
+    schemeBtns.forEach(btn => {
+      btn.addEventListener('click', () => setScheme(btn.dataset.scheme));
+    });
+
+    orb.addEventListener('click', openPanel);
+    minimizeBtn.addEventListener('click', closePanel);
+
+    setScheme('slide');
+  </script>
+</body>
+</html>

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, lazy, Suspense, startTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense, startTransition } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
 import { SecretaryOrb } from './components/SecretaryOrb';
+
 import { NotificationManager } from './components/NotificationManager';
+import { ModalOverlay } from './components/ModalOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerLoading } from './components/ServerLoading';
 import { useTheme } from './hooks/useTheme';
@@ -117,6 +119,31 @@ export function App() {
 
   const isActiveSessionProcessing = activeSession ? isSessionActive(activeSession.id) : false;
   const isChatVisible = uiMode === 'chat';
+
+  /* ── Orb ↔ ChatPanel slide transition ── */
+  const [transitionPhase, setTransitionPhase] = useState<null | 'opening' | 'closing'>(null);
+  const isTransitioning = transitionPhase !== null;
+
+  const handleOrbOpen = useCallback(() => {
+    if (transitionPhase !== null) return;
+    setTransitionPhase('opening');
+    setTimeout(() => {
+      setUIMode('work');
+      setTransitionPhase(null);
+    }, 450);
+  }, [transitionPhase, setUIMode]);
+
+  const handlePanelClose = useCallback(() => {
+    if (transitionPhase !== null) {
+      setUIMode('idle');
+      return;
+    }
+    setTransitionPhase('closing');
+    setTimeout(() => {
+      setUIMode('idle');
+      setTransitionPhase(null);
+    }, 450);
+  }, [transitionPhase, setUIMode]);
 
   const handleNavigate = useCallback(
     (page: NavPage) => {
@@ -269,7 +296,7 @@ export function App() {
 
   return (
     <ServerLoading>
-      <div className="flex h-screen flex-col overflow-hidden">
+      <div className={`flex h-screen flex-col overflow-hidden ${transitionPhase || ''}`} data-ui-mode={uiMode}>
         {/* Custom Title Bar */}
         <TitleBar themes={themes} currentTheme={theme} onSetTheme={setTheme} />
 
@@ -333,9 +360,9 @@ export function App() {
           {/* Main content area (relative for floating ChatPanel) */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Content: browse pages or chat view */}
-            <div className="flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0">
               {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
-              <div className={uiMode === 'chat' && activeSession ? 'hidden' : 'h-full overflow-auto'}>
+              <div className={`page-viewport h-full overflow-auto ${uiMode === 'chat' && activeSession ? 'page-hidden' : ''}`}>
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
@@ -387,120 +414,122 @@ export function App() {
                 </ErrorBoundary>
               </div>
               {uiMode === 'chat' && activeSession && (
-                <ErrorBoundary>
-                  <Suspense fallback={<PageLoader />}>
-                    <ChatView
-                      messages={activeSession.messages}
-                      isProcessing={isActiveSessionProcessing}
-                      attachedFiles={activeSession.attachedFiles}
-                      sessionTitle={activeSession.title}
-                      onEditMessage={(msgId, newContent) => {
-                        editMessage(activeSession.id, msgId, newContent);
-                        handleSend(activeSession.id, newContent, activeSession.attachedFiles);
-                      }}
-                      onRegenerate={(msgId) => {
-                        const idx = activeSession.messages.findIndex((m) => m.id === msgId);
-                        if (idx > 0) {
-                          const prevUser = activeSession.messages
-                            .slice(0, idx)
-                            .reverse()
-                            .find((m) => m.role === 'user');
-                          if (prevUser)
-                            handleSend(
-                              activeSession.id,
-                              prevUser.content,
-                              activeSession.attachedFiles,
-                            );
-                        }
-                      }}
-                      onForkMessage={(msgId) => {
-                        const forkedId = forkSession(activeSession.id, msgId);
-                        if (forkedId) {
-                          addToast('success', 'Forked to new session');
-                        }
-                      }}
-                      onContinue={(msgId) => {
-                        handleSend(
-                          activeSession.id,
-                          'Please continue to complete the above tasks',
-                          activeSession.attachedFiles,
-                        );
-                      }}
-                      childSessions={getChildSessions(activeSession.id)}
-                      onSubAgentClick={(sessionId) => {
-                        const child = sessions.find((s) => s.id === sessionId);
-                        if (child) {
-                          setInputTarget({
-                            type: 'subagent',
-                            sessionId: child.id,
-                            agentId: child.agentType ?? 'unknown',
-                          });
-                        }
-                      }}
-                      onSubAgentApprove={(sessionId) => {
-                        apiFetch('/api/secretary/subagent/input', {
-                          method: 'POST',
-                          headers: authJsonHeaders(),
-                          body: JSON.stringify({ subAgentSessionId: sessionId, input: 'approved' }),
-                        })
-                          .then(() => {
-                            // Route back to secretary after approval
-                            if (activeSession) {
-                              setInputTarget({ type: 'secretary', sessionId: activeSession.id });
-                            }
+                <div className="chat-viewport">
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageLoader />}>
+                      <ChatView
+                        messages={activeSession.messages}
+                        isProcessing={isActiveSessionProcessing}
+                        attachedFiles={activeSession.attachedFiles}
+                        sessionTitle={activeSession.title}
+                        onEditMessage={(msgId, newContent) => {
+                          editMessage(activeSession.id, msgId, newContent);
+                          handleSend(activeSession.id, newContent, activeSession.attachedFiles);
+                        }}
+                        onRegenerate={(msgId) => {
+                          const idx = activeSession.messages.findIndex((m) => m.id === msgId);
+                          if (idx > 0) {
+                            const prevUser = activeSession.messages
+                              .slice(0, idx)
+                              .reverse()
+                              .find((m) => m.role === 'user');
+                            if (prevUser)
+                              handleSend(
+                                activeSession.id,
+                                prevUser.content,
+                                activeSession.attachedFiles,
+                              );
+                          }
+                        }}
+                        onForkMessage={(msgId) => {
+                          const forkedId = forkSession(activeSession.id, msgId);
+                          if (forkedId) {
+                            addToast('success', 'Forked to new session');
+                          }
+                        }}
+                        onContinue={(msgId) => {
+                          handleSend(
+                            activeSession.id,
+                            'Please continue to complete the above tasks',
+                            activeSession.attachedFiles,
+                          );
+                        }}
+                        childSessions={getChildSessions(activeSession.id)}
+                        onSubAgentClick={(sessionId) => {
+                          const child = sessions.find((s) => s.id === sessionId);
+                          if (child) {
+                            setInputTarget({
+                              type: 'subagent',
+                              sessionId: child.id,
+                              agentId: child.agentType ?? 'unknown',
+                            });
+                          }
+                        }}
+                        onSubAgentApprove={(sessionId) => {
+                          apiFetch('/api/secretary/subagent/input', {
+                            method: 'POST',
+                            headers: authJsonHeaders(),
+                            body: JSON.stringify({ subAgentSessionId: sessionId, input: 'approved' }),
                           })
-                          .catch(() => {
-                            addToast('error', 'Failed to approve sub-agent');
-                          });
-                      }}
-                      onResetInputTarget={() => {
-                        if (activeSession) {
-                          setInputTarget({ type: 'secretary', sessionId: activeSession.id });
-                        }
-                      }}
-                      onBack={() => setUIMode('work')}
-                    />
-                  </Suspense>
-                </ErrorBoundary>
+                            .then(() => {
+                              // Route back to secretary after approval
+                              if (activeSession) {
+                                setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+                              }
+                            })
+                            .catch(() => {
+                              addToast('error', 'Failed to approve sub-agent');
+                            });
+                        }}
+                        onResetInputTarget={() => {
+                          if (activeSession) {
+                            setInputTarget({ type: 'secretary', sessionId: activeSession.id });
+                          }
+                        }}
+                        onBack={() => setUIMode('work')}
+                      />
+                    </Suspense>
+                  </ErrorBoundary>
+                </div>
               )}
             </div>
 
             {/* Floating ChatPanel at the bottom of main content area */}
-            {uiMode !== 'idle' && (
+            {(uiMode !== 'idle' || isTransitioning) && (
               <ChatPanel
-              sessions={sessions}
-              activeSession={activeSession}
-              history={history}
-              isSessionActive={isSessionActive}
-              onCreateSession={handleCreateSession}
-              onCloseSession={closeSession}
-              onSwitchSession={(id) => {
-                const targetSession = sessions.find((s) => s.id === id);
-                if (targetSession?.projectId) {
-                  switchProject(targetSession.projectId);
-                }
-                switchSession(id);
-                setChatMode(true);
-              }}
-              onAddFile={addFile}
-              onRemoveFile={removeFile}
-              onReopenSession={reopenSession}
-              onDeleteHistorySession={deleteHistorySession}
-              onSend={handleSend}
-              onEnterChat={handleEnterChat}
-              isProcessing={isActiveSessionProcessing}
-              onStop={handleStop}
-              activeProjectId={activeProjectId}
-              projects={projects}
-              onSwitchProject={(id) => switchProject(id)}
-              onNewProject={handleOpenProjectActionModal}
-              activeAgent={activeAgent}
-              onAgentChange={setActiveAgent}
-              inputTarget={inputTarget}
-              onInputTargetChange={setInputTarget}
-              activeSessionId={activeSession?.id ?? null}
-              onMinimize={() => setUIMode('idle')}
-            />
+                sessions={sessions}
+                activeSession={activeSession}
+                history={history}
+                isSessionActive={isSessionActive}
+                onCreateSession={handleCreateSession}
+                onCloseSession={closeSession}
+                onSwitchSession={(id) => {
+                  const targetSession = sessions.find((s) => s.id === id);
+                  if (targetSession?.projectId) {
+                    switchProject(targetSession.projectId);
+                  }
+                  switchSession(id);
+                  setChatMode(true);
+                }}
+                onAddFile={addFile}
+                onRemoveFile={removeFile}
+                onReopenSession={reopenSession}
+                onDeleteHistorySession={deleteHistorySession}
+                onSend={handleSend}
+                onEnterChat={handleEnterChat}
+                isProcessing={isActiveSessionProcessing}
+                onStop={handleStop}
+                activeProjectId={activeProjectId}
+                projects={projects}
+                onSwitchProject={(id) => switchProject(id)}
+                onNewProject={handleOpenProjectActionModal}
+                activeAgent={activeAgent}
+                onAgentChange={setActiveAgent}
+                inputTarget={inputTarget}
+                onInputTargetChange={setInputTarget}
+                activeSessionId={activeSession?.id ?? null}
+                onMinimize={handlePanelClose}
+              />
             )}
           </div>
 
@@ -512,67 +541,61 @@ export function App() {
         <MobileNav activePage={activePage} onNavigate={handleNavigate} />
 
         {/* Secretary Orb */}
-        {uiMode === 'idle' && <SecretaryOrb />}
+        {(uiMode === 'idle' || isTransitioning) && <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />}
 
-        {/* Notification Bubbles */}
-        <NotificationManager />
+        {/* Notification Bubbles — only when ChatPanel is open (no orb visible) */}
+        {uiMode === 'chat' && <NotificationManager />}
 
         {/* Overlay Chat Panel removed */}
 
         {/* Project action modal */}
-        {showProjectActionModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            onClick={() => setShowProjectActionModal(false)}
-          >
-            <div
-              className="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+        <ModalOverlay
+          isOpen={showProjectActionModal}
+          onClose={() => setShowProjectActionModal(false)}
+          contentClassName="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
+        >
+          <h3 className="mb-4 text-lg font-semibold text-content-primary">
+            Add Project
+          </h3>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setShowProjectActionModal(false);
+                handleCreateNewProject();
+              }}
+              className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
             >
-              <h3 className="mb-4 text-lg font-semibold text-content-primary">
-                Add Project
-              </h3>
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setShowProjectActionModal(false);
-                    handleCreateNewProject();
-                  }}
-                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
-                >
-                  <span className="block text-base text-content-primary">
-                    Create New Project
-                  </span>
-                  <span className="mt-0.5 block text-xs text-content-tertiary">
-                    Start with an empty project
-                  </span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowProjectActionModal(false);
-                    handleImportProject();
-                  }}
-                  className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
-                >
-                  <span className="block text-base text-content-primary">
-                    Import Existing Folder
-                  </span>
-                  <span className="mt-0.5 block text-xs text-content-tertiary">
-                    Import a local folder as project
-                  </span>
-                </button>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => setShowProjectActionModal(false)}
-                  className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+              <span className="block text-base text-content-primary">
+                Create New Project
+              </span>
+              <span className="mt-0.5 block text-xs text-content-tertiary">
+                Start with an empty project
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setShowProjectActionModal(false);
+                handleImportProject();
+              }}
+              className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
+            >
+              <span className="block text-base text-content-primary">
+                Import Existing Folder
+              </span>
+              <span className="mt-0.5 block text-xs text-content-tertiary">
+                Import a local folder as project
+              </span>
+            </button>
           </div>
-        )}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => setShowProjectActionModal(false)}
+              className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary"
+            >
+              Cancel
+            </button>
+          </div>
+        </ModalOverlay>
       </div>
     </ServerLoading>
   );

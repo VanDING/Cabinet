@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { apiFetch, authHeaders } from '../../utils/api.js';
+import { ModalOverlay } from '../ModalOverlay';
 
 interface HistoryPoint {
   date: string;
@@ -86,11 +87,7 @@ export function CostOverviewModal({ onClose }: Props) {
   }, [history]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="m-4 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-border bg-surface-primary shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-border bg-surface-primary shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 px-6 pt-5 pb-3">
           <h3 className="text-lg font-semibold text-content-primary">Cost Overview</h3>
@@ -209,7 +206,6 @@ export function CostOverviewModal({ onClose }: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

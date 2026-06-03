@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Tag } from '@cabinet/ui';
+import { ModalOverlay } from '../../components/ModalOverlay';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 import { useToast } from '../../components/Toast.js';
 
@@ -134,11 +135,11 @@ function RuleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay
+      isOpen={true}
+      onClose={onClose}
+      contentClassName="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
+    >
         <h3 className="mb-5 text-lg font-semibold text-content-primary">
           {isNew ? 'New Rule' : 'Edit Rule'}
         </h3>
@@ -252,8 +253,7 @@ function RuleModal({
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }
 

@@ -147,7 +147,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-surface-primary shadow-2xl">
+      <div className="decision-panel-enter fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-surface-primary shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-border bg-surface-primary px-6 py-4">
           <div className="flex items-start justify-between gap-4">
