@@ -411,6 +411,38 @@ body {
   font-size: var(--font-size-xs);
 }
 
+/* Secretary Orb animations */
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes panel-rise {
+  0% { transform: translateY(20px) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes panel-sink {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(20px) scale(0.95); opacity: 0; }
+}
+
+@keyframes bubble-pop {
+  0% { transform: scale(0) translateY(10px); opacity: 0; }
+  70% { transform: scale(1.05) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes tail-wag {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page-container { padding: 0.75rem; }
