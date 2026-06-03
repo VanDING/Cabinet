@@ -384,23 +384,39 @@ export function OfficePage() {
             compactor={verticalCompactor}
             onLayoutChange={handleLayoutChange}
           >
-            {layout.map((item) => (
-              <div key={item.i} className="group relative">
-                {/* Drag handle + remove button */}
-                <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
-                    <Grip size={12} />
+            {layout.map((item) => {
+              const interactiveTypes = [
+                'today-cost',
+                'active-workflows',
+                'event-timeline',
+                'deliverables',
+                'insights',
+                'harness',
+                'weather',
+                'decision-list',
+              ];
+              const isInteractive = interactiveTypes.includes(item.i);
+              return (
+                <div
+                  key={item.i}
+                  className={`group relative h-full rounded-xl ${isInteractive ? 'widget-interactive' : 'widget-static'}`}
+                >
+                  {/* Drag handle + remove button */}
+                  <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
+                      <Grip size={12} />
+                    </div>
+                    <button
+                      onClick={() => handleRemoveWidget(item.i)}
+                      className="flex h-5 w-5 items-center justify-center rounded-sm text-content-tertiary hover:text-intent-danger"
+                    >
+                      &times;
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleRemoveWidget(item.i)}
-                    className="flex h-5 w-5 items-center justify-center rounded-sm text-content-tertiary hover:text-intent-danger"
-                  >
-                    &times;
-                  </button>
+                  {renderWidget(item.i)}
                 </div>
-                {renderWidget(item.i)}
-              </div>
-            ))}
+              );
+            })}
           </GridLayout>
         )}
       </div>

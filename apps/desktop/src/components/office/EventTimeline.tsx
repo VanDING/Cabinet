@@ -97,7 +97,7 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
   return (
     <div
       onClick={onExpand}
-      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs transition-shadow hover:shadow-md"
+      className="flex h-full cursor-pointer flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs"
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-content-secondary">Recent Events</h3>
