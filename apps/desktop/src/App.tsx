@@ -130,10 +130,9 @@ export function App() {
   const handleNavigateToProject = useCallback(
     (projectId: string) => {
       switchProject(projectId);
-      setUIMode('work');
       navigateToProject(projectId);
     },
-    [switchProject, setUIMode, navigateToProject],
+    [switchProject, navigateToProject],
   );
 
   // Keyboard shortcuts
