@@ -63,6 +63,10 @@ const createSchema = z.object({
   permissionLevel: z.string().optional(),
   status: z.string().optional(),
   projectId: z.string().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  systemPrompt: z.string().optional(),
+  temperature: z.number().optional(),
+  maxTokens: z.number().optional(),
 });
 
 employeesRouter.post('/', async (c) => {
@@ -81,6 +85,12 @@ employeesRouter.post('/', async (c) => {
     expertise: d.expertise ?? [],
     status: d.status ?? 'active',
   });
+  const pipelineConfig = d.kind === 'ai' ? JSON.stringify({
+    model: d.model ?? 'claude-sonnet-4-6',
+    systemPrompt: d.systemPrompt ?? '',
+    temperature: d.temperature ?? 0.7,
+    maxTokens: d.maxTokens ?? 4000,
+  }) : null;
 
   employeeRepo.insert({
     id,
@@ -88,9 +98,10 @@ employeesRouter.post('/', async (c) => {
     name: d.name,
     role: d.role ?? 'advisor',
     kind: d.kind ?? 'ai',
-    pipeline_config: null,
+    pipeline_config: pipelineConfig,
     persona,
     permission_level: d.permissionLevel ?? 'read',
+    allowed_tools: JSON.stringify(d.allowedTools ?? []),
   });
 
   const row = employeeRepo.findById(id);
@@ -108,19 +119,33 @@ employeesRouter.put('/:id', async (c) => {
   if (!existing) return c.json({ error: 'Employee not found' }, 404);
 
   const oldPersona = JSON.parse(existing.persona ?? '{}');
+  const oldPipeline = JSON.parse(existing.pipeline_config ?? '{}');
   const newPersona = JSON.stringify({
     model: body.model ?? oldPersona.model ?? null,
     expertise: body.expertise ?? oldPersona.expertise ?? [],
     status: body.status ?? oldPersona.status ?? 'active',
   });
+  const newPipeline = body.kind === 'human' ? null : JSON.stringify({
+    model: body.model ?? oldPipeline.model ?? oldPersona.model ?? 'claude-sonnet-4-6',
+    systemPrompt: body.systemPrompt ?? oldPipeline.systemPrompt ?? '',
+    temperature: body.temperature ?? oldPipeline.temperature ?? 0.7,
+    maxTokens: body.maxTokens ?? oldPipeline.maxTokens ?? 4000,
+  });
 
-  employeeRepo.update(id, {
+  const updates: Parameters<typeof employeeRepo.update>[1] = {
     name: body.name ?? existing.name,
     role: body.role ?? existing.role,
     kind: body.kind ?? existing.kind,
     persona: newPersona,
     permission_level: body.permissionLevel ?? existing.permission_level,
-  });
+    pipeline_config: newPipeline,
+  };
+
+  if (body.allowedTools !== undefined) {
+    updates.allowed_tools = JSON.stringify(body.allowedTools);
+  }
+
+  employeeRepo.update(id, updates);
 
   const row = employeeRepo.findById(id);
   logger.info('Employee updated', { id });
@@ -167,15 +192,33 @@ function rowToEmployee(row: any) {
       return {};
     }
   })();
+  const pipeline = (() => {
+    try {
+      return JSON.parse(row.pipeline_config ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const allowedTools = (() => {
+    try {
+      return JSON.parse(row.allowed_tools ?? '[]');
+    } catch {
+      return [];
+    }
+  })();
   return {
     id: row.id,
     name: row.name,
     role: row.role,
     kind: row.kind,
-    model: persona.model ?? undefined,
+    model: persona.model ?? pipeline.model ?? undefined,
     expertise: persona.expertise ?? [],
     permissionLevel: row.permission_level,
     status: persona.status ?? 'active',
     projectId: row.project_id,
+    allowedTools,
+    systemPrompt: pipeline.systemPrompt ?? '',
+    temperature: pipeline.temperature ?? 0.7,
+    maxTokens: pipeline.maxTokens ?? 4000,
   };
 }
