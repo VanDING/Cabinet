@@ -36,6 +36,9 @@ const EmployeesPage = lazy(() =>
 const MemoryPage = lazy(() =>
   import('./pages/MemoryPage').then((m) => ({ default: m.MemoryPage })),
 );
+const DiscoveryPage = lazy(() =>
+  import('./pages/DiscoveryPage').then((m) => ({ default: m.DiscoveryPage })),
+);
 const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ default: m.ChatView })));
 
 function PageLoader() {
@@ -369,7 +372,8 @@ export function App() {
                           />
                         }
                       />
-                      <Route path="/skills" element={<Navigate to="/settings" replace />} />
+                      <Route path="/skills" element={<Navigate to="/discovery" replace />} />
+                      <Route path="/discovery" element={<DiscoveryPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="/employees" element={<EmployeesPage activeProjectId={activeProjectId} />} />
                       <Route path="/memory" element={<MemoryPage />} />

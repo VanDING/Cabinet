@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Command, Workflow, UserRound, Brain } from 'lucide-react';
+import { Command, Workflow, UserRound, Brain, Compass } from 'lucide-react';
 
-export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'settings';
+export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'discovery' | 'settings';
 
 interface ProjectInfo {
   id: string;
@@ -31,6 +31,7 @@ const navItems: { id: NavPage; label: string }[] = [
   { id: 'factory', label: 'Factory' },
   { id: 'employees', label: 'Employees' },
   { id: 'memory', label: 'Memory' },
+  { id: 'discovery', label: 'Discovery' },
 ];
 
 const navIcons: Partial<Record<NavPage, typeof Command>> = {
@@ -38,6 +39,7 @@ const navIcons: Partial<Record<NavPage, typeof Command>> = {
   factory: Workflow,
   employees: UserRound,
   memory: Brain,
+  discovery: Compass,
 };
 
 const sidebarBgClasses = 'bg-surface-primary';
