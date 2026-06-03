@@ -18,7 +18,7 @@ export function SecretaryOrb() {
     if (!activeSession) {
       createSession();
     }
-    setUIMode('overlay');
+    setUIMode('work');
   };
 
   const moodStyle = MOOD_STYLES[orbMood] ?? MOOD_STYLES.idle;

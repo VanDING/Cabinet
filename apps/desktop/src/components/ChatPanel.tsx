@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square } from 'lucide-react';
+import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square, ChevronDown } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import type { InputTarget } from '../contexts/ChatContext';
 import { FileSearchPanel } from './FileSearchPanel';
@@ -49,6 +49,7 @@ interface Props {
   onInputTargetChange?: (target: InputTarget) => void;
   activeSessionId?: string | null;
   floating?: boolean;
+  onMinimize?: () => void;
 }
 
 export function ChatPanel({
@@ -77,6 +78,7 @@ export function ChatPanel({
   onInputTargetChange,
   activeSessionId,
   floating = true,
+  onMinimize,
 }: Props) {
   const [input, setInput] = useState('');
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -441,6 +443,16 @@ export function ChatPanel({
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5">
+            {onMinimize && (
+              <button
+                onClick={onMinimize}
+                className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
+                title="Minimize"
+                aria-label="Minimize"
+              >
+                <ChevronDown size={14} />
+              </button>
+            )}
             <div className="relative">
               <button
                 ref={historyBtnRef}
