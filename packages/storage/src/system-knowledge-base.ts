@@ -51,18 +51,21 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'agent_responsibilities',
     topic: 'Agent 分工',
     category: 'agent',
-    version: 2,
+    version: 3,
     content: `## Agent 职责边界
-- **secretary** — 入口路由、通用对话、意图识别、工具分发
+- **secretary** — 入口路由、通用对话、意图识别、工具分发。Secretary 是唯一面向 Captain 的交互入口，负责将请求路由到合适的专业 Agent 或 Skill。
 - **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow + Skill + MCP 蓝图。统筹设计所有体系化工作（工作流、Agent、Skill、MCP）。不直接执行具体流程。
-- **curator** — 记忆管理员。会话总结、知识固化、模式提取、项目进度跟踪。
-- **decision_analyst** — 决策分析师。结构化分析、选项评估、风险权衡。
-- **meeting_chair** — 会议主持人。多视角辩论、共识合成。
-- **reviewer** — 质量审查员。逻辑、证据、完整性检查。
+- **curator** — 记忆管理员。会话总结、知识固化、模式提取、项目进度跟踪。后台角色，不直接参与路由。
+- **meeting_chair** — 会议主持人。多视角辩论、共识合成。通过 start_meeting 工具触发。
+- **reviewer** — 质量审查员。逻辑、证据、完整性检查。**后台-only 角色，不可路由**，由 harness 质量闸门自动调用。
+
+**已移除角色**：
+- ~~decision_analyst~~ — 已内化为 secretary 的决策辅助能力，不再作为独立角色存在。
 
 **路由原则**：
 - 涉及"设计体系/创建 Agent/组织架构/写 Skill/搭 MCP" → organize
-- 涉及"总结/记忆/进度" → curator
+- 涉及"总结/记忆/进度" → curator（后台）
+- 涉及"多角度分析/辩论" → meeting_chair（通过 start_meeting）
 - 不确定 → secretary`,
   },
   {
@@ -81,7 +84,7 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'available_tools_overview',
     topic: '可用工具概览',
     category: 'capability',
-    version: 2,
+    version: 3,
     content: `## 完整工具目录（约 85 个）
 
 ### 文件操作（15 个）
@@ -150,8 +153,8 @@ get_status, get_dashboard_stats, get_memory_stats
 ### 事件（2 个）
 get_recent_events, publish_notification
 
-### Skill（2 个）
-use_skill, update_skill
+### Skill（动态注入）
+Skills 注册后自动注入 \`use_skill__<skillName>\` 工具（如 \`use_skill__agentCreator\`、\`use_skill__workflowDesigner\`）。不存在通用的 \`use_skill\` 或 \`update_skill\` 工具。
 
 ### 其他（4 个）
 create_employee, get_captain_preferences, set_captain_preferences, set_project_context
@@ -404,14 +407,20 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
     id: 'memory_system',
     topic: '记忆系统',
     category: 'infrastructure',
-    version: 1,
+    version: 2,
     content: `## Cabinet 记忆系统
 
-### 四种记忆类型
+### 四种基础记忆类型
 1. **短期记忆 (ShortTermMemory)**：Key-value 存储，会话级别，可选 TTL 过期
 2. **长期记忆 (LongTermMemory)**：持久化到 SQLite，支持语义搜索（embedding）和文本回退搜索
 3. **实体记忆 (EntityMemory)**：用户/Agent 偏好、决策历史、统计信息
 4. **项目记忆 (ProjectMemory)**：项目目标、里程碑、关键决策、摘要
+
+### 记忆支撑模块
+- **WriteGate** — 写入分级闸门。所有记忆写入前经过分级检查：内容长度、敏感词过滤、重复检测、项目隔离验证
+- **CascadeBuffer** — 级联缓冲区。短期记忆在写入长期记忆前先在缓冲区排队，支持批量写入和去重
+- **ProjectIsolation** — 项目隔离记忆。确保不同项目的记忆在检索时不交叉污染，项目切换时自动加载对应上下文
+- **KnowledgeGraph** — 实体关系图。提取长期记忆中的实体和关系，构建结构化知识图谱，支持图遍历查询
 
 ### 可用工具
 - \`remember(sessionId, key, value, ttlMs?)\` — 写入短期记忆
@@ -430,6 +439,8 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
 - 记忆整合 (ConsolidationService)：每 30 分钟将短期记忆整合到长期记忆
 - 冲突检测：新记忆与旧记忆冲突时（0.5-0.8 置信度）自动创建决策提醒 Captain
 - 会话关闭时 Curator 自动触发 consolidation
+- WriteGate 实时过滤写入请求，拒绝低质量或越权写入
+- CascadeBuffer 每 5 分钟自动 flush 到长期记忆
 
 ### 向用户说明
 - 记忆系统是自动的 — AI 可以在对话中主动写入记忆
@@ -468,16 +479,23 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
     id: 'agent_customization',
     topic: 'Agent 自定义与管理',
     category: 'capability',
-    version: 2,
+    version: 3,
     content: `## Agent 自定义与管理
 
 ### 内置 Agent 角色
-secretary, organize, curator, decision_analyst, meeting_chair, reviewer
+secretary, organize, curator, meeting_chair, reviewer
 
-每个角色使用 \`modules: { identity, workflow? }\` 定义提示词，由 Prompt Assembler 在运行时组装（SHARED_PROMPT + identity + 工具清单 + workflow + 动态上下文）。
+- **reviewer** 为后台-only 角色，不可直接路由或调用。
+- ~~decision_analyst~~ 已移除，其能力内化为 secretary 的决策辅助功能。
+
+每个角色使用 \`modules: { identity: string; workflow?: string }\` 定义提示词模块，由 Prompt Assembler 在运行时组装为完整 system prompt：
+
+\`\`\`
+SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynamicContext
+\`\`\`
 
 ### 可用工具
-- \`register_agent(name, description, systemPrompt, modelTier, temperature?, maxResponseTokens?, allowedTools?, contextBudget?)\` — 创建自定义 Agent。\`systemPrompt\` 参数接受完整提示词字符串，系统内部会转换为 \`modules: { identity: systemPrompt }\` 存储
+- \`register_agent(name, description, systemPrompt, modelTier, temperature?, maxResponseTokens?, allowedTools?, contextBudget?)\` — 创建自定义 Agent。\`systemPrompt\` 参数接受完整提示词字符串，系统内部会转换为 \`modules: { identity: systemPrompt }\` 存储。新 Agent 使用模块化提示结构
 - \`list_agents\` — 列出所有 Agent（内置 + 自定义）
 - \`update_agent(name, updates)\` — 更新 Agent 配置
 - \`delete_agent(name)\` — 删除自定义 Agent（不可删除内置 Agent）

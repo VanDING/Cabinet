@@ -3,7 +3,7 @@
 # Cabinet - Your AI Council
 
 [![CI](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/VanDING/Cabinet/actions/workflows/ci.yml)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5%2B-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9%2B-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-green.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -93,7 +93,7 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Architecture
 
-Cabinet V2.0 is a **TypeScript monorepo** built on a strict 5-layer architecture. Fourteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
+Cabinet V2.0 is a **TypeScript monorepo** built on a strict 5-layer architecture. Fifteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
 
 ```
 Layer 4 (Interface):   ui, server, desktop       ← user/network boundary
@@ -164,7 +164,7 @@ Layer 1 (Infra):       graph, types, events, storage  ← infrastructure
   A three-column strategic command center on desktop; REST and WebSocket APIs for integration.
 
 - **Observability · Transparent and Auditable**
-  Built-in OpenTelemetry tracing and Prometheus metrics mean your AI team's operations are never a black box.
+  Built-in observability collector tracks session metrics, tool health, cost, and context-zone distribution, generating daily reports and health checks so your AI team's operations are never a black box.
 
 ---
 
