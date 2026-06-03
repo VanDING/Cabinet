@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import type { ChatMessage, AttachedFile, Session } from '../hooks/useSessions';
@@ -25,6 +26,7 @@ interface Props {
   onSubAgentClick?: (sessionId: string) => void;
   onSubAgentApprove?: (sessionId: string) => void;
   onResetInputTarget?: () => void;
+  onBack?: () => void;
 }
 
 function escapeHtml(text: string): string {
@@ -224,6 +226,7 @@ export const ChatView = memo(function ChatView({
   onSubAgentClick,
   onSubAgentApprove,
   onResetInputTarget,
+  onBack,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -260,10 +263,19 @@ export const ChatView = memo(function ChatView({
         }
       }}
     >
-      <div className="shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5">
-        <h2 className="truncate text-sm font-medium text-content-secondary">
+      <div className="shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5 flex items-center justify-between gap-3">
+        <h2 className="truncate text-sm font-medium text-content-secondary min-w-0 flex-1">
           {sessionTitle}
         </h2>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-surface-overlay/80 px-2.5 py-1 text-xs text-content-secondary transition-colors hover:bg-surface-elevated"
+          >
+            <ArrowLeft size={12} />
+            Back
+          </button>
+        )}
       </div>
 
       {attachedFiles.length > 0 && (

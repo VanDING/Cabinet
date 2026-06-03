@@ -332,14 +332,6 @@ export function App() {
 
           {/* Main content area (relative for floating ChatPanel) */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-            {uiMode === 'chat' && activeSession && (
-              <button
-                onClick={() => setUIMode('work')}
-                className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-surface-overlay/80 px-3 py-1.5 text-xs text-content-secondary backdrop-blur-sm transition-colors hover:bg-surface-elevated"
-              >
-                ← Back
-              </button>
-            )}
             {/* Content: browse pages or chat view */}
             <div className="flex-1 min-h-0">
               {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
@@ -466,6 +458,7 @@ export function App() {
                           setInputTarget({ type: 'secretary', sessionId: activeSession.id });
                         }
                       }}
+                      onBack={() => setUIMode('work')}
                     />
                   </Suspense>
                 </ErrorBoundary>
