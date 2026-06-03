@@ -4,7 +4,6 @@ import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
 import { SecretaryOrb } from './components/SecretaryOrb';
-import { OverlayChatPanel } from './components/OverlayChatPanel';
 import { NotificationManager } from './components/NotificationManager';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerLoading } from './components/ServerLoading';
@@ -117,21 +116,21 @@ export function App() {
   } = useLayout();
 
   const isActiveSessionProcessing = activeSession ? isSessionActive(activeSession.id) : false;
-  const isChatVisible = uiMode === 'chat' || uiMode === 'overlay';
+  const isChatVisible = uiMode === 'chat';
 
   const handleNavigate = useCallback(
     (page: NavPage) => {
       navigate(page);
       switchProject(null);
-      setUIMode('collapsed');
+      if (uiMode === 'chat') setUIMode('work');
     },
-    [navigate, switchProject, setUIMode],
+    [navigate, switchProject, uiMode, setUIMode],
   );
 
   const handleNavigateToProject = useCallback(
     (projectId: string) => {
       switchProject(projectId);
-      setUIMode('collapsed');
+      setUIMode('work');
       navigateToProject(projectId);
     },
     [switchProject, setUIMode, navigateToProject],
@@ -336,7 +335,7 @@ export function App() {
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {uiMode === 'chat' && activeSession && (
               <button
-                onClick={() => setUIMode('collapsed')}
+                onClick={() => setUIMode('work')}
                 className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-surface-overlay/80 px-3 py-1.5 text-xs text-content-secondary backdrop-blur-sm transition-colors hover:bg-surface-elevated"
               >
                 ← Back
@@ -475,7 +474,7 @@ export function App() {
             </div>
 
             {/* Floating ChatPanel at the bottom of main content area */}
-            {uiMode === 'chat' && (
+            {uiMode !== 'idle' && (
               <ChatPanel
               sessions={sessions}
               activeSession={activeSession}
@@ -508,6 +507,7 @@ export function App() {
               inputTarget={inputTarget}
               onInputTargetChange={setInputTarget}
               activeSessionId={activeSession?.id ?? null}
+              onMinimize={() => setUIMode('idle')}
             />
             )}
           </div>
@@ -520,128 +520,12 @@ export function App() {
         <MobileNav activePage={activePage} onNavigate={handleNavigate} />
 
         {/* Secretary Orb */}
-        {uiMode === 'collapsed' && <SecretaryOrb />}
+        {uiMode === 'idle' && <SecretaryOrb />}
 
         {/* Notification Bubbles */}
         <NotificationManager />
 
-        {/* Overlay Chat Panel */}
-        {uiMode === 'overlay' && activeSession && (
-          <OverlayChatPanel
-            onClose={() => setUIMode('collapsed')}
-            onExpand={() => setUIMode('chat')}
-          >
-            <div className="flex-1 min-h-0 overflow-auto">
-              <ErrorBoundary>
-                <Suspense fallback={<PageLoader />}>
-                  <ChatView
-                    messages={activeSession.messages}
-                    isProcessing={isActiveSessionProcessing}
-                    attachedFiles={activeSession.attachedFiles}
-                    sessionTitle={activeSession.title}
-                    onEditMessage={(msgId, newContent) => {
-                      editMessage(activeSession.id, msgId, newContent);
-                      handleSend(activeSession.id, newContent, activeSession.attachedFiles);
-                    }}
-                    onRegenerate={(msgId) => {
-                      const idx = activeSession.messages.findIndex((m) => m.id === msgId);
-                      if (idx > 0) {
-                        const prevUser = activeSession.messages
-                          .slice(0, idx)
-                          .reverse()
-                          .find((m) => m.role === 'user');
-                        if (prevUser)
-                          handleSend(
-                            activeSession.id,
-                            prevUser.content,
-                            activeSession.attachedFiles,
-                          );
-                      }
-                    }}
-                    onForkMessage={(msgId) => {
-                      const forkedId = forkSession(activeSession.id, msgId);
-                      if (forkedId) {
-                        addToast('success', 'Forked to new session');
-                      }
-                    }}
-                    onContinue={(msgId) => {
-                      handleSend(
-                        activeSession.id,
-                        'Please continue to complete the above tasks',
-                        activeSession.attachedFiles,
-                      );
-                    }}
-                    childSessions={getChildSessions(activeSession.id)}
-                    onSubAgentClick={(sessionId) => {
-                      const child = sessions.find((s) => s.id === sessionId);
-                      if (child) {
-                        setInputTarget({
-                          type: 'subagent',
-                          sessionId: child.id,
-                          agentId: child.agentType ?? 'unknown',
-                        });
-                      }
-                    }}
-                    onSubAgentApprove={(sessionId) => {
-                      apiFetch('/api/secretary/subagent/input', {
-                        method: 'POST',
-                        headers: authJsonHeaders(),
-                        body: JSON.stringify({ subAgentSessionId: sessionId, input: 'approved' }),
-                      })
-                        .then(() => {
-                          if (activeSession) {
-                            setInputTarget({ type: 'secretary', sessionId: activeSession.id });
-                          }
-                        })
-                        .catch(() => {
-                          addToast('error', 'Failed to approve sub-agent');
-                        });
-                    }}
-                    onResetInputTarget={() => {
-                      if (activeSession) {
-                        setInputTarget({ type: 'secretary', sessionId: activeSession.id });
-                      }
-                    }}
-                  />
-                </Suspense>
-              </ErrorBoundary>
-            </div>
-            <ChatPanel
-              sessions={sessions}
-              activeSession={activeSession}
-              history={history}
-              isSessionActive={isSessionActive}
-              onCreateSession={handleCreateSession}
-              onCloseSession={closeSession}
-              onSwitchSession={(id) => {
-                const targetSession = sessions.find((s) => s.id === id);
-                if (targetSession?.projectId) {
-                  switchProject(targetSession.projectId);
-                }
-                switchSession(id);
-                setChatMode(true);
-              }}
-              onAddFile={addFile}
-              onRemoveFile={removeFile}
-              onReopenSession={reopenSession}
-              onDeleteHistorySession={deleteHistorySession}
-              onSend={handleSend}
-              onEnterChat={handleEnterChat}
-              isProcessing={isActiveSessionProcessing}
-              onStop={handleStop}
-              activeProjectId={activeProjectId}
-              projects={projects}
-              onSwitchProject={(id) => switchProject(id)}
-              onNewProject={handleOpenProjectActionModal}
-              activeAgent={activeAgent}
-              onAgentChange={setActiveAgent}
-              inputTarget={inputTarget}
-              onInputTargetChange={setInputTarget}
-              activeSessionId={activeSession?.id ?? null}
-              floating={false}
-            />
-          </OverlayChatPanel>
-        )}
+        {/* Overlay Chat Panel removed */}
 
         {/* Project action modal */}
         {showProjectActionModal && (

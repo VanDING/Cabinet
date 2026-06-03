@@ -25,7 +25,7 @@ export type InputTarget =
   | { type: 'secretary'; sessionId: string }
   | { type: 'subagent'; sessionId: string; agentId: string };
 
-export type UIMode = 'collapsed' | 'overlay' | 'chat';
+export type UIMode = 'idle' | 'work' | 'chat';
 
 export type OrbMood = 'idle' | 'thinking' | 'happy' | 'surprised' | 'sleepy';
 
@@ -126,13 +126,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [uiMode, setUIMode] = useState<UIMode>(() => {
     try {
       const saved = localStorage.getItem('cabinet-ui-mode');
-      if (saved === 'chat' || saved === 'overlay' || saved === 'collapsed') return saved;
+      if (saved === 'chat' || saved === 'work') return saved;
+      if (saved === 'collapsed' || saved === 'overlay') return 'work';
     } catch {}
-    return 'collapsed';
+    return 'idle';
   });
   const chatMode = uiMode === 'chat';
   const setChatMode = useCallback((v: boolean) => {
-    setUIMode(v ? 'chat' : 'collapsed');
+    setUIMode(v ? 'chat' : 'work');
   }, []);
   const [activeAgent, setActiveAgent] = useState('secretary');
   const [notifications, setNotifications] = useState<SecretaryNotification[]>([]);
@@ -143,10 +144,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('cabinet-ui-mode', uiMode);
   }, [uiMode]);
 
-  // Reset to collapsed if chat/overlay is active but no session exists
+  // Reset to work if chat is active but no session exists
   useEffect(() => {
-    if ((uiMode === 'chat' || uiMode === 'overlay') && !activeSession) {
-      setUIMode('collapsed');
+    if (uiMode === 'chat' && !activeSession) {
+      setUIMode('work');
     }
   }, [uiMode, activeSession]);
 
