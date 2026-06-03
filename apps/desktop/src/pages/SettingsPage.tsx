@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { Tabs, type Tab } from '@cabinet/ui';
-import { SkillsTab, ApiKeysTab, RulesTab, McpTab, OthersTab } from './settings/index.js';
+import { ApiKeysTab, OthersTab, ThemeTab } from './settings/index.js';
 
-type SettingsTab = 'rules' | 'skills' | 'mcp' | 'api' | 'others';
+type SettingsTab = 'api' | 'theme' | 'others';
 
 const tabLabels: Record<SettingsTab, string> = {
-  rules: 'Rules',
-  skills: 'Skills',
-  mcp: 'MCP',
   api: 'API Keys',
+  theme: 'Theme',
   others: 'Others',
 };
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('rules');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('api');
 
   const tabItems: Tab[] = (Object.keys(tabLabels) as SettingsTab[]).map((id) => ({
     id,
@@ -34,10 +32,8 @@ export function SettingsPage() {
       />
 
       {/* Tab Content */}
-      {activeTab === 'rules' && <RulesTab />}
-      {activeTab === 'skills' && <SkillsTab />}
-      {activeTab === 'mcp' && <McpTab />}
       {activeTab === 'api' && <ApiKeysTab />}
+      {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
     </div>
   );

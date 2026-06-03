@@ -84,8 +84,7 @@ export function SkillsTab() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-content-primary">Skills</h2>
+      <div className="mb-4 flex items-center justify-end">
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -186,7 +185,7 @@ export function SkillsTab() {
       )}
 
       {skills.length === 0 ? (
-        <p className="py-4 text-sm text-content-tertiary">No skills registered yet.</p>
+        <p className="py-4 text-sm text-content-tertiary">No skills found.</p>
       ) : (
         <div className="space-y-2">
           {skills.map((s) => (

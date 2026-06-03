@@ -17,7 +17,7 @@ const LayoutContext = createContext<LayoutContextValue | null>(null);
 export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const routerNavigate = useNavigate();
   const [activePage, setActivePage] = useState<NavPage>('office');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarWidth, setSidebarWidthState] = useState(160);
 
   const navigate = useCallback(
