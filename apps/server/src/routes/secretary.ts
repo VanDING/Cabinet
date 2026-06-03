@@ -1904,7 +1904,48 @@ function getAgentLoopForRole(
   const role = registry.get(roleType);
   if (!role) return null;
 
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId), role.allowedTools);
+  // ── Employee config override (for custom agents) ──
+  let effectiveModel = model;
+  let effectiveTemperature = role.temperature;
+  let effectiveMaxResponseTokens = role.maxResponseTokens;
+  let effectiveSystemPrompt = role.modules.identity;
+  let effectiveAllowedTools = role.allowedTools;
+
+  if (role.type === 'custom') {
+    const emp = ctx.employeeRepo.findAll().find(
+      (e) => e.name === role.name && e.kind === 'ai',
+    );
+    if (emp) {
+      const pipeline = (() => {
+        try { return JSON.parse(emp.pipeline_config ?? '{}'); } catch { return {}; }
+      })();
+      const empAllowedTools = (() => {
+        try { return JSON.parse(emp.allowed_tools ?? '[]'); } catch { return []; }
+      })();
+
+      if (!effectiveModel && pipeline.model) {
+        effectiveModel = pipeline.model;
+      }
+      if (pipeline.temperature !== undefined) {
+        effectiveTemperature = pipeline.temperature;
+      }
+      if (pipeline.maxTokens !== undefined) {
+        effectiveMaxResponseTokens = pipeline.maxTokens;
+      }
+      if (pipeline.systemPrompt) {
+        effectiveSystemPrompt = pipeline.systemPrompt;
+      }
+      if (empAllowedTools.length > 0) {
+        effectiveAllowedTools = empAllowedTools;
+      }
+    }
+  }
+
+  const executor = createStandardToolExecutor(
+    ctx,
+    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId),
+    effectiveAllowedTools,
+  );
 
   // Look up project root path for the system prompt
   let projectRootPath: string | undefined;
@@ -1940,11 +1981,11 @@ function getAgentLoopForRole(
     memorySessionId: memorySessionId ?? sessionId,
     projectId,
     captainId,
-    roleModules: { identity: buildSystemPrompt(role.type, role.modules.identity, projectRootPath) },
-    model: model ?? resolveModel(role),
+    roleModules: { identity: buildSystemPrompt(role.type, effectiveSystemPrompt, projectRootPath) },
+    model: effectiveModel ?? resolveModel(role),
     maxSteps: role.maxSteps ?? 50,
-    maxResponseTokens: role.maxResponseTokens,
-    temperature: role.temperature,
+    maxResponseTokens: effectiveMaxResponseTokens,
+    temperature: effectiveTemperature,
     contextBudget: role.contextBudget,
     thinkingBudget,
     trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
