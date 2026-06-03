@@ -17,9 +17,10 @@ export function definitionToCanvas(
   const nodes: CanvasNode[] = [];
   let needsLayout = false;
 
-  for (const raw of serverNodes) {
+  // Flatten nested nodes and restore parentId relationships
+  function addNode(raw: WorkflowNodeDef, parentId?: string, parentOffset?: { x: number; y: number }) {
     const savedPos = positionMap.get(raw.id);
-    if (!savedPos) needsLayout = true;
+    if (!savedPos && !parentId) needsLayout = true;
 
     const data: CanvasNodeData = {
       title: raw.title,
@@ -61,12 +62,52 @@ export function definitionToCanvas(
       outputAs: raw.outputAs,
     };
 
+    const basePos = savedPos ?? { x: 0, y: 0 };
+    const position = parentOffset
+      ? { x: basePos.x - parentOffset.x, y: basePos.y - parentOffset.y }
+      : basePos;
+
     nodes.push({
       id: raw.id,
       type: raw.type as CanvasNodeType,
-      position: savedPos ?? { x: 0, y: 0 },
+      position,
       data,
+      parentId,
+      extent: parentId ? 'parent' : undefined,
     });
+
+    // Recursively add children
+    if (raw.children && raw.children.length > 0) {
+      const childOffset = parentOffset ? { x: parentOffset.x + position.x, y: parentOffset.y + position.y } : position;
+      // If no saved positions for children, arrange them in a grid inside parent
+      const hasSavedChildPositions = raw.children.some((c) => positionMap.has(c.id));
+      if (!hasSavedChildPositions) {
+        // Auto-layout children inside parent
+        let cx = 20;
+        let cy = 50;
+        const colWidth = 220;
+        const rowHeight = 80;
+        for (let i = 0; i < raw.children.length; i++) {
+          const child = raw.children[i];
+          if (!child) continue;
+          if (!positionMap.has(child.id)) {
+            positionMap.set(child.id, { x: cx, y: cy });
+          }
+          cx += colWidth;
+          if (cx > 400) {
+            cx = 20;
+            cy += rowHeight;
+          }
+        }
+      }
+      for (const child of raw.children) {
+        addNode(child, raw.id, childOffset);
+      }
+    }
+  }
+
+  for (const raw of serverNodes) {
+    addNode(raw);
   }
 
   const edges: CanvasEdge[] = serverEdges.map((e) => ({
@@ -89,7 +130,18 @@ export function canvasToDefinition(
   nodes: CanvasNode[],
   edges: CanvasEdge[],
 ): { nodes: WorkflowNodeDef[]; edges: { from: string; to: string; branch?: string; label?: string }[] } {
-  const outNodes: WorkflowNodeDef[] = nodes.map((n) => {
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const childrenMap = new Map<string, CanvasNode[]>();
+
+  // Build parent → children mapping
+  for (const n of nodes) {
+    if (n.parentId) {
+      if (!childrenMap.has(n.parentId)) childrenMap.set(n.parentId, []);
+      childrenMap.get(n.parentId)!.push(n);
+    }
+  }
+
+  function buildDef(n: CanvasNode): WorkflowNodeDef {
     const d = n.data ?? {};
     const def: WorkflowNodeDef = {
       id: n.id,
@@ -134,8 +186,18 @@ export function canvasToDefinition(
       outputAs: d.outputAs,
       data: d,
     };
+
+    const children = childrenMap.get(n.id);
+    if (children && children.length > 0) {
+      def.children = children.map((c) => buildDef(c));
+    }
+
     return def;
-  });
+  }
+
+  // Only top-level nodes (no parentId) go into the output
+  const topLevelNodes = nodes.filter((n) => !n.parentId);
+  const outNodes = topLevelNodes.map((n) => buildDef(n));
 
   const outEdges = edges.map((e) => ({
     from: e.source,
