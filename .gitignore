@@ -45,3 +45,9 @@ apps/server/bundle/
 .worktrees/
 /worktrees/
 /.worktrees/
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Screenshot artifacts (manual testing)
+part*_*.png
