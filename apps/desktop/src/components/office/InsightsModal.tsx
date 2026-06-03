@@ -1,3 +1,4 @@
+import { ModalOverlay } from '../ModalOverlay';
 import { useState, useEffect, useCallback } from 'react';
 import { X, Lightbulb } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/api.js';
@@ -41,11 +42,7 @@ export function InsightsModal({ onClose }: Props) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg">
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <div className="flex items-center gap-2">
             <Lightbulb size={16} className="text-accent" />
@@ -92,7 +89,6 @@ export function InsightsModal({ onClose }: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

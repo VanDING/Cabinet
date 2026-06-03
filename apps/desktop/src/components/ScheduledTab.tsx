@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
 import { apiFetch, authJsonHeaders } from '../utils/api.js';
+import { ModalOverlay } from './ModalOverlay';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -179,14 +180,11 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
       )}
 
       {showForm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={onFormClose}
+        <ModalOverlay
+          isOpen={true}
+          onClose={onFormClose ?? (() => {})}
+          contentClassName={`${cardClasses} w-full max-w-md rounded-xl p-6 shadow-2xl`}
         >
-          <div
-            className={`${cardClasses} w-full max-w-md rounded-xl p-6 shadow-2xl`}
-            onClick={(e) => e.stopPropagation()}
-          >
             <h3 className={`mb-4 text-lg font-semibold ${textClasses}`}>New Scheduled Task</h3>
             <div className="space-y-3">
               <input
@@ -240,8 +238,7 @@ export function ScheduledTab({ showForm = false, onFormClose }: Props) {
                 Create
               </button>
             </div>
-          </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

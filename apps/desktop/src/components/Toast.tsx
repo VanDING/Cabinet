@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 
 export interface ToastMessage {
   id: string;
@@ -43,10 +43,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => void }) {
+  const [exiting, setExiting] = useState(false);
+  const exitingRef = useRef(false);
+
+  const handleClose = useCallback(() => {
+    if (exitingRef.current) return;
+    exitingRef.current = true;
+    setExiting(true);
+    setTimeout(onClose, 300);
+  }, [onClose]);
+
   useEffect(() => {
-    const timer = setTimeout(onClose, toast.duration ?? 4000);
+    const timer = setTimeout(() => {
+      if (!exitingRef.current) handleClose();
+    }, toast.duration ?? 4000);
     return () => clearTimeout(timer);
-  }, [toast.duration, onClose]);
+  }, [toast.duration, handleClose]);
 
   const colors = {
     success: 'bg-intent-success',
@@ -57,10 +69,10 @@ function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => voi
 
   return (
     <div
-      className={`${colors[toast.type]} animate-slide-in flex items-center gap-2 rounded-lg px-4 py-3 text-content-inverse shadow-lg`}
+      className={`${colors[toast.type]} ${exiting ? 'animate-slide-out' : 'animate-slide-in'} flex items-center gap-2 rounded-lg px-4 py-3 text-content-inverse shadow-lg`}
     >
       <span className="flex-1 text-sm">{toast.message}</span>
-      <button onClick={onClose} className="text-lg leading-none text-content-inverse/70 hover:text-content-inverse">
+      <button onClick={handleClose} className="text-lg leading-none text-content-inverse/70 hover:text-content-inverse">
         &times;
       </button>
     </div>

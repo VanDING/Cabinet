@@ -1,3 +1,4 @@
+import { ModalOverlay } from '../ModalOverlay';
 import { useState, useEffect } from 'react';
 import { X, Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
 
@@ -104,11 +105,7 @@ export function WeatherForecastModal({ onClose }: Props) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="m-4 max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface-primary shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface-primary shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <h3 className="text-lg font-semibold text-content-primary">
@@ -169,7 +166,6 @@ export function WeatherForecastModal({ onClose }: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

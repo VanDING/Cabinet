@@ -285,7 +285,7 @@ export function ChatPanel({
   return (
     <div className={`pointer-events-none z-10 flex justify-center ${floating ? 'absolute bottom-4 left-4 right-4' : 'relative w-full'}`}>
       <div
-        className={`rounded-2xl border shadow-2xl ${borderClass} ${bgClass} pointer-events-auto mb-4 w-full max-w-[1080px]`}
+        className={`chat-panel-inner rounded-2xl border shadow-2xl ${borderClass} ${bgClass} pointer-events-auto mb-4 w-full max-w-[1080px]`}
       >
         {/* Tab bar */}
         <div
@@ -304,7 +304,7 @@ export function ChatPanel({
             </button>
             {agentMenuOpen && (
               <div
-                className="absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-border bg-surface-primary py-1 shadow-xl"
+                className="dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-border bg-surface-primary py-1 shadow-xl"
               >
                 <div
                   className="border-b border-border px-3 py-1 text-xs text-content-tertiary"
@@ -354,7 +354,7 @@ export function ChatPanel({
             </button>
             {projectMenuOpen && (
               <div
-                className={`absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
                   Switch Project
@@ -546,7 +546,7 @@ export function ChatPanel({
           {slashMenuOpen && (
             <div
               ref={slashMenuRef}
-              className={`absolute bottom-full left-3 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+              className={`dropdown-enter absolute bottom-full left-3 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
             >
               <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
                 Select a skill
@@ -594,7 +594,7 @@ export function ChatPanel({
             </button>
             {addMenuOpen && (
               <div
-                className={`absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <button
                   onClick={handleAddLocalFile}
@@ -623,7 +623,7 @@ export function ChatPanel({
             </button>
             {skillMenuOpen && (
               <div
-                className={`absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
                   Select a skill
@@ -666,7 +666,7 @@ export function ChatPanel({
             </button>
             {tierMenuOpen && (
               <div
-                className={`absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
                   Delegation Tier
@@ -712,7 +712,7 @@ export function ChatPanel({
             </button>
             {modelMenuOpen && (
               <div
-                className={`absolute bottom-full right-0 z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter absolute bottom-full right-0 z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
                   Select model

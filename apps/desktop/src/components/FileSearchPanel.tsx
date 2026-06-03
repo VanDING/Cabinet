@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { ModalOverlay } from './ModalOverlay';
 import { apiFetch, authHeaders } from '../utils/api.js';
 
 interface Props {
@@ -57,11 +58,12 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20" onClick={onClose}>
-      <div
-        className="max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay
+      isOpen={true}
+      onClose={onClose}
+      contentClassName="file-search-enter max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs shadow-xl"
+      backdropClassName="items-start justify-center pt-20"
+    >
         <div className="border-b border-border p-3">
           <input
             ref={inputRef}
@@ -93,7 +95,6 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
             ))
           )}
         </div>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

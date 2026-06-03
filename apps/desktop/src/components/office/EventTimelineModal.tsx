@@ -1,3 +1,4 @@
+import { ModalOverlay } from '../ModalOverlay';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/api.js';
@@ -134,11 +135,7 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
   }, [events]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3">
           <h3 className="text-lg font-semibold text-content-primary">Event Timeline</h3>
@@ -201,7 +198,6 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </ModalOverlay>
   );
 }

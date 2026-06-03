@@ -197,13 +197,21 @@ body {
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
-/* Toast slide-in */
+/* Toast slide-in / slide-out */
 @keyframes slide-in {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+.animate-slide-out {
+  animation: slide-out 0.3s ease-in forwards;
 }
 
 /* react-grid-layout overrides */
@@ -485,7 +493,8 @@ body {
   align-items: center;
   gap: var(--eye-gap, 0.375rem);
   position: relative;
-  transition: gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
 }
 
 .orb-eye {
@@ -727,23 +736,445 @@ body {
   box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-/* Unread badge */
-.secretary-orb .unread-badge {
+/* ── New Orb Animations ── */
+@keyframes orb-hover-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  70%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.secretary-orb.pop {
+  animation: orb-hover-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes orb-excited {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-6deg) scale(1.04); }
+  40% { transform: rotate(6deg) scale(1.04); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(4deg); }
+}
+
+.secretary-orb.excited {
+  animation: orb-excited 0.5s ease-in-out;
+}
+
+@keyframes orb-thinking-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-0.5px); }
+  75% { transform: translateX(0.5px); }
+}
+
+.secretary-orb.thinking-active {
+  animation: orb-thinking-shake 0.3s ease-in-out infinite;
+}
+
+/* ── Accessories ── */
+.accessory {
   position: absolute;
-  top: -0.25rem;
-  right: -0.25rem;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+/* imp */
+.orb-horn {
+  top: -0.35rem;
+  width: 0;
+  height: 0;
+  border-left: 0.25rem solid transparent;
+  border-right: 0.25rem solid transparent;
+  border-bottom: 0.5rem solid #4c1d95;
+  transform-origin: bottom center;
+}
+.orb-horn.left { left: 0.35rem; transform: scale(0.5) rotate(-20deg); }
+.orb-horn.right { right: 0.35rem; transform: scale(0.5) rotate(20deg); }
+.secretary-orb.acc-imp .orb-horn.left { opacity: 1; transform: scale(1) rotate(-20deg); }
+.secretary-orb.acc-imp .orb-horn.right { opacity: 1; transform: scale(1) rotate(20deg); }
+
+/* hat */
+.orb-hat-wrap {
+  top: -0.875rem;
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.orb-hat-top {
+  width: 1.125rem;
+  height: 0.625rem;
+  background: #1e293b;
+  border-radius: 2px 2px 0 0;
+  border: 1px solid #334155;
+  border-bottom: none;
+}
+.orb-hat-brim {
+  width: 2rem;
+  height: 0.3125rem;
+  background: #1e293b;
+  border-radius: 9999px;
+  border: 1px solid #334155;
+}
+.secretary-orb.acc-hat .orb-hat-wrap { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* crown */
+.orb-crown-wrap {
+  top: -0.625rem;
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  padding-bottom: 0.125rem;
+}
+.orb-crown-peak {
+  width: 0;
+  height: 0;
+  border-left: 0.25rem solid transparent;
+  border-right: 0.25rem solid transparent;
+  border-bottom: 0.5rem solid #fbbf24;
+}
+.orb-crown-peak:nth-child(2) { border-bottom-width: 0.625rem; }
+.orb-crown-band {
+  position: absolute;
+  bottom: 0;
+  left: -0.125rem;
+  right: -0.125rem;
+  height: 0.125rem;
+  background: #f59e0b;
+  border-radius: 1px;
+}
+.secretary-orb.acc-crown .orb-crown-wrap { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* headphones */
+.orb-headphones-wrap {
+  inset: -0.5rem;
+  transform: scale(0.5);
+}
+.orb-headphones-band {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2.5rem;
+  height: 1.5rem;
+  border: 2.5px solid var(--content-secondary);
+  border-bottom: none;
+  border-radius: 1.25rem 1.25rem 0 0;
+  opacity: 0.5;
+}
+.orb-headphones-ear {
+  position: absolute;
+  top: 0.875rem;
+  width: 0.625rem;
+  height: 0.875rem;
+  background: var(--content-secondary);
+  border-radius: 0.1875rem;
+  opacity: 0.5;
+}
+.orb-headphones-ear.left { left: 0; }
+.orb-headphones-ear.right { right: 0; }
+.secretary-orb.acc-headphones .orb-headphones-wrap { opacity: 1; transform: scale(1); }
+
+/* blush */
+.orb-blush-wrap {
+  top: 55%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%) scale(0.5);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0.125rem;
+}
+.orb-blush-spot {
+  width: 0.5rem;
+  height: 0.375rem;
+  background: #fca5a5;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+.secretary-orb.acc-blush .orb-blush-wrap { opacity: 1; transform: translateY(-50%) scale(1); }
+
+/* heart-eyes */
+.orb-heart-eye {
+  display: none;
+  position: relative;
+  width: 0.75rem;
+  height: 0.625rem;
+  transform: translateY(-1px);
+}
+.orb-heart-eye::before,
+.orb-heart-eye::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 0.4375rem;
+  height: 0.625rem;
+  background: var(--accent-foreground);
+  border-radius: 0.4375rem 0.4375rem 0 0;
+}
+.orb-heart-eye::before { left: 0.375rem; transform: rotate(-45deg); transform-origin: 0 100%; }
+.orb-heart-eye::after { left: 0; transform: rotate(45deg); transform-origin: 100% 100%; }
+.secretary-orb.acc-heart-eyes .orb-eye { display: none; }
+.secretary-orb.acc-heart-eyes .orb-heart-eye { display: block; }
+
+/* ── ZZZ particles ── */
+@keyframes zzz-float {
+  0%   { transform: translate(0, 0) rotate(-8deg) scale(0.7); opacity: 0; }
+  15%  { opacity: 0.7; }
+  100% { transform: translate(16px, -50px) rotate(8deg) scale(1.2); opacity: 0; }
+}
+.zzz-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2rem;
+  height: 3rem;
+  pointer-events: none;
+  overflow: visible;
+}
+.zzz-particle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  animation: zzz-float 2.5s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Note particles ── */
+@keyframes note-float {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(0.7); opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { transform: translate(-18px, -55px) rotate(-12deg) scale(1.1); opacity: 0; }
+}
+.note-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2rem;
+  height: 3rem;
+  pointer-events: none;
+  overflow: visible;
+}
+.note-particle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  font-size: 0.625rem;
+  color: rgba(255,255,255,0.7);
+  animation: note-float 3s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Notification bubbles ── */
+@keyframes bubble-pop {
+  0%   { opacity: 0; transform: scale(0.85) translateY(8px); }
+  70%  { opacity: 1; transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes bubble-fade {
+  to { opacity: 0; transform: scale(0.95) translateY(-6px); }
+}
+.bubble-stack {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.375rem;
+  align-items: center;
+  pointer-events: none;
+  z-index: 60;
+}
+.orb-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  white-space: nowrap;
+  animation: bubble-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  pointer-events: auto;
+  cursor: pointer;
+  position: relative;
+}
+.orb-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: var(--surface-elevated);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.orb-bubble.exiting {
+  animation: bubble-fade 0.3s ease forwards;
+}
+.bubble-icon { font-size: 0.875rem; }
+.bubble-text { font-size: 0.6875rem; color: var(--content-primary); font-weight: 500; }
+
+/* ── Modal Overlay Animations ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.25rem;
-  border-radius: 9999px;
-  background: var(--intent-danger);
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: var(--intent-danger-foreground);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.modal-backdrop.enter,
+.modal-backdrop.enter-active {
+  opacity: 1;
+}
+.modal-backdrop.exit {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.modal-content {
+  transform: scale(0.96) translateY(10px);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.modal-content.enter,
+.modal-content.enter-active {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+.modal-content.exit {
+  transform: scale(0.96) translateY(10px);
+  opacity: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+
+/* ── Dropdown Enter Animation ── */
+.dropdown-enter {
+  animation: dropdown-in 0.15s ease-out forwards;
+  transform-origin: top center;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+/* ── File Search Panel Enter ── */
+.file-search-enter {
+  animation: file-search-in 0.2s ease-out forwards;
+}
+
+@keyframes file-search-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Decision Review Panel Slide ── */
+.decision-panel-enter {
+  animation: panel-slide-right 0.3s cubic-bezier(0.32, 0, 0.2, 1) forwards;
+}
+
+@keyframes panel-slide-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ── Page ↔ Chat View Transition ── */
+.page-viewport {
+  transition: transform 0.4s cubic-bezier(0.32, 0, 0.2, 1), opacity 0.35s ease;
+}
+.page-viewport.page-hidden {
+  transform: translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.chat-viewport {
+  position: absolute;
+  inset: 0;
+  animation: chat-slide-up 0.4s cubic-bezier(0.32, 0, 0.2, 1) forwards;
+}
+
+@keyframes chat-slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Orb → Panel Slide Transition ── */
+
+/* Secretary orb slides out during opening, slides in during closing */
+.secretary-orb-wrap {
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+}
+
+.opening .secretary-orb-wrap {
+  transform: translateY(30px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.closing .secretary-orb-wrap {
+  animation: orb-slide-in 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+@keyframes orb-slide-in {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ChatPanel: default hidden state when rendered */
+.chat-panel-inner {
+  transform: translateY(40px) scale(0.96);
+  opacity: 0;
+}
+
+/* Opening: use @keyframes so animation plays even on first mount */
+.opening .chat-panel-inner {
+  animation: panel-slide-up 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+@keyframes panel-slide-up {
+  from { transform: translateY(40px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Work/Chat mode: visible */
+[data-ui-mode="work"] .chat-panel-inner,
+[data-ui-mode="chat"] .chat-panel-inner {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.64, 1), opacity 0.35s ease;
+}
+
+/* Closing: panel slides out */
+.closing .chat-panel-inner {
+  transform: translateY(40px) scale(0.96);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
 
 /* Responsive */
