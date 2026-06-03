@@ -263,7 +263,9 @@ export class WorkflowEngine {
           allowedTools: node.allowedTools,
         });
         run._agentLoop = { agentId: role, handle };
-        const childGraph = this.buildGraph(node.children ?? [], []);
+        const childIds = new Set((node.children ?? []).map((c) => c.id));
+        const childEdges = this.currentEdges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+        const childGraph = this.buildGraph(node.children ?? [], childEdges);
         const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
         const entryChild = node.children?.[0]?.id;
         if (entryChild) {
@@ -347,7 +349,8 @@ export class WorkflowEngine {
           if (childIds.has(edge.from) && !childIds.has(edge.to)) exitIds.push(edge.to);
         }
         const results: unknown[] = [];
-        const childGraph = this.buildGraph(node.children ?? [], []);
+        const childEdges = this.currentEdges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+        const childGraph = this.buildGraph(node.children ?? [], childEdges);
         const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
         for (let i = 0; i < maxIter; i++) {
           if (node.loopType === 'count' && i >= (node.loopCount ?? 1)) break;
@@ -371,12 +374,16 @@ export class WorkflowEngine {
         break;
       }
       case 'parallel': {
-        const children = this.buildGraph(node.children ?? [], []).get(node.id) ?? [];
+        const childIds = new Set((node.children ?? []).map((c) => c.id));
+        const childEdges = this.currentEdges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+        const childGraph = this.buildGraph(node.children ?? [], childEdges);
+        const childMap = new Map((node.children ?? []).map((c) => [c.id, c]));
+        const entryChildren = node.children?.map((c) => c.id) ?? [];
         const childResults = await Promise.allSettled(
-          children.map((id) => this.executeNode(id, nodeMap, this.buildGraph([], []), run, new Set())),
+          entryChildren.map((id) => this.executeNode(id, childMap, childGraph, run, new Set())),
         );
         const parts: string[] = [];
-        for (const childId of children) {
+        for (const childId of entryChildren) {
           const childStep = run.steps.find((s) => s.nodeId === childId);
           if (childStep) parts.push(`[${childId}]: ${childStep.output}`);
         }

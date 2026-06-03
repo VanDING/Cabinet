@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { CanvasNode, CanvasNodeType } from './node-types';
 import { CANVAS_NODE_TYPES, NODE_LABELS } from './node-types';
+import { apiFetch, authHeaders } from '../utils/api.js';
 
 interface WorkflowMeta {
   id: string;
@@ -60,6 +61,8 @@ export function WorkflowPanel({
     if (selectedNode) setNodeData({ ...selectedNode.data });
     else setNodeData({});
   }, [selectedNode?.id]);
+
+
 
   const handleSaveNode = () => {
     if (selectedNode && onNodeUpdate) {
@@ -203,6 +206,34 @@ function NodeEditor({
   const t = node.type!;
   const set = (k: string, v: unknown) => onChange({ ...data, [k]: v });
 
+  // AI Employees for agentGroup selection
+  interface AiEmployee {
+    id: string;
+    name: string;
+    role: string;
+    model?: string;
+    systemPrompt?: string;
+    allowedTools?: string[];
+  }
+  const [aiEmployees, setAiEmployees] = useState<AiEmployee[]>([]);
+  useEffect(() => {
+    apiFetch('/api/employees', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => {
+        const emps = (d.employees ?? []).filter((e: { kind: string }) => e.kind === 'ai');
+        setAiEmployees(emps);
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem('cabinet-employees');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            setAiEmployees(parsed.filter((e: { kind: string }) => e.kind === 'ai'));
+          }
+        } catch { /* ignore */ }
+      });
+  }, []);
+
   return (
     <section className="rounded-lg border border-border bg-surface-elevated p-3">
       <h3 className="mb-3 text-xs font-semibold text-content-primary">
@@ -293,17 +324,58 @@ function NodeEditor({
         {/* ── AgentGroup ── */}
         {t === 'agentGroup' && (
           <>
-            <Field label="Role">
-              <input className={inputCls} value={(data.role as string) ?? ''} onChange={(e) => set('role', e.target.value)} placeholder="secretary / curator / custom" />
+            <Field label="Employee">
+              <select
+                className={inputCls}
+                value={(data.role as string) ?? ''}
+                onChange={(e) => {
+                  const empName = e.target.value;
+                  set('role', empName);
+                  const emp = aiEmployees.find((e) => e.name === empName);
+                  if (emp) {
+                    set('model', emp.model ?? '');
+                    set('systemPrompt', emp.systemPrompt ?? '');
+                    set('allowedTools', emp.allowedTools ?? []);
+                  }
+                }}
+              >
+                <option value="">— Select AI Employee —</option>
+                {aiEmployees.map((emp) => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name} ({emp.role})
+                  </option>
+                ))}
+              </select>
             </Field>
+            {aiEmployees.length === 0 && (
+              <p className="text-[11px] text-content-tertiary">
+                No AI employees found. Create one in the Employees page first.
+              </p>
+            )}
             <Field label="Model">
-              <input className={inputCls} value={(data.model as string) ?? ''} onChange={(e) => set('model', e.target.value)} placeholder="default" />
+              <input
+                className={inputCls}
+                value={(data.model as string) ?? ''}
+                onChange={(e) => set('model', e.target.value)}
+                placeholder="Inherited from employee"
+              />
             </Field>
             <Field label="System Prompt Override">
-              <textarea className={inputCls} rows={2} value={(data.systemPrompt as string) ?? ''} onChange={(e) => set('systemPrompt', e.target.value)} placeholder="Override the role's default system prompt" />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={(data.systemPrompt as string) ?? ''}
+                onChange={(e) => set('systemPrompt', e.target.value)}
+                placeholder="Inherited from employee"
+              />
             </Field>
             <Field label="Allowed Tools (comma-separated)">
-              <input className={inputCls} value={((data.allowedTools as string[]) ?? []).join(', ')} onChange={(e) => set('allowedTools', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="web, skills, memory" />
+              <input
+                className={inputCls}
+                value={((data.allowedTools as string[]) ?? []).join(', ')}
+                onChange={(e) => set('allowedTools', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+                placeholder="Inherited from employee"
+              />
             </Field>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={(data.persistent as boolean) ?? false} onChange={(e) => set('persistent', e.target.checked)} />

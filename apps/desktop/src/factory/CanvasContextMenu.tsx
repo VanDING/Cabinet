@@ -8,6 +8,7 @@ export interface ContextMenuState {
   nodeId?: string | null;
   edgeId?: string;
   nodeType?: CanvasNodeType;
+  selectedNodeIds?: string[];
 }
 
 interface Props {
@@ -59,6 +60,14 @@ export function CanvasContextMenu({ state, onAction, onClose }: Props) {
             Node: {state.nodeId.slice(0, 12)}…
           </div>
           <div className={separatorClass} />
+          {(state.selectedNodeIds?.length ?? 0) > 1 && (
+            <>
+              <div className={itemClass} onClick={() => sendAction('group-into-agent')}>
+                Group into Agent ({state.selectedNodeIds!.length})
+              </div>
+              <div className={separatorClass} />
+            </>
+          )}
           <div className={itemClass} onClick={() => sendAction('duplicate-node')}>
             Duplicate
           </div>

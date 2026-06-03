@@ -234,12 +234,15 @@ export function WorkflowCanvas({
         y: event.clientY,
       });
 
+      const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
+
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
         flowPosition: panePos,
         nodeId,
         edgeId: edgeId ?? undefined,
+        selectedNodeIds,
       });
     },
     [editable, reactFlowInstance],
@@ -428,6 +431,7 @@ export function WorkflowCanvas({
         snapToGrid
         snapGrid={[15, 15]}
         selectNodesOnDrag={false}
+        selectionOnDrag={editable}
         className="bg-surface-primary"
         minZoom={0.1}
         maxZoom={2}
