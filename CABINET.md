@@ -18,7 +18,7 @@
 Layer 4 (Interface):   ui, server, desktop    ← 用户/网络边界
 Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← 业务逻辑
 Layer 2 (Agent Core):  gateway, agent, memory  ← AI 交互核心
-Layer 1 (Infra):       types, events, storage  ← 基础设施
+Layer 1 (Infra):       graph, types, events, storage  ← 基础设施
 ```
 
 - 下层绝不依赖上层。如果 Layer 1 的代码 import 了 Layer 3，就是 bug。
@@ -42,7 +42,7 @@ Layer 1 (Infra):       types, events, storage  ← 基础设施
 - 桌面壳: Tauri 2.0 (Rust 后端 + React 前端)
 - 服务端: Hono (REST + WebSocket)
 - LLM 网关: Vercel AI SDK (多 provider)
-- 样式: Tailwind CSS 3.x
+- 样式: Tailwind CSS 4.3
 - 测试: Vitest
 
 ### TypeScript 约束
