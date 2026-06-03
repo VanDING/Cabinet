@@ -62,7 +62,7 @@ export function HarnessWidget({ onExpand }: Props) {
     <div
       onClick={onExpand}
       className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${
-        onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
+        onExpand ? 'cursor-pointer' : ''
       }`}
     >
       <h3 className="mb-3 text-xs font-semibold text-content-secondary">Harness</h3>

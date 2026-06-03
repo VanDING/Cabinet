@@ -138,7 +138,7 @@ export function Weather({ onExpand }: Props) {
     <div
       onClick={onExpand}
       className={`flex h-full flex-col items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs p-3 ${
-        onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
+        onExpand ? 'cursor-pointer' : ''
       }`}
     >
       {content}

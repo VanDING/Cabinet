@@ -42,7 +42,7 @@ export function InsightsWidget({ onExpand }: Props) {
     <div
       onClick={onExpand}
       className={`flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${
-        onExpand ? 'cursor-pointer transition-shadow hover:shadow-md' : ''
+        onExpand ? 'cursor-pointer' : ''
       }`}
     >
       <div className="mb-3 flex items-center justify-between">
