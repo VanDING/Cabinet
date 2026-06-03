@@ -48,6 +48,7 @@ interface Props {
   inputTarget?: InputTarget;
   onInputTargetChange?: (target: InputTarget) => void;
   activeSessionId?: string | null;
+  floating?: boolean;
 }
 
 export function ChatPanel({
@@ -75,6 +76,7 @@ export function ChatPanel({
   inputTarget,
   onInputTargetChange,
   activeSessionId,
+  floating = true,
 }: Props) {
   const [input, setInput] = useState('');
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -279,7 +281,7 @@ export function ChatPanel({
     'text-content-tertiary hover:bg-surface-muted bg-surface-input';
 
   return (
-    <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-10 flex justify-center">
+    <div className={`pointer-events-none z-10 flex justify-center ${floating ? 'absolute bottom-4 left-4 right-4' : 'relative w-full'}`}>
       <div
         className={`rounded-2xl border shadow-2xl ${borderClass} ${bgClass} pointer-events-auto mb-4 w-full max-w-[1080px]`}
       >

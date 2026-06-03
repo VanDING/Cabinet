@@ -25,6 +25,24 @@ export type InputTarget =
   | { type: 'secretary'; sessionId: string }
   | { type: 'subagent'; sessionId: string; agentId: string };
 
+export type UIMode = 'collapsed' | 'overlay' | 'chat';
+
+export type OrbMood = 'idle' | 'thinking' | 'happy' | 'surprised' | 'sleepy';
+
+export interface SecretaryNotification {
+  id: string;
+  type: 'info' | 'success' | 'warning' | 'interactive';
+  title: string;
+  body?: string;
+  actions?: Array<{
+    label: string;
+    onClick: () => void;
+  }>;
+  timestamp: number;
+  autoDismiss?: number;
+  mood?: OrbMood;
+}
+
 interface ChatContextValue {
   sessions: Session[];
   activeSession: Session | null;
@@ -32,6 +50,8 @@ interface ChatContextValue {
   processingSessions: Set<string>;
   chatMode: boolean;
   setChatMode: (v: boolean) => void;
+  uiMode: UIMode;
+  setUIMode: (mode: UIMode) => void;
   activeAgent: string;
   setActiveAgent: (v: string) => void;
   isSessionActive: (id: string) => boolean;
@@ -67,6 +87,11 @@ interface ChatContextValue {
   updateSubAgentEvents: (sessionId: string, event: import('../types/agent-events').AgentEvent) => void;
   updateSubAgentStatus: (sessionId: string, status: Session['status']) => void;
   setSubAgentDeliverable: (sessionId: string, deliverable: unknown) => void;
+  notifications: SecretaryNotification[];
+  sendNotification: (notification: Omit<SecretaryNotification, 'id' | 'timestamp'>) => void;
+  dismissNotification: (id: string) => void;
+  orbMood: OrbMood;
+  setOrbMood: (mood: OrbMood) => void;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -98,8 +123,46 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { activeProjectId } = useProject();
 
   const [processingSessions, setProcessingSessions] = useState<Set<string>>(new Set());
-  const [chatMode, setChatMode] = useState(false);
+  const [uiMode, setUIMode] = useState<UIMode>(() => {
+    try {
+      const saved = localStorage.getItem('cabinet-ui-mode');
+      if (saved === 'chat' || saved === 'overlay' || saved === 'collapsed') return saved;
+    } catch {}
+    return 'collapsed';
+  });
+  const chatMode = uiMode === 'chat';
+  const setChatMode = useCallback((v: boolean) => {
+    setUIMode(v ? 'chat' : 'collapsed');
+  }, []);
   const [activeAgent, setActiveAgent] = useState('secretary');
+  const [notifications, setNotifications] = useState<SecretaryNotification[]>([]);
+  const [orbMood, setOrbMood] = useState<OrbMood>('idle');
+
+  // Persist uiMode
+  useEffect(() => {
+    localStorage.setItem('cabinet-ui-mode', uiMode);
+  }, [uiMode]);
+
+  // Reset to collapsed if chat/overlay is active but no session exists
+  useEffect(() => {
+    if ((uiMode === 'chat' || uiMode === 'overlay') && !activeSession) {
+      setUIMode('collapsed');
+    }
+  }, [uiMode, activeSession]);
+
+  // Auto mood: thinking when processing, sleepy at night
+  useEffect(() => {
+    if (processingSessions.size > 0) {
+      setOrbMood('thinking');
+      return;
+    }
+    const hour = new Date().getHours();
+    if (hour >= 22 || hour < 7) {
+      setOrbMood('sleepy');
+    } else {
+      setOrbMood('idle');
+    }
+  }, [processingSessions.size]);
   const [inputTarget, setInputTarget] = useState<InputTarget>(() =>
     activeSession
       ? { type: 'secretary', sessionId: activeSession.id }
@@ -132,6 +195,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleEnterChat = useCallback(() => {
     setChatMode(true);
+  }, []);
+
+  const sendNotification = useCallback(
+    (notification: Omit<SecretaryNotification, 'id' | 'timestamp'>) => {
+      const id = `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const n: SecretaryNotification = {
+        ...notification,
+        id,
+        timestamp: Date.now(),
+        autoDismiss: notification.autoDismiss ?? 6000,
+      };
+      setNotifications((prev) => [...prev.slice(-2), n]);
+      if (notification.mood) {
+        setOrbMood(notification.mood);
+        setTimeout(() => {
+          setOrbMood((prev) => (prev === notification.mood ? 'idle' : prev));
+        }, 3000);
+      }
+    },
+    [],
+  );
+
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
   const handleSend = useCallback(
@@ -494,6 +581,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       processingSessions,
       chatMode,
       setChatMode,
+      uiMode,
+      setUIMode,
       activeAgent,
       setActiveAgent,
       inputTarget,
@@ -517,6 +606,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       updateSubAgentEvents,
       updateSubAgentStatus,
       setSubAgentDeliverable,
+      notifications,
+      sendNotification,
+      dismissNotification,
+      orbMood,
+      setOrbMood,
     }),
     [
       sessions,
@@ -524,6 +618,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       history,
       processingSessions,
       chatMode,
+      uiMode,
       activeAgent,
       inputTarget,
       isSessionActive,
@@ -545,6 +640,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       updateSubAgentEvents,
       updateSubAgentStatus,
       setSubAgentDeliverable,
+      notifications,
+      sendNotification,
+      dismissNotification,
+      orbMood,
+      setOrbMood,
     ],
   );
 
