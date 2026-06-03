@@ -19,6 +19,7 @@ import { runMigration019 } from './019_project_name_unique.js';
 import { runMigration020 } from './020_route_feedback.js';
 import { runMigration021 } from './021_workflow_cron.js';
 import { runMigration022 } from './022_subagent_tables.js';
+import { runMigration023 } from './023_employee_allowed_tools.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -46,6 +47,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 20, name: '020_route_feedback', up: runMigration020 },
   { version: 21, name: '021_workflow_cron', up: runMigration021 },
   { version: 22, name: '022_subagent_tables', up: runMigration022 },
+  { version: 23, name: '023_employee_allowed_tools', up: runMigration023 },
 ];
 
 /**

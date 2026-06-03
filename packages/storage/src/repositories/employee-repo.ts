@@ -9,6 +9,7 @@ export interface EmployeeRow {
   pipeline_config: string | null;
   persona: string | null;
   permission_level: string;
+  allowed_tools: string;
 }
 
 export class EmployeeRepository {
@@ -33,7 +34,7 @@ export class EmployeeRepository {
   insert(emp: EmployeeRow): void {
     this.db
       .prepare(
-        'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level, allowed_tools) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .run(
         emp.id,
@@ -44,6 +45,7 @@ export class EmployeeRepository {
         emp.pipeline_config,
         emp.persona,
         emp.permission_level,
+        emp.allowed_tools,
       );
   }
 
@@ -52,7 +54,7 @@ export class EmployeeRepository {
     changes: Partial<
       Pick<
         EmployeeRow,
-        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level'
+        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level' | 'allowed_tools'
       >
     >,
   ): void {
@@ -65,6 +67,7 @@ export class EmployeeRepository {
       pipeline_config: 'pipeline_config',
       persona: 'persona',
       permission_level: 'permission_level',
+      allowed_tools: 'allowed_tools',
     };
     for (const [key, col] of Object.entries(map)) {
       const val = (changes as Record<string, unknown>)[key];
@@ -96,6 +99,7 @@ export class EmployeeRepository {
       pipeline_config: row.pipeline_config as string | null,
       persona: row.persona as string | null,
       permission_level: row.permission_level as string,
+      allowed_tools: (row.allowed_tools as string) ?? '[]',
     };
   }
 }
