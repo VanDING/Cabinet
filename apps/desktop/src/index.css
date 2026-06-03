@@ -443,12 +443,23 @@ body {
   50% { transform: rotate(3deg); }
 }
 
-/* ── Secretary Orb — theme-aware styles ── */
-.secretary-orb {
+/* ── Secretary Orb — Magnet wrap ── */
+.secretary-orb-wrap {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
   z-index: 50;
+  padding: 2rem;
+  margin: -2rem;
+}
+
+.secretary-orb-inner {
+  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+/* ── Secretary Orb — theme-aware styles ── */
+.secretary-orb {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -458,22 +469,224 @@ body {
   background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, var(--accent-hover)) 100%);
   border: 2px solid var(--surface-primary);
   box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--accent) 30%, transparent);
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.3s ease, opacity 0.4s;
   will-change: transform;
   cursor: pointer;
+  position: relative;
 }
 
 .secretary-orb:hover {
-  transform: scale(1.1);
+  box-shadow: 0 12px 30px -5px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-.secretary-orb .orb-icon {
-  color: var(--accent-foreground);
+/* ── Parametric Eyes ── */
+.orb-face {
+  display: flex;
+  align-items: center;
+  gap: var(--eye-gap, 0.375rem);
   position: relative;
-  z-index: 10;
+  transition: gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Mood variants */
+.orb-eye {
+  /* 7 parameters */
+  --eye-w: 0.75rem;
+  --eye-h: 0.75rem;
+  --eye-rtl: 50%;
+  --eye-rtr: 50%;
+  --eye-rbl: 50%;
+  --eye-rbr: 50%;
+  --eye-rot: 0deg;
+  --eye-y: 0px;
+
+  width: var(--eye-w);
+  height: var(--eye-h);
+  background: var(--accent-foreground);
+  border-radius: var(--eye-rtl) var(--eye-rtr) var(--eye-rbr) var(--eye-rbl);
+  transform: rotate(var(--eye-rot)) translateY(var(--eye-y));
+  transition:
+    width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-radius 0.35s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, width, height;
+}
+
+/* ── Expression Presets (18 emotions) ── */
+
+/* normal */
+.secretary-orb[data-expression="normal"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="normal"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.75rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 0deg; --eye-y: 0;
+}
+
+/* happy */
+.secretary-orb[data-expression="happy"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="happy"] .orb-eye {
+  --eye-w: 0.875rem; --eye-h: 0.5rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 2px; --eye-rbr: 2px;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* glee */
+.secretary-orb[data-expression="glee"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="glee"] .orb-eye {
+  --eye-w: 0.875rem; --eye-h: 0.3125rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 0px; --eye-rbr: 0px;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* sad */
+.secretary-orb[data-expression="sad"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="sad"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.625rem;
+  --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: -10deg; --eye-y: 1px;
+}
+.secretary-orb[data-expression="sad"] .orb-eye + .orb-eye { --eye-rot: 10deg; }
+
+/* worried */
+.secretary-orb[data-expression="worried"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="worried"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.6875rem;
+  --eye-rtl: 40%; --eye-rtr: 40%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: -5deg; --eye-y: 0;
+}
+.secretary-orb[data-expression="worried"] .orb-eye + .orb-eye { --eye-rot: 5deg; }
+
+/* focused */
+.secretary-orb[data-expression="focused"] { --eye-gap: 0.4375rem; }
+.secretary-orb[data-expression="focused"] .orb-eye {
+  --eye-w: 0.875rem; --eye-h: 0.1875rem;
+  --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 30%; --eye-rbr: 30%;
+  --eye-rot: 0deg; --eye-y: 0;
+}
+
+/* annoyed */
+.secretary-orb[data-expression="annoyed"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="annoyed"] .orb-eye {
+  --eye-w: 0.875rem; --eye-h: 0.3125rem;
+  --eye-rtl: 2px; --eye-rtr: 2px; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 6deg; --eye-y: 0;
+}
+.secretary-orb[data-expression="annoyed"] .orb-eye + .orb-eye { --eye-rot: -6deg; }
+
+/* surprised */
+.secretary-orb[data-expression="surprised"] { --eye-gap: 0.5rem; }
+.secretary-orb[data-expression="surprised"] .orb-eye {
+  --eye-w: 1rem; --eye-h: 1rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* skeptic (asymmetric) */
+.secretary-orb[data-expression="skeptic"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="skeptic"] .orb-eye:first-child {
+  --eye-w: 0.875rem; --eye-h: 0.3125rem;
+  --eye-rtl: 20%; --eye-rtr: 50%; --eye-rbl: 2px; --eye-rbr: 50%;
+  --eye-rot: 8deg; --eye-y: -2px;
+}
+.secretary-orb[data-expression="skeptic"] .orb-eye:last-child {
+  --eye-w: 0.75rem; --eye-h: 0.6875rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: -2deg; --eye-y: 0;
+}
+
+/* frustrated */
+.secretary-orb[data-expression="frustrated"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="frustrated"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.1875rem;
+  --eye-rtl: 10%; --eye-rtr: 10%; --eye-rbl: 40%; --eye-rbr: 40%;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* unimpressed */
+.secretary-orb[data-expression="unimpressed"] { --eye-gap: 0.375rem; }
+.secretary-orb[data-expression="unimpressed"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.15625rem;
+  --eye-rtl: 10%; --eye-rtr: 10%; --eye-rbl: 10%; --eye-rbr: 10%;
+  --eye-rot: 0deg; --eye-y: 0;
+}
+
+/* sleepy */
+.secretary-orb[data-expression="sleepy"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="sleepy"] .orb-eye {
+  --eye-w: 0.875rem; --eye-h: 0.25rem;
+  --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: -4deg; --eye-y: 0;
+}
+.secretary-orb[data-expression="sleepy"] .orb-eye + .orb-eye { --eye-rot: 4deg; }
+
+/* suspicious */
+.secretary-orb[data-expression="suspicious"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="suspicious"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.375rem;
+  --eye-rtl: 40%; --eye-rtr: 40%; --eye-rbl: 20%; --eye-rbr: 20%;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* squint */
+.secretary-orb[data-expression="squint"] { --eye-gap: 0.25rem; }
+.secretary-orb[data-expression="squint"] .orb-eye {
+  --eye-w: 0.6875rem; --eye-h: 0.1875rem;
+  --eye-rtl: 20%; --eye-rtr: 20%; --eye-rbl: 20%; --eye-rbr: 20%;
+  --eye-rot: 0deg; --eye-y: 0;
+}
+
+/* angry */
+.secretary-orb[data-expression="angry"] { --eye-gap: 0.3125rem; }
+.secretary-orb[data-expression="angry"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.5625rem;
+  --eye-rtl: 20%; --eye-rtr: 20%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 20deg; --eye-y: 1px;
+}
+.secretary-orb[data-expression="angry"] .orb-eye + .orb-eye { --eye-rot: -20deg; }
+
+/* furious */
+.secretary-orb[data-expression="furious"] { --eye-gap: 0.25rem; }
+.secretary-orb[data-expression="furious"] .orb-eye {
+  --eye-w: 0.75rem; --eye-h: 0.375rem;
+  --eye-rtl: 5px; --eye-rtr: 5px; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 24deg; --eye-y: 1px;
+}
+.secretary-orb[data-expression="furious"] .orb-eye + .orb-eye { --eye-rot: -24deg; }
+
+/* scared */
+.secretary-orb[data-expression="scared"] { --eye-gap: 0.5625rem; }
+.secretary-orb[data-expression="scared"] .orb-eye {
+  --eye-w: 0.9375rem; --eye-h: 0.9375rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 0deg; --eye-y: -1px;
+}
+
+/* awe */
+.secretary-orb[data-expression="awe"] { --eye-gap: 0.4375rem; }
+.secretary-orb[data-expression="awe"] .orb-eye {
+  --eye-w: 0.9375rem; --eye-h: 0.9375rem;
+  --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
+  --eye-rot: 0deg; --eye-y: -2px;
+}
+
+/* ── Blink animation ── */
+@keyframes orb-blink {
+  0%, 48%, 52%, 100% { transform: rotate(var(--eye-rot)) translateY(var(--eye-y)) scaleY(1); }
+  50% { transform: rotate(var(--eye-rot)) translateY(var(--eye-y)) scaleY(0.06); }
+}
+
+.secretary-orb.mood-idle .orb-eye,
+.secretary-orb.mood-happy .orb-eye {
+  animation: orb-blink 5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.secretary-orb.mood-idle .orb-eye + .orb-eye,
+.secretary-orb.mood-happy .orb-eye + .orb-eye {
+  animation-delay: 0.05s;
+}
+
+/* ── Mood variants ── */
 .secretary-orb.mood-idle {
   animation: orb-breathe 3s ease-in-out infinite;
 }
@@ -484,11 +697,12 @@ body {
 
 .secretary-orb.mood-thinking .spinner-ring {
   position: absolute;
-  inset: 0;
+  inset: -0.25rem;
   border-radius: 9999px;
-  border: 2px solid color-mix(in srgb, var(--accent-foreground) 30%, transparent);
-  border-top-color: var(--accent-foreground);
+  border: 2px solid transparent;
+  border-top-color: color-mix(in srgb, var(--accent-foreground) 50%, transparent);
   animation: spin 1s linear infinite;
+  pointer-events: none;
 }
 
 .secretary-orb.mood-happy {
@@ -504,6 +718,7 @@ body {
 .secretary-orb.mood-sleepy {
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 50%, var(--surface-muted)) 0%, color-mix(in srgb, var(--accent) 30%, var(--surface-muted)) 100%);
   animation: orb-breathe 5s ease-in-out infinite;
+  opacity: 0.7;
 }
 
 /* Dark theme border */
