@@ -15,6 +15,14 @@
 
 ## Slot API
 
+### `GET /api/slot/:taskId/read`
+
+读取当前 Context Slot（任务分派时由 Cabinet 初始化）。
+
+**请求**：`GET /api/slot/task-456/read`（Header: `Authorization: Bearer <task_token>`）
+
+**响应**：`200` 返回完整的 `ContextSlot` JSON（包含 project、memories、preferences、files、discoveries、previous_outputs、security 字段）
+
 ### `POST /api/slot/:taskId/write`
 
 回写中间发现或输出到 Context Slot。
@@ -113,6 +121,22 @@
 **响应**：`200 { "ok": true }`
 
 TelemetryStore 持久化后，CostTracker 自动同步 token 消耗。
+
+### `GET /api/telemetry/stats`
+
+查询 Agent 遥测统计数据。
+
+**查询参数**：`?agent_id=claude-code-v1`（可选，不传则返回所有 Agent）
+
+**响应**：`200 { "stats": [{ "agent_id": "...", "total_tasks": 10, "completed": 8, "failed": 2, ... }] }`
+
+### `GET /api/telemetry/trends`
+
+查询 Agent 遥测趋势数据。
+
+**查询参数**：`?agent_id=all&range=24h&granularity=1h`
+
+**响应**：`200 { "summary": {...}, "buckets": [...], "agents": [...] }`
 
 ---
 

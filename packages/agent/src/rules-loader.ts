@@ -1,7 +1,7 @@
 //
 // Rules Loader — hierarchical, on-demand rule loading.
 //
-// Reads `.cabinet/rules/` directory (and project-level AGENTS.md/CABINET.md).
+// Reads `.cabinet/rules/` directory and `~/.cabinet/CABINET.md`.
 // Inspired by:
 //   - Cursor's .mdc rules (globs + alwaysApply + description-based activation)
 //   - Claude Code's .claude/rules/ directory

@@ -18,6 +18,8 @@ export interface SlotClientConfig {
   taskToken: string;
   /** The task ID this client is associated with. */
   taskId: string;
+  /** The agent identifier (used when submitting deliverables, decisions, telemetry). */
+  agentId?: string;
 }
 
 export interface TelemetryPayload {
@@ -33,11 +35,13 @@ export class SlotClient {
   private baseUrl: string;
   private taskToken: string;
   private taskId: string;
+  private agentId: string;
 
   constructor(config: SlotClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.taskToken = config.taskToken;
     this.taskId = config.taskId;
+    this.agentId = config.agentId ?? 'external';
   }
 
   private get headers(): Record<string, string> {
@@ -74,7 +78,7 @@ export class SlotClient {
     const resp = await this.fetchOrThrow('/api/external/deliverables', {
       method: 'POST',
       body: JSON.stringify({
-        agent_id: 'external',
+        agent_id: this.agentId,
         task_id: this.taskId,
         title,
         type,
@@ -100,7 +104,7 @@ export class SlotClient {
         title: params.title,
         description: params.description,
         urgency: params.urgency ?? 'yellow',
-        source: { agent_id: 'external', task_id: this.taskId },
+        source: { agent_id: this.agentId, task_id: this.taskId },
         options: params.options,
       }),
     });

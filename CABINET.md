@@ -15,10 +15,10 @@
 ### 4 层依赖方向: Layer 1 → Layer 2 → Layer 3 → Layer 4
 
 ```
-Layer 4 (Interface):   ui, server, desktop    ← 用户/网络边界
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← 业务逻辑
-Layer 2 (Agent Core):  gateway, agent, memory  ← AI 交互核心
-Layer 1 (Infra):       graph, types, events, storage  ← 基础设施
+Layer 4 (Interface):   ui, server, desktop, cli       ← 用户/网络边界
+Layer 3 (Business):    decision, secretary, workflow, harness, organize  ← 业务逻辑
+Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI 交互核心
+Layer 1 (Infra):       graph, types, events, storage      ← 基础设施
 ```
 
 - 下层绝不依赖上层。如果 Layer 1 的代码 import 了 Layer 3，就是 bug。
@@ -36,7 +36,7 @@ Layer 1 (Infra):       graph, types, events, storage  ← 基础设施
 ### 技术栈（不可替换）
 
 - 运行时: Node.js (ES2022)，前端: React 19
-- 构建: TypeScript 5.5+ (composite projects), Vite 6
+- 构建: TypeScript 5.9+ (composite projects), Vite 6
 - 包管理: pnpm (workspace protocol)
 - 数据库: SQLite (better-sqlite3)，AES-256 加密
 - 桌面壳: Tauri 2.0 (Rust 后端 + React 前端)

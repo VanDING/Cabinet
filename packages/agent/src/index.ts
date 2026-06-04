@@ -127,3 +127,33 @@ export {
   type TaskReliabilityStatus,
   VALID_TRANSITIONS,
 } from './adapters/index.js';
+
+// Daemon (pull-mode agent runtime)
+export {
+  AgentDaemon,
+  type AgentDaemonOptions,
+  TaskQueuePoller,
+  WorkspaceManager,
+  type WorkspaceManagerConfig,
+  AutoDiscoverer,
+  type DiscoveryResult,
+  type KnownCliAgent,
+  WSDaemonClient,
+  type WSDaemonClientConfig,
+  type WSCtor,
+} from './daemon/index.js';
+
+// Autopilot (cron/webhook/manual triggers)
+export {
+  TriggerScheduler,
+  type CronAdapter,
+  TriggerExecutor,
+} from './daemon/autopilot/index.js';
+
+// Squad (team routing)
+export {
+  SquadRouter,
+  type SquadRouteResult,
+  buildSquadLeaderPrompt,
+  buildDelegateTool,
+} from './daemon/squad/index.js';

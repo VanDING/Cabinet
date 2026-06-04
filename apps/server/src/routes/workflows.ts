@@ -17,6 +17,8 @@ import {
   registerCabinetTools,
   registerSkillTools,
   registerMCPTools,
+  CliAdapter,
+  A2AConnector,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import type { WorkflowCapabilities } from '@cabinet/types';
@@ -620,6 +622,65 @@ function getEngine(): WorkflowEngine {
         (input as Record<string, unknown>) ?? {},
       );
       return result.output;
+    },
+
+    dispatchToExternalAgent: async (agentId, task) => {
+      const ctx = getServerContext();
+      const registry = ctx.agentRegistry;
+      const roleDef = registry.get(agentId);
+      if (!roleDef?.external) {
+        throw new Error(`Agent ${agentId} has no external config`);
+      }
+
+      const ext = roleDef.external;
+      // Cache adapters keyed by agentId
+      const cacheKey = `wf_adapter:${agentId}`;
+      let adapter: any = (engine as any)._adapterCache?.get(cacheKey);
+      if (!adapter) {
+        if (ext.protocol === 'cli') {
+          adapter = new CliAdapter(agentId, {
+            command: ext.command ?? agentId,
+            args: ext.args ?? ['--print'],
+            env: ext.env,
+            permissionMode: ext.permissionMode as any,
+            detectCommand: ext.detectCommand,
+            installCommand: ext.installCommand,
+            timeoutMs: ext.timeoutMs,
+            maxRetries: ext.maxRetries,
+          });
+        } else {
+          adapter = new A2AConnector(agentId, {
+            baseUrl: ext.baseUrl ?? `http://localhost:${agentId}`,
+            healthCheckUrl: ext.healthCheckUrl,
+            authConfig: ext.authConfig as any,
+            timeoutMs: ext.timeoutMs,
+            maxRetries: ext.maxRetries,
+          });
+        }
+        if (!(engine as any)._adapterCache) (engine as any)._adapterCache = new Map();
+        (engine as any)._adapterCache.set(cacheKey, adapter);
+      }
+
+      const result = await adapter.dispatchTask({
+        task_id: `${task.runId}_${task.nodeId}`,
+        session_id: task.runId,
+        capability: 'default',
+        input: task.input,
+        slot: task.slot,
+        configuration: {
+          max_retries: ext.maxRetries ?? 2,
+          timeout_ms: ext.timeoutMs ?? 120_000,
+          slot_write_url: `http://localhost:${process.env.PORT ?? 3000}/api/slot/${task.runId}_${task.nodeId}/write`,
+        },
+      });
+
+      if (result.status === 'awaiting_approval') {
+        return { status: 'awaiting_approval', decisionId: result.decision_id };
+      }
+      if (result.status === 'timed_out' || result.status === 'failed') {
+        return { status: 'failed', output: result.error, decisionId: result.decision_id };
+      }
+      return { status: 'completed', output: result.output };
     },
 
   });

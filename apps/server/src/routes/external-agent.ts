@@ -12,6 +12,7 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
+import crypto from 'node:crypto';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
 
@@ -43,7 +44,6 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
   const taskId = parts.slice(1).join('_');
 
   // Verify HMAC
-  const crypto = require('node:crypto');
   const secret = process.env.CABINET_SECRET ?? 'cabinet-dev-secret';
   const expected = crypto.createHmac('sha256', secret).update(taskId).digest('hex').slice(0, 16);
   if (hmacPart === expected) {
@@ -55,11 +55,42 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
 
 /** Generate a task token for external agent dispatch. */
 export function generateTaskToken(taskId: string): string {
-  const crypto = require('node:crypto');
   const secret = process.env.CABINET_SECRET ?? 'cabinet-dev-secret';
   const hmac = crypto.createHmac('sha256', secret).update(taskId).digest('hex').slice(0, 16);
   return `task_${taskId}_${hmac}`;
 }
+
+// ── GET /api/slot/:taskId/read ────────────────────────────────────
+
+externalAgentRouter.get('/:taskId/read', async (c) => {
+  const token = extractAuthToken(c);
+  if (!token) return c.json({ error: 'Missing Authorization header' }, 401);
+
+  const auth = validateTaskToken(token);
+  if (!auth.valid) return c.json({ error: 'Invalid token' }, 401);
+
+  const taskId = c.req.param('taskId');
+  if (auth.taskId && auth.taskId !== taskId) {
+    return c.json({ error: 'Token does not match task' }, 403);
+  }
+
+  try {
+    const { sessionManager } = getServerContext();
+    const session = sessionManager.get(taskId);
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+    const slot = session.contextSlot;
+    if (!slot) {
+      return c.json({ error: 'Context slot not initialized' }, 404);
+    }
+    return c.json(slot);
+  } catch (err) {
+    const { logger } = getServerContext();
+    logger.error('Slot read failed', { taskId, error: String(err) });
+    return c.json({ error: 'Internal error' }, 500);
+  }
+});
 
 // ── POST /api/slot/:taskId/write ─────────────────────────────────
 
@@ -73,7 +104,7 @@ const slotWriteSchema = z.object({
   previous_outputs: z.array(z.string()).optional(),
 });
 
-externalAgentRouter.post('/slot/:taskId/write', async (c) => {
+externalAgentRouter.post('/:taskId/write', async (c) => {
   const token = extractAuthToken(c);
   if (!token) return c.json({ error: 'Missing Authorization header' }, 401);
 

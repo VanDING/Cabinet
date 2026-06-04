@@ -29,6 +29,7 @@ export interface ExternalTask {
     max_retries: number;
     timeout_ms: number;
     slot_write_url: string;
+    working_directory?: string;
   };
 }
 

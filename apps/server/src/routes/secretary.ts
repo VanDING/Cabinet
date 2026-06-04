@@ -11,6 +11,8 @@ import {
   AgentRoleRegistry,
   RulesLoader,
   OrganizeInteractiveAgent,
+  CliAdapter,
+  A2AConnector,
 } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleType, InteractiveSubAgent } from '@cabinet/agent';
 import {
@@ -2106,6 +2108,35 @@ async function dispatchToExternalAgent(
   const slot = await buildContextSlot(projectId, captainId, message, sessionId);
   ctx.sessionManager.setContextSlot(childSessionId, slot);
 
+  // ── Pull-mode (daemon): enqueue task for async execution ──
+  if (ctx.daemon?.hasAgent(agentId)) {
+    const taskId = await ctx.daemon.enqueueTask({
+      agentId,
+      sessionId: childSessionId,
+      capability: 'default',
+      input: message,
+      slot,
+      maxRetries: roleDef.external.maxRetries ?? 2,
+      timeoutMs: roleDef.external.timeoutMs ?? 120_000,
+    });
+
+    if (childSession) {
+      childSession.status = 'active';
+      // Store task reference so EventBus can correlate result later
+      (childSession as any)._daemonTaskId = taskId;
+    }
+
+    ctx.logger.info('External agent task enqueued (pull-mode)', {
+      agentId,
+      taskId,
+      sessionId: childSessionId,
+    });
+
+    return `[Queued] Task ${taskId} dispatched to ${agentId}.\nTrack progress: /api/daemon/tasks/${taskId}`;
+  }
+
+  // ── Push-mode (fallback): direct adapter dispatch ──
+
   // ── Build external task ──
   const task = {
     task_id: childSessionId,
@@ -2138,7 +2169,7 @@ async function dispatchToExternalAgent(
       timestamp: Date.now(),
     });
 
-    ctx.logger.info('External agent task completed', {
+    ctx.logger.info('External agent task completed (push-mode)', {
       agentId,
       taskId: childSessionId,
       status: result.status,
@@ -2146,7 +2177,7 @@ async function dispatchToExternalAgent(
 
     return typeof result.output === 'string' ? result.output : JSON.stringify(result.output ?? {});
   } catch (err) {
-    ctx.logger.error('External agent task failed', { agentId, error: String(err) });
+    ctx.logger.error('External agent task failed (push-mode)', { agentId, error: String(err) });
     if (childSession) childSession.status = 'error';
     return `[External Agent Error] ${agentId}: ${String(err)}`;
   }
@@ -2164,6 +2195,19 @@ async function buildContextSlot(
   const prefs = ctx.entity.getPreferences(captainId);
   const recentFiles = ctx.fileTracker.getRecent(sessionId, 5);
 
+  // Fall back to project repo if memory isn't populated yet
+  let projectName = projectCtx?.summary;
+  let projectGoals = projectCtx?.goals ?? [];
+  let projectTech = (projectCtx as any)?.techSummary;
+  if (!projectCtx) {
+    const dbProject = ctx.projectRepo.findById(projectId);
+    if (dbProject) {
+      projectName = dbProject.name;
+      projectGoals = [];
+      projectTech = undefined;
+    }
+  }
+
   // Search long-term memory for relevant context
   let memories: string[] = [];
   try {
@@ -2173,9 +2217,9 @@ async function buildContextSlot(
 
   return {
     project: {
-      name: projectCtx?.summary ?? projectId,
-      tech_stack: (projectCtx as any)?.techSummary,
-      goals: projectCtx?.goals ?? [],
+      name: projectName ?? projectId,
+      tech_stack: projectTech,
+      goals: projectGoals,
     },
     memories,
     preferences: (prefs?.preferences ?? {}) as any,
@@ -2202,7 +2246,6 @@ function getOrCreateAdapter(
 
   const ext = roleDef.external!;
   if (ext.protocol === 'cli') {
-    const { CliAdapter } = require('@cabinet/agent');
     const adapter = new CliAdapter(agentId, {
       command: ext.command ?? agentId,
       args: ext.args ?? ['--print'],
@@ -2218,7 +2261,6 @@ function getOrCreateAdapter(
   }
 
   // A2A
-  const { A2AConnector } = require('@cabinet/agent');
   const adapter = new A2AConnector(agentId, {
     baseUrl: ext.baseUrl ?? `http://localhost:${agentId}`,
     healthCheckUrl: ext.healthCheckUrl,

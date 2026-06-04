@@ -207,17 +207,18 @@ export class A2AConnector implements ExternalAgentAdapter {
         };
       }
 
-      // Step 2: Poll for completion (A2A is HTTP-only, no push)
-      const pollInterval = 500;
+      // Step 2: Poll for completion with exponential backoff
+      let pollMs = 1000; // Start at 1s
+      const maxPollMs = 10_000; // Cap at 10s
       const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {
-        await sleep(pollInterval);
+        await sleep(pollMs);
         const statusResp = await this.fetchWithTimeout(
           `${this.config.baseUrl}/a2a/tasks/${task.task_id}`,
           { method: 'GET', headers },
           5_000,
         );
-        if (!statusResp.ok) continue;
+        if (!statusResp.ok) { pollMs = Math.min(pollMs * 2, maxPollMs); continue; }
         const status = (await statusResp.json()) as A2ATaskStatus;
 
         if (status.status === 'completed') {
@@ -241,6 +242,8 @@ export class A2AConnector implements ExternalAgentAdapter {
             audit: { started_at: startedAt, completed_at: new Date().toISOString() },
           };
         }
+        // Task still in progress — increase poll interval with backoff
+        pollMs = Math.min(pollMs * 2, maxPollMs);
       }
 
       return {
