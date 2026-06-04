@@ -29,16 +29,11 @@ export const MeetingList = memo(function MeetingList({ projectId }: Props) {
 
   const fetchMeetings = useCallback(() => {
     setLoading(true);
-    apiFetch(buildUrl(), { headers: authHeaders() })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.meetings) setMeetings(data.meetings);
-      })
-      .catch(() => {
-        addToast('error', 'Failed to load meetings');
-      })
-      .finally(() => setLoading(false));
-  }, [addToast, buildUrl]);
+    // /api/meetings route removed — meetings are now handled via Secretary chat
+    // Keeping component for UI compatibility; no backend endpoint available.
+    setMeetings([]);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     fetchMeetings();

@@ -1,6 +1,7 @@
 import { ModalOverlay } from '../ModalOverlay';
 import { useState, useEffect } from 'react';
 import { X, Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
+import { apiFetch } from '../../utils/api.js';
 
 interface DailyForecast {
   date: string;
@@ -43,8 +44,8 @@ export function WeatherForecastModal({ onClose }: Props) {
 
     async function fetchForecast(lat: number, lon: number) {
       try {
-        const weatherRes = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&timezone=auto&forecast_days=7`,
+        const weatherRes = await apiFetch(
+          `/api/weather?lat=${lat}&lon=${lon}`,
         );
         if (!weatherRes.ok) throw new Error('API error');
         const j = await weatherRes.json();
@@ -52,7 +53,7 @@ export function WeatherForecastModal({ onClose }: Props) {
 
         let city = `${lat.toFixed(1)}deg, ${lon.toFixed(1)}deg`;
         try {
-          const geoRes = await fetch('/api/geoip');
+          const geoRes = await apiFetch('/api/geoip');
           if (geoRes.ok) {
             const geo = await geoRes.json();
             if (geo.city) city = geo.city;

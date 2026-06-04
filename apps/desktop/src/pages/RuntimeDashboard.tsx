@@ -6,6 +6,7 @@
 //
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../utils/api.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ export const RuntimeDashboard: React.FC = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const resp = await fetch('/api/telemetry/stats');
+      const resp = await apiFetch('/api/telemetry/stats');
       if (resp.ok) {
         const data = await resp.json() as { stats: AgentStats[] };
         setStats(data.stats ?? []);
@@ -47,7 +48,8 @@ export const RuntimeDashboard: React.FC = () => {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/events`);
+    const host = window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
+    const ws = new WebSocket(`${protocol}//${host}/ws/events`);
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', channel: 'agent_event' }));
 

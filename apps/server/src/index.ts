@@ -107,6 +107,22 @@ export function createApp() {
     }
   });
 
+  // Weather proxy — avoids CORS issues with open-meteo.com from browser
+  app.get('/api/weather', async (c) => {
+    const lat = c.req.query('lat') || '40.7';
+    const lon = c.req.query('lon') || '-74.0';
+    try {
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`,
+        { signal: AbortSignal.timeout(8000) },
+      );
+      const data = await res.json();
+      return c.json(data);
+    } catch {
+      return c.json({ error: 'Weather API unavailable' }, 502);
+    }
+  });
+
   app.route('/api', openapiRouter());
 
   return app;

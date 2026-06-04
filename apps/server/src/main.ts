@@ -2,9 +2,8 @@ import { serve } from '@hono/node-server';
 import type { Server } from 'node:http';
 import { createApp } from './index.js';
 import { config, validateEnv } from './config.js';
-import { createWSServer } from './ws/handler.js';
+import { createWSServers } from './ws/handler.js';
 import { getServerContext } from './context.js';
-import type { WebSocketServer } from 'ws';
 
 const envCheck = validateEnv();
 if (!envCheck.success) {
@@ -28,7 +27,10 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
   });
 }) as Server;
 
-const wss: WebSocketServer = createWSServer(server);
+const { wss, handleUpgrade } = createWSServers();
+server.on('upgrade', (request, socket, head) => {
+  handleUpgrade(request, socket, head);
+});
 
 // Graceful shutdown on process exit
 const gracefulShutdown = (signal: string) => {

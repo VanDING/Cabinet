@@ -7,6 +7,7 @@
 //
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { apiFetch } from '../utils/api.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ export const AgentShell: React.FC<AgentShellProps> = ({
   const handleSubmitDeliverable = useCallback(async () => {
     if (!selectedText || !taskId) return;
     try {
-      const resp = await fetch('/api/external/deliverables', {
+      const resp = await apiFetch('/api/external/deliverables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -16,8 +16,8 @@ export function useWebSocket(onEvent?: WSEventHandler) {
     if (reconnecting.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname || 'localhost';
-    const url = `${protocol}//${host}:3000/ws/events`;
+    const host = window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : `${window.location.hostname || 'localhost'}:3000`;
+    const url = `${protocol}//${host}/ws/events`;
 
     try {
       // Close existing socket before creating a new one

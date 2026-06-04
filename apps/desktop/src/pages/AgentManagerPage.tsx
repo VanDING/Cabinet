@@ -4,6 +4,7 @@
 //
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../utils/api.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ export const AgentManagerPage: React.FC = () => {
 
   const fetchAgents = useCallback(async () => {
     try {
-      const resp = await fetch('/api/agents');
+      const resp = await apiFetch('/api/agents');
       const data = await resp.json() as { agents?: AgentEntry[] };
       const list = (data.agents ?? []).map((a: AgentEntry) => ({
         ...a,

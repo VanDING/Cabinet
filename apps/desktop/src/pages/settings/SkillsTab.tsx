@@ -101,7 +101,7 @@ export function SkillsTab() {
                     // Send zip directly to server for full extraction (L3)
                     const formData = new FormData();
                     formData.append('file', file);
-                    const res = await fetch('/api/skills/import-zip', {
+                    const res = await apiFetch('/api/skills/import-zip', {
                       method: 'POST',
                       body: formData,
                     });
