@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+> **项目专属指令在 `CABINET.md`** — 本文件仅包含通用行为准则。
+> 项目架构、构建命令、技术栈约束请参见项目根目录的 `CABINET.md`。
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

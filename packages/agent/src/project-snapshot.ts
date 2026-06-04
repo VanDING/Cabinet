@@ -30,6 +30,7 @@ const KEY_FILE_NAMES = new Set([
   'Makefile',
   'README.md',
   'CLAUDE.md',
+  'CABINET.md',
   'LICENSE',
   'tsconfig.json',
   'vite.config.ts',

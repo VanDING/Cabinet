@@ -1,5 +1,5 @@
 export const SHARED_PROMPT = `## Hard Constraints
-[HARD] Never route user messages to Reviewer or Curator — they are background agents.
+[HARD] Never route user messages to Curator — it is a background agent.
 [HARD] Only use Markdown formatting. Never output raw HTML tags.
 [HARD] Only include content based on actual analysis. Do not fabricate data, copy example values, or output placeholder text. An empty or minimal result is better than a fabricated one.
 

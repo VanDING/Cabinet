@@ -85,7 +85,7 @@ Define the core properties:
 - **Model Tier**: recommend fast_execution for lightweight tasks, deep_reasoning for complex ones.
 - **Tools**: \`allowedTools\` — a list of tool names this agent is permitted to use.
   - **This list must be derived from the agent's responsibilities defined in the design phase.** Do not guess. If you cannot determine the exact tools needed, return to the design phase and refine the agent's responsibility definition.
-  - Use \`list_agents\` to inspect existing agents with similar roles (e.g., secretary, meeting_chair) and study their \`allowedTools\` as a reference template.
+  - Use \`list_agents\` to inspect existing agents with similar roles (e.g., secretary, organize) and study their \`allowedTools\` as a reference template.
   - For each capability the agent must fulfill, identify which tools are required. Include only those tools — no more, no less.
   - \`allowedTools\` must be a **string array**, e.g., \`["read_file", "write_file", "search_memory"]\`. Never pass a comma-separated string.
   - Skill tools appear as \`use_skill__{skillName}\` in the tool list. If this agent needs to invoke skills, include the corresponding \`use_skill__xxx\` entries.
@@ -122,7 +122,7 @@ If the user says "default" or is unsure, skip this step and use the defaults.
 - Default to fast_execution unless the task genuinely needs reasoning-level capability.
 - Restrict tools to what the agent actually needs. An agent that only analyzes does not need write tools.
 - If the user is unsure about details, make reasonable suggestions and ask for confirmation.
-- Never delete built-in agents (secretary, meeting_chair, reviewer, curator, organize).`,
+- Never delete built-in agents (secretary, curator, organize).`,
   inputSchema: {},
   outputSchema: {},
 };

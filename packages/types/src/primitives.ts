@@ -127,7 +127,9 @@ export type WorkflowNodeType =
   // AI (2)
   | 'intentClassify' | 'knowledgeBase'
   // Human-in-the-loop (2)
-  | 'approval' | 'human';
+  | 'approval' | 'human'
+  // External agent dispatch
+  | 'externalAgent';
 
 /** @deprecated Use WorkflowNodeType directly. Kept for backward compat. */
 export type WorkflowStepType = WorkflowNodeType;
@@ -154,6 +156,8 @@ export interface WorkflowNodeDef {
   allowedTools?: string[];
   /** Nodes inside this agentGroup */
   children?: WorkflowNodeDef[];
+  /** Squad ID — when set, this agentGroup acts as a Squad with team routing */
+  squadId?: string;
 
   // ── LLM / Agent config ──
   prompt?: string;
@@ -338,6 +342,102 @@ export interface WorkflowDefinition {
 
 /** Lifecycle status for a workflow definition. */
 export type WorkflowDefinitionStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
+
+// ── Daemon / Task Queue ──
+
+export type TaskQueueStatus =
+  | 'pending' | 'claimed' | 'running'
+  | 'completed' | 'failed' | 'cancelled';
+
+export interface TaskProgress {
+  percent: number;
+  message: string;
+  step: number;
+}
+
+export interface TaskQueueEntry {
+  id: string;
+  agentId: string;
+  sessionId: string;
+  capability: string;
+  input: unknown;
+  slot: ContextSlot;
+  status: TaskQueueStatus;
+  priority: number;
+  retryCount: number;
+  maxRetries: number;
+  timeoutMs: number;
+  claimedBy: string | null;
+  claimedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  progress: TaskProgress;
+  errorMessage: string | null;
+  output: unknown | null;
+  cronExpression: string | null;
+  webhookUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentDaemonConfig {
+  daemonId: string;
+  pollIntervalMs: number;
+  heartbeatIntervalMs: number;
+  heartbeatTimeoutMs: number;
+  workspaceTtlMs: number;
+  maxConcurrentTasks: number;
+  taskTimeoutMs: number;
+  autoDiscoverOnStart: boolean;
+  discoveryPaths: string[];
+}
+
+export interface DaemonHeartbeat {
+  daemonId: string;
+  agentId: string;
+  status: 'online' | 'degraded' | 'offline';
+  lastHeartbeatAt: string;
+  startedAt: string;
+  version: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AgentWorkspace {
+  id: string;
+  agentId: string;
+  taskId: string | null;
+  path: string;
+  sizeBytes: number;
+  status: 'active' | 'archived' | 'cleaned';
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string | null;
+}
+
+export interface DaemonStatus {
+  daemonId: string;
+  status: 'online' | 'degraded' | 'offline';
+  uptimeMs: number;
+  activeTaskCount: number;
+  completedTaskCount: number;
+  failedTaskCount: number;
+  agents: DaemonAgentInfo[];
+}
+
+export interface DaemonAgentInfo {
+  agentId: string;
+  command: string;
+  detected: boolean;
+  status: 'online' | 'offline';
+  activeTaskCount: number;
+  lastHeartbeatAt: string | null;
+}
+
+export interface ClaimResult {
+  success: boolean;
+  task: TaskQueueEntry | null;
+  reason?: string;
+}
 
 // ── Memory ──
 

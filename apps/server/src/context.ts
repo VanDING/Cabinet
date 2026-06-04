@@ -88,7 +88,14 @@ import {
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import { createStandardToolExecutor } from './agent-factory.js';
-import { SkillExtractor } from '@cabinet/agent';
+import { SkillExtractor, AgentDaemon, TriggerScheduler, TriggerExecutor, type CronAdapter } from '@cabinet/agent';
+import cron, { type ScheduledTask } from 'node-cron';
+import { createDaemonContext } from './daemon-context.js';
+import {
+  AgentTaskQueueRepository,
+  AgentDaemonRepository,
+  AutopilotRepository,
+} from '@cabinet/storage';
 import { MCPManager } from './mcp/mcp-manager.js';
 import { TaskScheduler, setSchedulerBroadcast } from './scheduler.js';
 import { startApprovalPolling, stopApprovalPolling, runWorkflowById } from './routes/workflows.js';
@@ -161,6 +168,13 @@ export interface ServerContext {
   // Skill registry (shared — loaded from DB on startup)
   skillRegistry: import('@cabinet/agent').SkillRegistry;
   mcpManager: import('./mcp/mcp-manager.js').MCPManager;
+  // Daemon (pull-mode agent task queue + runtime)
+  daemon: AgentDaemon;
+  taskQueueRepo: AgentTaskQueueRepository;
+  daemonRepo: AgentDaemonRepository;
+  // Autopilot (cron/webhook/manual triggers)
+  autopilotRepo: AutopilotRepository;
+  triggerScheduler: TriggerScheduler | null;
   // Scheduler
   taskScheduler: TaskScheduler;
   // Feedback loop
@@ -1444,6 +1458,47 @@ export function getServerContext(): ServerContext {
     logger.warn('Failed to load custom agents from DB', { error: String(e) });
   }
 
+  // ── Agent Daemon (pull-mode task queue + runtime) ──
+  const daemonContext = createDaemonContext(db, agentRegistry, {
+    info: (msg, ctx) => logger.info(msg, ctx as Record<string, unknown>),
+    warn: (msg, ctx) => logger.warn(msg, ctx as Record<string, unknown>),
+    error: (msg, ctx) => logger.error(msg, ctx as Record<string, unknown>),
+  });
+  daemonContext.daemon.start().catch((e: unknown) => {
+    logger.warn('Agent daemon start failed', { error: String(e) });
+  });
+
+  // Connect daemon WebSocket for real-time task push (non-blocking)
+  daemonContext.wsClient.connect();
+
+  // ── Autopilot (cron/webhook/manual triggers) ──
+  const autopilotRepo = new AutopilotRepository(db);
+  let triggerScheduler: TriggerScheduler | null = null;
+  try {
+    const triggerExecutor = new TriggerExecutor(autopilotRepo, daemonContext.daemon);
+    const cronAdapter: CronAdapter = {
+      schedule(expr, tz, cb) {
+        const job = cron.schedule(expr, cb, { timezone: tz });
+        return job;
+      },
+      cancel(handle) {
+        (handle as ScheduledTask).stop();
+      },
+      validate(expr) {
+        return cron.validate(expr);
+      },
+    };
+    triggerScheduler = new TriggerScheduler(autopilotRepo, triggerExecutor, cronAdapter, {
+      info: (msg, ctx) => logger.info(msg, ctx as Record<string, unknown>),
+      warn: (msg, ctx) => logger.warn(msg, ctx as Record<string, unknown>),
+      error: (msg, ctx) => logger.error(msg, ctx as Record<string, unknown>),
+    });
+    triggerScheduler.rescheduleAll();
+    logger.info('Autopilot scheduler initialized');
+  } catch (e) {
+    logger.warn('Autopilot scheduler init failed (node-cron may not be available)', { error: String(e) });
+  }
+
   // Shared skill registry — load from DB on startup
   const skillRegistry = new SkillRegistry();
   setSkillRegistry(skillRegistry);
@@ -2160,6 +2215,16 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       /* backup manager may already be stopped */
     }
     try {
+      daemonContext.shutdown().catch(() => {});
+    } catch {
+      /* daemon may already be stopped */
+    }
+    try {
+      triggerScheduler?.stop();
+    } catch {
+      /* scheduler may already be stopped */
+    }
+    try {
       db.close();
     } catch {
       /* db may already be closed */
@@ -2348,6 +2413,11 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     metrics,
     logger,
     backupManager,
+    daemon: daemonContext.daemon,
+    taskQueueRepo: daemonContext.taskQueueRepo,
+    daemonRepo: daemonContext.daemonRepo,
+    autopilotRepo,
+    triggerScheduler,
     shutdown,
   };
 

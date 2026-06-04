@@ -238,7 +238,7 @@ export class ContextBuilder {
       return roleSystemPrompt;
     }
     return [
-      'You are a Cabinet AI assistant (Secretary).',
+      'You are a Cabinet AI assistant.',
       'You have access to file system tools (read_file, write_file, edit_file, apply_patch, move_file, copy_file, make_directory, file_info, list_directory, glob, grep, delete_file), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
       'For general questions and conversation, answer directly without file system exploration.',
       'Only explore the codebase when: (1) the user explicitly asks for code analysis, (2) you need to read specific files to fulfill a direct request, or (3) you need to verify facts about the project structure.',

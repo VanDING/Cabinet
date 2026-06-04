@@ -28,6 +28,9 @@ import { deliverablesRouter } from './routes/deliverables.js';
 // import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
 import { externalAgentRouter } from './routes/external-agent.js';
+import { daemonRouter } from './routes/daemon.js';
+import { autopilotRouter, webhookRouter } from './routes/autopilot.js';
+import { squadRouter } from './routes/squads.js';
 import { telemetryRouter } from './routes/telemetry.js';
 
 import { documentsRouter } from './routes/documents.js';
@@ -62,6 +65,8 @@ export function createApp() {
   app.use('/api/*', rateLimiter(100, 60_000));
   app.use('/api/*', authMiddleware);
 
+  // Public webhook endpoint (external services, HMAC auth)
+  app.route('/webhooks', webhookRouter);
   app.route('/health', healthRouter);
   app.route('/.well-known', agentsRouter);
   app.route('/api/agents', agentsRouter);
@@ -94,6 +99,9 @@ export function createApp() {
   app.route('/api/harness', harnessRouter);
   app.route('/api/slot', externalAgentRouter);
   app.route('/api/external', externalAgentRouter);
+  app.route('/api/daemon', daemonRouter);
+  app.route('/api/autopilots', autopilotRouter);
+  app.route('/api/squads', squadRouter);
   app.route('/api/telemetry', telemetryRouter);
 
   // GeoIP proxy — avoids CORS issues with ipapi.co from browser

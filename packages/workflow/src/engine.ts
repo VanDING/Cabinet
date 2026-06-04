@@ -474,6 +474,39 @@ export class WorkflowEngine {
         } else { throw new Error('No human handler registered'); }
         break;
       }
+      case 'externalAgent': {
+        if (!this.handlers.dispatchToExternalAgent) {
+          throw new Error('No external agent dispatch handler registered');
+        }
+        const agentId = node.agentId ?? node.role ?? node.id;
+        const allOutputs = run.steps.map((s) => s.output);
+        const slot: ContextSlot = {
+          project: { name: 'workflow', goals: [] },
+          memories: [],
+          preferences: {},
+          files: [],
+          discoveries: [],
+          previous_outputs: allOutputs,
+          security: { level: 'L1', tier: 'auto', maxRetries: 2 },
+        };
+        const result = await this.handlers.dispatchToExternalAgent(agentId, {
+          runId: run.runId,
+          nodeId: node.id,
+          input: previousOutputs,
+          previousOutputs: allOutputs,
+          slot,
+        });
+        if (result.status === 'awaiting_approval') {
+          run.status = 'awaiting_approval';
+          output = `External agent ${agentId} awaiting approval: ${result.decisionId ?? ''}`;
+        } else if (result.status === 'failed') {
+          output = `External agent ${agentId} failed`;
+          throw new Error(`External agent ${agentId} failed`);
+        } else {
+          output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output ?? {});
+        }
+        break;
+      }
       default:
         throw new Error(`Unknown node type: ${(node as any).type}`);
     }

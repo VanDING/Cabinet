@@ -11,6 +11,7 @@ export const CANVAS_NODE_TYPES: CanvasNodeType[] = [
   'llm', 'skill', 'tool', 'code', 'workflow',
   'intentClassify', 'knowledgeBase',
   'approval', 'human',
+  'externalAgent',
 ];
 
 export interface CanvasNodeData {
@@ -75,6 +76,7 @@ export const NODE_COLORS: Record<CanvasNodeType, string> = {
   knowledgeBase: 'bg-intent-success-muted border-intent-success',
   approval: 'bg-intent-danger-muted border-intent-danger',
   human: 'bg-intent-danger-muted border-intent-danger',
+  externalAgent: 'bg-accent-muted/20 border-accent-dashed',
 };
 
 export const NODE_LABELS: Record<CanvasNodeType, string> = {
@@ -86,4 +88,5 @@ export const NODE_LABELS: Record<CanvasNodeType, string> = {
   code: 'Code', workflow: 'Workflow',
   intentClassify: 'Intent', knowledgeBase: 'KB',
   approval: 'Approval', human: 'Human',
+  externalAgent: 'External Agent',
 };

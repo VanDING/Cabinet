@@ -93,13 +93,13 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Architecture
 
-Cabinet V2.0 is a **TypeScript monorepo** built on a strict 5-layer architecture. Fifteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
+Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Sixteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
 
 ```
-Layer 4 (Interface):   ui, server, desktop       ← user/network boundary
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness, organize  ← business logic
-Layer 2 (Agent Core):  gateway, agent, memory     ← AI interaction core
-Layer 1 (Infra):       graph, types, events, storage  ← infrastructure
+Layer 4 (Interface):   ui, server, desktop, cli       ← user/network boundary
+Layer 3 (Business):    decision, secretary, workflow, harness, organize  ← business logic
+Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI interaction core
+Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
 ```
 
 | Layer | Package              | Role                                                       |
@@ -107,14 +107,16 @@ Layer 1 (Infra):       graph, types, events, storage  ← infrastructure
 | 4     | `@cabinet/server`    | Hono REST + WebSocket API server                           |
 | 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                           |
 | 4     | `@cabinet/ui`        | Shared React component library                             |
+| 4     | `@cabinet/cli`       | CLI entry point (`cabinet start`)                          |
 | 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                         |
-| 3     | `@cabinet/secretary` | Natural-language entry point, session management           |
-| 3     | `@cabinet/workflow`  | Workflow engine (17 node types incl. Agent, LLM, Skill, Human) |
+| 3     | `@cabinet/secretary` | Natural-language entry point, session management, multi-agent routing |
+| 3     | `@cabinet/workflow`  | Workflow engine (18 node types incl. Agent, LLM, Skill, Human, External) |
 | 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability  |
 | 3     | `@cabinet/organize`  | Organization architecture and system design                |
 | 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |
-| 2     | `@cabinet/agent`     | Graph-based agent loop, SafetyChecker, ToolExecutor, roles |
+| 2     | `@cabinet/agent`     | Graph-based agent loop, adapters, daemon runtime, squad routing |
 | 2     | `@cabinet/memory`    | Four-layer memory (short-term, long-term, entity, project) |
+| 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)               |
 | 1     | `@cabinet/graph`     | StateGraph engine, Annotation, CheckpointStore, validation |
 | 1     | `@cabinet/events`    | Event bus with causation-chain tracking                    |
 | 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)               |
@@ -227,7 +229,7 @@ The server runs at `http://localhost:3000` by default. Interactive API docs are 
 When `api_token` is configured, all endpoints require a Bearer token:
 
 ```bash
-curl -H "Authorization: Bearer <token>" http://localhost:3000/api/config
+curl -H "Authorization: Bearer <token>" http://localhost:3000/api/settings
 ```
 
 ### Chat
@@ -235,7 +237,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:3000/api/config
 **REST:**
 
 ```bash
-curl -X POST http://localhost:3000/api/chat \
+curl -X POST http://localhost:3000/api/secretary/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello", "captain_id": "captain"}'
 ```
@@ -243,9 +245,9 @@ curl -X POST http://localhost:3000/api/chat \
 **WebSocket:**
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000/api/chat/ws?captain_id=captain&token=<token>');
+const ws = new WebSocket('ws://localhost:3000/ws/events?captain_id=captain&token=<token>');
 ws.onmessage = (e) => console.log(JSON.parse(e.data));
-ws.send('Hello');
+ws.send(JSON.stringify({ type: 'ping' }));
 ```
 
 Response format: `{"type": "chunk", "content": "..."}` followed by `{"type": "done"}`
@@ -258,23 +260,33 @@ curl -X POST http://localhost:3000/api/secretary/chat \
   -H "Content-Type: application/json" \
   -d '{"sessionId": "sess_1", "message": "Analyze whether we should expand to Europe"}'
 
-# Meetings — multi-agent deliberation (also triggerable from chat)
-curl -X POST http://localhost:3000/api/meetings \
-  -H "Content-Type: application/json" \
-  -d '{"topic": "Q3 Strategy", "advisors": ["financial", "legal", "market"]}'
-
 # Decisions — tiered decision management
 curl -X POST http://localhost:3000/api/decisions \
   -H "Content-Type: application/json" \
   -d '{"title": "Hire new analyst", "type": "action"}'
 
 # Workflows — execute multi-step processes
-curl -X POST http://localhost:3000/api/workflows \
+curl -X POST http://localhost:3000/api/factory/workflows \
   -H "Content-Type: application/json" \
   -d '{"name": "Quarterly Report", "definition": {...}}'
+
+# Daemon — agent task queue
+curl -X POST http://localhost:3000/api/daemon/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "claude-code-v1", "input": "Build a React component"}'
+
+# Autopilots — cron/webhook triggered tasks
+curl -X POST http://localhost:3000/api/autopilots \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Daily Standup", "trigger_type": "cron", "cron_expression": "0 9 * * 1-5", "target_agent_id": "secretary"}'
+
+# Squads — team routing
+curl -X POST http://localhost:3000/api/squads \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Frontend Team", "leader_agent_id": "secretary", "routing_strategy": "auto"}'
 ```
 
-### Employees, Skills, Knowledge
+### Employees, Skills, Agents
 
 ```bash
 # Employees
@@ -287,13 +299,9 @@ curl -X POST http://localhost:3000/api/employees \
 curl -X POST "http://localhost:3000/api/skills/load?path=/path/to/skill.md"
 curl http://localhost:3000/api/skills
 
-# Knowledge base
-curl -X POST http://localhost:3000/api/knowledge/index \
-  -H "Content-Type: application/json" \
-  -d '{"path": "/path/to/docs"}'
-curl -X POST http://localhost:3000/api/knowledge/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is Cabinet?", "top_k": 3}'
+# Agents — manage and discover external agents
+curl http://localhost:3000/api/agents
+curl -X POST http://localhost:3000/api/agents/scan
 ```
 
 ---

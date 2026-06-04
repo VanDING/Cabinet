@@ -15,6 +15,20 @@ export { runMigration010 } from './migrations/010_runtime_tables.js';
 export { runMigration011 } from './migrations/011_memory_metadata_index.js';
 export { runMigration015 } from './migrations/015_memory_graph.js';
 export { runMigration019 } from './migrations/019_project_name_unique.js';
+export { runMigration024 } from './migrations/024_external_agent.js';
+export { runMigration025 } from './migrations/025_agent_daemon.js';
+export { runMigration026 } from './migrations/026_autopilot_triggers.js';
+export { runMigration027 } from './migrations/027_agent_squads.js';
+export {
+  SquadRepository,
+  type SquadRow,
+  type SquadMemberRow,
+} from './repositories/squad-repo.js';
+export {
+  AutopilotRepository,
+  type AutopilotTriggerRow,
+  type AutopilotRunRow,
+} from './repositories/autopilot-repo.js';
 export { runMigrations, MIGRATIONS, type MigrationEntry } from './migrations/runner.js';
 // Repositories
 export { EventLogRepository } from './repositories/event-log.js';
@@ -71,6 +85,15 @@ export { CheckpointRepository } from './repositories/checkpoint-repo.js';
 export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
 export { RouteFeedbackRepository, type RouteFeedbackRow } from './repositories/route-feedback-repo.js';
 export { TelemetryRepository, type TelemetryRow } from './repositories/telemetry-repo.js';
+export {
+  AgentTaskQueueRepository,
+  type TaskQueueRow,
+} from './repositories/agent-task-queue-repo.js';
+export {
+  AgentDaemonRepository,
+  type HeartbeatRow,
+  type WorkspaceRow,
+} from './repositories/agent-daemon-repo.js';
 export {
   SYSTEM_KNOWLEDGE_BASE,
   syncSystemKnowledge,

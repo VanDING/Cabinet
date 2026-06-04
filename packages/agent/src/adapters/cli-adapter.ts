@@ -168,7 +168,7 @@ function collectStderr(stream: NodeJS.ReadableStream): Promise<string> {
 
 export class CliAdapter implements ExternalAgentAdapter {
   readonly protocol = 'cli' as const;
-  private process: ChildProcess | null = null;
+  private processes = new Map<string, ChildProcess>();
 
   constructor(
     readonly agentId: string,
@@ -185,10 +185,12 @@ export class CliAdapter implements ExternalAgentAdapter {
   }
 
   async stop(): Promise<void> {
-    if (this.process && !this.process.killed) {
-      this.process.kill('SIGTERM');
-      this.process = null;
+    for (const [taskId, proc] of this.processes) {
+      if (!proc.killed) {
+        proc.kill('SIGTERM');
+      }
     }
+    this.processes.clear();
   }
 
   async healthCheck(): Promise<boolean> {
@@ -255,10 +257,11 @@ export class CliAdapter implements ExternalAgentAdapter {
       const proc = spawn(this.config.command, this.config.args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, ...this.config.env },
+        cwd: task.configuration.working_directory ?? process.cwd(),
         timeout: timeoutMs,
       });
 
-      this.process = proc;
+      this.processes.set(task.task_id, proc);
 
       // Write prompt to stdin
       proc.stdin!.write(prompt);
@@ -273,12 +276,12 @@ export class CliAdapter implements ExternalAgentAdapter {
       // Wait for process to exit
       await new Promise<void>((resolve, reject) => {
         proc.on('close', (code) => {
-          this.process = null;
+          this.processes.delete(task.task_id);
           if (code === 0 || code === null) resolve();
           else reject(new Error(`Process exited with code ${code}. stderr: ${stderr.slice(0, 500)}`));
         });
         proc.on('error', (err) => {
-          this.process = null;
+          this.processes.delete(task.task_id);
           reject(err);
         });
       });
@@ -289,7 +292,7 @@ export class CliAdapter implements ExternalAgentAdapter {
 
       return parseOutput(stdout, task.task_id, startedAt);
     } catch (err) {
-      this.process = null;
+      this.processes.delete(task.task_id);
       const message = err instanceof Error ? err.message : String(err);
       const isTimeout = message.includes('timed out');
 
@@ -302,10 +305,11 @@ export class CliAdapter implements ExternalAgentAdapter {
     }
   }
 
-  async cancelTask(_taskId: string): Promise<void> {
-    if (this.process && !this.process.killed) {
-      this.process.kill('SIGTERM');
-      this.process = null;
+  async cancelTask(taskId: string): Promise<void> {
+    const proc = this.processes.get(taskId);
+    if (proc && !proc.killed) {
+      proc.kill('SIGTERM');
+      this.processes.delete(taskId);
     }
   }
 

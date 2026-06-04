@@ -68,6 +68,9 @@ function setupClient(ws: WebSocket): void {
         // Store agent_id for targeted delivery
         (ws as any)._agentId = msg.agent_id;
         ws.send(JSON.stringify({ type: 'agent_connected', agent_id: msg.agent_id }));
+      } else {
+        // Try daemon message handler
+        handleDaemonWSMessage(ws, msg);
       }
     } catch {
       // ignore malformed messages
@@ -115,4 +118,133 @@ export function broadcast(type: string, data?: Record<string, unknown>): void {
 
 export function getWSServer(): WebSocketServer | null {
   return wss;
+}
+
+// ── Daemon Connection Manager ─────────────────────────────────────
+
+/**
+ * Tracks daemon WebSocket connections for real-time task push.
+ * Replaces polling when a daemon is connected via WS.
+ */
+class DaemonConnectionManager {
+  private daemons = new Map<string, WebSocket>(); // daemon_id → WS
+
+  register(daemonId: string, ws: WebSocket): void {
+    this.daemons.set(daemonId, ws);
+    // Store daemon_id on ws for cleanup
+    (ws as any)._daemonId = daemonId;
+  }
+
+  unregister(daemonId: string): void {
+    this.daemons.delete(daemonId);
+  }
+
+  /** Push a task to a daemon via WS. Returns true if sent successfully. */
+  sendTask(daemonId: string, task: unknown): boolean {
+    const ws = this.daemons.get(daemonId);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ type: 'task_assigned', task, task_id: (task as any).id, timestamp: new Date().toISOString() }));
+    return true;
+  }
+
+  /** Cancel a running task on a daemon. */
+  cancelTask(daemonId: string, taskId: string): boolean {
+    const ws = this.daemons.get(daemonId);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ type: 'task_cancelled', task_id: taskId, timestamp: new Date().toISOString() }));
+    return true;
+  }
+
+  /** Send config update to a daemon. */
+  sendConfigUpdate(daemonId: string, config: Record<string, unknown>): boolean {
+    const ws = this.daemons.get(daemonId);
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ type: 'config_updated', config, timestamp: new Date().toISOString() }));
+    return true;
+  }
+
+  isConnected(daemonId: string): boolean {
+    const ws = this.daemons.get(daemonId);
+    return ws !== undefined && ws.readyState === WebSocket.OPEN;
+  }
+
+  getOnlineDaemons(): string[] {
+    return [...this.daemons.entries()]
+      .filter(([, ws]) => ws.readyState === WebSocket.OPEN)
+      .map(([id]) => id);
+  }
+
+  /** Handle cleanup when a daemon WS disconnects. */
+  handleDisconnect(ws: WebSocket): void {
+    const daemonId = (ws as any)._daemonId as string | undefined;
+    if (daemonId) this.unregister(daemonId);
+  }
+}
+
+const daemonConnections = new DaemonConnectionManager();
+
+export { daemonConnections as daemonConnectionManager };
+export type { DaemonConnectionManager };
+
+// Register daemon handlers on agent WS connections
+// Called from context.ts after creating WS servers
+export function registerDaemonWSHandlers(): void {
+  // Hook into existing agentWss — but since setupWSS is already called,
+  // we add a global message handler by patching the setupClient behavior.
+  // Instead, we extend the broadcast to handle daemon message types.
+  // The daemon connect/close handling is done by the daemon-context module.
+}
+
+/**
+ * Handle an incoming daemon WebSocket message.
+ * Called by external code that processes raw agent channel messages.
+ */
+export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown>): boolean {
+  switch (msg.type) {
+    case 'agent_daemon_connect': {
+      const daemonId = msg.daemon_id as string;
+      if (daemonId) {
+        (ws as any)._daemonId = daemonId;
+        daemonConnections.register(daemonId, ws);
+        ws.send(JSON.stringify({ type: 'connected', daemon_id: daemonId }));
+      }
+      return true;
+    }
+    case 'heartbeat': {
+      const daemonId = (msg.daemon_id as string) ?? (ws as any)._daemonId;
+      if (daemonId) {
+        // Heartbeat received — daemon is alive
+        // Could update agent_daemon_heartbeats table here if needed
+      }
+      return true;
+    }
+    case 'task_progress': {
+      // Forward to events WS for Dashboard display
+      broadcast('task_progress', msg as Record<string, unknown>);
+      return true;
+    }
+    case 'task_completed': {
+      broadcast('task_completed', msg as Record<string, unknown>);
+      return true;
+    }
+    case 'task_failed': {
+      broadcast('task_failed', msg as Record<string, unknown>);
+      return true;
+    }
+    case 'daemon_reconnect': {
+      const daemonId = msg.daemon_id as string;
+      if (daemonId) {
+        (ws as any)._daemonId = daemonId;
+        daemonConnections.register(daemonId, ws);
+        // Reconcile: return list of tasks still claimed by this daemon
+        ws.send(JSON.stringify({
+          type: 'reconnect_ack',
+          reconciled_tasks: msg.active_task_ids ?? [],
+        }));
+      }
+      return true;
+    }
+    default:
+      return false; // not a daemon message
+  }
 }

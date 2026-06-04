@@ -21,6 +21,9 @@ import { runMigration021 } from './021_workflow_cron.js';
 import { runMigration022 } from './022_subagent_tables.js';
 import { runMigration023 } from './023_employee_allowed_tools.js';
 import { runMigration024 } from './024_external_agent.js';
+import { runMigration025 } from './025_agent_daemon.js';
+import { runMigration026 } from './026_autopilot_triggers.js';
+import { runMigration027 } from './027_agent_squads.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -50,6 +53,9 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 22, name: '022_subagent_tables', up: runMigration022 },
   { version: 23, name: '023_employee_allowed_tools', up: runMigration023 },
   { version: 24, name: '024_external_agent', up: runMigration024 },
+  { version: 25, name: '025_agent_daemon', up: runMigration025 },
+  { version: 26, name: '026_autopilot_triggers', up: runMigration026 },
+  { version: 27, name: '027_agent_squads', up: runMigration027 },
 ];
 
 /**

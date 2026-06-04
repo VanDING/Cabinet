@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import type { HierarchicalNSW as HierarchicalNSWType } from 'hnswlib-node';
 import { LongTermMemoryRepository, type Database, type LongTermMemoryRow } from '@cabinet/storage';
+import { MemoryDecayService } from './memory-decay.js';
 
 const req = typeof require !== 'undefined' ? require : createRequire(import.meta.url);
 
@@ -167,12 +168,7 @@ export class LongTermMemory {
             meta.status = 'superseded';
             meta.supersededBy = id;
             meta.supersededReason = c.resolutionSuggestion;
-            this.repo.insert({
-              id: oldRow.id,
-              content: oldRow.content,
-              embedding: oldRow.embedding,
-              metadata: JSON.stringify(meta),
-            });
+            this.repo.updateMetadata(oldRow.id, JSON.stringify(meta));
           }
         } else if (c.confidence >= 0.5 && this.onContradictionDetected) {
           this.onContradictionDetected({
@@ -345,9 +341,6 @@ export class LongTermMemory {
 
   private computeDecayScore(entry: LongTermEntry): number {
     try {
-      const { MemoryDecayService } =
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require('./memory-decay.js') as typeof import('./memory-decay.js');
       return MemoryDecayService.score(entry);
     } catch {
       return 1;
