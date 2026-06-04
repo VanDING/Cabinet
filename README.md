@@ -166,6 +166,9 @@ Layer 1 (Infra):       graph, types, events, storage  ← infrastructure
 - **Observability · Transparent and Auditable**
   Built-in observability collector tracks session metrics, tool health, cost, and context-zone distribution, generating daily reports and health checks so your AI team's operations are never a black box.
 
+- **Optional Browser Automation · Playwright via MCP**
+  Browser automation tools (navigate, click, screenshot, evaluate) are available when needed. Install `@anthropic/mcp-server-playwright` via MCP or run `npx playwright install chromium` to enable them. Not bundled in the installer, keeping the package lean.
+
 ---
 
 ## Quick Start
@@ -330,6 +333,12 @@ Configure MCP servers in your Cabinet data directory:
       "transport": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
+    },
+    {
+      "name": "playwright",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-playwright"]
     }
   ]
 }

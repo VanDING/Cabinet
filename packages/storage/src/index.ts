@@ -70,6 +70,7 @@ export {
 export { CheckpointRepository } from './repositories/checkpoint-repo.js';
 export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
 export { RouteFeedbackRepository, type RouteFeedbackRow } from './repositories/route-feedback-repo.js';
+export { TelemetryRepository, type TelemetryRow } from './repositories/telemetry-repo.js';
 export {
   SYSTEM_KNOWLEDGE_BASE,
   syncSystemKnowledge,

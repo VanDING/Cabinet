@@ -16,11 +16,11 @@
 
 export type AgentRoleType =
   | 'secretary'
-  | 'meeting_chair'
-  | 'reviewer'
   | 'curator'
   | 'organize'
-  | 'custom';
+  | 'custom'
+  | 'external_a2a'
+  | 'external_cli';
 
 export type ModelTier = 'deep_reasoning' | 'fast_execution' | 'default';
 
@@ -52,6 +52,8 @@ export interface AgentRole {
   upgradeModelTier?: ModelTier;
   /** Model tier to use for simple/downgraded tasks (e.g., modifying existing workflow). */
   downgradeModelTier?: ModelTier;
+  /** External Agent configuration — only valid when type is external_a2a or external_cli. */
+  external?: import('@cabinet/types').ExternalAgentConfig;
 }
 
 // ── Built-in Cabinet Roles ─────────────────────────────────────
@@ -185,60 +187,6 @@ export const SECRETARY_ROLE: AgentRole = {
   maxSteps: 500,
 };
 
-export const MEETING_CHAIR_ROLE: AgentRole = {
-  type: 'meeting_chair',
-  name: 'Meeting Chair',
-  description:
-    'Coordinates multi-perspective analysis. Matches perspectives to the topic, constructs analysis briefs for the Advisor, routes reviewer feedback.',
-  modules: {
-    identity: [
-      'You are the Meeting Chair of Cabinet — you coordinate analysis, you do not perform analysis yourself.',
-      '',
-      'Your role:',
-      '1. Parse the user intent and identify what perspectives are needed.',
-      '2. Select relevant perspectives and specify what each should focus on.',
-      '3. Construct a structured Brief and call start_meeting.',
-      '4. When you receive Reviewer feedback, route issues to the relevant perspective.',
-      '5. When analysis passes review, generate a deliverable for the Captain.',
-      '',
-      'Key principles:',
-      '- You coordinate. The Advisor analyzes. The Reviewer reviews. Each has one job.',
-      '- Be specific when constructing the Brief — not "analyze the market" but "analyze market entry barriers in the EU."',
-      '- Do not add your own analysis.',
-      '- Captain is the human user. Never list Captain as a perspective or advisor.',
-      '- Use get_project_context to load current project goals, constraints, and history.',
-    ].join('\n'),
-    workflow: [
-      '## Brief Format',
-      'Output as JSON:',
-      '{"selected_perspectives": [{"id": "...", "name": "...", "focus": "..."}],',
-      ' "topic_refined": "...", "key_questions": ["..."]}',
-    ].join('\n'),
-  },
-  modelTier: 'fast_execution',
-  temperature: 0.4,
-  maxResponseTokens: 4000,
-  allowedTools: [
-    'start_meeting',
-    'search_memory',
-    'list_memories',
-    'get_project_context',
-    'list_projects',
-    'remember',
-    'recall',
-    'read_file',
-    'list_directory',
-    'glob',
-    'grep',
-    'search_documents',
-    'web_fetch',
-    'query_system_knowledge',
-    'get_system_knowledge',
-  ],
-  contextBudget: 0.4,
-  maxSteps: 50,
-};
-
 export const CURATOR_ROLE: AgentRole = {
   type: 'curator',
   name: 'Curator',
@@ -293,70 +241,6 @@ export const CURATOR_ROLE: AgentRole = {
   ],
   contextBudget: 0.4,
   maxSteps: 150,
-};
-
-export const REVIEWER_ROLE: AgentRole = {
-  type: 'reviewer',
-  name: 'Reviewer',
-  description:
-    'Independent quality gate. Reviews agent outputs for logical completeness, evidence quality, risk assessment, and factual accuracy.',
-  modules: {
-    identity: [
-      'You are the Reviewer — an independent quality gate for agent outputs in Cabinet.',
-      '',
-      'Your role: review output from other agents. Check for: logical completeness, risk assessment adequacy,',
-      'weak evidence, unstated assumptions, factual errors. Use tools to verify claims.',
-      '',
-      'Do NOT perform analysis yourself — only review what was provided.',
-      '',
-      'Guidelines:',
-      '- Be specific and actionable. "The analysis is weak" is not helpful.',
-      '- If you fail output, issues must be specific enough for the original agent to fix.',
-      '- Use tools proactively to verify claims.',
-      '- If same issues persist after 2+ review rounds, escalate.',
-      '- Do not add your own analysis. Only review.',
-    ].join('\n'),
-    workflow: [
-      '## Output Format',
-      'Output as JSON:',
-      '{"pass": boolean, "score": 0.0-1.0, "issues": [{',
-      '  "type": "weak_evidence"|"logical_gap"|"unstated_assumption"|"factual_error",',
-      '  "detail": "specific description",',
-      '  "severity": "high"|"medium"|"low"',
-      '}], "suggestion": {"action": "...", "detail": "..."}}',
-      '',
-      'Only include issues you actually found. Empty "issues" array is fine.',
-    ].join('\n'),
-  },
-  modelTier: 'fast_execution',
-  temperature: 0.1,
-  allowedTools: [
-    'read_file',
-    'list_directory',
-    'glob',
-    'grep',
-    'search_documents',
-    'search_memory',
-    'list_memories',
-    'recall',
-    'query_decisions',
-    'get_decision',
-    'get_recent_events',
-    'get_project_context',
-    'get_captain_preferences',
-    'web_fetch',
-    'query_system_knowledge',
-    'get_system_knowledge',
-    // Document tools
-    'read_pdf',
-    // Browser tools
-    'browser_navigate',
-    'browser_read',
-    'browser_screenshot',
-  ],
-  contextBudget: 0.35,
-  maxSteps: 50,
-  upgradeModelTier: 'default',
 };
 
 export const ORGANIZE_ROLE: AgentRole = {
@@ -513,14 +397,12 @@ export class AgentRoleRegistry {
 
   constructor() {
     this.register(SECRETARY_ROLE);
-    this.register(MEETING_CHAIR_ROLE);
     this.register(CURATOR_ROLE);
-    this.register(REVIEWER_ROLE);
     this.register(ORGANIZE_ROLE);
   }
 
   register(role: AgentRole): void {
-    if (role.type === 'custom') {
+    if (role.type === 'custom' || role.type === 'external_a2a' || role.type === 'external_cli') {
       this.customRoles.set(role.name, role);
     } else {
       this.roles.set(role.type, role);
@@ -530,10 +412,9 @@ export class AgentRoleRegistry {
   get(type: AgentRoleType | string): AgentRole | undefined {
     const builtin = this.roles.get(type as AgentRoleType);
     if (builtin) return builtin;
-    // Custom agents are keyed by name; try direct lookup first, then by-name search
+    // Custom and external agents are keyed by name
     const direct = this.customRoles.get(type);
     if (direct) return direct;
-    // Fallback: search by name for custom agents
     for (const [name, role] of this.customRoles) {
       if (name === type || role.name === type) return role;
     }
@@ -558,7 +439,7 @@ export class AgentRoleRegistry {
     const existing = this.roles.get(type as AgentRoleType) ?? this.customRoles.get(type);
     if (!existing) return undefined;
     const updated = { ...existing, ...updates };
-    if (existing.type === 'custom') {
+    if (existing.type === 'custom' || existing.type.startsWith('external_')) {
       this.customRoles.set(updated.name, updated);
     } else {
       this.roles.set(type as AgentRoleType, updated);
@@ -570,20 +451,21 @@ export class AgentRoleRegistry {
   describeForRouting(): string {
     const lines: string[] = [];
     for (const r of this.roles.values()) {
-      if (r.type === 'curator' || r.type === 'reviewer') continue; // background-only, never routable
+      if (r.type === 'curator') continue; // background-only, never routable
       lines.push(`- ${r.type}: ${r.description}`);
     }
     for (const r of this.customRoles.values()) {
-      lines.push(`- ${r.name} (custom): ${r.description}`);
+      const sourceTag = r.type.startsWith('external_') ? ` (${r.type})` : ' (custom)';
+      lines.push(`- ${r.name}${sourceTag}: ${r.description}`);
     }
     return lines.join('\n');
   }
 
-  /** Return all valid agent type strings (built-in types + custom agent names). */
+  /** Return all valid agent type strings (built-in types + custom/external agent names). */
   getValidAgentTypes(): Set<string> {
     const types = new Set<string>();
     for (const r of this.roles.values()) {
-      if (r.type === 'curator' || r.type === 'reviewer') continue; // background-only, never routable
+      if (r.type === 'curator') continue; // background-only, never routable
       types.add(r.type);
     }
     for (const r of this.customRoles.values()) {

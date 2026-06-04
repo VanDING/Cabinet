@@ -8,6 +8,8 @@ interface EmployeeItem {
   name: string;
   role: string;
   kind: 'ai' | 'human';
+  source?: 'builtin' | 'custom' | 'external_cli' | 'external_a2a';
+  external?: Record<string, unknown>;
   model?: string;
   expertise: string[];
   permissionLevel: string;
@@ -62,6 +64,46 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const [selected, setSelected] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeItem | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const sourceLabels: Record<string, string> = {
+    builtin: 'builtin', custom: 'custom', external_cli: 'CLI', external_a2a: 'A2A',
+  };
+  const sourceColors: Record<string, string> = {
+    builtin: 'bg-blue-600/20 text-blue-400',
+    custom: 'bg-purple-600/20 text-purple-400',
+    external_cli: 'bg-amber-600/20 text-amber-400',
+    external_a2a: 'bg-teal-600/20 text-teal-400',
+  };
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const res = await apiFetch('/api/agents/scan', { method: 'POST', headers: authJsonHeaders() });
+      const data = await res.json() as { discovered: Array<{ name: string; command: string; installed: boolean; version?: string; registered: boolean }> };
+      const unregistered = data.discovered.filter((d) => d.installed && !d.registered);
+      if (unregistered.length > 0) {
+        for (const agent of unregistered) {
+          const id = `emp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          await apiFetch('/api/employees', {
+            method: 'POST', headers: authJsonHeaders(),
+            body: JSON.stringify({
+              id, name: agent.name, role: agent.command, kind: 'ai',
+              projectId: activeProjectId ?? 'default', permissionLevel: 'write',
+              expertise: [], source: 'external_cli',
+              external: { protocol: 'cli', configSource: 'agent_native', command: agent.command, args: ['--print'], detectCommand: `which ${agent.command}` },
+            }),
+          });
+        }
+        addToast?.('success', 'Registered ' + unregistered.length + ' CLI agent(s)');
+        refreshEmployees();
+      } else {
+        addToast?.('info', 'All installed agents are already registered');
+      }
+    } catch (err) { addToast?.('error', 'Scan failed: ' + String(err)); }
+    finally { setScanning(false); setAddMenuOpen(false); }
+  };
 
   const statusColors: Record<string, string> = {
     active: 'bg-intent-success-muted text-intent-success',
@@ -122,12 +164,23 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
             Configure AI and human team members
           </span>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="rounded-lg bg-accent px-4 py-2 text-sm text-content-inverse hover:bg-accent-hover"
-        >
-          + New Employee
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setAddMenuOpen(!addMenuOpen)}
+            className="rounded-lg bg-accent px-4 py-2 text-sm text-content-inverse hover:bg-accent-hover"
+          >
+            + Add
+          </button>
+          {addMenuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-surface-primary py-1 shadow-xl" onClick={() => setAddMenuOpen(false)}>
+              <button className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted" onClick={() => { setAddMenuOpen(false); handleOpenCreate(); }}>Add Human Employee</button>
+              <button className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted" onClick={() => { setAddMenuOpen(false); handleOpenCreate(); }}>Add Custom AI Agent</button>
+              <div className="border-t border-border my-1" />
+              <button className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted" onClick={handleScan} disabled={scanning}>{scanning ? 'Scanning...' : 'Scan for CLI Agents'}</button>
+              <button className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted" onClick={() => { setAddMenuOpen(false); handleOpenCreate(); }}>Register A2A Agent</button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mb-4 text-sm text-content-tertiary">{employees.length} team members</div>
@@ -159,6 +212,11 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                 <span className={`rounded-full px-2 py-0.5 text-xs ${statusColors[emp.status]}`}>
                   {emp.status}
                 </span>
+                {emp.source && emp.source !== 'custom' && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${sourceColors[emp.source] ?? 'bg-gray-600/20 text-gray-400'}`}>
+                    {sourceLabels[emp.source] ?? emp.source}
+                  </span>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

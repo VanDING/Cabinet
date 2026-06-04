@@ -3,6 +3,7 @@ import { ModalOverlay } from './ModalOverlay';
 import { Tabs } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 import { useToast } from './Toast.js';
+import { useAvailableModels } from '../hooks/useAvailableModels.js';
 
 // ── Types ──
 interface EmployeeItem {
@@ -10,6 +11,8 @@ interface EmployeeItem {
   name: string;
   role: string;
   kind: 'ai' | 'human';
+  source?: 'builtin' | 'custom' | 'external_cli' | 'external_a2a';
+  external?: Record<string, unknown>;
   model?: string;
   expertise: string[];
   permissionLevel: string;
@@ -83,16 +86,12 @@ function clamp(num: number, min: number, max: number) {
 // ── Component ──
 export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, onSaved }: EmployeeEditModalProps) {
   const { addToast } = useToast();
+  const availableModels = useAvailableModels();
   const isCreate = !employee;
   const isAI = (form: any) => form.kind === 'ai';
 
   // Tabs
   const humanTabs = [{ id: 'basic', label: 'Basic Info' }];
-  const aiTabs = [
-    { id: 'basic', label: 'Basic Info' },
-    { id: 'ai', label: 'AI Config' },
-    { id: 'capabilities', label: 'Capabilities' },
-  ];
   const [activeTab, setActiveTab] = useState('basic');
 
   // Form state
@@ -108,10 +107,21 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
     systemPrompt: '',
     expertise: [] as string[],
     allowedTools: [] as string[],
+    source: 'custom' as string,
+    external: undefined as Record<string, unknown> | undefined,
   });
 
   // Expertise tag input
   const [expertiseInput, setExpertiseInput] = useState('');
+
+  // Derived
+  const isExternal = (form.source ?? employee?.source ?? '').startsWith('external_');
+  const aiTabs = [
+    { id: 'basic', label: 'Basic Info' },
+    { id: 'ai', label: 'AI Config' },
+    { id: 'capabilities', label: 'Capabilities' },
+    ...(isExternal ? [{ id: 'external', label: 'External' }] : []),
+  ];
 
   // Dynamic data
   const [skills, setSkills] = useState<SkillInfo[]>([]);
@@ -174,6 +184,8 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
         systemPrompt: employee.systemPrompt ?? '',
         expertise: [...employee.expertise],
         allowedTools: [...allowed],
+        source: employee.source ?? 'custom',
+        external: employee.external ?? undefined,
       });
       // Pre-expand sections that have selected tools
       const hasAppTool = (tools: string[]) => tools.some((t) => allowed.includes(t));
@@ -199,6 +211,8 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
         systemPrompt: '',
         expertise: [],
         allowedTools: [],
+        source: 'custom',
+        external: undefined,
       });
       setExpandedSections({
         communication: true,
@@ -280,29 +294,35 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
       payload.maxTokens = form.maxTokens;
     }
 
+    payload.source = form.source;
+    if (form.external) payload.external = form.external;
+
     if (isCreate) {
       payload.projectId = activeProjectId;
     }
 
     try {
-      if (isCreate) {
-        await apiFetch('/api/employees', {
-          method: 'POST',
-          headers: authJsonHeaders(),
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await apiFetch(`/api/employees/${employee!.id}`, {
-          method: 'PUT',
-          headers: authJsonHeaders(),
-          body: JSON.stringify(payload),
-        });
+      const res = isCreate
+        ? await apiFetch('/api/employees', {
+            method: 'POST',
+            headers: authJsonHeaders(),
+            body: JSON.stringify(payload),
+          })
+        : await apiFetch(`/api/employees/${employee!.id}`, {
+            method: 'PUT',
+            headers: authJsonHeaders(),
+            body: JSON.stringify(payload),
+          });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}`);
       }
       addToast('success', isCreate ? 'Employee created' : 'Employee updated');
       onSaved();
       onClose();
     } catch (err) {
-      addToast('error', isCreate ? 'Failed to create employee' : 'Failed to update employee');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      addToast('error', isCreate ? `Failed to create: ${msg}` : `Failed to update: ${msg}`);
       console.error(err);
     }
   }, [form, isCreate, activeProjectId, employee, onSaved, onClose, addToast]);
@@ -450,10 +470,19 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
                 onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary focus:ring-2 focus:ring-accent focus:outline-hidden"
               >
-                <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                {availableModels.length === 0 ? (
+                  <option value="">No API keys configured</option>
+                ) : (
+                  availableModels.map(({ provider, models }) => (
+                    <optgroup key={provider} label={provider}>
+                      {models.map((model) => (
+                        <option key={model} value={model}>
+                          {model.replace(`${provider}/`, '')}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                )}
               </select>
             </div>
 
@@ -650,6 +679,94 @@ export function EmployeeEditModal({ isOpen, onClose, employee, activeProjectId, 
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* External Agent Tab */}
+        {activeTab === 'external' && isExternal && (
+          <div className="space-y-4">
+            {/* Protocol */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-content-primary">Protocol</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-content-secondary">
+                  <input type="radio" name="ext-protocol" value="a2a"
+                    checked={(form.external as any)?.protocol === 'a2a'}
+                    onChange={() => setForm({ ...form, external: { ...form.external as any, protocol: 'a2a' } })}
+                    className="text-accent focus:ring-accent" /> A2A
+                </label>
+                <label className="flex items-center gap-2 text-sm text-content-secondary">
+                  <input type="radio" name="ext-protocol" value="cli"
+                    checked={(form.external as any)?.protocol !== 'a2a'}
+                    onChange={() => setForm({ ...form, external: { ...form.external as any, protocol: 'cli' } })}
+                    className="text-accent focus:ring-accent" /> CLI
+                </label>
+              </div>
+            </div>
+            {/* Config source */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-content-primary">Config Source</label>
+              <select value={(form.external as any)?.configSource ?? 'agent_native'}
+                onChange={(e) => setForm({ ...form, external: { ...form.external as any, configSource: e.target.value } })}
+                className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary">
+                <option value="cabinet_managed">Cabinet-managed</option>
+                <option value="agent_native">Agent-native</option>
+              </select>
+            </div>
+            {/* CLI fields */}
+            {(form.external as any)?.protocol !== 'a2a' ? (
+              <>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Command</label>
+                  <input value={(form.external as any)?.command ?? ''} onChange={(e) => setForm({ ...form, external: { ...form.external as any, command: e.target.value } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" placeholder="claude" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Args</label>
+                  <input value={(form.external as any)?.args?.join(' ') ?? ''} onChange={(e) => setForm({ ...form, external: { ...form.external as any, args: e.target.value.split(' ').filter(Boolean) } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" placeholder="--print" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Detect Command</label>
+                  <input value={(form.external as any)?.detectCommand ?? ''} onChange={(e) => setForm({ ...form, external: { ...form.external as any, detectCommand: e.target.value } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" placeholder="which claude" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Permission Mode</label>
+                  <select value={(form.external as any)?.permissionMode ?? 'auto'} onChange={(e) => setForm({ ...form, external: { ...form.external as any, permissionMode: e.target.value } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary">
+                    <option value="auto">auto</option><option value="conservative">conservative</option>
+                    <option value="default">default</option><option value="plan">plan</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Base URL</label>
+                  <input value={(form.external as any)?.baseUrl ?? ''} onChange={(e) => setForm({ ...form, external: { ...form.external as any, baseUrl: e.target.value } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" placeholder="http://localhost:3002" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-content-primary">Health Check URL</label>
+                  <input value={(form.external as any)?.healthCheckUrl ?? ''} onChange={(e) => setForm({ ...form, external: { ...form.external as any, healthCheckUrl: e.target.value } })}
+                    className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" placeholder="http://localhost:3002/health" />
+                </div>
+              </>
+            )}
+            {/* Common */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-content-primary">Timeout (ms)</label>
+                <input type="number" value={(form.external as any)?.timeoutMs ?? 120000} onChange={(e) => setForm({ ...form, external: { ...form.external as any, timeoutMs: parseInt(e.target.value) } })}
+                  className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-content-primary">Max Retries</label>
+                <input type="number" value={(form.external as any)?.maxRetries ?? 2} onChange={(e) => setForm({ ...form, external: { ...form.external as any, maxRetries: parseInt(e.target.value) } })}
+                  className="w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary" />
+              </div>
             </div>
           </div>
         )}

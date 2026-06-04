@@ -215,6 +215,13 @@ export function assessCommandRisk(command: string): CommandRiskAssessment {
 
 // ── SafetyChecker ────────────────────────────────────────────
 
+export interface SafetyCheckOptions {
+  /** Whether the operation originates from an external agent. */
+  fromExternalAgent?: boolean;
+  /** The external agent's trust level (0.0-1.0). */
+  agentTrustLevel?: number;
+}
+
 export class SafetyChecker {
   private tier: DelegationTier;
   private readonly whitelist: Set<string>;
@@ -234,11 +241,45 @@ export class SafetyChecker {
     return this.tier;
   }
 
-  check(toolName: string, _args: Record<string, unknown>): SafetyCheck {
+  check(toolName: string, _args: Record<string, unknown>, opts?: SafetyCheckOptions): SafetyCheck {
     const filePath = _args.filePath as string | undefined;
     if (filePath && isSensitivePath(filePath)) {
       const fileCheck = this.checkFileAccess(filePath);
       if (!fileCheck.allowed) return fileCheck;
+    }
+
+    // External agent sandbox: moderate/cost/destructive tools require elevated tier
+    if (opts?.fromExternalAgent) {
+      const effectiveCategory = resolveEffectiveCategory(toolName);
+      // External agents need T2+ for moderate operations and T3+ for cost/destructive
+      if (effectiveCategory === 'destructive' && this.tier !== DelegationTier.FullAutonomy) {
+        return {
+          tier: 'delegation_block',
+          allowed: false,
+          blockedByTier: this.tier,
+          reason: `External agent '${toolName}' (destructive) requires Full Autonomy (T3). Current: ${TIER_LABELS[this.tier]}.`,
+        };
+      }
+      if (effectiveCategory === 'cost' && this.tier !== DelegationTier.FullAutonomy && this.tier !== DelegationTier.TrustedMode) {
+        return {
+          tier: 'delegation_block',
+          allowed: false,
+          blockedByTier: this.tier,
+          reason: `External agent '${toolName}' (cost) requires Trusted Mode (T2) or higher. Current: ${TIER_LABELS[this.tier]}.`,
+        };
+      }
+      // High-trust agents bypass the moderate check
+      if (effectiveCategory === 'moderate' && this.tier === DelegationTier.CaptainReview) {
+        if (opts.agentTrustLevel !== undefined && opts.agentTrustLevel >= 0.8) {
+          return { tier: 'auto', allowed: true, reason: 'High-trust external agent — moderate tool allowed.' };
+        }
+        return {
+          tier: 'delegation_block',
+          allowed: false,
+          blockedByTier: this.tier,
+          reason: `External agent '${toolName}' requires Strategic Guard (T1) or higher at Captain Review tier.`,
+        };
+      }
     }
 
     if (READ_ONLY_TOOLS.has(toolName)) {

@@ -26,6 +26,8 @@ import { EventTimelineModal } from '../components/office/EventTimelineModal';
 import { WeatherForecastModal } from '../components/office/WeatherForecastModal';
 import { DeliverablesModal } from '../components/office/DeliverablesModal';
 import { InsightsWidget } from '../components/office/InsightsWidget';
+import { TelemetryWidget } from '../components/office/TelemetryWidget';
+import { ActivityFeed } from '../components/ActivityFeed';
 import { InsightsModal } from '../components/office/InsightsModal';
 import { HarnessWidget } from '../components/office/HarnessWidget';
 import { HarnessModal } from '../components/office/HarnessModal';
@@ -49,7 +51,9 @@ type WidgetType =
   | 'progress-board'
   | 'meeting-list'
   | 'insights'
-  | 'harness';
+  | 'harness'
+  | 'telemetry-dashboard'
+  | 'activity-feed';
 
 interface WidgetDef {
   type: WidgetType;
@@ -76,6 +80,8 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'meeting-list', label: 'Meetings', w: 8, h: 5, available: true },
   { type: 'insights', label: 'Insights', w: 8, h: 5, available: true },
   { type: 'harness', label: 'Harness', w: 8, h: 5, available: true },
+  { type: 'telemetry-dashboard', label: 'Telemetry', w: 12, h: 8, available: true },
+  { type: 'activity-feed', label: 'Activity Feed', w: 8, h: 6, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -257,7 +263,7 @@ export function OfficePage() {
           <StatCard
             label="Workflows"
             value={stats.activeWorkflows}
-            color="text-intent-purple"
+            color="text-accent"
             onClick={() => handleWidgetClick('active-workflows')}
           />
         );
@@ -295,6 +301,10 @@ export function OfficePage() {
         return <InsightsWidget onExpand={() => handleWidgetClick('insights')} />;
       case 'harness':
         return <HarnessWidget onExpand={() => handleWidgetClick('harness')} />;
+      case 'telemetry-dashboard':
+        return <TelemetryWidget />;
+      case 'activity-feed':
+        return <ActivityFeed />;
       case 'calendar':
         return <Calendar />;
       case 'clock':

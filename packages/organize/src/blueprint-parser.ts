@@ -7,6 +7,21 @@ export class BlueprintParseError extends Error {
   }
 }
 
+/** Detect and compile EL expressions embedded in blueprint text. */
+function tryCompileEL(text: string): { workflowEl?: string } {
+  // Match ```el blocks or standalone THEN/WHEN expressions
+  const elBlock = text.match(/```el\s*([\s\S]*?)```/);
+  if (elBlock) return { workflowEl: elBlock[1]!.trim() };
+
+  const elLine = text.match(/^el:\s*\|?\s*\n?\s*(THEN|WHEN|IF|SWITCH|FOR|WHILE|SUBFLOW)\(/m);
+  if (elLine) {
+    const rest = text.slice(text.indexOf(elLine[0]) + elLine[0].length);
+    return { workflowEl: (elLine[0].replace(/^el:\s*\|?\s*\n?\s*/, '') + rest.split('\n')[0]).trim() };
+  }
+
+  return {};
+}
+
 export function parseBlueprint(text: string): Blueprint {
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/g);
   if (fenceMatch) {

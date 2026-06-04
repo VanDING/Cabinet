@@ -56,8 +56,7 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
 - **secretary** — 入口路由、通用对话、意图识别、工具分发。Secretary 是唯一面向 Captain 的交互入口，负责将请求路由到合适的专业 Agent 或 Skill。
 - **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow + Skill + MCP 蓝图。统筹设计所有体系化工作（工作流、Agent、Skill、MCP）。不直接执行具体流程。
 - **curator** — 记忆管理员。会话总结、知识固化、模式提取、项目进度跟踪。后台角色，不直接参与路由。
-- **meeting_chair** — 会议主持人。多视角辩论、共识合成。通过 start_meeting 工具触发。
-- **reviewer** — 质量审查员。逻辑、证据、完整性检查。**后台-only 角色，不可路由**，由 harness 质量闸门自动调用。
+- **secretary** — 对话入口 + 路由 + 多 Agent 协调 + 决策分析。所有外部 Agent 任务的上下文打包和结果合成。
 
 **已移除角色**：
 - ~~decision_analyst~~ — 已内化为 secretary 的决策辅助能力，不再作为独立角色存在。
@@ -65,7 +64,7 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
 **路由原则**：
 - 涉及"设计体系/创建 Agent/组织架构/写 Skill/搭 MCP" → organize
 - 涉及"总结/记忆/进度" → curator（后台）
-- 涉及"多角度分析/辩论" → meeting_chair（通过 start_meeting）
+- 涉及"多角度分析/辩论" → secretary（多 Agent 路由 + 并行调度）
 - 不确定 → secretary`,
   },
   {
@@ -154,7 +153,12 @@ get_status, get_dashboard_stats, get_memory_stats
 get_recent_events, publish_notification
 
 ### Skill（动态注入）
-Skills 注册后自动注入 \`use_skill__<skillName>\` 工具（如 \`use_skill__agentCreator\`、\`use_skill__workflowDesigner\`）。不存在通用的 \`use_skill\` 或 \`update_skill\` 工具。
+Skills 注册后自动注入 \`use_skill__<skillName>\` 工具（如 \`use_skill__agentCreator\`、\`use_skill__workflowDesigner\`）。同时提供 \`update_skill(name, description?, promptTemplate?, kind?)\` 工具用于原地修改已注册 Skill。
+
+### Employee 管理（3 个）
+- \`create_employee\` — 创建 AI/Human 团队成员
+- \`update_employee\` — 更新员工配置（模型从用户配置的 API Keys 动态获取，不再硬编码）
+- \`delete_employee\` — 删除员工
 
 ### 其他（4 个）
 create_employee, get_captain_preferences, set_captain_preferences, set_project_context
@@ -382,7 +386,7 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
     id: 'browser_automation',
     topic: '浏览器自动化',
     category: 'capability',
-    version: 1,
+    version: 2,
     content: `## 浏览器自动化
 
 ### 可用工具
@@ -395,11 +399,16 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
 
 ### 架构
 - 基于 BrowserPool（@cabinet/harness），最大 3 个并发浏览器上下文
-- 使用 Playwright CDP (Chrome DevTools Protocol)
+- 使用 Playwright + Chromium
 - 空闲会话每 10 分钟自动清理
 
+### 部署方式（可选）
+Playwright 和 Chromium **不再内置于安装包**（v0.9.0+）。浏览器自动化是可选能力：
+- **方式一**：在 Settings > MCP 中配置 \`@anthropic/mcp-server-playwright\`，Agent 自动通过 MCP 调用浏览器
+- **方式二**：手动安装 Playwright：\`npx playwright install chromium\`，Cabinet 会自动检测系统级 Playwright
+- 无 Playwright 时，\`browser_*\` 工具会返回友好错误，不影响其他功能
+
 ### 使用限制
-- 需要用户先启动 Chrome 浏览器调试模式并配置端口
 - 适用于需要与现有登录态交互的场景（如从已登录的浏览器中提取 token）
 - 不适用于全新浏览器的全自动操作`,
   },
@@ -479,13 +488,14 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
     id: 'agent_customization',
     topic: 'Agent 自定义与管理',
     category: 'capability',
-    version: 3,
+    version: 4,
     content: `## Agent 自定义与管理
 
 ### 内置 Agent 角色
-secretary, organize, curator, meeting_chair, reviewer
+secretary, organize, curator
 
-- **reviewer** 为后台-only 角色，不可直接路由或调用。
+- ~~meeting_chair~~ 已移除，由 Secretary 多 Agent 路由 + 结果合成吸收。
+- ~~reviewer~~ 已移除，质量审查由外部 Agent 节点处理。
 - ~~decision_analyst~~ 已移除，其能力内化为 secretary 的决策辅助功能。
 
 每个角色使用 \`modules: { identity: string; workflow?: string }\` 定义提示词模块，由 Prompt Assembler 在运行时组装为完整 system prompt：
@@ -501,10 +511,16 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
 - \`delete_agent(name)\` — 删除自定义 Agent（不可删除内置 Agent）
 - \`invoke_agent(agentName, message)\` — 调用另一个 Agent 执行任务
 
-### Agent 存储
+### Agent / Employee 存储
 - 自定义 Agent 存储在 SQLite agent_roles 表
+- AI/Human 团队成员（Employee）存储在 SQLite employees 表，支持通过 UI 编辑
 - 也支持从 \`~/.cabinet/agents/<name>/agent.json\` 加载（支持热加载）
-- Agent 配置包含 allowedTools 字段，用于限制该 Agent 可使用的工具
+- Agent/Employee 配置包含 allowedTools 字段，用于限制可使用的工具
+
+### Employee 编辑（UI）
+- EmployeesPage 支持创建和编辑 AI/Human 员工
+- AI 员工的模型下拉框从用户配置的 API Keys 动态读取（不再硬编码 Claude/GPT 列表）
+- 编辑后通过 PUT /api/employees/:id 保存，响应状态码异常时会显示具体错误（不再静默成功）
 
 ### 内置 Skills（Agent 创建相关）
 - \`use_skill__agentCreator\` — 引导创建自定义 Agent 的技能
@@ -515,11 +531,17 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
 ### Skills 系统
 - Skills 存储在 \`~/.cabinet/skills/\` 子目录，每个 Skill 含 SKILL.md
 - 支持热加载（fs.watch 监听，500ms 防抖）
+- 启动时自动扫描 \`~/.cabinet/skills/\` 并注册到 SkillRegistry，同步写入数据库
 - API：\`GET/POST /api/skills\`、\`PUT/DELETE /api/skills/:id\`、\`POST /api/skills/:id/test\`、\`POST /api/skills/import\`、\`GET /api/skills/:id/export\`
+
+### SkillRegistry 单例同步
+- 服务端启动时创建的 SkillRegistry 实例会通过 \`setSkillRegistry()\` 同步到全局单例
+- 确保 \`update_skill\` 等工具能正确访问已注册的技能
 
 ### 向用户说明
 - 当用户说"创建一个 Agent"时，引导其使用 register_agent 工具或 use_skill__agentCreator 技能
-- 自定义 Agent 会出现在 Secretary 的路由表中，用户可以使用 invoke_agent 调度`,
+- 自定义 Agent 会出现在 Secretary 的路由表中，用户可以使用 invoke_agent 调度
+- 当用户说"创建一个员工/团队成员"时，引导其使用 create_employee 工具或在 EmployeesPage 操作`,
   },
   {
     id: 'meeting_system',
@@ -533,10 +555,10 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
 返回：{ meetingId, topic, synthesis, advisorCount }
 
 ### 工作方式
-1. Meeting Chair (meeting_chair) 作为主持人
-2. 指定的 advisor Agent 各自独立分析主题并输出观点
-3. Chair 综合所有视角生成 synthesis（共识/分歧/推荐行动）
-4. 参与者可以包括内置 Agent（如 decision_analyst, reviewer）和自定义 Agent
+1. Secretary 作为协调者，并行调度多个 Agent 分析主题
+2. 指定的 Agent（内置或外部）各自独立分析并输出观点到 Context Slot
+3. Secretary 综合所有视角生成 synthesis（共识/分歧/推荐行动）
+4. 参与者可以包括外部 Agent（如 claude-code、cursor）和自定义 Agent
 
 ### 使用场景
 - 需要多角度分析的重大决策

@@ -37,6 +37,8 @@ const SettingsPage = lazy(() =>
 const EmployeesPage = lazy(() =>
   import('./pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })),
 );
+// AgentManagerPage merged into EmployeesPage. RuntimeDashboard merged into OfficePage Widgets.
+
 const MemoryPage = lazy(() =>
   import('./pages/MemoryPage').then((m) => ({ default: m.MemoryPage })),
 );

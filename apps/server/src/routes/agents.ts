@@ -291,3 +291,51 @@ agentsRouter.post('/message/stream', async (c) => {
     },
   });
 });
+
+// ── POST /api/agents/scan ──────────────────────────────────────
+
+const CLI_DETECT_LIST = [
+  { name: 'Claude Code',   command: 'claude',   detectCmd: 'which claude',   installCmd: 'npm install -g @anthropic-ai/claude-code' },
+  { name: 'Codex',         command: 'codex',    detectCmd: 'which codex',    installCmd: 'npm install -g @openai/codex' },
+  { name: 'OpenCode',      command: 'opencode', detectCmd: 'which opencode', installCmd: 'npm install -g opencode' },
+  { name: 'Qwen Code',     command: 'qwen-code', detectCmd: 'which qwen-code', installCmd: 'npm install -g @qwen-code/qwen-code' },
+  { name: 'DeepSeek TUI',  command: 'deepseek-tui', detectCmd: 'which deepseek-tui', installCmd: 'npm install -g deepseek-tui' },
+  { name: 'Cursor',        command: 'cursor',   detectCmd: 'which cursor',   installCmd: null },
+];
+
+agentsRouter.post('/scan', async (c) => {
+  const { spawn } = await import('node:child_process');
+  const { agentRegistry } = getServerContext();
+  const registered = new Set(agentRegistry.list().map((r) => r.name));
+  const discovered: Array<{ name: string; command: string; installed: boolean; version?: string; registered: boolean }> = [];
+
+  for (const entry of CLI_DETECT_LIST) {
+    let installed = false;
+    let version: string | undefined;
+    try {
+      const proc = spawn('sh', ['-c', entry.detectCmd], { stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
+      const stdout = await new Promise<string>((resolve, reject) => {
+        let data = '';
+        proc.stdout?.on('data', (c: Buffer) => data += c.toString());
+        proc.on('close', (code) => code === 0 ? resolve(data.trim()) : reject(new Error(`exit ${code}`)));
+        proc.on('error', reject);
+      });
+      installed = true;
+      // Try to get version
+      try {
+        const vProc = spawn(entry.command, ['--version'], { stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000 });
+        const vOut = await new Promise<string>((resolve) => {
+          let d = ''; vProc.stdout?.on('data', (c: Buffer) => d += c.toString());
+          vProc.on('close', () => resolve(d.trim()));
+          vProc.on('error', () => resolve(''));
+        });
+        version = vOut || undefined;
+      } catch { /* version detection best-effort */ }
+    } catch {
+      installed = false;
+    }
+    discovered.push({ name: entry.name, command: entry.command, installed, version, registered: registered.has(entry.name) || registered.has(entry.command) });
+  }
+
+  return c.json({ discovered });
+});

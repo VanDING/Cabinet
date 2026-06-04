@@ -122,21 +122,6 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l border-border bg-surface-primary shadow-2xl">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!decision) {
-    return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl items-center justify-center border-l border-border bg-surface-primary shadow-2xl">
-        <p className="text-sm text-content-tertiary">Decision not found</p>
-      </div>
-    );
-  }
 
   const dimensionLabels = ['Risk', 'Cost', 'Time', 'Reversibility', 'Strategic Fit'];
   const dimIcons = ['⚠', '\u{1F4B5}', '⏱', '\u{1F504}', '\u{1F3AF}'];
@@ -148,6 +133,16 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
 
       {/* Panel */}
       <div className="decision-panel-enter fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-border bg-surface-primary shadow-2xl">
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          </div>
+        ) : !decision ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-content-tertiary">Decision not found</p>
+          </div>
+        ) : (
+        <>
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-border bg-surface-primary px-6 py-4">
           <div className="flex items-start justify-between gap-4">
@@ -388,6 +383,7 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
             </div>
           </div>
         )}
+        </>)}
       </div>
     </>
   );

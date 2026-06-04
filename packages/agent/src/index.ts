@@ -5,7 +5,7 @@ export {
   type ToolDescriptor,
   type ToolCallCallback,
 } from './tool-executor.js';
-export { SafetyChecker, type SafetyCheck, type SafetyTier } from './safety.js';
+export { SafetyChecker, type SafetyCheck, type SafetyTier, type SafetyCheckOptions } from './safety.js';
 export { classifyError, withRetry, type ErrorCategory, type RetryConfig } from './retry.js';
 export { CheckpointManager, type CheckpointState } from './checkpoint.js';
 export {
@@ -33,9 +33,7 @@ export { ContextHandoff, type HandoffState, type HandoffResult } from './context
 export {
   AgentRoleRegistry,
   SECRETARY_ROLE,
-  MEETING_CHAIR_ROLE,
   CURATOR_ROLE,
-  REVIEWER_ROLE,
   ORGANIZE_ROLE,
   ORGANIZE_DEPLOY_TOOLS,
   getOrganizePlanningTools,
@@ -110,3 +108,22 @@ export {
   MCP_BUILDER_SKILL,
   registerBuiltInSkills,
 } from './built-in-skills.js';
+export {
+  CliAdapter,
+  A2AConnector,
+  TaskIdempotencyGuard,
+  approvalCallbackWithRetry,
+  transitionTask,
+  canTransition,
+  type ExternalAgentAdapter,
+  type ExternalTask,
+  type ExternalTaskResult,
+  type TelemetryReport,
+  type AgentCapability,
+  type CliAgentConfig,
+  type A2AAgentConfig,
+  type CallbackResult,
+  type TaskRecord,
+  type TaskReliabilityStatus,
+  VALID_TRANSITIONS,
+} from './adapters/index.js';

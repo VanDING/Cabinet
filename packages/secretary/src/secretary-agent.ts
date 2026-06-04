@@ -306,7 +306,7 @@ export class SecretaryAgent {
       const prompt = `Original user request: "${message.slice(0, 300)}"
 Agent (${targetAgent}) responded: "${response.slice(0, 500)}"
 Does this response directly and appropriately address the user's original request?
-If not, which single agent type would be more appropriate: secretary, meeting_chair, reviewer, or organize?
+If not, which single agent type would be more appropriate: secretary, organize, or a custom/external agent?
 
 Respond with ONLY a JSON object (no markdown, no backticks):
 {"matches": true or false, "correctAgent": "agentType or null"}`;

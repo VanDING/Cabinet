@@ -59,8 +59,8 @@ export class AgentRoleRepository {
   upsert(role: AgentRoleRow): void {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, model_tier, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO agent_roles (type, name, description, system_prompt, model, model_tier, temperature, max_response_tokens, allowed_tools, context_budget, is_builtin, external_config, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         role.type,
@@ -74,6 +74,7 @@ export class AgentRoleRepository {
         role.allowed_tools,
         role.context_budget,
         role.is_builtin,
+        (role as any).external_config ?? null,
         role.created_at ?? new Date().toISOString(),
       );
   }

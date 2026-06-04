@@ -74,7 +74,11 @@ export function Deliverables({ projectId, onExpand }: Props) {
               onClick={() => handleOpenDeliverable(d)}
             >
               <FileText size={12} className="shrink-0 text-content-tertiary" />
-              <span className={`truncate ${text}`}>{d.title}</span>
+              <span className={`truncate ${text}`}>
+                {d.filePath && /\?{2,}/.test(d.title)
+                  ? d.filePath.replace(/\\/g, '/').split('/').pop()
+                  : d.title}
+              </span>
               <span className={`ml-auto shrink-0 ${sub}`}>
                 {new Date(d.createdAt).toLocaleDateString()}
               </span>

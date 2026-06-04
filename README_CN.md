@@ -166,6 +166,9 @@ Layer 1 (Infra):       graph, types, events, storage  ← 基础设施
 - **可观测性 · 透明可审计**
   内置可观测性采集器追踪会话指标、工具健康度、成本与上下文区域分布，生成日报与健康检查，你的 AI 团队运转从不黑箱。
 
+- **可选浏览器自动化 · 通过 MCP 接入 Playwright**
+  浏览器自动化工具（导航、点击、截图、执行 JS）按需启用。通过 MCP 配置 `@anthropic/mcp-server-playwright`，或运行 `npx playwright install chromium` 即可激活。不内置于安装包，保持体积精简。
+
 ---
 
 ## 快速开始
@@ -330,6 +333,12 @@ curl -X POST http://localhost:3000/api/knowledge/query \
       "transport": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
+    },
+    {
+      "name": "playwright",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-playwright"]
     }
   ]
 }

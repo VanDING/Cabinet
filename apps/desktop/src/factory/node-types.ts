@@ -81,7 +81,7 @@ export const NODE_LABELS: Record<CanvasNodeType, string> = {
   start: 'Start', end: 'End',
   ifElse: 'If-Else', loop: 'Loop', parallel: 'Parallel',
   merge: 'Merge', pass: 'Pass',
-  agentGroup: 'Agent',
+  agentGroup: 'Agent Group',
   llm: 'LLM', skill: 'Skill', tool: 'Tool',
   code: 'Code', workflow: 'Workflow',
   intentClassify: 'Intent', knowledgeBase: 'KB',

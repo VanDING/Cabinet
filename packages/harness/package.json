@@ -17,7 +17,9 @@
     "@cabinet/gateway": "workspace:*",
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
-    "@cabinet/types": "workspace:*",
+    "@cabinet/types": "workspace:*"
+  },
+  "optionalDependencies": {
     "playwright": "^1.50.0"
   },
   "devDependencies": {

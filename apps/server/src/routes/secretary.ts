@@ -84,8 +84,6 @@ const ROLES_NEEDING_ENV = new Set([
   'secretary',
   'organize',
   'curator',
-  'meeting_chair',
-  'reviewer',
 ]);
 
 // ── CABINET.md auto-injection cache ──
@@ -1989,7 +1987,7 @@ function getAgentLoopForRole(
     contextBudget: role.contextBudget,
     thinkingBudget,
     trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
-    toolPruner: ctx.toolPruner,
+    // toolPruner removed from ServerContext — fixed small tool set
   });
 
   // FIFO eviction
@@ -2069,7 +2067,7 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
     contextBudget: role.contextBudget,
-    toolPruner: ctx.toolPruner,
+    // toolPruner removed from ServerContext — fixed small tool set
   });
 
   // FIFO eviction
@@ -2079,6 +2077,157 @@ function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
   }
   reviewerLoopCache.set(cacheKey, loop);
   return loop;
+}
+
+/** Dispatch a task to an external agent (A2A or CLI) via the adapter layer. */
+async function dispatchToExternalAgent(
+  agentId: string,
+  message: string,
+  sessionId: string,
+  projectId: string,
+  captainId: string,
+): Promise<string> {
+  const ctx = getServerContext();
+  const registry = ctx.agentRegistry;
+  const roleDef = registry.get(agentId);
+  if (!roleDef?.external) return `[Error] Agent ${agentId} has no external config.`;
+
+  // ── Create child session ──
+  const childSessionId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  ctx.sessionManager.create(childSessionId, `External: ${agentId}`, projectId);
+  const childSession = ctx.sessionManager.get(childSessionId);
+  if (childSession) {
+    childSession.parentId = sessionId;
+    childSession.agentType = agentId;
+    childSession.status = 'active';
+  }
+
+  // ── Initialize Context Slot ──
+  const slot = await buildContextSlot(projectId, captainId, message, sessionId);
+  ctx.sessionManager.setContextSlot(childSessionId, slot);
+
+  // ── Build external task ──
+  const task = {
+    task_id: childSessionId,
+    session_id: childSessionId,
+    capability: 'default',
+    input: message,
+    slot,
+    configuration: {
+      max_retries: roleDef.external.maxRetries ?? 2,
+      timeout_ms: roleDef.external.timeoutMs ?? 120_000,
+      slot_write_url: `http://localhost:${process.env.PORT ?? 3000}/api/slot/${childSessionId}/write`,
+    },
+  };
+
+  // ── Dispatch via adapter ──
+  try {
+    const adapter = getOrCreateAdapter(agentId, roleDef);
+    const result = await adapter.dispatchTask(task);
+
+    // Inject result into child session
+    if (childSession) {
+      childSession.deliverable = result.output;
+      childSession.status = result.status === 'completed' ? 'completed' : 'error';
+    }
+
+    // Inject deliverable into parent session via AgentEventBus
+    ctx.agentEventBus.publish(childSessionId, sessionId, {
+      type: 'completed',
+      deliverable: { agentId, output: result.output, discoveries: result.discoveries },
+      timestamp: Date.now(),
+    });
+
+    ctx.logger.info('External agent task completed', {
+      agentId,
+      taskId: childSessionId,
+      status: result.status,
+    });
+
+    return typeof result.output === 'string' ? result.output : JSON.stringify(result.output ?? {});
+  } catch (err) {
+    ctx.logger.error('External agent task failed', { agentId, error: String(err) });
+    if (childSession) childSession.status = 'error';
+    return `[External Agent Error] ${agentId}: ${String(err)}`;
+  }
+}
+
+/** Build a Context Slot with project context, memories, and preferences. */
+async function buildContextSlot(
+  projectId: string,
+  captainId: string,
+  taskDescription: string,
+  sessionId: string,
+): Promise<import('@cabinet/types').ContextSlot> {
+  const ctx = getServerContext();
+  const projectCtx = ctx.project.get(projectId);
+  const prefs = ctx.entity.getPreferences(captainId);
+  const recentFiles = ctx.fileTracker.getRecent(sessionId, 5);
+
+  // Search long-term memory for relevant context
+  let memories: string[] = [];
+  try {
+    const results = await ctx.longTerm.search(taskDescription, 5);
+    memories = results.map((r) => r.content);
+  } catch { /* memory search is best-effort */ }
+
+  return {
+    project: {
+      name: projectCtx?.summary ?? projectId,
+      tech_stack: (projectCtx as any)?.techSummary,
+      goals: projectCtx?.goals ?? [],
+    },
+    memories,
+    preferences: (prefs?.preferences ?? {}) as any,
+    files: recentFiles.map((f) => f.path),
+    discoveries: [],
+    previous_outputs: [],
+    security: {
+      level: 'L1',
+      maxRetries: 2,
+    },
+  };
+}
+
+/** Cache of created adapters, keyed by agentId. */
+const adapterCache = new Map<string, any>();
+
+/** Get or create an adapter for an external agent. */
+function getOrCreateAdapter(
+  agentId: string,
+  roleDef: import('@cabinet/agent').AgentRole,
+): any {
+  const cached = adapterCache.get(agentId);
+  if (cached) return cached;
+
+  const ext = roleDef.external!;
+  if (ext.protocol === 'cli') {
+    const { CliAdapter } = require('@cabinet/agent');
+    const adapter = new CliAdapter(agentId, {
+      command: ext.command ?? agentId,
+      args: ext.args ?? ['--print'],
+      env: ext.env,
+      permissionMode: ext.permissionMode as any,
+      detectCommand: ext.detectCommand,
+      installCommand: ext.installCommand,
+      timeoutMs: ext.timeoutMs,
+      maxRetries: ext.maxRetries,
+    });
+    adapterCache.set(agentId, adapter);
+    return adapter;
+  }
+
+  // A2A
+  const { A2AConnector } = require('@cabinet/agent');
+  const adapter = new A2AConnector(agentId, {
+    baseUrl: ext.baseUrl ?? `http://localhost:${agentId}`,
+    healthCheckUrl: ext.healthCheckUrl,
+    authConfig: ext.authConfig as any,
+    timeoutMs: ext.timeoutMs,
+    maxRetries: ext.maxRetries,
+  });
+  adapterCache.set(agentId, adapter);
+  return adapter;
 }
 
 /** Dispatch a message to a specialist role's AgentLoop, with optional Reviewer quality gate. */
@@ -2092,6 +2241,12 @@ async function dispatchToSpecialist(
   model?: string,
 ): Promise<string> {
   const ctx = getServerContext();
+
+  // ── External Agent Dispatch ──────────────────────────────────
+  if (roleType.startsWith('external_')) {
+    return dispatchToExternalAgent(roleType, message, sessionId, projectId, captainId);
+  }
+
   // Dynamic model up/downgrade based on task complexity
   let effectiveModel = model;
   if (!effectiveModel) {
@@ -2101,7 +2256,6 @@ async function dispatchToSpecialist(
     // Upgrade: complex tasks need better models
     if (roleDef?.upgradeModelTier) {
       const needsUpgrade =
-        roleType === 'reviewer' &&
         (message.includes('L3') || message.includes('安全关键') || message.length > 2000);
       if (needsUpgrade) {
         effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier });
@@ -2131,8 +2285,8 @@ async function dispatchToSpecialist(
   const result = await loop.run(message);
   let output = result.content;
 
-  // Quality gate: non-secretary, non-reviewer outputs get reviewed
-  if (roleType !== 'secretary' && roleType !== 'reviewer') {
+  // Quality gate: external and custom agent outputs get reviewed
+  if (roleType !== 'secretary' && roleType !== 'curator') {
     const reviewerLoop = createReviewerLoop(ctx);
     if (reviewerLoop) {
       // Segmented review for long outputs: show first 4000 + last 4000 chars with truncation note
@@ -2409,7 +2563,7 @@ async function dispatchToSpecialistStreaming(
     // Keep in active map until explicitly finalized (or auto-finalize after a timeout)
     // For now, leave it so user can still send "regenerate" if desired.
     // Async quality review after streaming completes (does not block the stream)
-    if (roleType !== 'secretary' && roleType !== 'reviewer') {
+    if (roleType !== 'secretary') {
       const reviewerLoop = createReviewerLoop(ctx);
       if (reviewerLoop) {
         const reviewContent =
@@ -2588,7 +2742,7 @@ function getOrCreateAgent(
       contextBudget: secretaryRole?.contextBudget,
       thinkingBudget,
       trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
-      toolPruner: ctx.toolPruner,
+      // toolPruner removed from ServerContext — fixed small tool set
     });
     secretaryLoop.onSessionComplete = (summary) => {
       const obs = getServerContext().observability;

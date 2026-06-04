@@ -68,6 +68,16 @@ export class PolicyEngine {
         statement: 'All significant actions must be explainable',
         implications: ['Auto-adjustments must publish reasoning', 'Decisions require audit trail'],
       },
+      {
+        id: 'external_agent_sandbox',
+        priority: 9,
+        statement: 'External agents operate in a restricted sandbox by default',
+        implications: [
+          'L2 operations from external agents require Captain approval',
+          'Command execution from external agents is escalated one level',
+          'External agent file writes outside the project directory require L3 approval',
+        ],
+      },
     ];
   }
 
@@ -111,6 +121,17 @@ export class PolicyEngine {
     if (autonomy && decision.level === 'L3' && decision.status === 'approved' && decision.captainId === 'system') {
       return { allowed: false, reason: 'L3 decisions cannot be auto-approved per user_autonomy mission' };
     }
+
+    // External agent sandbox: L2 operations from external agents must be explicitly approved
+    const sandbox = this.missions.find((m) => m.id === 'external_agent_sandbox');
+    if (sandbox) {
+      const source = (decision as any)._source as { agentType?: string } | undefined;
+      const isExternal = source?.agentType?.startsWith('external_');
+      if (isExternal && decision.level === 'L2' && decision.captainId === 'system') {
+        return { allowed: false, reason: 'L2 operations from external agents require Captain approval per external_agent_sandbox mission' };
+      }
+    }
+
     return { allowed: true };
   }
 }

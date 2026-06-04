@@ -138,6 +138,9 @@ export interface WorkflowNodeDef {
   title?: string;
   description?: string;
 
+  // ── Agent node config (unified — any agent source) ──
+  /** Agent identifier — references any agent in AgentRoleRegistry (secretary, curator, claude-code-v1, etc.). */
+  agentId?: string;
   // ── AgentGroup config ──
   /** Agent role name (secretary, curator, etc.) */
   role?: string;
@@ -260,6 +263,61 @@ export interface WorkflowStep {
     children: string[];
     aggregation?: 'all' | 'first' | 'merge';
   };
+}
+
+// ── Context Slot ──
+
+/** Task-level shared data bus — Agent nodes read from & write to this. */
+export interface ContextSlot {
+  project: {
+    name: string;
+    tech_stack?: string;
+    goals: string[];
+    constraints?: Record<string, unknown>;
+  };
+  memories: string[];
+  preferences: {
+    riskTolerance?: 'low' | 'medium' | 'high';
+    preferredDecisionStyle?: 'consensus' | 'directive' | 'analytical';
+    [key: string]: unknown;
+  };
+  files: string[];
+  discoveries: Array<{ type: string; summary: string; [key: string]: unknown }>;
+  previous_outputs: string[];
+  deliverable?: unknown;
+  security: {
+    level: string;
+    tier?: string;
+    maxRetries: number;
+  };
+}
+
+// ── External Agent ──
+
+/** How an external Agent's model/API configuration is managed. */
+export type AgentConfigSource = 'cabinet_managed' | 'agent_native';
+
+/** Protocol used to communicate with an external Agent. */
+export type ExternalAgentProtocol = 'a2a' | 'cli';
+
+/** Configuration for an external Agent (A2A or CLI). */
+export interface ExternalAgentConfig {
+  protocol: ExternalAgentProtocol;
+  configSource: AgentConfigSource;
+  // A2A
+  baseUrl?: string;
+  healthCheckUrl?: string;
+  authConfig?: { type: 'api_key' | 'oauth'; header?: string; envVar?: string };
+  // CLI
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  permissionMode?: 'auto' | 'conservative';
+  detectCommand?: string;
+  installCommand?: string;
+  // General
+  timeoutMs?: number;
+  maxRetries?: number;
 }
 
 export interface WorkflowCapabilities {

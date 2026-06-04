@@ -53,6 +53,13 @@ export class BrowserPool {
     this.browserType = options.browser ?? 'chromium';
   }
 
+  private playwrightAvailable = true;
+
+  /** Check if Playwright browser automation is available. */
+  isAvailable(): boolean {
+    return this.playwrightAvailable;
+  }
+
   /** Launch the shared browser instance (idempotent). */
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -63,13 +70,27 @@ export class BrowserPool {
       process.env.PLAYWRIGHT_BROWSERS_PATH = bundled;
     }
 
-    const { [this.browserType]: browserType } = await import('playwright');
-    this.browser = await browserType.launch({ headless: true });
-    this.initialized = true;
+    try {
+      const { [this.browserType]: browserType } = await import('playwright');
+      this.browser = await browserType.launch({ headless: true });
+      this.initialized = true;
+    } catch (err) {
+      this.playwrightAvailable = false;
+      throw new Error(
+        `Browser automation unavailable: ${(err as Error).message}. ` +
+          `Install Playwright MCP (e.g. @anthropic/mcp-server-playwright) ` +
+          `or run \\"npx playwright install chromium\\".`,
+      );
+    }
   }
 
   /** Acquire or create a page for the given sessionId. */
   async acquire(sessionId: string): Promise<Page> {
+    if (!this.playwrightAvailable) {
+      throw new Error(
+        'Browser automation is not available. Install a Playwright MCP server to enable browser tools.',
+      );
+    }
     await this.initialize();
 
     const existing = this.sessions.get(sessionId);
