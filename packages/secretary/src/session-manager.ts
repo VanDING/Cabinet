@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import type { AgentEvent } from '@cabinet/events';
+import type { ContextSlot } from '@cabinet/types';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -65,6 +66,8 @@ export interface Session {
   status?: 'active' | 'waiting_for_user' | 'completed' | 'error';
   events?: AgentEvent[];
   deliverable?: unknown;
+  /** Task-level shared data bus — agents read from & write to this. */
+  contextSlot?: ContextSlot;
 }
 
 export type SessionCallback = (session: Session) => Promise<void> | void;
@@ -135,6 +138,20 @@ export class SessionManager {
 
   get(id: string): Session | null {
     return this.sessions.get(id) ?? null;
+  }
+
+  /** Set the shared Context Slot for a session (task-level data bus). */
+  setContextSlot(sessionId: string, slot: ContextSlot): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.contextSlot = slot;
+      this.persist(session);
+    }
+  }
+
+  /** Get the Context Slot for a session. */
+  getContextSlot(sessionId: string): ContextSlot | undefined {
+    return this.sessions.get(sessionId)?.contextSlot;
   }
 
   addMessage(sessionId: string, role: 'user' | 'assistant', content: string): void {

@@ -3,7 +3,7 @@ import Database from 'better-sqlite3';
 import { createAgentNodeFactory, type AgentNodeDeps } from '../agent-node.js';
 import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
-import { SECRETARY_ROLE, REVIEWER_ROLE } from '../agent-roles.js';
+import { SECRETARY_ROLE, ORGANIZE_ROLE } from '../agent-roles.js';
 import type { MemoryProvider } from '../context-builder.js';
 import type { LLMGateway, LLMResponse, LLMCallOptions, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
 
@@ -119,7 +119,7 @@ describe('createAgentNodeFactory', () => {
       },
     };
 
-    // Register a tool that's actually in REVIEWER_ROLE.allowedTools
+    // Register a tool that's actually in ORGANIZE_ROLE.allowedTools
     const testExec = new ToolExecutor();
     testExec.register({
       name: 'read_file',
@@ -129,13 +129,13 @@ describe('createAgentNodeFactory', () => {
     const testDeps = { ...deps, gateway, toolExecutor: testExec };
     const factory = createAgentNodeFactory<TestState>(testDeps);
     const nodeFn = factory({
-      role: REVIEWER_ROLE,
+      role: ORGANIZE_ROLE,
       agentId: 'reviewer',
       input: () => ({ message: 'review this', systemPrompt: 'Focus on risks.' }),
     });
 
     await nodeFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
-    expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.modules.identity);
+    expect(capturedSystemPrompt).toContain(ORGANIZE_ROLE.modules.identity);
     expect(capturedSystemPrompt).toContain('Available Tools');  // auto-generated
     expect(capturedSystemPrompt).toContain('Focus on risks.');
   });
@@ -143,7 +143,7 @@ describe('createAgentNodeFactory', () => {
   it('filters tools by role.allowedTools', async () => {
     const factory = createAgentNodeFactory<TestState>(deps);
     const nodeFn = factory({
-      role: REVIEWER_ROLE,
+      role: ORGANIZE_ROLE,
       agentId: 'reviewer',
       input: () => ({ message: 'test' }),
     });

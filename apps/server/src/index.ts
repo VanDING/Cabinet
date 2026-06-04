@@ -22,10 +22,13 @@ import { harnessRouter } from './routes/harness.js';
 import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
-import { meetingsRouter } from './routes/meetings.js';
+// Meeting agent removed — absorbed by Secretary multi-agent routing
+// import { meetingsRouter } from './routes/meetings.js';
 // Scheduled tasks have been merged into workflows (cron_expression column).
 // import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
+import { externalAgentRouter } from './routes/external-agent.js';
+import { telemetryRouter } from './routes/telemetry.js';
 
 import { documentsRouter } from './routes/documents.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -70,7 +73,8 @@ export function createApp() {
   app.route('/api/evaluations', evaluationsRouter);
   app.route('/api/secretary', secretaryRouter);
   app.route('/api/decisions', decisionsRouter);
-  app.route('/api/meetings', meetingsRouter);
+  // Meeting route removed — Secretary handles multi-agent coordination
+  // app.route('/api/meetings', meetingsRouter);
   app.route('/api/factory', workflowsRouter);
   app.route('/api/dashboard', dashboardRouter);
 
@@ -88,6 +92,9 @@ export function createApp() {
   app.route('/api/observability', observabilityRouter);
   app.route('/api/insights', insightsRouter);
   app.route('/api/harness', harnessRouter);
+  app.route('/api/slot', externalAgentRouter);
+  app.route('/api/external', externalAgentRouter);
+  app.route('/api/telemetry', telemetryRouter);
 
   // GeoIP proxy — avoids CORS issues with ipapi.co from browser
   app.get('/api/geoip', async (c) => {

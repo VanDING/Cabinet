@@ -1,3 +1,4 @@
+/** @deprecated Model tier routing is no longer needed — Cabinet uses a single default model per provider. */
 export type ModelRole = 'deep_think' | 'fast_execute' | 'default';
 
 export interface RouterConfig {

@@ -33,7 +33,11 @@ export function InsightsWidget({ onExpand }: Props) {
 
   useEffect(() => {
     window.addEventListener('ws:subconscious_insight', fetchInsights);
-    return () => window.removeEventListener('ws:subconscious_insight', fetchInsights);
+    window.addEventListener('ws:memory_changed', fetchInsights);
+    return () => {
+      window.removeEventListener('ws:subconscious_insight', fetchInsights);
+      window.removeEventListener('ws:memory_changed', fetchInsights);
+    };
   }, [fetchInsights]);
 
   const latest = insights.slice(0, 3);

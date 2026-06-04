@@ -195,7 +195,22 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
         const agentJsonPath = join(agentsDir, entry.name, 'agent.json');
         if (!existsSync(agentJsonPath)) continue;
 
-        let agentCard: Record<string, unknown>;
+        let agentCard: Record<string, unknown> & {
+          connection?: Record<string, unknown>;
+          protocol?: string;
+          configSource?: string;
+          source?: string;
+          systemPrompt?: string;
+          instructions?: string;
+          capabilities?: unknown[];
+          modelTier?: string;
+          temperature?: number;
+          maxResponseTokens?: number;
+          maxTokens?: number;
+          allowedTools?: string[];
+          contextBudget?: number;
+          contextWindow?: number;
+        };
         try {
           agentCard = JSON.parse(readFileSync(agentJsonPath, 'utf-8'));
         } catch {
@@ -208,27 +223,42 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
         currentNames.add(name);
         const existing = deps.agentRegistry.get(name);
 
-        if (!existing || existing.type !== 'custom') {
-          // New agent discovered
-          const role = {
-            type: 'custom' as const,
+        // Detect external agent types from manifest
+        const isExternal = agentCard.source === 'external_a2a' || agentCard.source === 'external_cli' ||
+          agentCard.protocol === 'a2a' || agentCard.protocol === 'cli';
+        const agentType = isExternal
+          ? (agentCard.source as string || (agentCard.protocol === 'a2a' ? 'external_a2a' : 'external_cli'))
+          : 'custom';
+
+        if (!existing || (existing.type !== 'custom' && !existing.type.startsWith('external_'))) {
+          // New agent discovered (custom or external)
+          const role: any = {
+            type: agentType,
             name,
             description: String(agentCard.description ?? ''),
             modules: { identity: String(agentCard.systemPrompt ?? agentCard.instructions ?? '') },
             modelTier: ((agentCard.modelTier as string) || 'default') as any,
             temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-            maxResponseTokens: parseInt(
-              String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
-              10,
-            ),
-            allowedTools: (Array.isArray(agentCard.allowedTools)
-              ? agentCard.allowedTools
-              : []) as string[],
-            contextBudget: parseInt(
-              String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
-              10,
-            ),
+            maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
+            allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
+            contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
           };
+
+          if (isExternal) {
+            role.external = {
+              protocol: agentCard.protocol ?? 'cli',
+              configSource: agentCard.configSource ?? 'agent_native',
+              baseUrl: agentCard.connection?.base_url,
+              command: agentCard.connection?.command,
+              args: agentCard.connection?.args ?? ['--print'],
+              env: agentCard.connection?.env,
+              permissionMode: agentCard.connection?.permission_mode,
+              detectCommand: agentCard.connection?.detect_command,
+              installCommand: agentCard.connection?.install_command,
+              timeoutMs: agentCard.connection?.timeout_ms,
+              maxRetries: agentCard.connection?.max_retries,
+            };
+          }
 
           deps.agentRegistry.register(role);
 
@@ -380,6 +410,76 @@ export function startProjectWatcher(
   return () => {
     watcher.close();
     deps.logger.info('Project filesystem watcher stopped');
+  };
+}
+
+// ── Blueprint filesystem watcher ────────────────────────────────
+
+interface BlueprintWatcherDeps {
+  logger: { info(msg: string, meta?: Record<string, unknown>): void; warn(msg: string, meta?: Record<string, unknown>): void };
+  /** Call validate + re-compile on the WorkflowEngine. Returns error string if invalid. */
+  onBlueprintChange: (blueprintPath: string, content: string) => Promise<string | null>;
+}
+
+/** Watch ~/.cabinet/blueprints/ for YAML/EL blueprint changes. Hot-reloads into WorkflowEngine on valid change. */
+export function startBlueprintWatcher(
+  dataDir: string,
+  deps: BlueprintWatcherDeps,
+): () => void {
+  const blueprintsDir = join(dataDir, 'blueprints');
+  if (!existsSync(blueprintsDir)) {
+    try { require('fs').mkdirSync(blueprintsDir, { recursive: true }); } catch { /* ok */ }
+  }
+
+  const fileTimestamps = new Map<string, number>();
+
+  const scan = async () => {
+    try {
+      const files = readdirSync(blueprintsDir).filter(
+        (f) => f.endsWith('.yml') || f.endsWith('.yaml') || f.endsWith('.el'),
+      );
+
+      for (const file of files) {
+        const filePath = join(blueprintsDir, file);
+        const stat = statSync(filePath);
+        const prevMtime = fileTimestamps.get(filePath) ?? 0;
+
+        if (stat.mtimeMs <= prevMtime) continue; // No change since last scan
+
+        fileTimestamps.set(filePath, stat.mtimeMs);
+        const content = readFileSync(filePath, 'utf-8');
+        const error = await deps.onBlueprintChange(filePath, content);
+
+        if (error) {
+          deps.logger.warn('Blueprint hot-reload rejected — keeping old version', {
+            file: filePath,
+            error,
+          });
+          broadcast('blueprint_reload_failed', { file: filePath, error });
+        } else {
+          deps.logger.info('Blueprint hot-reloaded', { file: filePath });
+          broadcast('blueprint_reloaded', { file: filePath, timestamp: new Date().toISOString() });
+        }
+      }
+    } catch (err) {
+      deps.logger.warn('Blueprint watcher scan failed', { error: (err as Error).message });
+    }
+  };
+
+  const debouncedScan = debounce(scan, 500);
+
+  const watcher = watch(blueprintsDir, { recursive: false }, (_eventType, _filename) => {
+    debouncedScan();
+  });
+
+  deps.logger.info('Blueprint filesystem watcher started', { dir: blueprintsDir });
+
+  // Initial scan
+  scan();
+
+  return () => {
+    watcher.close();
+    deps.logger.info('Blueprint filesystem watcher stopped');
   };
 }
 

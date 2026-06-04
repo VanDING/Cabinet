@@ -1,5 +1,5 @@
 import { WorkflowRepository, type Database } from '@cabinet/storage';
-import type { WorkflowNodeDef, WorkflowNodeType } from '@cabinet/types';
+import type { WorkflowNodeDef, WorkflowNodeType, ContextSlot } from '@cabinet/types';
 import { StateGraph, Annotation } from '@cabinet/graph';
 import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
@@ -54,8 +54,44 @@ export interface WorkflowHandlers {
   intentClassify?: (node: WorkflowNodeDef, input: unknown) => Promise<{ intent: string; confidence: number }>;
   knowledgeBase?: (node: WorkflowNodeDef, input: unknown) => Promise<Array<{ content: string; score: number }>>;
 
+  /** Dispatch a task to an external agent (A2A or CLI). */
+  dispatchToExternalAgent?: (
+    agentId: string,
+    task: {
+      runId: string;
+      nodeId: string;
+      input: unknown;
+      previousOutputs: string[];
+      slot: ContextSlot;
+    },
+  ) => Promise<{
+    status: 'completed' | 'failed' | 'awaiting_approval';
+    output?: unknown;
+    decisionId?: string;
+  }>;
+
   /** @deprecated Legacy fallback */
   aiAgent?: (node: WorkflowNodeDef, previousOutputs: string) => Promise<string>;
+}
+
+// ── Slot Fork / Merge ───────────────────────────────────────────
+
+function forkSlot(parentSlot: ContextSlot): ContextSlot {
+  return {
+    ...parentSlot,
+    discoveries: [...parentSlot.discoveries],
+    previous_outputs: [...parentSlot.previous_outputs],
+  };
+}
+
+function mergeSlots(main: ContextSlot, forks: ContextSlot[]): ContextSlot {
+  const allDiscoveries = [...main.discoveries, ...forks.flatMap((f) => f.discoveries)];
+  const allOutputs = [...main.previous_outputs, ...forks.flatMap((f) => f.previous_outputs)];
+  return {
+    ...main,
+    discoveries: allDiscoveries,
+    previous_outputs: allOutputs,
+  };
 }
 
 export class WorkflowEngine {

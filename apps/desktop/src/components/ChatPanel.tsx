@@ -313,8 +313,8 @@ export function ChatPanel({
                 </div>
                 {[
                   { id: 'secretary', name: 'Secretary' },
-                  { id: 'meeting_chair', name: 'Meeting Chair' },
                   { id: 'organize', name: 'Organize' },
+                  { id: 'curator', name: 'Curator' },
                 ].map((a) => (
                   <button
                     key={a.id}

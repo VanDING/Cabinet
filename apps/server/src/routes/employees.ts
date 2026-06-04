@@ -102,6 +102,8 @@ employeesRouter.post('/', async (c) => {
     persona,
     permission_level: d.permissionLevel ?? 'read',
     allowed_tools: JSON.stringify(d.allowedTools ?? []),
+    source: (d as any).source ?? (d.kind === 'ai' ? 'custom' : 'human'),
+    external_config: (d as any).external ? JSON.stringify((d as any).external) : null,
   });
 
   const row = employeeRepo.findById(id);
@@ -143,6 +145,12 @@ employeesRouter.put('/:id', async (c) => {
 
   if (body.allowedTools !== undefined) {
     updates.allowed_tools = JSON.stringify(body.allowedTools);
+  }
+  if ((body as any).source !== undefined) {
+    (updates as any).source = (body as any).source;
+  }
+  if ((body as any).external !== undefined) {
+    (updates as any).external_config = JSON.stringify((body as any).external);
   }
 
   employeeRepo.update(id, updates);

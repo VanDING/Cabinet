@@ -176,8 +176,6 @@ export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set([
     'secretary',
-    'meeting_chair',
-    'reviewer',
     'organize',
   ]);
   private customAgents: Map<string, { description: string; keywords?: string[]; aliases?: string[] }> =
@@ -816,8 +814,8 @@ Message: "${message}"`;
       this.availableAgentsDesc ||
       [
         '- secretary: General conversation, decision analysis, and intent routing',
-        '- meeting_chair: Multi-perspective deliberation and consensus synthesis',
-        '- reviewer: Quality review — checks outputs for logic, evidence, and completeness',
+        '- secretary: General conversation, multi-agent coordination, decision analysis',
+        '- organize: Workflow design, agent creation, system architecture',
         '- organize: Organization design — translates business goals into agent+workflow blueprints, and handles skill/MCP creation',
       ].join('\n');
 
@@ -843,8 +841,8 @@ ${agentList}
 ${prefsLine}
 Routing guidelines:
 - secretary: General questions, casual conversation, simple information retrieval, or decision analysis
-- meeting_chair: The topic needs multiple perspectives, expert opinions, or debate
-- reviewer: The user wants to review/audit/check the quality or correctness of something
+- secretary: The topic needs general discussion, coordination, or multi-agent routing
+- organize: The user wants to design workflows, create agents, or architect systems
 - organize: The user wants to design/build/architect an organization, system, or capability
 ${historyLine}${embeddingHint}
 
@@ -982,8 +980,8 @@ Message: "${message}"`;
         reasoning = 'Decision-related request handled by Secretary.';
         break;
       case 'meeting_request':
-        targetAgent = 'meeting_chair';
-        reasoning = 'Meeting/discussion request routed to Meeting Chair.';
+        targetAgent = 'secretary';
+        reasoning = 'Meeting/discussion request routed to Secretary (Meeting Chair removed — Secretary handles multi-agent coordination).';
         break;
       case 'status_query':
         targetAgent = 'secretary';

@@ -14,7 +14,7 @@ export function setActiveApiKeyId(id: string | null) {
 export function getActiveApiKeyId(): string | null {
   return activeApiKeyId;
 }
-import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher } from './watchers.js';
+import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher, startBlueprintWatcher } from './watchers.js';
 import {
   createConnection,
   runMigrations,
@@ -43,6 +43,7 @@ import {
   syncSystemKnowledge,
   SYSTEM_KNOWLEDGE_BASE,
   RouteFeedbackRepository,
+  TelemetryRepository,
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import {
@@ -83,7 +84,7 @@ import {
   AgentLoop,
   SafetyChecker,
   CheckpointManager,
-  ToolPruner,
+  setSkillRegistry,
 } from '@cabinet/agent';
 import type { ToolDependencies } from '@cabinet/agent';
 import { createStandardToolExecutor } from './agent-factory.js';
@@ -131,6 +132,7 @@ export interface ServerContext {
   settingsRepo: SettingsRepository;
   systemKnowledgeRepo: SystemKnowledgeRepository;
   routeFeedbackRepo: RouteFeedbackRepository;
+  telemetryRepo: TelemetryRepository;
   // Sub-agent interaction
   agentEventRepo: AgentEventRepository;
   agentEventBus: AgentEventBus;
@@ -179,8 +181,6 @@ export interface ServerContext {
   metrics: MetricsCollector;
   logger: ReturnType<typeof getLogger>;
   backupManager: BackupManager | null;
-  /** Dynamic tool pruner — shared across all agent loops. */
-  toolPruner?: ToolPruner;
   /** Clean up all timers, close DB, stop backup. Call on process exit. */
   shutdown: () => void;
 }
@@ -550,66 +550,28 @@ export function getServerContext(): ServerContext {
   let modelMapping: ModelMapping = {};
   let providerConfigsFromSettings: Record<string, ProviderEntry> = {};
 
-  // Tier → model mapping per provider. Picks the best available model
-  // from the user's configured API keys instead of hardcoding Claude.
-  const PROVIDER_TIER_MAP: Record<string, Record<string, string>> = {
-    anthropic: {
-      deep_reasoning: 'anthropic/claude-opus-4-7',
-      default: 'anthropic/claude-sonnet-4-6',
-      fast_execution: 'anthropic/claude-haiku-4-5',
-    },
-    openai: {
-      deep_reasoning: 'openai/gpt-4o',
-      default: 'openai/gpt-4o',
-      fast_execution: 'openai/gpt-4o-mini',
-    },
-    google: {
-      deep_reasoning: 'google/gemini-2.5-pro',
-      default: 'google/gemini-2.5-pro',
-      fast_execution: 'google/gemini-2.5-flash',
-    },
-    deepseek: {
-      deep_reasoning: 'deepseek/deepseek-v4-pro',
-      default: 'deepseek/deepseek-v4-flash',
-      fast_execution: 'deepseek/deepseek-v4-flash',
-    },
-    qwen: {
-      deep_reasoning: 'qwen/qwen-max',
-      default: 'qwen/qwen-plus',
-      fast_execution: 'qwen/qwen-turbo',
-    },
-    moonshot: {
-      deep_reasoning: 'moonshot/moonshot-v1-128k',
-      default: 'moonshot/moonshot-v1-32k',
-      fast_execution: 'moonshot/moonshot-v1-8k',
-    },
-    zhipu: {
-      deep_reasoning: 'zhipu/glm-4',
-      default: 'zhipu/glm-4',
-      fast_execution: 'zhipu/glm-4-flash',
-    },
-    baichuan: {
-      deep_reasoning: 'baichuan/baichuan4',
-      default: 'baichuan/baichuan4',
-      fast_execution: 'baichuan/baichuan3-turbo',
-    },
+  // Single default model per provider — Cabinet only needs one lightweight model
+  // (Secretary routing + Curator background tasks). Heavy work is delegated to external agents.
+  const PROVIDER_DEFAULT_MODEL: Record<string, string> = {
+    anthropic: 'anthropic/claude-haiku-4-5',
+    openai:    'openai/gpt-4o-mini',
+    google:    'google/gemini-2.5-flash',
+    deepseek:  'deepseek/deepseek-v4-flash',
+    qwen:      'qwen/qwen-turbo',
+    moonshot:  'moonshot/moonshot-v1-8k',
+    zhipu:     'zhipu/glm-4-flash',
+    baichuan:  'baichuan/baichuan3-turbo',
   };
   const PROVIDER_PREFERENCE = [
-    'anthropic',
-    'openai',
-    'google',
-    'deepseek',
-    'qwen',
-    'moonshot',
-    'zhipu',
-    'baichuan',
+    'anthropic', 'openai', 'google', 'deepseek',
+    'qwen', 'moonshot', 'zhipu', 'baichuan',
   ];
-  const FALLBACK_TIER_MAP = PROVIDER_TIER_MAP.anthropic; // when no keys are configured at all
+  const FALLBACK_MODEL = PROVIDER_DEFAULT_MODEL.anthropic;
 
   function buildDefaultModelMapping(providers: Record<string, unknown>): ModelMapping {
     const primary = PROVIDER_PREFERENCE.find((p) => providers[p] != null);
-    if (!primary) return { ...FALLBACK_TIER_MAP };
-    return { ...(PROVIDER_TIER_MAP[primary] ?? FALLBACK_TIER_MAP) };
+    if (!primary) return { default: FALLBACK_MODEL };
+    return { default: PROVIDER_DEFAULT_MODEL[primary] ?? FALLBACK_MODEL };
   }
 
   // Gateway — built from .env + database
@@ -693,6 +655,29 @@ export function getServerContext(): ServerContext {
 
   // Wire Curator lifecycle callbacks (fired asynchronously, best-effort)
   sessionManager.onSessionClose((session) => {
+    // ── Slot consumption: persist Agent discoveries to long-term memory ──
+    if (session.contextSlot?.discoveries?.length) {
+      for (const discovery of session.contextSlot.discoveries) {
+        if (discovery.summary && discovery.summary.length > 10) {
+          longTerm.store({
+            content: `[Agent Discovery] ${discovery.type}: ${discovery.summary}`,
+            metadata: {
+              type: 'agent_discovery',
+              source: session.agentType ?? 'unknown',
+              sessionId: session.id,
+              discoveryType: discovery.type,
+            },
+            timestamp: new Date(),
+          }).catch((err) => logger.warn('Slot discovery store failed', { error: (err as Error).message }));
+        }
+      }
+      logger.info('Curator consumed Slot discoveries', {
+        sessionId: session.id,
+        agentType: session.agentType,
+        count: session.contextSlot.discoveries.length,
+      });
+    }
+
     if (gateway && session.messages.length > 0) {
       const messages = session.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
       if (messages.length > 200) {
@@ -1049,7 +1034,6 @@ export function getServerContext(): ServerContext {
       maxResponseTokens: role.maxResponseTokens,
       temperature: role.temperature,
       contextBudget: role.contextBudget,
-      toolPruner: ctx?.toolPruner,
     });
   }
 
@@ -1462,6 +1446,7 @@ export function getServerContext(): ServerContext {
 
   // Shared skill registry — load from DB on startup
   const skillRegistry = new SkillRegistry();
+  setSkillRegistry(skillRegistry);
   try {
     const skillRows = skillRepo.findActive();
     for (const row of skillRows) {
@@ -2082,12 +2067,65 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   // Start rules directory watcher (RulesLoader auto-detects changes via timestamp comparison)
   startRulesWatcher(dataDir, {
     reloadRules: () => {
-      // RulesLoader instances use timestamp-based cache invalidation,
-      // so the next loadAll() call will pick up changes automatically.
       broadcast('rules_changed', { dir: join(dataDir, 'rules') });
     },
     logger,
   });
+
+  // Start blueprint watcher (hot-reload YAML/EL blueprints into WorkflowEngine)
+  startBlueprintWatcher(dataDir, {
+    logger,
+    onBlueprintChange: async (filePath, content) => {
+      try {
+        if (filePath.endsWith('.el')) {
+          // EL expression — compile to StateGraph to verify
+          const { compileEL } = await import('@cabinet/workflow');
+          compileEL(content);
+        } else {
+          // YAML blueprint — validate
+          const { validateBlueprint } = await import('@cabinet/workflow');
+          const importDynamic = new Function('modulePath', 'return import(modulePath)');
+          const yaml = await importDynamic('yaml');
+          const parsed = yaml.parse(content);
+          if (!parsed || typeof parsed !== 'object') return 'Invalid YAML: empty or non-object';
+          const result = validateBlueprint(parsed as any);
+          if (!(result as any).ok) return ((result as any).errors as string[])?.join('; ') ?? 'Validation failed';
+        }
+        return null; // success — no error
+      } catch (err) {
+        return String(err);
+      }
+    },
+  });
+
+  // External agent detection — periodic health check for all external agents
+  const externalAgentDetectTimer = setInterval(async () => {
+    try {
+      const { CliAdapter } = await import('@cabinet/agent');
+      for (const role of agentRegistry.list()) {
+        if (role.type === 'external_cli' && role.external) {
+          const adapter = new CliAdapter(role.name, {
+            command: role.external.command ?? role.name,
+            args: role.external.args ?? [],
+            env: role.external.env,
+            detectCommand: role.external.detectCommand,
+          });
+          const online = await adapter.detect().catch(() => false);
+          broadcast('agent_status_change', { agentId: role.name, status: online ? 'online' : 'offline' });
+        }
+        if (role.type === 'external_a2a' && role.external?.baseUrl) {
+          try {
+            const resp = await fetch(`${role.external.baseUrl}/health`, { signal: AbortSignal.timeout(5000) });
+            broadcast('agent_status_change', { agentId: role.name, status: resp.ok ? 'online' : 'offline' });
+          } catch {
+            broadcast('agent_status_change', { agentId: role.name, status: 'offline' });
+          }
+        }
+      }
+    } catch { /* best-effort detection */ }
+  }, 60_000);
+  externalAgentDetectTimer.unref?.();
+  logger.info('External agent detection scheduled (60s)');
 
   // BrowserPool idle session cleanup (every 10 minutes)
   const browserPoolCleanupTimer = setInterval(() => {
@@ -2230,6 +2268,13 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   });
 
   const routeFeedbackRepo = new RouteFeedbackRepository(db);
+  const telemetryRepo = new TelemetryRepository(db);
+
+  // Extend CostTracker to accept external agent reports
+  (costTracker as any).recordExternal = (entry: { model: string; promptTokens: number; completionTokens: number }) => {
+    costTracker.record(entry.model, entry.promptTokens, entry.completionTokens, 0);
+  };
+
   const agentEventRepo = new AgentEventRepository(db);
   const agentEventBus = new AgentEventBus(
     broadcast,
@@ -2254,30 +2299,6 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   const fileTracker = new FileAccessTracker();
   const taskTracker = new TaskTracker();
 
-  const toolPruner = gateway
-    ? new ToolPruner({
-        gateway,
-        maxTools: 24,
-        minTools: 8,
-        alwaysInclude: [
-          // Core file tools
-          'read_file',
-          'write_file',
-          'edit_file',
-          'list_directory',
-          'glob',
-          'grep',
-          // Core context tools
-          'query_system_knowledge',
-          'recall',
-          'remember',
-          // Core project tools
-          'get_project_context',
-          'set_project_context',
-        ],
-      })
-    : undefined;
-
   ctx = {
     db,
     decisionRepo,
@@ -2297,6 +2318,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     settingsRepo,
     systemKnowledgeRepo,
     routeFeedbackRepo,
+    telemetryRepo,
     agentEventRepo,
     agentEventBus,
     decisionService,
@@ -2326,7 +2348,6 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     metrics,
     logger,
     backupManager,
-    toolPruner,
     shutdown,
   };
 

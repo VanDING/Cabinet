@@ -9,3 +9,4 @@ export { McpTab } from './McpTab.js';
 export { OthersTab } from './OthersTab.js';
 export { DelegationTab } from './DelegationTab.js';
 export { ThemeTab } from './ThemeTab.js';
+export { ExternalAgentsTab } from './ExternalAgentsTab.js';

@@ -25,6 +25,11 @@ export type AdjustmentNotifyCallback = (action: AdjustmentAction) => Promise<boo
 
 type Health = ReturnType<ObservabilityCollector['getHealth']>;
 
+/**
+ * Auto-adjusts system behavior based on health metrics.
+ * @deprecated Model switching removed — Cabinet now uses a single default model per provider.
+ * Only budget enforcement remains active. Model change callback is a no-op.
+ */
 export class AutoAdjuster {
   private actionHistory: AdjustmentAction[] = [];
 

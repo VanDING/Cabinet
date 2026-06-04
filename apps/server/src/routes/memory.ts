@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
+import { broadcast } from '../ws/handler.js';
 
 export const memoryRouter = new Hono();
 
@@ -133,6 +134,7 @@ memoryRouter.delete('/:id', async (c) => {
     } else {
       await longTerm.delete(id);
     }
+    broadcast('memory_changed', { action: 'deleted', id });
     return c.json({ status: 'deleted' });
   } catch (err) {
     logger.warn('Failed to delete memory entry', { error: (err as Error).message, id });

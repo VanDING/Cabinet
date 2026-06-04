@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Tabs, type Tab } from '@cabinet/ui';
-import { ApiKeysTab, OthersTab, ThemeTab } from './settings/index.js';
+import { ApiKeysTab, OthersTab, ThemeTab, ExternalAgentsTab } from './settings/index.js';
 
-type SettingsTab = 'api' | 'theme' | 'others';
+type SettingsTab = 'api' | 'external' | 'theme' | 'others';
 
 const tabLabels: Record<SettingsTab, string> = {
   api: 'API Keys',
+  external: 'External Agents',
   theme: 'Theme',
   others: 'Others',
 };
@@ -33,6 +34,7 @@ export function SettingsPage() {
 
       {/* Tab Content */}
       {activeTab === 'api' && <ApiKeysTab />}
+      {activeTab === 'external' && <ExternalAgentsTab />}
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
     </div>

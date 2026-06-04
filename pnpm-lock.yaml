@@ -328,6 +328,16 @@ importers:
         specifier: ^4.0.0
         version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@25.7.0)(happy-dom@20.9.0)(vite@6.4.2(@types/node@25.7.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3))
 
+  packages/agent-sdk:
+    dependencies:
+      '@cabinet/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   packages/cli:
     dependencies:
       '@cabinet/storage':
@@ -464,9 +474,6 @@ importers:
       '@cabinet/types':
         specifier: workspace:*
         version: link:../types
-      playwright:
-        specifier: ^1.50.0
-        version: 1.60.0
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -477,6 +484,10 @@ importers:
       vitest:
         specifier: ^4.0.0
         version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3))
+    optionalDependencies:
+      playwright:
+        specifier: ^1.50.0
+        version: 1.60.0
 
   packages/meeting:
     dependencies:

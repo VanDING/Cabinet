@@ -10,6 +10,8 @@ export interface EmployeeRow {
   persona: string | null;
   permission_level: string;
   allowed_tools: string;
+  source: string;
+  external_config: string | null;
 }
 
 export class EmployeeRepository {
@@ -34,18 +36,12 @@ export class EmployeeRepository {
   insert(emp: EmployeeRow): void {
     this.db
       .prepare(
-        'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level, allowed_tools) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level, allowed_tools, source, external_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .run(
-        emp.id,
-        emp.project_id,
-        emp.name,
-        emp.role,
-        emp.kind,
-        emp.pipeline_config,
-        emp.persona,
-        emp.permission_level,
-        emp.allowed_tools,
+        emp.id, emp.project_id, emp.name, emp.role, emp.kind,
+        emp.pipeline_config, emp.persona, emp.permission_level, emp.allowed_tools,
+        emp.source ?? 'custom', emp.external_config ?? null,
       );
   }
 
@@ -54,20 +50,17 @@ export class EmployeeRepository {
     changes: Partial<
       Pick<
         EmployeeRow,
-        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level' | 'allowed_tools'
+        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level' | 'allowed_tools' | 'source' | 'external_config'
       >
     >,
   ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
     const map: Record<string, string> = {
-      name: 'name',
-      role: 'role',
-      kind: 'kind',
-      pipeline_config: 'pipeline_config',
-      persona: 'persona',
-      permission_level: 'permission_level',
-      allowed_tools: 'allowed_tools',
+      name: 'name', role: 'role', kind: 'kind',
+      pipeline_config: 'pipeline_config', persona: 'persona',
+      permission_level: 'permission_level', allowed_tools: 'allowed_tools',
+      source: 'source', external_config: 'external_config',
     };
     for (const [key, col] of Object.entries(map)) {
       const val = (changes as Record<string, unknown>)[key];
@@ -100,6 +93,8 @@ export class EmployeeRepository {
       persona: row.persona as string | null,
       permission_level: row.permission_level as string,
       allowed_tools: (row.allowed_tools as string) ?? '[]',
+      source: (row.source as string) ?? 'custom',
+      external_config: row.external_config as string | null,
     };
   }
 }

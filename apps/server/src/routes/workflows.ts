@@ -505,7 +505,7 @@ function getEngine(): WorkflowEngine {
         maxResponseTokens: role.maxResponseTokens,
         temperature: role.temperature,
         contextBudget: role.contextBudget,
-        toolPruner: ctx.toolPruner,
+        toolPruner: undefined, // removed from ServerContext — fixed small tool set
       });
 
       // Add to pool with LRU eviction

@@ -7,9 +7,16 @@ import https from 'node:https';
 export const healthRouter = new Hono();
 
 // CPU sampling state for utilization calculation
-let prevCpuSnapshot: { idle: number; total: number } | null = null;
+let prevCpuSnapshot: { idle: number; total: number; usage: number; timestamp: number } | null = null;
 
 function getCpuUsage(): number | null {
+  const now = Date.now();
+  // Return cached value if queried within 3 seconds to avoid wild fluctuations
+  // when multiple rapid polls occur (workflow events + scheduled interval)
+  if (prevCpuSnapshot && now - prevCpuSnapshot.timestamp < 3000) {
+    return prevCpuSnapshot.usage;
+  }
+
   const cpuList = cpus();
   let total = 0;
   let idle = 0;
@@ -22,11 +29,13 @@ function getCpuUsage(): number | null {
   if (prevCpuSnapshot) {
     const totalDelta = total - prevCpuSnapshot.total;
     const idleDelta = idle - prevCpuSnapshot.idle;
-    prevCpuSnapshot = { idle, total };
-    if (totalDelta <= 0) return 0;
-    return Math.round(((totalDelta - idleDelta) / totalDelta) * 100);
+    if (totalDelta > 0) {
+      const usage = Math.round(((totalDelta - idleDelta) / totalDelta) * 100);
+      prevCpuSnapshot = { idle, total, usage, timestamp: now };
+      return usage;
+    }
   }
-  prevCpuSnapshot = { idle, total };
+  prevCpuSnapshot = { idle, total, usage: 0, timestamp: now };
   return null;
 }
 
