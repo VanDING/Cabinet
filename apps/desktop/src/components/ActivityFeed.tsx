@@ -6,6 +6,7 @@
 //
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../utils/api.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
 
   const fetchInitialEvents = useCallback(async () => {
     try {
-      const resp = await fetch('/api/external/decisions?status=all&limit=20');
+      const resp = await apiFetch('/api/external/decisions?status=all&limit=20');
       if (resp.ok) {
         const data = await resp.json() as { decisions?: Array<{ id: string; title: string; createdAt: string }> };
         const decisionEvents: ActivityEvent[] = (data.decisions ?? []).map((d) => ({

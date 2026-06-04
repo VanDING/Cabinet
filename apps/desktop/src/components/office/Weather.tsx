@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
+import { apiFetch } from '../../utils/api.js';
 
 interface WeatherData {
   temp: number;
@@ -40,8 +41,8 @@ export function Weather({ onExpand }: Props) {
 
     async function fetchWeather(lat: number, lon: number, city: string) {
       try {
-        const weatherRes = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`,
+        const weatherRes = await apiFetch(
+          `/api/weather?lat=${lat}&lon=${lon}`,
         );
         if (!weatherRes.ok) throw new Error('API error');
         const j = await weatherRes.json();
@@ -66,7 +67,7 @@ export function Weather({ onExpand }: Props) {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 5000);
-        const ipRes = await fetch('/api/geoip', { signal: ctrl.signal });
+        const ipRes = await apiFetch('/api/geoip', { signal: ctrl.signal });
         clearTimeout(t);
         if (ipRes.ok) {
           const ip = await ipRes.json();

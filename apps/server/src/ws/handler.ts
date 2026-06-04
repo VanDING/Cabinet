@@ -1,19 +1,38 @@
-import type { Server } from 'node:http';
+import type { Server, IncomingMessage } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 
 let wss: WebSocketServer | null = null;
 const clients = new Set<WebSocket>();
 
-export function createWSServer(server: Server): WebSocketServer {
+export interface WSServers {
+  wss: WebSocketServer;
+  agentWss: WebSocketServer;
+  handleUpgrade: (request: IncomingMessage, socket: any, head: Buffer) => void;
+}
+
+export function createWSServers(): WSServers {
   // Main events channel (Dashboard, ActivityFeed)
-  wss = new WebSocketServer({ server, path: '/ws/events' });
+  wss = new WebSocketServer({ noServer: true });
   setupWSS(wss);
 
   // Agent channel (external agents connect here for status + approval)
-  const agentWss = new WebSocketServer({ server, path: '/ws' });
+  const agentWss = new WebSocketServer({ noServer: true });
   setupWSS(agentWss);
 
-  return wss;
+  function handleUpgrade(request: IncomingMessage, socket: any, head: Buffer) {
+    const pathname = request.url?.split('?')[0] ?? '';
+    if (pathname === '/ws/events') {
+      wss!.handleUpgrade(request, socket, head, (ws) => {
+        wss!.emit('connection', ws, request);
+      });
+    } else if (pathname === '/ws') {
+      agentWss.handleUpgrade(request, socket, head, (ws) => {
+        agentWss.emit('connection', ws, request);
+      });
+    }
+  }
+
+  return { wss, agentWss, handleUpgrade };
 }
 
 function setupWSS(server: WebSocketServer): void {

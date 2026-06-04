@@ -305,36 +305,77 @@ const CLI_DETECT_LIST = [
 
 agentsRouter.post('/scan', async (c) => {
   const { spawn } = await import('node:child_process');
-  const { agentRegistry } = getServerContext();
+  const { agentRegistry, logger } = getServerContext();
   const registered = new Set(agentRegistry.list().map((r) => r.name));
   const discovered: Array<{ name: string; command: string; installed: boolean; version?: string; registered: boolean }> = [];
+
+  const isWindows = process.platform === 'win32';
+  logger.info('[scan] platform', { platform: process.platform, shell: isWindows ? 'cmd' : 'sh', path: process.env.PATH?.slice(0, 500) });
 
   for (const entry of CLI_DETECT_LIST) {
     let installed = false;
     let version: string | undefined;
+
+    // Phase 1: try --version directly (most reliable cross-platform check)
     try {
-      const proc = spawn('sh', ['-c', entry.detectCmd], { stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
-      const stdout = await new Promise<string>((resolve, reject) => {
-        let data = '';
-        proc.stdout?.on('data', (c: Buffer) => data += c.toString());
-        proc.on('close', (code) => code === 0 ? resolve(data.trim()) : reject(new Error(`exit ${code}`)));
-        proc.on('error', reject);
+      const vProc = spawn(entry.command, ['--version'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 5000,
+        shell: isWindows,
+      });
+      let stdout = '';
+      let stderr = '';
+      vProc.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+      vProc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+      const vOut = await new Promise<string>((resolve, reject) => {
+        vProc.on('close', (code) => {
+          logger.info('[scan] version attempt', { command: entry.command, code, stdout: stdout.trim().slice(0, 200), stderr: stderr.trim().slice(0, 200) });
+          if (code === 0 && stdout.trim().length > 0) resolve(stdout.trim());
+          else reject(new Error(`exit ${code} or empty output`));
+        });
+        vProc.on('error', (err) => {
+          logger.info('[scan] version error', { command: entry.command, error: err.message });
+          reject(err);
+        });
       });
       installed = true;
-      // Try to get version
-      try {
-        const vProc = spawn(entry.command, ['--version'], { stdio: ['ignore', 'pipe', 'ignore'], timeout: 3000 });
-        const vOut = await new Promise<string>((resolve) => {
-          let d = ''; vProc.stdout?.on('data', (c: Buffer) => d += c.toString());
-          vProc.on('close', () => resolve(d.trim()));
-          vProc.on('error', () => resolve(''));
-        });
-        version = vOut || undefined;
-      } catch { /* version detection best-effort */ }
+      version = vOut;
     } catch {
-      installed = false;
+      // Phase 2: fall back to which/where for commands that may not support --version
+      try {
+        const shellCmd = isWindows ? `where ${entry.command}` : `which ${entry.command}`;
+        const proc = spawn(shellCmd, [], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 3000,
+          shell: isWindows,
+        });
+        let stdout2 = '';
+        let stderr2 = '';
+        proc.stdout?.on('data', (chunk: Buffer) => { stdout2 += chunk.toString(); });
+        proc.stderr?.on('data', (chunk: Buffer) => { stderr2 += chunk.toString(); });
+        await new Promise<string>((resolve, reject) => {
+          proc.on('close', (code) => {
+            logger.info('[scan] locate attempt', { command: entry.command, code, stdout: stdout2.trim().slice(0, 200), stderr: stderr2.trim().slice(0, 200) });
+            code === 0 ? resolve(stdout2.trim()) : reject(new Error(`exit ${code}`));
+          });
+          proc.on('error', (err) => {
+            logger.info('[scan] locate error', { command: entry.command, error: err.message });
+            reject(err);
+          });
+        });
+        installed = true;
+      } catch {
+        installed = false;
+      }
     }
-    discovered.push({ name: entry.name, command: entry.command, installed, version, registered: registered.has(entry.name) || registered.has(entry.command) });
+
+    discovered.push({
+      name: entry.name,
+      command: entry.command,
+      installed,
+      version,
+      registered: registered.has(entry.name) || registered.has(entry.command),
+    });
   }
 
   return c.json({ discovered });
