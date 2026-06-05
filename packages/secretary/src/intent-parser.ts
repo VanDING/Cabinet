@@ -1,5 +1,34 @@
+/**
+ * IntentParser — thin orchestrator for intent classification and agent routing.
+ *
+ * 4-layer cascade:
+ *   1. Keyword matching     (intent-pattern-matcher.ts)
+ *   2. Regex matching       (intent-pattern-matcher.ts)
+ *   3. Embedding similarity (intent-embedding-matcher.ts)
+ *   4. LLM fallback          (intent-llm-router.ts)
+ */
 import type { LLMGateway } from '@cabinet/gateway';
 import type { AgentRoleType } from '@cabinet/agent';
+import { cosineSimilarity } from '@cabinet/types';
+import {
+  computeTopicHash,
+  matchIntentByPattern,
+} from './intent-pattern-matcher.js';
+import type { EmbeddingMatch } from './intent-pattern-matcher.js';
+import {
+  warmupEmbeddings,
+  isEmbeddingsWarmed,
+  matchIntentByEmbedding,
+  buildIntentFromMatch,
+} from './intent-embedding-matcher.js';
+import {
+  parseWithLLM,
+  routeWithLLM as llmRouteWithLLM,
+} from './intent-llm-router.js';
+
+// ── Re-export types for backward compatibility ──
+
+export type { EmbeddingMatch } from './intent-pattern-matcher.js';
 
 export interface ConversationContext {
   lastIntent?: string;
@@ -25,170 +54,34 @@ export type ParsedIntent =
   | { kind: 'follow_up'; previousKind: string; raw: string }
   | { kind: 'unknown'; raw: string };
 
-// ── Agent Routing ─────────────────────────────────────────────
-
 export interface AgentRouteResult {
-  /** The recommended agent type. */
   targetAgent: AgentRoleType;
-  /** Confidence 0.0–1.0. Below 0.5 means the router is uncertain. */
   confidence: number;
-  /** Why this agent was chosen. */
   reasoning: string;
-  /** When confidence is low, a suggestion for the Captain. */
   suggestion?: string;
-  /** The original parsed intent (for backward compatibility). */
   intent: ParsedIntent;
-  /** Whether this message is a topic continuation from the previous turn. */
   topicContinuity?: boolean;
 }
 
-// ── Embedding-based Semantic Routing ──────────────────────────
-
-interface IntentExample {
-  intent: string;
-  examples: string[];
-  embeddings?: number[][];
-  excludeWords?: string[];
-}
-
-const INTENT_EXAMPLES: IntentExample[] = [
-  {
-    intent: 'decision_request',
-    examples: [
-      '帮我决策',
-      '该不该',
-      'A和B哪个好',
-      '怎么选择',
-      '权衡利弊',
-      '是否值得',
-      '哪个方案更好',
-      '给我建议',
-      '优缺点对比',
-      '风险评估',
-    ],
-    excludeWords: ['不要决策', '不用决策', '别决策', '不需要决策', '不用分析'],
-  },
-  {
-    intent: 'meeting_request',
-    examples: [
-      '组织会议',
-      '开会讨论',
-      '召集顾问',
-      '启动会议',
-      '安排讨论',
-      '需要多方意见',
-      '开个会',
-      '组织讨论',
-    ],
-    excludeWords: ['不要开会', '不用开会', '别组织会议', '不需要会议', '不用召集'],
-  },
-  {
-    intent: 'status_query',
-    examples: [
-      '查询状态',
-      '项目进度',
-      '工作流状态',
-      '任务执行情况',
-      '现在怎么样了',
-      '完成了吗',
-      '进展如何',
-      '到哪里了',
-    ],
-    excludeWords: ['不要查询'],
-  },
-  {
-    intent: 'knowledge_query',
-    examples: ['什么是', '如何', '怎么', '为什么', '解释一下', '告诉我关于', '什么是', '介绍一下'],
-    excludeWords: [],
-  },
-  {
-    intent: 'skill_request',
-    examples: ['创建skill', '写skill', 'skill', 'SKILL.md', '优化skill', 'skill文件'],
-    excludeWords: ['不要创建skill'],
-  },
-  {
-    intent: 'mcp_request',
-    examples: ['MCP', 'mcp server', 'model context protocol', '搭建mcp'],
-    excludeWords: [],
-  },
-  {
-    intent: 'schedule_request',
-    examples: [
-      '定时任务',
-      '每天执行',
-      '周期性运行',
-      '定时触发',
-      'cron',
-      '每小时',
-      '每周',
-      '自动执行',
-      'schedule',
-      'reminder',
-    ],
-    excludeWords: ['不要定时', '不用定时', '别定时'],
-  },
-  {
-    intent: 'organize_request',
-    examples: [
-      '组织架构',
-      '系统设计',
-      '搭建体系',
-      '设计能力',
-      '组织方案',
-      '构建系统',
-      '规划架构',
-      '创建系统',
-      '设计流程',
-      '构建架构',
-      '组织自动化',
-    ],
-    excludeWords: ['不要组织', '不用组织', '别搭建'],
-  },
-];
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i]! * b[i]!;
-    normA += a[i]! * a[i]!;
-    normB += b[i]! * b[i]!;
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-interface EmbeddingMatch {
-  intent: string;
-  confidence: number;
-  topExample: string;
-}
-
-// ── Intent Parser ─────────────────────────────────────────────
+// ── Utility ──
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// ── IntentParser Class ──
+
 export class IntentParser {
   private availableAgentsDesc = '';
-  private validAgentTypes: Set<string> = new Set([
-    'secretary',
-    'organize',
-  ]);
+  private validAgentTypes: Set<string> = new Set(['secretary', 'organize']);
   private customAgents: Map<string, { description: string; keywords?: string[]; aliases?: string[] }> =
     new Map();
-  private exampleEmbeddingsWarmed = false;
-
-  /** Per-session routing cache for short-circuit optimization. */
   private sessionRoutingCache = new Map<
     string,
     { lastAgent: string; lastTimestamp: number; topicHash: string }
   >();
-
   private model: string;
+  private captainPrefsContext = '';
 
   constructor(
     private readonly gateway?: LLMGateway,
@@ -197,31 +90,20 @@ export class IntentParser {
     this.model = model ?? 'claude-sonnet-4-6';
   }
 
-  private computeTopicHash(message: string): string {
-    const normalized = message.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80);
-    let hash = 0;
-    for (let i = 0; i < normalized.length; i++) {
-      hash = ((hash << 5) - hash + normalized.charCodeAt(i)) | 0;
-    }
-    return String(hash);
-  }
+  // ── Configuration Setters ──
 
-  /** Set agent descriptions for routing (called by server layer). */
   setAgentDescriptions(desc: string): void {
     this.availableAgentsDesc = desc;
   }
 
-  /** Update valid agent types from registry (includes custom agents). */
   setValidAgentTypes(types: Set<string>): void {
     this.validAgentTypes = types;
   }
 
-  /** Register custom agent names and descriptions for fallback routing. */
   setCustomAgents(agents: Map<string, string | { description: string; keywords?: string[]; aliases?: string[] }>): void {
     const normalized = new Map<string, { description: string; keywords?: string[]; aliases?: string[] }>();
     for (const [name, info] of agents) {
       if (typeof info === 'string') {
-        // Derive default keywords from the agent name (split on whitespace/hyphens/underscores)
         const defaultKeywords = name.toLowerCase().split(/[\s\-_]+/).filter((k) => k.length > 1);
         normalized.set(name, { description: info, keywords: defaultKeywords, aliases: [] });
       } else {
@@ -231,401 +113,45 @@ export class IntentParser {
     this.customAgents = normalized;
   }
 
-  /** Inject captain preferences for personalized routing. */
   setCaptainPreferences(prefsContext: string): void {
     this.captainPrefsContext = prefsContext;
   }
 
-  private captainPrefsContext = '';
+  // ── Public API ──
 
-  // ── Keyword Parsing (fast path, no LLM) ───────────────────
-
+  /** Fast keyword/regex-based intent matching (no LLM). */
   parse(message: string, conversationContext?: ConversationContext): ParsedIntent {
-    const lower = message.toLowerCase();
-    const trimmed = lower.trim();
-
-    // Follow-up detection: only continuation/elaboration requests (not generic affirmations)
-    const followUpPatterns = [
-      '继续',
-      '然后',
-      '接下来',
-      '接着',
-      '下一步',
-      'go on',
-      'continue',
-      'next',
-      '详细',
-      '具体',
-      '展开',
-      '多说',
-      '仔细',
-      'elaborate',
-      'explain',
-      'detail',
-      // Common follow-up phrases
-      '上面',
-      '刚才',
-      '之前',
-      '那',
-      '那么',
-      '所以',
-      '还有吗',
-      '然后呢',
-    ];
-    // startsWith gives stronger signal, even on longer messages
-    const startsWithFollowUp = followUpPatterns.some((p) => trimmed.startsWith(p));
-    const isFollowUp =
-      startsWithFollowUp ||
-      (trimmed.length < 40 && followUpPatterns.some((p) => lower.includes(p)));
-
-    // Require both a follow-up pattern AND a known previous route to avoid false positives
-    if (isFollowUp && conversationContext?.lastIntent && conversationContext?.lastRoute) {
-      return {
-        kind: 'follow_up',
-        previousKind: conversationContext.lastIntent,
-        raw: message,
-      };
-    }
-
-    // Direct skill invocation via /skillName prefix (highest priority)
-    const skillInvokeMatch = message.trim().match(/^\/(\S+)/);
-    if (skillInvokeMatch) {
-      return {
-        kind: 'invoke_skill',
-        skillName: skillInvokeMatch[1]!,
-        args: message.trim().slice(skillInvokeMatch[0].length).trim(),
-        raw: message,
-      };
-    }
-
-    if (
-      lower.includes('什么') ||
-      lower.includes('如何') ||
-      lower.includes('怎么') ||
-      lower.includes('为什么')
-    ) {
-      return {
-        kind: 'knowledge_query',
-        question: message,
-        scope: 'both',
-      };
-    }
-
-    // Decision analysis: requires decision-oriented keywords.
-    // "分析" alone is too broad (e.g. "分析代码") — require pairing with option/comparison words.
-    const hasDecisionKeyword =
-      lower.includes('是否') || lower.includes('该不该') || lower.includes('决策');
-    const hasAnalyticalContext =
-      lower.includes('分析') &&
-      (lower.includes('选项') ||
-        lower.includes('方案') ||
-        lower.includes('选择') ||
-        lower.includes('对比') ||
-        lower.includes('比较') ||
-        lower.includes('优劣') ||
-        lower.includes('哪个') ||
-        lower.includes('怎么选') ||
-        lower.includes('权衡'));
-    if (
-      (hasDecisionKeyword || hasAnalyticalContext) &&
-      !this.hasNegation(lower, 'decision_request')
-    ) {
-      return {
-        kind: 'decision_request',
-        topic: message.slice(0, 100),
-        context: message,
-        suggestedDimensions: ['成本', '风险', '时间', '收益'],
-      };
-    }
-
-    // Meeting request: must explicitly ask to organize/schedule a meeting, not just mention one.
-    const hasOrganizeMeeting =
-      (lower.includes('组织') && lower.includes('讨论')) ||
-      lower.includes('组织会议') ||
-      lower.includes('组织个会') ||
-      lower.includes('开会') ||
-      lower.includes('开个会') ||
-      lower.includes('召集') ||
-      lower.includes('启动会议');
-    const hasAdvisorIntent =
-      lower.includes('顾问') &&
-      (lower.includes('讨论') ||
-        lower.includes('分析') ||
-        lower.includes('会议') ||
-        lower.includes('咨询'));
-    // Exclude messages that also contain design/architecture keywords (should go to organize)
-    const hasDesignContext =
-      lower.includes('系统') ||
-      lower.includes('流程') ||
-      lower.includes('agent') ||
-      lower.includes('工作流') ||
-      lower.includes('自动化') ||
-      lower.includes('架构') ||
-      lower.includes('方案');
-    if (
-      (hasOrganizeMeeting || hasAdvisorIntent) &&
-      !hasDesignContext &&
-      !this.hasNegation(lower, 'meeting_request')
-    ) {
-      return {
-        kind: 'meeting_request',
-        topic: message,
-        requiredPerspectives: ['general'],
-      };
-    }
-
-    // Status query: "查询" alone is too broad. Require pairing with status/project/workflow context.
-    const hasStatusKeyword = lower.includes('状态') || lower.includes('进度');
-    const hasQueryWithContext =
-      lower.includes('查询') &&
-      (lower.includes('项目') ||
-        lower.includes('工作流') ||
-        lower.includes('workflow') ||
-        lower.includes('决策') ||
-        lower.includes('状态') ||
-        lower.includes('进度') ||
-        lower.includes('任务') ||
-        lower.includes('执行'));
-    if ((hasStatusKeyword || hasQueryWithContext) && !this.hasNegation(lower, 'status_query')) {
-      return {
-        kind: 'status_query',
-        target: 'project',
-        filters: { query: message },
-      };
-    }
-
-    // Schedule request: before workflow_request to avoid being swallowed
-    const hasScheduleKeyword =
-      lower.includes('定时') ||
-      lower.includes('周期') ||
-      lower.includes('cron') ||
-      lower.includes('schedule') ||
-      lower.includes('reminder');
-    const hasRecurringIntent =
-      lower.includes('每天') ||
-      lower.includes('每小时') ||
-      lower.includes('每周') ||
-      lower.includes('每月') ||
-      lower.includes('自动');
-    if (
-      (hasScheduleKeyword || hasRecurringIntent) &&
-      !this.hasNegation(lower, 'schedule_request')
-    ) {
-      return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
-    }
-
-    // Reviewer is ONLY a meeting quality gate, never routed directly.
-    // "审查代码" / "review this" → Secretary handles directly with read_file and analysis tools.
-
-    // Organize: higher-level design intent — must be checked before workflow_request
-    const hasCreateOrDesign =
-      lower.includes('创建') ||
-      lower.includes('设计') ||
-      lower.includes('搭建') ||
-      lower.includes('组织') ||
-      lower.includes('构建') ||
-      lower.includes('规划');
-    const hasSystemOrWorkflowOrAgent =
-      lower.includes('系统') ||
-      lower.includes('流程') ||
-      lower.includes('agent') ||
-      lower.includes('工作流') ||
-      lower.includes('自动化') ||
-      lower.includes('架构') ||
-      lower.includes('方案');
-    if (
-      hasCreateOrDesign &&
-      hasSystemOrWorkflowOrAgent &&
-      !this.hasNegation(lower, 'organize_request')
-    ) {
-      return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
-    }
-
-    // Skill request
-    const hasSkillKeyword = lower.includes('skill') || lower.includes('skil');
-    const hasCreateSkill = lower.includes('创建') && hasSkillKeyword;
-    const hasWriteSkill = (lower.includes('写') || lower.includes('编写')) && hasSkillKeyword;
-    const hasSkillMd = lower.includes('skill.md') || lower.includes('skil.md');
-    if (
-      (hasCreateSkill || hasWriteSkill || hasSkillMd) &&
-      !this.hasNegation(lower, 'skill_request')
-    ) {
-      return { kind: 'skill_request', topic: message.slice(0, 100), context: message };
-    }
-
-    // MCP request
-    const hasMcpKeyword = lower.includes('mcp') || lower.includes('model context protocol');
-    const hasMcpServer = lower.includes('mcp server') || lower.includes('mcpserver');
-    if ((hasMcpKeyword || hasMcpServer) && !this.hasNegation(lower, 'mcp_request')) {
-      return { kind: 'mcp_request', topic: message.slice(0, 100), context: message };
-    }
-
-    // Reviewer is ONLY a meeting quality gate — never route directly from user messages
-
-    return { kind: 'unknown', raw: message };
+    return matchIntentByPattern(message, conversationContext);
   }
-
-  /** Check if the message contains negation patterns for a specific intent. */
-  private hasNegation(lower: string, intent: string): boolean {
-    const example = INTENT_EXAMPLES.find((e) => e.intent === intent);
-    if (!example?.excludeWords) return false;
-    return example.excludeWords.some((ew) => lower.includes(ew.toLowerCase()));
-  }
-
-  // ── Embedding-based Intent Matching ────────────────────────
 
   /** Warm up example embeddings (call once at startup). Idempotent. */
   async warmupEmbeddings(): Promise<void> {
-    if (!this.gateway || this.exampleEmbeddingsWarmed) return;
-    try {
-      const allExamples: string[] = [];
-      const offsets: number[] = [];
-      for (const ie of INTENT_EXAMPLES) {
-        offsets.push(allExamples.length);
-        allExamples.push(...ie.examples);
-      }
-      if (allExamples.length === 0) return;
-      const result = await this.gateway.generateEmbeddings({ texts: allExamples });
-      let idx = 0;
-      for (let i = 0; i < INTENT_EXAMPLES.length; i++) {
-        const ie = INTENT_EXAMPLES[i]!;
-        ie.embeddings = result.embeddings.slice(idx, idx + ie.examples.length);
-        idx += ie.examples.length;
-      }
-      this.exampleEmbeddingsWarmed = true;
-    } catch {
-      // Embedding warmup is best-effort; fall back to keyword routing
-    }
+    return warmupEmbeddings(this.gateway);
   }
 
-  /** Match user message to intent examples using embedding similarity. */
-  private async matchIntentByEmbedding(message: string): Promise<EmbeddingMatch | null> {
-    if (!this.gateway || !this.exampleEmbeddingsWarmed) return null;
-    try {
-      const userResult = await this.gateway.generateEmbeddings({ texts: [message] });
-      const userEmbedding = userResult.embeddings[0];
-      if (!userEmbedding) return null;
-
-      let bestIntent = '';
-      let bestScore = -1;
-      let bestExample = '';
-
-      for (const ie of INTENT_EXAMPLES) {
-        if (!ie.embeddings || ie.embeddings.length === 0) continue;
-        for (let i = 0; i < ie.embeddings.length; i++) {
-          const score = cosineSimilarity(userEmbedding, ie.embeddings[i]!);
-          if (score > bestScore) {
-            bestScore = score;
-            bestIntent = ie.intent;
-            bestExample = ie.examples[i]!;
-          }
-        }
-      }
-
-      if (bestScore < 0) return null;
-      return { intent: bestIntent, confidence: bestScore, topExample: bestExample };
-    } catch {
-      return null;
-    }
-  }
-
-  // ── LLM-powered Intent Classification ─────────────────────
-
+  /** LLM-powered intent classification fallback. */
   async parseWithLLM(
     message: string,
     conversationContext?: ConversationContext,
   ): Promise<ParsedIntent> {
-    if (!this.gateway) return this.parse(message, conversationContext);
-
-    try {
-      const fewShotExamples = `
-Examples:
-1. Message: "帮我分析一下该不该投资这个项目"
-   → {"kind": "decision_request", "topic": "投资这个项目", "context": "...", "suggestedDimensions": ["成本", "风险", "时间", "收益"]}
-2. Message: "组织一个会议讨论下季度计划"
-   → {"kind": "meeting_request", "topic": "下季度计划", "requiredPerspectives": ["general"]}
-3. Message: "查询一下项目当前进度"
-   → {"kind": "status_query", "target": "project", "filters": {"query": "项目当前进度"}}
-4. Message: "什么是我们的核心竞争优势"
-   → {"kind": "knowledge_query", "question": "什么是我们的核心竞争优势", "scope": "both"}
-5. Message: "帮我设计一个自动化的数据处理工作流"
-   → {"kind": "organize_request", "topic": "数据处理工作流", "context": "..."}
-6. Message: "review一下这个方案的质量"
-   → {"kind": "review_request", "target": "方案", "context": "review一下这个方案的质量"}
-7. Message: "搭建一个市场营销体系"
-   → {"kind": "organize_request", "topic": "市场营销体系", "context": "..."}
-8. Message: "帮我设置一个每天执行的任务"
-   → {"kind": "schedule_request", "topic": "每天执行的任务", "context": "..."}
-9. Message: "帮我写一个skill"
-   → {"kind": "skill_request", "topic": "写一个skill", "context": "..."}
-10. Message: "搭一个mcp server"
-    → {"kind": "mcp_request", "topic": "搭一个mcp server", "context": "..."}
-11. Message: "/workflow-designer"
-    → {"kind": "invoke_skill", "skillName": "workflow-designer", "args": "", "raw": "/workflow-designer"}
-12. Message: "继续"
-    → {"kind": "follow_up", "previousKind": "(from conversation context)", "raw": "继续"}`;
-
-      const historyConstraint = conversationContext?.lastIntent
-        ? `\nHistory context: The previous message was classified as "${conversationContext.lastIntent}". If this message is a continuation of the same topic (same entities, task, or files), prefer the same intent unless the user explicitly switches topics.`
-        : '';
-
-      const prompt = `Classify this user message into one of these intents:
-
-- decision_request: user wants to analyze/decide something
-- meeting_request: user wants to organize advisors to discuss something
-- status_query: user asks about project/decision/workflow status
-- knowledge_query: user asks a general question
-- review_request: user wants to review/audit/check quality of something
-- organize_request: user wants to design/build/architect an organization, system, workflow, or agent
-- skill_request: user wants to create/edit/optimize a skill or SKILL.md
-- invoke_skill: user wants to invoke/run an existing skill (message starts with /skillName)
-- mcp_request: user wants to build an MCP server
-- schedule_request: user wants to create a scheduled/recurring task
-- follow_up: user is continuing or elaborating on a previous topic
-- unknown: none of the above
-${fewShotExamples}${historyConstraint}
-
-Respond with ONLY a JSON object:
-{
-  "kind": "one of the above",
-  "topic": "brief topic",
-  "context": "full context",
-  "suggestedDimensions": ["dim1", "dim2"],
-  "requiredPerspectives": ["finance", "legal"],
-  "target": "project|decision|workflow",
-  "question": "the question"
-}
-
-Message: "${message}"`;
-
-      const response = await this.gateway.generateText({
-        model: this.model,
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: 400,
-        temperature: 0.1,
-      });
-
-      return this.parseJSONIntent(response.content);
-    } catch {
-      return this.parse(message, conversationContext);
-    }
+    return parseWithLLM(message, this.gateway, this.model, conversationContext);
   }
 
-  // ── LLM-powered Agent Routing ─────────────────────────────
+  // ── Main Routing Method ──
 
   async routeToAgent(
     message: string,
     conversationContext?: ConversationContext,
     sessionId?: string,
   ): Promise<AgentRouteResult> {
-    // Short-circuit: if previous route was secretary and message looks like a continuation
+    // Short-circuit: continuing with secretary
     if (sessionId) {
       const cached = this.sessionRoutingCache.get(sessionId);
       if (cached && cached.lastAgent === 'secretary') {
         const noAgentMention = !message.includes('@');
         const noSkillPrefix = !message.startsWith('/');
         const withinWindow = Date.now() - cached.lastTimestamp < 5 * 60 * 1000;
-        const topicStable = this.computeTopicHash(message) === cached.topicHash;
+        const topicStable = computeTopicHash(message) === cached.topicHash;
         if (noAgentMention && noSkillPrefix && withinWindow && topicStable) {
           return {
             targetAgent: 'secretary',
@@ -643,16 +169,16 @@ Message: "${message}"`;
     }
 
     // Ensure embeddings are warmed up
-    await this.warmupEmbeddings();
+    await warmupEmbeddings(this.gateway);
 
     // Fast path: keyword-based parsing (no LLM call)
-    const fastIntent = this.parse(message, conversationContext);
+    const fastIntent = matchIntentByPattern(message, conversationContext);
 
     if (!this.gateway) {
       return this.fallbackRoute(fastIntent, message);
     }
 
-    // Topic continuity check: if semantic similarity to previous topic > 0.7, force follow-up
+    // Topic continuity check via semantic similarity
     if (conversationContext?.topicEmbedding && conversationContext.lastRoute) {
       try {
         const userResult = await this.gateway.generateEmbeddings({ texts: [message] });
@@ -678,12 +204,9 @@ Message: "${message}"`;
       }
     }
 
-    // Fast path: high-confidence explicit action intents from keyword parsing
+    // Fast path: high-confidence explicit action intents
     const highConfidenceIntents = new Set([
-      'decision_request',
-      'meeting_request',
-      'organize_request',
-      'review_request',
+      'decision_request', 'meeting_request', 'organize_request', 'review_request',
     ]);
     if (highConfidenceIntents.has(fastIntent.kind)) {
       return this.fallbackRoute(fastIntent, message);
@@ -713,9 +236,11 @@ Message: "${message}"`;
     }
 
     // Embedding layer
-    const embeddingMatch = await this.matchIntentByEmbedding(message);
+    const embeddingMatch = isEmbeddingsWarmed()
+      ? await matchIntentByEmbedding(message, this.gateway)
+      : null;
     if (embeddingMatch) {
-      const embIntent = this.buildIntentFromMatch(embeddingMatch, message);
+      const embIntent = buildIntentFromMatch(embeddingMatch, message);
       const embRoute = this.fallbackRoute(embIntent, message);
       candidates.push({
         agent: embRoute.targetAgent,
@@ -724,7 +249,6 @@ Message: "${message}"`;
         reasoning: `Embedding semantic match: "${embeddingMatch.topExample}" (confidence: ${(embeddingMatch.confidence * 100).toFixed(0)}%)`,
         intent: embIntent,
       });
-      // High-confidence embedding match can short-circuit
       if (embeddingMatch.confidence > 0.65) {
         return {
           targetAgent: embRoute.targetAgent,
@@ -751,12 +275,18 @@ Message: "${message}"`;
 
     // LLM layer
     try {
-      const llmIntent = await this.parseWithLLM(message, conversationContext);
-      const llmRoute = await this.routeWithLLM(
+      const llmIntent = await parseWithLLM(message, this.gateway, this.model, conversationContext);
+      const llmRoute = await llmRouteWithLLM(
         message,
         llmIntent,
+        this.gateway!,
+        this.model,
+        this.availableAgentsDesc,
+        this.validAgentTypes,
+        this.captainPrefsContext,
         conversationContext,
         embeddingMatch,
+        (intent, msg) => this.fallbackRoute(intent, msg),
       );
       candidates.push({
         agent: llmRoute.targetAgent,
@@ -769,7 +299,7 @@ Message: "${message}"`;
         intent: llmIntent,
       });
     } catch {
-      // LLM failure is non-fatal — fall through to best available candidate
+      // LLM failure is non-fatal
     }
 
     // ── Decision phase ──
@@ -791,152 +321,31 @@ Message: "${message}"`;
         'The request is unclear. Try rephrasing with more specific keywords (e.g., "decide", "workflow", "review").';
     }
 
-    // Update routing cache for short-circuit on next turn
+    // Update routing cache
     if (sessionId) {
       this.sessionRoutingCache.set(sessionId, {
         lastAgent: result.targetAgent,
         lastTimestamp: Date.now(),
-        topicHash: this.computeTopicHash(message),
+        topicHash: computeTopicHash(message),
       });
     }
 
     return result;
   }
 
-  /** LLM-powered agent routing (separated from routeToAgent for clarity). */
-  private async routeWithLLM(
-    message: string,
-    intent: ParsedIntent,
-    conversationContext?: ConversationContext,
-    embeddingMatch?: EmbeddingMatch | null,
-  ): Promise<AgentRouteResult> {
-    const agentList =
-      this.availableAgentsDesc ||
-      [
-        '- secretary: General conversation, decision analysis, and intent routing',
-        '- secretary: General conversation, multi-agent coordination, decision analysis',
-        '- organize: Workflow design, agent creation, system architecture',
-        '- organize: Organization design — translates business goals into agent+workflow blueprints, and handles skill/MCP creation',
-      ].join('\n');
-
-    const prefsLine = this.captainPrefsContext
-      ? `\nCaptain preferences (use to personalize routing):\n${this.captainPrefsContext}\n`
-      : '';
-
-    const historyLine = conversationContext?.lastRoute
-      ? `\nRouting history: The previous turn was routed to "${conversationContext.lastRoute}". ` +
-        `If the user message is a continuation of the same topic (involving the same entities, task, or files), ` +
-        `please prefer the SAME targetAgent, unless the user explicitly asks to switch topics.`
-      : '';
-
-    const embeddingHint =
-      embeddingMatch && embeddingMatch.confidence >= 0.50
-        ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
-        : '';
-
-    const prompt = `You are a router in the Cabinet AI framework. Choose the best cabinet member to handle this request.
-
-Available agents:
-${agentList}
-${prefsLine}
-Routing guidelines:
-- secretary: General questions, casual conversation, simple information retrieval, or decision analysis
-- secretary: The topic needs general discussion, coordination, or multi-agent routing
-- organize: The user wants to design workflows, create agents, or architect systems
-- organize: The user wants to design/build/architect an organization, system, or capability
-${historyLine}${embeddingHint}
-
-Respond with ONLY a JSON object (no markdown, no backticks):
-{
-  "targetAgent": "one of the agent types above",
-  "confidence": 0.0 to 1.0,
-  "reasoning": "one sentence explaining why",
-  "suggestion": "if confidence < 0.5, suggest what kind of specialist might help, otherwise null",
-  "topicContinuity": true or false
-}
-
-Message: "${message}"`;
-
-    try {
-      const response = await this.gateway!.generateText({
-        model: this.model,
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: 300,
-        temperature: 0.1,
-      });
-
-      return this.parseRouteResult(response.content, intent);
-    } catch {
-      return this.fallbackRoute(intent, message);
-    }
-  }
-
-  // ── Private ───────────────────────────────────────────────
-
-  private buildIntentFromMatch(match: EmbeddingMatch, message: string): ParsedIntent {
-    const base = { topic: message.slice(0, 100), context: message };
-    switch (match.intent) {
-      case 'decision_request':
-        return {
-          kind: 'decision_request',
-          ...base,
-          suggestedDimensions: ['成本', '风险', '时间', '收益'],
-        };
-      case 'meeting_request':
-        return { kind: 'meeting_request', topic: message, requiredPerspectives: ['general'] };
-      case 'status_query':
-        return { kind: 'status_query', target: 'project', filters: { query: message } };
-      case 'knowledge_query':
-        return { kind: 'knowledge_query', question: message, scope: 'both' };
-      case 'skill_request':
-        return { kind: 'skill_request', ...base };
-      case 'mcp_request':
-        return { kind: 'mcp_request', ...base };
-      case 'review_request':
-        return { kind: 'review_request', target: message.slice(0, 100), context: message };
-      case 'organize_request':
-        return { kind: 'organize_request', ...base };
-      case 'schedule_request':
-        return { kind: 'schedule_request', ...base };
-      default:
-        return { kind: 'unknown', raw: message };
-    }
-  }
-
-  private parseRouteResult(json: string, intent: ParsedIntent): AgentRouteResult {
-    try {
-      const match = json.match(/\{[\s\S]*\}/);
-      if (!match) return this.fallbackRoute(intent);
-
-      const parsed = JSON.parse(match[0]);
-      return {
-        targetAgent: this.validAgentTypes.has(parsed.targetAgent)
-          ? parsed.targetAgent
-          : 'secretary',
-        confidence:
-          typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0.7,
-        reasoning: parsed.reasoning ?? 'No reasoning provided.',
-        suggestion: parsed.suggestion ?? undefined,
-        intent,
-        topicContinuity: !!parsed.topicContinuity,
-      };
-    } catch {
-      return this.fallbackRoute(intent);
-    }
-  }
+  // ── Fallback Route ──
 
   private fallbackRoute(intent: ParsedIntent, message?: string): AgentRouteResult {
     let targetAgent: AgentRoleType = 'secretary';
     let reasoning = 'Default routing (no LLM available).';
 
-    // Custom agent detection: word-boundary match on name/aliases, word-level match on keywords
+    // Custom agent detection
     if (message) {
       const lowerMsg = message.toLowerCase();
-      const words = lowerMsg.split(/[\s,，。！？、；：""''（）\(\)\[\]\{\}]+/).filter(Boolean);
+      const words = lowerMsg.split(/[\s,，。！？、；：""''（）()[\]{}]+/).filter(Boolean);
 
       for (const [name, info] of this.customAgents) {
         const lowerName = name.toLowerCase();
-        // Word-boundary match on agent name: "Code" shouldn't match "decode"
         const nameRegex = new RegExp(`\\b${escapeRegex(lowerName)}\\b`, 'i');
         if (nameRegex.test(lowerMsg)) {
           return {
@@ -947,7 +356,6 @@ Message: "${message}"`;
           };
         }
 
-        // Match against aliases with word boundary
         for (const alias of info.aliases ?? []) {
           const aliasRegex = new RegExp(`\\b${escapeRegex(alias.toLowerCase())}\\b`, 'i');
           if (aliasRegex.test(lowerMsg)) {
@@ -960,7 +368,6 @@ Message: "${message}"`;
           }
         }
 
-        // Match against keywords (word-level, not substring)
         for (const kw of info.keywords ?? []) {
           if (words.includes(kw.toLowerCase())) {
             return {
@@ -976,20 +383,19 @@ Message: "${message}"`;
 
     switch (intent.kind) {
       case 'decision_request':
-        targetAgent = 'secretary';
-        reasoning = 'Decision-related request handled by Secretary.';
-        break;
       case 'meeting_request':
-        targetAgent = 'secretary';
-        reasoning = 'Meeting/discussion request routed to Secretary (Meeting Chair removed — Secretary handles multi-agent coordination).';
-        break;
       case 'status_query':
-        targetAgent = 'secretary';
-        reasoning = 'Status query handled by Secretary.';
-        break;
       case 'knowledge_query':
+      case 'invoke_skill':
+      case 'schedule_request':
+      case 'review_request':
+      case 'follow_up':
         targetAgent = 'secretary';
-        reasoning = 'Knowledge query handled by Secretary.';
+        reasoning = intent.kind === 'meeting_request'
+          ? 'Meeting/discussion request routed to Secretary (Meeting Chair removed — Secretary handles multi-agent coordination).'
+          : intent.kind === 'review_request'
+            ? 'Review requests handled by Secretary (Reviewer is meeting-only quality gate).'
+            : `${intent.kind} handled by Secretary.`;
         break;
       case 'organize_request':
       case 'skill_request':
@@ -997,54 +403,8 @@ Message: "${message}"`;
         targetAgent = 'organize';
         reasoning = 'Creation/design request routed to Organize Agent.';
         break;
-      case 'invoke_skill':
-        targetAgent = 'secretary';
-        reasoning = 'Skill invocation handled by Secretary.';
-        break;
-      case 'schedule_request':
-        targetAgent = 'secretary';
-        reasoning = 'Scheduling request — Secretary has schedule_task tools.';
-        break;
-      case 'review_request':
-        targetAgent = 'secretary';
-        reasoning = 'Review requests handled by Secretary (Reviewer is meeting-only quality gate).';
-        break;
-      case 'follow_up':
-        targetAgent = 'secretary';
-        reasoning = 'Follow-up message — continuing with Secretary.';
-        break;
     }
 
-    return {
-      targetAgent,
-      confidence: 0.6,
-      reasoning,
-      intent,
-    };
-  }
-
-  private parseJSONIntent(json: string): ParsedIntent {
-    try {
-      const match = json.match(/\{[\s\S]*\}/);
-      if (!match) return { kind: 'unknown', raw: json };
-      const parsed = JSON.parse(match[0]);
-      const base = {
-        kind: parsed.kind ?? 'unknown',
-        topic: parsed.topic ?? '',
-        context: parsed.context ?? '',
-        suggestedDimensions: parsed.suggestedDimensions ?? [],
-        requiredPerspectives: parsed.requiredPerspectives ?? [],
-        target: parsed.target,
-        question: parsed.question,
-        filters: parsed.filters ?? {},
-        raw: json,
-      };
-      if (base.kind === 'invoke_skill') {
-        return { ...base, skillName: parsed.skillName ?? '', args: parsed.args ?? '' } as ParsedIntent;
-      }
-      return base as ParsedIntent;
-    } catch {
-      return { kind: 'unknown', raw: json };
-    }
+    return { targetAgent, confidence: 0.6, reasoning, intent };
   }
 }

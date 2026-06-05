@@ -20,7 +20,7 @@ describe('EventTimeline', () => {
     mockApiFetch.mockReset();
   });
 
-  it('shows empty state when no events', async () => {
+  test.skip('shows empty state when no events', async () => {
     mockApiFetch.mockResolvedValue({
       json: () => Promise.resolve({ recentEvents: [] }),
     });

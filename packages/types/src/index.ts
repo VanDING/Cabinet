@@ -6,3 +6,4 @@ export * from './blueprints.js';
 export * from './pipeline.js';
 export * from './skills.js';
 export * from './agent-output.js';
+export { cosineSimilarity } from './vector-utils.js';

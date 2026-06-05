@@ -110,7 +110,7 @@ describe('DecisionReviewPanel', () => {
     // The option button is the parent <button>
     const optionBtn = options[0]!.closest('button');
     fireEvent.click(optionBtn!);
-    expect(optionBtn?.className).toContain('border-blue-500');
+    expect(optionBtn?.className).toContain('border-accent');
   });
 
   it('shows audit trail entries after load', async () => {

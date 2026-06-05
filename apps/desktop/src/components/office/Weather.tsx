@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
+import { Cloud, Sun } from 'lucide-react';
 import { apiFetch } from '../../utils/api.js';
+import { weatherInfo } from './weather-icons.js';
 
 interface WeatherData {
   temp: number;
@@ -8,24 +9,6 @@ interface WeatherData {
   humidity: number;
   city: string;
   code: number;
-}
-
-const WEATHER_ICONS: { max: number; icon: typeof Sun; label: string }[] = [
-  { max: 0, icon: Sun, label: 'Clear' },
-  { max: 3, icon: CloudSun, label: 'Partly Cloudy' },
-  { max: 48, icon: CloudFog, label: 'Fog' },
-  { max: 57, icon: CloudDrizzle, label: 'Drizzle' },
-  { max: 67, icon: CloudRain, label: 'Rain' },
-  { max: 77, icon: CloudSnow, label: 'Snow' },
-  { max: 86, icon: CloudSnow, label: 'Snow Showers' },
-  { max: Infinity, icon: CloudLightning, label: 'Thunderstorm' },
-];
-
-function weatherInfo(code: number): { icon: typeof Sun; label: string } {
-  for (const entry of WEATHER_ICONS) {
-    if (code <= entry.max) return { icon: entry.icon, label: entry.label };
-  }
-  return { icon: Cloud, label: 'Cloudy' };
 }
 
 interface Props {
