@@ -1,6 +1,6 @@
 import { watch } from 'node:fs';
 import { join } from 'node:path';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import type { SkillRegistry } from '@cabinet/agent';
 import type { AgentRoleRegistry } from '@cabinet/agent';
 import { parseSkillMarkdown } from '@cabinet/agent';
@@ -428,7 +428,7 @@ export function startBlueprintWatcher(
 ): () => void {
   const blueprintsDir = join(dataDir, 'blueprints');
   if (!existsSync(blueprintsDir)) {
-    try { require('fs').mkdirSync(blueprintsDir, { recursive: true }); } catch { /* ok */ }
+    try { mkdirSync(blueprintsDir, { recursive: true }); } catch { /* ok */ }
   }
 
   const fileTimestamps = new Map<string, number>();

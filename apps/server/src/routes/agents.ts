@@ -356,7 +356,7 @@ agentsRouter.post('/scan', async (c) => {
         await new Promise<string>((resolve, reject) => {
           proc.on('close', (code) => {
             logger.info('[scan] locate attempt', { command: entry.command, code, stdout: stdout2.trim().slice(0, 200), stderr: stderr2.trim().slice(0, 200) });
-            code === 0 ? resolve(stdout2.trim()) : reject(new Error(`exit ${code}`));
+            if (code === 0) resolve(stdout2.trim()); else reject(new Error(`exit ${code}`));
           });
           proc.on('error', (err) => {
             logger.info('[scan] locate error', { command: entry.command, error: err.message });

@@ -10,19 +10,19 @@ import { homedir } from 'node:os';
 import { mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
-const DATA_DIR = join(homedir(), '.cabinet');
-const DB_PATH = join(DATA_DIR, 'cabinet.db');
-const BACKUP_DIR = join(DATA_DIR, 'backups');
+export const DATA_DIR = join(homedir(), '.cabinet');
+export const DB_PATH = join(DATA_DIR, 'cabinet.db');
+export const BACKUP_DIR = join(DATA_DIR, 'backups');
 
 // ── Argument parsing ──
 
-interface ParsedArgs {
+export interface ParsedArgs {
   command: string;
   positional: string[];
   flags: Record<string, string | boolean>;
 }
 
-function parseArgs(argv: string[]): ParsedArgs {
+export function parseArgs(argv: string[]): ParsedArgs {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
   const rest: string[] = [];
@@ -256,7 +256,11 @@ function showHelp(): void {
   console.log();
 }
 
-main().catch((err) => {
-  console.error(c.red(`Error: ${err.message}`));
-  process.exit(1);
-});
+// Only auto-run when this file is the entry point (not when imported by tests)
+const isEntryPoint = process.argv[1]?.includes('cabinet') || process.argv[1]?.endsWith('/index.js');
+if (isEntryPoint || process.env.CABINET_CLI_TEST) {
+  main().catch((err) => {
+    console.error(c.red(`Error: ${err.message}`));
+    process.exit(1);
+  });
+}

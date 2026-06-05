@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Hono } from 'hono';
 import { join } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -82,6 +83,7 @@ settingsRouter.put('/budget', async (c) => {
 });
 
 // ── API Keys (SQLite-backed) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ensureApiKeyColumns(db: any) {
   try {
     db.prepare("ALTER TABLE api_keys ADD COLUMN base_url TEXT DEFAULT ''").run();
@@ -223,8 +225,8 @@ settingsRouter.post('/api-keys/:id/test', async (c) => {
     });
     const latency = Date.now() - start;
     return c.json({ status: 'ok', latency_ms: latency, model: result.model });
-  } catch (e: any) {
-    return c.json({ status: 'error', message: e.message ?? 'Connection failed' }, 503);
+  } catch (e) {
+    return c.json({ status: 'error', message: (e as Error).message ?? 'Connection failed' }, 503);
   }
 });
 
@@ -276,10 +278,10 @@ settingsRouter.get('/delegation-tier', (c) => {
 settingsRouter.put('/delegation-tier', async (c) => {
   const body = await c.req.json();
   const tier = body.tier as string;
-  if (!ALL_TIERS.includes(tier as any)) {
+  if (!ALL_TIERS.includes(tier as DelegationTier)) {
     return c.json({ error: `Invalid tier. Must be one of: ${ALL_TIERS.join(', ')}` }, 400);
   }
-  setCurrentTier(tier as any);
+  setCurrentTier(tier as DelegationTier);
   saveSettings({ delegationTier: tier });
   const { logger } = getServerContext();
   logger.info('Delegation tier changed', { tier });
