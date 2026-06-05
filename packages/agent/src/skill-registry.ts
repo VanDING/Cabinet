@@ -192,7 +192,7 @@ export class SkillRegistry {
     prompt = prompt.replace(/\$ARGUMENTS/g, argumentStr);
     const positionalArgs = argumentStr.split(/\s+/).filter(Boolean);
     for (let i = 0; i < positionalArgs.length; i++) {
-      prompt = prompt.replace(new RegExp(`\\\$${i}`, 'g'), positionalArgs[i]!);
+      prompt = prompt.replace(new RegExp(`\\$${i}`, 'g'), positionalArgs[i]!);
     }
     // Named argument substitution ({{key}})
     for (const [key, value] of Object.entries(args)) {

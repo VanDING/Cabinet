@@ -225,6 +225,7 @@ export class WorkflowEngine {
     }
 
     const sg = new StateGraph(schema);
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
 
     for (const node of nodes) {

@@ -51,8 +51,8 @@ export function computeForceLayout(
       for (let j = i + 1; j < layoutNodes.length; j++) {
         const a = layoutNodes[i]!;
         const b = layoutNodes[j]!;
-        let dx = a.x - b.x;
-        let dy = a.y - b.y;
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
         const distSq = dx * dx + dy * dy;
         const dist = Math.max(1, Math.sqrt(distSq));
         const force = repulsion / distSq;

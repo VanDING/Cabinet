@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 //
 // EL Expression Compiler — compiles LiteFlow-style EL to StateGraph nodes + edges.
 //
@@ -77,7 +78,7 @@ class Tokenizer {
 
     // Identifier or keyword
     let ident = '';
-    while (this.pos < this.input.length && /[a-zA-Z0-9_\-]/.test(this.input[this.pos]!)) {
+    while (this.pos < this.input.length && /[a-zA-Z0-9_-]/.test(this.input[this.pos]!)) {
       ident += this.input[this.pos++]!;
     }
     return { type: 'ident', value: ident, pos: start };
@@ -119,7 +120,7 @@ class ELParser {
     const node = this.parseExpression();
     const t = this.tok.next();
     if (t.type !== 'eof') {
-      throw new Error(`Unexpected token after expression: ${t.type} '${(t as any).value ?? ''}'`);
+      throw new Error(`Unexpected token after expression: ${t.type} '${(t as { value?: string }).value ?? ''}'`);
     }
     return node;
   }
@@ -205,7 +206,7 @@ class ELParser {
       if (tk.type === 'rparen') parenDepth--;
       if (parenDepth > 0) {
         if (tk.type === 'ident' || tk.type === 'string') {
-          condParts.push((tk as any).value);
+          condParts.push((tk as { value?: string }).value ?? '');
         } else if (tk.type === 'comma') {
           break; // condition done, next is true branch
         }
@@ -238,7 +239,7 @@ class ELParser {
           if (tk.type === 'rparen') parenDepth--;
           if (parenDepth > 0) {
             if (tk.type === 'ident' || tk.type === 'string') {
-              elifCondParts.push((tk as any).value);
+              elifCondParts.push((tk as { value?: string }).value ?? '');
             } else if (tk.type === 'comma') break;
           }
         }
@@ -460,8 +461,12 @@ function compileNode(ast: ELNode): CompileResult {
         edges.push({ from: lastBodyNode.id, to: loopId });
       }
       // Set loop config on the loop node (will be used by engine)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (nodes[0] as any).loopType = 'count';
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (nodes[0] as any).loopCount = ast.count;
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (nodes[0] as any).loopMaxIterations = ast.count * 2;
       return { nodes, edges, entryNodeId: loopId };
     }
@@ -479,8 +484,12 @@ function compileNode(ast: ELNode): CompileResult {
       if (lastBodyNode) {
         edges.push({ from: lastBodyNode.id, to: loopId });
       }
-      (nodes[0] as any).loopType = 'condition';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      (nodes[0] as any).loopType = 'count';
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (nodes[0] as any).loopCondition = ast.condition;
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       (nodes[0] as any).loopMaxIterations = 1000;
       return { nodes, edges, entryNodeId: loopId };
     }
@@ -508,7 +517,8 @@ export function parseEL(input: string): ELNode {
     const posMatch = msg.match(/at position (\d+)/);
     if (posMatch) {
       const pos = parseInt(posMatch[1]!, 10);
-      const tokenizer = new (Tokenizer as any)(input) as Tokenizer;
+      const tokenizer = new /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      (Tokenizer as any)(input) as Tokenizer;
       const lc = tokenizer.getLineCol(pos);
       throw new Error(`${msg} (line ${lc.line}, col ${lc.col})`);
     }

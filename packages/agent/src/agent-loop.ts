@@ -385,12 +385,12 @@ export class AgentLoop {
     // Try to restore from checkpoint (unless caller already provided state)
     const state = resumeState ?? this.checkpointManager.load(this.options.sessionId);
     const isResuming = state !== null && state !== undefined;
-    let steps = state?.step ?? 0;
+    const steps = state?.step ?? 0;
     const executedToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[] =
       (state?.toolCallHistory as { name: string; args: Record<string, unknown>; result: unknown }[]) ?? [];
 
     // If resuming from a crashed session, skip re-adding the user message (it's already in checkpoint)
-    let messages: { role: 'user' | 'assistant'; content: string }[] = state?.messages ?? [];
+    const messages: { role: 'user' | 'assistant'; content: string }[] = state?.messages ?? [];
     const wasCrashed = (state?.metadata as Record<string, unknown>)?.crashed === true;
     if (wasCrashed) {
       messages.push({
@@ -401,11 +401,11 @@ export class AgentLoop {
 
     // Observability tracking
     const zoneCounts = { smart: 0, warning: 0, critical: 0, dumb: 0 };
-    let handoffCount = 0;
+    const handoffCount = 0;
     const errorCounts = { transient: 0, recoverable: 0, fatal: 0 };
     const toolCounts = { total: 0, succeeded: 0, failed: 0, blocked: 0 };
-    let totalPromptTokens = 0;
-    let totalCompletionTokens = 0;
+    const totalPromptTokens = 0;
+    const totalCompletionTokens = 0;
 
     // Add user message — always deduplicate against last message in history
     if (messages.length > 0) {
@@ -423,8 +423,8 @@ export class AgentLoop {
     }
     const handoff = this.sessionHandoff;
 
-    let warnedThreshold = false;
-    let consecutiveErrors = 0;
+    const warnedThreshold = false;
+    const consecutiveErrors = 0;
     const trust = TRUST_THRESHOLDS[this.options.trustLevel ?? 'T1'];
     const activeToolExecutor = await this.resolveToolExecutor(this.options.taskDescription);
 
@@ -536,6 +536,7 @@ export class AgentLoop {
     },
     isResuming: boolean,
   ): StateGraph<typeof AgentStateSchema> {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
 
     const READ_TOOL_NAMES = new Set([

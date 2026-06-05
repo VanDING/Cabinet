@@ -1,13 +1,15 @@
 import type { Server, IncomingMessage } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 
+interface AugmentedWebSocket extends WebSocket { _agentId?: string; _daemonId?: string; }
+
 let wss: WebSocketServer | null = null;
 const clients = new Set<WebSocket>();
 
 export interface WSServers {
   wss: WebSocketServer;
   agentWss: WebSocketServer;
-  handleUpgrade: (request: IncomingMessage, socket: any, head: Buffer) => void;
+  handleUpgrade: (request: IncomingMessage, socket: import("stream").Duplex, head: Buffer) => void;
 }
 
 export function createWSServers(): WSServers {
@@ -19,7 +21,7 @@ export function createWSServers(): WSServers {
   const agentWss = new WebSocketServer({ noServer: true });
   setupWSS(agentWss);
 
-  function handleUpgrade(request: IncomingMessage, socket: any, head: Buffer) {
+  function handleUpgrade(request: IncomingMessage, socket: import("stream").Duplex, head: Buffer) {
     const pathname = request.url?.split('?')[0] ?? '';
     if (pathname === '/ws/events') {
       wss!.handleUpgrade(request, socket, head, (ws) => {
@@ -66,7 +68,7 @@ function setupClient(ws: WebSocket): void {
       } else if (msg.type === 'agent_connect' && msg.agent_id) {
         subscriptions.add('agent_event');
         // Store agent_id for targeted delivery
-        (ws as any)._agentId = msg.agent_id;
+        (ws as AugmentedWebSocket)._agentId = msg.agent_id;
         ws.send(JSON.stringify({ type: 'agent_connected', agent_id: msg.agent_id }));
       } else {
         // Try daemon message handler
@@ -107,7 +109,7 @@ export function broadcast(type: string, data?: Record<string, unknown>): void {
 
     // For agent_event — only deliver to clients that subscribed or have matching agent_id
     if (type === 'agent_event' || type === 'decision_result') {
-      const agentId = (client as any)._agentId;
+      const agentId = (client as AugmentedWebSocket)._agentId;
       const dataAgentId = data?.agentId ?? data?.agent_id;
       if (agentId && dataAgentId && agentId !== dataAgentId) continue; // targeted delivery
     }
@@ -132,7 +134,7 @@ class DaemonConnectionManager {
   register(daemonId: string, ws: WebSocket): void {
     this.daemons.set(daemonId, ws);
     // Store daemon_id on ws for cleanup
-    (ws as any)._daemonId = daemonId;
+    (ws as AugmentedWebSocket)._daemonId = daemonId;
   }
 
   unregister(daemonId: string): void {
@@ -143,7 +145,7 @@ class DaemonConnectionManager {
   sendTask(daemonId: string, task: unknown): boolean {
     const ws = this.daemons.get(daemonId);
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify({ type: 'task_assigned', task, task_id: (task as any).id, timestamp: new Date().toISOString() }));
+    ws.send(JSON.stringify({ type: 'task_assigned', task, task_id: (task as { id: string }).id, timestamp: new Date().toISOString() }));
     return true;
   }
 
@@ -176,7 +178,7 @@ class DaemonConnectionManager {
 
   /** Handle cleanup when a daemon WS disconnects. */
   handleDisconnect(ws: WebSocket): void {
-    const daemonId = (ws as any)._daemonId as string | undefined;
+    const daemonId = (ws as AugmentedWebSocket)._daemonId as string | undefined;
     if (daemonId) this.unregister(daemonId);
   }
 }
@@ -204,14 +206,14 @@ export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown
     case 'agent_daemon_connect': {
       const daemonId = msg.daemon_id as string;
       if (daemonId) {
-        (ws as any)._daemonId = daemonId;
+        (ws as AugmentedWebSocket)._daemonId = daemonId;
         daemonConnections.register(daemonId, ws);
         ws.send(JSON.stringify({ type: 'connected', daemon_id: daemonId }));
       }
       return true;
     }
     case 'heartbeat': {
-      const daemonId = (msg.daemon_id as string) ?? (ws as any)._daemonId;
+      const daemonId = (msg.daemon_id as string) ?? (ws as AugmentedWebSocket)._daemonId;
       if (daemonId) {
         // Heartbeat received — daemon is alive
         // Could update agent_daemon_heartbeats table here if needed
@@ -234,7 +236,7 @@ export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown
     case 'daemon_reconnect': {
       const daemonId = msg.daemon_id as string;
       if (daemonId) {
-        (ws as any)._daemonId = daemonId;
+        (ws as AugmentedWebSocket)._daemonId = daemonId;
         daemonConnections.register(daemonId, ws);
         // Reconcile: return list of tasks still claimed by this daemon
         ws.send(JSON.stringify({

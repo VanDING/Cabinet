@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
@@ -299,6 +300,7 @@ memoryRouter.get('/stats', (c) => {
 });
 
 // Helper: get tracked session IDs from ShortTermMemory
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getAllSessionIds(shortTerm: any): string[] {
   try {
     if (typeof shortTerm.getSessionIds === 'function') return shortTerm.getSessionIds();

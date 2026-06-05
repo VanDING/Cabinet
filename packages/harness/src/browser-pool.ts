@@ -238,7 +238,7 @@ export class BrowserPool {
   async evaluate(sessionId: string, script: string): Promise<unknown> {
     const page = await this.acquire(sessionId);
     return page.evaluate((s) => {
-      // eslint-disable-next-line no-eval
+       
       return eval(s);
     }, script);
   }

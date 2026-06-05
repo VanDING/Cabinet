@@ -198,7 +198,7 @@ export function SecretaryOrb({ onOpen, uiMode }: SecretaryOrbProps) {
 
     autoMorphTimerRef.current = setTimeout(cycle, 12000 + Math.random() * 8000);
     return () => stopAutoMorph();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [orbMood]);
 
   function stopAutoMorph() {

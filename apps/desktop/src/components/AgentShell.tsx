@@ -128,6 +128,7 @@ export const AgentShell: React.FC<AgentShellProps> = ({
       const el = terminalRef.current;
       if (el && (el as any)._term) {
         try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { FitAddon } = require('xterm-addon-fit');
           // FitAddon is already loaded; resize handled by fit addon
         } catch { /* noop */ }

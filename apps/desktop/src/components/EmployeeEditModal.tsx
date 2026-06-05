@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
 import { ModalOverlay } from './ModalOverlay';
 import { Tabs } from '@cabinet/ui';

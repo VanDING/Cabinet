@@ -128,7 +128,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('cabinet-ui-mode');
       if (saved === 'chat' || saved === 'work') return saved;
       if (saved === 'collapsed' || saved === 'overlay') return 'work';
-    } catch {}
+    } catch { /* JSON parse error */ }
     return 'idle';
   });
   const chatMode = uiMode === 'chat';
