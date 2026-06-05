@@ -29,35 +29,35 @@ describe('buildIntentFromMatch', () => {
     const match: EmbeddingMatch = { intent: 'decision_request', confidence: 0.9, topExample: '帮我决策' };
     const result = buildIntentFromMatch(match, '帮我分析是否投资');
     expect(result.kind).toBe('decision_request');
-    expect(result.suggestedDimensions).toEqual(['成本', '风险', '时间', '收益']);
+    expect((result as any).suggestedDimensions).toEqual(['成本', '风险', '时间', '收益']);
   });
 
   it('builds meeting_request from match', () => {
     const match: EmbeddingMatch = { intent: 'meeting_request', confidence: 0.85, topExample: '开会' };
     const result = buildIntentFromMatch(match, '组织会议讨论');
     expect(result.kind).toBe('meeting_request');
-    expect(result.requiredPerspectives).toEqual(['general']);
+    expect((result as any).requiredPerspectives).toEqual(['general']);
   });
 
   it('builds status_query from match', () => {
     const match: EmbeddingMatch = { intent: 'status_query', confidence: 0.8, topExample: '查询状态' };
     const result = buildIntentFromMatch(match, '查询项目状态');
     expect(result.kind).toBe('status_query');
-    expect(result.target).toBe('project');
+    expect((result as any).target).toBe('project');
   });
 
   it('builds knowledge_query from match', () => {
     const match: EmbeddingMatch = { intent: 'knowledge_query', confidence: 0.9, topExample: '什么是' };
     const result = buildIntentFromMatch(match, '什么是AI');
     expect(result.kind).toBe('knowledge_query');
-    expect(result.scope).toBe('both');
+    expect((result as any).scope).toBe('both');
   });
 
   it('builds organize_request from match', () => {
     const match: EmbeddingMatch = { intent: 'organize_request', confidence: 0.88, topExample: '设计工作流' };
     const result = buildIntentFromMatch(match, '设计一个自动化流程');
     expect(result.kind).toBe('organize_request');
-    expect(result.topic).toBe('设计一个自动化流程');
+    expect((result as any).topic).toBe('设计一个自动化流程');
   });
 
   it('builds schedule_request from match', () => {
@@ -124,8 +124,8 @@ describe('matchIntentByEmbedding', () => {
 
   // skip: module-level `exampleEmbeddingsWarmed` persists across tests.
   // Full warmup+match flow requires module reset (vi.resetModules).
-  test.skip('returns best match after warmup (requires module reset)', () => {});
+  it.skip('returns best match after warmup (requires module reset)', () => {});
 
   // skip: module-level state persists
-  test.skip('returns null when gateway returns empty embeddings', () => {});
+  it.skip('returns null when gateway returns empty embeddings', () => {});
 });

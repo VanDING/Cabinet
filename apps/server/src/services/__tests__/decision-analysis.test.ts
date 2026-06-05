@@ -67,7 +67,7 @@ describe('DecisionAnalysisService', () => {
       expect(result).toBe('## Analysis\n\nThis decision has risks and benefits...');
       expect(mockGateway.generateText).toHaveBeenCalledTimes(1);
 
-      const call = mockGateway.generateText.mock.calls[0][0];
+      const call = mockGateway.generateText.mock.calls[0]![0];
       expect(call.model).toBe('claude-sonnet-4-6');
       expect(call.systemPrompt).toContain('Decision Analyst');
       expect(call.messages[0].role).toBe('user');
@@ -112,14 +112,14 @@ describe('DecisionAnalysisService', () => {
     });
 
     // skip: requires full LLM gateway mock for the analyze->save code path
-    test.skip('triggers analysis and saves result when analysis is missing', async () => {
+    it.skip('triggers analysis and saves result when analysis is missing', async () => {
       // This test requires mocking the full gateway.generateText chain,
       // which is already tested in the analyze() tests above.
       // Integration testing this path needs a running server.
     });
 
     // skip: requires LLM gateway mock for error path
-    test.skip('handles analysis failure gracefully (logs warning)', async () => {
+    it.skip('handles analysis failure gracefully (logs warning)', async () => {
       // Error handling path: gateway throws → caught, logged, no save.
       // Covered implicitly by analyze() tests.
     });

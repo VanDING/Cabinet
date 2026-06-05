@@ -26,7 +26,7 @@ describe('EscalationService', () => {
       await service.escalate('dec_001', 'Budget Decision', 'L2');
 
       expect(bus.publish).toHaveBeenCalledTimes(1);
-      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0]![0];
 
       expect(event.messageId).toMatch(/^escalation_dec_001_\d+$/);
       expect(event.correlationId).toBe('dec_001');
@@ -47,7 +47,7 @@ describe('EscalationService', () => {
 
       await service.escalate('dec_002', 'Critical Security Issue', 'L3');
 
-      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0]![0];
       expect(event.payload.data.urgency).toBe('immediate');
       expect(event.payload.message).toContain('L3');
     });
@@ -58,7 +58,7 @@ describe('EscalationService', () => {
 
       await service.escalate('dec_abc', 'Test', 'L1');
 
-      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      const event = (bus.publish as ReturnType<typeof vi.fn>).mock.calls[0]![0];
       expect(event.payload.data).toEqual({
         decisionId: 'dec_abc',
         title: 'Test',
