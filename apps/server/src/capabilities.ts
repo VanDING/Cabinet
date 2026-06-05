@@ -698,7 +698,7 @@ export function createWebCapabilities(_ctx: CapabilitiesContext) {
         const data = await res.json();
         if (Array.isArray(data)) {
           // Directory listing
-          const items = data.map((item: any) => ({
+          const items = data.map((item: { name: string; path: string; type: string }) => ({
             name: item.name,
             path: item.path,
             type: item.type,
@@ -766,7 +766,7 @@ const COMMAND_RESTRICTIONS: Record<string, string[]> = {
   rm: [], // only rm <file>, no flags like -rf
 };
 
-const SHELL_META = /[;&|><$(){}\[\]*?`\n\r]/;
+const SHELL_META = /[;&|><$(){}[\]*?`\n\r]/;
 
 function parseCommand(command: string): string[] | null {
   if (SHELL_META.test(command)) return null;
@@ -1186,7 +1186,7 @@ export function createCommunicationCapabilities() {
     fetchRss: async (url: string, limit?: number) => {
       const feed = await rssParser.parseURL(url);
       return {
-        entries: (feed.items ?? []).slice(0, limit ?? 20).map((item: any) => ({
+        entries: (feed.items ?? []).slice(0, limit ?? 20).map((item: { title?: string; link?: string; pubDate?: string; contentSnippet?: string; creator?: string; isoDate?: string; content?: string }) => ({
           title: item.title ?? '',
           link: item.link ?? '',
           pubDate: item.pubDate ?? item.isoDate,
@@ -1255,8 +1255,8 @@ export function createSystemCapabilities(_isDesktopMode = false) {
       try {
         process.kill(pid);
         return { killed: true };
-      } catch (e: any) {
-        return { killed: false, error: e.message };
+      } catch (e: unknown) {
+        return { killed: false, error: (e as Error).message };
       }
     },
     showOpenDialog: async (
@@ -1322,7 +1322,7 @@ export function createAllCapabilities(
   for (const area of allowed) {
     for (const key of areaMap[area] ?? []) permitted.add(key);
   }
-  const filtered: any = {};
+  const filtered: Record<string, unknown> = {};
   for (const key of permitted) {
     if (key in all) filtered[key] = (all as any)[key];
   }

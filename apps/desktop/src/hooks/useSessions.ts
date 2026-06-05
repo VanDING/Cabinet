@@ -69,6 +69,21 @@ export interface Session {
   deliverable?: unknown;
 }
 
+/** Raw session data from localStorage/API (dates are strings). */
+interface SessionJSON {
+  id: string;
+  title: string;
+  projectId?: string;
+  messages: Array<Omit<ChatMessage, 'timestamp'> & { timestamp: string }>;
+  attachedFiles: AttachedFile[];
+  createdAt: string;
+  updatedAt: string;
+  parentId?: string;
+  agentType?: string;
+  status?: string;
+  deliverable?: unknown;
+}
+
 function generateId(): string {
   return `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -82,7 +97,7 @@ function loadSessions(): Session[] {
     const raw = localStorage.getItem('cabinet-sessions');
     if (!raw) return [];
     const data = JSON.parse(raw);
-    return data.map((s: any) => ({
+    return data.map((s: SessionJSON) => ({
       ...s,
       messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
       createdAt: new Date(s.createdAt),
@@ -102,7 +117,7 @@ function loadHistory(): Session[] {
     const raw = localStorage.getItem('cabinet-session-history');
     if (!raw) return [];
     const data = JSON.parse(raw);
-    return data.map((s: any) => ({
+    return data.map((s: SessionJSON) => ({
       ...s,
       messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
       createdAt: new Date(s.createdAt),
