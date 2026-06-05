@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { A2AClient } from '../a2a-client.js';
 import type { Logger } from '@cabinet/storage';
 

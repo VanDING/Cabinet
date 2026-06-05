@@ -23,7 +23,7 @@ import { describe, it, expect } from 'vitest';
 describe('buildToolDependencies (structural characterization)', () => {
   // skip: dynamic import fails due to node-cron and other server-native deps
   // that cannot load in the vitest/jsdom environment.
-  test.skip('is importable — requires server runtime (node-cron, etc.)', async () => {
+  it.skip('is importable — requires server runtime (node-cron, etc.)', async () => {
     const mod = await import('../tool-dependencies.js');
     expect(mod.buildToolDependencies).toBeDefined();
   });
@@ -34,7 +34,7 @@ describe('buildToolDependencies (structural characterization)', () => {
   });
 
   // skip: requires a fully-initialized ServerContext with 50+ fields
-  test.skip('buildToolDependencies with mock ctx — requires full ServerContext mock', async () => {
+  it.skip('buildToolDependencies with mock ctx — requires full ServerContext mock', async () => {
     // This test would need:
     //   ctx.decisionRepo, ctx.eventBus, ctx.shortTerm, ctx.longTerm,
     //   ctx.entity, ctx.project, ctx.decisionService, ctx.workflowRepo,

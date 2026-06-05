@@ -21,9 +21,9 @@ describe('MetricsCollector', () => {
       collector.record('llm_call', 1, { model: 'claude' });
       const metrics = collector.getByName('llm_call');
       expect(metrics).toHaveLength(1);
-      expect(metrics[0].value).toBe(1);
-      expect(metrics[0].tags.model).toBe('claude');
-      expect(metrics[0].timestamp).toBeInstanceOf(Date);
+      expect(metrics[0]!.value).toBe(1);
+      expect(metrics[0]!.tags.model).toBe('claude');
+      expect(metrics[0]!.timestamp).toBeInstanceOf(Date);
     });
 
     it('accumulates multiple records', () => {
@@ -37,7 +37,7 @@ describe('MetricsCollector', () => {
       collector.record('error', 1);
       const m = collector.getByName('error');
       expect(m).toHaveLength(1);
-      expect(m[0].tags).toEqual({});
+      expect(m[0]!.tags).toEqual({});
     });
   });
 
@@ -46,13 +46,13 @@ describe('MetricsCollector', () => {
       collector.increment('request_count');
       const m = collector.getByName('request_count');
       expect(m).toHaveLength(1);
-      expect(m[0].value).toBe(1);
+      expect(m[0]!.value).toBe(1);
     });
 
     it('accepts tags', () => {
       collector.increment('request_count', { endpoint: '/api/chat' });
       const m = collector.getByName('request_count');
-      expect(m[0].tags.endpoint).toBe('/api/chat');
+      expect(m[0]!.tags.endpoint).toBe('/api/chat');
     });
   });
 
@@ -61,15 +61,15 @@ describe('MetricsCollector', () => {
       collector.gauge('memory_usage', 512);
       const m = collector.getByName('memory_usage');
       expect(m).toHaveLength(1);
-      expect(m[0].value).toBe(512);
-      expect(m[0].tags.type).toBe('gauge');
+      expect(m[0]!.value).toBe(512);
+      expect(m[0]!.tags.type).toBe('gauge');
     });
 
     it('merges additional tags with gauge type', () => {
       collector.gauge('cpu', 75, { unit: 'percent' });
       const m = collector.getByName('cpu');
-      expect(m[0].tags.type).toBe('gauge');
-      expect(m[0].tags.unit).toBe('percent');
+      expect(m[0]!.tags.type).toBe('gauge');
+      expect(m[0]!.tags.unit).toBe('percent');
     });
   });
 

@@ -11,14 +11,14 @@ describe('parseJSONIntent', () => {
     const json = '{"kind": "decision_request", "topic": "投资决策", "context": "是否投资", "suggestedDimensions": ["成本", "风险"]}';
     const result = parseJSONIntent(json);
     expect(result.kind).toBe('decision_request');
-    expect(result.topic).toBe('投资决策');
+    expect((result as any).topic).toBe('投资决策');
   });
 
   it('parses a valid knowledge_query JSON', () => {
     const json = '{"kind": "knowledge_query", "question": "什么是AI", "scope": "both"}';
     const result = parseJSONIntent(json);
     expect(result.kind).toBe('knowledge_query');
-    expect(result.question).toBe('什么是AI');
+    expect((result as any).question).toBe('什么是AI');
   });
 
   it('parses a valid follow_up JSON', () => {

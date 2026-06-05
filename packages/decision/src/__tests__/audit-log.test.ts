@@ -81,12 +81,12 @@ describe('AuditLogger', () => {
       const entries = logger.findByEntity('decision', 'dec_1');
 
       expect(entries).toHaveLength(1);
-      expect(entries[0].entityType).toBe('decision');
-      expect(entries[0].entityId).toBe('dec_1');
-      expect(entries[0].action).toBe('created');
-      expect(entries[0].actor).toBe('system');
-      expect(entries[0].changes).toEqual({ title: 'Test' });
-      expect(entries[0].timestamp).toBeInstanceOf(Date);
+      expect(entries[0]!.entityType).toBe('decision');
+      expect(entries[0]!.entityId).toBe('dec_1');
+      expect(entries[0]!.action).toBe('created');
+      expect(entries[0]!.actor).toBe('system');
+      expect(entries[0]!.changes).toEqual({ title: 'Test' });
+      expect(entries[0]!.timestamp).toBeInstanceOf(Date);
     });
 
     it('returns empty array for no matches', () => {
@@ -138,8 +138,8 @@ describe('AuditLogger', () => {
       const entries = logger.findAll();
 
       expect(entries).toHaveLength(2);
-      expect(entries[0].entityType).toBe('decision');
-      expect(entries[1].entityType).toBe('workflow');
+      expect(entries[0]!.entityType).toBe('decision');
+      expect(entries[1]!.entityType).toBe('workflow');
     });
   });
 });
