@@ -1,20 +1,16 @@
 import { join } from 'node:path';
-import { homedir } from 'node:os';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
-import { createFileCapabilities, createKnowledgeCapabilities, getBrowserPool } from './capabilities.js';
-
-let activeApiKeyId: string | null = null;
-
-export function setActiveApiKeyId(id: string | null) {
-  activeApiKeyId = id;
-}
-
-export function getActiveApiKeyId(): string | null {
-  return activeApiKeyId;
-}
+import { getBrowserPool } from './capabilities.js';
 import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher, startBlueprintWatcher } from './watchers.js';
+
+export { activeApiKeyId, setActiveApiKeyId, getActiveApiKeyId } from './context/api-keys.js';
+import { activeApiKeyId, setActiveApiKeyId } from './context/api-keys.js';
+export { type RecentFileEntry, FileAccessTracker, TaskTracker } from './context/trackers.js';
+import { FileAccessTracker, TaskTracker } from './context/trackers.js';
+import { setupCuratorSubsystem } from './context/curator.js';
+import type { CuratorSubsystem, CuratorTimers } from './context/curator.js';
 import {
   createConnection,
   runMigrations,
@@ -37,7 +33,6 @@ import {
   MetricsCollector,
   BackupManager,
   getLogger,
-  CABINET_DIR,
   ensureCabinetDir,
   SystemKnowledgeRepository,
   syncSystemKnowledge,
@@ -78,16 +73,10 @@ import {
 } from '@cabinet/types';
 import {
   AgentRoleRegistry,
-  CURATOR_ROLE,
   SkillRegistry,
   importSkillFromMarkdown,
-  AgentLoop,
-  SafetyChecker,
-  CheckpointManager,
   setSkillRegistry,
 } from '@cabinet/agent';
-import type { ToolDependencies } from '@cabinet/agent';
-import { createStandardToolExecutor } from './agent-factory.js';
 import { SkillExtractor, AgentDaemon, TriggerScheduler, TriggerExecutor, type CronAdapter } from '@cabinet/agent';
 import cron, { type ScheduledTask } from 'node-cron';
 import { createDaemonContext } from './daemon-context.js';
@@ -113,11 +102,7 @@ import type {
   ReconsolidationCallback,
 } from '@cabinet/harness';
 
-const RAG_CURATOR_TOP_K = 10;
-
-// Redefined locally to avoid circular dependency on @cabinet/secretary internals
-const SESSION_KEEP_OLDEST = 30;
-const SESSION_KEEP_RECENT = 30;
+// Curator subsystem constants moved to context/curator.ts
 
 export interface ServerContext {
   db: Database;
@@ -199,71 +184,8 @@ export interface ServerContext {
   shutdown: () => void;
 }
 
-export interface RecentFileEntry {
-  path: string;
-  operation: 'read' | 'write' | 'edit' | 'delete' | 'move' | 'copy';
-  timestamp: string;
-}
 
-export class FileAccessTracker {
-  private entries = new Map<string, RecentFileEntry[]>();
-  private maxEntries = 100;
 
-  record(sessionId: string, path: string, operation: RecentFileEntry['operation']): void {
-    if (!this.entries.has(sessionId)) {
-      this.entries.set(sessionId, []);
-    }
-    const list = this.entries.get(sessionId)!;
-    list.push({ path, operation, timestamp: new Date().toISOString() });
-    if (list.length > this.maxEntries) {
-      list.splice(0, list.length - this.maxEntries);
-    }
-  }
-
-  getRecent(sessionId: string, limit = 20): RecentFileEntry[] {
-    const list = this.entries.get(sessionId);
-    if (!list) return [];
-    return list.slice(-limit).reverse();
-  }
-
-  clear(sessionId: string): void {
-    this.entries.delete(sessionId);
-  }
-}
-
-export class TaskTracker {
-  private tasks: Array<{
-    id: string;
-    name: string;
-    agentName?: string;
-    description?: string;
-    status: string;
-    startTime: number;
-    endTime?: number;
-  }> = [];
-
-  addTask(name: string, agentName?: string, description?: string): string {
-    const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    this.tasks.push({ id, name, agentName, description, status: 'running', startTime: Date.now() });
-    return id;
-  }
-
-  completeTask(id: string, success = true) {
-    const task = this.tasks.find((t) => t.id === id);
-    if (task) {
-      task.status = success ? 'done' : 'error';
-      task.endTime = Date.now();
-    }
-  }
-
-  getTask(id: string) {
-    return this.tasks.find((t) => t.id === id) ?? null;
-  }
-
-  listActive() {
-    return this.tasks.filter((t) => t.status === 'running');
-  }
-}
 
 // ── System Mode ──────────────────────────────────────────────
 
@@ -473,8 +395,8 @@ export function getServerContext(): ServerContext {
                 logger.info('Workflow terminated via decision', { workflowId: wfId, decisionId });
               }
             }
-          } catch (e: any) {
-            logger.warn('Workflow resumption failed', { error: e.message, decisionId });
+          } catch (e: unknown) {
+            logger.warn('Workflow resumption failed', { error: (e as Error).message, decisionId });
           }
         }
 
@@ -492,7 +414,7 @@ export function getServerContext(): ServerContext {
 
         const trimmed = history.slice(-50);
 
-        const approvals = trimmed.filter((h: any) => h.action === 'approved').length;
+        const approvals = trimmed.filter((h: { action: string }) => h.action === 'approved').length;
         const total = trimmed.length;
         const approvalRate = total > 0 ? approvals / total : 0;
 
@@ -512,8 +434,8 @@ export function getServerContext(): ServerContext {
 
         // Trigger Curator preference update (fire-and-forget)
         triggerCuratorPreferenceUpdate(decisionId, action, title, chosenOptionId, captainId);
-      } catch (e: any) {
-        logger.warn('Preference learning failed', { error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Preference learning failed', { error: (e as Error).message });
       }
     },
     getCurrentTier,
@@ -631,7 +553,7 @@ export function getServerContext(): ServerContext {
           providerConfigs[pref.provider] = { apiKey: decrypted, baseUrl: pref.base_url ?? undefined };
         }
       } catch {
-        activeApiKeyId = null; // expired/deleted key, clear preference
+        setActiveApiKeyId(null); // expired/deleted key, clear preference
       }
     }
 
@@ -667,56 +589,6 @@ export function getServerContext(): ServerContext {
   // Session
   const sessionManager = new SessionManager();
 
-  // Wire Curator lifecycle callbacks (fired asynchronously, best-effort)
-  sessionManager.onSessionClose((session) => {
-    // ── Slot consumption: persist Agent discoveries to long-term memory ──
-    if (session.contextSlot?.discoveries?.length) {
-      for (const discovery of session.contextSlot.discoveries) {
-        if (discovery.summary && discovery.summary.length > 10) {
-          longTerm.store({
-            content: `[Agent Discovery] ${discovery.type}: ${discovery.summary}`,
-            metadata: {
-              type: 'agent_discovery',
-              source: session.agentType ?? 'unknown',
-              sessionId: session.id,
-              discoveryType: discovery.type,
-            },
-            timestamp: new Date(),
-          }).catch((err) => logger.warn('Slot discovery store failed', { error: (err as Error).message }));
-        }
-      }
-      logger.info('Curator consumed Slot discoveries', {
-        sessionId: session.id,
-        agentType: session.agentType,
-        count: session.contextSlot.discoveries.length,
-      });
-    }
-
-    if (gateway && session.messages.length > 0) {
-      const messages = session.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
-      if (messages.length > 200) {
-        enqueueCuratorTask(
-          () => runCuratorConsolidation(session.id, messages),
-          'consolidation',
-          'high',
-        ).catch((e) =>
-          logger.warn('Curator on-close consolidation failed', { error: (e as Error).message }),
-        );
-      }
-    }
-  });
-
-  sessionManager.onFirstUserMessage((session) => {
-    if (gateway) {
-      // Delay brief generation by 30s so the Curator has the first user message as context
-      setTimeout(() => {
-        enqueueCuratorTask(() => runCuratorBrief(session.id), 'brief', 'high').catch((e) =>
-          logger.warn('Curator first-message brief failed', { error: (e as Error).message }),
-        );
-      }, 30000);
-    }
-  });
-
   // Metrics
   const metrics = new MetricsCollector({ repo: metricRepo });
   metrics.startPeriodicFlush();
@@ -745,529 +617,6 @@ export function getServerContext(): ServerContext {
     logger.warn('Backup manager unavailable');
   }
 
-  // ── Self-Evolution Helpers ──
-
-  /** Run Curator consolidation on a session transcript. */
-  // ── Curator AgentLoop factory (shared across curator tasks) ──
-
-  function createCuratorLoop(): AgentLoop | null {
-    if (!gateway) return null;
-
-    const role = agentRegistry.get('curator');
-    if (!role) return null;
-
-    // Reuse real file/knowledge capabilities for Curator background tasks
-    const capCtx = {
-      db: ctx!.db,
-      gateway: ctx!.gateway,
-      logger: ctx!.logger,
-      taskScheduler: ctx!.taskScheduler,
-      workflowRepo: ctx!.workflowRepo,
-      projectRepo: ctx!.projectRepo,
-    };
-    const fileCaps = createFileCapabilities(capCtx);
-    const knowledgeCaps = createKnowledgeCapabilities(capCtx);
-
-    // Build tool dependencies focused on Curator's needs (memory, decisions, events, project)
-    const curatorDeps: ToolDependencies = {
-      decisionStore: decisionRepo,
-      eventBus: eventBus!,
-      shortTerm,
-      longTerm,
-      entity,
-      project,
-      createDecision(input) {
-        const id = `dec_${Date.now()}`;
-        return decisionService.create({
-          id,
-          projectId: input.projectId,
-          type: input.type,
-          title: input.title,
-          description: input.description,
-          options: input.options,
-          classification: input.classification,
-          captainId: input.captainId,
-        }) as any;
-      },
-      approveDecision: (decisionId, captainId, chosenOptionId) =>
-        decisionService.approve(decisionId, captainId, chosenOptionId),
-      rejectDecision: (decisionId, captainId) => decisionService.reject(decisionId, captainId),
-      listWorkflows: () => [],
-      getWorkflow: () => undefined,
-      createWorkflow: () => ({ id: '' }),
-      updateWorkflow: () => {},
-      deleteWorkflow: () => {},
-      runWorkflow: async () => ({ runId: '', status: 'not_implemented' }),
-      startMeeting: async (topic) => ({ meetingId: '', topic, synthesis: '', perspectives: [] }),
-      writeLongTermMemory: async (content, metadata) => {
-        let embedding: number[] | undefined;
-        if (gateway) {
-          try {
-            const result = await gateway.generateEmbeddings({ texts: [content] });
-            embedding = result.embeddings[0];
-          } catch {
-            /* embedding generation failed — store without */
-          }
-        }
-        return longTerm.store({
-          content,
-          metadata: metadata ?? {},
-          embedding,
-          timestamp: new Date(),
-        });
-      },
-      createEmployee: () => {},
-      registerAgent: (input) => {
-        agentRegistry.register({
-          type: 'custom' as const,
-          name: input.name,
-          description: input.description,
-          modules: { identity: input.systemPrompt },
-          modelTier: (input as any).modelTier ?? 'default',
-          temperature: input.temperature,
-          maxResponseTokens: input.maxResponseTokens,
-          allowedTools: input.allowedTools,
-          contextBudget: input.contextBudget,
-        });
-        return { type: 'custom', name: input.name };
-      },
-      updateAgent: () => {},
-      deleteAgent: () => {},
-      invokeAgent: async () => {
-        throw new Error('Agent invocation not available for Curator background task');
-      },
-      listAgents: () =>
-        agentRegistry.list().map((r) => ({
-          type: r.type,
-          name: r.name,
-          description: r.description,
-          builtIn: r.type !== 'custom',
-        })),
-      setProjectContext: (pid) => ({ id: pid, name: pid }),
-      createProject: (input) => ({ id: `proj_${Date.now()}`, name: input.name }),
-      listProjects: () => [],
-      getProjectContext: (pid) => {
-        const p = project.get(pid);
-        return p ? { id: pid, name: p.summary } : null;
-      },
-      getDashboardStats: () => ({
-        pendingDecisions: 0,
-        activeWorkflows: 0,
-        activeProjects: 0,
-        todayCost: 0,
-        totalLLMCalls: 0,
-        totalTokens: 0,
-        totalDecisions: 0,
-        errors: 0,
-        recentEvents: [],
-      }),
-      delegateTask: () => 'task_stub',
-      getTaskStatus: () => null,
-      listActiveTasks: () => [],
-      getDecisionAudit: () => [],
-      getSystemMetrics: () => ({ totalLLMCalls: 0, totalTokens: 0, totalDecisions: 0, errors: 0 }),
-      getWorkflowRun: () => null,
-      listWorkflowRuns: () => [],
-      // File / web / shell / scheduler / knowledge / eval — stubs for curator
-      readFile: async (path, offset, limit) => {
-        try {
-          const content = readFileSync(path, 'utf-8');
-          const lines = content.split('\\n');
-          const start = offset ?? 0;
-          const end = limit ? start + limit : lines.length;
-          const sliced = lines.slice(start, end).join('\\n');
-          return { content: sliced, size: content.length, encoding: 'utf-8' };
-        } catch (e) {
-          throw new Error(String(e));
-        }
-      },
-      writeFile: async () => { throw new Error('File write not available'); },
-      editFile: async () => { throw new Error('File edit not available'); },
-      applyPatch: async () => { throw new Error('Patch not available'); },
-      moveFile: async () => { throw new Error('File move not available'); },
-      copyFile: async () => { throw new Error('File copy not available'); },
-      makeDirectory: async () => { throw new Error('Directory creation not available'); },
-      fileInfo: async () => { throw new Error('File info not available'); },
-      listDirectory: async (path) => {
-        try {
-          const entries = readdirSync(path, { withFileTypes: true });
-          return entries.map((e) => ({ name: e.name, path: join(path, e.name), isDir: e.isDirectory() }));
-        } catch (e) {
-          throw new Error(String(e));
-        }
-      },
-      searchFiles: fileCaps.searchFiles,
-      searchContent: fileCaps.searchContent,
-      deleteFile: async () => { throw new Error('File deletion not available'); },
-      recentFiles: async () => [],
-      watchFile: async () => ({ changed: false, size: 0 }),
-      indexProject: async () => ({ indexed: 0, skipped: 0, errors: 1 }),
-      webFetch: async (url) => {
-        try {
-          const res = await fetch(url);
-          const text = await res.text();
-          const contentType = res.headers.get('content-type') ?? 'text/plain';
-          const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
-          return { content: text, status: res.status, contentType, title: titleMatch?.[1]?.trim() };
-        } catch (e) {
-          throw new Error(String(e));
-        }
-      },
-      httpRequest: async () => { throw new Error('HTTP not available'); },
-      execCommand: async () => { throw new Error('Shell not available'); },
-      scheduleTask: async () => { throw new Error('Scheduler not available'); },
-      listScheduledTasks: async () => [],
-      cancelScheduledTask: async () => { throw new Error('Scheduler not available'); },
-      indexDocument: async () => { throw new Error('Indexing not available'); },
-      searchDocuments: knowledgeCaps.searchDocuments,
-      clearDocumentIndex: async () => { throw new Error('Index management not available'); },
-      evaluateOutput: async () => { return { overallScore: 0, dimensions: {}, feedback: 'Evaluation not available', evaluatorModel: 'none' }; },
-      workspaceSymbols: async () => ({
-        available: false,
-        error: 'LSP not available for Curator background task',
-      }),
-      goToDefinition: async () => ({
-        available: false,
-        error: 'LSP not available for Curator background task',
-      }),
-      findReferences: async () => ({
-        available: false,
-        error: 'LSP not available for Curator background task',
-      }),
-      diagnostics: async () => ({
-        available: false,
-        error: 'LSP not available for Curator background task',
-      }),
-      querySystemKnowledge: async (query) => {
-        return ctx!.systemKnowledgeRepo.search(query, 5);
-      },
-      getSystemKnowledge: async (topic) => {
-        return ctx!.systemKnowledgeRepo.findByTopic(topic) ?? null;
-      },
-      // Document / Archive — stubs for curator
-      readPdf: async () => { throw new Error('PDF read not available for Curator background task'); },
-      readDocx: async () => { throw new Error('DOCX read not available for Curator background task'); },
-      readXlsx: async () => { throw new Error('XLSX read not available for Curator background task'); },
-      readPptx: async () => { throw new Error('PPTX read not available for Curator background task'); },
-      listZip: async () => { throw new Error('ZIP list not available for Curator background task'); },
-      extractZip: async () => { throw new Error('ZIP extract not available for Curator background task'); },
-      // Browser — stubs for curator
-      browserNavigate: async () => { throw new Error('Browser not available for Curator background task'); },
-      browserClick: async () => { throw new Error('Browser not available for Curator background task'); },
-      browserType: async () => { throw new Error('Browser not available for Curator background task'); },
-      browserRead: async () => { throw new Error('Browser not available for Curator background task'); },
-      browserScreenshot: async () => { throw new Error('Browser not available for Curator background task'); },
-      browserEvaluate: async () => { throw new Error('Browser not available for Curator background task'); },
-      fetchRss: async () => { throw new Error('RSS fetch not available for Curator background task'); },
-      sendEmail: async () => { throw new Error('Email not available for Curator background task'); },
-      readClipboard: async () => { throw new Error('Clipboard not available for Curator background task'); },
-      writeClipboard: async () => { throw new Error('Clipboard not available for Curator background task'); },
-      sendNotification: async () => { throw new Error('Notification not available for Curator background task'); },
-      startProcess: async () => { throw new Error('Process start not available for Curator background task'); },
-      killProcess: async () => { throw new Error('Process kill not available for Curator background task'); },
-      showOpenDialog: async () => { throw new Error('Dialog not available for Curator background task'); },
-      generateEmbeddings: async (texts) => {
-        if (!gateway) throw new Error('No LLM gateway available');
-        const result = await gateway.generateEmbeddings({ texts });
-        return result.embeddings;
-      },
-    };
-
-    const executor = createStandardToolExecutor(ctx!, curatorDeps, role.allowedTools);
-
-    const checkpointManager = new CheckpointManager(db);
-    return new AgentLoop({
-      costTracker: ctx!.costTracker,
-      gateway,
-      toolExecutor: executor,
-      safetyChecker: new SafetyChecker(currentTier),
-      checkpointManager,
-      memoryProvider: {
-        getShortTerm: async (sid) => {
-          const items: { role: 'user' | 'assistant'; content: string }[] = [];
-          const session = sessionManager.get(sid);
-          if (session && session.messages.length > 0) {
-            const recent = session.messages.slice(-20);
-            for (const m of recent) {
-              items.push({ role: m.role, content: m.content });
-            }
-          }
-          const kv = shortTerm.getAll(sid);
-          for (const [k, v] of Object.entries(kv)) {
-            if (typeof v === 'string' && v.length > 0) {
-              items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
-            }
-          }
-          return items;
-        },
-        getProjectContext: async (pid) => {
-          const p = project.get(pid);
-          if (!p) return `Project: ${pid}`;
-          return `Project: ${p.summary}\nGoals: ${p.goals.join(', ')}`;
-        },
-        getEntityPreferences: async (cid) => {
-          const prefs = entity.getPreferences(cid);
-          return prefs?.preferences ?? {};
-        },
-        searchLongTerm: async (query, _pid) => {
-          let embedding: number[] | undefined;
-          try {
-            if (gateway) {
-              const er = await gateway.generateEmbeddings({ texts: [query] });
-              embedding = er.embeddings[0];
-            }
-          } catch {
-            /* fall back to text search */
-          }
-          const results = await longTerm.search(query, RAG_CURATOR_TOP_K, embedding);
-          return results.map((r) => `[Memory] ${r.content}`);
-        },
-        getRecentInsights: async (count) => {
-          const results = await longTerm.search('', count * 3);
-          return results
-            .filter(
-              (r) =>
-                r.metadata.type === 'insight' ||
-                r.metadata.type === 'harness_insight' ||
-                r.metadata.type === 'subconscious_insight',
-            )
-            .slice(0, count)
-            .map((r) => ({
-              text: r.content,
-              relevance: (r.metadata.relevance as number) ?? 0.5,
-              source: (r.metadata.source as string) ?? 'unknown',
-            }));
-        },
-      },
-      sessionId: `curator_bg_${Date.now()}`,
-      projectId: 'default',
-      captainId: DEFAULT_CAPTAIN_ID,
-      roleModules: role.modules,
-      model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.modelTier,
-      maxSteps: role.maxSteps ?? 50,
-      maxResponseTokens: role.maxResponseTokens,
-      temperature: role.temperature,
-      contextBudget: role.contextBudget,
-    });
-  }
-
-  // ── Curator dual-queue priority concurrency control ──
-  let curatorBusy = false;
-  const highPriorityQueue: Array<{ task: () => Promise<void>; label: string }> = [];
-  const lowPriorityQueue: Array<{ task: () => Promise<void>; label: string }> = [];
-
-  async function enqueueCuratorTask(
-    task: () => Promise<void>,
-    label: string,
-    priority: 'high' | 'low' = 'low',
-  ): Promise<void> {
-    if (curatorBusy) {
-      const queue = priority === 'high' ? highPriorityQueue : lowPriorityQueue;
-      // Replace existing queued task of the same label (debounce)
-      const existingIdx = queue.findIndex((t) => t.label === label);
-      if (existingIdx !== -1) {
-        queue[existingIdx] = { task, label };
-      } else {
-        queue.push({ task, label });
-      }
-      return;
-    }
-    curatorBusy = true;
-    try {
-      await task();
-    } finally {
-      curatorBusy = false;
-      // Always prefer high-priority tasks; low-priority only runs when high queue is empty
-      const next = highPriorityQueue.shift() ?? lowPriorityQueue.shift();
-      if (next) {
-        enqueueCuratorTask(next.task, next.label, priority).catch((e) =>
-          logger.warn('Curator queued task failed', {
-            label: next.label,
-            error: (e as Error).message,
-          }),
-        );
-      }
-    }
-  }
-
-  // Wire the deferred curator decision update trigger
-  _triggerCuratorDecisionUpdate = (decisionId, action, title, chosenOptionId) => {
-    enqueueCuratorTask(async () => {
-      const loop = createCuratorLoop();
-      if (!loop) return;
-
-      const taskPrompt = [
-        `## Decision Preference Update`,
-        '',
-        `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
-        '',
-        `Instructions:`,
-        `1. Use get_decision to read the full decision record.`,
-        `2. Use get_captain_preferences to see the current preference profile.`,
-        `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
-        `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
-        `5. Use write_memory to store any notable pattern you discover.`,
-        '',
-        `Be concise — this is a background task triggered by each decision resolution.`,
-      ].join('\n');
-
-      const result = await loop.run(taskPrompt);
-      logger.info('Curator decision preference update completed', {
-        decisionId,
-        action,
-        preview: result.content.slice(0, 150),
-      });
-    }, 'preference', 'low').catch((e: any) => {
-      logger.warn('Curator decision preference update failed', { decisionId, error: e.message });
-    });
-  };
-
-  async function runCuratorConsolidation(sessionId: string, transcript: string): Promise<void> {
-    const loop = createCuratorLoop();
-    if (!loop) {
-      logger.warn('Curator consolidation skipped — no gateway or role');
-      return;
-    }
-
-    // Layered transcript summarization for long sessions
-    let processedTranscript = transcript;
-    if (transcript.length > 8000) {
-      // Split into 4000-char chunks with 200-char overlap
-      const chunks: string[] = [];
-      let offset = 0;
-      const chunkSize = 4000;
-      const overlap = 200;
-      while (offset < transcript.length) {
-        chunks.push(transcript.slice(offset, offset + chunkSize));
-        if (offset + chunkSize >= transcript.length) break;
-        offset += chunkSize - overlap;
-      }
-
-      // Generate one-sentence summary per chunk using the gateway directly
-      if (gateway && chunks.length > 1) {
-        const chunkSummaries: string[] = [];
-        for (let i = 0; i < chunks.length; i++) {
-          try {
-            const resp = await gateway.generateText({
-              model: 'claude-haiku-4-5',
-              messages: [
-                {
-                  role: 'user',
-                  content: `Summarize this conversation segment in one sentence (in the original language):\n\n${chunks[i]}`,
-                },
-              ],
-              maxTokens: 150,
-              temperature: 0.1,
-            });
-            chunkSummaries.push(`[Segment ${i + 1}]: ${resp.content.trim()}`);
-          } catch {
-            chunkSummaries.push(`[Segment ${i + 1}]: (summary unavailable)`);
-          }
-        }
-        processedTranscript = chunkSummaries.join('\n');
-      }
-    }
-
-    const taskPrompt = [
-      `## Background Consolidation Task`,
-      '',
-      `You are running as a background curator. Consolidate knowledge from this session transcript.`,
-      '',
-      `Instructions:`,
-      `1. Read the transcript and identify important facts, decisions, and insights.`,
-      `2. Use search_memory to check if similar information already exists in long-term memory.`,
-      `3. Use write_memory to persist NEW or UPDATED information (importance ≥ 0.5). Skip duplicates.`,
-      `4. Use query_decisions to check if any discussed decisions already have formal records.`,
-      `5. Use update_project_summary if the project direction has meaningfully changed.`,
-      `6. Use remember to store a brief session summary in short-term memory for the next interaction.`,
-      '',
-      `Session transcript:`,
-      processedTranscript.slice(0, 8000),
-      '',
-      `After completing all steps, output a one-line summary of what you consolidated.`,
-    ].join('\n');
-
-    try {
-      const result = await loop.run(taskPrompt);
-      logger.info('Curator consolidation completed', {
-        sessionId,
-        steps: result.steps,
-        toolCalls: result.toolCalls,
-        preview: result.content.slice(0, 200),
-      });
-    } catch (e: any) {
-      logger.warn('Curator consolidation failed', { sessionId, error: e.message });
-    }
-  }
-
-  /** Prepare a context brief for a newly created session. */
-  async function runCuratorBrief(sessionId: string): Promise<void> {
-    const loop = createCuratorLoop();
-    if (!loop) return;
-
-    const taskPrompt = [
-      `## Session Brief Task`,
-      '',
-      `A new session has just been created. Prepare a context brief that will be shown to the Captain at session start.`,
-      '',
-      `Instructions:`,
-      `1. Use get_recent_events to see what happened recently.`,
-      `2. Use query_decisions to find pending decisions that need attention.`,
-      `3. Use search_memory to find relevant recent context.`,
-      `4. Use get_project_context to understand the current project state.`,
-      `5. Synthesize a brief (2-3 concise sentences) covering: recent activity, pending decisions, and what needs attention.`,
-      '',
-      `After your analysis, output ONLY the brief text — no JSON, no tools, just the plain text brief.`,
-    ].join('\n');
-
-    try {
-      const result = await loop.run(taskPrompt);
-      const brief = result.content.trim();
-      if (brief.length > 0) {
-        // Store directly in the user's session short-term memory
-        shortTerm.set(sessionId, 'session_brief', brief);
-        logger.info('Curator session brief prepared', { sessionId, preview: brief.slice(0, 200) });
-      }
-    } catch (e: any) {
-      logger.warn('Curator session brief failed', { sessionId, error: e.message });
-    }
-  }
-
-  /** Cross-session pattern extraction — review decisions and memories to find patterns. */
-  async function runCuratorPatternExtraction(): Promise<void> {
-    const loop = createCuratorLoop();
-    if (!loop) return;
-
-    const taskPrompt = [
-      `## Pattern Extraction Task`,
-      '',
-      `You are the Curator. Review recent history to extract patterns.`,
-      '',
-      `Instructions:`,
-      `1. Use query_decisions to list all decisions from the last 7 days.`,
-      `2. Use get_decision to review key decisions — look for patterns in what was chosen.`,
-      `3. Use search_memory to find related context around each decision.`,
-      `4. Use get_captain_preferences to see current preference profile.`,
-      `5. Identify patterns: recurring decision types, risk tolerance signals, cost sensitivity, preferred decision styles.`,
-      `6. Use write_memory to store each pattern you find (importance ≥ 0.7).`,
-      `7. If patterns differ from current preferences, use set_captain_preferences to update the preference profile.`,
-      `8. Use update_project_summary if the overall project picture has changed.`,
-      '',
-      `Focus on actionable patterns — not vague observations. Each pattern should cite specific decisions as evidence.`,
-    ].join('\n');
-
-    try {
-      const result = await loop.run(taskPrompt);
-      logger.info('Curator pattern extraction completed', {
-        steps: result.steps,
-        toolCalls: result.toolCalls,
-        preview: result.content.slice(0, 200),
-      });
-    } catch (e: any) {
-      logger.warn('Curator pattern extraction failed', { error: e.message });
-    }
-  }
-
   // ── Self-Evolution Infrastructure ──
 
   // Memory consolidation: lightweight backup runs every 30 minutes (no LLM needed)
@@ -1278,9 +627,9 @@ export function getServerContext(): ServerContext {
         for (const sid of shortTerm.getAllSessionIds()) {
           await consolidation.consolidateBasic(sid);
         }
-      } catch (e: any) {
-        logger.warn('Basic consolidation failed', { error: e.message });
-        broadcast('background_error', { task: 'consolidation', error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Basic consolidation failed', { error: (e as Error).message });
+        broadcast('background_error', { task: 'consolidation', error: (e as Error).message });
       }
     },
     30 * 60 * 1000,
@@ -1334,106 +683,15 @@ export function getServerContext(): ServerContext {
         }
         // Cleanup sessions older than 30 days
         sessionMetricsRepo.pruneOlderThan(30);
-      } catch (e: any) {
-        logger.warn('Observability persistence failed', { error: e.message });
-        broadcast('background_error', { task: 'observability', error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Observability persistence failed', { error: (e as Error).message });
+        broadcast('background_error', { task: 'observability', error: (e as Error).message });
       }
     },
     30 * 60 * 1000,
   );
   observabilityTimer.unref();
   logger.info('Observability persistence scheduled (30 min)');
-
-  // Curator self-nudge timer: runs every 4 hours when gateway is available
-  const curatorNudgeTimer = setInterval(
-    async () => {
-      if (!gateway) return;
-      try {
-        const sessions = sessionManager.list();
-        for (const s of sessions) {
-          if (s.messages.length > 0) {
-            const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
-            if (messages.length > 200) {
-              await enqueueCuratorTask(() => runCuratorConsolidation(s.id, messages), 'nudge', 'low');
-            }
-          }
-        }
-      } catch (e: any) {
-        logger.warn('Curator nudge failed', { error: e.message });
-        broadcast('background_error', { task: 'curator_nudge', error: e.message });
-      }
-    },
-    4 * 60 * 60 * 1000,
-  );
-  curatorNudgeTimer.unref();
-  logger.info('Curator self-nudge scheduled (4h)');
-
-  // Curator cross-session pattern extraction: runs every 6 hours
-  const curatorPatternTimer = setInterval(
-    async () => {
-      if (!gateway) return;
-      try {
-        await enqueueCuratorTask(() => runCuratorPatternExtraction(), 'pattern', 'low');
-      } catch (e: any) {
-        logger.warn('Curator pattern extraction failed', { error: e.message });
-        broadcast('background_error', { task: 'curator_pattern', error: e.message });
-      }
-    },
-    6 * 60 * 60 * 1000,
-  );
-  curatorPatternTimer.unref();
-  logger.info('Curator pattern extraction scheduled (6h)');
-
-  // Wire session compression callback to Curator background task
-  // (registered here because it depends on enqueueCuratorTask and gateway)
-  sessionManager.onCompressionNeeded((session) => {
-    const gw = gateway;
-    if (!gw) return;
-    const middleStart = SESSION_KEEP_OLDEST;
-    const middleEnd = session.messages.length - SESSION_KEEP_RECENT;
-    const middleMessages = session.messages.slice(middleStart, middleEnd);
-    const middleText = middleMessages
-      .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
-      .join('\n');
-
-    if (middleText.length > 200) {
-      enqueueCuratorTask(async () => {
-        try {
-          const resp = await gw.generateText({
-            model: 'claude-haiku-4-5',
-            messages: [
-              {
-                role: 'user',
-                content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}`,
-              },
-            ],
-            maxTokens: 200,
-            temperature: 0.1,
-          });
-          sessionManager.compactMessages(session.id, resp.content.trim());
-          logger.info('Session compression completed', {
-            sessionId: session.id,
-            msgCount: session.messages.length,
-          });
-        } catch (e: any) {
-          // Fallback: simple truncation
-          sessionManager.compactMessages(
-            session.id,
-            `${middleMessages.length} intermediate messages compressed.`,
-          );
-          logger.warn('Session compression fell back to truncation', {
-            sessionId: session.id,
-            error: e.message,
-          });
-        }
-      }, 'compress', 'high').catch((e) =>
-        logger.warn('Session compression failed', {
-          sessionId: session.id,
-          error: (e as Error).message,
-        }),
-      );
-    }
-  });
 
   // Shared agent registry (custom roles persist across requests)
   const agentRegistry = new AgentRoleRegistry();
@@ -1457,6 +715,32 @@ export function getServerContext(): ServerContext {
   } catch (e) {
     logger.warn('Failed to load custom agents from DB', { error: String(e) });
   }
+
+  // ── Curator subsystem (background knowledge consolidation, briefs, pattern extraction) ──
+  // Wires session lifecycle callbacks, creates background task queue
+  // Mutable deps object — subconsciousLoop/harnessAnalyst/ctx wired after they're created below
+  const curatorDeps: Parameters<typeof setupCuratorSubsystem>[0] = {
+    db,
+    gateway,
+    agentRegistry,
+    logger,
+    sessionManager,
+    shortTerm,
+    longTerm,
+    entity,
+    project,
+    decisionRepo,
+    decisionService,
+    eventBus: eventBus!,
+    currentTier,
+    costTracker,
+    subconsciousLoop: null as unknown as SubconsciousLoop,
+    harnessAnalyst: null as unknown as HarnessAnalyst,
+    ctx: {} as Record<string, unknown>,
+  };
+  const curatorSubsystem = setupCuratorSubsystem(curatorDeps);
+  // Wire the deferred decision preference update trigger (created before curator was ready)
+  _triggerCuratorDecisionUpdate = curatorSubsystem.handleDecisionUpdate;
 
   // ── Agent Daemon (pull-mode task queue + runtime) ──
   const daemonContext = createDaemonContext(db, agentRegistry, {
@@ -1982,8 +1266,8 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
         await consolidation.consolidateBasic(sid);
       }
       logger.info('Re-consolidation triggered by quality alert');
-    } catch (e: any) {
-      logger.warn('Re-consolidation failed', { error: e.message });
+    } catch (e: unknown) {
+      logger.warn('Re-consolidation failed', { error: (e as Error).message });
     }
   };
 
@@ -1999,9 +1283,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     async () => {
       try {
         await autoAdjuster.runHealthCheck(currentTier);
-      } catch (e: any) {
-        logger.warn('Auto-adjustment health check failed', { error: e.message });
-        broadcast('background_error', { task: 'auto_adjust', error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Auto-adjustment health check failed', { error: (e as Error).message });
+        broadcast('background_error', { task: 'auto_adjust', error: (e as Error).message });
       }
 
       // Budget enforcement check
@@ -2028,9 +1312,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
           });
           logger.warn('BudgetAlert published', { todayCost, reason: budget.reason });
         }
-      } catch (e: any) {
-        logger.warn('Budget check failed', { error: e.message });
-        broadcast('background_error', { task: 'budget_check', error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Budget check failed', { error: (e as Error).message });
+        broadcast('background_error', { task: 'budget_check', error: (e as Error).message });
       }
     },
     60 * 60 * 1000,
@@ -2046,8 +1330,8 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
         if (cleaned > 0) {
           logger.info('Session cleanup completed', { cleaned });
         }
-      } catch (e: any) {
-        logger.warn('Session cleanup failed', { error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Session cleanup failed', { error: (e as Error).message });
       }
     },
     6 * 60 * 60 * 1000,
@@ -2055,33 +1339,11 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   sessionCleanupTimer.unref();
   logger.info('Session cleanup scheduled (6h)');
 
-  // Subconscious loop: via Curator queue every hour
-  const subconsciousTimer = setInterval(() => {
-    enqueueCuratorTask(async () => {
-      await subconsciousLoop.tick();
-      logger.info('Curator: subconscious loop tick completed');
-    }, 'subconscious', 'low');
-  }, 60 * 60 * 1000);
-  subconsciousTimer.unref();
-  logger.info('Curator: subconscious loop scheduled (1h)');
-
-  // Harness analysis: via Curator queue every 3 hours
-  const harnessAnalystTimer = setInterval(() => {
-    enqueueCuratorTask(async () => {
-      const insight = await harnessAnalyst.analyze();
-      if (insight) {
-        logger.info('Curator: harness analysis generated insight');
-        broadcast('subconscious_insight', {
-          text: insight,
-          relevance: 0.9,
-          relatedEntities: [],
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }, 'harness_analysis', 'low');
-  }, 3 * 60 * 60 * 1000);
-  harnessAnalystTimer.unref();
-  logger.info('Curator: harness analyst scheduled (3h)');
+  // ── Curator-driven background timers ──
+  // Update deps with objects created after curator subsystem initialization
+  curatorDeps.subconsciousLoop = subconsciousLoop;
+  curatorDeps.harnessAnalyst = harnessAnalyst;
+  const curatorTimers = curatorSubsystem.setupTimers();
 
   // Garbage collection: weekly scan on Sunday 4 AM
   const gcTimer = setInterval(
@@ -2099,8 +1361,8 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
           errors: result.summary.errors,
           warnings: result.summary.warnings,
         });
-      } catch (e: any) {
-        logger.warn('Garbage collection failed', { error: e.message });
+      } catch (e: unknown) {
+        logger.warn('Garbage collection failed', { error: (e as Error).message });
       }
     },
     60 * 60 * 1000,
@@ -2195,11 +1457,12 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     logger.info('Shutting down server context...');
     clearInterval(consolidationTimer);
     clearInterval(observabilityTimer);
-    clearInterval(curatorNudgeTimer);
-    clearInterval(curatorPatternTimer);
+    clearInterval(curatorTimers.curatorNudge);
+    clearInterval(curatorTimers.curatorPattern);
+    clearInterval(curatorTimers.subconscious);
+    clearInterval(curatorTimers.harnessAnalyst);
     clearInterval(autoAdjustTimer);
     clearInterval(sessionCleanupTimer);
-    clearInterval(subconsciousTimer);
     clearInterval(memoryMaintenanceTimer);
     clearInterval(browserPoolCleanupTimer);
     stopApprovalPolling();
@@ -2427,6 +1690,10 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     ctx.intentParser = parser;
     void parser.warmupEmbeddings();
   }
+
+  // Update curator deps with fully-populated ctx (mutable reference — curator
+  // functions access it via deps.ctx, so this mutation propagates automatically)
+  curatorDeps.ctx = ctx as unknown as Record<string, unknown>;
 
   return ctx;
 }
