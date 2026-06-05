@@ -3,10 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TitleBar } from '../components/TitleBar';
 import { NotificationProvider } from '../components/NotificationContext';
 
-function renderTitleBar(props: React.ComponentProps<typeof TitleBar> = {}) {
+function renderTitleBar(props: Partial<React.ComponentProps<typeof TitleBar>> = {}) {
   return render(
     <NotificationProvider>
-      <TitleBar {...props} />
+      <TitleBar
+        themes={[{ id: 'light', name: 'Light' }, { id: 'dark', name: 'Dark' }]}
+        currentTheme="light"
+        {...props}
+      />
     </NotificationProvider>,
   );
 }
@@ -17,26 +21,32 @@ describe('TitleBar', () => {
     expect(screen.getByText('Cabinet')).toBeInTheDocument();
   });
 
-  it('renders dark mode toggle button when onToggleTheme provided', () => {
-    const toggle = vi.fn();
-    renderTitleBar({ onToggleTheme: toggle });
-    expect(screen.getByLabelText('Toggle theme')).toBeInTheDocument();
+  it('renders theme selector button', () => {
+    renderTitleBar();
+    expect(screen.getByLabelText('Select theme')).toBeInTheDocument();
   });
 
-  it('calls onToggleTheme when theme button clicked', () => {
-    const toggle = vi.fn();
-    renderTitleBar({ onToggleTheme: toggle });
-    fireEvent.click(screen.getByLabelText('Toggle theme'));
-    expect(toggle).toHaveBeenCalled();
+  it('opens theme dropdown on button click', () => {
+    renderTitleBar();
+    fireEvent.click(screen.getByLabelText('Select theme'));
+    // Theme dropdown shows theme names
+    expect(screen.getByText('Light')).toBeInTheDocument();
+    expect(screen.getByText('Dark')).toBeInTheDocument();
   });
 
-  it('renders both sun and moon icons (visibility controlled by CSS dark mode)', () => {
-    renderTitleBar({ onToggleTheme: vi.fn() });
-    const btn = screen.getByLabelText('Toggle theme');
-    const svgs = btn.querySelectorAll('svg');
-    const classes = Array.from(svgs).map((s) => s.getAttribute('class'));
-    expect(classes.some((c) => c?.includes('lucide-sun'))).toBe(true);
-    expect(classes.some((c) => c?.includes('lucide-moon'))).toBe(true);
+  it('calls onSetTheme when a theme is selected', () => {
+    const setTheme = vi.fn();
+    renderTitleBar({ onSetTheme: setTheme });
+    fireEvent.click(screen.getByLabelText('Select theme'));
+    fireEvent.click(screen.getByText('Dark'));
+    expect(setTheme).toHaveBeenCalledWith('dark');
+  });
+
+  it('highlights current theme in dropdown', () => {
+    renderTitleBar({ currentTheme: 'dark' });
+    fireEvent.click(screen.getByLabelText('Select theme'));
+    const darkOption = screen.getByText('Dark');
+    expect(darkOption.className).toContain('font-semibold');
   });
 
   it('hides window controls when Tauri not available (browser mode)', () => {
@@ -46,9 +56,8 @@ describe('TitleBar', () => {
     expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
   });
 
-  it('theme button always rendered regardless of onToggleTheme prop', () => {
-    // TitleBar always renders the theme button; onClick is simply undefined when not provided
+  it('theme button always rendered', () => {
     renderTitleBar();
-    expect(screen.getByLabelText('Toggle theme')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select theme')).toBeInTheDocument();
   });
 });

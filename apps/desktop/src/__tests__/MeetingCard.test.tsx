@@ -65,7 +65,7 @@ describe('MeetingCard', () => {
   it('shows green for high coherence (>= 0.7)', () => {
     render(<MeetingCard data={baseData} />);
     const score = screen.getByText('Coherence: 72%');
-    expect(score.className).toContain('text-green');
+    expect(score.className).toContain('text-intent-success');
   });
 
   it('shows amber for medium coherence (>= 0.5, < 0.7)', () => {
@@ -75,7 +75,7 @@ describe('MeetingCard', () => {
     };
     render(<MeetingCard data={midData} />);
     const score = screen.getByText('Coherence: 55%');
-    expect(score.className).toContain('text-amber');
+    expect(score.className).toContain('text-intent-warning');
   });
 
   it('shows red for low coherence (< 0.5)', () => {
@@ -85,7 +85,7 @@ describe('MeetingCard', () => {
     };
     render(<MeetingCard data={lowData} />);
     const score = screen.getByText('Coherence: 30%');
-    expect(score.className).toContain('text-red');
+    expect(score.className).toContain('text-intent-danger');
   });
 
   it('renders without crossValidation gracefully', () => {
@@ -107,12 +107,13 @@ describe('MeetingCard', () => {
     expect(screen.queryByText(/auto-extracted/)).not.toBeInTheDocument();
   });
 
-  it('includes dark mode classes via Tailwind dark: prefix', () => {
+  it('renders with expected container styling', () => {
     const { container } = render(<MeetingCard data={baseData} />);
     const outerDiv = container.firstChild as HTMLElement;
-    // Dark mode classes are always present via Tailwind dark: prefix
-    expect(outerDiv.className).toContain('dark:border-gray-700');
-    expect(outerDiv.className).toContain('dark:bg-gray-800/80');
+    // Component uses theme-aware CSS classes (not hardcoded dark: prefixes)
+    expect(outerDiv.className).toContain('rounded-lg');
+    expect(outerDiv.className).toContain('border');
+    expect(outerDiv.className).toContain('bg-surface-primary');
   });
 
   it('renders without perspectives gracefully', () => {

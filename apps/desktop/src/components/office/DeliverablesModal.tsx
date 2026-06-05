@@ -1,133 +1,44 @@
 import { ModalOverlay } from '../ModalOverlay';
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
-import { apiFetch, authHeaders } from '../../utils/api.js';
+import { useDeliverables, type Deliverable } from '../../hooks/useDeliverables.js';
 
-interface Deliverable {
-  id: string;
-  projectId: string;
-  title: string;
-  type: string;
-  filePath?: string;
-  meetingId?: string;
-  tags: string[];
-  createdAt: string;
-}
-
-interface Props {
-  onClose: () => void;
-  projectId?: string;
-}
+interface Props { onClose: () => void; projectId?: string; }
 
 export function DeliverablesModal({ onClose, projectId }: Props) {
-  const [items, setItems] = useState<Deliverable[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchDeliverables = useCallback(() => {
-    const url = projectId ? `/api/projects/${projectId}/deliverables` : '/api/deliverables';
-    apiFetch(url, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((data) => setItems(data.deliverables ?? []))
-      .catch((err) => { console.warn('Operation failed', err); })
-      .finally(() => setLoading(false));
-  }, [projectId]);
+  const { data: items = [], isLoading: loading } = useDeliverables(projectId);
 
   useEffect(() => {
-    fetchDeliverables();
-  }, [fetchDeliverables]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleOpen = (d: Deliverable) => {
-    if (d.filePath) {
-      window.dispatchEvent(
-        new CustomEvent('open-file-viewer', {
-          detail: {
-            path: d.filePath,
-            name: d.title,
-            mimeType: d.type === 'meeting_report' ? 'text/markdown' : undefined,
-            projectId: d.projectId,
-          },
-        }),
-      );
-    } else if (d.meetingId) {
-      window.dispatchEvent(
-        new CustomEvent('open-file-viewer', {
-          detail: {
-            path: `meeting:${d.meetingId}`,
-            name: d.title,
-            mimeType: 'text/markdown',
-            projectId: d.projectId,
-          },
-        }),
-      );
-    }
-    onClose();
-  };
-
-  const typeLabel = (type: string) => {
-    switch (type) {
-      case 'meeting_report': return 'Report';
-      case 'workflow_output': return 'Output';
-      case 'document': return 'Doc';
-      case 'code': return 'Code';
-      default: return type;
-    }
-  };
+  const handleOpen = (d: Deliverable) => { if (d.filePath) window.open(`/api/files/${d.filePath}`, '_blank'); };
 
   return (
     <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg">
-        <div className="flex items-center justify-between px-5 pt-4 pb-3">
-          <h3 className="text-lg font-semibold text-content-primary">Deliverables</h3>
-          <button
-            onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-          </div>
-        ) : items.length === 0 ? (
-          <div className="py-12 text-center text-sm text-content-tertiary">
-            No deliverables yet
-          </div>
-        ) : (
-          <div className="overflow-y-auto px-5 pb-4">
-            <div className="space-y-1">
-              {items.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => handleOpen(d)}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-muted"
-                >
-                  <FileText size={14} className="shrink-0 text-content-tertiary" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm text-content-primary">{d.title}</div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-content-tertiary">
-                      <span>{typeLabel(d.type)}</span>
-                      {d.tags.length > 0 && (
-                        <span>{d.tags.join(', ')}</span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-xs text-content-tertiary">
-                    {new Date(d.createdAt).toLocaleDateString()}
-                  </span>
-                </button>
-              ))}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <div className="flex items-center gap-2"><FileText size={16} className="text-accent" /><h3 className="text-lg font-semibold text-content-primary">Deliverables</h3></div>
+        <button onClick={onClose} className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"><X size={16} /></button>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12"><div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>
+      ) : items.length === 0 ? (
+        <div className="py-12 text-center text-sm text-content-tertiary">No deliverables</div>
+      ) : (
+        <div className="overflow-y-auto px-5 pb-4 space-y-1.5">
+          {items.map((d) => (
+            <div key={d.id} onClick={() => handleOpen(d)} className={`flex items-center gap-3 rounded-sm border border-border bg-surface-muted p-3 ${d.filePath ? 'cursor-pointer hover:border-accent' : ''}`}>
+              <FileText size={16} className="shrink-0 text-content-tertiary" />
+              <div className="min-w-0 flex-1"><div className="truncate text-sm text-content-secondary">{d.title}</div>
+                <div className="flex items-center gap-2 text-[11px] text-content-tertiary"><span className="capitalize">{d.type}</span><span>{d.projectId}</span><span className="ml-auto">{new Date(d.createdAt).toLocaleDateString()}</span></div>
+              </div>
+              {d.tags.length > 0 && <div className="hidden sm:flex gap-1">{d.tags.slice(0, 2).map((t) => <span key={t} className="rounded-sm bg-surface-primary px-1.5 py-0.5 text-[10px] text-content-tertiary">{t}</span>)}</div>}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
     </ModalOverlay>
   );
 }

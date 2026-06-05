@@ -1,2 +1,3 @@
 import '@testing-library/jest-dom/vitest';
-import './i18n';
+// i18n module not yet created — import commented out until implemented
+// import './i18n';
