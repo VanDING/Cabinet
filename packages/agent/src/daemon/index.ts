@@ -7,3 +7,10 @@ export { TaskQueuePoller } from './task-queue-poller.js';
 export { WorkspaceManager, type WorkspaceManagerConfig } from './workspace-manager.js';
 export { AutoDiscoverer, type DiscoveryResult, type KnownCliAgent } from './auto-discoverer.js';
 export { WSDaemonClient, type WSDaemonClientConfig, type WSCtor } from './ws-daemon-client.js';
+export {
+  InteractiveExternalAgent,
+  type InteractiveExternalAgentOptions,
+  type SquadRouterLike,
+  type ChatTurn,
+  type SquadRouteMatch,
+} from './interactive-external-agent.js';

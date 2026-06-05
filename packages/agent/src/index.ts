@@ -126,6 +126,19 @@ export {
   type TaskRecord,
   type TaskReliabilityStatus,
   VALID_TRANSITIONS,
+  // Harness
+  ClaudeCodeRuntime,
+  CodexRuntime,
+  OpenCodeRuntime,
+  A2AHarnessRuntime,
+  GenericCliRuntime,
+  HarnessRuntimeFactory,
+  HARNESS_IDS,
+  type HarnessRuntime,
+  type HarnessContext,
+  type HarnessConfig,
+  type AgentTaskMetrics,
+  type HarnessId,
 } from './adapters/index.js';
 
 // Daemon (pull-mode agent runtime)
@@ -141,6 +154,11 @@ export {
   WSDaemonClient,
   type WSDaemonClientConfig,
   type WSCtor,
+  InteractiveExternalAgent,
+  type InteractiveExternalAgentOptions,
+  type SquadRouterLike,
+  type ChatTurn,
+  type SquadRouteMatch,
 } from './daemon/index.js';
 
 // Autopilot (cron/webhook/manual triggers)

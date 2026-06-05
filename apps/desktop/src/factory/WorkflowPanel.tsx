@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { CanvasNode, CanvasNodeType } from './node-types';
 import { CANVAS_NODE_TYPES, NODE_LABELS } from './node-types';
-import { apiFetch, authHeaders } from '../utils/api.js';
+import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 
 interface WorkflowMeta {
   id: string;
@@ -75,6 +75,44 @@ export function WorkflowPanel({
     onWorkflowSave?.({ name: editName, cronExpression: editCron || null });
   };
 
+  // ── Import/Export (M4) ──
+  const handleExport = async () => {
+    if (!workflow?.id) return;
+    try {
+      const res = await apiFetch('/api/workflows/export', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ workflowId: workflow.id }),
+      });
+      const blueprint = await res.json();
+      const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${workflow.name ?? 'workflow'}.cabinet.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* non-fatal */ }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const blueprint = JSON.parse(text);
+      const res = await apiFetch('/api/workflows/import', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ blueprint, projectId: 'default' }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        onWorkflowSave?.({ name: data.name });
+      }
+    } catch { /* non-fatal */ }
+  };
+
   const inputClasses = 'rounded border border-border bg-surface-input px-3 py-1.5 text-sm text-content-primary w-full';
   const labelClasses = 'text-xs font-medium text-content-secondary mb-0.5 block';
 
@@ -104,14 +142,29 @@ export function WorkflowPanel({
             Run History
           </button>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-sm p-1 text-content-tertiary hover:text-content-primary"
-        >
+        <div className="flex items-center gap-1">
+          {/* Import/Export (M4) */}
+          <button
+            onClick={() => handleExport()}
+            disabled={!workflow?.id}
+            className="rounded px-2 py-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+            title="Export workflow"
+          >
+            ⤓ Export
+          </button>
+          <label className="cursor-pointer rounded px-2 py-1 text-xs text-content-tertiary hover:text-content-primary" title="Import workflow">
+            ⤒ Import
+            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+          </label>
+          <button
+            onClick={onClose}
+            className="rounded-sm p-1 text-content-tertiary hover:text-content-primary"
+          >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
           </svg>
         </button>
+      </div>
       </div>
 
       {/* Content */}

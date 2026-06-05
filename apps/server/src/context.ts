@@ -15,6 +15,7 @@ import {
   createConnection,
   runMigrations,
   DecisionRepository,
+  DecisionCommentRepository,
   ProjectRepository,
   EventLogRepository,
   WorkflowRepository,
@@ -108,6 +109,7 @@ export interface ServerContext {
   db: Database;
   // Repos
   decisionRepo: DecisionRepository;
+  decisionCommentRepo: DecisionCommentRepository;
   projectRepo: ProjectRepository;
   eventRepo: EventLogRepository;
   workflowRepo: WorkflowRepository;
@@ -301,6 +303,7 @@ export function getServerContext(): ServerContext {
 
   // Repositories
   const decisionRepo = new DecisionRepository(db);
+  const decisionCommentRepo = new DecisionCommentRepository(db);
   const projectRepo = new ProjectRepository(db);
   const eventRepo = new EventLogRepository(db);
   const workflowRepo = new WorkflowRepository(db);
@@ -695,12 +698,16 @@ export function getServerContext(): ServerContext {
 
   // Shared agent registry (custom roles persist across requests)
   const agentRegistry = new AgentRoleRegistry();
-  // Load custom agents from DB
+  // Load custom + external agents from DB
   try {
     const customRows = agentRoleRepo.findCustom();
     for (const row of customRows) {
+      // Preserve the agent's actual type (custom, external_cli, external_a2a)
+      const agentType = (row.type === 'external_cli' || row.type === 'external_a2a' || row.type === 'custom')
+        ? row.type as 'custom' | 'external_cli' | 'external_a2a'
+        : 'custom' as const;
       agentRegistry.register({
-        type: 'custom' as const,
+        type: agentType,
         name: row.name,
         description: row.description,
         modules: { identity: row.system_prompt },
@@ -1630,6 +1637,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   ctx = {
     db,
     decisionRepo,
+    decisionCommentRepo,
     projectRepo,
     eventRepo,
     workflowRepo,

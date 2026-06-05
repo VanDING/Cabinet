@@ -1184,3 +1184,81 @@ workflowsRouter.get('/:id/runs', (c) => {
   }));
   return c.json({ runs, total: runs.length });
 });
+
+// ── Import/Export (M4 Operational Plane) ────────────────────────
+
+// POST /api/workflows/export — export a workflow as cabinet-workflow/v1 blueprint
+workflowsRouter.post('/export', async (c) => {
+  const { workflowRepo } = getServerContext();
+  const { exportBlueprint } = await import('@cabinet/workflow');
+  try {
+    const body = await c.req.json();
+    const workflowId = body.workflowId as string;
+    if (!workflowId) return c.json({ error: 'workflowId is required' }, 400);
+
+    const wf = workflowRepo.findById(workflowId);
+    if (!wf) return c.json({ error: 'Workflow not found' }, 404);
+
+    const definition = JSON.parse(wf.definition);
+    const nodes = definition.nodes ?? [];
+    const edges = definition.edges ?? [];
+
+    const blueprint = exportBlueprint(nodes, edges);
+    return c.json(blueprint);
+  } catch (err) {
+    return c.json({ error: `Export failed: ${(err as Error).message}` }, 500);
+  }
+});
+
+// POST /api/workflows/import — import a cabinet-workflow/v1 blueprint
+workflowsRouter.post('/import', async (c) => {
+  const { workflowRepo, projectRepo, agentRoleRepo } = getServerContext();
+  const { importBlueprint, validateWorkflowBlueprint } = await import('@cabinet/workflow');
+  try {
+    const body = await c.req.json();
+    const blueprint = body.blueprint;
+    const projectId = body.projectId as string;
+
+    if (!blueprint) return c.json({ error: 'blueprint is required' }, 400);
+    if (!projectId) return c.json({ error: 'projectId is required' }, 400);
+
+    // Validate blueprint structure
+    const issues = validateWorkflowBlueprint(blueprint);
+    if (issues.length > 0) {
+      return c.json({ error: 'Invalid blueprint', issues }, 400);
+    }
+
+    // Import nodes and edges
+    const { nodes, edges, resolvedAgents, missingAgents } = importBlueprint(blueprint);
+
+    // Create the workflow in DB
+    const id = `wf_${Date.now()}`;
+    const name = body.name ?? `Imported: ${blueprint.definition.nodes[0]?.title ?? 'Workflow'}`;
+    workflowRepo.create(id, projectId, name, JSON.stringify({ nodes, edges }), 'draft');
+
+    return c.json({
+      id,
+      nodes: nodes.length,
+      edges: edges.length,
+      resolvedAgents,
+      missingAgents,
+    });
+  } catch (err) {
+    return c.json({ error: `Import failed: ${(err as Error).message}` }, 500);
+  }
+});
+
+// POST /api/workflows/validate — validate a blueprint without importing
+workflowsRouter.post('/validate', async (c) => {
+  const { validateWorkflowBlueprint } = await import('@cabinet/workflow');
+  try {
+    const body = await c.req.json();
+    const blueprint = body.blueprint;
+    if (!blueprint) return c.json({ error: 'blueprint is required' }, 400);
+
+    const issues = validateWorkflowBlueprint(blueprint);
+    return c.json({ valid: issues.length === 0, issues });
+  } catch (err) {
+    return c.json({ error: `Validation failed: ${(err as Error).message}` }, 500);
+  }
+});

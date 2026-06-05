@@ -9,48 +9,53 @@ export const employeesRouter = new Hono();
 
 // GET /api/employees — includes both employees and agent_roles
 employeesRouter.get('/', (c) => {
-  const { employeeRepo, agentRoleRepo, agentRegistry } = getServerContext();
-  const empRows = employeeRepo.findAll();
-  const employees = empRows.map(rowToEmployee);
+  try {
+    const { employeeRepo, agentRoleRepo, agentRegistry, logger } = getServerContext();
+    const empRows = employeeRepo.findAll();
+    const employees = empRows.map(rowToEmployee);
 
-  // Also include custom agents from agent_roles table
-  const agentRows = agentRoleRepo.findCustom();
-  const dbAgentNames = new Set(agentRows.map((r) => r.name));
-  const agentsFromRoles = agentRows.map((r) => ({
-    id: `agent_${r.name}`,
-    name: r.name,
-    role: r.type,
-    kind: 'ai' as const,
-    model: r.model,
-    expertise: (() => {
-      try {
-        return JSON.parse(r.allowed_tools ?? '[]');
-      } catch {
-        return [];
-      }
-    })(),
-    permissionLevel: 'read',
-    status: 'active',
-    projectId: 'default',
-  }));
-
-  // Fallback: include runtime-registered agents that may not yet be in DB
-  const runtimeAgents = agentRegistry
-    .list()
-    .filter((r) => r.type === 'custom' && !dbAgentNames.has(r.name))
-    .map((r) => ({
+    // Also include custom agents from agent_roles table
+    const agentRows = agentRoleRepo.findCustom();
+    const dbAgentNames = new Set(agentRows.map((r) => r.name));
+    const agentsFromRoles = agentRows.map((r) => ({
       id: `agent_${r.name}`,
       name: r.name,
       role: r.type,
       kind: 'ai' as const,
-      model: r.modelTier ?? undefined,
-      expertise: r.allowedTools ?? [],
+      model: r.model,
+      expertise: (() => {
+        try { return JSON.parse(r.allowed_tools ?? '[]'); } catch { return []; }
+      })(),
       permissionLevel: 'read',
       status: 'active',
       projectId: 'default',
     }));
 
-  return c.json({ employees: [...employees, ...agentsFromRoles, ...runtimeAgents] });
+    // Fallback: include runtime-registered agents that may not yet be in DB
+    // Includes custom agents AND auto-discovered external agents (external_cli, external_a2a)
+    const runtimeAgentTypes = new Set(['custom', 'external_cli', 'external_a2a']);
+    const runtimeAgents = agentRegistry
+      .list()
+      .filter((r) => runtimeAgentTypes.has(r.type) && !dbAgentNames.has(r.name))
+      .map((r) => ({
+        id: r.type.startsWith('external_') ? r.name : `agent_${r.name}`,
+        name: r.name,
+        role: r.type,
+        kind: 'ai' as const,
+        model: r.modelTier ?? undefined,
+        expertise: r.allowedTools ?? [],
+        permissionLevel: 'read',
+        status: r.type.startsWith('external_') ? 'online' : 'active',
+        projectId: 'default',
+        source: r.type,  // e.g. 'external_cli', 'external_a2a' — for UI filtering
+      }));
+
+    return c.json({ employees: [...employees, ...agentsFromRoles, ...runtimeAgents] });
+  } catch (err) {
+    const { logger } = getServerContext();
+    logger.error('Failed to load employees', { error: (err as Error).message });
+    return c.json({ employees: [], error: 'Failed to load employees' }, 500);
+  }
 });
 
 // POST /api/employees
@@ -92,6 +97,10 @@ employeesRouter.post('/', async (c) => {
     maxTokens: d.maxTokens ?? 4000,
   }) : null;
 
+  // Read source/external from raw body (Zod strips unknown fields from parsed.data)
+  const source: string = body.source ?? (d.kind === 'ai' ? 'custom' : 'human');
+  const externalConfig: string | null = body.external ? JSON.stringify(body.external) : null;
+
   employeeRepo.insert({
     id,
     project_id: d.projectId,
@@ -102,8 +111,8 @@ employeesRouter.post('/', async (c) => {
     persona,
     permission_level: d.permissionLevel ?? 'read',
     allowed_tools: JSON.stringify(d.allowedTools ?? []),
-    source: (d as any).source ?? (d.kind === 'ai' ? 'custom' : 'human'),
-    external_config: (d as any).external ? JSON.stringify((d as any).external) : null,
+    source,
+    external_config: externalConfig,
   });
 
   const row = employeeRepo.findById(id);
@@ -214,6 +223,10 @@ function rowToEmployee(row: any) {
       return [];
     }
   })();
+  const external = (() => {
+    try { return JSON.parse(row.external_config ?? 'null'); } catch { return null; }
+  })();
+
   return {
     id: row.id,
     name: row.name,
@@ -228,5 +241,7 @@ function rowToEmployee(row: any) {
     systemPrompt: pipeline.systemPrompt ?? '',
     temperature: pipeline.temperature ?? 0.7,
     maxTokens: pipeline.maxTokens ?? 4000,
+    source: row.source ?? 'custom',
+    external,
   };
 }

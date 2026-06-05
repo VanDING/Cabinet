@@ -13,6 +13,7 @@
 //
 
 import { hostname } from 'node:os';
+import { execSync } from 'node:child_process';
 import type { ContextSlot, TaskQueueEntry, TaskQueueStatus, DaemonStatus, DaemonAgentInfo } from '@cabinet/types';
 import type {
   AgentTaskQueueRepository,
@@ -21,7 +22,10 @@ import type {
 import type { AgentRoleRegistry } from '../agent-roles.js';
 import { CliAdapter } from '../adapters/cli-adapter.js';
 import { A2AConnector } from '../adapters/a2a-connector.js';
+import { A2AHarnessRuntime } from '../adapters/harness/a2a.js';
+import { HarnessRuntimeFactory } from '../adapters/harness/factory.js';
 import type { ExternalAgentAdapter } from '../adapters/types.js';
+import type { HarnessRuntime, HarnessContext, AgentTaskMetrics, HarnessConfig } from '../adapters/harness-runtime.js';
 import { TaskQueuePoller } from './task-queue-poller.js';
 import { WorkspaceManager } from './workspace-manager.js';
 import { AutoDiscoverer, type DiscoveryResult } from './auto-discoverer.js';
@@ -60,6 +64,7 @@ export class AgentDaemon {
   private workspaceManager: WorkspaceManager;
   private discoverer: AutoDiscoverer;
   private adapterCache = new Map<string, ExternalAgentAdapter>();
+  private harnessRuntimeCache = new Map<string, HarnessRuntime>(); // agentId → HarnessRuntime
   private activeTasks = new Map<string, ExternalAgentAdapter>(); // taskId → adapter
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private orphanRecoveryTimer: ReturnType<typeof setInterval> | null = null;
@@ -69,6 +74,8 @@ export class AgentDaemon {
   private failedCount = 0;
   private wsClient: import('./ws-daemon-client.js').WSDaemonClient | null = null;
   private squadRouter: SquadRouter | null = null;
+  private processMetrics = new Map<string, { pid: number; cpu: number; mem: number; ports: number[] }>();
+  private lastCpuUsage = process.cpuUsage();
   private logger: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void; error: (msg: string, ctx?: unknown) => void };
 
   constructor(
@@ -87,7 +94,7 @@ export class AgentDaemon {
     this.workspaceManager = new WorkspaceManager(daemonRepo, {
       fullCleanupTtlMs: this.opts.workspaceTtlMs,
     });
-    this.discoverer = new AutoDiscoverer(registry);
+    this.discoverer = new AutoDiscoverer(registry, undefined);
     this.poller = new TaskQueuePoller(() => this.claimAndExecute(), {
       pollIntervalMs: this.opts.pollIntervalMs,
     });
@@ -135,6 +142,12 @@ export class AgentDaemon {
     try {
       this.daemonRepo.upsertHeartbeat(this.opts.daemonId, '__daemon__', 'offline');
     } catch { /* DB may already be closed */ }
+
+    // Close harness runtimes
+    for (const runtime of this.harnessRuntimeCache.values()) {
+      try { await runtime.stop(); } catch { /* best-effort */ }
+    }
+    this.harnessRuntimeCache.clear();
 
     // Close adapters
     for (const adapter of this.adapterCache.values()) {
@@ -239,19 +252,33 @@ export class AgentDaemon {
 
   /** Get daemon status. */
   getStatus(): DaemonStatus {
+    this.collectProcessMetrics();
     const agents: DaemonAgentInfo[] = [];
     const discovered = this.discoverer.getLastResults();
+    const knownPorts: number[] = [];
     for (const d of discovered) {
       const counts = this.taskRepo.countByStatus(d.agentId);
-      agents.push({
+      const metrics = this.processMetrics.get(d.agentId);
+      const agentInfo: DaemonAgentInfo = {
         agentId: d.agentId,
         command: d.command ?? d.baseUrl ?? 'unknown',
         detected: d.detected,
         status: 'online',
         activeTaskCount: (counts.running ?? 0) + (counts.claimed ?? 0),
         lastHeartbeatAt: null,
-      });
+        cpuPercent: metrics?.cpu,
+        memoryMb: metrics?.mem,
+        openPorts: metrics?.ports,
+        pid: metrics?.pid,
+      };
+      if (metrics?.ports) knownPorts.push(...metrics.ports);
+      agents.push(agentInfo);
     }
+
+    // Detect orphan ports (LISTEN ports not associated with known agents)
+    const allListening = this.scanAllListeningPorts();
+    const orphanPorts = allListening.filter((p) => !knownPorts.includes(p));
+
     return {
       daemonId: this.opts.daemonId,
       status: 'online',
@@ -260,7 +287,109 @@ export class AgentDaemon {
       completedTaskCount: this.completedCount,
       failedTaskCount: this.failedCount,
       agents,
+      orphanPorts,
     };
+  }
+
+  /** Get ports info including orphans. */
+  getPorts(): { agentPorts: Record<string, number[]>; orphans: number[] } {
+    this.collectProcessMetrics();
+    const agentPorts: Record<string, number[]> = {};
+    const knownPorts: number[] = [];
+    for (const [agentId, metrics] of this.processMetrics) {
+      agentPorts[agentId] = metrics.ports;
+      knownPorts.push(...metrics.ports);
+    }
+    const allListening = this.scanAllListeningPorts();
+    return { agentPorts, orphans: allListening.filter((p) => !knownPorts.includes(p)) };
+  }
+
+  /** Kill a specific orphan port. */
+  killOrphanPort(port: number): boolean {
+    try {
+      if (process.platform === 'win32') {
+        const out = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8', timeout: 5000 });
+        const pidMatch = out.match(/(\d+)\s*$/m);
+        if (pidMatch) execSync(`taskkill /PID ${pidMatch[1]} /F`, { timeout: 5000 });
+      } else {
+        execSync(`lsof -ti:${port} | xargs kill -9`, { timeout: 5000 });
+      }
+      return true;
+    } catch { return false; }
+  }
+
+  /** Collect OS-level metrics for active agent processes. */
+  private collectProcessMetrics(): void {
+    const currentCpu = process.cpuUsage(this.lastCpuUsage);
+    const elapsedMs = Date.now() - this.startedAt || 1;
+    const elapsedSec = elapsedMs / 1000;
+    // CPU % = (user+system time in μs) / (elapsed time in μs) * 100, normalized per core
+    const cpuPercent = Math.round(((currentCpu.user + currentCpu.system) / 1000 / (elapsedMs * 10)) * 100) / 100;
+    const memUsage = process.memoryUsage();
+
+    // For each discovered agent, try to get per-process metrics from active tasks
+    for (const [taskId, adapter] of this.activeTasks) {
+      const task = this.getTask(taskId);
+      if (!task) continue;
+      const agentId = task.agentId;
+
+      // Get ports for this agent's tasks
+      let ports: number[] = [];
+      try {
+        ports = this.scanPortsForPid(process.pid); // approximate — we track the main process
+      } catch { /* best-effort */ }
+
+      this.processMetrics.set(agentId, {
+        pid: process.pid,
+        cpu: cpuPercent,
+        mem: Math.round(memUsage.rss / 1024 / 1024),
+        ports,
+      });
+    }
+
+    // Also set metrics for discovered agents that have no active tasks
+    const discovered = this.discoverer.getLastResults();
+    for (const d of discovered) {
+      if (!this.processMetrics.has(d.agentId)) {
+        this.processMetrics.set(d.agentId, { pid: 0, cpu: 0, mem: 0, ports: [] });
+      }
+    }
+  }
+
+  /** Scan all LISTEN ports on the machine. */
+  private scanAllListeningPorts(): number[] {
+    try {
+      const cmd = process.platform === 'win32'
+        ? 'netstat -ano | findstr LISTENING'
+        : "lsof -i -P -n | grep LISTEN | awk '{print $9}' | cut -d: -f2";
+      const out = execSync(cmd, { encoding: 'utf8', timeout: 5000 });
+      const ports = new Set<number>();
+      for (const line of out.split('\n')) {
+        const match = process.platform === 'win32'
+          ? line.match(/:(\d+)\s/)
+          : line.match(/^\d+/);
+        if (match) ports.add(parseInt(match[1] || match[0], 10));
+      }
+      return [...ports].filter((p) => p > 0 && p < 65536);
+    } catch { return []; }
+  }
+
+  /** Scan ports associated with a specific PID. */
+  private scanPortsForPid(pid: number): number[] {
+    try {
+      const cmd = process.platform === 'win32'
+        ? `netstat -ano | findstr ${pid}`
+        : `lsof -i -P -n -p ${pid} | grep LISTEN | awk '{print $9}' | cut -d: -f2`;
+      const out = execSync(cmd, { encoding: 'utf8', timeout: 5000 });
+      const ports = new Set<number>();
+      for (const line of out.split('\n')) {
+        const match = process.platform === 'win32'
+          ? line.match(/:(\d+)\s.*LISTENING/)
+          : line.match(/^\d+/);
+        if (match) ports.add(parseInt(match[1] || match[0], 10));
+      }
+      return [...ports];
+    } catch { return []; }
   }
 
   /** Get discovered agents. */
@@ -287,6 +416,11 @@ export class AgentDaemon {
   setSquadRouter(db: import('better-sqlite3').Database): void {
     const repo = new SquadRepository(db);
     this.squadRouter = new SquadRouter(repo);
+  }
+
+  /** Set agent role repository for persisting discovered agents to DB. */
+  setAgentRoleRepo(repo: import('@cabinet/storage').AgentRoleRepository): void {
+    (this.discoverer as any).agentRoleRepo = repo;
   }
 
   /** Build a load map for squad routing (agentId → active task count). */
@@ -376,6 +510,9 @@ export class AgentDaemon {
       return;
     }
 
+    // ── Harness Runtime: get harness-aware runtime for context injection + metrics ──
+    const harnessRuntime = this.getHarnessRuntime(effectiveAgentId);
+
     this.activeTasks.set(taskId, adapter);
 
     try {
@@ -384,19 +521,47 @@ export class AgentDaemon {
       // Create isolated workspace and inject path into task
       const wsPath = this.workspaceManager.createWorkspace(effectiveAgentId, taskId);
 
+      // Build harness context for injection
+      const harnessContext = harnessRuntime
+        ? this.buildHarnessContext(harnessRuntime, wsPath)
+        : undefined;
+
+      // Deep-clone slot and inject harness context
+      const enrichedSlot = JSON.parse(JSON.stringify(entry.slot));
+      if (harnessContext) {
+        enrichedSlot.harnessContext = harnessContext;
+      }
+
       const result = await adapter.dispatchTask({
         task_id: taskId,
         session_id: entry.sessionId,
         capability: entry.capability,
         input: entry.input,
-        slot: JSON.parse(JSON.stringify(entry.slot)), // deep-clone
+        slot: enrichedSlot,
         configuration: {
           max_retries: entry.maxRetries,
           timeout_ms: entry.timeoutMs,
           slot_write_url: '', // daemon handles this, not the external agent
-          working_directory: wsPath, // P0-3: isolate agent to workspace
+          working_directory: wsPath, // isolate agent to workspace
         },
       });
+
+      // ── Extract harness-specific metrics ──
+      if (harnessRuntime?.extractMetrics) {
+        const outputStr = typeof result.output === 'string' ? result.output : (result.output ? JSON.stringify(result.output) : '');
+        const errorStr = result.error ?? '';
+        const harnessMetrics = harnessRuntime.extractMetrics(outputStr, errorStr);
+        if (harnessMetrics.tokensUsed || harnessMetrics.model) {
+          this.logger.info('Harness metrics extracted', { taskId, harnessId: harnessRuntime.harnessId, metrics: harnessMetrics });
+          // Merge into process metrics
+          const existing = this.processMetrics.get(effectiveAgentId) ?? { pid: 0, cpu: 0, mem: 0, ports: [] };
+          this.processMetrics.set(effectiveAgentId, {
+            ...existing,
+            cpu: harnessMetrics.tokensUsed ?? existing.cpu, // Note: we repurpose cpu field temporarily for tokens
+            mem: harnessMetrics.contextWindowPercent ?? existing.mem,
+          });
+        }
+      }
 
       if (result.status === 'completed') {
         this.taskRepo.updateStatus(taskId, 'completed', {
@@ -500,6 +665,90 @@ export class AgentDaemon {
 
     this.adapterCache.set(agentId, adapter);
     return adapter;
+  }
+
+  /**
+   * Get or create a HarnessRuntime for the given agent.
+   *
+   * Unlike getAdapter() which returns a generic ExternalAgentAdapter,
+   * this returns a HarnessRuntime that supports harness-specific:
+   *   - Prompt format conversion (convertPrompt)
+   *   - Output parsing (parseOutput)
+   *   - Metrics extraction (extractMetrics)
+   *   - Skill injection (injectSkill)
+   *   - Session discovery (discoverSessions)
+   *
+   * CLI agents get their harness auto-detected from the command name.
+   * A2A agents get the A2AHarnessRuntime with WebSocket support.
+   */
+  private getHarnessRuntime(agentId: string): HarnessRuntime | null {
+    const cached = this.harnessRuntimeCache.get(agentId);
+    if (cached) return cached;
+
+    const roleDef = this.registry.get(agentId);
+    if (!roleDef?.external) return null;
+
+    const ext = roleDef.external;
+    let runtime: HarnessRuntime;
+
+    if (ext.protocol === 'cli') {
+      // Build HarnessConfig and let factory auto-detect the harness from command name
+      const harnessConfig: HarnessConfig = {
+        harnessId: 'generic', // triggers auto-detection in factory
+        command: ext.command ?? agentId,
+        args: ext.args ?? ['--print'],
+        env: ext.env,
+        permissionMode: ext.permissionMode as any,
+        timeoutMs: ext.timeoutMs,
+        maxRetries: ext.maxRetries,
+      };
+
+      runtime = HarnessRuntimeFactory.create(agentId, harnessConfig, [], {
+        info: (msg, ctx) => this.logger.info(msg, ctx),
+        warn: (msg, ctx) => this.logger.warn(msg, ctx),
+      });
+    } else {
+      // A2A: use first-class A2AHarnessRuntime (with WebSocket support)
+      const harnessConfig: HarnessConfig = {
+        harnessId: 'a2a',
+        baseUrl: ext.baseUrl ?? `http://localhost:${agentId}`,
+        healthCheckUrl: ext.healthCheckUrl,
+        authConfig: ext.authConfig as any,
+        timeoutMs: ext.timeoutMs,
+        maxRetries: ext.maxRetries,
+      };
+
+      runtime = new A2AHarnessRuntime(agentId, harnessConfig, {
+        info: (msg, ctx) => this.logger.info(msg, ctx),
+        warn: (msg, ctx) => this.logger.warn(msg, ctx),
+      });
+    }
+
+    this.harnessRuntimeCache.set(agentId, runtime);
+    this.logger.info('HarnessRuntime created', { agentId, harnessId: runtime.harnessId });
+    return runtime;
+  }
+
+  /**
+   * Build harness context for injection into a task slot.
+   * This tells the harness about the execution environment.
+   */
+  private buildHarnessContext(runtime: HarnessRuntime, workspacePath?: string): HarnessContext {
+    return {
+      harnessId: runtime.harnessId,
+      protocol: runtime.protocol,
+      outputFormat: runtime.harnessId === 'claude-code'
+        ? 'Anthropic tool-use JSON'
+        : runtime.harnessId === 'codex'
+          ? 'OpenAI function-calling JSON'
+          : runtime.harnessId === 'opencode'
+            ? 'Markdown with SQLite session'
+            : runtime.harnessId === 'a2a'
+              ? 'A2A structured JSON over WebSocket/HTTP'
+              : 'Cabinet internal format (===CABINET_DELIVERABLE===)',
+      permissionProfile: (runtime as any).config?.permissionMode ?? 'auto',
+      workspacePath,
+    };
   }
 
   private rowToEntry(row: import('@cabinet/storage').TaskQueueRow): TaskQueueEntry {

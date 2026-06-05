@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CABINET_DIR } from '@cabinet/storage';
+import type { AgentRoleRepository } from '@cabinet/storage';
 import type { AgentRoleRegistry } from '../agent-roles.js';
 
 // ── Known CLI agents ──────────────────────────────────────────────
@@ -47,7 +48,10 @@ export interface DiscoveryResult {
 export class AutoDiscoverer {
   private lastResults: DiscoveryResult[] = [];
 
-  constructor(private readonly registry: AgentRoleRegistry) {}
+  constructor(
+    private readonly registry: AgentRoleRegistry,
+    private readonly agentRoleRepo?: AgentRoleRepository,
+  ) {}
 
   /** Run full discovery: CLI PATH scan + A2A directory scan. */
   async discover(): Promise<DiscoveryResult[]> {
@@ -155,18 +159,37 @@ export class AutoDiscoverer {
         maxRetries: 2,
       },
     });
+
+    // Persist to DB so it survives restarts and shows in UI
+    if (this.agentRoleRepo && !this.agentRoleRepo.findByName(agentId)) {
+      try {
+        this.agentRoleRepo.upsert({
+          type: 'external_cli',
+          name: agentId,
+          description: `${agent.name} CLI agent (auto-discovered)`,
+          system_prompt: `You are ${agent.name}, running as a CLI agent dispatched by Cabinet.`,
+          model: 'default',
+          model_tier: 'default',
+          temperature: 0.7,
+          max_response_tokens: 4096,
+          allowed_tools: '[]',
+          context_budget: 0.3,
+          is_builtin: 0,
+          created_at: new Date().toISOString(),
+        });
+      } catch { /* DB write is best-effort */ }
+    }
   }
 
   private registerA2AAgent(agentId: string, card: Record<string, unknown>, dirName: string): void {
     if (this.registry.get(agentId)) return;
     const conn = (card.connection ?? {}) as Record<string, unknown>;
+    const identity = (card.systemPrompt as string) ?? (card.instructions as string) ?? `You are ${dirName}.`;
     this.registry.register({
       type: 'external_a2a',
       name: agentId,
       description: (card.description as string) ?? `${dirName} A2A agent (auto-discovered)`,
-      modules: {
-        identity: (card.systemPrompt as string) ?? (card.instructions as string) ?? `You are ${dirName}.`,
-      },
+      modules: { identity },
       modelTier: 'default',
       temperature: 0.7,
       allowedTools: [],
@@ -180,5 +203,25 @@ export class AutoDiscoverer {
         maxRetries: 2,
       },
     });
+
+    // Persist to DB
+    if (this.agentRoleRepo && !this.agentRoleRepo.findByName(agentId)) {
+      try {
+        this.agentRoleRepo.upsert({
+          type: 'external_a2a',
+          name: agentId,
+          description: (card.description as string) ?? `${dirName} A2A agent (auto-discovered)`,
+          system_prompt: identity,
+          model: 'default',
+          model_tier: 'default',
+          temperature: 0.7,
+          max_response_tokens: 4096,
+          allowed_tools: '[]',
+          context_budget: 0.3,
+          is_builtin: 0,
+          created_at: new Date().toISOString(),
+        });
+      } catch { /* DB write is best-effort */ }
+    }
   }
 }

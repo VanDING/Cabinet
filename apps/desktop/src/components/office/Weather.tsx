@@ -23,6 +23,11 @@ export function Weather({ onExpand }: Props) {
     let cancelled = false;
 
     async function fetchWeather(lat: number, lon: number, city: string) {
+      // Guard against undefined / NaN coordinates
+      if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
+        if (!cancelled) setError('Unavailable');
+        return;
+      }
       try {
         const weatherRes = await apiFetch(
           `/api/weather?lat=${lat}&lon=${lon}`,
@@ -54,27 +59,32 @@ export function Weather({ onExpand }: Props) {
         clearTimeout(t);
         if (ipRes.ok) {
           const ip = await ipRes.json();
-          const ipCity = ip.city || ip.region || `${ip.latitude}deg, ${ip.longitude}deg`;
+          // Safely extract coordinates — guard against missing fields
+          const ipLat = typeof ip.latitude === 'number' ? ip.latitude : undefined;
+          const ipLon = typeof ip.longitude === 'number' ? ip.longitude : undefined;
+          const ipCity = ip.city || ip.region || (ipLat != null ? `${ipLat.toFixed(1)}°, ${ipLon?.toFixed(1)}°` : 'Unknown');
           // Use GPS coords for better precision if available, but keep IP city
-          if ('geolocation' in navigator && !cancelled) {
-            const gpsTimeout = setTimeout(() => {
-              fetchWeather(ip.latitude, ip.longitude, ipCity);
-            }, 6000);
-            navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                clearTimeout(gpsTimeout);
-                if (!cancelled) fetchWeather(pos.coords.latitude, pos.coords.longitude, ipCity);
-              },
-              () => {
-                clearTimeout(gpsTimeout);
-                if (!cancelled) fetchWeather(ip.latitude, ip.longitude, ipCity);
-              },
-              { timeout: 5000 },
-            );
+          if (ipLat != null && ipLon != null) {
+            if ('geolocation' in navigator && !cancelled) {
+              const gpsTimeout = setTimeout(() => {
+                fetchWeather(ipLat, ipLon, ipCity);
+              }, 6000);
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  clearTimeout(gpsTimeout);
+                  if (!cancelled) fetchWeather(pos.coords.latitude, pos.coords.longitude, ipCity);
+                },
+                () => {
+                  clearTimeout(gpsTimeout);
+                  if (!cancelled) fetchWeather(ipLat, ipLon, ipCity);
+                },
+                { timeout: 5000 },
+              );
+              return;
+            }
+            fetchWeather(ipLat, ipLon, ipCity);
             return;
           }
-          fetchWeather(ip.latitude, ip.longitude, ipCity);
-          return;
         }
       } catch { /* IP lookup failed */ }
 
