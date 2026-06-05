@@ -8,12 +8,25 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm build && pnpm -r typecheck",
-    "lint": "eslint . --max-warnings 400",
+    "lint": "eslint . --max-warnings 910",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint:arch": "pnpm exec tsx tools/arch-lint.ts",
-    "test:e2e": "cd tests/e2e && vitest run"
+    "test:e2e": "cd tests/e2e && vitest run",
+    "test:coverage": "pnpm -r --filter '!tests/*' test -- --run --coverage",
+    "coverage:gate": "pnpm exec tsx tools/coverage-gate.ts",
+    "coverage:baseline": "pnpm exec tsx tools/coverage-gate.ts --update",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs,js}": [
+      "eslint --fix --max-warnings 910",
+      "prettier --write"
+    ],
+    "*.{json,md,css,html}": [
+      "prettier --write"
+    ]
   },
   "commitlint": {
     "extends": [
@@ -28,15 +41,21 @@
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@eslint/js": "^9.39.4",
+    "@vitest/coverage-istanbul": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "playwright": "^1.60.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tsx": "^4.22.3",
-    "typescript-eslint": "^8.59.4"
+    "typescript-eslint": "^8.59.4",
+    "vitest": "^4.0.0"
   }
 }

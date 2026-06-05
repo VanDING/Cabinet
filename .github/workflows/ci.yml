@@ -47,7 +47,12 @@ jobs:
         with: { node-version: '24', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
-      - run: pnpm -r --filter '!@cabinet/e2e-browser' test
+      - name: Unit tests
+        run: pnpm -r --filter '!@cabinet/e2e-browser' test -- --run
+      - name: Coverage report (per-package thresholds enforced)
+        run: pnpm -r --filter '!@cabinet/e2e-browser' test -- --run --coverage
+      - name: Coverage gate (baseline diff, minimum thresholds)
+        run: pnpm coverage:gate
       - run: cd tests/e2e && npx vitest run
 
   browser-e2e:

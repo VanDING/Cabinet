@@ -8,10 +8,10 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['text', 'json', 'html'],
       thresholds: {
-        lines: 30,
-        functions: 30,
         branches: 30,
-        statements: 30,
+        functions: 40,
+        lines: 50,
+        statements: 50,
       },
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/__tests__/**', 'src/**/__mocks__/**'],

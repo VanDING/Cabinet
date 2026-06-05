@@ -4,5 +4,17 @@ export default defineConfig({
   test: {
     globals: true,
     exclude: ['**/dist/**', '**/node_modules/**'],
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'json', 'html'],
+      thresholds: {
+        lines: 30,
+        functions: 20,
+        branches: 50,
+        statements: 30,
+      },
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/__tests__/**', 'src/**/__mocks__/**'],
+    },
   },
 });
