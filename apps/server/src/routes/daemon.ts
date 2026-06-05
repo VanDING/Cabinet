@@ -129,6 +129,23 @@ daemonRouter.post('/tasks/:taskId/retry', (c) => {
   return c.json({ task_id: task.id, status: task.status });
 });
 
+// ── GET /api/daemon/ports ────────────────────────────────────────
+
+daemonRouter.get('/ports', (c) => {
+  const { daemon } = getServerContext();
+  return c.json(daemon.getPorts());
+});
+
+// ── POST /api/daemon/ports/orphans/:port/kill ─────────────────────
+
+daemonRouter.post('/ports/orphans/:port/kill', (c) => {
+  const { daemon } = getServerContext();
+  const port = parseInt(c.req.param('port'), 10);
+  const ok = daemon.killOrphanPort(port);
+  if (!ok) return c.json({ error: 'Failed to kill port or port not found' }, 400);
+  return c.json({ port, status: 'killed' });
+});
+
 // ── POST /api/daemon/workspaces/gc ────────────────────────────────
 
 daemonRouter.post('/workspaces/gc', (c) => {

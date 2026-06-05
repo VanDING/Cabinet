@@ -34,6 +34,7 @@ export { runMigrations, MIGRATIONS, type MigrationEntry } from './migrations/run
 export { EventLogRepository } from './repositories/event-log.js';
 export { ProjectRepository } from './repositories/project.js';
 export { DecisionRepository } from './repositories/decision.js';
+export { DecisionCommentRepository, type DecisionCommentRow } from './repositories/decision-comment-repo.js';
 export {
   WorkflowRepository,
   type WorkflowRow,

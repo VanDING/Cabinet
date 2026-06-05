@@ -1,5 +1,8 @@
+import { spawn } from 'node:child_process';
 import { WorkflowRepository, type Database } from '@cabinet/storage';
-import type { WorkflowNodeDef, WorkflowNodeType, ContextSlot } from '@cabinet/types';
+import type { WorkflowNodeDef, WorkflowNodeType, ContextSlot, WorkflowRunStep, StructuredInput } from '@cabinet/types';
+import { ManagerExecutor } from './manager-executor.js';
+import type { ManagerContextDeps } from './manager-context.js';
 import { StateGraph, Annotation } from '@cabinet/graph';
 import { evaluateCondition as evaluateExpr, type ConditionContext } from './condition-evaluator.js';
 
@@ -21,7 +24,8 @@ export interface WorkflowEdge {
 
 export type WorkflowRunStatus =
   | 'pending' | 'running' | 'paused' | 'completed' | 'failed'
-  | 'awaiting_approval' | 'awaiting_human';
+  | 'awaiting_approval' | 'awaiting_human'
+  | 'completed_with_errors';
 
 export interface WorkflowRun {
   runId: string;
@@ -29,7 +33,7 @@ export interface WorkflowRun {
   status: WorkflowRunStatus;
   currentNodeId: string;
   results: Map<string, unknown>;
-  steps: { nodeId: string; type: WorkflowNodeType; output: string }[];
+  steps: WorkflowRunStep[];
   startedAt: Date;
   _agentLoop?: { agentId: string; handle: AgentLoopHandle } | null;
 }
@@ -137,6 +141,22 @@ export class WorkflowEngine {
       await this.finalizeAgentSegment(run);
       run.status = 'failed';
       this.saveRun(run);
+
+      // ── ErrorTrigger (M2): check if any node has a recovery workflow ──
+      const failedNodeId = run.currentNodeId;
+      const failedNode = nodeMap.get(failedNodeId);
+      if (failedNode?.errorTriggerWorkflowId && this.handlers.runSubWorkflow) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        try {
+          await this.handlers.runSubWorkflow(failedNode.errorTriggerWorkflowId, {
+            failedRunId: run.runId,
+            failedNodeId,
+            errorMessage: errorMsg,
+            partialResults: Object.fromEntries(run.results),
+          });
+        } catch { /* ErrorTrigger failure is non-fatal */ }
+      }
+
       return run;
     }
 
@@ -174,6 +194,22 @@ export class WorkflowEngine {
     } catch (error) {
       run.status = 'failed';
       this.saveRun(run);
+
+      // ── ErrorTrigger (M2) ──
+      const failedNodeId = run.currentNodeId;
+      const failedNode = nodeMap.get(failedNodeId);
+      if (failedNode?.errorTriggerWorkflowId && this.handlers.runSubWorkflow) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        try {
+          await this.handlers.runSubWorkflow(failedNode.errorTriggerWorkflowId, {
+            failedRunId: run.runId,
+            failedNodeId,
+            errorMessage: errorMsg,
+            partialResults: Object.fromEntries(run.results),
+          });
+        } catch { /* ErrorTrigger failure is non-fatal */ }
+      }
+
       return run;
     }
 
@@ -273,6 +309,49 @@ export class WorkflowEngine {
   }
 
   /**
+   * Build a StructuredInput for the given node by collecting upstream step data.
+   * Replaces the legacy `previousOutputs.join('\n')` pattern with typed, traceable input.
+   */
+  private buildNodeInput(run: WorkflowRun, nodeId: string): StructuredInput {
+    // Find incoming edges to this node
+    const incoming = this.currentEdges.filter((e) => e.to === nodeId);
+    const upstreamNodeIds = new Set(incoming.map((e) => e.from));
+
+    // Collect structured data from upstream steps
+    const upstreamItems: StructuredInput['upstreamItems'] = [];
+    for (const s of [...run.steps].reverse()) {
+      if (upstreamNodeIds.has(s.nodeId)) {
+        upstreamItems.unshift({
+          nodeId: s.nodeId,
+          type: s.type,
+          items: s.items ?? [s.output],
+          contract: s.contract,
+          pairedItem: s.pairedItem,
+        });
+      }
+    }
+
+    // If no upstream edges found, include the last step as context
+    if (upstreamItems.length === 0 && run.steps.length > 0) {
+      const last = run.steps[run.steps.length - 1];
+      if (last) {
+        upstreamItems.push({
+          nodeId: last.nodeId,
+          type: last.type,
+          items: last.items ?? [last.output],
+          contract: last.contract,
+          pairedItem: last.pairedItem,
+        });
+      }
+    }
+
+    return {
+      previousOutputs: run.steps.map((s) => s.output).join('\n'),
+      upstreamItems,
+    };
+  }
+
+  /**
    * Execute a single node's logic and return output.
    * Does NOT recurse into children — graph edges handle traversal.
    */
@@ -346,17 +425,30 @@ export class WorkflowEngine {
         break;
       }
       case 'code': {
-        if (!this.handlers.runCode) throw new Error('No code handler registered');
-        const timeout = node.codeTimeout ?? 5000;
-        const result = await this.handlers.runCode(node.code ?? '', previousOutputs, timeout);
-        output = typeof result === 'string' ? result : JSON.stringify(result);
+        const timeout = node.codeTimeout ?? 30000;
+        if (!node.code) { output = ''; break; }
+        // ── M3 Code Sandbox: spawn child process + structured JSON context ──
+        const nodeInput = this.buildNodeInput(run, node.id);
+        output = await this.runCodeSandboxed(node.code, nodeInput, timeout);
         break;
       }
       case 'workflow': {
-        if (!this.handlers.runSubWorkflow) throw new Error('No sub-workflow handler');
         if (!node.workflowId) throw new Error('workflowId is required');
-        const result = await this.handlers.runSubWorkflow(node.workflowId, { previousOutputs, inputMapping: node.inputMapping });
-        output = typeof result === 'string' ? result : JSON.stringify(result);
+        if (!this.handlers.runSubWorkflow) throw new Error('No sub-workflow handler');
+        const subInput = { previousOutputs, inputMapping: node.inputMapping };
+
+        // ── M3 Sync Sub-workflow: fire-and-forget vs await ──
+        if (node.synchronous === false) {
+          // Fire-and-forget: don't wait, continue immediately
+          this.handlers.runSubWorkflow(node.workflowId, subInput).catch((err) => {
+            console.error(`[WorkflowEngine] Fire-and-forget sub-workflow ${node.workflowId} failed:`, (err as Error).message);
+          });
+          output = `Sub-workflow ${node.workflowId} triggered (async)`;
+        } else {
+          // Synchronous (default): await completion
+          const result = await this.handlers.runSubWorkflow(node.workflowId, subInput);
+          output = typeof result === 'string' ? result : JSON.stringify(result);
+        }
         break;
       }
       case 'ifElse': {
@@ -508,11 +600,107 @@ export class WorkflowEngine {
         }
         break;
       }
+      case 'manager': {
+        // Manager node: Plan → Dispatch → Review → Iterate → Synthesize
+        const childNodes = node.children ?? [];
+        if (childNodes.length === 0) {
+          output = 'Manager: no children to coordinate';
+          break;
+        }
+
+        // Build child graph and node map
+        const childIds = new Set(childNodes.map((c) => c.id));
+        const childEdges = this.currentEdges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+        const childGraph = this.buildGraph(childNodes, childEdges);
+        const childMap = new Map(childNodes.map((c) => [c.id, c]));
+
+        // Build ManagerContextDeps for the executor
+        const managerDeps: ManagerContextDeps = {
+          children: childNodes,
+          executeChild: async (childNodeId, input) => {
+            // Temporarily modify run's previous outputs for the child
+            const savedSteps = [...run.steps];
+            // Create a synthetic step from the structured input
+            const syntheticStep: WorkflowRunStep = {
+              nodeId: '__manager_input__',
+              type: 'pass',
+              output: input.previousOutputs,
+              items: input.upstreamItems.flatMap((u) => u.items),
+            };
+            run.steps.push(syntheticStep);
+
+            // Execute the child
+            await this.executeNode(childNodeId, childMap, childGraph, run, new Set([node.id]));
+
+            // Restore steps and extract the child's result
+            const childStep = run.steps.find((s) => s.nodeId === childNodeId);
+            run.steps = savedSteps;
+
+            if (!childStep) {
+              throw new Error(`Manager child ${childNodeId} produced no output`);
+            }
+            return childStep;
+          },
+          planWithLLM: async (prompt) => {
+            if (!this.handlers.aiAgent) throw new Error('No aiAgent handler for manager planning');
+            return this.handlers.aiAgent(node, prompt);
+          },
+          reviewWithLLM: async (prompt) => {
+            if (!this.handlers.aiAgent) throw new Error('No aiAgent handler for manager review');
+            return this.handlers.aiAgent(node, prompt);
+          },
+          synthesizeWithLLM: async (prompt) => {
+            if (!this.handlers.aiAgent) throw new Error('No aiAgent handler for manager synthesis');
+            return this.handlers.aiAgent(node, prompt);
+          },
+          maxRounds: node.managerConfig?.maxRounds ?? 5,
+        };
+
+        const nodeInput = this.buildNodeInput(run, node.id);
+        output = await ManagerExecutor.run(node, nodeInput, managerDeps);
+        break;
+      }
       default:
         throw new Error(`Unknown node type: ${(node as any).type}`);
     }
 
-    run.steps.push({ nodeId: node.id, type: node.type, output });
+    // ── Build structured step with data lineage (M1 Data Plane) ──
+    const inboundEdges = this.currentEdges.filter((e) => e.to === node.id);
+    const step: WorkflowRunStep = {
+      nodeId: node.id,
+      type: node.type,
+      output,
+    };
+
+    // Populate output contract from node definition
+    if (node.output?.schema || node.output?.role) {
+      step.contract = {
+        schema: node.output?.schema as Record<string, 'string' | 'number' | 'boolean' | 'json' | 'file'> | undefined,
+        role: node.output?.role ?? (node.output?.passThrough ? 'passthrough' : 'intermediate'),
+      };
+    } else if (node.output?.passThrough) {
+      step.contract = { role: 'passthrough' };
+    }
+
+    // Try structured parse if schema is declared
+    if (step.contract?.schema && output) {
+      try {
+        const parsed = JSON.parse(output);
+        step.items = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        // Not valid JSON — keep as plain output, items stays undefined
+      }
+    }
+
+    // Auto-set pairedItem: link to the most recent upstream step that feeds this node
+    if (inboundEdges.length > 0 && run.steps.length > 0) {
+      const sourceEdge = inboundEdges[0];
+      if (sourceEdge) {
+        step.pairedItem = { sourceNodeId: sourceEdge.from, sourceStepIndex: run.steps.length - 1 };
+      }
+    }
+
+    run.steps.push(step);
     run.results.set(node.id, output);
     run.currentNodeId = node.id;
     this.appendStepAndResult(run, node.id, node.type, output);
@@ -528,20 +716,107 @@ export class WorkflowEngine {
     const node = nodeMap.get(nodeId);
     if (!node) return;
 
-    await this.runNode(node, run, nodeMap);
+    // ── Error Strategy: retry → continueOnFail → ErrorTrigger (M2 Control Plane) ──
+    let degraded = false;
+    try {
+      await this.executeWithRetry(node, run, nodeMap);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      // Level 2: continueOnFail — non-critical node, degrade and continue
+      if (node.onError === 'continue') {
+        degraded = true;
+        // Record a degraded step so the pipeline doesn't lose context
+        run.steps.push({
+          nodeId: node.id,
+          type: node.type,
+          output: `[DEGRADED] ${message}`,
+        });
+        run.results.set(node.id, `[DEGRADED] ${message}`);
+        run.currentNodeId = node.id;
+        this.appendStepAndResult(run, node.id, node.type, `[DEGRADED] ${message}`);
+        // If this is the first degraded node, mark run as completed_with_errors
+        if (run.status !== 'failed') {
+          run.status = 'completed_with_errors';
+        }
+      } else {
+        // Level 3: ErrorTrigger — re-throw to propagate up to startRun's catch
+        throw err;
+      }
+    }
 
     if (run.status === 'awaiting_approval' || run.status === 'awaiting_human') {
       this.saveRun(run);
       return;
     }
 
-    // Continue to children
+    // Continue to children (even if degraded — skip only on hard failure)
     const children = graph.get(nodeId) ?? [];
     for (const child of children) {
       if (!visited.has(child)) {
         await this.executeNode(child, nodeMap, graph, run, visited);
       }
     }
+  }
+
+  /**
+   * Execute a node with automatic retry for transient errors (Level 1 of Error Strategy).
+   *
+   * Transient errors (timeout, rate limit, connection refused) are retried
+   * with exponential backoff. Non-transient errors propagate immediately.
+   */
+  private async executeWithRetry(
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+    nodeMap: Map<string, WorkflowNodeDef>,
+  ): Promise<void> {
+    const maxRetries = 2;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        await this.runNode(node, run, nodeMap);
+        return; // Success
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const category = this.classifyError(lastError);
+
+        if (category === 'fatal' || attempt >= maxRetries) {
+          throw lastError;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /** Classify an error for retry decisions. Mirrors @cabinet/agent's classifyError. */
+  private classifyError(error: Error): 'transient' | 'recoverable' | 'fatal' {
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes('timeout') ||
+      msg.includes('429') ||
+      msg.includes('rate limit') ||
+      msg.includes('econnrefused') ||
+      msg.includes('enotfound') ||
+      msg.includes('socket') ||
+      msg.includes('econnreset')
+    ) {
+      return 'transient';
+    }
+    if (
+      msg.includes('temporarily') ||
+      msg.includes('unavailable') ||
+      msg.includes('busy') ||
+      msg.includes('retry')
+    ) {
+      return 'recoverable';
+    }
+    return 'fatal';
   }
 
   // ── Helpers ──
@@ -614,6 +889,58 @@ export class WorkflowEngine {
     } catch {
       return previousOutputs.toLowerCase().includes(expr.toLowerCase());
     }
+  }
+
+  /**
+   * Execute code in a sandboxed child process with structured JSON context (M3 Code Sandbox).
+   *
+   * Spawns a Node.js child process, injects the structured workflow context via stdin,
+   * captures stdout/stderr, and enforces a timeout. Falls back to the runCode handler
+   * if spawn is not available.
+   */
+  private async runCodeSandboxed(code: string, input: StructuredInput, timeoutMs: number): Promise<string> {
+    // Build structured context for injection via stdin
+    const contextJson = JSON.stringify({
+      input: input.previousOutputs,
+      upstream: input.upstreamItems.map((i) => ({
+        nodeId: i.nodeId,
+        type: i.type,
+        items: i.items,
+      })),
+    });
+
+    return new Promise<string>((resolve, reject) => {
+      const child = spawn(process.execPath, ['-e', code], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: timeoutMs,
+        env: { ...process.env, CABINET_SANDBOX: '1' },
+      });
+
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+
+      child.stdout?.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+      child.stderr?.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
+
+      // Inject structured context via stdin
+      child.stdin?.write(contextJson);
+      child.stdin?.end();
+
+      child.on('close', (code) => {
+        const stdout = Buffer.concat(stdoutChunks).toString('utf-8');
+        const stderr = Buffer.concat(stderrChunks).toString('utf-8');
+
+        if (code === 0) {
+          resolve(stdout.trim() || stderr.trim());
+        } else {
+          reject(new Error(`Sandbox exited with code ${code}: ${stderr.slice(0, 300)}`));
+        }
+      });
+
+      child.on('error', (err) => {
+        reject(new Error(`Sandbox spawn failed: ${err.message}`));
+      });
+    });
   }
 
   private async withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {

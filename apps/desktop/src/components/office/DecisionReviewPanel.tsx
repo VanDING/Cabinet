@@ -53,6 +53,14 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  // ── Comments (M4 discussion threads) ──
+  const [comments, setComments] = useState<Array<{
+    id: string; author_name: string; content: string; created_at: string;
+    replies: Array<{ id: string; author_name: string; content: string; created_at: string }>;
+  }>>([]);
+  const [commentText, setCommentText] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -62,6 +70,10 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       apiFetch(`/api/decisions/${decisionId}/audit`, { headers: authHeaders() }).then((r) =>
         r.json(),
       ),
+      apiFetch(`/api/decisions/${decisionId}/comments`, { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((d) => setComments(d.comments ?? []))
+        .catch(() => {}),
     ])
       .then(([decisionData, auditData]) => {
         if (decisionData.decision) {
@@ -122,6 +134,39 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
     }
   };
 
+  // ── Comment handlers (M4) ──
+  const handleAddComment = async () => {
+    if (!commentText.trim()) return;
+    try {
+      const res = await apiFetch(`/api/decisions/${decisionId}/comments`, {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ content: commentText }),
+      });
+      const data = await res.json();
+      setComments((prev) => [...prev, { id: data.id, author_name: 'You', content: commentText, created_at: data.createdAt, replies: [] }]);
+      setCommentText('');
+      addToast('info', 'Comment added');
+    } catch { addToast('error', 'Failed to add comment'); }
+  };
+
+  const handleAddReply = async (parentId: string) => {
+    if (!replyText.trim()) return;
+    try {
+      const res = await apiFetch(`/api/decisions/${decisionId}/comments`, {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ content: replyText, parentCommentId: parentId }),
+      });
+      const data = await res.json();
+      setComments((prev) => prev.map((c) =>
+        c.id === parentId ? { ...c, replies: [...c.replies, { id: data.id, author_name: 'You', content: replyText, created_at: data.createdAt }] } : c
+      ));
+      setReplyText('');
+      setReplyTo(null);
+      addToast('info', 'Reply added');
+    } catch { addToast('error', 'Failed to add reply'); }
+  };
 
   const dimensionLabels = ['Risk', 'Cost', 'Time', 'Reversibility', 'Strategic Fit'];
   const dimIcons = ['⚠', '\u{1F4B5}', '⏱', '\u{1F504}', '\u{1F3AF}'];
@@ -337,6 +382,65 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
         </div>
 
         {/* Footer — Captain Actions (only for pending decisions) */}
+        {/* ── Discussion Thread (M4) ── */}
+        <div className="border-t border-border px-6 py-4">
+          <h3 className="mb-3 text-sm font-semibold text-content-primary">
+            Discussion ({comments.reduce((s, c) => s + 1 + c.replies.length, 0)})
+          </h3>
+          {comments.length === 0 && (
+            <p className="text-xs text-content-tertiary">No comments yet.</p>
+          )}
+          {comments.map((c) => (
+            <div key={c.id} className="mb-3 rounded border border-border bg-surface-muted p-3">
+              <div className="mb-1 flex items-center gap-2 text-xs text-content-tertiary">
+                <span className="font-medium text-content-secondary">{c.author_name}</span>
+                <span>{new Date(c.created_at).toLocaleString()}</span>
+              </div>
+              <p className="mb-2 text-sm text-content-primary">{c.content}</p>
+              {replyTo === c.id ? (
+                <div className="ml-4 flex gap-2">
+                  <input
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply..."
+                    className="flex-1 rounded-sm border border-border bg-surface-primary px-2 py-1 text-xs text-content-primary"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddReply(c.id)}
+                  />
+                  <button onClick={() => handleAddReply(c.id)} className="rounded bg-accent px-2 py-1 text-xs text-content-inverse">Reply</button>
+                  <button onClick={() => { setReplyTo(null); setReplyText(''); }} className="rounded bg-surface-muted px-2 py-1 text-xs text-content-tertiary">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setReplyTo(c.id)} className="text-xs text-accent hover:underline">Reply</button>
+              )}
+              {c.replies.map((r) => (
+                <div key={r.id} className="ml-4 mt-2 border-l-2 border-accent-muted pl-3">
+                  <div className="mb-1 flex items-center gap-2 text-xs text-content-tertiary">
+                    <span className="font-medium text-content-secondary">{r.author_name}</span>
+                    <span>{new Date(r.created_at).toLocaleString()}</span>
+                  </div>
+                  <p className="text-sm text-content-primary">{r.content}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <input
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Add a comment..."
+              className="flex-1 rounded-sm border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+            />
+            <button
+              onClick={handleAddComment}
+              disabled={!commentText.trim()}
+              className="rounded bg-accent px-3 py-1.5 text-sm text-content-inverse disabled:opacity-50"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+
         {decision.status === 'pending' && (
           <div className="sticky bottom-0 space-y-3 border-t border-border bg-surface-primary px-6 py-4">
             {/* Reason (optional) */}

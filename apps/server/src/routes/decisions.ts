@@ -199,3 +199,61 @@ decisionsRouter.get('/:id/audit', (c) => {
       : null,
   });
 });
+
+// ── Decision Comments (M4 discussion threads) ──────────────────
+
+// GET /api/decisions/:id/comments — list threaded comments
+decisionsRouter.get('/:id/comments', (c) => {
+  const { decisionCommentRepo } = getServerContext();
+  const decisionId = c.req.param('id');
+  try {
+    const threaded = decisionCommentRepo.getThreadedComments(decisionId);
+    return c.json({ comments: threaded, total: threaded.length });
+  } catch (err) {
+    return c.json({ error: 'Failed to load comments' }, 500);
+  }
+});
+
+// POST /api/decisions/:id/comments — add a comment
+const commentSchema = z.object({
+  content: z.string().min(1),
+  authorId: z.string().optional(),
+  authorName: z.string().optional(),
+  parentCommentId: z.string().optional(),
+});
+
+decisionsRouter.post('/:id/comments', async (c) => {
+  const { decisionCommentRepo } = getServerContext();
+  const decisionId = c.req.param('id');
+  const body = await c.req.json();
+  const parsed = commentSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error }, 400);
+
+  try {
+    const id = decisionCommentRepo.addComment({
+      decisionId,
+      content: parsed.data.content,
+      authorId: parsed.data.authorId,
+      authorName: parsed.data.authorName,
+      parentCommentId: parsed.data.parentCommentId,
+    });
+    broadcast('decision_comment_added', { decisionId, commentId: id });
+    return c.json({ id, decisionId, createdAt: new Date().toISOString() }, 201);
+  } catch (err) {
+    return c.json({ error: 'Failed to add comment' }, 500);
+  }
+});
+
+// DELETE /api/decisions/:id/comments/:commentId — delete a comment
+decisionsRouter.delete('/:id/comments/:commentId', (c) => {
+  const { decisionCommentRepo } = getServerContext();
+  const commentId = c.req.param('commentId');
+  try {
+    const deleted = decisionCommentRepo.deleteComment(commentId);
+    if (!deleted) return c.json({ error: 'Comment not found' }, 404);
+    broadcast('decision_comment_deleted', { commentId });
+    return c.json({ deleted: true });
+  } catch (err) {
+    return c.json({ error: 'Failed to delete comment' }, 500);
+  }
+});

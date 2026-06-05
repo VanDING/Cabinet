@@ -215,8 +215,8 @@ export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown
     case 'heartbeat': {
       const daemonId = (msg.daemon_id as string) ?? (ws as AugmentedWebSocket)._daemonId;
       if (daemonId) {
-        // Heartbeat received — daemon is alive
-        // Could update agent_daemon_heartbeats table here if needed
+        // Forward heartbeat to frontend for real-time agent status
+        broadcast('agent_heartbeat', msg as Record<string, unknown>);
       }
       return true;
     }

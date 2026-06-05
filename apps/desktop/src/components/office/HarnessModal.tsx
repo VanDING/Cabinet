@@ -43,7 +43,7 @@ export function HarnessModal({ onClose }: Props) {
           </section>
           {chartData.length > 0 && (
             <section><h4 className="mb-2 text-xs font-medium text-content-secondary">7-Day Trend</h4>
-              <div style={{ height: 200 }}><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 4, left: 0, right: 0, bottom: 0 }}>
+              <div style={{ width: '100%', height: 200, minWidth: 1 }}><ResponsiveContainer width="100%" height="100%" minWidth={0}><BarChart data={chartData} margin={{ top: 4, left: 0, right: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} width={36} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6 }} />

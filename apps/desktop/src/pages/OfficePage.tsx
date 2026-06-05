@@ -27,6 +27,7 @@ import { WeatherForecastModal } from '../components/office/WeatherForecastModal'
 import { DeliverablesModal } from '../components/office/DeliverablesModal';
 import { InsightsWidget } from '../components/office/InsightsWidget';
 import { TelemetryWidget } from '../components/office/TelemetryWidget';
+import { AgentMonitor } from '../components/office/AgentMonitor';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { InsightsModal } from '../components/office/InsightsModal';
 import { HarnessWidget } from '../components/office/HarnessWidget';
@@ -53,7 +54,8 @@ type WidgetType =
   | 'insights'
   | 'harness'
   | 'telemetry-dashboard'
-  | 'activity-feed';
+  | 'activity-feed'
+  | 'agent-monitor';
 
 interface WidgetDef {
   type: WidgetType;
@@ -82,6 +84,7 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'harness', label: 'Harness', w: 8, h: 5, available: true },
   { type: 'telemetry-dashboard', label: 'Telemetry', w: 12, h: 8, available: true },
   { type: 'activity-feed', label: 'Activity Feed', w: 8, h: 6, available: true },
+  { type: 'agent-monitor', label: 'Agent Monitor', w: 24, h: 12, available: true },
 ];
 
 const DEFAULT_LAYOUT = [
@@ -305,6 +308,8 @@ export function OfficePage() {
         return <TelemetryWidget />;
       case 'activity-feed':
         return <ActivityFeed />;
+      case 'agent-monitor':
+        return <AgentMonitor />;
       case 'calendar':
         return <Calendar />;
       case 'clock':

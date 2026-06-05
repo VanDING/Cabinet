@@ -11,6 +11,7 @@ import WebSocket from 'ws';
 import {
   AgentTaskQueueRepository,
   AgentDaemonRepository,
+  AgentRoleRepository,
 } from '@cabinet/storage';
 import { AgentDaemon, WSDaemonClient } from '@cabinet/agent';
 import type { AgentRoleRegistry, WSCtor } from '@cabinet/agent';
@@ -67,6 +68,10 @@ export function createDaemonContext(
 
   // Wire squad router for team-based task routing
   daemon.setSquadRouter(db);
+
+  // Wire agent role repo so discovered agents persist to DB
+  const agentRoleRepo = new AgentRoleRepository(db);
+  daemon.setAgentRoleRepo(agentRoleRepo);
 
   // When WS connects, suspend polling
   wsClient.onConnected = () => {

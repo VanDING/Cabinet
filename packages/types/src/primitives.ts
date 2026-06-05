@@ -120,8 +120,8 @@ export type WorkflowNodeType =
   // Flow control (7)
   | 'start' | 'end'
   | 'ifElse' | 'loop' | 'parallel' | 'merge' | 'pass'
-  // Container (1)
-  | 'agentGroup'
+  // Container (2)
+  | 'agentGroup' | 'manager'
   // Execution (5)
   | 'llm' | 'skill' | 'tool' | 'code' | 'workflow'
   // AI (2)
@@ -177,6 +177,8 @@ export interface WorkflowNodeDef {
 
   // ── Workflow ref ──
   workflowId?: string;
+  /** When true, await sub-workflow completion. When false (default), fire-and-forget. */
+  synchronous?: boolean;
 
   // ── If-else config ──
   branches?: Array<{
@@ -228,9 +230,32 @@ export interface WorkflowNodeDef {
 
   // ── Generic I/O ──
   input?: { source: 'previous' | 'named' | 'none'; mapping?: Record<string, string> };
-  output?: { schema?: Record<string, string>; passThrough?: boolean };
+  output?: {
+    schema?: Record<string, string>;
+    passThrough?: boolean;
+    /** Role of this node's output in data lineage. */
+    role?: 'intermediate' | 'final' | 'passthrough';
+  };
   /** Variable name for referencing this node's output */
   outputAs?: string;
+
+  // ── Error handling ──
+  /** What to do when this node fails after retries are exhausted. */
+  onError?: 'stop' | 'continue';
+  /** Workflow ID to trigger as error recovery when this node causes the run to fail. */
+  errorTriggerWorkflowId?: string;
+
+  // ── Manager config ──
+  managerConfig?: {
+    /** Maximum planning→dispatch→review rounds. */
+    maxRounds?: number;
+    /** Instructions for the manager's planning phase. */
+    planningPrompt?: string;
+    /** Instructions for the review/evaluation phase. */
+    reviewPrompt?: string;
+    /** Whether the manager can delegate to a Squad for team routing. */
+    squadDelegation?: boolean;
+  };
 
   // Extra
   data?: Record<string, unknown>;
@@ -333,6 +358,50 @@ export interface WorkflowCapabilities {
   evaluation?: boolean;
 }
 
+// ── Structured Data Flow (M1 Data Plane) ─────────────────────────
+
+/** A node's declaration of what it produces and its role in the data pipeline. */
+export interface NodeOutputContract {
+  /** Field name → expected type. */
+  schema?: Record<string, 'string' | 'number' | 'boolean' | 'json' | 'file'>;
+  /** Role in data lineage: intermediate (feeds children), final (end result), passthrough (no change). */
+  role?: 'intermediate' | 'final' | 'passthrough';
+}
+
+/** A single step record within a WorkflowRun — extends the legacy {output} shape. */
+export interface WorkflowRunStep {
+  nodeId: string;
+  type: WorkflowNodeType;
+  /** Plain-text output (always populated, backward compatible). */
+  output: string;
+  /** Structured data items parsed according to the node's output contract. */
+  items?: unknown[];
+  /** Data lineage: which upstream node+step produced the input for this step. */
+  pairedItem?: {
+    sourceNodeId: string;
+    sourceStepIndex: number;
+  };
+  /** The output contract that was active when this step executed. */
+  contract?: NodeOutputContract;
+}
+
+/**
+ * Structured input passed to a node at execution time.
+ * Replaces simple string concatenation with typed, traceable upstream data.
+ */
+export interface StructuredInput {
+  /** Full concatenated previous outputs (backward compatible). */
+  previousOutputs: string;
+  /** Structured history from upstream nodes that feed into this node. */
+  upstreamItems: {
+    nodeId: string;
+    type: WorkflowNodeType;
+    items: unknown[];
+    contract?: NodeOutputContract;
+    pairedItem?: { sourceNodeId: string; sourceStepIndex: number };
+  }[];
+}
+
 export interface WorkflowDefinition {
   name: string;
   description?: string;
@@ -422,6 +491,7 @@ export interface DaemonStatus {
   completedTaskCount: number;
   failedTaskCount: number;
   agents: DaemonAgentInfo[];
+  orphanPorts?: number[];
 }
 
 export interface DaemonAgentInfo {
@@ -431,6 +501,10 @@ export interface DaemonAgentInfo {
   status: 'online' | 'offline';
   activeTaskCount: number;
   lastHeartbeatAt: string | null;
+  cpuPercent?: number;
+  memoryMb?: number;
+  openPorts?: number[];
+  pid?: number;
 }
 
 export interface ClaimResult {

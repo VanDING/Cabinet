@@ -39,8 +39,8 @@ export function CostChart() {
           </div>
           <div className="flex flex-1 flex-col gap-2 overflow-hidden">
             <div className="flex-1"><div className="mb-0.5 text-[10px] text-content-tertiary">Cost (7-day)</div>
-              <div style={{ height: 'calc(100% - 12px)', minHeight: 120 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div style={{ width: '100%', height: 'calc(100% - 12px)', minWidth: 1, minHeight: 120 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
                     <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} interval={0} />
                     <YAxis tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v}`} width={32} />
@@ -51,8 +51,8 @@ export function CostChart() {
               </div>
             </div>
             <div className="flex-1"><div className="mb-0.5 text-[10px] text-content-tertiary">Tokens (7-day)</div>
-              <div style={{ height: 'calc(100% - 12px)', minHeight: 120 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div style={{ width: '100%', height: 'calc(100% - 12px)', minWidth: 1, minHeight: 120 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 2, left: 0, right: 0, bottom: 0 }}>
                     <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} interval={0} />
                     <YAxis tick={{ fontSize: 9, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v))} width={32} />

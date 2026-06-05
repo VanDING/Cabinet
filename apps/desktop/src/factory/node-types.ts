@@ -7,7 +7,7 @@ export type CanvasNodeType = WorkflowNodeType;
 export const CANVAS_NODE_TYPES: CanvasNodeType[] = [
   'start', 'end',
   'ifElse', 'loop', 'parallel', 'merge', 'pass',
-  'agentGroup',
+  'agentGroup', 'manager',
   'llm', 'skill', 'tool', 'code', 'workflow',
   'intentClassify', 'knowledgeBase',
   'approval', 'human',
@@ -77,6 +77,7 @@ export const NODE_COLORS: Record<CanvasNodeType, string> = {
   approval: 'bg-intent-danger-muted border-intent-danger',
   human: 'bg-intent-danger-muted border-intent-danger',
   externalAgent: 'bg-accent-muted/20 border-accent-dashed',
+  manager: 'bg-accent-muted/30 border-accent',
 };
 
 export const NODE_LABELS: Record<CanvasNodeType, string> = {
@@ -84,6 +85,7 @@ export const NODE_LABELS: Record<CanvasNodeType, string> = {
   ifElse: 'If-Else', loop: 'Loop', parallel: 'Parallel',
   merge: 'Merge', pass: 'Pass',
   agentGroup: 'Agent Group',
+  manager: 'Manager',
   llm: 'LLM', skill: 'Skill', tool: 'Tool',
   code: 'Code', workflow: 'Workflow',
   intentClassify: 'Intent', knowledgeBase: 'KB',

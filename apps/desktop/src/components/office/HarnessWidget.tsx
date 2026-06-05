@@ -36,8 +36,8 @@ export function HarnessWidget({ onExpand }: Props) {
             <div className="rounded-sm bg-surface-muted p-1.5"><div className="text-sm font-bold text-content-primary">{data.today.sessions}</div><div className="text-[10px] text-content-tertiary">Sessions</div></div>
           </div>
           {chartData.length > 0 && (
-            <div style={{ height: 70 }}><div className="mb-0.5 text-[10px] text-content-tertiary">7-day tool pass rate</div>
-              <ResponsiveContainer width="100%" height="90%"><BarChart data={chartData} margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+            <div style={{ width: '100%', height: 70, minWidth: 1 }}><div className="mb-0.5 text-[10px] text-content-tertiary">7-day tool pass rate</div>
+              <ResponsiveContainer width="100%" height="90%" minWidth={0} minHeight={0}><BarChart data={chartData} margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tick={{ fontSize: 8, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} interval={0} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} width={24} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6 }} formatter={(v) => [`${Number(v)}%`, 'Pass Rate']} />

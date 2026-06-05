@@ -37,7 +37,7 @@ export function CostOverviewModal({ onClose }: Props) {
             <div><span className="text-2xl font-bold text-accent">{formatTokens(tokenSubtotal)}</span><span className="ml-2 text-sm text-content-tertiary">Tokens</span></div>
           </div>
           <div className="mb-6"><h4 className="mb-2 text-xs font-medium text-content-secondary">Cost Analysis (7-day)</h4>
-            <div style={{ height: 180 }}><ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 180, minWidth: 1 }}><ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={chartData} margin={{ top: 4, left: 0, right: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v}`} width={40} />
@@ -47,7 +47,7 @@ export function CostOverviewModal({ onClose }: Props) {
             </ResponsiveContainer></div>
           </div>
           <div><h4 className="mb-2 text-xs font-medium text-content-secondary">Token Analysis (7-day)</h4>
-            <div style={{ height: 180 }}><ResponsiveContainer width="100%" height="100%">
+            <div style={{ width: '100%', height: 180, minWidth: 1 }}><ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={chartData} margin={{ top: 4, left: 0, right: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--content-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v))} width={40} />
