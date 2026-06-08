@@ -5,9 +5,18 @@ export {
   type ToolDescriptor,
   type ToolCallCallback,
 } from './tool-executor.js';
-export { SafetyChecker, type SafetyCheck, type SafetyTier, type SafetyCheckOptions } from './safety.js';
+export {
+  SafetyChecker,
+  type SafetyCheck,
+  type SafetyTier,
+  type SafetyCheckOptions,
+} from './safety.js';
 export { classifyError, withRetry, type ErrorCategory, type RetryConfig } from './retry.js';
-export { CheckpointManager, type CheckpointState } from './checkpoint.js';
+export {
+  CheckpointManager,
+  type CheckpointState,
+  type CheckpointRecoveryResult,
+} from './checkpoint.js';
 export {
   ContextBuilder,
   type MemoryProvider,
@@ -49,6 +58,14 @@ export {
   type PipelineStep,
 } from './dispatcher.js';
 export {
+  compileDispatchGraph,
+  executeDispatchGraph,
+  type DispatchGraphOptions,
+  type DispatchGraphResult,
+  type AgentStepFn,
+  type SynthesizeFn,
+} from './dispatch-graph.js';
+export {
   AgentLoop,
   type AgentLoopOptions,
   type AgentResult,
@@ -57,11 +74,7 @@ export {
   type StreamingCallback,
   type TrustLevel,
 } from './agent-loop.js';
-export {
-  ToolPruner,
-  type ToolPrunerOptions,
-  type PrunedToolSet,
-} from './tool-pruner.js';
+export { ToolPruner, type ToolPrunerOptions, type PrunedToolSet } from './tool-pruner.js';
 export {
   type InteractiveSubAgent,
   type InitContext,
@@ -162,11 +175,7 @@ export {
 } from './daemon/index.js';
 
 // Autopilot (cron/webhook/manual triggers)
-export {
-  TriggerScheduler,
-  type CronAdapter,
-  TriggerExecutor,
-} from './daemon/autopilot/index.js';
+export { TriggerScheduler, type CronAdapter, TriggerExecutor } from './daemon/autopilot/index.js';
 
 // Squad (team routing)
 export {

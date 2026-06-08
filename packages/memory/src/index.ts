@@ -1,6 +1,3 @@
-// ── Interfaces (type-only) ──
-export type { MemoryOrchestrator, MemoryWriteOptions, MemoryQuery } from './orchestrator.js';
-
 // ── Short-term memory ──
 export { ShortTermMemory } from './short-term.js';
 export type { ShortTermEntry } from './short-term.js';

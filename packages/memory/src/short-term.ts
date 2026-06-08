@@ -29,7 +29,11 @@ export class ShortTermMemory {
 
   private notifyExpire(sessionId: string, key: string, value: unknown): void {
     for (const fn of this.expireListeners) {
-      try { fn(sessionId, key, value); } catch { /* best-effort */ }
+      try {
+        fn(sessionId, key, value);
+      } catch {
+        /* best-effort */
+      }
     }
   }
 
@@ -148,6 +152,42 @@ export class ShortTermMemory {
         if (!(row.key in result)) {
           if (now - new Date(row.timestamp).getTime() <= (row.ttl ?? this.defaultTtl)) {
             result[row.key] = JSON.parse(row.value ?? 'null');
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /** Return entries older than cutoffMs for a session (public API for consolidation). */
+  getEntriesOlderThan(sessionId: string, cutoffMs: number): ShortTermEntry[] {
+    const result: ShortTermEntry[] = [];
+    const cutoff = Date.now() - cutoffMs;
+
+    for (const entry of this.cache.values()) {
+      if (entry.sessionId === sessionId && entry.timestamp.getTime() <= cutoff) {
+        result.push(entry);
+      }
+    }
+
+    // Load from DB for this session
+    if (this.repo) {
+      const rows = this.repo.findBySession(sessionId);
+      for (const row of rows) {
+        const ts = new Date(row.timestamp).getTime();
+        if (ts <= cutoff) {
+          const alreadyInCache = [...this.cache.values()].some(
+            (e) => e.sessionId === sessionId && e.key === row.key,
+          );
+          if (!alreadyInCache) {
+            result.push({
+              key: row.key,
+              value: JSON.parse(row.value ?? 'null'),
+              sessionId,
+              timestamp: new Date(ts),
+              ttl: row.ttl ?? this.defaultTtl,
+            });
           }
         }
       }

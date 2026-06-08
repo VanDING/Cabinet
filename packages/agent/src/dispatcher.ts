@@ -24,14 +24,9 @@ import { AgentLoop, type AgentLoopOptions, type AgentResult } from './agent-loop
 import { SafetyChecker } from './safety.js';
 import { CheckpointManager } from './checkpoint.js';
 import type { Database } from '@cabinet/storage';
+import { executeDispatchGraph } from './dispatch-graph.js';
 
-import type {
-  DispatchMode,
-  PipelineStep,
-  AgentOutput,
-  PipelineContext,
-  PipelineStepContext,
-} from '@cabinet/types';
+import type { DispatchMode, PipelineStep, AgentOutput } from '@cabinet/types';
 import type { RateLimitTracker } from '@cabinet/gateway';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -150,101 +145,11 @@ export class AgentDispatcher {
 
   /** Dispatch a request in the specified mode. */
   async dispatch(options: DispatchOptions): Promise<DispatchResult> {
-    switch (options.mode) {
-      case 'pipeline':
-        return this.runPipeline(options);
-      case 'parallel':
-        return this.runParallel(options);
-      case 'single':
-        return this.runSingle(options);
-      default:
-        return this.runSingle(options);
-    }
-  }
+    const synthesizer = new ResultSynthesizer();
 
-  // ── Pipeline Mode ────────────────────────────────────────
-
-  private async runPipeline(options: DispatchOptions): Promise<DispatchResult> {
-    const startTime = Date.now();
-    const steps: PipelineStep[] = [];
-    let totalSteps = 0;
-    const roleTypes = options.roles ?? ['secretary'];
-
-    const pipelineContext: PipelineContext = {
-      originalRequest: options.request,
-      steps: [],
-    };
-
-    for (const roleType of roleTypes) {
-      const input = this.serializePipelineContext(pipelineContext);
-      const step = await this.runAgentStep(roleType, input, options);
-      steps.push(step);
-      totalSteps += step.steps;
-
-      if (step.status === 'failed') {
-        return {
-          mode: 'pipeline',
-          steps,
-          finalOutput: `${roleType} failed: ${step.error}`,
-          totalSteps,
-          totalDurationMs: Date.now() - startTime,
-        };
-      }
-
-      // Accumulate structured context for the next step
-      pipelineContext.steps.push({
-        role: roleType,
-        summary: step.structuredOutput?.summary ?? step.output?.slice(0, 500) ?? '',
-        findings: step.structuredOutput?.findings ?? [],
-        decisions: step.structuredOutput?.decisions ?? [],
-      });
-    }
-
-    const final = steps[steps.length - 1];
-    return {
-      mode: 'pipeline',
-      steps,
-      finalOutput: final?.output ?? 'No output produced.',
-      totalSteps,
-      totalDurationMs: Date.now() - startTime,
-      structuredOutput: final?.structuredOutput,
-    };
-  }
-
-  private serializePipelineContext(ctx: PipelineContext): string {
-    const parts: string[] = [];
-    parts.push(`Original request: ${ctx.originalRequest}`);
-    if (ctx.steps.length > 0) {
-      parts.push('\n## Previous steps');
-      for (const step of ctx.steps) {
-        parts.push(`\n### ${step.role}`);
-        parts.push(`Summary: ${step.summary}`);
-        if (step.findings.length > 0) {
-          parts.push('Findings:');
-          for (const f of step.findings) {
-            parts.push(`- [${f.type}${f.severity ? `/${f.severity}` : ''}] ${f.detail}`);
-          }
-        }
-        if (step.decisions.length > 0) {
-          parts.push('Decisions:');
-          for (const d of step.decisions) {
-            parts.push(`- ${d.decision}`);
-          }
-        }
-      }
-    }
-    return parts.join('\n');
-  }
-
-  // ── Parallel Mode ─────────────────────────────────────────
-
-  private async runParallel(options: DispatchOptions): Promise<DispatchResult> {
-    const startTime = Date.now();
-    const roleTypes = options.roles ?? ['secretary'];
-
-    // Dynamic concurrency based on rate limit tracker
+    // Compute concurrency limit for parallel mode
     let maxConcurrency = 3;
-    if (this.rateLimitTracker) {
+    if (this.rateLimitTracker && options.mode === 'parallel') {
       const provider = this.inferProviderFromModel(options.roles?.[0] ?? 'secretary');
       const remaining = this.rateLimitTracker.getRemaining(provider);
       if (remaining !== Infinity) {
@@ -253,66 +158,14 @@ export class AgentDispatcher {
       }
     }
 
-    const steps: PipelineStep[] = [];
-    for (let i = 0; i < roleTypes.length; i += maxConcurrency) {
-      const batch = roleTypes.slice(i, i + maxConcurrency);
-      const batchSteps = await Promise.all(
-        batch.map((role) => this.runAgentStep(role, options.request, options)),
-      );
-      steps.push(...batchSteps);
-    }
-    const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
-
-    const structuredOutputs = steps.map((s) => s.structuredOutput).filter(Boolean) as AgentOutput[];
-
-    let finalOutput: string;
-    let synthesized: AgentOutput | undefined;
-    if (structuredOutputs.length > 0) {
-      const synthesizer = new ResultSynthesizer();
-      synthesized = synthesizer.synthesize(structuredOutputs);
-      finalOutput = [
-        ...steps.map((s) => `[${s.role}] ${s.output}`),
-        '',
-        '--- Synthesized ---',
-        synthesized.summary,
-        ...(synthesized.findings.length > 0
-          ? ['\nFindings:', ...synthesized.findings.map((f) => `- [${f.type}] ${f.detail}`)]
-          : []),
-      ].join('\n');
-    } else {
-      finalOutput =
-        steps
-          .filter((s) => s.status === 'completed')
-          .map((s) => `[${s.role}] ${s.output}`)
-          .join('\n\n---\n\n') || 'No outputs produced.';
-    }
-
-    return {
-      mode: 'parallel',
-      steps,
-      finalOutput,
-      totalSteps,
-      totalDurationMs: Date.now() - startTime,
-      structuredOutput: synthesized,
-    };
-  }
-
-  // ── Single Mode ───────────────────────────────────────────
-
-  private async runSingle(options: DispatchOptions): Promise<DispatchResult> {
-    const startTime = Date.now();
-    const role = options.roles?.[0] ?? 'secretary';
-
-    const step = await this.runAgentStep(role, options.request, options);
-
-    return {
-      mode: 'single',
-      steps: [step],
-      finalOutput: step.output ?? step.error ?? 'No output.',
-      totalSteps: step.steps,
-      totalDurationMs: Date.now() - startTime,
-      structuredOutput: step.structuredOutput,
-    };
+    return executeDispatchGraph({
+      mode: options.mode,
+      roles: options.roles ?? ['secretary'],
+      request: options.request,
+      agentStep: (role, input) => this.runAgentStep(role, input, options),
+      synthesize: (outputs) => synthesizer.synthesize(outputs),
+      maxConcurrency,
+    });
   }
 
   /** Infer a provider name from the first role's model configuration. */

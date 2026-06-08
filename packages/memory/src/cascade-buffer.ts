@@ -109,7 +109,29 @@ export class CascadeBuffer {
   }
 
   private defaultSummarizer(entries: CascadeEntry[]): string {
-    const lines = entries.map((e) => `[${e.sourceKey}]: ${e.content}`);
-    return `[Cascade Summary] ${entries.length} entries:\n${lines.join('\n')}`;
+    // Deduplicate: keep only the latest entry for each unique content hash
+    const seen = new Map<string, CascadeEntry>();
+    for (const e of entries) {
+      const hash = `${e.sourceKey}:${e.content}`;
+      const existing = seen.get(hash);
+      if (!existing || e.timestamp.getTime() > existing.timestamp.getTime()) {
+        seen.set(hash, e);
+      }
+    }
+    const uniqueEntries = [...seen.values()];
+
+    // Sort by importance: entries from keys with more occurrences first
+    const sourceCounts = new Map<string, number>();
+    for (const e of uniqueEntries) {
+      sourceCounts.set(e.sourceKey, (sourceCounts.get(e.sourceKey) ?? 0) + 1);
+    }
+    uniqueEntries.sort((a, b) => {
+      const countDiff = (sourceCounts.get(b.sourceKey) ?? 0) - (sourceCounts.get(a.sourceKey) ?? 0);
+      if (countDiff !== 0) return countDiff;
+      return b.timestamp.getTime() - a.timestamp.getTime();
+    });
+
+    const lines = uniqueEntries.map((e) => `[${e.sourceKey}]: ${e.content}`);
+    return `[Cascade Summary] ${uniqueEntries.length} unique entries (${entries.length} total):\n${lines.join('\n')}`;
   }
 }
