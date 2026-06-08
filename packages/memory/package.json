@@ -13,6 +13,7 @@
   "dependencies": {
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",
+    "compromise": "^14.15.1",
     "hnswlib-node": "^3.0.0"
   },
   "devDependencies": {
