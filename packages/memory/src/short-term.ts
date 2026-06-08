@@ -130,11 +130,6 @@ export class ShortTermMemory {
     return [...new Set([...this.cache.values()].map((e) => e.sessionId))];
   }
 
-  /** Expose session IDs for server-level iteration (used by consolidation timer). */
-  get _store(): Map<string, ShortTermEntry> {
-    return this.cache;
-  }
-
   getAll(sessionId: string): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     const now = Date.now();

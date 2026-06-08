@@ -798,7 +798,10 @@ export class AgentLoop {
     // 5. Stream end
     await pipeline.notify('onStreamEnd', ctx);
 
-    // 6. Session report
+    // 6. Persist conversation history for multi-turn continuity
+    this.conversationHistory = [...ctx.messages];
+
+    // 7. Session report
     this._reportSessionFromContext(ctx);
 
     yield {
@@ -913,6 +916,7 @@ export class AgentLoop {
       currentStepToolCalls: [],
       handoff: this.sessionHandoff,
       finalContent: '',
+      startTime: Date.now(),
     };
   }
 
@@ -928,7 +932,7 @@ export class AgentLoop {
       contextZones: ctx.zoneCounts,
       contextHandoffs: ctx.handoffCount,
       errors: ctx.errorCounts,
-      durationMs: Date.now() - Date.now(), // placeholder — caller should track
+      durationMs: Date.now() - ctx.startTime,
       success:
         !ctx.finalContent.startsWith('Agent stopped') &&
         !ctx.finalContent.startsWith('Agent loop failed'),

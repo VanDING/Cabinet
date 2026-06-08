@@ -27,11 +27,11 @@ export class CheckpointManager {
   }
 
   load(sessionId: string): CheckpointState | null {
-    const result = this.loadWithRecovery(sessionId);
+    const result = this.loadWithDegradation(sessionId);
     return result.state;
   }
 
-  loadWithRecovery(sessionId: string): CheckpointRecoveryResult {
+  loadWithDegradation(sessionId: string): CheckpointRecoveryResult {
     // Level 1: Full state recovery
     const fullState = this.tryLoadFull(sessionId);
     if (fullState) {

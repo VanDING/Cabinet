@@ -57,6 +57,9 @@ export interface AgentExecutionContext {
 
   // Final output
   finalContent: string;
+
+  // Session timing
+  startTime: number;
 }
 
 /** Observer interface — each observer hooks into specific lifecycle events. */
