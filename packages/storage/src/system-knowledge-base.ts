@@ -113,9 +113,6 @@ create_project, list_projects, set_project_context, get_project_context, update_
 ### 调度（3 个）
 schedule_task, list_scheduled_tasks, cancel_scheduled_task
 
-### 会议（1 个）
-start_meeting
-
 ### 系统操作（6 个）
 read_clipboard, write_clipboard, send_notification, start_process, kill_process, show_open_dialog
 
@@ -542,32 +539,6 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
 - 当用户说"创建一个 Agent"时，引导其使用 register_agent 工具或 use_skill__agentCreator 技能
 - 自定义 Agent 会出现在 Secretary 的路由表中，用户可以使用 invoke_agent 调度
 - 当用户说"创建一个员工/团队成员"时，引导其使用 create_employee 工具或在 EmployeesPage 操作`,
-  },
-  {
-    id: 'meeting_system',
-    topic: '多 Agent 会议协作',
-    category: 'capability',
-    version: 1,
-    content: `## 多 Agent 协作（会议系统）
-
-### start_meeting 工具
-参数：topic（必填），advisors?（参与者列表），projectId?，brief?
-返回：{ meetingId, topic, synthesis, advisorCount }
-
-### 工作方式
-1. Secretary 作为协调者，并行调度多个 Agent 分析主题
-2. 指定的 Agent（内置或外部）各自独立分析并输出观点到 Context Slot
-3. Secretary 综合所有视角生成 synthesis（共识/分歧/推荐行动）
-4. 参与者可以包括外部 Agent（如 claude-code、cursor）和自定义 Agent
-
-### 使用场景
-- 需要多角度分析的重大决策
-- 复杂问题的分专业视角拆解
-- 分歧调解与共识合成
-
-### 与其他机制的区别
-- start_meeting vs invoke_agent：meeting 是多方同时就同一主题发表意见，invoke_agent 是一对一委派任务
-- start_meeting vs workflow：meeting 是即时的多视角讨论，workflow 是预定义的自动化流程`,
   },
   {
     id: 'communication_tools',

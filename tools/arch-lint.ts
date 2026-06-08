@@ -25,12 +25,7 @@ const APPS_DIR = join(ROOT, 'apps');
 const LAYERS: Record<number, string[]> = {
   1: ['@cabinet/types', '@cabinet/events', '@cabinet/storage'],
   2: ['@cabinet/gateway', '@cabinet/agent', '@cabinet/memory'],
-  3: [
-    '@cabinet/decision',
-    '@cabinet/secretary',
-    '@cabinet/workflow',
-    '@cabinet/harness',
-  ],
+  3: ['@cabinet/decision', '@cabinet/secretary', '@cabinet/workflow', '@cabinet/harness'],
   4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop'],
 };
 

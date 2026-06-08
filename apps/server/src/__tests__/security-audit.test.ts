@@ -65,7 +65,7 @@ describe('Security Audit', () => {
 
   it('safety checker: cost tools blocked at CaptainReview tier', () => {
     const safety = new SafetyChecker(DelegationTier.CaptainReview);
-    const result = safety.check('start_meeting', {});
+    const result = safety.check('run_workflow', {});
     expect(result.allowed).toBe(false);
     expect(result.tier).toBe('delegation_block');
   });

@@ -46,21 +46,21 @@ export function Deliverables({ projectId, onExpand }: Props) {
   const sub = 'text-content-tertiary';
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
+    <div className="border-border bg-surface-primary flex h-full flex-col rounded-lg border p-4 shadow-xs">
       <div className="mb-3 flex cursor-pointer items-center justify-between" onClick={onExpand}>
-        <span className="text-sm font-medium text-content-secondary">Deliverables</span>
+        <span className="text-content-secondary text-sm font-medium">Deliverables</span>
         {displayItems.length > 0 && (
-          <span className="text-xs text-accent hover:underline">View all</span>
+          <span className="text-accent text-xs hover:underline">View all</span>
         )}
       </div>
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
+        <div className="text-content-tertiary flex flex-1 items-center justify-center text-xs">
           Loading...
         </div>
       ) : displayItems.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-xs text-content-tertiary">
+        <div className="text-content-tertiary flex flex-1 items-center justify-center text-xs">
           No deliverables yet
-          <span className="mt-1 block text-[10px] text-content-tertiary">
+          <span className="text-content-tertiary mt-1 block text-[10px]">
             Meeting reports and workflow outputs appear here
           </span>
         </div>
@@ -72,7 +72,7 @@ export function Deliverables({ projectId, onExpand }: Props) {
               className={`flex cursor-pointer items-center gap-2 text-xs ${d.filePath || d.meetingId ? 'hover:opacity-80' : ''}`}
               onClick={() => handleOpenDeliverable(d)}
             >
-              <FileText size={12} className="shrink-0 text-content-tertiary" />
+              <FileText size={12} className="text-content-tertiary shrink-0" />
               <span className={`truncate ${text}`}>
                 {d.filePath && /\?{2,}/.test(d.title)
                   ? d.filePath.replace(/\\/g, '/').split('/').pop()

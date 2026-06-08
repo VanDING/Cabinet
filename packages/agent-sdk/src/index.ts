@@ -14,11 +14,7 @@ export type {
   AgentConfigSource,
 } from './types.js';
 
-export {
-  SlotClient,
-  type SlotClientConfig,
-  type TelemetryPayload,
-} from './slot-client.js';
+export { SlotClient, type SlotClientConfig, type TelemetryPayload } from './slot-client.js';
 
 export {
   createAgentCard,

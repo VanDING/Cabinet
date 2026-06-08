@@ -1,11 +1,6 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
-import {
-  DAILY_BUDGET,
-  WEEKLY_BUDGET,
-  MONTHLY_BUDGET,
-  MessageType,
-} from '@cabinet/types';
+import { DAILY_BUDGET, WEEKLY_BUDGET, MONTHLY_BUDGET, MessageType } from '@cabinet/types';
 
 const EVENT_LABELS: Record<string, string> = {
   [MessageType.DecisionRequest]: 'Decision requested',
@@ -136,11 +131,11 @@ dashboardRouter.get('/cost-history', (c) => {
          GROUP BY date(timestamp)`,
       )
       .all(`-${days} days`) as Array<{
-        date: string;
-        cost: number;
-        tokens: number;
-        calls: number;
-      }>;
+      date: string;
+      cost: number;
+      tokens: number;
+      calls: number;
+    }>;
 
     for (const row of rows) {
       const entry = history.find((h) => h.date === row.date);

@@ -260,7 +260,11 @@ export class SafetyChecker {
           reason: `External agent '${toolName}' (destructive) requires Full Autonomy (T3). Current: ${TIER_LABELS[this.tier]}.`,
         };
       }
-      if (effectiveCategory === 'cost' && this.tier !== DelegationTier.FullAutonomy && this.tier !== DelegationTier.TrustedMode) {
+      if (
+        effectiveCategory === 'cost' &&
+        this.tier !== DelegationTier.FullAutonomy &&
+        this.tier !== DelegationTier.TrustedMode
+      ) {
         return {
           tier: 'delegation_block',
           allowed: false,
@@ -271,7 +275,11 @@ export class SafetyChecker {
       // High-trust agents bypass the moderate check
       if (effectiveCategory === 'moderate' && this.tier === DelegationTier.CaptainReview) {
         if (opts.agentTrustLevel !== undefined && opts.agentTrustLevel >= 0.8) {
-          return { tier: 'auto', allowed: true, reason: 'High-trust external agent — moderate tool allowed.' };
+          return {
+            tier: 'auto',
+            allowed: true,
+            reason: 'High-trust external agent — moderate tool allowed.',
+          };
         }
         return {
           tier: 'delegation_block',

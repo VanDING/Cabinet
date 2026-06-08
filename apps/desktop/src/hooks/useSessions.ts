@@ -228,7 +228,9 @@ export function useSessions() {
       apiFetch(`/api/secretary/sessions/${id}/close`, {
         method: 'POST',
         headers: authHeaders(),
-      }).catch((err) => { console.warn('Operation failed', err); });
+      }).catch((err) => {
+        console.warn('Operation failed', err);
+      });
       setSessions((prev) => {
         const session = prev.find((s) => s.id === id);
         if (session && session.messages.length > 0) {
@@ -420,25 +422,17 @@ export function useSessions() {
     );
   }, []);
 
-  const updateSubAgentStatus = useCallback(
-    (sessionId: string, status: Session['status']) => {
-      setSessions((prev) =>
-        prev.map((s) => (s.id === sessionId ? { ...s, status, updatedAt: new Date() } : s)),
-      );
-    },
-    [],
-  );
+  const updateSubAgentStatus = useCallback((sessionId: string, status: Session['status']) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, status, updatedAt: new Date() } : s)),
+    );
+  }, []);
 
-  const setSubAgentDeliverable = useCallback(
-    (sessionId: string, deliverable: unknown) => {
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === sessionId ? { ...s, deliverable, updatedAt: new Date() } : s,
-        ),
-      );
-    },
-    [],
-  );
+  const setSubAgentDeliverable = useCallback((sessionId: string, deliverable: unknown) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, deliverable, updatedAt: new Date() } : s)),
+    );
+  }, []);
 
   return {
     sessions,

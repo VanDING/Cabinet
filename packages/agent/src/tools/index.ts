@@ -179,8 +179,15 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          status: { type: 'string', description: 'Filter by status: pending, approved, rejected, expired, archived, or all (default: pending)' },
-          projectId: { type: 'string', description: 'Filter by project ID (omit for all projects)' },
+          status: {
+            type: 'string',
+            description:
+              'Filter by status: pending, approved, rejected, expired, archived, or all (default: pending)',
+          },
+          projectId: {
+            type: 'string',
+            description: 'Filter by project ID (omit for all projects)',
+          },
         },
       },
       execute: async (args: Record<string, unknown>) => {
@@ -238,16 +245,41 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Decision title (short, actionable)' },
-          description: { type: 'string', description: 'Detailed description of what is being decided' },
-          type: { type: 'string', description: 'Decision type: strategic, technical, resource, or process (default: strategic)' },
+          description: {
+            type: 'string',
+            description: 'Detailed description of what is being decided',
+          },
+          type: {
+            type: 'string',
+            description:
+              'Decision type: strategic, technical, resource, or process (default: strategic)',
+          },
           projectId: { type: 'string', description: 'Project ID (default: "default")' },
           options: { type: 'array', description: 'Array of {id, label, impact} option objects' },
-          scopeDescription: { type: 'string', description: 'Scope description for level classification' },
-          estimatedCost: { type: 'number', description: 'Estimated cost in RMB for level classification' },
-          involvesFunds: { type: 'boolean', description: 'Whether decision involves financial transactions' },
-          involvesPermissions: { type: 'boolean', description: 'Whether decision involves permission changes' },
-          involvesDataDeletion: { type: 'boolean', description: 'Whether decision involves data deletion' },
-          involvesOrgConfig: { type: 'boolean', description: 'Whether decision involves org-wide config changes' },
+          scopeDescription: {
+            type: 'string',
+            description: 'Scope description for level classification',
+          },
+          estimatedCost: {
+            type: 'number',
+            description: 'Estimated cost in RMB for level classification',
+          },
+          involvesFunds: {
+            type: 'boolean',
+            description: 'Whether decision involves financial transactions',
+          },
+          involvesPermissions: {
+            type: 'boolean',
+            description: 'Whether decision involves permission changes',
+          },
+          involvesDataDeletion: {
+            type: 'boolean',
+            description: 'Whether decision involves data deletion',
+          },
+          involvesOrgConfig: {
+            type: 'boolean',
+            description: 'Whether decision involves org-wide config changes',
+          },
         },
         required: ['title'],
       },
@@ -296,7 +328,10 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         properties: {
           decisionId: { type: 'string', description: 'ID of the decision to approve' },
           chosenOptionId: { type: 'string', description: 'ID of the chosen option' },
-          captainId: { type: 'string', description: 'ID of the Captain approving (default: current user)' },
+          captainId: {
+            type: 'string',
+            description: 'ID of the Captain approving (default: current user)',
+          },
         },
         required: ['decisionId', 'chosenOptionId'],
       },
@@ -316,7 +351,10 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         type: 'object',
         properties: {
           decisionId: { type: 'string', description: 'ID of the decision to reject' },
-          captainId: { type: 'string', description: 'ID of the Captain rejecting (default: current user)' },
+          captainId: {
+            type: 'string',
+            description: 'ID of the Captain rejecting (default: current user)',
+          },
         },
         required: ['decisionId'],
       },
@@ -413,8 +451,15 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Natural language search query for long-term memory' },
-          limit: { type: 'integer', description: 'Maximum number of results (default 20)', default: 20 },
+          query: {
+            type: 'string',
+            description: 'Natural language search query for long-term memory',
+          },
+          limit: {
+            type: 'integer',
+            description: 'Maximum number of results (default 20)',
+            default: 20,
+          },
         },
         required: ['query'],
       },
@@ -442,9 +487,16 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          limit: { type: 'integer', description: 'Maximum results (default 20, max 100)', default: 20 },
+          limit: {
+            type: 'integer',
+            description: 'Maximum results (default 20, max 100)',
+            default: 20,
+          },
           offset: { type: 'integer', description: 'Pagination offset (default 0)', default: 0 },
-          status: { type: 'string', description: "Filter: 'active' (default), 'expired', 'archived', or 'all'" },
+          status: {
+            type: 'string',
+            description: "Filter: 'active' (default), 'expired', 'archived', or 'all'",
+          },
         },
         required: [],
       },
@@ -479,8 +531,14 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          content: { type: 'string', description: 'Memory content to store (minimum 10 characters)' },
-          metadata: { type: 'object', description: 'Optional metadata key-value pairs attached to the memory' },
+          content: {
+            type: 'string',
+            description: 'Memory content to store (minimum 10 characters)',
+          },
+          metadata: {
+            type: 'object',
+            description: 'Optional metadata key-value pairs attached to the memory',
+          },
         },
         required: ['content'],
       },
@@ -500,7 +558,10 @@ export function createCabinetTools(deps: ToolDependencies): ToolDefinition[] {
         type: 'object',
         properties: {
           memoryId: { type: 'string', description: 'ID of the memory entry to update' },
-          status: { type: 'string', description: 'New status value (e.g. "superseded", "archived")' },
+          status: {
+            type: 'string',
+            description: 'New status value (e.g. "superseded", "archived")',
+          },
           importance: { type: 'number', description: 'Importance score for decay weighting' },
           confidence: { type: 'number', description: 'Confidence score for the stored fact' },
         },
@@ -673,9 +734,13 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
           name: { type: 'string', description: 'Human-readable workflow name' },
           definition: {
             type: 'object',
-            description: 'Workflow definition object. Use { steps: [...], capabilities?: {...} } for declarative, or { nodes: [...], edges: [...], capabilities?: {...} } for DAG.',
+            description:
+              'Workflow definition object. Use { steps: [...], capabilities?: {...} } for declarative, or { nodes: [...], edges: [...], capabilities?: {...} } for DAG.',
           },
-          cronExpression: { type: 'string', description: 'Optional cron expression for scheduled execution' },
+          cronExpression: {
+            type: 'string',
+            description: 'Optional cron expression for scheduled execution',
+          },
         },
         required: ['projectId', 'name', 'definition'],
       },
@@ -821,7 +886,11 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
         const maxResponseTokens = (args.maxResponseTokens as number) ?? 4000;
         const rawAllowedTools = args.allowedTools;
         if (rawAllowedTools !== undefined && !Array.isArray(rawAllowedTools)) {
-          return { error: 'allowedTools must be an array of strings, e.g., ["read_file", "write_file"]. Got: ' + typeof rawAllowedTools };
+          return {
+            error:
+              'allowedTools must be an array of strings, e.g., ["read_file", "write_file"]. Got: ' +
+              typeof rawAllowedTools,
+          };
         }
         const allowedTools = (rawAllowedTools as string[]) ?? [];
         for (let i = 0; i < allowedTools.length; i++) {
@@ -902,7 +971,10 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
         type: 'object',
         properties: {
           projectId: { type: 'string', description: 'Project ID to set as active context' },
-          brief: { type: 'string', description: 'Optional Chair brief describing the current task or focus' },
+          brief: {
+            type: 'string',
+            description: 'Optional Chair brief describing the current task or focus',
+          },
         },
         required: ['projectId'],
       },
@@ -1095,8 +1167,15 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
       parameters: {
         type: 'object',
         properties: {
-          blueprint: { type: 'object', description: 'The complete blueprint JSON with meta, agents, workflow, harness, and authorization fields' },
-          summary: { type: 'string', description: 'A human-readable summary of what was designed and why' },
+          blueprint: {
+            type: 'object',
+            description:
+              'The complete blueprint JSON with meta, agents, workflow, harness, and authorization fields',
+          },
+          summary: {
+            type: 'string',
+            description: 'A human-readable summary of what was designed and why',
+          },
         },
         required: ['blueprint', 'summary'],
       },

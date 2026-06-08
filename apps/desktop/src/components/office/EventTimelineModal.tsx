@@ -33,7 +33,12 @@ const TYPE_CATEGORIES: { key: string; label: string; types: string[] }[] = [
   {
     key: 'agent',
     label: 'Agent',
-    types: ['agent_task_assigned', 'agent_task_completed', 'agent_context_requested', 'agent_context_shared'],
+    types: [
+      'agent_task_assigned',
+      'agent_task_completed',
+      'agent_context_requested',
+      'agent_context_shared',
+    ],
   },
   {
     key: 'secretary',
@@ -77,7 +82,9 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
           );
         }
       })
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   }, [buildUrl]);
 
@@ -130,69 +137,75 @@ export function EventTimelineModal({ onClose, projectId }: Props) {
   }, [events]);
 
   return (
-    <ModalOverlay isOpen={true} onClose={onClose} contentClassName="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3">
-          <h3 className="text-lg font-semibold text-content-primary">Event Timeline</h3>
-          <button
-            onClick={onClose}
-            className="flex h-6 w-6 items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary"
-          >
-            <X size={16} />
-          </button>
-        </div>
+    <ModalOverlay
+      isOpen={true}
+      onClose={onClose}
+      contentClassName="m-4 flex max-h-[85vh] w-full max-w-xl flex-col rounded-xl border border-border bg-surface-primary shadow-lg"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <h3 className="text-content-primary text-lg font-semibold">Event Timeline</h3>
+        <button
+          onClick={onClose}
+          className="text-content-tertiary hover:text-content-secondary flex h-6 w-6 items-center justify-center rounded-sm"
+        >
+          <X size={16} />
+        </button>
+      </div>
 
-        {/* Filter tabs */}
-        <div className="flex flex-wrap gap-1.5 px-5 pb-3">
-          {availableTypes.map(({ type, label }) => {
-            const isActive = activeFilters.has(type);
-            return (
-              <button
-                key={type}
-                onClick={() => toggleFilter(type)}
-                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-accent-muted text-accent ring-1 ring-accent/30'
-                    : 'bg-surface-muted text-content-tertiary hover:text-content-secondary'
-                }`}
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-1.5 px-5 pb-3">
+        {availableTypes.map(({ type, label }) => {
+          const isActive = activeFilters.has(type);
+          return (
+            <button
+              key={type}
+              onClick={() => toggleFilter(type)}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                isActive
+                  ? 'bg-accent-muted text-accent ring-accent/30 ring-1'
+                  : 'bg-surface-muted text-content-tertiary hover:text-content-secondary'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Event list */}
+      <div className="flex-1 overflow-y-auto px-5 pb-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="border-accent h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
+          </div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="text-content-tertiary py-12 text-center text-sm">
+            {events.length === 0
+              ? 'No events recorded yet'
+              : 'No events match the selected filters'}
+          </div>
+        ) : (
+          <div className="space-y-0">
+            {filteredEvents.map((event, i) => (
+              <div
+                key={i}
+                className="border-border flex items-baseline justify-between border-b py-2.5 text-xs last:border-0"
               >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Event list */}
-        <div className="flex-1 overflow-y-auto px-5 pb-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-            </div>
-          ) : filteredEvents.length === 0 ? (
-            <div className="py-12 text-center text-sm text-content-tertiary">
-              {events.length === 0 ? 'No events recorded yet' : 'No events match the selected filters'}
-            </div>
-          ) : (
-            <div className="space-y-0">
-              {filteredEvents.map((event, i) => (
-                <div
-                  key={i}
-                  className="flex items-baseline justify-between border-b border-border py-2.5 text-xs last:border-0"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="text-content-secondary">{event.message}</span>
-                    <span className="ml-2 rounded-sm bg-surface-muted px-1.5 py-0.5 text-[10px] text-content-tertiary">
-                      {CATEGORY_LABEL[event.type] ?? event.type}
-                    </span>
-                  </div>
-                  <span className="ml-3 shrink-0 tabular-nums text-content-tertiary">
-                    {event.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="min-w-0 flex-1">
+                  <span className="text-content-secondary">{event.message}</span>
+                  <span className="bg-surface-muted text-content-tertiary ml-2 rounded-sm px-1.5 py-0.5 text-[10px]">
+                    {CATEGORY_LABEL[event.type] ?? event.type}
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <span className="text-content-tertiary ml-3 shrink-0 tabular-nums">
+                  {event.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </ModalOverlay>
   );
 }
