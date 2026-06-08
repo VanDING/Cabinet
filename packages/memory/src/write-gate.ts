@@ -5,12 +5,31 @@
  * at least one of the write-gate checks. This prevents the memory system
  * from becoming "sludge" filled with transient noise.
  *
- * Dual-channel architecture:
- * - Fast path: regex-based heuristic (always runs, < 1ms)
- * - Slow path: embedding semantic similarity (optional, runs when fast path misses)
+ * ## Dual-channel architecture
  *
- * The slow path is reserved for future enhancement. Current implementation
- * uses the fast path exclusively, with hooks for async embedding evaluation.
+ * - **Fast path** (always active): regex-based heuristic covering 8 languages
+ *   (zh/en/fr/es/de/ru/ja/ko), 5 tier levels, and structured key prefixes
+ *   (decision_/preference_/milestone_). Latency < 1ms, zero API cost.
+ *
+ * - **Slow path** (opt-in): embedding semantic similarity via cosine distance
+ *   against per-tier anchor embeddings. Activated only when all of:
+ *   `useEmbeddingSlowPath: true` + `embeddingProvider` + `anchorEmbeddings`
+ *   are configured.
+ *
+ * ## Why the slow path is off by default
+ *
+ * The fast path's multi-language regex + structured key coverage catches the
+ * vast majority of valuable memories. The slow path would only fire for
+ * `transient_noise` misses — content that didn't match any regex pattern.
+ * Activating it means:
+ *   1. Every `transient_noise` entry triggers an embedding API call (cost)
+ *   2. Most such entries are correctly classified as noise
+ *   3. The marginal recall improvement is small relative to the cost
+ *
+ * **When to activate**: If you observe valuable memories being incorrectly
+ * classified as `transient_noise`, enable the slow path and provide tier
+ * anchor embeddings. Monitor the `channel: 'slow'` result count to assess
+ * whether the embedding path is adding value or just burning tokens.
  */
 
 export type MemoryTier = 'daily' | 'register' | 'working';

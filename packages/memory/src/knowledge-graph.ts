@@ -190,16 +190,14 @@ export class KnowledgeGraph {
     this.db.prepare('DELETE FROM memory_entities WHERE id = ?').run(id);
   }
 
-  /** Result of a contradiction detection check. */
-  detectContradictions(
-    newMemoryContent: string,
-    options?: {
-      llmJudge?: (
-        oldStatement: string,
-        newStatement: string,
-      ) => Promise<{ isContradiction: boolean; confidence: number; resolutionSuggestion: string }>;
-    },
-  ): Array<{
+  /**
+   * Graph-structure-based contradiction detection.
+   *
+   * Checks direct contradicts relations and indirect conflicts via related
+   * entities. For LLM-powered semantic contradiction detection, see
+   * LongTermMemory.runLlmContradictionCheck().
+   */
+  detectContradictions(newMemoryContent: string): Array<{
     oldMemoryId: string;
     oldContent: string;
     confidence: number;
