@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { extractCandidateEntities } from './entity-extractor.js';
 
 export interface Entity {
   id: string;
@@ -204,8 +205,8 @@ export class KnowledgeGraph {
     confidence: number;
     resolutionSuggestion: string;
   }> {
-    // 1. Extract candidate entity names from the new memory via simple heuristic
-    const candidateNames = this.extractCandidateEntities(newMemoryContent);
+    // 1. Extract candidate entity names from the new memory
+    const candidateNames = extractCandidateEntities(newMemoryContent);
     if (candidateNames.length === 0) return [];
 
     const contradictions: Array<{
@@ -280,23 +281,7 @@ export class KnowledgeGraph {
     });
   }
 
-  /** Simple heuristic entity extraction: nouns and proper names. */
-  private extractCandidateEntities(text: string): string[] {
-    const seen = new Set<string>();
-    const results: string[] = [];
-    // Match capitalized phrases, quoted terms, and Unicode words (Chinese/Japanese) as likely entities
-    const capitalized = text.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) ?? [];
-    const unicode = text.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{2,}/gu) ?? [];
-    const quoted = text.match(/"([^"]{2,50})"/g) ?? [];
-    for (const raw of [...capitalized, ...unicode, ...quoted]) {
-      const name = raw.replace(/^"|"$/g, '').trim();
-      if (name.length > 2 && !seen.has(name.toLowerCase())) {
-        seen.add(name.toLowerCase());
-        results.push(name);
-      }
-    }
-    return results;
-  }
+
 
   private rowToEntity(row: Record<string, unknown>): Entity {
     return {

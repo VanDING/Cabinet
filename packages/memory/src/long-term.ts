@@ -16,6 +16,7 @@ try {
   // Native addon not available — vector search disabled
 }
 import type { KnowledgeGraph } from './knowledge-graph.js';
+import { extractCandidateEntities } from './entity-extractor.js';
 
 export interface LongTermEntry {
   id: string;
@@ -140,18 +141,12 @@ export class LongTermMemory {
 
     // ── Populate knowledge graph with extracted entities ──
     if (this.knowledgeGraph) {
-      // Match English capitalized phrases and Chinese/Unicode words (2+ chars)
-      const entityPattern = /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{2,}/gu;
-      const matches = entry.content.match(entityPattern) ?? [];
-      const seen = new Set<string>();
-      for (const name of matches) {
-        if (name.length > 2 && !seen.has(name.toLowerCase())) {
-          seen.add(name.toLowerCase());
-          try {
-            this.knowledgeGraph.addEntity(name, 'concept', { source: 'memory_store' });
-          } catch {
-            /* best-effort entity extraction */
-          }
+      const candidates = extractCandidateEntities(entry.content);
+      for (const name of candidates) {
+        try {
+          this.knowledgeGraph.addEntity(name, 'concept', { source: 'memory_store' });
+        } catch {
+          /* best-effort entity extraction */
         }
       }
     }

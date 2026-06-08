@@ -1,3 +1,6 @@
+// ── Entity Extractor ──
+export { extractCandidateEntities } from './entity-extractor.js';
+
 // ── Short-term memory ──
 export { ShortTermMemory } from './short-term.js';
 export type { ShortTermEntry } from './short-term.js';
