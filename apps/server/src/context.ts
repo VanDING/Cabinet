@@ -1191,9 +1191,32 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
 
   // Auto-adjuster: read health metrics, adjust model/router/config
   const adjustmentNotifyCallback: AdjustmentNotifyCallback = async (action) => {
+    // S5 Policy check: block or modify the action before notifying Captain
+    const policyCheck = policyEngine?.evaluateAdjustment(action as any);
+    if (!policyCheck) {
+      logger.info('Adjustment blocked by PolicyEngine', {
+        type: action.type,
+        reason: 'Violates mission constraints',
+      });
+      await eventBus.publish({
+        messageId: `adj_blocked_${Date.now()}`,
+        correlationId: `adj_${Date.now()}`,
+        causationId: null,
+        timestamp: new Date(),
+        messageType: MessageType.SystemNotification,
+        payload: {
+          type: 'adjustment_blocked',
+          data: { ...action, blockedReason: 'PolicyEngine rejected this adjustment' },
+        },
+      });
+      return false;
+    }
+
+    const effectiveAction = policyCheck !== action ? policyCheck : action;
+
     logger.info(
       'Adjustment requiring Captain approval',
-      action as unknown as Record<string, unknown>,
+      effectiveAction as unknown as Record<string, unknown>,
     );
     await eventBus.publish({
       messageId: `adj_notify_${Date.now()}`,
@@ -1201,7 +1224,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.SystemNotification,
-      payload: { type: 'adjustment_pending', data: action as unknown as Record<string, unknown> },
+      payload: { type: 'adjustment_pending', data: effectiveAction as unknown as Record<string, unknown> },
     });
     return true;
   };
