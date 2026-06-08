@@ -32,6 +32,20 @@ export type ConsolidationCallBack = (
 export class ConsolidationService {
   /** Minimum age (ms) for a short-term entry before it can be consolidated. */
   preserveRecentMs = 5 * 60 * 1000;
+
+  /**
+   * WriteGate uses fast path only (regex heuristic, zero LLM cost).
+   *
+   * The embedding slow path is intentionally not activated because:
+   * - The 5-tier regex covers 8 languages + structured key prefixes
+   * - The slow path would fire on `transient_noise` misses, most of
+   *   which are correctly classified as noise
+   * - Embedding API calls for every noise entry would add cost with
+   *   minimal recall improvement
+   *
+   * To activate the slow path, pass `{ embeddingProvider, anchorEmbeddings,
+   * useEmbeddingSlowPath: true }` to the WriteGate constructor.
+   */
   private writeGate = new WriteGate();
   private cascade = new CascadeBuffer();
 
@@ -50,10 +64,23 @@ export class ConsolidationService {
    * 4. transient noise → skipped.
    */
   async consolidateBasic(sessionId: string): Promise<number> {
+    const startTime = Date.now();
     const entries = this.shortTerm.getEntriesOlderThan(sessionId, this.preserveRecentMs);
     let directMigrated = 0;
     const dailyKeys: string[] = [];
     const dailyEntries: { key: string; value: string }[] = [];
+
+    const metrics = {
+      sessionId,
+      totalEvaluated: entries.length,
+      working: 0,
+      register: 0,
+      daily: 0,
+      noise: 0,
+      directMigrated: 0,
+      cascadeStaged: 0,
+      durationMs: 0,
+    };
 
     for (const entry of entries) {
       const key = entry.key;
@@ -63,7 +90,15 @@ export class ConsolidationService {
       if (!stringValue) continue;
 
       const gate = this.writeGate.evaluate(stringValue, { key, sessionId });
-      if (!gate.allowed) continue;
+      if (!gate.allowed) {
+        metrics.noise++;
+        continue;
+      }
+
+      // Track tier distribution
+      if (gate.tier === 'working') metrics.working++;
+      else if (gate.tier === 'register') metrics.register++;
+      else metrics.daily++;
 
       if (gate.tier === 'register' || gate.tier === 'working') {
         await this.longTerm.store({
@@ -78,11 +113,13 @@ export class ConsolidationService {
           timestamp: new Date(),
         });
         directMigrated++;
+        metrics.directMigrated++;
         this.shortTerm.delete(sessionId, key);
       } else {
         // daily tier → stage in cascade buffer
         dailyKeys.push(key);
         dailyEntries.push({ key, value: stringValue });
+        metrics.cascadeStaged++;
       }
     }
 
@@ -119,7 +156,31 @@ export class ConsolidationService {
     // Try to auto-seal buffers that meet thresholds
     const sealResults = await this.autoSeal(sessionId);
 
+    metrics.durationMs = Date.now() - startTime;
+    this.logMetrics(metrics);
+
     return directMigrated + sealResults;
+  }
+
+  /** Emit consolidation metrics for observability. */
+  private logMetrics(metrics: {
+    sessionId: string;
+    totalEvaluated: number;
+    working: number;
+    register: number;
+    daily: number;
+    noise: number;
+    directMigrated: number;
+    cascadeStaged: number;
+    durationMs: number;
+  }): void {
+    const { sessionId, totalEvaluated, working, register, daily, noise, directMigrated, cascadeStaged, durationMs } = metrics;
+    // Structured log for debugging and cost tracking
+    console.debug(
+      `[ConsolidationMetrics] session=${sessionId} ` +
+      `evaluated=${totalEvaluated} working=${working} register=${register} daily=${daily} noise=${noise} ` +
+      `migrated=${directMigrated} staged=${cascadeStaged} duration=${durationMs}ms`,
+    );
   }
 
   /**
