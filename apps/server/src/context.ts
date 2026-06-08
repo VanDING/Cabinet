@@ -65,6 +65,7 @@ import {
   ConsolidationService,
   KnowledgeGraph,
   MemoryDecayService,
+  MemoryFacade,
   type LlmJudge,
 } from '@cabinet/memory';
 import { createLlmJudge } from './llm-judge.js';
@@ -151,6 +152,7 @@ export interface ServerContext {
   longTerm: LongTermMemory;
   entity: EntityMemory;
   project: ProjectMemory;
+  memoryFacade: MemoryFacade;
   // Gateway
   gateway: LLMGateway | null;
   refreshGateway: () => void;
@@ -468,6 +470,9 @@ export function getServerContext(): ServerContext {
   const entity = new EntityMemory(db);
   const project = new ProjectMemory(db);
 
+  // Unified memory facade (supersedes fragmented MemoryProvider + direct access)
+  const memoryFacade = new MemoryFacade({ shortTerm, longTerm, entity, project });
+
   // Gateway + Cost
   costHistoryRepo.ensureTable();
   const costTracker = new CostTracker({
@@ -770,6 +775,7 @@ export function getServerContext(): ServerContext {
     longTerm,
     entity,
     project,
+    memoryFacade,
     decisionRepo,
     decisionService,
     eventBus: eventBus!,
@@ -1224,7 +1230,10 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       causationId: null,
       timestamp: new Date(),
       messageType: MessageType.SystemNotification,
-      payload: { type: 'adjustment_pending', data: effectiveAction as unknown as Record<string, unknown> },
+      payload: {
+        type: 'adjustment_pending',
+        data: effectiveAction as unknown as Record<string, unknown>,
+      },
     });
     return true;
   };
@@ -1741,6 +1750,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     longTerm,
     entity,
     project,
+    memoryFacade,
     gateway,
     refreshGateway,
     costTracker,

@@ -1,4 +1,4 @@
-import { createCuratorLoop as _createCuratorLoop } from "./curator-loop.js";
+import { createCuratorLoop as _createCuratorLoop } from './curator-loop.js';
 /**
  * Curator subsystem — background knowledge consolidation, session briefs,
  * pattern extraction, and preference learning. Extracted from context.ts
@@ -19,6 +19,7 @@ import type {
   LongTermMemory,
   EntityMemory,
   ProjectMemory,
+  MemoryFacade,
 } from '@cabinet/memory';
 import type { DecisionService } from '@cabinet/decision';
 import type { EventBus } from '@cabinet/events';
@@ -36,12 +37,16 @@ export interface CuratorDeps {
   /** Mutable — checked at call time; may be null if no API key configured */
   gateway: LLMGateway | null;
   agentRegistry: AgentRoleRegistry;
-  logger: { info(msg: string, meta?: Record<string, unknown>): void; warn(msg: string, meta?: Record<string, unknown>): void };
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    warn(msg: string, meta?: Record<string, unknown>): void;
+  };
   sessionManager: SessionManager;
   shortTerm: ShortTermMemory;
   longTerm: LongTermMemory;
   entity: EntityMemory;
   project: ProjectMemory;
+  memoryFacade: MemoryFacade;
   decisionRepo: DecisionRepository;
   decisionService: DecisionService;
   eventBus: EventBus;
@@ -287,33 +292,40 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
     chosenOptionId: string | undefined,
     _captainId: string | undefined,
   ) => {
-    enqueueCuratorTask(async () => {
-      const loop = createCuratorLoop();
-      if (!loop) return;
+    enqueueCuratorTask(
+      async () => {
+        const loop = createCuratorLoop();
+        if (!loop) return;
 
-      const taskPrompt = [
-        `## Decision Preference Update`,
-        '',
-        `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
-        '',
-        `Instructions:`,
-        `1. Use get_decision to read the full decision record.`,
-        `2. Use get_captain_preferences to see the current preference profile.`,
-        `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
-        `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
-        `5. Use write_memory to store any notable pattern you discover.`,
-        '',
-        `Be concise — this is a background task triggered by each decision resolution.`,
-      ].join('\n');
+        const taskPrompt = [
+          `## Decision Preference Update`,
+          '',
+          `A decision was just ${action}: "${title}" (id: ${decisionId}, chosen: ${chosenOptionId ?? 'none'}).`,
+          '',
+          `Instructions:`,
+          `1. Use get_decision to read the full decision record.`,
+          `2. Use get_captain_preferences to see the current preference profile.`,
+          `3. Analyze what this decision reveals about the Captain's preferences (risk tolerance, cost sensitivity, decision style).`,
+          `4. If you detect a shift or refinement, use set_captain_preferences to update the profile.`,
+          `5. Use write_memory to store any notable pattern you discover.`,
+          '',
+          `Be concise — this is a background task triggered by each decision resolution.`,
+        ].join('\n');
 
-      const result = await loop.run(taskPrompt);
-      logger.info('Curator decision preference update completed', {
+        const result = await loop.run(taskPrompt);
+        logger.info('Curator decision preference update completed', {
+          decisionId,
+          action,
+          preview: result.content.slice(0, 150),
+        });
+      },
+      'preference',
+      'low',
+    ).catch((e) => {
+      logger.warn('Curator decision preference update failed', {
         decisionId,
-        action,
-        preview: result.content.slice(0, 150),
+        error: (e as Error).message,
       });
-    }, 'preference', 'low').catch((e) => {
-      logger.warn('Curator decision preference update failed', { decisionId, error: (e as Error).message });
     });
   };
 
@@ -330,7 +342,11 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
             if (s.messages.length > 0) {
               const messages = s.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
               if (messages.length > 200) {
-                await enqueueCuratorTask(() => runCuratorConsolidation(s.id, messages), 'nudge', 'low');
+                await enqueueCuratorTask(
+                  () => runCuratorConsolidation(s.id, messages),
+                  'nudge',
+                  'low',
+                );
               }
             }
           }
@@ -361,30 +377,44 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
     logger.info('Curator pattern extraction scheduled (6h)');
 
     // Subconscious loop: via Curator queue every hour
-    const subconscious = setInterval(() => {
-      enqueueCuratorTask(async () => {
-        await deps.subconsciousLoop.tick();
-        logger.info('Curator: subconscious loop tick completed');
-      }, 'subconscious', 'low');
-    }, 60 * 60 * 1000);
+    const subconscious = setInterval(
+      () => {
+        enqueueCuratorTask(
+          async () => {
+            await deps.subconsciousLoop.tick();
+            logger.info('Curator: subconscious loop tick completed');
+          },
+          'subconscious',
+          'low',
+        );
+      },
+      60 * 60 * 1000,
+    );
     subconscious.unref();
     logger.info('Curator: subconscious loop scheduled (1h)');
 
     // Harness analysis: via Curator queue every 3 hours
-    const harnessAnalyst = setInterval(() => {
-      enqueueCuratorTask(async () => {
-        const insight = await deps.harnessAnalyst.analyze();
-        if (insight) {
-          logger.info('Curator: harness analysis generated insight');
-          broadcast('subconscious_insight', {
-            text: insight,
-            relevance: 0.9,
-            relatedEntities: [],
-            timestamp: new Date().toISOString(),
-          });
-        }
-      }, 'harness_analysis', 'low');
-    }, 3 * 60 * 60 * 1000);
+    const harnessAnalyst = setInterval(
+      () => {
+        enqueueCuratorTask(
+          async () => {
+            const insight = await deps.harnessAnalyst.analyze();
+            if (insight) {
+              logger.info('Curator: harness analysis generated insight');
+              broadcast('subconscious_insight', {
+                text: insight,
+                relevance: 0.9,
+                relatedEntities: [],
+                timestamp: new Date().toISOString(),
+              });
+            }
+          },
+          'harness_analysis',
+          'low',
+        );
+      },
+      3 * 60 * 60 * 1000,
+    );
     harnessAnalyst.unref();
     logger.info('Curator: harness analyst scheduled (3h)');
 
@@ -402,16 +432,20 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
       if (session.contextSlot?.discoveries?.length) {
         for (const discovery of session.contextSlot.discoveries) {
           if (discovery.summary && discovery.summary.length > 10) {
-            longTerm.store({
-              content: `[Agent Discovery] ${discovery.type}: ${discovery.summary}`,
-              metadata: {
-                type: 'agent_discovery',
-                source: session.agentType ?? 'unknown',
-                sessionId: session.id,
-                discoveryType: discovery.type,
-              },
-              timestamp: new Date(),
-            }).catch((err) => logger.warn('Slot discovery store failed', { error: (err as Error).message }));
+            longTerm
+              .store({
+                content: `[Agent Discovery] ${discovery.type}: ${discovery.summary}`,
+                metadata: {
+                  type: 'agent_discovery',
+                  source: session.agentType ?? 'unknown',
+                  sessionId: session.id,
+                  discoveryType: discovery.type,
+                },
+                timestamp: new Date(),
+              })
+              .catch((err) =>
+                logger.warn('Slot discovery store failed', { error: (err as Error).message }),
+              );
           }
         }
         logger.info('Curator consumed Slot discoveries', {
@@ -458,36 +492,40 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
         .join('\n');
 
       if (middleText.length > 200) {
-        enqueueCuratorTask(async () => {
-          try {
-            const resp = await gw.generateText({
-              model: 'claude-haiku-4-5',
-              messages: [
-                {
-                  role: 'user',
-                  content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}`,
-                },
-              ],
-              maxTokens: 200,
-              temperature: 0.1,
-            });
-            sessionManager.compactMessages(session.id, resp.content.trim());
-            logger.info('Session compression completed', {
-              sessionId: session.id,
-              msgCount: session.messages.length,
-            });
-          } catch (e) {
-            // Fallback: simple truncation
-            sessionManager.compactMessages(
-              session.id,
-              `${middleMessages.length} intermediate messages compressed.`,
-            );
-            logger.warn('Session compression fell back to truncation', {
-              sessionId: session.id,
-              error: (e as Error).message,
-            });
-          }
-        }, 'compress', 'high').catch((e) =>
+        enqueueCuratorTask(
+          async () => {
+            try {
+              const resp = await gw.generateText({
+                model: 'claude-haiku-4-5',
+                messages: [
+                  {
+                    role: 'user',
+                    content: `Summarize this conversation segment in 2-3 sentences (in the original language), capturing key decisions, topics discussed, and outcomes:\n\n${middleText.slice(0, 4000)}`,
+                  },
+                ],
+                maxTokens: 200,
+                temperature: 0.1,
+              });
+              sessionManager.compactMessages(session.id, resp.content.trim());
+              logger.info('Session compression completed', {
+                sessionId: session.id,
+                msgCount: session.messages.length,
+              });
+            } catch (e) {
+              // Fallback: simple truncation
+              sessionManager.compactMessages(
+                session.id,
+                `${middleMessages.length} intermediate messages compressed.`,
+              );
+              logger.warn('Session compression fell back to truncation', {
+                sessionId: session.id,
+                error: (e as Error).message,
+              });
+            }
+          },
+          'compress',
+          'high',
+        ).catch((e) =>
           logger.warn('Session compression failed', {
             sessionId: session.id,
             error: (e as Error).message,
