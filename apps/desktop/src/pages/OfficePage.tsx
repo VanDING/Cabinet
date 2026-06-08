@@ -19,7 +19,6 @@ import { Clock } from '../components/office/Clock';
 import { Weather } from '../components/office/Weather';
 import { ProgressBoard } from '../components/office/ProgressBoard';
 import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
-import { MeetingList } from '../components/office/MeetingList';
 import { CostOverviewModal } from '../components/office/CostOverviewModal';
 import { ActiveWorkflowsModal } from '../components/office/ActiveWorkflowsModal';
 import { EventTimelineModal } from '../components/office/EventTimelineModal';
@@ -172,7 +171,6 @@ export function OfficePage() {
 
   // Listen for WebSocket event updates
   useEffect(() => {
-    window.addEventListener('ws:meeting_created', refreshStats);
     window.addEventListener('ws:project_created', refreshStats);
     window.addEventListener('ws:project_updated', refreshStats);
     window.addEventListener('ws:project_deleted', refreshStats);
@@ -182,7 +180,6 @@ export function OfficePage() {
     window.addEventListener('ws:task_updated', refreshStats);
     window.addEventListener('ws:task_executed', refreshStats);
     return () => {
-      window.removeEventListener('ws:meeting_created', refreshStats);
       window.removeEventListener('ws:project_created', refreshStats);
       window.removeEventListener('ws:project_updated', refreshStats);
       window.removeEventListener('ws:project_deleted', refreshStats);
@@ -299,7 +296,7 @@ export function OfficePage() {
       case 'progress-board':
         return <ProgressBoard projectId={projectId} />;
       case 'meeting-list':
-        return <MeetingList projectId={projectId} />;
+        return <div className="p-4 text-muted">Meeting feature removed</div>;
       case 'insights':
         return <InsightsWidget onExpand={() => handleWidgetClick('insights')} />;
       case 'harness':

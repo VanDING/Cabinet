@@ -281,8 +281,6 @@ function formatToolTaskName(toolName: string, args: Record<string, unknown>): st
       return args.url ? `HTTP ${preview(args.url)}` : 'HTTP request';
     case 'runWorkflow':
       return 'Run workflow';
-    case 'startMeeting':
-      return 'Start meeting';
     default:
       return toolName;
   }

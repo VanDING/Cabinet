@@ -74,7 +74,7 @@ const MODERATE_TOOLS = new Set([
 ]);
 
 /** Heavy tools — cost money (LLM calls). */
-const COST_TOOLS = new Set(['run_workflow', 'start_meeting']);
+const COST_TOOLS = new Set(['run_workflow']);
 
 /** Destructive tools — irreversible changes. */
 const DESTRUCTIVE_TOOLS = new Set([

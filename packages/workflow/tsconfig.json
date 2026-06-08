@@ -10,7 +10,6 @@
     { "path": "../events" },
     { "path": "../decision" },
     { "path": "../graph" },
-    { "path": "../storage" },
-    { "path": "../organize" }
+    { "path": "../storage" }
   ]
 }

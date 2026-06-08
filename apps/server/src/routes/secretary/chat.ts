@@ -8,16 +8,13 @@ import { AgentDispatcher, type DispatchMode, type AgentRoleType } from '@cabinet
 import { GreetingService, IntentParser, type ParsedIntent, type AgentRouteResult } from '@cabinet/secretary';
 import { broadcast } from '../../ws/handler.js';
 import { createStandardToolExecutor } from '../../agent-factory.js';
-import type { MeetingResult } from './agents.js';
 import {
-  meetingResultStore,
   dispatchToSpecialist,
   dispatchToSpecialistStreaming,
   getOrCreateAgent,
   detectTrustLevelOverride,
   sessionTrustLevel,
   resolveModel,
-  runMeeting,
   getAgentLoopForRole,
 } from './agents.js';
 import { buildToolDependencies } from './tool-dependencies.js';
@@ -210,7 +207,7 @@ export function registerChatRoute(router: Hono): void {
     if (ctx.gateway) {
       // ── Dispatch mode: pipeline or parallel ──
       if (dispatchMode === 'pipeline' || dispatchMode === 'parallel') {
-        const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { runMeeting, getAgentLoopForRole, resolveModel }));
+        const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }));
 
         const rateLimitTracker = (ctx.gateway as { getRateLimitTracker?: () => import("@cabinet/gateway").RateLimitTracker })?.getRateLimitTracker?.();
         const dispatcher = new AgentDispatcher(
@@ -407,16 +404,13 @@ export function registerChatRoute(router: Hono): void {
 
         const sseStream = new ReadableStream({
           async start(controller) {
-            const store = { result: null as MeetingResult | null };
-
             // Quality review tracking — keeps SSE open until review completes or times out
             let resolveQualityReview: (() => void) | null = null;
             const qualityReviewPromise = new Promise<void>((resolve) => {
               resolveQualityReview = resolve;
             });
 
-            await meetingResultStore.run(store, async () => {
-              const encoder = new TextEncoder();
+            const encoder = new TextEncoder();
               function emit(type: string, data: Record<string, unknown>) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type, ...data })}\n\n`),
@@ -538,7 +532,6 @@ export function registerChatRoute(router: Hono): void {
                 }
 
                 // Emit done last — client stops reading here, so routing must come first
-                const meeting = store.result;
                 ctx.metrics.increment('llm_call', {
                   model: model ?? 'claude-sonnet-4-6',
                   purpose: 'chat',
@@ -555,7 +548,6 @@ export function registerChatRoute(router: Hono): void {
                 }
                 emit('done', {
                   sessionId,
-                  meeting: meeting ?? undefined,
                   agentName: targetAgent,
                   content: streamedContent,
                   routed: isRouted,
@@ -577,9 +569,9 @@ export function registerChatRoute(router: Hono): void {
                 ]);
                 controller.close();
               }
-            });
+            }
           },
-        });
+        );
 
         return new Response(sseStream, {
           headers: {
@@ -630,7 +622,6 @@ export function registerChatRoute(router: Hono): void {
 
       // ── Non-streaming single mode ──
       let result: { response: string; intent: ParsedIntent; routeResult?: AgentRouteResult; usage?: { promptTokens: number; completionTokens: number } };
-      let meeting: MeetingResult | null = null;
       if (skillInvokeContext && agentLoop) {
         ctx.sessionManager.addMessage(sessionId, 'user', message);
         const loopResult = await agentLoop.run(skillInvokeContext.args);
@@ -647,11 +638,7 @@ export function registerChatRoute(router: Hono): void {
           usage: loopResult.usage,
         };
       } else {
-        const store = { result: null as MeetingResult | null };
-        result = await meetingResultStore.run(store, () =>
-          agent.handleMessage(sessionId, augmentedMessage),
-        );
-        meeting = store.result;
+        result = await agent.handleMessage(sessionId, augmentedMessage);
       }
 
       // Record cost if available
@@ -692,7 +679,6 @@ export function registerChatRoute(router: Hono): void {
         dispatchMode: 'single',
         model: model ?? 'claude-sonnet-4-6',
         toolCalls: (result as { toolCalls?: number }).toolCalls ?? 0,
-        meeting: meeting ?? undefined,
         agentName: 'Secretary',
       });
     } else {
