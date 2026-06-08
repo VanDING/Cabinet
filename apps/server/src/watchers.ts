@@ -224,10 +224,14 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
         const existing = deps.agentRegistry.get(name);
 
         // Detect external agent types from manifest
-        const isExternal = agentCard.source === 'external_a2a' || agentCard.source === 'external_cli' ||
-          agentCard.protocol === 'a2a' || agentCard.protocol === 'cli';
+        const isExternal =
+          agentCard.source === 'external_a2a' ||
+          agentCard.source === 'external_cli' ||
+          agentCard.protocol === 'a2a' ||
+          agentCard.protocol === 'cli';
         const agentType = isExternal
-          ? (agentCard.source as string || (agentCard.protocol === 'a2a' ? 'external_a2a' : 'external_cli'))
+          ? (agentCard.source as string) ||
+            (agentCard.protocol === 'a2a' ? 'external_a2a' : 'external_cli')
           : 'custom';
 
         if (!existing || (existing.type !== 'custom' && !existing.type.startsWith('external_'))) {
@@ -239,9 +243,17 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
             modules: { identity: String(agentCard.systemPrompt ?? agentCard.instructions ?? '') },
             modelTier: ((agentCard.modelTier as string) || 'default') as any,
             temperature: parseFloat(String(agentCard.temperature ?? 0.7)),
-            maxResponseTokens: parseInt(String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096), 10),
-            allowedTools: (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []) as string[],
-            contextBudget: parseInt(String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000), 10),
+            maxResponseTokens: parseInt(
+              String(agentCard.maxResponseTokens ?? agentCard.maxTokens ?? 4096),
+              10,
+            ),
+            allowedTools: (Array.isArray(agentCard.allowedTools)
+              ? agentCard.allowedTools
+              : []) as string[],
+            contextBudget: parseInt(
+              String(agentCard.contextBudget ?? agentCard.contextWindow ?? 100000),
+              10,
+            ),
           };
 
           if (isExternal) {
@@ -289,7 +301,11 @@ export function startAgentWatcher(dataDir: string, deps: WatcherDeps): () => voi
               String(agentCard.systemPrompt ?? agentCard.instructions ?? '') ||
             existing.modelTier !== String(agentCard.modelTier ?? 'default') ||
             JSON.stringify((existing.allowedTools ?? []).slice().sort()) !==
-              JSON.stringify((Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : []).slice().sort());
+              JSON.stringify(
+                (Array.isArray(agentCard.allowedTools) ? agentCard.allowedTools : [])
+                  .slice()
+                  .sort(),
+              );
 
           if (changed) {
             deps.agentRegistry.update(name, {
@@ -376,10 +392,7 @@ interface ProjectWatcherDeps {
 }
 
 /** Watch ~/.cabinet/projects/ for new/removed project files and broadcast changes. */
-export function startProjectWatcher(
-  dataDir: string,
-  deps: ProjectWatcherDeps,
-): () => void {
+export function startProjectWatcher(dataDir: string, deps: ProjectWatcherDeps): () => void {
   const projectsDir = join(dataDir, 'projects');
 
   if (!existsSync(projectsDir)) return () => {};
@@ -416,19 +429,23 @@ export function startProjectWatcher(
 // ── Blueprint filesystem watcher ────────────────────────────────
 
 interface BlueprintWatcherDeps {
-  logger: { info(msg: string, meta?: Record<string, unknown>): void; warn(msg: string, meta?: Record<string, unknown>): void };
+  logger: {
+    info(msg: string, meta?: Record<string, unknown>): void;
+    warn(msg: string, meta?: Record<string, unknown>): void;
+  };
   /** Call validate + re-compile on the WorkflowEngine. Returns error string if invalid. */
   onBlueprintChange: (blueprintPath: string, content: string) => Promise<string | null>;
 }
 
 /** Watch ~/.cabinet/blueprints/ for YAML/EL blueprint changes. Hot-reloads into WorkflowEngine on valid change. */
-export function startBlueprintWatcher(
-  dataDir: string,
-  deps: BlueprintWatcherDeps,
-): () => void {
+export function startBlueprintWatcher(dataDir: string, deps: BlueprintWatcherDeps): () => void {
   const blueprintsDir = join(dataDir, 'blueprints');
   if (!existsSync(blueprintsDir)) {
-    try { mkdirSync(blueprintsDir, { recursive: true }); } catch { /* ok */ }
+    try {
+      mkdirSync(blueprintsDir, { recursive: true });
+    } catch {
+      /* ok */
+    }
   }
 
   const fileTimestamps = new Map<string, number>();
@@ -436,7 +453,7 @@ export function startBlueprintWatcher(
   const scan = async () => {
     try {
       const files = readdirSync(blueprintsDir).filter(
-        (f) => f.endsWith('.yml') || f.endsWith('.yaml') || f.endsWith('.el'),
+        (f) => f.endsWith('.yml') || f.endsWith('.yaml'),
       );
 
       for (const file of files) {
@@ -491,10 +508,7 @@ interface RulesWatcherDeps {
 }
 
 /** Watch ~/.cabinet/rules/ for changes and auto-reload agent rules. */
-export function startRulesWatcher(
-  dataDir: string,
-  deps: RulesWatcherDeps,
-): () => void {
+export function startRulesWatcher(dataDir: string, deps: RulesWatcherDeps): () => void {
   const rulesDir = join(dataDir, 'rules');
 
   if (!existsSync(rulesDir)) return () => {};
