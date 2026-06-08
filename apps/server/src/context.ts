@@ -470,8 +470,7 @@ export function getServerContext(): ServerContext {
   const entity = new EntityMemory(db);
   const project = new ProjectMemory(db);
 
-  // Unified memory facade (supersedes fragmented MemoryProvider + direct access)
-  const memoryFacade = new MemoryFacade({ shortTerm, longTerm, entity, project });
+  // Unified memory facade placeholder — fully wired after consolidation is created below.
 
   // Gateway + Cost
   costHistoryRepo.ensureTable();
@@ -677,6 +676,17 @@ export function getServerContext(): ServerContext {
   );
   consolidationTimer.unref();
   logger.info('Basic memory consolidation scheduled (30min)');
+
+  // Unified memory facade — fully wired with optional collaborators.
+  const memoryFacade = new MemoryFacade({
+    shortTerm,
+    longTerm,
+    entity,
+    project,
+    gateway,
+    sessionManager,
+    consolidation,
+  });
 
   // Observability session persistence (every 30 minutes)
   const observabilityTimer = setInterval(

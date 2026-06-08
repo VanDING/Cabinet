@@ -48,7 +48,12 @@ export type { DecayResult } from './memory-decay.js';
 
 // ── Memory Facade ──
 export { MemoryFacade } from './memory-facade.js';
-export type { MemoryFacadeOptions, MemoryProvider } from './memory-facade.js';
+export type {
+  MemoryFacadeOptions,
+  MemoryProvider,
+  SessionManagerLike,
+  EmbeddingGatewayLike,
+} from './memory-facade.js';
 
 // ── Project isolation ──
 export { ProjectIsolatedMemory } from './project-isolation.js';

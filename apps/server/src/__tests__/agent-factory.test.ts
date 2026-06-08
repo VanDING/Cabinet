@@ -48,6 +48,7 @@ describe('createStandardToolExecutor', () => {
       longTerm: {} as any,
       entity: {} as any,
       project: {} as any,
+      memoryFacade: {} as any,
       createDecision: vi.fn(),
       approveDecision: vi.fn(),
       rejectDecision: vi.fn(),

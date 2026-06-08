@@ -49,10 +49,18 @@ export function createStandardToolExecutor(
   return executor;
 }
 
+/**
+ * Build the server-specific MemoryProvider that the Agent layer consumes.
+ *
+ * The provider is now a thin adapter around {@link ctx.memoryFacade}.  Server-
+ * specific concerns that the facade does not own (project isolation for short-
+ * term KV and repo root-path decoration) are layered on top here.
+ */
 export function createStandardMemoryProvider(
   ctx: ServerContext,
   projectId?: string,
 ): MemoryProvider {
+  const facade = ctx.memoryFacade;
   const useIsolation = projectId && projectId !== 'global';
   const isolated = useIsolation
     ? new ProjectIsolatedMemory(projectId!, ctx.shortTerm, ctx.longTerm, ctx.entity, ctx.project)
@@ -60,39 +68,9 @@ export function createStandardMemoryProvider(
 
   return {
     async getShortTerm(sid: string) {
-      const items: { role: 'user' | 'assistant'; content: string }[] = [];
+      const items = await facade.getSessionContext(sid);
 
-      const session = ctx.sessionManager.get(sid);
-      if (session && session.messages.length > 0) {
-        const last = session.messages[session.messages.length - 1]!;
-        const end = last.role === 'user' ? session.messages.length - 1 : session.messages.length;
-        const start = Math.max(0, end - 20);
-
-        if (end > 20) {
-          const recentStart = end - 15;
-          for (let i = recentStart; i < end; i++) {
-            const m = session.messages[i]!;
-            items.push({ role: m.role, content: m.content });
-          }
-          const olderParts: string[] = [];
-          for (let i = start; i < recentStart; i++) {
-            const m = session.messages[i]!;
-            olderParts.push(m.content.slice(0, 100));
-          }
-          if (olderParts.length > 0) {
-            items.unshift({
-              role: 'user',
-              content: '[Earlier context summary]: ' + olderParts.join(' | '),
-            });
-          }
-        } else {
-          for (let i = start; i < end; i++) {
-            const m = session.messages[i]!;
-            items.push({ role: m.role, content: m.content });
-          }
-        }
-      }
-
+      // Layer project-isolated short-term KV entries on top of the facade view.
       const scopedSid = isolated ? `${projectId}:${sid}` : sid;
       const kv = ctx.shortTerm.getAll(scopedSid);
       for (const [k, v] of Object.entries(kv)) {
@@ -107,7 +85,7 @@ export function createStandardMemoryProvider(
       const pid = _pid === 'global' ? _pid : _pid || projectId || 'global';
       if (pid === 'global')
         return 'No project selected. Use list_projects to see available projects.';
-      const projCtx = isolated ? isolated.getProjectContext() : ctx.project.get(pid);
+
       let contextStr = '';
       try {
         const projRow = ctx.projectRepo.findById(pid);
@@ -117,49 +95,32 @@ export function createStandardMemoryProvider(
       } catch {
         /* root_path lookup is best-effort */
       }
+
+      const projCtx = isolated ? isolated.getProjectContext() : facade.getProject(pid);
       if (!projCtx) {
         contextStr += `Project "${pid}" has no context yet. Use set_project_context to add details.`;
       } else {
-        contextStr += `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones.map((m) => `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`).join(', ')}`;
+        contextStr += `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}\nMilestones: ${projCtx.milestones
+          .map(
+            (m) =>
+              `${(m as any).name ?? (m as any).title ?? 'milestone'} (${(m as any).status ?? 'pending'})`,
+          )
+          .join(', ')}`;
       }
 
       return contextStr;
     },
     async getEntityPreferences(_captainId: string) {
-      const prefs = ctx.entity.getPreferences(_captainId);
-      return prefs?.preferences ?? {};
+      return facade.getEntityPreferences(_captainId);
     },
     async searchLongTerm(query: string, _pid: string) {
-      let queryEmbedding: number[] | undefined;
-      if (ctx.gateway) {
-        try {
-          const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
-          queryEmbedding = er.embeddings[0];
-        } catch {
-          /* fall back to text search */
-        }
-      }
       const results = isolated
-        ? await isolated.longTermSearch(query, RAG_LONGTERM_TOP_K, queryEmbedding)
-        : await ctx.longTerm.search(query, RAG_LONGTERM_TOP_K, queryEmbedding);
+        ? await isolated.longTermSearch(query, RAG_LONGTERM_TOP_K)
+        : await facade.search(query, { limit: RAG_LONGTERM_TOP_K });
       return results.map((r) => `[Memory] ${r.content}`);
     },
     async getRecentInsights(count: number) {
-      const results = await ctx.longTerm.search('', count * 3);
-      const insights = results
-        .filter(
-          (r) =>
-            r.metadata.type === 'insight' ||
-            r.metadata.type === 'harness_insight' ||
-            r.metadata.type === 'subconscious_insight',
-        )
-        .slice(0, count)
-        .map((r) => ({
-          text: r.content,
-          relevance: (r.metadata.relevance as number) ?? 0.5,
-          source: (r.metadata.source as string) ?? 'unknown',
-        }));
-      return insights;
+      return facade.getRecentInsights(count);
     },
   };
 }

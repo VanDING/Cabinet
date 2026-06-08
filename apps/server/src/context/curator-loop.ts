@@ -10,7 +10,13 @@ import { AgentLoop, SafetyChecker, CheckpointManager } from '@cabinet/agent';
 import type { ToolDependencies, AgentRoleRegistry } from '@cabinet/agent';
 import { createStandardToolExecutor } from '../agent-factory.js';
 import { createFileCapabilities, createKnowledgeCapabilities } from '../capabilities.js';
-import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
+import type {
+  ShortTermMemory,
+  LongTermMemory,
+  EntityMemory,
+  ProjectMemory,
+  MemoryFacade,
+} from '@cabinet/memory';
 import type { DecisionService } from '@cabinet/decision';
 import type { DecisionRepository } from '@cabinet/storage';
 import type { EventBus } from '@cabinet/events';
@@ -33,6 +39,7 @@ export interface CuratorLoopDeps {
   longTerm: LongTermMemory;
   entity: EntityMemory;
   project: ProjectMemory;
+  memoryFacade: MemoryFacade;
   decisionRepo: DecisionRepository;
   decisionService: DecisionService;
   eventBus: EventBus;
@@ -67,6 +74,7 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     longTerm: deps.longTerm,
     entity: deps.entity,
     project: deps.project,
+    memoryFacade: deps.memoryFacade,
     createDecision(input) {
       const id = `dec_${Date.now()}`;
       return deps.decisionService.create({
@@ -362,62 +370,7 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     toolExecutor: executor,
     safetyChecker: new SafetyChecker(deps.currentTier),
     checkpointManager,
-    memoryProvider: {
-      getShortTerm: async (sid) => {
-        const items: { role: 'user' | 'assistant'; content: string }[] = [];
-        const session = deps.sessionManager.get(sid);
-        if (session && session.messages.length > 0) {
-          for (const m of session.messages.slice(-20)) {
-            items.push({ role: m.role, content: m.content });
-          }
-        }
-        const kv = deps.shortTerm.getAll(sid);
-        for (const [k, v] of Object.entries(kv)) {
-          if (typeof v === 'string' && v.length > 0) {
-            items.push({ role: 'user' as const, content: `[${k}]: ${v}` });
-          }
-        }
-        return items;
-      },
-      getProjectContext: async (pid) => {
-        const p = deps.project.get(pid);
-        if (!p) return `Project: ${pid}`;
-        return `Project: ${p.summary}\nGoals: ${p.goals.join(', ')}`;
-      },
-      getEntityPreferences: async (cid) => {
-        const prefs = deps.entity.getPreferences(cid);
-        return prefs?.preferences ?? {};
-      },
-      searchLongTerm: async (query, _pid) => {
-        let embedding: number[] | undefined;
-        try {
-          if (gateway) {
-            const er = await gateway.generateEmbeddings({ texts: [query] });
-            embedding = er.embeddings[0];
-          }
-        } catch {
-          /* fall back to text search */
-        }
-        const results = await deps.longTerm.search(query, RAG_CURATOR_TOP_K, embedding);
-        return results.map((r) => `[Memory] ${r.content}`);
-      },
-      getRecentInsights: async (count) => {
-        const results = await deps.longTerm.search('', count * 3);
-        return results
-          .filter(
-            (r) =>
-              r.metadata.type === 'insight' ||
-              r.metadata.type === 'harness_insight' ||
-              r.metadata.type === 'subconscious_insight',
-          )
-          .slice(0, count)
-          .map((r) => ({
-            text: r.content,
-            relevance: (r.metadata.relevance as number) ?? 0.5,
-            source: (r.metadata.source as string) ?? 'unknown',
-          }));
-      },
-    },
+    memoryProvider: deps.memoryFacade,
     sessionId: `curator_bg_${Date.now()}`,
     projectId: 'default',
     captainId: DEFAULT_CAPTAIN_ID,

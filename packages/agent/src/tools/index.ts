@@ -1,6 +1,12 @@
 import { ToolExecutor, type ToolDefinition } from '../tool-executor.js';
 import type { EventBus } from '@cabinet/events';
-import type { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
+import type {
+  ShortTermMemory,
+  LongTermMemory,
+  EntityMemory,
+  ProjectMemory,
+  MemoryFacade,
+} from '@cabinet/memory';
 import {
   MessageType,
   DEFAULT_CAPTAIN_ID,
@@ -44,10 +50,16 @@ export interface ToolDependencies
   // ── Existing (read path) ──
   decisionStore: DecisionStore;
   eventBus: EventBus;
+  /** @deprecated Use memoryFacade instead. Raw store access will be removed in a future release. */
   shortTerm: ShortTermMemory;
+  /** @deprecated Use memoryFacade instead. */
   longTerm: LongTermMemory;
+  /** @deprecated Use memoryFacade instead. */
   entity: EntityMemory;
+  /** @deprecated Use memoryFacade instead. */
   project: ProjectMemory;
+  /** Unified memory facade — preferred read/write entry point for memory tools. */
+  memoryFacade: MemoryFacade;
 
   // ── Write callbacks (wired by server layer) ──
   createDecision: (input: {
