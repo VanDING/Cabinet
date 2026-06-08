@@ -30,8 +30,6 @@ const LAYERS: Record<number, string[]> = {
     '@cabinet/secretary',
     '@cabinet/workflow',
     '@cabinet/harness',
-    '@cabinet/organize',
-    '@cabinet/meeting',
   ],
   4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop'],
 };

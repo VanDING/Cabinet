@@ -1,7 +1,7 @@
 // Agent factory — AgentLoop creation, caching, rules loading, tier sync.
 // Extracted from agents.ts.
 
-// Agent factory, dispatch, and meeting functions — extracted from secretary.ts (Phase 1.1 split).
+// Agent factory, dispatch functions — extracted from secretary.ts (Phase 1.1 split).
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { ServerContext } from '../../../context.js';
@@ -25,12 +25,6 @@ import {
   type ParsedIntent,
   type AgentRouteResult,
 } from '@cabinet/secretary';
-import {
-  buildReviewerTask,
-  parseReviewerResponse,
-  buildExtractionPrompt,
-  parseExtractionResponse,
-} from '@cabinet/meeting';
 import { broadcast } from '../../../ws/handler.js';
 import { chunkText, cosineSimilarity } from '../../../utils/text-utils.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../../../agent-factory.js';
@@ -51,11 +45,7 @@ import {
 import { buildToolDependencies } from '../tool-dependencies.js';
 
 
-// runMeeting wired by agents.ts shell to avoid circular dependency with meeting.ts
 import { feedbackStore } from './feedback.js';
-let _runMeeting: ((...args: any[]) => any) | undefined;
-export function _setRunMeetingRef(fn: typeof _runMeeting) { _runMeeting = fn; }
-function getRunMeeting() { return _runMeeting; }
 
 // Lazy reference to dispatchToSpecialistStreaming — avoids circular import with dispatch.ts
 let _dispatchToSpecialistStreaming: ((...args: any[]) => any) | undefined;
@@ -191,7 +181,7 @@ export function getAgentLoopForRole(
 
   const executor = createStandardToolExecutor(
     ctx,
-    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { runMeeting: getRunMeeting(), getAgentLoopForRole, resolveModel }),
+    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }),
     effectiveAllowedTools,
   );
 
@@ -375,7 +365,7 @@ export function getOrCreateAgent(
   }
 
   // Secretary's own executor (all tools)
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { runMeeting: getRunMeeting(), getAgentLoopForRole, resolveModel }));
+  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }));
   const memoryProvider = createStandardMemoryProvider(ctx, projectId);
 
   // Load secretary role for temperature and system prompt

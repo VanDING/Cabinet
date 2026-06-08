@@ -52,7 +52,6 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
     const handler = () => fetchEvents();
     window.addEventListener('ws:decision_created', handler);
     window.addEventListener('ws:decision_updated', handler);
-    window.addEventListener('ws:meeting_created', handler);
     window.addEventListener('ws:project_created', handler);
     window.addEventListener('ws:project_deleted', handler);
     window.addEventListener('ws:workflow_started', handler);
@@ -65,7 +64,6 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
       [
         'decision_created',
         'decision_updated',
-        'meeting_created',
         'project_created',
         'project_deleted',
         'workflow_started',
@@ -79,7 +77,6 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
     return () => {
       window.removeEventListener('ws:decision_created', handler);
       window.removeEventListener('ws:decision_updated', handler);
-      window.removeEventListener('ws:meeting_created', handler);
       window.removeEventListener('ws:project_created', handler);
       window.removeEventListener('ws:project_deleted', handler);
       window.removeEventListener('ws:workflow_started', handler);

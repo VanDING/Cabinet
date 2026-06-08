@@ -144,10 +144,6 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     async runWorkflow(_id) {
       return { runId: '', status: 'not_implemented' };
     },
-    async startMeeting(topic, _advisorIds) {
-      const meetingId = `meeting_${Date.now()}`;
-      return { meetingId, topic, synthesis: '', perspectives: [] };
-    },
     async writeLongTermMemory(content, metadata) {
       let embedding: number[] | undefined;
       if (ctx.gateway) {

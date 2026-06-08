@@ -98,18 +98,6 @@ export interface ToolDependencies
     updatedAt: string;
   }>;
 
-  startMeeting: (
-    topic: string,
-    advisorIds?: string[],
-    projectId?: string,
-    chairBrief?: string,
-  ) => Promise<{
-    meetingId: string;
-    topic: string;
-    synthesis: string;
-    perspectives: unknown[];
-  }>;
-
   writeLongTermMemory: (content: string, metadata?: Record<string, unknown>) => Promise<string>;
   createEmployee: (input: { name: string; role: string; kind: string }) => void;
 
@@ -792,28 +780,6 @@ You may also include capabilities (files, web, shell, knowledge, evaluation) and
         const workflowId = args.workflowId as string;
         if (!workflowId) return { error: 'workflowId is required' };
         return { runs: deps.listWorkflowRuns(workflowId) };
-      },
-    },
-
-    // ═══════════════════════════════════════════════════════════
-    // Meeting Tools
-    // ═══════════════════════════════════════════════════════════
-    {
-      name: 'start_meeting',
-      parameters: { type: 'object', properties: {} },
-      execute: async (args: Record<string, unknown>) => {
-        const topic = args.topic as string;
-        if (!topic) return { error: 'topic is required' };
-        const advisorIds = (args.advisors as string[]) ?? undefined;
-        const projectId = args.projectId as string | undefined;
-        const chairBrief = args.brief as string | undefined;
-        const result = await deps.startMeeting(topic, advisorIds, projectId, chairBrief);
-        return {
-          meetingId: result.meetingId,
-          topic: result.topic,
-          synthesis: result.synthesis,
-          advisorCount: result.perspectives.length,
-        };
       },
     },
 

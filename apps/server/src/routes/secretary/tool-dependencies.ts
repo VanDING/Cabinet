@@ -22,18 +22,6 @@ import {
   type ParsedIntent,
   type AgentRouteResult,
 } from '@cabinet/secretary';
-import {
-  buildChairPrompt,
-  parseChairResponse,
-  buildAdvisorPrompt,
-  parseAdvisorResponse,
-  buildReviewerTask,
-  parseReviewerResponse,
-  buildExtractionPrompt,
-  parseExtractionResponse,
-  generateSynthesis,
-  type AdvisorFinding,
-} from '@cabinet/meeting';
 import { broadcast } from '../../ws/handler.js';
 import { detectDangerousCommand } from '../../utils/security.js';
 import { chunkText, cosineSimilarity, extractTitle, type ChunkResult } from '../../utils/text-utils.js';
@@ -243,12 +231,6 @@ export function buildToolDependencies(ctx: ServerContext, activeProjectId?: stri
         startedAt: r.started_at,
         updatedAt: r.updated_at,
       }));
-    },
-
-    // ── Meeting write callback ──
-    async startMeeting(topic, advisorIds, projectId, chairBrief) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (_inject?.runMeeting as any)?.(topic, advisorIds, projectId, ctx, chairBrief);
     },
 
     // ── Memory write callbacks ──

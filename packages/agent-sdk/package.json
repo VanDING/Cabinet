@@ -1,5 +1,6 @@
 {
   "name": "@cabinet/agent-sdk",
+  "private": true,
   "version": "0.1.0-alpha.0",
   "description": "SDK for building external agents compatible with Cabinet — the Agent Operating System.",
   "license": "UNLICENSED",

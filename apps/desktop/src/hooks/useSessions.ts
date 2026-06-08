@@ -10,7 +10,12 @@ export interface AttachedFile {
   type: 'local' | 'project';
 }
 
-import type { MeetingData } from '../components/MeetingCard';
+export interface MeetingData {
+  meetingId: string;
+  topic: string;
+  synthesis: string;
+  perspectives: Array<{ advisor: string; role: string; content: string }>;
+}
 
 export interface ToolCallStatus {
   id: string;

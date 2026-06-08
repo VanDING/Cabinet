@@ -23,18 +23,6 @@ import {
   type ParsedIntent,
   type AgentRouteResult,
 } from '@cabinet/secretary';
-import {
-  buildChairPrompt,
-  parseChairResponse,
-  buildAdvisorPrompt,
-  parseAdvisorResponse,
-  buildReviewerTask,
-  parseReviewerResponse,
-  buildExtractionPrompt,
-  parseExtractionResponse,
-  generateSynthesis,
-  type AdvisorFinding,
-} from '@cabinet/meeting';
 import { broadcast } from '../ws/handler.js';
 import { detectDangerousCommand } from '../utils/security.js';
 import { chunkText, cosineSimilarity, extractTitle, type ChunkResult } from '../utils/text-utils.js';
@@ -81,7 +69,7 @@ import { promisify } from 'node:util';
 
 import { execAsync, ROLES_NEEDING_ENV, cabinetMdCache, loadCabinetMd, buildSystemPrompt, readTextFile, MIME_MAP, TEXT_EXTENSIONS, isTextFile, resolveSafePath, buildSafeEnv } from './secretary/utils.js';
 import { buildToolDependencies } from './secretary/tool-dependencies.js';
-import { activeSubAgents, meetingResultStore, capturedMeetingResult, sessionTrustLevel, detectTrustLevelOverride, resolveModel, getAgentLoopForRole, createReviewerLoop, dispatchToExternalAgent, dispatchToSpecialist, dispatchToSpecialistStreaming, persistReviewResult, getOrCreateAgent, runMeeting, feedbackStore } from './secretary/agents.js';
+import { activeSubAgents, sessionTrustLevel, detectTrustLevelOverride, resolveModel, getAgentLoopForRole, createReviewerLoop, dispatchToExternalAgent, dispatchToSpecialist, dispatchToSpecialistStreaming, persistReviewResult, getOrCreateAgent, feedbackStore } from './secretary/agents.js';
 import { registerChatRoute } from './secretary/chat.js';
 
 export const secretaryRouter = new Hono();

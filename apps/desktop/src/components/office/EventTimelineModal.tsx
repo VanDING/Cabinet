@@ -26,11 +26,6 @@ const TYPE_CATEGORIES: { key: string; label: string; types: string[] }[] = [
     types: ['task_order', 'task_completed', 'task_failed'],
   },
   {
-    key: 'meeting',
-    label: 'Meeting',
-    types: ['meeting_started', 'meeting_completed', 'deliberation_proposal'],
-  },
-  {
     key: 'workflow',
     label: 'Workflow',
     types: ['workflow_started', 'workflow_status_changed', 'workflow_completed'],

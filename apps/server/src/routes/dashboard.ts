@@ -13,8 +13,6 @@ const EVENT_LABELS: Record<string, string> = {
   [MessageType.TaskOrder]: 'Task ordered',
   [MessageType.TaskCompleted]: 'Task completed',
   [MessageType.TaskFailed]: 'Task failed',
-  [MessageType.MeetingStarted]: 'Meeting started',
-  [MessageType.MeetingCompleted]: 'Meeting completed',
   [MessageType.DeliberationProposal]: 'Deliberation proposal',
   [MessageType.WorkflowStarted]: 'Workflow started',
   [MessageType.WorkflowStatusChanged]: 'Workflow status changed',

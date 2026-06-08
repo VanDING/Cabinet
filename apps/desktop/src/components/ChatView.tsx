@@ -4,7 +4,6 @@ import { marked } from 'marked';
 import hljs from 'highlight.js';
 import type { ChatMessage, AttachedFile, Session } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
-import { MeetingCard } from './MeetingCard';
 import { WorkflowRunCard } from './WorkflowRunCard';
 import { TaskPanel } from './TaskPanel';
 import { SubAgentWindow } from './SubAgentWindow';
@@ -558,7 +557,7 @@ const MessageRow = memo(function MessageRow({
                   <span>→</span>
                 </button>
               )}
-              {msg.meeting && <MeetingCard data={msg.meeting} />}
+              {msg.meeting && <span className="text-sm text-muted">Meeting: {msg.meeting.topic}</span>}
               {(() => {
                 const call = msg.toolCalls?.find(
                   (tc) => tc.name === 'runWorkflow' && tc.status === 'completed',

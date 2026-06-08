@@ -1,3 +1,5 @@
+// @deprecated This package is currently private and not published to npm.
+// It will be stabilized and published once the external agent API reaches maturity.
 //
 // @cabinet/agent-sdk — SDK for building external agents compatible with Cabinet.
 //

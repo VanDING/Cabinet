@@ -13,7 +13,6 @@ export function Deliverables({ projectId, onExpand }: Props) {
 
   useEvent('deliverable_created', () => refetch());
   useEvent('workflow_completed', () => refetch());
-  useEvent('meeting_created', () => refetch());
   useEvent('task_completed', () => refetch());
 
   const handleOpenDeliverable = useCallback((d: (typeof items)[0]) => {

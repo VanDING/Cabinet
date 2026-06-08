@@ -84,7 +84,6 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     updateWorkflow: () => {},
     deleteWorkflow: () => {},
     runWorkflow: async () => ({ runId: '', status: 'not_implemented' }),
-    startMeeting: async (topic) => ({ meetingId: '', topic, synthesis: '', perspectives: [] }),
     writeLongTermMemory: async (content, metadata) => {
       let embedding: number[] | undefined;
       if (gateway) {

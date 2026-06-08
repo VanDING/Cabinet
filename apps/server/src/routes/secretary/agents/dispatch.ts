@@ -1,7 +1,7 @@
 // Agent dispatch — external/specialist dispatch + streaming + context slots.
 // Extracted from agents.ts.
 
-// Agent factory, dispatch, and meeting functions — extracted from secretary.ts (Phase 1.1 split).
+// Agent factory, dispatch functions — extracted from secretary.ts (Phase 1.1 split).
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { ServerContext } from '../../../context.js';
@@ -25,18 +25,6 @@ import {
   type ParsedIntent,
   type AgentRouteResult,
 } from '@cabinet/secretary';
-import {
-  buildChairPrompt,
-  parseChairResponse,
-  buildAdvisorPrompt,
-  parseAdvisorResponse,
-  buildReviewerTask,
-  parseReviewerResponse,
-  buildExtractionPrompt,
-  parseExtractionResponse,
-  generateSynthesis,
-  type AdvisorFinding,
-} from '@cabinet/meeting';
 import { broadcast } from '../../../ws/handler.js';
 import { chunkText, cosineSimilarity } from '../../../utils/text-utils.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../../../agent-factory.js';
@@ -58,7 +46,6 @@ import { buildToolDependencies } from '../tool-dependencies.js';
 
 
 import { resolveModel, getAgentLoopForRole, persistReviewResult, createReviewerLoop } from "./agent-factory.js";
-import { runMeeting } from './meeting.js';
 export async function dispatchToExternalAgent(
   agentId: string,
   message: string,
@@ -424,7 +411,7 @@ export async function dispatchToSpecialistStreaming(
       }
     };
 
-    const toolExecutor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { runMeeting, getAgentLoopForRole, resolveModel }));
+    const toolExecutor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }));
     const interactiveAgent = new OrganizeInteractiveAgent(
       ctx.gateway!,
       toolExecutor,

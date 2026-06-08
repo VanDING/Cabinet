@@ -232,8 +232,6 @@ export function App() {
           `Decision ${data.data?.status ?? 'updated'}`,
           data.data?.title ?? 'Untitled',
         );
-      if (type === 'meeting_created')
-        addNotification('meeting', 'Meeting completed', data.data?.topic ?? 'Untitled');
       if (type === 'task_completed')
         addNotification('task', 'Task completed', data.data?.name ?? 'Untitled');
       if (type === 'project_created')
