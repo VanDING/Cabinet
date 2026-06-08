@@ -70,9 +70,9 @@ export class AutoAdjuster {
     const filteredActions: AdjustmentAction[] = [];
     for (const action of actions) {
       const evaluated = this.policyEngine
-        ? (this.policyEngine.evaluateAdjustment(action as any) as AdjustmentAction | null)
+        ? this.policyEngine.evaluateAdjustment(action as any)
         : action;
-      if (evaluated) filteredActions.push(evaluated);
+      if (evaluated) filteredActions.push(evaluated as AdjustmentAction);
     }
 
     for (const a of filteredActions) {

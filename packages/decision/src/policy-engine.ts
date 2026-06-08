@@ -7,6 +7,15 @@ export interface MissionStatement {
   implications: string[]; // concrete behavioral implications
 }
 
+export interface MissionProfile {
+  /** Captain's risk tolerance: low = conservative, high = aggressive. Default: medium. */
+  riskTolerance: 'low' | 'medium' | 'high';
+  /** Captain's cost sensitivity: low = cost no object, high = frugal. Default: medium. */
+  costSensitivity: 'low' | 'medium' | 'high';
+  /** Preferred resolution strategy when S3 and S4 conflict. Default: balance. */
+  conflictResolution: 's3_favors' | 's4_favors' | 'balance';
+}
+
 export interface PolicyConflict {
   s3Proposal: { type: string; description: string; details: Record<string, unknown> };
   s4Proposal?: { type: string; description: string; details: Record<string, unknown> };
@@ -35,9 +44,19 @@ export interface AdjustmentAction {
  */
 export class PolicyEngine {
   private missions: MissionStatement[];
+  private profile: MissionProfile;
 
-  constructor(missions?: MissionStatement[]) {
+  constructor(
+    missions?: MissionStatement[],
+    profile?: Partial<MissionProfile>,
+  ) {
     this.missions = missions ?? PolicyEngine.defaultMissions();
+    this.profile = {
+      riskTolerance: 'medium',
+      costSensitivity: 'medium',
+      conflictResolution: 'balance',
+      ...profile,
+    };
   }
 
   static defaultMissions(): MissionStatement[] {
@@ -81,37 +100,110 @@ export class PolicyEngine {
     ];
   }
 
+  /** Update the mission profile from runtime preferences (e.g. EntityMemory). */
+  setProfile(profile: Partial<MissionProfile>): void {
+    this.profile = { ...this.profile, ...profile };
+  }
+
+  getProfile(): MissionProfile {
+    return { ...this.profile };
+  }
+
   /** Evaluate an adjustment action against policy. Returns the action (possibly modified) or null if blocked. */
   evaluateAdjustment(action: AdjustmentAction): AdjustmentAction | null {
-    // Block any auto-approval of L3-equivalent actions when user_autonomy is active
+    // Rule 0: Always allow critical notifications — they preserve autonomy
     if (action.type === 'notify_captain' && action.severity === 'critical') {
-      // Always allow critical notifications — they preserve autonomy by informing the user
       return action;
     }
+
+    // Rule 1 (user_autonomy): Block auto-approval of L3-equivalent actions
+    if (this.isL3Equivalent(action)) {
+      return null;
+    }
+
+    // Rule 2 (cost_transparency): Block non-urgent model swaps when budget critical
+    if (action.type === 'model_swap' && this.isBudgetCritical(action)) {
+      return null;
+    }
+
+    // Rule 3 (external_agent_sandbox): Block L2+ auto-adjustments from external agents
+    if (this.isExternalAgentAction(action) && this.isElevatedAction(action)) {
+      return null;
+    }
+
+    // Rule 4 (explainability): Require reasoning for applied significant actions
+    if (action.applied && !this.hasReasoning(action) && this.isSignificant(action)) {
+      return { ...action, applied: false };
+    }
+
     return action;
   }
 
-  /** When S3 (control) and S4 (intelligence) conflict, arbitrate based on mission priorities. */
+  /**
+   * When S3 (control) and S4 (intelligence) conflict, arbitrate based on
+   * mission priorities and the Captain's mission profile.
+   *
+   * The core tension is typically:
+   * - S3 proposes cost-cutting / efficiency (cost_transparency mission)
+   * - S4 proposes deeper analysis / quality (quality_first mission)
+   *
+   * Scoring focuses on these two key missions, with explainability as a tie-breaker.
+   */
   arbitrate(
     s3Action: AdjustmentAction,
     s4Insight: { relevance: number; text: string },
   ): PolicyConflict {
+    const costMission = this.missions.find((m) => m.id === 'cost_transparency');
     const qualityMission = this.missions.find((m) => m.id === 'quality_first');
-    if (qualityMission && s4Insight.relevance > 0.8 && s3Action.type === 'context_budget_reduce') {
+    const explainMission = this.missions.find((m) => m.id === 'explainability');
+
+    // S3 score: severity base + cost-cutting bonus
+    let s3Score = 0;
+    if (s3Action.severity === 'warning') s3Score += 2;
+    if (s3Action.severity === 'critical') s3Score += 4;
+    if (['model_swap', 'context_budget_reduce'].includes(s3Action.type)) {
+      s3Score += (costMission?.priority ?? 0) * 0.5;
+    }
+
+    // S4 score: insight quality via quality_first mission
+    let s4Score = (qualityMission?.priority ?? 0) * s4Insight.relevance;
+
+    // Apply profile bias
+    const bias =
+      this.profile.conflictResolution === 's3_favors'
+        ? 2
+        : this.profile.conflictResolution === 's4_favors'
+          ? -2
+          : 0;
+    const diff = s3Score - s4Score + bias;
+    const threshold = 1.5;
+
+    if (Math.abs(diff) < threshold) {
       return {
         s3Proposal: s3Action,
         s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
-        missionId: qualityMission.id,
-        resolution: 's4_wins',
-        reason: 'High-relevance insight overrides cost reduction per quality_first mission',
+        missionId: 'compromise',
+        resolution: 'compromise',
+        reason: `S3 score=${s3Score.toFixed(1)} vs S4 score=${s4Score.toFixed(1)} — within threshold; merging both recommendations`,
       };
     }
+
+    if (diff > threshold) {
+      return {
+        s3Proposal: s3Action,
+        s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
+        missionId: 's3_control',
+        resolution: 's3_wins',
+        reason: `S3 score=${s3Score.toFixed(1)} outweighs S4 score=${s4Score.toFixed(1)} per mission priorities`,
+      };
+    }
+
     return {
       s3Proposal: s3Action,
       s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
-      missionId: 'default',
-      resolution: 's3_wins',
-      reason: 'No overriding mission priority; default to operational control',
+      missionId: 's4_intelligence',
+      resolution: 's4_wins',
+      reason: `S4 score=${s4Score.toFixed(1)} outweighs S3 score=${s3Score.toFixed(1)} per mission priorities`,
     };
   }
 
@@ -133,5 +225,80 @@ export class PolicyEngine {
     }
 
     return { allowed: true };
+  }
+
+  // ── Private helpers ──
+
+  private isL3Equivalent(action: AdjustmentAction): boolean {
+    // Actions that affect system-wide configuration or data integrity
+    const l3Types = new Set([
+      'trigger_reconsolidation',
+      'evaluator_frequency_increase',
+    ]);
+    return l3Types.has(action.type) && action.applied && !action.requiresCaptainApproval;
+  }
+
+  private isBudgetCritical(action: AdjustmentAction): boolean {
+    const budgetUsage = (action.details.budgetUsage as number) ?? 0;
+    return budgetUsage > 0.9 && action.severity !== 'critical';
+  }
+
+  private isExternalAgentAction(action: AdjustmentAction): boolean {
+    return (action.details.agentType as string | undefined)?.startsWith('external_') ?? false;
+  }
+
+  private isElevatedAction(action: AdjustmentAction): boolean {
+    const elevatedTypes = new Set(['model_swap', 'context_budget_reduce', 'temperature_adjust']);
+    return elevatedTypes.has(action.type);
+  }
+
+  private hasReasoning(action: AdjustmentAction): boolean {
+    return typeof action.details.reasoning === 'string' && action.details.reasoning.length > 0;
+  }
+
+  private isSignificant(action: AdjustmentAction): boolean {
+    return action.severity === 'warning' || action.severity === 'critical';
+  }
+
+  /**
+   * Score a proposal against all missions.
+   *
+   * Returns a weighted sum where each mission contributes based on:
+   * - Its priority (1-10)
+   * - Its relevance to the proposal type
+   */
+  private scoreProposal(
+    proposal: AdjustmentAction,
+    source: 's3' | 's4',
+  ): number {
+    let score = 0;
+    for (const mission of this.missions) {
+      const relevance = this.missionRelevance(mission, proposal, source);
+      score += mission.priority * relevance;
+    }
+    return score;
+  }
+
+  private missionRelevance(
+    mission: MissionStatement,
+    proposal: AdjustmentAction,
+    source: 's3' | 's4',
+  ): number {
+    switch (mission.id) {
+      case 'user_autonomy':
+        return proposal.type === 'notify_captain' ? 1.0 : proposal.requiresCaptainApproval ? 0.5 : 0.1;
+      case 'cost_transparency':
+        return ['model_swap', 'context_budget_reduce'].includes(proposal.type) ? 0.8 : 0.2;
+      case 'quality_first':
+        return source === 's4' && proposal.type === 'insight'
+          ? (proposal.details.relevance as number) ?? 0.5
+          : 0.3;
+      case 'explainability':
+        return proposal.severity === 'critical' ? 0.7 : 0.3;
+      case 'external_agent_sandbox':
+        return (proposal.details.agentType as string | undefined)?.startsWith('external_') ? 1.0 : 0.1;
+      default:
+        return 0.2;
+    }
   }
 }
