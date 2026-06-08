@@ -19,7 +19,13 @@ export type { ProjectContext } from './project.js';
 
 // ── Write Gate ──
 export { WriteGate } from './write-gate.js';
-export type { MemoryTier, WriteGateResult } from './write-gate.js';
+export type {
+  MemoryTier,
+  WriteGateResult,
+  WriteGateChannel,
+  EmbeddingProvider,
+  WriteGateOptions,
+} from './write-gate.js';
 
 // ── Cascade Buffer ──
 export { CascadeBuffer } from './cascade-buffer.js';
