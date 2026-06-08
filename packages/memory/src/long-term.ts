@@ -18,6 +18,17 @@ try {
 import type { KnowledgeGraph } from './knowledge-graph.js';
 import { extractCandidateEntities } from './entity-extractor.js';
 
+export interface LlmJudgeResult {
+  isContradiction: boolean;
+  confidence: number;
+  resolutionSuggestion: string;
+}
+
+export type LlmJudge = (
+  oldStatement: string,
+  newStatement: string,
+) => Promise<LlmJudgeResult>;
+
 export interface LongTermEntry {
   id: string;
   content: string;
@@ -60,6 +71,9 @@ export class LongTermMemory {
   private idToLabel = new Map<string, number>();
   private nextLabel = 0;
   private knowledgeGraph: KnowledgeGraph | null = null;
+  private llmJudge?: LlmJudge;
+  private llmJudgeCache = new Map<string, number>(); // entity-pair -> timestamp
+  private readonly LLM_JUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
   private onContradictionDetected?: (contradiction: {
     oldMemoryId: string;
     oldContent: string;
@@ -151,7 +165,7 @@ export class LongTermMemory {
       }
     }
 
-    // ── Contradiction detection (Phase 4.2) ──
+    // ── Contradiction detection (graph-based) ──
     if (this.knowledgeGraph) {
       const conflicts = this.knowledgeGraph.detectContradictions(entry.content);
       for (const c of conflicts) {
@@ -174,6 +188,16 @@ export class LongTermMemory {
           });
         }
       }
+    }
+
+    // ── LLM-powered semantic contradiction detection ──
+    // Runs after graph-based detection to catch semantic contradictions that
+    // the graph structure misses (e.g. same concept expressed with different
+    // entity names).
+    if (this.llmJudge && this.knowledgeGraph && entry.content.length > 50) {
+      this.runLlmContradictionCheck(id, entry.content).catch(() => {
+        /* best-effort */
+      });
     }
 
     const embeddingJson = entry.embedding ? JSON.stringify(entry.embedding) : null;
@@ -388,6 +412,57 @@ export class LongTermMemory {
   }
 
   /**
+   * LLM-powered semantic contradiction check.
+   *
+   * Searches for related old memories and uses an LLM judge to determine
+   * whether the new statement contradicts any existing memory.
+   */
+  private async runLlmContradictionCheck(
+    newId: string,
+    newContent: string,
+  ): Promise<void> {
+    if (!this.llmJudge || !this.knowledgeGraph) return;
+
+    // Use text search to find potentially related old memories
+    const snippet = newContent.slice(0, 300);
+    const related = this.searchByText(snippet, 5);
+
+    for (const oldRow of related) {
+      if (!oldRow.content || oldRow.id === newId) continue;
+
+      // Cooldown: avoid re-checking the same pair within 24h
+      const pairKey = [oldRow.id, newId].sort().join('::');
+      const lastChecked = this.llmJudgeCache.get(pairKey);
+      if (lastChecked && Date.now() - lastChecked < this.LLM_JUDGE_COOLDOWN_MS) {
+        continue;
+      }
+
+      const judgment = await this.llmJudge(oldRow.content, newContent);
+      this.llmJudgeCache.set(pairKey, Date.now());
+      this.pruneLlmJudgeCache();
+
+      if (judgment.isContradiction && judgment.confidence > 0.7) {
+        // Record contradiction in knowledge graph as memory-entity relation
+        this.knowledgeGraph.addContradiction(oldRow.id, newId, judgment.confidence);
+      }
+    }
+  }
+
+  /** Prevent the LLM judge cache from growing unbounded. */
+  private pruneLlmJudgeCache(): void {
+    const MAX_CACHE_SIZE = 10_000;
+    if (this.llmJudgeCache.size <= MAX_CACHE_SIZE) return;
+
+    // Remove oldest 20% of entries
+    const entries = [...this.llmJudgeCache.entries()];
+    entries.sort((a, b) => a[1] - b[1]);
+    const toRemove = Math.floor(entries.length * 0.2);
+    for (let i = 0; i < toRemove; i++) {
+      this.llmJudgeCache.delete(entries[i]![0]);
+    }
+  }
+
+  /**
    * Semantic vector similarity search using HNSW index.
    */
   async semanticSearch(queryEmbedding: number[], limit = 20): Promise<SimilarityResult[]> {
@@ -497,6 +572,11 @@ export class LongTermMemory {
   /** Inject KnowledgeGraph for contradiction detection on store(). */
   setKnowledgeGraph(kg: KnowledgeGraph | null): void {
     this.knowledgeGraph = kg;
+  }
+
+  /** Inject LLM judge for semantic contradiction detection on store(). */
+  setLlmJudge(judge: LlmJudge): void {
+    this.llmJudge = judge;
   }
 
   /** Set a callback invoked when a high-confidence contradiction is detected. */
