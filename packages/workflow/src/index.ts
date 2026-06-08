@@ -15,12 +15,7 @@ export {
   type BlueprintValidationResult,
   type BlueprintIssue,
 } from './blueprint-validator.js';
-export {
-  parseEL,
-  compileEL,
-  type ELNode,
-  type CompileResult,
-} from './el-compiler.js';
+export { parseYamlBlueprint, type YamlBlueprint, type YamlParseResult } from './blueprint-yaml.js';
 export {
   exportBlueprint,
   importBlueprint,

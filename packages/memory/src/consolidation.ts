@@ -50,18 +50,14 @@ export class ConsolidationService {
    * 4. transient noise → skipped.
    */
   async consolidateBasic(sessionId: string): Promise<number> {
-    const cutoff = Date.now() - this.preserveRecentMs;
-    const allEntries = this.shortTerm.getAll(sessionId);
-    const store = this.shortTerm._store;
+    const entries = this.shortTerm.getEntriesOlderThan(sessionId, this.preserveRecentMs);
     let directMigrated = 0;
     const dailyKeys: string[] = [];
     const dailyEntries: { key: string; value: string }[] = [];
 
-    for (const [key, value] of Object.entries(allEntries)) {
-      const fullKey = `${sessionId}:${key}`;
-      const entry = store.get(fullKey);
-      // Skip entries that are still fresh (active within preserveRecentMs)
-      if (entry && entry.timestamp.getTime() > cutoff) continue;
+    for (const entry of entries) {
+      const key = entry.key;
+      const value = entry.value;
 
       const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
       if (!stringValue) continue;
@@ -106,7 +102,7 @@ export class ConsolidationService {
     // Track cascade buffering state in short-term for restart survival
     if (dailyEntries.length > 0) {
       const CASCADE_META_KEY = '__cascade_meta__';
-      const existing = this.shortTerm._store.get(`${sessionId}:${CASCADE_META_KEY}`)?.value as
+      const existing = this.shortTerm.get(sessionId, CASCADE_META_KEY) as
         | Record<string, { firstAt: number; entryCount: number }>
         | undefined;
       const updated = { ...(existing ?? {}) };
@@ -204,33 +200,37 @@ export class ConsolidationService {
   private async autoSeal(sessionId: string): Promise<number> {
     let sealedCount = 0;
     // Discover topics for this session
+    const allEntries = this.shortTerm.getEntriesOlderThan(sessionId, 0);
     const topics = new Set<string>();
-    for (const key of this.shortTerm._store.keys()) {
-      if (key.startsWith(`${sessionId}:`)) {
-        const topic = key.slice(sessionId.length + 1);
-        topics.add(topic);
+    for (const entry of allEntries) {
+      if (!entry.key.startsWith('__')) {
+        topics.add(entry.key);
       }
     }
 
     // Load persisted cascade metadata (survives restarts)
     const CASCADE_META_KEY = '__cascade_meta__';
-    const cascadeMeta = this.shortTerm._store.get(`${sessionId}:${CASCADE_META_KEY}`)?.value as
+    const cascadeMeta = this.shortTerm.get(sessionId, CASCADE_META_KEY) as
       | Record<string, { firstAt: number; entryCount: number }>
       | undefined;
 
     for (const topic of topics) {
       // Check in-memory buffer OR persisted metadata for seal eligibility
-      let shouldSeal = this.cascade.shouldSeal(sessionId, topic, { minCount: 3, maxAgeMs: 30 * 60 * 1000 });
+      let shouldSeal = this.cascade.shouldSeal(sessionId, topic, {
+        minCount: 3,
+        maxAgeMs: 30 * 60 * 1000,
+      });
       if (!shouldSeal && cascadeMeta?.[topic]) {
         const meta = cascadeMeta[topic]!;
         if (meta.entryCount >= 3 && Date.now() - meta.firstAt >= 30 * 60 * 1000) {
           // Restore buffer from short-term entries after restart
           const entries: import('./cascade-buffer.js').CascadeEntry[] = [];
-          for (const [k, entry] of this.shortTerm._store) {
-            if (k.startsWith(`${sessionId}:`) && k.slice(sessionId.length + 1) === topic) {
+          for (const entry of allEntries) {
+            if (entry.key === topic) {
               entries.push({
                 id: `${sessionId}:${topic}:${entry.timestamp.getTime()}`,
-                content: typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
+                content:
+                  typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
                 sourceKey: topic,
                 sessionId,
                 timestamp: entry.timestamp,

@@ -2,6 +2,7 @@
 // Harness — barrel export
 //
 
+export { BaseCliRuntime } from './base-cli.js';
 export { ClaudeCodeRuntime } from './claude-code.js';
 export { CodexRuntime } from './codex.js';
 export { OpenCodeRuntime } from './opencode.js';

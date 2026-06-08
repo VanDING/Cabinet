@@ -3,7 +3,13 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { decryptApiKey } from './crypto.js';
 import { broadcast } from './ws/handler.js';
 import { getBrowserPool } from './capabilities.js';
-import { startSkillWatcher, startAgentWatcher, startProjectWatcher, startRulesWatcher, startBlueprintWatcher } from './watchers.js';
+import {
+  startSkillWatcher,
+  startAgentWatcher,
+  startProjectWatcher,
+  startRulesWatcher,
+  startBlueprintWatcher,
+} from './watchers.js';
 
 export { activeApiKeyId, setActiveApiKeyId, getActiveApiKeyId } from './context/api-keys.js';
 import { activeApiKeyId, setActiveApiKeyId } from './context/api-keys.js';
@@ -78,7 +84,13 @@ import {
   importSkillFromMarkdown,
   setSkillRegistry,
 } from '@cabinet/agent';
-import { SkillExtractor, AgentDaemon, TriggerScheduler, TriggerExecutor, type CronAdapter } from '@cabinet/agent';
+import {
+  SkillExtractor,
+  AgentDaemon,
+  TriggerScheduler,
+  TriggerExecutor,
+  type CronAdapter,
+} from '@cabinet/agent';
 import cron, { type ScheduledTask } from 'node-cron';
 import { createDaemonContext } from './daemon-context.js';
 import {
@@ -186,9 +198,6 @@ export interface ServerContext {
   shutdown: () => void;
 }
 
-
-
-
 // ── System Mode ──────────────────────────────────────────────
 
 export type SystemMode = 'normal' | 'maintenance' | 'readonly' | 'emergency';
@@ -206,7 +215,11 @@ export function setSystemMode(mode: SystemMode): void {
     (ctx as any).systemMode = mode;
   }
   for (const listener of modeChangeListeners) {
-    try { listener(mode); } catch { /* non-fatal */ }
+    try {
+      listener(mode);
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -433,7 +446,9 @@ export function getServerContext(): ServerContext {
         });
 
         // Trigger semantic preference analysis (throttled internally)
-        preferenceLearner.learnFromDecisions(cid).catch((err) => { console.warn('Operation failed', err); });
+        preferenceLearner.learnFromDecisions(cid).catch((err) => {
+          console.warn('Operation failed', err);
+        });
 
         // Trigger Curator preference update (fire-and-forget)
         triggerCuratorPreferenceUpdate(decisionId, action, title, chosenOptionId, captainId);
@@ -493,17 +508,23 @@ export function getServerContext(): ServerContext {
   // (Secretary routing + Curator background tasks). Heavy work is delegated to external agents.
   const PROVIDER_DEFAULT_MODEL: Record<string, string> = {
     anthropic: 'anthropic/claude-haiku-4-5',
-    openai:    'openai/gpt-4o-mini',
-    google:    'google/gemini-2.5-flash',
-    deepseek:  'deepseek/deepseek-v4-flash',
-    qwen:      'qwen/qwen-turbo',
-    moonshot:  'moonshot/moonshot-v1-8k',
-    zhipu:     'zhipu/glm-4-flash',
-    baichuan:  'baichuan/baichuan3-turbo',
+    openai: 'openai/gpt-4o-mini',
+    google: 'google/gemini-2.5-flash',
+    deepseek: 'deepseek/deepseek-v4-flash',
+    qwen: 'qwen/qwen-turbo',
+    moonshot: 'moonshot/moonshot-v1-8k',
+    zhipu: 'zhipu/glm-4-flash',
+    baichuan: 'baichuan/baichuan3-turbo',
   };
   const PROVIDER_PREFERENCE = [
-    'anthropic', 'openai', 'google', 'deepseek',
-    'qwen', 'moonshot', 'zhipu', 'baichuan',
+    'anthropic',
+    'openai',
+    'google',
+    'deepseek',
+    'qwen',
+    'moonshot',
+    'zhipu',
+    'baichuan',
   ];
   const FALLBACK_MODEL = PROVIDER_DEFAULT_MODEL.anthropic;
 
@@ -553,7 +574,10 @@ export function getServerContext(): ServerContext {
         const pref = apiKeyRepo.findById(activeApiKeyId);
         if (pref) {
           const decrypted = decryptApiKey(pref.encrypted_key, mpw);
-          providerConfigs[pref.provider] = { apiKey: decrypted, baseUrl: pref.base_url ?? undefined };
+          providerConfigs[pref.provider] = {
+            apiKey: decrypted,
+            baseUrl: pref.base_url ?? undefined,
+          };
         }
       } catch {
         setActiveApiKeyId(null); // expired/deleted key, clear preference
@@ -703,9 +727,10 @@ export function getServerContext(): ServerContext {
     const customRows = agentRoleRepo.findCustom();
     for (const row of customRows) {
       // Preserve the agent's actual type (custom, external_cli, external_a2a)
-      const agentType = (row.type === 'external_cli' || row.type === 'external_a2a' || row.type === 'custom')
-        ? row.type as 'custom' | 'external_cli' | 'external_a2a'
-        : 'custom' as const;
+      const agentType =
+        row.type === 'external_cli' || row.type === 'external_a2a' || row.type === 'custom'
+          ? (row.type as 'custom' | 'external_cli' | 'external_a2a')
+          : ('custom' as const);
       agentRegistry.register({
         type: agentType,
         name: row.name,
@@ -787,7 +812,9 @@ export function getServerContext(): ServerContext {
     triggerScheduler.rescheduleAll();
     logger.info('Autopilot scheduler initialized');
   } catch (e) {
-    logger.warn('Autopilot scheduler init failed (node-cron may not be available)', { error: String(e) });
+    logger.warn('Autopilot scheduler init failed (node-cron may not be available)', {
+      error: String(e),
+    });
   }
 
   // Shared skill registry — load from DB on startup
@@ -1233,7 +1260,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
           message: `A new memory may contradict an existing one (${Math.round(contradiction.confidence * 100)}% confidence).`,
         } as any,
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   });
 
   // Subscribe to subconscious insights — persist high-relevance ones to long-term memory
@@ -1245,16 +1274,20 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       if (relevance > 0.5) {
         const text = (insight?.text as string) ?? '';
         const relatedEntities = (insight?.relatedEntities as string[]) ?? [];
-        longTerm.store({
-          content: text,
-          metadata: {
-            type: 'insight',
-            relevance,
-            relatedEntities,
-            sourceMemoryId: insight?.sourceMemoryId ?? '',
-          },
-          timestamp: msg.timestamp,
-        }).catch((err) => { console.warn('Operation failed', err); });
+        longTerm
+          .store({
+            content: text,
+            metadata: {
+              type: 'insight',
+              relevance,
+              relatedEntities,
+              sourceMemoryId: insight?.sourceMemoryId ?? '',
+            },
+            timestamp: msg.timestamp,
+          })
+          .catch((err) => {
+            console.warn('Operation failed', err);
+          });
         broadcast('subconscious_insight', {
           text,
           relevance,
@@ -1401,19 +1434,16 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     logger,
     onBlueprintChange: async (filePath, content) => {
       try {
-        if (filePath.endsWith('.el')) {
-          // EL expression — compile to StateGraph to verify
-          const { compileEL } = await import('@cabinet/workflow');
-          compileEL(content);
-        } else {
-          // YAML blueprint — validate
-          const { validateBlueprint } = await import('@cabinet/workflow');
+        if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
+          // YAML blueprint — parse and validate
+          const { parseYamlBlueprint } = await import('@cabinet/workflow');
           const importDynamic = new Function('modulePath', 'return import(modulePath)');
           const yaml = await importDynamic('yaml');
           const parsed = yaml.parse(content);
-          if (!parsed || typeof parsed !== 'object') return 'Invalid YAML: empty or non-object';
-          const result = validateBlueprint(parsed as any);
-          if (!(result as any).ok) return ((result as any).errors as string[])?.join('; ') ?? 'Validation failed';
+          const result = parseYamlBlueprint(parsed);
+          if (!result.ok) return result.errors?.join('; ') ?? 'YAML parse failed';
+        } else {
+          return 'Unsupported blueprint format (expected .yaml or .yml)';
         }
         return null; // success — no error
       } catch (err) {
@@ -1435,28 +1465,41 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
             detectCommand: role.external.detectCommand,
           });
           const online = await adapter.detect().catch(() => false);
-          broadcast('agent_status_change', { agentId: role.name, status: online ? 'online' : 'offline' });
+          broadcast('agent_status_change', {
+            agentId: role.name,
+            status: online ? 'online' : 'offline',
+          });
         }
         if (role.type === 'external_a2a' && role.external?.baseUrl) {
           try {
-            const resp = await fetch(`${role.external.baseUrl}/health`, { signal: AbortSignal.timeout(5000) });
-            broadcast('agent_status_change', { agentId: role.name, status: resp.ok ? 'online' : 'offline' });
+            const resp = await fetch(`${role.external.baseUrl}/health`, {
+              signal: AbortSignal.timeout(5000),
+            });
+            broadcast('agent_status_change', {
+              agentId: role.name,
+              status: resp.ok ? 'online' : 'offline',
+            });
           } catch {
             broadcast('agent_status_change', { agentId: role.name, status: 'offline' });
           }
         }
       }
-    } catch { /* best-effort detection */ }
+    } catch {
+      /* best-effort detection */
+    }
   }, 60_000);
   externalAgentDetectTimer.unref?.();
   logger.info('External agent detection scheduled (60s)');
 
   // BrowserPool idle session cleanup (every 10 minutes)
-  const browserPoolCleanupTimer = setInterval(() => {
-    getBrowserPool()
-      .pruneIdleSessions(10 * 60 * 1000)
-      .catch(() => {});
-  }, 10 * 60 * 1000);
+  const browserPoolCleanupTimer = setInterval(
+    () => {
+      getBrowserPool()
+        .pruneIdleSessions(10 * 60 * 1000)
+        .catch(() => {});
+    },
+    10 * 60 * 1000,
+  );
   browserPoolCleanupTimer.unref?.();
   logger.info('BrowserPool idle cleanup scheduled (10min)');
 
@@ -1475,7 +1518,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     stopApprovalPolling();
     taskScheduler.stop();
     try {
-      getBrowserPool().shutdown().catch(() => {});
+      getBrowserPool()
+        .shutdown()
+        .catch(() => {});
     } catch {
       /* BrowserPool may not be initialized */
     }
@@ -1606,7 +1651,11 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   const telemetryRepo = new TelemetryRepository(db);
 
   // Extend CostTracker to accept external agent reports
-  (costTracker as any).recordExternal = (entry: { model: string; promptTokens: number; completionTokens: number }) => {
+  (costTracker as any).recordExternal = (entry: {
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+  }) => {
     costTracker.record(entry.model, entry.promptTokens, entry.completionTokens, 0);
   };
 
@@ -1618,9 +1667,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
       // Track C: inject deliverable back into parent secretary session
       try {
         const deliverableText =
-          typeof deliverable === 'string'
-            ? deliverable
-            : JSON.stringify(deliverable);
+          typeof deliverable === 'string' ? deliverable : JSON.stringify(deliverable);
         sessionManager.addMessage(
           parentSessionId,
           'assistant',
