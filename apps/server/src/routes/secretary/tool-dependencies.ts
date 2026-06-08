@@ -122,6 +122,7 @@ export function buildToolDependencies(
     longTerm: ctx.longTerm,
     entity: ctx.entity,
     project: ctx.project,
+    memoryFacade: ctx.memoryFacade,
 
     // ── Decision write callbacks ──
     createDecision(input) {

@@ -72,6 +72,7 @@ function buildToolDependencies(caps: WorkflowCapabilities = {}): ToolDependencie
     longTerm: ctx.longTerm,
     entity: ctx.entity,
     project: ctx.project,
+    memoryFacade: ctx.memoryFacade,
     createDecision(input) {
       const id = `dec_${Date.now()}`;
       return ctx.decisionService.create({

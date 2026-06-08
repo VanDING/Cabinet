@@ -88,6 +88,7 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
     longTerm,
     entity,
     project,
+    memoryFacade,
     decisionRepo,
     decisionService,
     eventBus,
@@ -241,7 +242,7 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
       const result = await loop.run(taskPrompt);
       const brief = result.content.trim();
       if (brief.length > 0) {
-        shortTerm.set(sessionId, 'session_brief', brief);
+        memoryFacade.remember(sessionId, 'session_brief', brief);
         logger.info('Curator session brief prepared', { sessionId, preview: brief.slice(0, 200) });
       }
     } catch (e) {
@@ -432,16 +433,12 @@ export function setupCuratorSubsystem(deps: CuratorDeps): CuratorSubsystem {
       if (session.contextSlot?.discoveries?.length) {
         for (const discovery of session.contextSlot.discoveries) {
           if (discovery.summary && discovery.summary.length > 10) {
-            longTerm
-              .store({
-                content: `[Agent Discovery] ${discovery.type}: ${discovery.summary}`,
-                metadata: {
-                  type: 'agent_discovery',
-                  source: session.agentType ?? 'unknown',
-                  sessionId: session.id,
-                  discoveryType: discovery.type,
-                },
-                timestamp: new Date(),
+            memoryFacade
+              .storeMemory(`[Agent Discovery] ${discovery.type}: ${discovery.summary}`, {
+                type: 'agent_discovery',
+                source: session.agentType ?? 'unknown',
+                sessionId: session.id,
+                discoveryType: discovery.type,
               })
               .catch((err) =>
                 logger.warn('Slot discovery store failed', { error: (err as Error).message }),

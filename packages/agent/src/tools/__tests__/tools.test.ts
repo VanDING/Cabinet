@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ToolExecutor } from '../../tool-executor.js';
 import { createCabinetTools, type ToolDependencies } from '../index.js';
 import { MemoryEventBus } from '@cabinet/events';
-import { ShortTermMemory, LongTermMemory, EntityMemory, ProjectMemory } from '@cabinet/memory';
+import {
+  ShortTermMemory,
+  LongTermMemory,
+  EntityMemory,
+  ProjectMemory,
+  MemoryFacade,
+} from '@cabinet/memory';
 import type { DecisionStore } from '@cabinet/decision';
 import type { Decision } from '@cabinet/types';
 
@@ -130,6 +136,12 @@ describe('Cabinet Tools', () => {
       longTerm: new LongTermMemory(mockDb()),
       entity: new EntityMemory(),
       project: new ProjectMemory(),
+      memoryFacade: new MemoryFacade({
+        shortTerm: new ShortTermMemory(),
+        longTerm: new LongTermMemory(mockDb()),
+        entity: new EntityMemory(),
+        project: new ProjectMemory(),
+      }),
       // ── Write callbacks (mocked) ──
       createDecision(input) {
         return {
