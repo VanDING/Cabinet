@@ -134,10 +134,10 @@ function isValidEntity(name: string): string | false {
   if (allStopWords) return false;
 
   // Trim leading/trailing stop words
-  while (words.length > 0 && STOP_WORDS.has(words[0].toLowerCase())) {
+  while (words.length > 0 && STOP_WORDS.has(words[0]!.toLowerCase())) {
     words.shift();
   }
-  while (words.length > 0 && STOP_WORDS.has(words[words.length - 1].toLowerCase())) {
+  while (words.length > 0 && STOP_WORDS.has(words[words.length - 1]!.toLowerCase())) {
     words.pop();
   }
 
