@@ -65,7 +65,9 @@ import {
   ConsolidationService,
   KnowledgeGraph,
   MemoryDecayService,
+  type LlmJudge,
 } from '@cabinet/memory';
+import { createLlmJudge } from './llm-judge.js';
 import { SqliteEventStore, AgentEventBus, AgentEventRepository } from '@cabinet/events';
 import { SessionManager, IntentParser } from '@cabinet/secretary';
 import { config } from './config.js';
@@ -596,8 +598,12 @@ export function getServerContext(): ServerContext {
   };
 
   let gateway: LLMGateway | null = buildGateway();
+  let llmJudge: LlmJudge | undefined;
+
   if (gateway) {
     logger.info('LLM Gateway initialized');
+    llmJudge = createLlmJudge({ gateway });
+    longTerm.setLlmJudge(llmJudge);
   } else {
     logger.warn('No API keys configured — add keys in Settings, then refresh');
   }
@@ -609,6 +615,9 @@ export function getServerContext(): ServerContext {
       // Update both the local var and the ctx property (ctx may not be assigned yet on first call)
       gateway = gw;
       if (ctx) (ctx as any).gateway = gw;
+      // Refresh LLM judge with new gateway
+      llmJudge = createLlmJudge({ gateway: gw });
+      longTerm.setLlmJudge(llmJudge);
       logger.info('LLM Gateway refreshed');
     }
   };

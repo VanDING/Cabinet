@@ -4,7 +4,7 @@ export type { ShortTermEntry } from './short-term.js';
 
 // ── Long-term memory ──
 export { LongTermMemory } from './long-term.js';
-export type { LongTermEntry, SimilarityResult } from './long-term.js';
+export type { LongTermEntry, SimilarityResult, LlmJudge, LlmJudgeResult } from './long-term.js';
 
 // ── Entity memory ──
 export { EntityMemory } from './entity.js';
