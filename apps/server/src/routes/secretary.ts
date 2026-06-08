@@ -25,7 +25,12 @@ import {
 } from '@cabinet/secretary';
 import { broadcast } from '../ws/handler.js';
 import { detectDangerousCommand } from '../utils/security.js';
-import { chunkText, cosineSimilarity, extractTitle, type ChunkResult } from '../utils/text-utils.js';
+import {
+  chunkText,
+  cosineSimilarity,
+  extractTitle,
+  type ChunkResult,
+} from '../utils/text-utils.js';
 import { globToRegex, safeRegex } from '../utils/regex-utils.js';
 import { isInternalIP } from '../utils/net-utils.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../agent-factory.js';
@@ -61,15 +66,49 @@ import {
   copyFile as fsCopyFile,
   realpath,
 } from 'node:fs/promises';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile, readFileSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  readdirSync,
+  watchFile,
+  unwatchFile,
+  readFileSync,
+  statSync,
+} from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { execAsync, ROLES_NEEDING_ENV, cabinetMdCache, loadCabinetMd, buildSystemPrompt, readTextFile, MIME_MAP, TEXT_EXTENSIONS, isTextFile, resolveSafePath, buildSafeEnv } from './secretary/utils.js';
+import {
+  execAsync,
+  ROLES_NEEDING_ENV,
+  cabinetMdCache,
+  loadCabinetMd,
+  buildSystemPrompt,
+  readTextFile,
+  MIME_MAP,
+  TEXT_EXTENSIONS,
+  isTextFile,
+  resolveSafePath,
+  buildSafeEnv,
+} from './secretary/utils.js';
 import { buildToolDependencies } from './secretary/tool-dependencies.js';
-import { activeSubAgents, sessionTrustLevel, detectTrustLevelOverride, resolveModel, getAgentLoopForRole, createReviewerLoop, dispatchToExternalAgent, dispatchToSpecialist, dispatchToSpecialistStreaming, persistReviewResult, getOrCreateAgent, feedbackStore } from './secretary/agents.js';
+import {
+  activeSubAgents,
+  sessionTrustLevel,
+  detectTrustLevelOverride,
+  resolveModel,
+  getAgentLoopForRole,
+  createReviewerLoop,
+  dispatchToExternalAgent,
+  dispatchToSpecialist,
+  dispatchToSpecialistStreaming,
+  persistReviewResult,
+  getOrCreateAgent,
+  feedbackStore,
+} from './secretary/agents.js';
 import { registerChatRoute } from './secretary/chat.js';
 
 export const secretaryRouter = new Hono();

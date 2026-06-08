@@ -77,10 +77,10 @@ describe('SafetyChecker', () => {
 
   it('blocks cost tools at T1 but allows at T2', () => {
     const t1 = new SafetyChecker('T1');
-    expect(t1.check('start_meeting', {}).allowed).toBe(false);
+    expect(t1.check('run_workflow', {}).allowed).toBe(false);
 
     const t2 = new SafetyChecker('T2');
-    expect(t2.check('start_meeting', {}).allowed).toBe(true);
+    expect(t2.check('run_workflow', {}).allowed).toBe(true);
   });
 
   it('blocks all writes at T0', () => {

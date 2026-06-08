@@ -64,7 +64,6 @@ describe('createStandardToolExecutor', () => {
       updateAgent: vi.fn(),
       deleteAgent: vi.fn(),
       invokeAgent: vi.fn(),
-      startMeeting: vi.fn(),
       getCaptainPreferences: vi.fn(),
       setCaptainPreferences: vi.fn(),
       getStatus: vi.fn(),

@@ -27,7 +27,10 @@ import {
 } from '@cabinet/secretary';
 import { broadcast } from '../../../ws/handler.js';
 import { chunkText, cosineSimilarity } from '../../../utils/text-utils.js';
-import { createStandardToolExecutor, createStandardMemoryProvider } from '../../../agent-factory.js';
+import {
+  createStandardToolExecutor,
+  createStandardMemoryProvider,
+} from '../../../agent-factory.js';
 import { buildEnvironmentSection } from '../../../capabilities.js';
 import { EvaluationResultRepository } from '@cabinet/storage';
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,21 +39,19 @@ import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 // Shared sub-module imports
-import {
-  execAsync,
-  ROLES_NEEDING_ENV,
-  loadCabinetMd,
-  buildSystemPrompt,
-} from '../utils.js';
+import { execAsync, ROLES_NEEDING_ENV, loadCabinetMd, buildSystemPrompt } from '../utils.js';
 import { buildToolDependencies } from '../tool-dependencies.js';
-
 
 import { feedbackStore } from './feedback.js';
 
 // Lazy reference to dispatchToSpecialistStreaming — avoids circular import with dispatch.ts
 let _dispatchToSpecialistStreaming: ((...args: any[]) => any) | undefined;
-export function _setDispatchStreamingRef(fn: typeof _dispatchToSpecialistStreaming) { _dispatchToSpecialistStreaming = fn; }
-function getDispatchStreaming() { return _dispatchToSpecialistStreaming; }
+export function _setDispatchStreamingRef(fn: typeof _dispatchToSpecialistStreaming) {
+  _dispatchToSpecialistStreaming = fn;
+}
+function getDispatchStreaming() {
+  return _dispatchToSpecialistStreaming;
+}
 // ── Multi-agent cache (keyed by sessionId:roleType) ──
 export const agentLoopCache = new Map<string, AgentLoop>();
 const MAX_CACHE_SIZE = 100;
@@ -150,15 +151,21 @@ export function getAgentLoopForRole(
   let effectiveAllowedTools = role.allowedTools;
 
   if (role.type === 'custom') {
-    const emp = ctx.employeeRepo.findAll().find(
-      (e) => e.name === role.name && e.kind === 'ai',
-    );
+    const emp = ctx.employeeRepo.findAll().find((e) => e.name === role.name && e.kind === 'ai');
     if (emp) {
       const pipeline = (() => {
-        try { return JSON.parse(emp.pipeline_config ?? '{}'); } catch { return {}; }
+        try {
+          return JSON.parse(emp.pipeline_config ?? '{}');
+        } catch {
+          return {};
+        }
       })();
       const empAllowedTools = (() => {
-        try { return JSON.parse(emp.allowed_tools ?? '[]'); } catch { return []; }
+        try {
+          return JSON.parse(emp.allowed_tools ?? '[]');
+        } catch {
+          return [];
+        }
       })();
 
       if (!effectiveModel && pipeline.model) {
@@ -181,7 +188,10 @@ export function getAgentLoopForRole(
 
   const executor = createStandardToolExecutor(
     ctx,
-    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }),
+    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
+      getAgentLoopForRole,
+      resolveModel,
+    }),
     effectiveAllowedTools,
   );
 
@@ -266,7 +276,9 @@ export function getAgentLoopForRole(
           ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
         }
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   };
 
   agentLoopCache.set(cacheKey, loop);
@@ -365,7 +377,13 @@ export function getOrCreateAgent(
   }
 
   // Secretary's own executor (all tools)
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }));
+  const executor = createStandardToolExecutor(
+    ctx,
+    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
+      getAgentLoopForRole,
+      resolveModel,
+    }),
+  );
   const memoryProvider = createStandardMemoryProvider(ctx, projectId);
 
   // Load secretary role for temperature and system prompt
@@ -398,7 +416,7 @@ export function getOrCreateAgent(
     const checkpointManager = new CheckpointManager(ctx.db);
     const rulesLoader = buildRulesLoader(projectRootPath);
     secretaryLoop = new AgentLoop({
-    costTracker: ctx.costTracker,
+      costTracker: ctx.costTracker,
       gateway: ctx.gateway!,
       toolExecutor: executor,
       safetyChecker: new SafetyChecker(ctx.delegationTier),
@@ -457,7 +475,10 @@ export function getOrCreateAgent(
   intentParser.setAgentDescriptions(registry.describeForRouting());
   intentParser.setValidAgentTypes(registry.getValidAgentTypes());
   // Register custom agents for fallback routing by name/description match
-  const customAgents = new Map<string, { description: string; keywords?: string[]; aliases?: string[] }>();
+  const customAgents = new Map<
+    string,
+    { description: string; keywords?: string[]; aliases?: string[] }
+  >();
   for (const role of registry.list()) {
     if (role.type === 'custom') {
       customAgents.set(role.name, {
@@ -489,11 +510,13 @@ export function getOrCreateAgent(
 
   // Warm up embeddings eagerly so the first request doesn't pay the latency cost
   if (hasGateway) {
-    intentParser.warmupEmbeddings().catch((err) => { console.warn('Operation failed', err); });
+    intentParser.warmupEmbeddings().catch((err) => {
+      console.warn('Operation failed', err);
+    });
   }
 
   const agent = new SecretaryAgent(
-    secretaryLoop ?? (null as unknown as import("@cabinet/agent").AgentLoop),
+    secretaryLoop ?? (null as unknown as import('@cabinet/agent').AgentLoop),
     intentParser,
     ctx.sessionManager,
     ctx.gateway ?? undefined,

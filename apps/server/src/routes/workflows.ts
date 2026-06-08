@@ -679,7 +679,6 @@ function getEngine(): WorkflowEngine {
       }
       return { status: 'completed', output: result.output };
     },
-
   });
 
   return engine;
@@ -705,14 +704,22 @@ export const workflowsRouter = new Hono();
  */
 function normalizeNodeType(type: string | undefined): string {
   switch (type) {
-    case 'aiAgent': return 'agentGroup';
-    case 'llmCall': return 'llm';
-    case 'condition': return 'ifElse';
-    case 'humanApproval': return 'approval';
-    case 'dataQuery': return 'tool';
-    case 'notification': return 'pass';
-    case 'wait': return 'pass';
-    default: return type ?? 'agentGroup';
+    case 'aiAgent':
+      return 'agentGroup';
+    case 'llmCall':
+      return 'llm';
+    case 'condition':
+      return 'ifElse';
+    case 'humanApproval':
+      return 'approval';
+    case 'dataQuery':
+      return 'tool';
+    case 'notification':
+      return 'pass';
+    case 'wait':
+      return 'pass';
+    default:
+      return type ?? 'agentGroup';
   }
 }
 
@@ -796,7 +803,10 @@ function convertStepsToNodes(steps: any[]): { nodes: WorkflowNodeDef[]; edges: W
     }
 
     // humanApproval retry target
-    if ((step.type === 'approval' || (step.type as string) === 'humanApproval') && (step as any).approvalOptions?.retryTarget) {
+    if (
+      (step.type === 'approval' || (step.type as string) === 'humanApproval') &&
+      (step as any).approvalOptions?.retryTarget
+    ) {
       const retryId = step.approvalOptions.retryTarget as string;
       if (nodeIds.has(retryId)) {
         edges.push({ from: step.id, to: retryId, condition: 'retry' });
@@ -854,7 +864,9 @@ export async function resumeWorkflowAfterApproval(workflowId: string): Promise<v
   const def = JSON.parse(wf.definition ?? '{}');
   const { nodes, edges } = normalizeDefinition(def);
 
-  const approvalNode = nodes.find((n) => n.type === 'approval' || (n.type as string) === 'humanApproval');
+  const approvalNode = nodes.find(
+    (n) => n.type === 'approval' || (n.type as string) === 'humanApproval',
+  );
   if (!approvalNode) {
     logger.warn('No approval node found for resume', { workflowId });
     return;

@@ -3,7 +3,12 @@
 
 import type { ServerContext } from '../../context.js';
 import type { ToolDependencies } from '@cabinet/agent';
-import { DEFAULT_CAPTAIN_ID, MessageType, type DelegationTier, type Decision } from '@cabinet/types';
+import {
+  DEFAULT_CAPTAIN_ID,
+  MessageType,
+  type DelegationTier,
+  type Decision,
+} from '@cabinet/types';
 import {
   AgentLoop,
   AgentDispatcher,
@@ -24,7 +29,12 @@ import {
 } from '@cabinet/secretary';
 import { broadcast } from '../../ws/handler.js';
 import { detectDangerousCommand } from '../../utils/security.js';
-import { chunkText, cosineSimilarity, extractTitle, type ChunkResult } from '../../utils/text-utils.js';
+import {
+  chunkText,
+  cosineSimilarity,
+  extractTitle,
+  type ChunkResult,
+} from '../../utils/text-utils.js';
 import { globToRegex, safeRegex } from '../../utils/regex-utils.js';
 import { isInternalIP } from '../../utils/net-utils.js';
 import { createStandardToolExecutor, createStandardMemoryProvider } from '../../agent-factory.js';
@@ -58,7 +68,16 @@ import {
   copyFile as fsCopyFile,
   realpath,
 } from 'node:fs/promises';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, watchFile, unwatchFile, readFileSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  readdirSync,
+  watchFile,
+  unwatchFile,
+  readFileSync,
+  statSync,
+} from 'node:fs';
 import { join, relative, dirname, basename, extname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -76,12 +95,19 @@ import {
   resolveSafePath,
   buildSafeEnv,
 } from './utils.js';
-async function executeWorkflowById(workflowId: string, _ctx: ServerContext): Promise<{ runId: string; status: string; steps?: unknown[] }> {
+async function executeWorkflowById(
+  workflowId: string,
+  _ctx: ServerContext,
+): Promise<{ runId: string; status: string; steps?: unknown[] }> {
   const result = await runWorkflowById(workflowId);
   return { runId: result.runId, status: result.status, steps: result.steps };
 }
 
-export function buildToolDependencies(ctx: ServerContext, activeProjectId?: string, _inject?: Record<string, unknown>): ToolDependencies {
+export function buildToolDependencies(
+  ctx: ServerContext,
+  activeProjectId?: string,
+  _inject?: Record<string, unknown>,
+): ToolDependencies {
   const docCaps = createDocumentCapabilities();
   const archiveCaps = createArchiveCapabilities();
   const browserCaps = createBrowserCapabilities();
@@ -353,7 +379,9 @@ export function buildToolDependencies(ctx: ServerContext, activeProjectId?: stri
         'global',
         DEFAULT_CAPTAIN_ID,
         undefined,
-        (_inject?.resolveModel as (arg: { modelTier: string }) => string)?.({ modelTier: 'default' }),
+        (_inject?.resolveModel as (arg: { modelTier: string }) => string)?.({
+          modelTier: 'default',
+        }),
         callerSessionId,
       );
       if (!loop) throw new Error(`Cannot invoke ${agentName}: no LLM gateway available`);
@@ -363,9 +391,7 @@ export function buildToolDependencies(ctx: ServerContext, activeProjectId?: stri
         const session = ctx.sessionManager.get(callerSessionId);
         if (session && session.messages.length > 0) {
           const recent = session.messages.slice(-10);
-          const history = recent
-            .map((m) => `[${m.role}]: ${m.content.slice(0, 500)}`)
-            .join('\n');
+          const history = recent.map((m) => `[${m.role}]: ${m.content.slice(0, 500)}`).join('\n');
           augmentedMessage = `[Conversation history — use for context only. The current task follows after "---"]:\n${history}\n\n---\n\n[Current task]: ${message}`;
         }
       }
@@ -1159,8 +1185,15 @@ export function buildToolDependencies(ctx: ServerContext, activeProjectId?: stri
           { from: 'exec', to: 'end' },
         ],
       };
-      const targetProjectId = activeProjectId ?? (ctx.projectRepo.listAll()[0]?.id ?? 'default');
-      ctx.workflowRepo.create(id, targetProjectId, name, JSON.stringify(def), 'draft', recurring ? cronExpression : undefined);
+      const targetProjectId = activeProjectId ?? ctx.projectRepo.listAll()[0]?.id ?? 'default';
+      ctx.workflowRepo.create(
+        id,
+        targetProjectId,
+        name,
+        JSON.stringify(def),
+        'draft',
+        recurring ? cronExpression : undefined,
+      );
       if (recurring) {
         ctx.taskScheduler.schedule(id, name, cronExpression);
       }

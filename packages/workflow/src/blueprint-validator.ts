@@ -91,7 +91,10 @@ export function validateBlueprint(
     if (rule.node_id) authorizedNodes.add(rule.node_id);
   }
   for (const step of steps) {
-    if ((step.type === 'approval' || (step.type as string) === 'humanApproval') && !authorizedNodes.has(step.id)) {
+    if (
+      (step.type === 'approval' || (step.type as string) === 'humanApproval') &&
+      !authorizedNodes.has(step.id)
+    ) {
       const hasDefault = rules.some((r) => r.default !== undefined);
       if (!hasDefault) {
         issues.push({

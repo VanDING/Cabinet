@@ -50,8 +50,8 @@ const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ defau
 function PageLoader() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="text-center text-content-tertiary">
-        <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <div className="text-content-tertiary text-center">
+        <div className="border-accent mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
         <p className="text-xs">Loading...</p>
       </div>
     </div>
@@ -214,9 +214,16 @@ export function App() {
             setInputTarget({ type: 'secretary', sessionId: activeSession.id });
           }
         } else if (event.type === 'status') {
-          updateSubAgentStatus(data.sessionId as string, event.status === 'running' ? 'active' : event.status);
+          updateSubAgentStatus(
+            data.sessionId as string,
+            event.status === 'running' ? 'active' : event.status,
+          );
           if (event.status === 'waiting_for_user') {
-            setInputTarget({ type: 'subagent', sessionId: data.sessionId as string, agentId: 'organize' });
+            setInputTarget({
+              type: 'subagent',
+              sessionId: data.sessionId as string,
+              agentId: 'organize',
+            });
           }
         }
       } catch {
@@ -296,7 +303,10 @@ export function App() {
 
   return (
     <ServerLoading>
-      <div className={`flex h-screen flex-col overflow-hidden ${transitionPhase || ''}`} data-ui-mode={uiMode}>
+      <div
+        className={`flex h-screen flex-col overflow-hidden ${transitionPhase || ''}`}
+        data-ui-mode={uiMode}
+      >
         {/* Custom Title Bar */}
         <TitleBar themes={themes} currentTheme={theme} onSetTheme={setTheme} />
 
@@ -345,7 +355,7 @@ export function App() {
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
               }}
-              className="w-1 shrink-0 cursor-col-resize bg-surface-muted transition-colors hover:bg-accent:bg-accent"
+              className="bg-surface-muted hover:bg-accent:bg-accent w-1 shrink-0 cursor-col-resize transition-colors"
             />
           )}
 
@@ -360,9 +370,11 @@ export function App() {
           {/* Main content area (relative for floating ChatPanel) */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Content: browse pages or chat view */}
-            <div className="relative flex-1 min-h-0">
+            <div className="relative min-h-0 flex-1">
               {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
-              <div className={`page-viewport h-full overflow-auto ${uiMode === 'chat' && activeSession ? 'page-hidden' : ''}`}>
+              <div
+                className={`page-viewport h-full overflow-auto ${uiMode === 'chat' && activeSession ? 'page-hidden' : ''}`}
+              >
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
@@ -406,7 +418,10 @@ export function App() {
                       <Route path="/skills" element={<Navigate to="/discovery" replace />} />
                       <Route path="/discovery" element={<DiscoveryPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/employees" element={<EmployeesPage activeProjectId={activeProjectId} />} />
+                      <Route
+                        path="/employees"
+                        element={<EmployeesPage activeProjectId={activeProjectId} />}
+                      />
                       <Route path="/memory" element={<MemoryPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
@@ -469,7 +484,10 @@ export function App() {
                           apiFetch('/api/secretary/subagent/input', {
                             method: 'POST',
                             headers: authJsonHeaders(),
-                            body: JSON.stringify({ subAgentSessionId: sessionId, input: 'approved' }),
+                            body: JSON.stringify({
+                              subAgentSessionId: sessionId,
+                              input: 'approved',
+                            }),
                           })
                             .then(() => {
                               // Route back to secretary after approval
@@ -541,7 +559,9 @@ export function App() {
         <MobileNav activePage={activePage} onNavigate={handleNavigate} />
 
         {/* Secretary Orb */}
-        {(uiMode === 'idle' || isTransitioning) && <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />}
+        {(uiMode === 'idle' || isTransitioning) && (
+          <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />
+        )}
 
         {/* Notification Bubbles — only when ChatPanel is open (no orb visible) */}
         {uiMode === 'chat' && <NotificationManager />}
@@ -554,21 +574,17 @@ export function App() {
           onClose={() => setShowProjectActionModal(false)}
           contentClassName="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
         >
-          <h3 className="mb-4 text-lg font-semibold text-content-primary">
-            Add Project
-          </h3>
+          <h3 className="text-content-primary mb-4 text-lg font-semibold">Add Project</h3>
           <div className="space-y-3">
             <button
               onClick={() => {
                 setShowProjectActionModal(false);
                 handleCreateNewProject();
               }}
-              className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
+              className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
             >
-              <span className="block text-base text-content-primary">
-                Create New Project
-              </span>
-              <span className="mt-0.5 block text-xs text-content-tertiary">
+              <span className="text-content-primary block text-base">Create New Project</span>
+              <span className="text-content-tertiary mt-0.5 block text-xs">
                 Start with an empty project
               </span>
             </button>
@@ -577,12 +593,10 @@ export function App() {
                 setShowProjectActionModal(false);
                 handleImportProject();
               }}
-              className="w-full rounded-lg border border-border px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-surface-elevated bg-surface-input"
+              className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
             >
-              <span className="block text-base text-content-primary">
-                Import Existing Folder
-              </span>
-              <span className="mt-0.5 block text-xs text-content-tertiary">
+              <span className="text-content-primary block text-base">Import Existing Folder</span>
+              <span className="text-content-tertiary mt-0.5 block text-xs">
                 Import a local folder as project
               </span>
             </button>
@@ -590,7 +604,7 @@ export function App() {
           <div className="mt-4 flex justify-end">
             <button
               onClick={() => setShowProjectActionModal(false)}
-              className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary"
+              className="border-border text-content-secondary rounded-sm border px-3 py-1.5 text-sm"
             >
               Cancel
             </button>

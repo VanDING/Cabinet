@@ -27,7 +27,10 @@ import {
 } from '@cabinet/secretary';
 import { broadcast } from '../../../ws/handler.js';
 import { chunkText, cosineSimilarity } from '../../../utils/text-utils.js';
-import { createStandardToolExecutor, createStandardMemoryProvider } from '../../../agent-factory.js';
+import {
+  createStandardToolExecutor,
+  createStandardMemoryProvider,
+} from '../../../agent-factory.js';
 import { buildEnvironmentSection } from '../../../capabilities.js';
 import { EvaluationResultRepository } from '@cabinet/storage';
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,16 +39,15 @@ import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 // Shared sub-module imports
-import {
-  execAsync,
-  ROLES_NEEDING_ENV,
-  loadCabinetMd,
-  buildSystemPrompt,
-} from '../utils.js';
+import { execAsync, ROLES_NEEDING_ENV, loadCabinetMd, buildSystemPrompt } from '../utils.js';
 import { buildToolDependencies } from '../tool-dependencies.js';
 
-
-import { resolveModel, getAgentLoopForRole, persistReviewResult, createReviewerLoop } from "./agent-factory.js";
+import {
+  resolveModel,
+  getAgentLoopForRole,
+  persistReviewResult,
+  createReviewerLoop,
+} from './agent-factory.js';
 export async function dispatchToExternalAgent(
   agentId: string,
   message: string,
@@ -177,7 +179,9 @@ export async function buildContextSlot(
   try {
     const results = await ctx.longTerm.search(taskDescription, 5);
     memories = results.map((r) => r.content);
-  } catch { /* memory search is best-effort */ }
+  } catch {
+    /* memory search is best-effort */
+  }
 
   return {
     project: {
@@ -214,7 +218,7 @@ export function getOrCreateAdapter(
       command: ext.command ?? agentId,
       args: ext.args ?? ['--print'],
       env: ext.env,
-      permissionMode: ext.permissionMode as "auto" | "conservative",
+      permissionMode: ext.permissionMode as 'auto' | 'conservative',
       detectCommand: ext.detectCommand,
       installCommand: ext.installCommand,
       timeoutMs: ext.timeoutMs,
@@ -228,7 +232,7 @@ export function getOrCreateAdapter(
   const adapter = new A2AConnector(agentId, {
     baseUrl: ext.baseUrl ?? `http://localhost:${agentId}`,
     healthCheckUrl: ext.healthCheckUrl,
-    authConfig: ext.authConfig as { type: "api_key" | "oauth"; header?: string; envVar?: string },
+    authConfig: ext.authConfig as { type: 'api_key' | 'oauth'; header?: string; envVar?: string },
     timeoutMs: ext.timeoutMs,
     maxRetries: ext.maxRetries,
   });
@@ -262,7 +266,7 @@ export async function dispatchToSpecialist(
     // Upgrade: complex tasks need better models
     if (roleDef?.upgradeModelTier) {
       const needsUpgrade =
-        (message.includes('L3') || message.includes('安全关键') || message.length > 2000);
+        message.includes('L3') || message.includes('安全关键') || message.length > 2000;
       if (needsUpgrade) {
         effectiveModel = resolveModel({ modelTier: roleDef.upgradeModelTier });
       }
@@ -353,7 +357,9 @@ export async function dispatchToSpecialist(
                   severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
                 },
               })
-              .catch((err) => { console.warn('Operation failed', err); });
+              .catch((err) => {
+                console.warn('Operation failed', err);
+              });
 
             broadcast('quality_alert', {
               source: roleType,
@@ -411,16 +417,18 @@ export async function dispatchToSpecialistStreaming(
       }
     };
 
-    const toolExecutor = createStandardToolExecutor(ctx, buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, { getAgentLoopForRole, resolveModel }));
-    const interactiveAgent = new OrganizeInteractiveAgent(
-      ctx.gateway!,
-      toolExecutor,
-      resolveModel,
+    const toolExecutor = createStandardToolExecutor(
+      ctx,
+      buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
+        getAgentLoopForRole,
+        resolveModel,
+      }),
     );
+    const interactiveAgent = new OrganizeInteractiveAgent(ctx.gateway!, toolExecutor, resolveModel);
 
     // Register in active map
     activeSubAgents.set(childSessionId, {
-      loop: null as unknown as import("@cabinet/agent").AgentLoop,
+      loop: null as unknown as import('@cabinet/agent').AgentLoop,
       interactive: interactiveAgent,
       parentSessionId: sessionId,
       roleType,
@@ -432,7 +440,8 @@ export async function dispatchToSpecialistStreaming(
       ctx.agentEventBus.publish(childSessionId, sessionId, event);
       if (event.type === 'stream_chunk') callback.onChunk?.(event.content);
       else if (event.type === 'thinking') callback.onThinking?.(event.content);
-      else if (event.type === 'tool_call') callback.onToolCall?.(event.name, event.args as Record<string, unknown>);
+      else if (event.type === 'tool_call')
+        callback.onToolCall?.(event.name, event.args as Record<string, unknown>);
       else if (event.type === 'tool_result') callback.onToolResult?.(event.name, event.result);
       else if (event.type === 'output') callback.onDone?.(event.content);
       else if (event.type === 'error') callback.onError?.(event.message);
@@ -622,7 +631,9 @@ export async function dispatchToSpecialistStreaming(
                     severity: review.score < 0.5 ? 'high' : review.score < 0.7 ? 'medium' : 'low',
                   },
                 })
-                .catch((err) => { console.warn('Operation failed', err); });
+                .catch((err) => {
+                  console.warn('Operation failed', err);
+                });
               broadcast('quality_alert', {
                 source: roleType,
                 sessionId,
@@ -632,7 +643,9 @@ export async function dispatchToSpecialistStreaming(
               });
             }
           })
-          .catch((err) => { console.warn('Operation failed', err); });
+          .catch((err) => {
+            console.warn('Operation failed', err);
+          });
       }
     }
   } catch (e) {
@@ -642,10 +655,13 @@ export async function dispatchToSpecialistStreaming(
 }
 
 // ── activeSubAgents (defined here, re-exported by shell) ──
-export const activeSubAgents = new Map<string, {
-  loop: import('@cabinet/agent').AgentLoop;
-  interactive?: import('@cabinet/agent').InteractiveSubAgent;
-  parentSessionId: string;
-  roleType: string;
-  status: 'running' | 'waiting_for_user' | 'completed' | 'error';
-}>();
+export const activeSubAgents = new Map<
+  string,
+  {
+    loop: import('@cabinet/agent').AgentLoop;
+    interactive?: import('@cabinet/agent').InteractiveSubAgent;
+    parentSessionId: string;
+    roleType: string;
+    status: 'running' | 'waiting_for_user' | 'completed' | 'error';
+  }
+>();

@@ -84,7 +84,10 @@ interface ChatContextValue {
   forkSession: (sessionId: string, messageId: string) => string | null;
   createChildSession: (parentId: string, agentType: string, title?: string) => string;
   getChildSessions: (parentId: string) => Session[];
-  updateSubAgentEvents: (sessionId: string, event: import('../types/agent-events').AgentEvent) => void;
+  updateSubAgentEvents: (
+    sessionId: string,
+    event: import('../types/agent-events').AgentEvent,
+  ) => void;
   updateSubAgentStatus: (sessionId: string, status: Session['status']) => void;
   setSubAgentDeliverable: (sessionId: string, deliverable: unknown) => void;
   notifications: SecretaryNotification[];
@@ -128,7 +131,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('cabinet-ui-mode');
       if (saved === 'chat' || saved === 'work') return saved;
       if (saved === 'collapsed' || saved === 'overlay') return 'work';
-    } catch { /* JSON parse error */ }
+    } catch {
+      /* JSON parse error */
+    }
     return 'idle';
   });
   const chatMode = uiMode === 'chat';
@@ -283,7 +288,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const skillInvokeMatch = message.trim().match(/^\/(\S+)/);
         const isSkillInvoke = !!skillInvokeMatch;
         const skillName = isSkillInvoke ? skillInvokeMatch[1] : undefined;
-        const skillArgs = isSkillInvoke ? message.trim().slice(skillInvokeMatch[0].length).trim() : undefined;
+        const skillArgs = isSkillInvoke
+          ? message.trim().slice(skillInvokeMatch[0].length).trim()
+          : undefined;
 
         const res = await apiFetch('/api/secretary/chat', {
           method: 'POST',
@@ -298,9 +305,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             files: files.map((f) => ({ name: f.name, path: f.path, type: f.type })),
             ...(model ? { model } : {}),
             ...(activeAgent !== 'secretary' ? { targetAgent: activeAgent } : {}),
-            ...(isSkillInvoke
-              ? { type: 'skill_invoke', skillName, skillArgs }
-              : {}),
+            ...(isSkillInvoke ? { type: 'skill_invoke', skillName, skillArgs } : {}),
           }),
         });
 

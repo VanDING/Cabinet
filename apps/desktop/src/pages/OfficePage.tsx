@@ -284,10 +284,7 @@ export function OfficePage() {
         return <SystemHealth />;
       case 'deliverables':
         return (
-          <Deliverables
-            projectId={projectId}
-            onExpand={() => handleWidgetClick('deliverables')}
-          />
+          <Deliverables projectId={projectId} onExpand={() => handleWidgetClick('deliverables')} />
         );
       case 'project-list':
         return <ProjectList />;
@@ -296,7 +293,7 @@ export function OfficePage() {
       case 'progress-board':
         return <ProgressBoard projectId={projectId} />;
       case 'meeting-list':
-        return <div className="p-4 text-muted">Meeting feature removed</div>;
+        return <div className="text-muted p-4">Meeting feature removed</div>;
       case 'insights':
         return <InsightsWidget onExpand={() => handleWidgetClick('insights')} />;
       case 'harness':
@@ -323,12 +320,12 @@ export function OfficePage() {
   return (
     <div className="h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 pb-2 pt-4">
+      <div className="flex items-center justify-between px-6 pt-4 pb-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-content-primary">
+          <h1 className="text-content-primary text-2xl font-bold">
             {projectId ? 'Project Dashboard' : 'Office'}
           </h1>
-          <span className="text-sm text-content-tertiary">
+          <span className="text-content-tertiary text-sm">
             {projectId ? `Project #${projectId}` : 'Your Decision Room'}
           </span>
         </div>
@@ -346,7 +343,7 @@ export function OfficePage() {
       {/* Widget pool dropdown */}
       {showPool && (
         <div className="px-6 pb-2">
-          <div className="grid grid-cols-4 gap-2 rounded-lg border border-border bg-surface-primary p-3 shadow-xs lg:grid-cols-8">
+          <div className="border-border bg-surface-primary grid grid-cols-4 gap-2 rounded-lg border p-3 shadow-xs lg:grid-cols-8">
             {WIDGET_POOL.filter((w) => !addedTypes.has(w.type)).map((w) => (
               <button
                 key={w.type}
@@ -355,14 +352,14 @@ export function OfficePage() {
                 className={`rounded px-2 py-1.5 text-center text-xs transition-colors ${
                   w.available
                     ? 'bg-surface-muted text-content-secondary hover:bg-accent-muted:bg-accent-hover/30'
-                    : 'cursor-not-allowed bg-surface-elevated text-content-tertiary line-through'
+                    : 'bg-surface-elevated text-content-tertiary cursor-not-allowed line-through'
                 }`}
               >
                 {w.label}
               </button>
             ))}
             {WIDGET_POOL.every((w) => addedTypes.has(w.type)) && (
-              <span className="col-span-full py-2 text-center text-xs text-content-tertiary">
+              <span className="text-content-tertiary col-span-full py-2 text-center text-xs">
                 All widgets added.
               </span>
             )}
@@ -373,7 +370,7 @@ export function OfficePage() {
       {/* Grid layout */}
       <div ref={gridContainerRef} className="px-6 pb-6">
         {layout.length === 0 ? (
-          <div className="flex items-center justify-center py-24 text-center text-content-tertiary">
+          <div className="text-content-tertiary flex items-center justify-center py-24 text-center">
             <div>
               <p className="text-lg">No widgets yet</p>
               <p className="mt-1 text-sm">Click "Add Widget" to customize your Office.</p>
@@ -414,13 +411,13 @@ export function OfficePage() {
                   className={`group relative h-full rounded-xl ${isInteractive ? 'widget-interactive' : 'widget-static'}`}
                 >
                   {/* Drag handle + remove button */}
-                  <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="drag-handle flex h-5 w-5 cursor-grab items-center justify-center rounded-sm text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary">
+                  <div className="absolute top-1 right-1 z-10 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="drag-handle text-content-tertiary hover:text-content-secondary active:cursor-grabbing:text-content-tertiary flex h-5 w-5 cursor-grab items-center justify-center rounded-sm">
                       <Grip size={12} />
                     </div>
                     <button
                       onClick={() => handleRemoveWidget(item.i)}
-                      className="flex h-5 w-5 items-center justify-center rounded-sm text-content-tertiary hover:text-intent-danger"
+                      className="text-content-tertiary hover:text-intent-danger flex h-5 w-5 items-center justify-center rounded-sm"
                     >
                       &times;
                     </button>
@@ -449,41 +446,42 @@ export function OfficePage() {
       {expandedWidget === 'deliverables' && (
         <DeliverablesModal onClose={() => setExpandedWidget(null)} projectId={projectId} />
       )}
-      {expandedWidget === 'insights' && (
-        <InsightsModal onClose={() => setExpandedWidget(null)} />
-      )}
-      {expandedWidget === 'harness' && (
-        <HarnessModal onClose={() => setExpandedWidget(null)} />
-      )}
-      {expandedWidget && expandedWidget !== 'today-cost' && expandedWidget !== 'active-workflows' && expandedWidget !== 'event-timeline' && expandedWidget !== 'weather' && expandedWidget !== 'deliverables' && expandedWidget !== 'insights' && expandedWidget !== 'harness' && (
-        <ModalOverlay
-          isOpen={true}
-          onClose={() => setExpandedWidget(null)}
-          contentClassName="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-lg"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-content-primary">
-              {'Details'}
-            </h3>
-            <button
-              onClick={() => setExpandedWidget(null)}
-              className="text-xl leading-none text-content-tertiary hover:text-content-secondary"
-            >
-              &times;
-            </button>
-          </div>
+      {expandedWidget === 'insights' && <InsightsModal onClose={() => setExpandedWidget(null)} />}
+      {expandedWidget === 'harness' && <HarnessModal onClose={() => setExpandedWidget(null)} />}
+      {expandedWidget &&
+        expandedWidget !== 'today-cost' &&
+        expandedWidget !== 'active-workflows' &&
+        expandedWidget !== 'event-timeline' &&
+        expandedWidget !== 'weather' &&
+        expandedWidget !== 'deliverables' &&
+        expandedWidget !== 'insights' &&
+        expandedWidget !== 'harness' && (
+          <ModalOverlay
+            isOpen={true}
+            onClose={() => setExpandedWidget(null)}
+            contentClassName="m-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-lg"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-content-primary text-lg font-semibold">{'Details'}</h3>
+              <button
+                onClick={() => setExpandedWidget(null)}
+                className="text-content-tertiary hover:text-content-secondary text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
 
-          {expandedWidget === 'decision-list' && (
-            <DecisionList
-              projectId={projectId}
-              onSelectDecision={(id) => {
-                setReviewDecisionId(id);
-                setExpandedWidget(null);
-              }}
-            />
-          )}
-        </ModalOverlay>
-      )}
+            {expandedWidget === 'decision-list' && (
+              <DecisionList
+                projectId={projectId}
+                onSelectDecision={(id) => {
+                  setReviewDecisionId(id);
+                  setExpandedWidget(null);
+                }}
+              />
+            )}
+          </ModalOverlay>
+        )}
 
       {/* Decision Review Panel */}
       {reviewDecisionId && (

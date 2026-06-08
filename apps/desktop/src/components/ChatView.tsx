@@ -85,9 +85,9 @@ const ToolCallSummary = memo(function ToolCallSummary({
   if (isStreaming && running > 0) {
     return (
       <div className="my-1">
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
+        <div className="text-content-tertiary flex flex-wrap items-center gap-1.5 text-[10px]">
           <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-accent"></span>
+            <span className="bg-accent h-2 w-2 animate-pulse rounded-full"></span>
             Running {running} tool{running > 1 ? 's' : ''}
           </span>
           {toolCalls
@@ -95,7 +95,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
             .map((tc) => (
               <span
                 key={tc.id}
-                className="inline-flex items-center gap-1 rounded-sm bg-accent-muted px-1.5 py-0.5 text-accent"
+                className="bg-accent-muted text-accent inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5"
               >
                 <span className="opacity-70">⟳</span>
                 {formatToolPreview(tc)}
@@ -109,10 +109,10 @@ const ToolCallSummary = memo(function ToolCallSummary({
   // After completion: compact summary with expand toggle
   return (
     <div className="my-1">
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
+      <div className="text-content-tertiary flex flex-wrap items-center gap-1.5 text-[10px]">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:bg-surface-muted bg-surface-input"
+          className="hover:bg-surface-muted bg-surface-input inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors"
         >
           <span>{expanded ? '▼' : '▶'}</span>
           {total} tool{total !== 1 ? 's' : ''}
@@ -121,7 +121,7 @@ const ToolCallSummary = memo(function ToolCallSummary({
           toolCalls.slice(0, 4).map((tc) => (
             <span
               key={tc.id}
-              className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-0.5"
+              className="bg-surface-muted inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5"
             >
               <span>{tc.status === 'error' ? '✕' : '✓'}</span>
               {formatToolPreview(tc)}
@@ -132,13 +132,11 @@ const ToolCallSummary = memo(function ToolCallSummary({
         )}
       </div>
       {expanded && (
-        <div className="mt-1 space-y-1 rounded-sm border border-border bg-surface-elevated p-2">
+        <div className="border-border bg-surface-elevated mt-1 space-y-1 rounded-sm border p-2">
           {toolCalls.map((tc) => (
             <div key={tc.id} className="flex items-center gap-2 text-xs">
               <span>{tc.status === 'error' ? '✕' : tc.status === 'running' ? '⟳' : '✓'}</span>
-              <span className="font-mono text-content-secondary">
-                {formatToolPreview(tc)}
-              </span>
+              <span className="text-content-secondary font-mono">{formatToolPreview(tc)}</span>
               {tc.status === 'error' && <span className="text-intent-danger">error</span>}
             </div>
           ))}
@@ -262,14 +260,14 @@ export const ChatView = memo(function ChatView({
         }
       }}
     >
-      <div className="shrink-0 border-b border-border bg-surface-elevated px-5 py-2.5 flex items-center justify-between gap-3">
-        <h2 className="truncate text-sm font-medium text-content-secondary min-w-0 flex-1">
+      <div className="border-border bg-surface-elevated flex shrink-0 items-center justify-between gap-3 border-b px-5 py-2.5">
+        <h2 className="text-content-secondary min-w-0 flex-1 truncate text-sm font-medium">
           {sessionTitle}
         </h2>
         {onBack && (
           <button
             onClick={onBack}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-surface-overlay/80 px-2.5 py-1 text-xs text-content-secondary transition-colors hover:bg-surface-elevated"
+            className="border-border bg-surface-overlay/80 text-content-secondary hover:bg-surface-elevated flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition-colors"
           >
             <ArrowLeft size={12} />
             Back
@@ -278,12 +276,12 @@ export const ChatView = memo(function ChatView({
       </div>
 
       {attachedFiles.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border bg-surface-elevated px-5 py-1.5">
-          <span className="text-xs text-content-tertiary">{'Attached:'}</span>
+        <div className="border-border bg-surface-elevated flex shrink-0 flex-wrap items-center gap-1.5 border-b px-5 py-1.5">
+          <span className="text-content-tertiary text-xs">{'Attached:'}</span>
           {attachedFiles.map((f) => (
             <span
               key={f.id}
-              className="rounded-sm bg-accent-muted px-1.5 py-0.5 text-xs text-accent"
+              className="bg-accent-muted text-accent rounded-sm px-1.5 py-0.5 text-xs"
             >
               {f.type === 'project' ? f.path : f.name}
             </span>
@@ -294,9 +292,11 @@ export const ChatView = memo(function ChatView({
       <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4 pb-48">
         {messages.length === 0 && !isProcessing && (
           <div className="flex h-full flex-col items-center justify-center gap-4">
-            <div className="text-center text-content-tertiary">
+            <div className="text-content-tertiary text-center">
               <p className="text-base">{'Start a conversation'}</p>
-              <p className="mt-1 text-xs">{'Ask a question, analyze a decision, or design a workflow.'}</p>
+              <p className="mt-1 text-xs">
+                {'Ask a question, analyze a decision, or design a workflow.'}
+              </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {[
@@ -313,7 +313,7 @@ export const ChatView = memo(function ChatView({
                       new CustomEvent('quick-suggestion', { detail: suggestion }),
                     );
                   }}
-                  className="rounded-full border border-border px-3 py-1.5 text-xs text-content-tertiary transition-colors hover:border-accent hover:bg-accent-muted hover:text-accent:border-accent:bg-accent-hover/20:text-accent"
+                  className="border-border text-content-tertiary hover:border-accent hover:bg-accent-muted hover:text-accent:border-accent:bg-accent-hover/20:text-accent rounded-full border px-3 py-1.5 text-xs transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -341,7 +341,13 @@ export const ChatView = memo(function ChatView({
                 key={child.id}
                 sessionId={child.id}
                 agentType={child.agentType ?? 'unknown'}
-                status={(child.status ?? 'active') as 'active' | 'waiting_for_user' | 'completed' | 'error'}
+                status={
+                  (child.status ?? 'active') as
+                    | 'active'
+                    | 'waiting_for_user'
+                    | 'completed'
+                    | 'error'
+                }
                 events={(child.events ?? []) as import('../types/agent-events').AgentEvent[]}
                 onClick={() => onSubAgentClick?.(child.id)}
                 onApprove={
@@ -357,12 +363,8 @@ export const ChatView = memo(function ChatView({
         {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
           <div className="flex gap-3">
             <div className="flex-1">
-              <span className="text-sm italic text-content-tertiary">
-                <DecryptedText
-                  text={'Thinking...'}
-                  speed={50}
-                  maxIterations={8}
-                />
+              <span className="text-content-tertiary text-sm italic">
+                <DecryptedText text={'Thinking...'} speed={50} maxIterations={8} />
               </span>
             </div>
           </div>
@@ -378,7 +380,7 @@ export const ChatView = memo(function ChatView({
                 setShowScrollButton(false);
               }
             }}
-            className="sticky bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1.5 text-xs text-content-inverse shadow-lg hover:bg-accent-hover"
+            className="bg-accent text-content-inverse hover:bg-accent-hover sticky bottom-4 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs shadow-lg"
           >
             New messages ↓
           </button>
@@ -408,18 +410,18 @@ const MessageRow = memo(function MessageRow({
 
   return (
     <div
-      className={`group flex flex-col ${msg.isError ? 'rounded border-l-2 border-intent-danger bg-intent-danger-muted/50 pl-2' : ''}`}
+      className={`group flex flex-col ${msg.isError ? 'border-intent-danger bg-intent-danger-muted/50 rounded border-l-2 pl-2' : ''}`}
     >
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
-          <span className="text-xs font-medium text-content-secondary">
+          <span className="text-content-secondary text-xs font-medium">
             {msg.role === 'user' ? 'You' : (msg.agentName ?? 'Secretary')}
           </span>
-          <span className="text-xs text-content-tertiary">
+          <span className="text-content-tertiary text-xs">
             {msg.timestamp.toLocaleTimeString()}
           </span>
           {msg.routing && (
-            <span className="inline-flex items-center gap-1 rounded-sm bg-intent-purple-muted px-1.5 py-0.5 text-[10px] text-intent-purple">
+            <span className="bg-intent-purple-muted text-intent-purple inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px]">
               <span>{msg.routing.from}</span>
               <span>→</span>
               <span>{msg.routing.to}</span>
@@ -433,7 +435,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(true);
                   }}
-                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary rounded-sm px-1.5 py-0.5 text-xs"
                 >
                   {'Edit'}
                 </button>
@@ -441,7 +443,7 @@ const MessageRow = memo(function MessageRow({
               {msg.role === 'assistant' && onRegenerate && (
                 <button
                   onClick={() => onRegenerate(msg.id)}
-                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary rounded-sm px-1.5 py-0.5 text-xs"
                 >
                   {'Regenerate'}
                 </button>
@@ -449,7 +451,7 @@ const MessageRow = memo(function MessageRow({
               {onForkMessage && (
                 <button
                   onClick={() => onForkMessage(msg.id)}
-                  className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+                  className="text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary rounded-sm px-1.5 py-0.5 text-xs"
                   title="Fork session from here"
                 >
                   Fork
@@ -464,7 +466,7 @@ const MessageRow = memo(function MessageRow({
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full rounded-sm border border-accent bg-surface-primary p-2 text-sm text-content-primary focus:outline-hidden focus:ring-1 focus:ring-accent"
+                className="border-accent bg-surface-primary text-content-primary focus:ring-accent w-full rounded-sm border p-2 text-sm focus:ring-1 focus:outline-hidden"
                 rows={3}
                 autoFocus
               />
@@ -476,7 +478,7 @@ const MessageRow = memo(function MessageRow({
                     }
                     setEditing(false);
                   }}
-                  className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
+                  className="bg-accent text-content-inverse hover:bg-accent-hover rounded-sm px-3 py-1 text-xs"
                 >
                   {'Save & Resend'}
                 </button>
@@ -485,7 +487,7 @@ const MessageRow = memo(function MessageRow({
                     setEditText(msg.content);
                     setEditing(false);
                   }}
-                  className="rounded-sm border border-border px-3 py-1 text-xs text-content-secondary hover:bg-surface-elevated bg-surface-input"
+                  className="border-border text-content-secondary hover:bg-surface-elevated bg-surface-input rounded-sm border px-3 py-1 text-xs"
                 >
                   {'Cancel'}
                 </button>
@@ -494,7 +496,7 @@ const MessageRow = memo(function MessageRow({
           ) : (
             <>
               {msg.isError && (
-                <div className="mb-1 flex items-center gap-1 text-xs text-intent-danger">
+                <div className="text-intent-danger mb-1 flex items-center gap-1 text-xs">
                   <span>⚠</span>
                   <span>Error</span>
                 </div>
@@ -505,7 +507,7 @@ const MessageRow = memo(function MessageRow({
               {msg.stepBudget &&
                 msg.stepBudget.remaining <= Math.ceil(msg.stepBudget.maxSteps * 0.25) && (
                   <div
-                    className={`mb-2 rounded border border-border px-2 py-1 text-[10px] font-medium ${
+                    className={`border-border mb-2 rounded border px-2 py-1 text-[10px] font-medium ${
                       msg.stepBudget.remaining <= 0
                         ? 'border-intent-danger bg-intent-danger-muted text-intent-danger'
                         : 'border-intent-warning bg-intent-warning-muted text-intent-warning'
@@ -551,13 +553,15 @@ const MessageRow = memo(function MessageRow({
                 <button
                   onClick={() => onContinue(msg.id)}
                   disabled={isProcessing}
-                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-accent bg-accent-muted px-3 py-1 text-xs font-medium text-accent hover:bg-accent-muted disabled:opacity-50"
+                  className="border-accent bg-accent-muted text-accent hover:bg-accent-muted mt-2 inline-flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium disabled:opacity-50"
                 >
                   <span>Continue</span>
                   <span>→</span>
                 </button>
               )}
-              {msg.meeting && <span className="text-sm text-muted">Meeting: {msg.meeting.topic}</span>}
+              {msg.meeting && (
+                <span className="text-muted text-sm">Meeting: {msg.meeting.topic}</span>
+              )}
               {(() => {
                 const call = msg.toolCalls?.find(
                   (tc) => tc.name === 'runWorkflow' && tc.status === 'completed',
@@ -582,7 +586,7 @@ const MessageRow = memo(function MessageRow({
                 return null;
               })()}
               {msg.isStreaming && (
-                <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-accent align-middle" />
+                <span className="bg-accent ml-0.5 inline-block h-4 w-2 animate-pulse align-middle" />
               )}
             </>
           )}

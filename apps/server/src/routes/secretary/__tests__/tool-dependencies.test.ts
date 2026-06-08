@@ -101,11 +101,6 @@ describe('buildToolDependencies (structural characterization)', () => {
       expect(execTools.length).toBeGreaterThan(0);
     });
 
-    it('includes meeting tools', () => {
-      const meetingTools = ['start_meeting'];
-      expect(meetingTools.length).toBeGreaterThan(0);
-    });
-
     it('includes agent management tools', () => {
       const agentTools = [
         'register_agent', 'update_agent', 'delete_agent',

@@ -179,12 +179,6 @@ describe('Cabinet Tools', () => {
       updateWorkflow: () => {},
       deleteWorkflow: () => {},
       runWorkflow: async () => ({ runId: 'run_test', status: 'completed', steps: [] }),
-      startMeeting: async (topic) => ({
-        meetingId: 'meeting_test',
-        topic,
-        synthesis: 'Test synthesis',
-        perspectives: [{ advisor: 'Test', role: 'Tester', content: 'OK' }],
-      }),
       writeLongTermMemory: async (content) => `ltm_test_${Date.now()}`,
       createEmployee: () => {},
       registerAgent: (input) => ({ type: 'custom', name: input.name }),
@@ -410,15 +404,6 @@ describe('Cabinet Tools', () => {
       projectId: 'default',
     });
     expect((r.output as any).workflowId).toBe('wf_test');
-  });
-
-  it('start_meeting returns synthesis', async () => {
-    const r = await executor.execute('start_meeting', 'tc13', {
-      topic: 'Should we expand?',
-    });
-    const out = r.output as any;
-    expect(out.meetingId).toBeDefined();
-    expect(out.synthesis).toBe('Test synthesis');
   });
 
   it('write_memory stores content', async () => {
