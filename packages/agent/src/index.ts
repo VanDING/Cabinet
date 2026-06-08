@@ -74,6 +74,17 @@ export {
   type StreamingCallback,
   type TrustLevel,
 } from './agent-loop.js';
+export {
+  ObserverPipeline,
+  type AgentEvent,
+  type AgentExecutionContext,
+  type AgentObserver,
+} from './observer-pipeline.js';
+export { ContextMonitorObserver } from './observers/context-monitor.js';
+export { HandoffObserver } from './observers/handoff.js';
+export { SafetyCheckObserver } from './observers/safety.js';
+export { ToolExecuteObserver } from './observers/tool-execute.js';
+export { CheckpointObserver } from './observers/checkpoint.js';
 export { ToolPruner, type ToolPrunerOptions, type PrunedToolSet } from './tool-pruner.js';
 export {
   type InteractiveSubAgent,
