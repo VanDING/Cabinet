@@ -154,7 +154,9 @@ export class SessionMetricsRepository {
   }
 
   /** Tool call sequence for a specific session. */
-  getToolSequence(sessionId: string): { step: number; tool: string; args: string; success: boolean }[] {
+  getToolSequence(
+    sessionId: string,
+  ): { step: number; tool: string; args: string; success: boolean }[] {
     return this.db
       .prepare(
         `SELECT step_number as step,
@@ -163,7 +165,7 @@ export class SessionMetricsRepository {
                 json_extract(payload, '$.success') as success
          FROM step_events
          WHERE session_id = ? AND event_type IN ('tool_call', 'tool_result')
-         ORDER BY step_number, id`
+         ORDER BY step_number, id`,
       )
       .all(sessionId) as any[];
   }
@@ -173,12 +175,12 @@ export class SessionMetricsRepository {
     return this.db
       .prepare(
         `SELECT step_number as step,
-                json_extract(payload, '$.from') as from_zone,
-                json_extract(payload, '$.to') as to_zone,
+                json_extract(payload, '$.from') as "from",
+                json_extract(payload, '$.to') as "to",
                 timestamp as at
          FROM step_events
          WHERE session_id = ? AND event_type = 'zone_crossing'
-         ORDER BY step_number`
+         ORDER BY step_number`,
       )
       .all(sessionId) as any[];
   }
@@ -192,7 +194,7 @@ export class SessionMetricsRepository {
                 json_extract(payload, '$.zone') as zone
          FROM step_events
          WHERE session_id = ? AND event_type = 'zone_snapshot'
-         ORDER BY step_number`
+         ORDER BY step_number`,
       )
       .all(sessionId) as any[];
   }
