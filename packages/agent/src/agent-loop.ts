@@ -1,6 +1,6 @@
 import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
-import type { DelegationTier } from '@cabinet/types';
+import { MessageType, type DelegationTier } from '@cabinet/types';
 import { ToolExecutor, type ToolResult } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
@@ -30,12 +30,22 @@ import { SafetyCheckObserver } from './observers/safety.js';
 import { ToolExecuteObserver } from './observers/tool-execute.js';
 import { CheckpointObserver } from './observers/checkpoint.js';
 import { StepEventObserver, type StepEventConfig } from './observers/step-event-observer.js';
-import { ProcessIdentityObserver, type PISObserverConfig } from './observers/process-identity-observer.js';
-import { AdaptiveContextMonitor, type AdaptiveThresholdConfig } from './context-monitor-adaptive.js';
+import {
+  ProcessIdentityObserver,
+  type PISObserverConfig,
+} from './observers/process-identity-observer.js';
+import {
+  AdaptiveContextMonitor,
+  classifyTaskCategory,
+  type AdaptiveThresholdConfig,
+} from './context-monitor-adaptive.js';
 import type { SessionMetricsRepository } from '@cabinet/storage';
 import type Database from 'better-sqlite3';
 import { AgentBlackboard } from './blackboard.js';
 import { injectBlackboardSnapshot } from './blackboard-compress.js';
+import { BlackboardObserver } from './observers/blackboard-observer.js';
+import { EmbeddingService } from './embedding-service.js';
+import { collectToolVariety } from './tool-variety-collector.js';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -428,14 +438,24 @@ export class AgentLoop {
       this.contextBuilder.withRules(options.rulesLoader);
     }
     // Adaptive monitor (4.1)
-    if (options.adaptiveMonitor?.enabled && options.adaptiveMonitor.metricsRepo && options.eventBus) {
+    if (
+      options.adaptiveMonitor?.enabled &&
+      options.adaptiveMonitor.metricsRepo &&
+      options.eventBus
+    ) {
       const adaptive = new AdaptiveContextMonitor(
         options.eventBus,
         options.adaptiveMonitor.metricsRepo,
         options.adaptiveMonitor,
         options.model,
       );
-      adaptive.recalibrate(options.model ?? 'claude-sonnet-4-6').catch(() => {});
+      adaptive
+        .recalibrate(
+          options.model ?? 'claude-sonnet-4-6',
+          undefined,
+          classifyTaskCategory(options.taskDescription ?? ''),
+        )
+        .catch(() => {});
       this.contextMonitor = adaptive;
     } else {
       this.contextMonitor = options.eventBus
@@ -471,8 +491,14 @@ export class AgentLoop {
           options.taskDescription ?? '',
           options.pis,
           options.eventBus,
+          new EmbeddingService(this.gateway),
         ),
       );
+    }
+
+    // Blackboard mid-session sync observer (B.1)
+    if (options.eventBus && options.blackboard) {
+      observers.push(new BlackboardObserver(options.eventBus, ['discoveries']));
     }
 
     observers.push(new CheckpointObserver(this.checkpointManager));
@@ -602,6 +628,20 @@ export class AgentLoop {
 
       ctx.currentStepText = '';
       ctx.currentStepToolCalls = [];
+
+      // Inject mid-session Blackboard updates before next LLM call
+      if (ctx.pendingBlackboardUpdates && ctx.pendingBlackboardUpdates.length > 0) {
+        const updates = ctx.pendingBlackboardUpdates;
+        const lines = updates.map(
+          (u) =>
+            `- [BLACKBOARD UPDATE @${new Date().toISOString()}] ${u.topic}: ${JSON.stringify(u.payload).slice(0, 300)}`,
+        );
+        ctx.messages.push({
+          role: 'user',
+          content: '[Shared Context Update]\n' + lines.join('\n'),
+        });
+        ctx.pendingBlackboardUpdates = [];
+      }
 
       // 4.1 LLM call
       let response: LLMResponse;
@@ -993,6 +1033,26 @@ export class AgentLoop {
   }
 
   private _reportSessionFromContext(ctx: AgentExecutionContext): void {
+    // Collect tool variety metrics
+    const variety = collectToolVariety(
+      ctx.sessionId,
+      ctx.toolCallHistory,
+      this.toolExecutor.listTools().length,
+    );
+    this.options.eventBus
+      ?.publish({
+        messageId: `tool_variety_${ctx.sessionId}_${Date.now()}`,
+        correlationId: ctx.sessionId,
+        causationId: null,
+        timestamp: new Date(),
+        messageType: MessageType.SystemNotification,
+        payload: {
+          type: 'tool_variety',
+          data: variety as unknown as Record<string, unknown>,
+        },
+      })
+      .catch(() => {});
+
     this.options.onSessionComplete?.({
       sessionId: ctx.sessionId,
       projectId: ctx.projectId,

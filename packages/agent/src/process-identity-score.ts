@@ -16,8 +16,29 @@ export interface ProcessIdentityScore {
 // ── Intent Alignment (Phase 1: Keyword Jaccard) ──
 
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'to', 'of', 'in', 'and', 'for', 'is', 'it', 'this', 'that',
-  'on', 'at', 'by', 'with', 'from', 'as', 'or', 'be', 'are', 'was', 'were',
+  'the',
+  'a',
+  'an',
+  'to',
+  'of',
+  'in',
+  'and',
+  'for',
+  'is',
+  'it',
+  'this',
+  'that',
+  'on',
+  'at',
+  'by',
+  'with',
+  'from',
+  'as',
+  'or',
+  'be',
+  'are',
+  'was',
+  'were',
 ]);
 
 function extractKeywords(text: string): string[] {
@@ -47,10 +68,21 @@ function calculateDeviationPenalty(taskWords: string[], toolWords: string[]): nu
   return Math.min(penalty, 0.5);
 }
 
-function calculateIntentAlignment(
+import { EmbeddingService } from './embedding-service.js';
+
+async function calculateIntentAlignment(
   originalTask: string,
   recentToolCalls: { name: string; args: Record<string, unknown>; result: unknown }[],
-): number {
+  embeddingService?: EmbeddingService,
+): Promise<number> {
+  // Phase 2: embedding cosine (if available)
+  if (embeddingService) {
+    const toolText = recentToolCalls.map((tc) => tc.name + ' ' + JSON.stringify(tc.args)).join(' ');
+    if (!toolText) return 0.5;
+    return embeddingService.cosineSimilarity(originalTask, toolText);
+  }
+
+  // Phase 1 fallback: keyword Jaccard
   const taskWords = extractKeywords(originalTask);
   if (taskWords.length === 0) return 0.5;
 
@@ -98,10 +130,7 @@ function calculateGoalProgress(ctx: AgentExecutionContext): number {
   // No markers found → neutral (0.5) to avoid degrading PIS to a 3-factor model
   if (completedMilestones === 0) return 0.5;
 
-  const estimatedTotalGoals = Math.max(
-    1,
-    Math.floor(ctx.systemPrompt.split(/[.!?]/).length / 3),
-  );
+  const estimatedTotalGoals = Math.max(1, Math.floor(ctx.systemPrompt.split(/[.!?]/).length / 3));
 
   return Math.min(1, completedMilestones / estimatedTotalGoals);
 }
@@ -116,7 +145,9 @@ function calculateContextStability(ctx: AgentExecutionContext): number {
 
 // ── Trend Classification ──
 
-function classifyTrend(pisHistory: { step: number; score: number }[]): ProcessIdentityScore['trend'] {
+function classifyTrend(
+  pisHistory: { step: number; score: number }[],
+): ProcessIdentityScore['trend'] {
   if (pisHistory.length < 4) return 'stable';
   const recent = pisHistory.slice(-4);
   const first = recent[0]!.score;
@@ -131,7 +162,10 @@ function classifyTrend(pisHistory: { step: number; score: number }[]): ProcessId
 
 // ── Recommendation ──
 
-function recommendAction(score: number, stepCount: number): ProcessIdentityScore['recommendedAction'] {
+function recommendAction(
+  score: number,
+  stepCount: number,
+): ProcessIdentityScore['recommendedAction'] {
   if (stepCount < 5) return 'continue';
   if (score > 0.7) return 'continue';
   if (score > 0.5) return 'compact';
@@ -141,15 +175,20 @@ function recommendAction(score: number, stepCount: number): ProcessIdentityScore
 
 // ── Main Entry ──
 
-export function calculatePIS(
+export async function calculatePIS(
   ctx: AgentExecutionContext,
   originalTask: string,
-): ProcessIdentityScore {
+  embeddingService?: EmbeddingService,
+): Promise<ProcessIdentityScore> {
   const factors: PISFactor[] = [
     {
       name: 'intentAlignment',
       weight: 0.35,
-      score: calculateIntentAlignment(originalTask, ctx.toolCallHistory.slice(-3)),
+      score: await calculateIntentAlignment(
+        originalTask,
+        ctx.toolCallHistory.slice(-3),
+        embeddingService,
+      ),
     },
     {
       name: 'toolCoherence',

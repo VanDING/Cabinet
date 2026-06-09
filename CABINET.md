@@ -16,7 +16,7 @@
 
 ```
 Layer 4 (Interface):   ui, server, desktop, cli       ← 用户/网络边界
-Layer 3 (Business):    decision, secretary, workflow, harness, organize  ← 业务逻辑
+Layer 3 (Business):    decision, secretary, workflow, harness, organize (source empty, pending removal)  ← 业务逻辑
 Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI 交互核心
 Layer 1 (Infra):       graph, types, events, storage      ← 基础设施
 ```

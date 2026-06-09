@@ -8,22 +8,7 @@ export {
   type ProgressSnapshot,
   type TaskStatus,
 } from './progress-tracker.js';
-export {
-  BrowserVerifier,
-  type BrowserVerifierOptions,
-  type VerificationCheck,
-  type VerificationResult,
-  type VerificationReport,
-} from './browser-verifier.js';
 export { BrowserPool, type BrowserPoolOptions } from './browser-pool.js';
-export {
-  GarbageCollector,
-  type GCIssue,
-  type GCIssueSeverity,
-  type GCIssueCategory,
-  type GCReport,
-  type GCOptions,
-} from './garbage-collector.js';
 export {
   ObservabilityCollector,
   type SessionMetric,

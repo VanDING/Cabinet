@@ -10,3 +10,5 @@ export { OthersTab } from './OthersTab.js';
 export { DelegationTab } from './DelegationTab.js';
 export { ThemeTab } from './ThemeTab.js';
 export { ExternalAgentsTab } from './ExternalAgentsTab.js';
+export { MonitorTab } from './MonitorTab.js';
+export { PisTab } from './PisTab.js';

@@ -22,6 +22,7 @@ export interface SessionMetricRow {
 export interface ZonePerformanceQuery {
   model: string;
   role?: string;
+  taskCategory?: string;
   timeWindowDays: number;
 }
 

@@ -7,6 +7,7 @@ import { getServerContext, getCurrentTier, setCurrentTier } from '../context.js'
 import { config } from '../config.js';
 import { DelegationTier } from '@cabinet/types';
 import { CABINET_DIR } from '@cabinet/storage';
+import { DEFAULT_ADAPTIVE_MONITOR_CONFIG, DEFAULT_PIS_CONFIG } from '@cabinet/types';
 import { broadcast } from '../ws/handler.js';
 import { AISDKAdapter } from '@cabinet/gateway';
 import type { MCPServerConfig } from '../mcp/mcp-manager.js';
@@ -411,4 +412,123 @@ settingsRouter.put('/model-config', async (c) => {
     tiers: Object.keys(body.modelMapping ?? {}),
   });
   return c.json({ status: 'updated' });
+});
+
+// ── Adaptive Monitor ──
+
+settingsRouter.get('/adaptive-monitor', (c) => {
+  const settings = loadSettings();
+  const cfg =
+    (settings.adaptiveMonitor as Record<string, unknown> | undefined) ??
+    DEFAULT_ADAPTIVE_MONITOR_CONFIG;
+  return c.json(cfg);
+});
+
+function parseNum(v: unknown, fallback: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+settingsRouter.put('/adaptive-monitor', async (c) => {
+  const { logger } = getServerContext();
+  const body = await c.req.json();
+  const cfg = {
+    enabled: body.enabled === true,
+    explorationRate: Math.max(
+      0,
+      Math.min(1, parseNum(body.explorationRate, DEFAULT_ADAPTIVE_MONITOR_CONFIG.explorationRate)),
+    ),
+    lookbackDays: Math.max(
+      1,
+      Math.floor(parseNum(body.lookbackDays, DEFAULT_ADAPTIVE_MONITOR_CONFIG.lookbackDays)),
+    ),
+    minSamplesPerZone: Math.max(
+      1,
+      Math.floor(
+        parseNum(body.minSamplesPerZone, DEFAULT_ADAPTIVE_MONITOR_CONFIG.minSamplesPerZone),
+      ),
+    ),
+    hardLimits: {
+      smartZoneMin: Math.max(
+        0,
+        Math.min(
+          1,
+          parseNum(
+            body.hardLimits?.smartZoneMin,
+            DEFAULT_ADAPTIVE_MONITOR_CONFIG.hardLimits.smartZoneMin,
+          ),
+        ),
+      ),
+      criticalThresholdMax: Math.max(
+        0,
+        Math.min(
+          1,
+          parseNum(
+            body.hardLimits?.criticalThresholdMax,
+            DEFAULT_ADAPTIVE_MONITOR_CONFIG.hardLimits.criticalThresholdMax,
+          ),
+        ),
+      ),
+    },
+  };
+  saveSettings({ adaptiveMonitor: cfg });
+  logger.info('Adaptive monitor config updated', cfg);
+  return c.json({ status: 'updated', ...cfg });
+});
+
+// ── PIS ──
+
+settingsRouter.get('/pis', (c) => {
+  const settings = loadSettings();
+  const cfg = (settings.pis as Record<string, unknown> | undefined) ?? DEFAULT_PIS_CONFIG;
+  return c.json(cfg);
+});
+
+settingsRouter.put('/pis', async (c) => {
+  const { logger } = getServerContext();
+  const body = await c.req.json();
+  const weights = body.weights;
+  const cfg = {
+    enabled: body.enabled === true,
+    mode: body.mode === 'intervene' ? 'intervene' : 'log_only',
+    evaluationIntervalSteps: Math.max(
+      1,
+      Math.floor(
+        parseNum(body.evaluationIntervalSteps, DEFAULT_PIS_CONFIG.evaluationIntervalSteps),
+      ),
+    ),
+    weights:
+      weights && typeof weights === 'object' && !Array.isArray(weights)
+        ? {
+            intentAlignment: Math.max(
+              0,
+              Math.min(
+                1,
+                parseNum(weights.intentAlignment, DEFAULT_PIS_CONFIG.weights!.intentAlignment),
+              ),
+            ),
+            toolCoherence: Math.max(
+              0,
+              Math.min(
+                1,
+                parseNum(weights.toolCoherence, DEFAULT_PIS_CONFIG.weights!.toolCoherence),
+              ),
+            ),
+            goalProgress: Math.max(
+              0,
+              Math.min(1, parseNum(weights.goalProgress, DEFAULT_PIS_CONFIG.weights!.goalProgress)),
+            ),
+            contextStability: Math.max(
+              0,
+              Math.min(
+                1,
+                parseNum(weights.contextStability, DEFAULT_PIS_CONFIG.weights!.contextStability),
+              ),
+            ),
+          }
+        : DEFAULT_PIS_CONFIG.weights,
+  };
+  saveSettings({ pis: cfg });
+  logger.info('PIS config updated', cfg);
+  return c.json({ status: 'updated', ...cfg });
 });

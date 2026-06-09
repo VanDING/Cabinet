@@ -1340,7 +1340,9 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   // Subscribe to subconscious insights — persist high-relevance ones to long-term memory
   eventBus.subscribe(MessageType.SystemNotification, (msg) => {
     const payload = msg.payload as unknown as Record<string, unknown> | undefined;
-    if (payload?.type === 'subconscious_insight') {
+    if (!payload) return;
+
+    if (payload.type === 'subconscious_insight') {
       const insight = payload.insight as Record<string, unknown> | undefined;
       const relevance = (insight?.relevance as number) ?? 0;
       if (relevance > 0.5) {
@@ -1364,6 +1366,35 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
           text,
           relevance,
           relatedEntities,
+          timestamp: msg.timestamp.toISOString(),
+        });
+      }
+    }
+
+    // Bridge PIS alerts to WebSocket for Dashboard display
+    if (payload.type === 'process_identity_alert') {
+      const data = payload.data as Record<string, unknown> | undefined;
+      if (data) {
+        broadcast('pis_alert', {
+          sessionId: data.sessionId,
+          score: data.score,
+          trend: data.trend,
+          action: data.action,
+          timestamp: msg.timestamp.toISOString(),
+        });
+      }
+    }
+
+    // Bridge tool variety metrics to WebSocket for Dashboard display
+    if (payload.type === 'tool_variety') {
+      const data = payload.data as Record<string, unknown> | undefined;
+      if (data) {
+        broadcast('tool_variety', {
+          sessionId: data.sessionId,
+          exposedTools: data.exposedTools,
+          usedTools: data.usedTools,
+          gapRatio: data.gapRatio,
+          topTools: data.topTools,
           timestamp: msg.timestamp.toISOString(),
         });
       }
@@ -1456,31 +1487,6 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
   curatorDeps.subconsciousLoop = subconsciousLoop;
   curatorDeps.harnessAnalyst = harnessAnalyst;
   const curatorTimers = curatorSubsystem.setupTimers();
-
-  // Garbage collection: weekly scan on Sunday 4 AM
-  const gcTimer = setInterval(
-    async () => {
-      const now = new Date();
-      if (now.getDay() !== 0 || now.getHours() !== 4) return;
-      try {
-        const { GarbageCollector } = await import('@cabinet/harness');
-        const gc = new GarbageCollector(eventBus, { rootDir: process.cwd(), autoFix: false });
-        const result = await gc.collect();
-        logger.info('Garbage collection completed', {
-          dryRun: true,
-          filesScanned: result.filesScanned,
-          totalIssues: result.summary.total,
-          errors: result.summary.errors,
-          warnings: result.summary.warnings,
-        });
-      } catch (e: unknown) {
-        logger.warn('Garbage collection failed', { error: (e as Error).message });
-      }
-    },
-    60 * 60 * 1000,
-  );
-  gcTimer.unref();
-  logger.info('Garbage collection scheduled (weekly Sunday 4 AM)');
 
   // Workflow approval polling (30s fallback for missed WebSocket events)
   startApprovalPolling(30_000);

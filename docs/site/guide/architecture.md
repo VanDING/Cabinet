@@ -4,12 +4,12 @@ Cabinet is organized into **5 strict layers**. Dependencies flow only upward —
 
 ## Layer Overview
 
-| Layer | Packages | Purpose |
-| :---- | :------- | :------ |
-| **Infrastructure** | `types`, `events`, `storage`, `graph` | Type system, event bus, SQLite persistence, graph execution engine |
-| **Agent Core** | `gateway`, `agent`, `memory` | LLM gateway, graph-based agent loop, 4-layer memory |
-| **Business** | `decision`, `secretary`, `meeting`, `workflow`, `harness`, `organize` | Core product capabilities |
-| **Interface** | `ui`, `server`, `desktop`, `cli` | React components, REST API, Tauri app, CLI |
+| Layer              | Packages                                                                | Purpose                                                            |
+| :----------------- | :---------------------------------------------------------------------- | :----------------------------------------------------------------- |
+| **Infrastructure** | `types`, `events`, `storage`, `graph`                                   | Type system, event bus, SQLite persistence, graph execution engine |
+| **Agent Core**     | `gateway`, `agent`, `memory`                                            | LLM gateway, graph-based agent loop, 4-layer memory                |
+| **Business**       | `decision`, `secretary`, `workflow`, `harness`, `organize` (deprecated) | Core product capabilities                                          |
+| **Interface**      | `ui`, `server`, `desktop`, `cli`                                        | React components, REST API, Tauri app, CLI                         |
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -60,13 +60,13 @@ Workflow agents declare required capabilities (`files`, `web`, `shell`, `schedul
 
 Cabinet uses three distinct validation layers, each with a clear, non-overlapping responsibility:
 
-| Gate | Package | Trigger | Responsibility |
-| :--- | :------ | :------ | :------------- |
-| **Safety Check** | `agent/safety.ts` | Before every tool call | "Can we do this?" — cache rules → auto mode → whitelist → AI classifier |
-| **Quality Gate** | `harness/quality-gate.ts` | After Agent output | "Was this done well?" — H-E-I format check; retry if needed |
+| Gate                    | Package                           | Trigger                       | Responsibility                                                                            |
+| :---------------------- | :-------------------------------- | :---------------------------- | :---------------------------------------------------------------------------------------- |
+| **Safety Check**        | `agent/safety.ts`                 | Before every tool call        | "Can we do this?" — cache rules → auto mode → whitelist → AI classifier                   |
+| **Quality Gate**        | `harness/quality-gate.ts`         | After Agent output            | "Was this done well?" — H-E-I format check; retry if needed                               |
 | **Blueprint Validator** | `workflow/blueprint-validator.ts` | Workflow blueprint definition | "Can this pass to the next node?" — node connectivity, cycle detection, schema validation |
 
-**In short**: Safety says *can*, Harness says *good*, Workflow says *compatible*.
+**In short**: Safety says _can_, Harness says _good_, Workflow says _compatible_.
 
 ## Desktop Application Structure
 
@@ -74,13 +74,13 @@ The desktop app (`apps/desktop`) is a React SPA running inside a Tauri shell.
 
 **Navigation pages** (defined in `Navigation` component):
 
-| Page | Route | Purpose |
-| :--- | :---- | :------ |
-| **Office** | `/` or `/project/:id/office` | Default workspace; decision cards, project explorer, file viewer |
-| **Factory** | `/factory` or `/project/:id/factory` | Workflow canvas editor and execution monitor |
-| **Employees** | `/employees` | Agent/Employee management and configuration |
-| **Memory** | `/memory` | Memory browser, knowledge graph, contradiction review |
-| **Settings** | `/settings` | API keys, budget, delegation tier, themes, backups |
+| Page          | Route                                | Purpose                                                          |
+| :------------ | :----------------------------------- | :--------------------------------------------------------------- |
+| **Office**    | `/` or `/project/:id/office`         | Default workspace; decision cards, project explorer, file viewer |
+| **Factory**   | `/factory` or `/project/:id/factory` | Workflow canvas editor and execution monitor                     |
+| **Employees** | `/employees`                         | Agent/Employee management and configuration                      |
+| **Memory**    | `/memory`                            | Memory browser, knowledge graph, contradiction review            |
+| **Settings**  | `/settings`                          | API keys, budget, delegation tier, themes, backups               |
 
 The chat panel is a persistent overlay accessible from any page via the sidebar or `Ctrl+N` shortcut.
 
@@ -91,7 +91,6 @@ The server (`apps/server`) exposes a Hono-based REST API. Key route modules:
 - `secretary.ts` — Chat streaming, intent routing, agent dispatch
 - `decisions.ts` — Decision CRUD, approval, analysis
 - `workflows.ts` — Workflow run orchestration with capability injection
-- `meetings.ts` — Meeting report retrieval
 - `projects.ts` — Project lifecycle
 - `employees.ts` — Employee/Agent management
 - `skills.ts` — Skill registry
@@ -133,20 +132,19 @@ Secretary Agent (Intent Parsing)
 
 ## Monorepo Package Boundaries
 
-| Package | Exports | Consumers |
-| :------ | :------ | :-------- |
-| `@cabinet/types` | All primitives, enums, payload types | Every package |
-| `@cabinet/events` | `EventBus`, `SqliteEventStore`, causation | `storage`, `server` |
-| `@cabinet/storage` | Connection pool, repositories, migrations | `server` |
-| `@cabinet/graph` | `StateGraph`, `CompiledGraph`, `Annotation`, `CheckpointStore`, validation | `agent`, `workflow`, `server` |
-| `@cabinet/gateway` | `LLMGateway`, `ModelRouter`, `BudgetGuard` | `agent`, `server` |
-| `@cabinet/agent` | `AgentLoop`, `SafetyChecker`, `ToolExecutor`, roles, `createAgentNodeFactory`, `assemblePrompt` | `server` |
-| `@cabinet/memory` | 4-layer memory, consolidation, knowledge graph | `agent`, `server` |
-| `@cabinet/secretary` | `SecretaryAgent`, `IntentParser`, `GreetingService` | `server` |
-| `@cabinet/meeting` | Prompt builders, parsing utilities, synthesis | `server` |
-| `@cabinet/decision` | `DecisionService`, level classifier, state machine | `server` |
-| `@cabinet/workflow` | `WorkflowEngine`, `evaluateCondition`, blueprints | `server` |
-| `@cabinet/harness` | Evaluator, quality gate, observability | `server` |
-| `@cabinet/ui` | React components, hooks, themes | `desktop` |
-| `@cabinet/organize` | Project organization helpers | `agent`, `server` |
-| `@cabinet/cli` | Command-line tools | Standalone |
+| Package              | Exports                                                                                         | Consumers                     |
+| :------------------- | :---------------------------------------------------------------------------------------------- | :---------------------------- |
+| `@cabinet/types`     | All primitives, enums, payload types                                                            | Every package                 |
+| `@cabinet/events`    | `EventBus`, `SqliteEventStore`, causation                                                       | `storage`, `server`           |
+| `@cabinet/storage`   | Connection pool, repositories, migrations                                                       | `server`                      |
+| `@cabinet/graph`     | `StateGraph`, `CompiledGraph`, `Annotation`, `CheckpointStore`, validation                      | `agent`, `workflow`, `server` |
+| `@cabinet/gateway`   | `LLMGateway`, `ModelRouter`, `BudgetGuard`                                                      | `agent`, `server`             |
+| `@cabinet/agent`     | `AgentLoop`, `SafetyChecker`, `ToolExecutor`, roles, `createAgentNodeFactory`, `assemblePrompt` | `server`                      |
+| `@cabinet/memory`    | 4-layer memory, consolidation, knowledge graph                                                  | `agent`, `server`             |
+| `@cabinet/secretary` | `SecretaryAgent`, `IntentParser`, `GreetingService`                                             | `server`                      |
+| `@cabinet/decision`  | `DecisionService`, level classifier, state machine                                              | `server`                      |
+| `@cabinet/workflow`  | `WorkflowEngine`, `evaluateCondition`, blueprints                                               | `server`                      |
+| `@cabinet/harness`   | Evaluator, quality gate, observability                                                          | `server`                      |
+| `@cabinet/ui`        | React components, hooks, themes                                                                 | `desktop`                     |
+| `@cabinet/organize`  | Project organization helpers (source empty, pending removal)                                    | `agent`, `server`             |
+| `@cabinet/cli`       | Command-line tools                                                                              | Standalone                    |

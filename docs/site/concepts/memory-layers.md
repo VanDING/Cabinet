@@ -14,6 +14,7 @@ Cabinet's memory system is designed around a simple insight: **not all informati
 - Backed by SQLite for crash recovery, but primarily in-memory for speed
 
 **Key operations**:
+
 - `append(sessionId, message)` — add a message
 - `getRecent(sessionId, count)` — retrieve last N messages
 - `clear(sessionId)` — discard session context
@@ -28,6 +29,7 @@ Cabinet's memory system is designed around a simple insight: **not all informati
 - Persists indefinitely
 
 **Key operations**:
+
 - `store(entry)` — embed and save
 - `search(query, k)` — semantic similarity search
 - `delete(projectId)` — purge project-scoped memories
@@ -41,6 +43,7 @@ Cabinet's memory system is designed around a simple insight: **not all informati
 - Loaded once per session and cached
 
 **Key operations**:
+
 - `getPreferences(captainId)` — Captain's default choices
 - `getEmployeeConfig(employeeId)` — model, prompt, tools
 - `setPreference(key, value)` — update a preference
@@ -54,13 +57,14 @@ Cabinet's memory system is designed around a simple insight: **not all informati
 - Combines structured SQLite data and vector summaries
 
 **Key operations**:
+
 - `getContext(projectId)` — full project snapshot
 - `addMilestone(projectId, milestone)` — record progress
 - `updateSummary(projectId, summary)` — refresh project overview
 
 ## Memory Orchestration
 
-The `MemoryOrchestrator` provides a unified interface for agent code. Agents do not talk to individual layers directly; they call:
+The `MemoryFacade` (`packages/memory/src/memory-facade.ts`) provides a unified interface for agent code. Agents do not talk to individual layers directly; they call:
 
 ```ts
 orchestrator.query({ layer: 'long_term', projectId: 'p1', query: 'past marketing decisions' });
@@ -98,16 +102,10 @@ This enables structured questions like "What blocks Feature X?" that pure vector
 
 ## Consolidation
 
-A background `ConsolidationService` runs every 30 minutes to:
+Memory consolidation runs on two tracks:
 
-1. **Deduplicate** — remove near-duplicate short-term entries
-2. **Summarize** — compress long message threads into key points
-3. **Extract** — pull structured facts for the Knowledge Graph
-4. **Migrate** — move aged short-term memories to long-term
-
-Consolidation can operate in two modes:
-- **Basic** — no LLM, rule-based (length, age thresholds)
-- **Semantic** — uses the Curator agent for intelligent summarization
+- **`consolidateBasic()`** (every 30 min): processes daily-tier entries via CascadeBuffer (zero LLM cost)
+- **Curator LLM consolidation** (on session close / every 4h): processes register/working-tier entries
 
 ## Memory Decay
 

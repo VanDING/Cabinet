@@ -12,8 +12,6 @@ import { employeesRouter } from './routes/employees.js';
 import { filesRouter } from './routes/files.js';
 import { auditRouter } from './routes/audit.js';
 import { backupsRouter } from './routes/backups.js';
-import { gcRouter } from './routes/gc.js';
-import { verifyRouter } from './routes/verify.js';
 import { rulesRouter } from './routes/rules.js';
 import { progressRouter } from './routes/progress.js';
 import { observabilityRouter } from './routes/observability.js';
@@ -90,8 +88,6 @@ export function createApp() {
   app.route('/api/files', filesRouter);
   app.route('/api/audit', auditRouter);
   app.route('/api/backups', backupsRouter);
-  app.route('/api/gc', gcRouter);
-  app.route('/api/verify', verifyRouter);
   app.route('/api/rules', rulesRouter);
   app.route('/api/progress', progressRouter);
   app.route('/api/observability', observabilityRouter);

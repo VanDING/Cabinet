@@ -2,6 +2,7 @@ import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
 import type { AgentObserver, AgentExecutionContext } from '../observer-pipeline.js';
 import { calculatePIS, type ProcessIdentityScore } from '../process-identity-score.js';
+import { EmbeddingService } from '../embedding-service.js';
 
 export interface PISObserverConfig {
   enabled: boolean;
@@ -15,8 +16,14 @@ export class ProcessIdentityObserver implements AgentObserver {
   private pisHistory: { step: number; score: number }[] = [];
   private config: PISObserverConfig;
   private eventBus?: EventBus;
+  private embeddingService?: EmbeddingService;
 
-  constructor(originalTask: string, config?: Partial<PISObserverConfig>, eventBus?: EventBus) {
+  constructor(
+    originalTask: string,
+    config?: Partial<PISObserverConfig>,
+    eventBus?: EventBus,
+    embeddingService?: EmbeddingService,
+  ) {
     this.originalTask = originalTask;
     this.config = {
       enabled: false,
@@ -25,6 +32,7 @@ export class ProcessIdentityObserver implements AgentObserver {
       ...config,
     };
     this.eventBus = eventBus;
+    this.embeddingService = embeddingService;
   }
 
   async onStepEnd(ctx: AgentExecutionContext): Promise<void> {
@@ -33,7 +41,7 @@ export class ProcessIdentityObserver implements AgentObserver {
     const interval = this.config.evaluationIntervalSteps;
     if (ctx.stepCount < interval || ctx.stepCount % interval !== 0) return;
 
-    const pis = calculatePIS(ctx, this.originalTask);
+    const pis = await calculatePIS(ctx, this.originalTask, this.embeddingService);
     this.pisHistory.push({ step: ctx.stepCount, score: pis.total });
     ctx.pisHistory = this.pisHistory;
     ctx.lastPIS = pis;

@@ -29,6 +29,21 @@ export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveThresholdConfig = {
   },
 };
 
+// ── Task Category Classification ──────────────────────────────
+
+export function classifyTaskCategory(taskDescription: string): string {
+  const t = taskDescription.toLowerCase().slice(0, 200);
+  // English keywords
+  if (/\b(code|refactor|implement|build|create|write|fix|debug)\b/.test(t)) return 'code';
+  if (/\b(analyze|review|audit|assess|evaluate|compare|research)\b/.test(t)) return 'analysis';
+  if (/\b(search|find|locate|grep|look|where|which file)\b/.test(t)) return 'search';
+  // Chinese keywords
+  if (/[\u4e00-\u9fa5].*?(代码|重构|实现|构建|创建|编写|修复|调试)/.test(t)) return 'code';
+  if (/[\u4e00-\u9fa5].*?(分析|审查|审计|评估|评价|对比|研究)/.test(t)) return 'analysis';
+  if (/[\u4e00-\u9fa5].*?(搜索|查找|定位|寻找|在哪|哪个文件)/.test(t)) return 'search';
+  return 'conversation';
+}
+
 /**
  * Data-driven adaptive threshold monitor.
  * Learns optimal zone boundaries per (model, role) from historical
@@ -51,18 +66,50 @@ export class AdaptiveContextMonitor extends ContextMonitor {
     this.adaptiveConfig = adaptiveConfig;
     this.metricsRepo = metricsRepo;
     this.currentConfig = {
-      maxTokens: MODEL_CONTEXT_SIZES[model ?? 'claude-sonnet-4-6'] ?? DEFAULT_WINDOW_CONFIG.maxTokens,
+      maxTokens:
+        MODEL_CONTEXT_SIZES[model ?? 'claude-sonnet-4-6'] ?? DEFAULT_WINDOW_CONFIG.maxTokens,
       smartZoneThreshold: DEFAULT_WINDOW_CONFIG.smartZoneThreshold,
       warningThreshold: DEFAULT_WINDOW_CONFIG.warningThreshold,
       criticalThreshold: DEFAULT_WINDOW_CONFIG.criticalThreshold,
     };
   }
 
-  /** Recalibrate thresholds using historical data. */
-  async recalibrate(model: string, role?: string): Promise<ContextWindowConfig> {
+  /** Recalibrate thresholds using historical data.
+   *  Degradation chain: taskCategory → role → model → default.
+   */
+  async recalibrate(
+    model: string,
+    role?: string,
+    taskCategory?: string,
+  ): Promise<ContextWindowConfig> {
+    // Try taskCategory level first
+    if (taskCategory) {
+      const perf = this.metricsRepo.getZonePerformance({
+        model,
+        role,
+        taskCategory,
+        timeWindowDays: this.adaptiveConfig.lookbackDays,
+      } as any);
+      if (perf.length >= this.adaptiveConfig.minSamplesPerZone * 4) {
+        return this.computeConfig(model, perf);
+      }
+    }
+
+    // Fall back to role level
+    if (role) {
+      const perf = this.metricsRepo.getZonePerformance({
+        model,
+        role,
+        timeWindowDays: this.adaptiveConfig.lookbackDays,
+      });
+      if (perf.length >= this.adaptiveConfig.minSamplesPerZone * 4) {
+        return this.computeConfig(model, perf);
+      }
+    }
+
+    // Fall back to model level
     const perf = this.metricsRepo.getZonePerformance({
       model,
-      role,
       timeWindowDays: this.adaptiveConfig.lookbackDays,
     });
 
@@ -70,13 +117,17 @@ export class AdaptiveContextMonitor extends ContextMonitor {
       return DEFAULT_WINDOW_CONFIG;
     }
 
+    return this.computeConfig(model, perf);
+  }
+
+  private computeConfig(model: string, perf: any[]): ContextWindowConfig {
     const distribution = this.metricsRepo.getPeakUtilizationDistribution(
       model,
       this.adaptiveConfig.lookbackDays,
     );
 
-    const smartWarningBoundary = this.findInflectionPoint(distribution, 0.30, 0.55);
-    const warningCriticalBoundary = this.findInflectionPoint(distribution, 0.55, 0.80);
+    const smartWarningBoundary = this.findInflectionPoint(distribution, 0.3, 0.55);
+    const warningCriticalBoundary = this.findInflectionPoint(distribution, 0.55, 0.8);
     const criticalDumbBoundary = this.findInflectionPoint(distribution, 0.75, 0.92);
 
     this.currentConfig = {

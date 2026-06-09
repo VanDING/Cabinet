@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePIS } from '../process-identity-score.js';
+import { EmbeddingService } from '../embedding-service.js';
 import type { AgentExecutionContext } from '../observer-pipeline.js';
+import type { LLMGateway, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
 
 function makeCtx(partial: Partial<AgentExecutionContext> = {}): AgentExecutionContext {
   return {
@@ -30,16 +32,16 @@ function makeCtx(partial: Partial<AgentExecutionContext> = {}): AgentExecutionCo
 }
 
 describe('calculatePIS', () => {
-  it('returns stable trend for single evaluation', () => {
+  it('returns stable trend for single evaluation', async () => {
     const ctx = makeCtx();
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     expect(pis.total).toBeGreaterThanOrEqual(0);
     expect(pis.total).toBeLessThanOrEqual(1);
     expect(pis.trend).toBe('stable');
     expect(pis.factors.length).toBe(4);
   });
 
-  it('detects low tool coherence with many different tools', () => {
+  it('detects low tool coherence with many different tools', async () => {
     const ctx = makeCtx({
       toolCallHistory: [
         { name: 'read_file', args: {}, result: '' },
@@ -54,21 +56,21 @@ describe('calculatePIS', () => {
         { name: 'apply_patch', args: {}, result: '' },
       ],
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     const tc = pis.factors.find((f) => f.name === 'toolCoherence');
     expect(tc!.score).toBe(0);
   });
 
-  it('detects high tool coherence with same tool', () => {
+  it('detects high tool coherence with same tool', async () => {
     const ctx = makeCtx({
       toolCallHistory: Array(10).fill({ name: 'read_file', args: {}, result: '' }),
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     const tc = pis.factors.find((f) => f.name === 'toolCoherence');
     expect(tc!.score).toBe(0.9); // 1 unique / 10 total = 0.9
   });
 
-  it('goal progress detects milestone markers', () => {
+  it('goal progress detects milestone markers', async () => {
     const ctx = makeCtx({
       toolCallHistory: [
         { name: 'read_file', args: {}, result: 'milestone_complete: API created' },
@@ -76,35 +78,39 @@ describe('calculatePIS', () => {
         { name: 'edit_file', args: {}, result: 'goal_achieved: deployed' },
       ],
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     const gp = pis.factors.find((f) => f.name === 'goalProgress');
     expect(gp!.score).toBeGreaterThan(0.5);
   });
 
-  it('goal progress is neutral without markers', () => {
+  it('goal progress is neutral without markers', async () => {
     const ctx = makeCtx({
       toolCallHistory: [
         { name: 'read_file', args: {}, result: 'some content' },
         { name: 'write_file', args: {}, result: 'done' },
       ],
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     const gp = pis.factors.find((f) => f.name === 'goalProgress');
     expect(gp!.score).toBe(0.5);
   });
 
-  it('recommends continue for high score', () => {
+  it('recommends continue for high score', async () => {
     const ctx = makeCtx({
       // Use the same tool many times for high coherence
-      toolCallHistory: Array(10).fill({ name: 'build_tool', args: { app: 'web' }, result: 'milestone_complete: step done' }),
+      toolCallHistory: Array(10).fill({
+        name: 'build_tool',
+        args: { app: 'web' },
+        result: 'milestone_complete: step done',
+      }),
       stepCount: 10,
       zoneCrossings: [],
     });
-    const pis = calculatePIS(ctx, 'Build web app with build_tool');
+    const pis = await calculatePIS(ctx, 'Build web app with build_tool');
     expect(pis.recommendedAction).toBe('continue');
   });
 
-  it('recommends abort for very low score', () => {
+  it('recommends abort for very low score', async () => {
     const ctx = makeCtx({
       stepCount: 20,
       toolCallHistory: [
@@ -114,11 +120,11 @@ describe('calculatePIS', () => {
       ],
       zoneCrossings: Array(10).fill({ from: 'smart', to: 'dumb' }),
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     expect(pis.recommendedAction).toBe('abort');
   });
 
-  it('classifies improving trend', () => {
+  it('classifies improving trend', async () => {
     const ctx = makeCtx({
       stepCount: 12,
       pisHistory: [
@@ -128,11 +134,11 @@ describe('calculatePIS', () => {
         { step: 12, score: 0.8 },
       ],
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     expect(pis.trend).toBe('improving');
   });
 
-  it('classifies lost trend', () => {
+  it('classifies lost trend', async () => {
     const ctx = makeCtx({
       stepCount: 12,
       pisHistory: [
@@ -142,7 +148,54 @@ describe('calculatePIS', () => {
         { step: 12, score: 0.2 },
       ],
     });
-    const pis = calculatePIS(ctx, 'Build a web app');
+    const pis = await calculatePIS(ctx, 'Build a web app');
     expect(pis.trend).toBe('lost');
+  });
+
+  it('embedding mode: semantically similar task+tools → high alignment', async () => {
+    const mockGateway: LLMGateway = {
+      async generateText() {
+        return { content: '', usage: { promptTokens: 0, completionTokens: 0 }, model: 'test' };
+      },
+      async *streamText() {
+        yield { type: 'done' } as never;
+      },
+      async listModels() {
+        return ['test'];
+      },
+      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
+        // Deterministic mock: same text → same embedding, different text → orthogonal embedding
+        const text = _options.texts[0] ?? '';
+        if (text.includes('web') || text.includes('react') || text.includes('app')) {
+          return { embeddings: [[1, 0, 0]], model: 'test', usage: { tokens: 1 } };
+        }
+        if (text.includes('database') || text.includes('sql')) {
+          return { embeddings: [[0, 1, 0]], model: 'test', usage: { tokens: 1 } };
+        }
+        return { embeddings: [[0, 0, 1]], model: 'test', usage: { tokens: 1 } };
+      },
+    };
+    const embeddingService = new EmbeddingService(mockGateway);
+
+    const ctx = makeCtx({
+      toolCallHistory: [
+        { name: 'create_react_app', args: { template: 'typescript' }, result: '' },
+        { name: 'write_file', args: { path: 'src/App.tsx' }, result: '' },
+      ],
+    });
+    const pis = await calculatePIS(ctx, 'Build a web application', embeddingService);
+    const ia = pis.factors.find((f) => f.name === 'intentAlignment');
+    expect(ia!.score).toBeGreaterThan(0.7);
+  });
+
+  it('fallback to keyword when embedding unavailable', async () => {
+    const ctx = makeCtx({
+      toolCallHistory: [{ name: 'create_react_app', args: { template: 'typescript' }, result: '' }],
+    });
+    const pis = await calculatePIS(ctx, 'Build a web application');
+    const ia = pis.factors.find((f) => f.name === 'intentAlignment');
+    // Keyword Jaccard should still produce a reasonable score
+    expect(ia!.score).toBeGreaterThanOrEqual(0);
+    expect(ia!.score).toBeLessThanOrEqual(1);
   });
 });

@@ -1,14 +1,23 @@
 import { useState } from 'react';
 import { Tabs, type Tab } from '@cabinet/ui';
-import { ApiKeysTab, OthersTab, ThemeTab, ExternalAgentsTab } from './settings/index.js';
+import {
+  ApiKeysTab,
+  OthersTab,
+  ThemeTab,
+  ExternalAgentsTab,
+  MonitorTab,
+  PisTab,
+} from './settings/index.js';
 
-type SettingsTab = 'api' | 'external' | 'theme' | 'others';
+type SettingsTab = 'api' | 'external' | 'theme' | 'others' | 'monitor' | 'pis';
 
 const tabLabels: Record<SettingsTab, string> = {
   api: 'API Keys',
   external: 'External Agents',
   theme: 'Theme',
   others: 'Others',
+  monitor: 'Monitor',
+  pis: 'PIS',
 };
 
 export function SettingsPage() {
@@ -21,9 +30,7 @@ export function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <h1 className="mb-6 text-2xl font-bold text-content-primary">
-        Settings
-      </h1>
+      <h1 className="text-content-primary mb-6 text-2xl font-bold">Settings</h1>
 
       <Tabs
         tabs={tabItems}
@@ -37,6 +44,8 @@ export function SettingsPage() {
       {activeTab === 'external' && <ExternalAgentsTab />}
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
+      {activeTab === 'monitor' && <MonitorTab />}
+      {activeTab === 'pis' && <PisTab />}
     </div>
   );
 }

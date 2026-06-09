@@ -30,11 +30,30 @@ interface MCPServerStatus {
   promptCount: number;
 }
 
+interface PISAlert {
+  sessionId: string;
+  score: number;
+  trend: string;
+  action: string;
+  timestamp: string;
+}
+
+interface ToolVariety {
+  sessionId: string;
+  exposedTools: number;
+  usedTools: number;
+  gapRatio: number;
+  topTools: [string, number][];
+  timestamp: string;
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export const RuntimeDashboard: React.FC = () => {
   const [stats, setStats] = useState<AgentStats[]>([]);
   const [mcpStatus, setMcpStatus] = useState<MCPServerStatus[]>([]);
+  const [latestPIS, setLatestPIS] = useState<PISAlert | null>(null);
+  const [latestVariety, setLatestVariety] = useState<ToolVariety | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
@@ -85,6 +104,12 @@ export const RuntimeDashboard: React.FC = () => {
         const data = JSON.parse(msg.data);
         if (data.type === 'agent_event' || data.type === 'telemetry') {
           fetchStats(); // Refresh on new event
+        }
+        if (data.type === 'pis_alert') {
+          setLatestPIS(data.data as PISAlert);
+        }
+        if (data.type === 'tool_variety') {
+          setLatestVariety(data.data as ToolVariety);
         }
       } catch {
         /* ignore */
@@ -163,6 +188,78 @@ export const RuntimeDashboard: React.FC = () => {
               <span className="text-content-tertiary">Servers:</span>{' '}
               <span className="text-content-primary">
                 {mcpStatus.map((s) => s.name).join(', ') || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIS Status */}
+      {latestPIS && (
+        <div className="bg-surface-elevated border-divider mb-6 rounded-lg border p-4">
+          <h2 className="text-content-primary mb-3 text-sm font-semibold">Process Identity</h2>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-content-tertiary">Score:</span>{' '}
+              <span
+                className={
+                  latestPIS.score > 0.7
+                    ? 'text-green-400'
+                    : latestPIS.score > 0.5
+                      ? 'text-yellow-400'
+                      : 'text-red-400'
+                }
+              >
+                {(latestPIS.score * 100).toFixed(0)}%
+              </span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Trend:</span>{' '}
+              <span className="text-content-primary">{latestPIS.trend}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Action:</span>{' '}
+              <span className="text-content-primary">{latestPIS.action}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Session:</span>{' '}
+              <span className="text-content-primary">{latestPIS.sessionId.slice(0, 8)}…</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tool Variety */}
+      {latestVariety && (
+        <div className="bg-surface-elevated border-divider mb-6 rounded-lg border p-4">
+          <h2 className="text-content-primary mb-3 text-sm font-semibold">Tool Variety</h2>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-content-tertiary">Exposed:</span>{' '}
+              <span className="text-content-primary">{latestVariety.exposedTools}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Used:</span>{' '}
+              <span className="text-content-primary">{latestVariety.usedTools}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Gap Ratio:</span>{' '}
+              <span
+                className={latestVariety.gapRatio > 5 ? 'text-red-400' : 'text-content-primary'}
+              >
+                {typeof latestVariety.gapRatio === 'number'
+                  ? latestVariety.gapRatio.toFixed(1)
+                  : '—'}
+                x
+              </span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Top:</span>{' '}
+              <span className="text-content-primary">
+                {latestVariety.topTools
+                  ?.slice(0, 3)
+                  .map(([name, count]) => `${name}(${count})`)
+                  .join(', ') || '—'}
               </span>
             </div>
           </div>

@@ -1,0 +1,167 @@
+{
+  "baseline_version": "v0.9.0",
+  "created_at": "2026-06-09T12:55:22+08:00",
+  "metrics": {
+    "test_summary": {
+      "total_test_files": 86,
+      "total_tests": 780,
+      "passed": 750,
+      "failed": 0,
+      "skipped": 31,
+      "duration_seconds": 156
+    },
+    "by_package": {
+      "packages/agent": {
+        "test_files": 21,
+        "tests": 180,
+        "passed": 180,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 13
+      },
+      "packages/types": {
+        "test_files": 4,
+        "tests": 35,
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 3
+      },
+      "packages/memory": {
+        "test_files": 3,
+        "tests": 43,
+        "passed": 38,
+        "failed": 0,
+        "skipped": 5,
+        "duration_seconds": 45
+      },
+      "packages/gateway": {
+        "test_files": 3,
+        "tests": 27,
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 7
+      },
+      "packages/events": {
+        "test_files": 3,
+        "tests": 23,
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 4
+      },
+      "packages/graph": {
+        "test_files": 5,
+        "tests": 31,
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 3
+      },
+      "packages/harness": {
+        "test_files": 1,
+        "tests": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 2
+      },
+      "packages/secretary": {
+        "test_files": 3,
+        "tests": 48,
+        "passed": 46,
+        "failed": 0,
+        "skipped": 2,
+        "duration_seconds": 2
+      },
+      "packages/workflow": {
+        "test_files": 3,
+        "tests": 46,
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 5
+      },
+      "packages/decision": {
+        "test_files": 4,
+        "tests": 40,
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 6
+      },
+      "packages/storage": {
+        "test_files": 11,
+        "tests": 132,
+        "passed": 132,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 5
+      },
+      "apps/server": {
+        "test_files": 11,
+        "tests": 82,
+        "passed": 78,
+        "failed": 0,
+        "skipped": 4,
+        "duration_seconds": 26
+      },
+      "apps/desktop": {
+        "test_files": 11,
+        "tests": 94,
+        "passed": 74,
+        "failed": 0,
+        "skipped": 20,
+        "duration_seconds": 19
+      },
+      "tests/e2e": {
+        "test_files": 3,
+        "tests": 24,
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "duration_seconds": 16
+      }
+    },
+    "typecheck": {
+      "packages": 15,
+      "errors": 0,
+      "packages_checked": [
+        "packages/cli",
+        "packages/memory",
+        "packages/graph",
+        "packages/gateway",
+        "packages/events",
+        "packages/agent",
+        "packages/decision",
+        "packages/harness",
+        "packages/workflow",
+        "packages/secretary",
+        "apps/server",
+        "apps/desktop"
+      ]
+    },
+    "code_size": {
+      "total_lines_ts": 69936,
+      "scope": "packages/ + apps/",
+      "excludes": ["dist/", "node_modules/"]
+    }
+  },
+  "characterization_tests": {
+    "agent_loop": {
+      "file": "packages/agent/src/__tests__/characterization.test.ts",
+      "golden_file": "packages/agent/src/__tests__/__snapshots__/characterization-v2.0.json",
+      "cases": 10,
+      "pass_threshold": 9,
+      "status": "created"
+    },
+    "dispatcher": {
+      "file": "packages/agent/src/__tests__/dispatch-characterization.test.ts",
+      "golden_file": "packages/agent/src/__tests__/__snapshots__/dispatch-characterization-v2.0.json",
+      "cases": 6,
+      "pass_threshold": 6,
+      "status": "created"
+    }
+  }
+}

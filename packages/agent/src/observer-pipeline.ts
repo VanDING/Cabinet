@@ -55,6 +55,9 @@ export interface AgentExecutionContext {
   pisHistory?: { step: number; score: number }[];
   lastPIS?: { total: number; trend: string; recommendedAction: string };
 
+  // Blackboard mid-session updates (populated by BlackboardObserver)
+  pendingBlackboardUpdates?: Array<{ topic: string; payload: unknown }>;
+
   // Current step accumulators
   currentStepText: string;
   currentStepToolCalls: { id: string; name: string; args: Record<string, unknown> }[];
