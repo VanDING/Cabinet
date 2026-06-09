@@ -1,0 +1,10 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(pnpm -r typecheck)"
+    ]
+  }
+}
