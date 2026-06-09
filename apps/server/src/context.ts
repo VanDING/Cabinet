@@ -635,9 +635,13 @@ export function getServerContext(): ServerContext {
   // Blackboard (4.2) — optional multi-agent shared state
   let blackboard: AgentBlackboard | undefined;
   try {
-    blackboard = new AgentBlackboard(eventBus);
-    sessionManager.useBlackboard(blackboard);
-    logger.info('Agent Blackboard initialized');
+    const blackboardConfig = settingsRepo.get('blackboard_config');
+    const bbConfig = blackboardConfig ? JSON.parse(blackboardConfig) : { enabled: false };
+    if (bbConfig.enabled !== false) {
+      blackboard = new AgentBlackboard(eventBus, bbConfig);
+      sessionManager.useBlackboard(blackboard);
+      logger.info('Agent Blackboard initialized');
+    }
   } catch (e) {
     logger.warn('Blackboard initialization failed', { error: String(e) });
   }

@@ -237,6 +237,9 @@ export function getAgentLoopForRole(
     contextBudget: role.contextBudget,
     thinkingBudget,
     trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
+    blackboard: ctx.blackboard,
+    mcpResources: ctx.mcpManager.listResources().map((r) => ({ uri: r.uri, name: r.name, description: r.description })),
+    mcpPrompts: ctx.mcpManager.listPrompts().map((p) => ({ name: p.name, description: p.description })),
     // toolPruner removed from ServerContext — fixed small tool set
   });
 
