@@ -34,6 +34,8 @@ import { ProcessIdentityObserver, type PISObserverConfig } from './observers/pro
 import { AdaptiveContextMonitor, type AdaptiveThresholdConfig } from './context-monitor-adaptive.js';
 import type { SessionMetricsRepository } from '@cabinet/storage';
 import type Database from 'better-sqlite3';
+import { AgentBlackboard } from './blackboard.js';
+import { injectBlackboardSnapshot } from './blackboard-compress.js';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -148,6 +150,12 @@ export interface AgentLoopOptions {
   adaptiveMonitor?: AdaptiveThresholdConfig & { metricsRepo?: SessionMetricsRepository };
   /** Process Identity Score config (4.3). */
   pis?: PISObserverConfig;
+  /** Agent Blackboard for shared state injection (4.2). */
+  blackboard?: AgentBlackboard;
+  /** MCP resource metadata for system prompt injection (4.4). */
+  mcpResources?: Array<{ uri: string; name: string; description?: string }>;
+  /** MCP prompt metadata for system prompt injection (4.4). */
+  mcpPrompts?: Array<{ name: string; description?: string }>;
 }
 
 export interface AgentResult {
@@ -929,6 +937,28 @@ export class AgentLoop {
     if (this.skillContext) {
       sysPrompt = `${sysPrompt}\n\n## Active Skill Context\n${this.skillContext}`;
       this.skillContext = null;
+    }
+
+    // Inject Blackboard snapshot (4.2)
+    if (this.options.blackboard) {
+      const bbSnapshot = this.options.blackboard.snapshot();
+      if (bbSnapshot) {
+        sysPrompt = injectBlackboardSnapshot(sysPrompt, bbSnapshot, 2000);
+      }
+    }
+
+    // Inject MCP resources/prompts metadata (4.4)
+    if (this.options.mcpResources && this.options.mcpResources.length > 0) {
+      const resLines = this.options.mcpResources
+        .map((r) => `- ${r.name}: ${r.uri}${r.description ? ` — ${r.description}` : ''}`)
+        .join('\n');
+      sysPrompt += `\n\n## Available MCP Resources\n${resLines}\n\nTo read a resource, include "read resource://<uri>" in your response.`;
+    }
+    if (this.options.mcpPrompts && this.options.mcpPrompts.length > 0) {
+      const promptLines = this.options.mcpPrompts
+        .map((p) => `- ${p.name}${p.description ? ` — ${p.description}` : ''}`)
+        .join('\n');
+      sysPrompt += `\n\n## Available MCP Prompts\n${promptLines}\n\nTo use a prompt, include "use prompt:<name>" in your response.`;
     }
 
     // Deduplicate context messages against internal history
