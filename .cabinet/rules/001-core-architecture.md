@@ -9,10 +9,10 @@ tags: ['architecture', 'constraints']
 ## 4-Layer Dependency Direction
 
 ```
-Layer 4 (Interface):   ui, server, desktop
-Layer 3 (Business):    decision, secretary, meeting, workflow, harness
-Layer 2 (Agent Core):  gateway, agent, memory
-Layer 1 (Infra):       types, events, storage
+Layer 4 (Interface):   ui, server, desktop, cli
+Layer 3 (Business):    decision, secretary, workflow, harness, organize
+Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk
+Layer 1 (Infra):       graph, types, events, storage
 ```
 
 - Lower layers NEVER import from upper layers.
