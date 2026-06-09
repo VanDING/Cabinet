@@ -48,6 +48,13 @@ export interface AgentExecutionContext {
   // Latest snapshot computed by ContextMonitorObserver (for HandoffObserver)
   lastSnapshot?: ContextSnapshot;
 
+  // Zone crossing history (populated by ContextMonitorObserver for StepEventObserver / PIS)
+  zoneCrossings?: { from: string; to: string }[];
+
+  // PIS history (populated by ProcessIdentityObserver)
+  pisHistory?: { step: number; score: number }[];
+  lastPIS?: { total: number; trend: string; recommendedAction: string };
+
   // Current step accumulators
   currentStepText: string;
   currentStepToolCalls: { id: string; name: string; args: Record<string, unknown> }[];
@@ -77,6 +84,7 @@ export interface AgentObserver {
     ctx: AgentExecutionContext,
   ): Promise<void> | void;
   onStepEnd?(ctx: AgentExecutionContext): Promise<{ handoff?: boolean } | void>;
+  onSessionComplete?(summary: unknown): Promise<void> | void;
   onStreamEnd?(ctx: AgentExecutionContext): Promise<void> | void;
 }
 

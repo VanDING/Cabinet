@@ -131,11 +131,18 @@ externalAgentRouter.post('/:taskId/write', async (c) => {
     );
 
     if (childSession?.contextSlot) {
+      const serverCtx = getServerContext();
       if (parsed.data.discoveries) {
         childSession.contextSlot.discoveries.push(...parsed.data.discoveries);
+        for (const d of parsed.data.discoveries) {
+          serverCtx.blackboard?.write('discoveries', d, childSession.id).catch(() => {});
+        }
       }
       if (parsed.data.previous_outputs) {
         childSession.contextSlot.previous_outputs.push(...parsed.data.previous_outputs);
+        for (const o of parsed.data.previous_outputs) {
+          serverCtx.blackboard?.write('outputs', o, childSession.id).catch(() => {});
+        }
       }
       sessionManager.setContextSlot(childSession.id, childSession.contextSlot);
 

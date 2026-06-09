@@ -11,6 +11,7 @@ import {
 import { writeFile } from 'node:fs/promises';
 import type { AgentEvent } from '@cabinet/events';
 import type { ContextSlot } from '@cabinet/types';
+import type { AgentBlackboard } from '@cabinet/agent';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -84,11 +85,19 @@ export class SessionManager {
   private pendingWrites = new Map<string, Session>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Optional Blackboard for multi-agent shared state (4.2). */
+  private blackboard: AgentBlackboard | null = null;
+
   constructor(maxTokens = 200_000) {
     this.maxTokens = maxTokens;
     this.softLimit = Math.floor(maxTokens * 0.6);
     this.hardLimit = Math.floor(maxTokens * 0.8);
     this.restoreSessions();
+  }
+
+  /** Attach a Blackboard instance for shared state (4.2). */
+  useBlackboard(bb: AgentBlackboard): void {
+    this.blackboard = bb;
   }
 
   /** Flush pending writes and stop the background timer. */
@@ -146,12 +155,72 @@ export class SessionManager {
     if (session) {
       session.contextSlot = slot;
       this.persist(session);
+      // Sync to Blackboard if enabled (4.2)
+      this.syncSlotToBlackboard(sessionId, slot);
     }
   }
 
   /** Get the Context Slot for a session. */
   getContextSlot(sessionId: string): ContextSlot | undefined {
     return this.sessions.get(sessionId)?.contextSlot;
+  }
+
+  /** Append a discovery to the session's ContextSlot and Blackboard (4.2). */
+  async addDiscovery(
+    sessionId: string,
+    discovery: { type: string; summary: string; [key: string]: unknown },
+  ): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    if (!session.contextSlot) {
+      session.contextSlot = this.createDefaultSlot();
+    }
+    session.contextSlot.discoveries.push(discovery);
+    this.persist(session);
+    if (this.blackboard) {
+      await this.blackboard.write('discoveries', discovery, sessionId);
+    }
+  }
+
+  /** Append a previous_output to the session's ContextSlot and Blackboard (4.2). */
+  async addOutput(sessionId: string, output: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    if (!session.contextSlot) {
+      session.contextSlot = this.createDefaultSlot();
+    }
+    session.contextSlot.previous_outputs.push(output);
+    this.persist(session);
+    if (this.blackboard) {
+      await this.blackboard.write('outputs', output, sessionId);
+    }
+  }
+
+  private syncSlotToBlackboard(sessionId: string, slot: ContextSlot): void {
+    if (!this.blackboard) return;
+    // Fire-and-forget sync of all slot fields to Blackboard topics
+    const bb = this.blackboard;
+    Promise.all([
+      bb.write('project', slot.project, sessionId),
+      ...slot.memories.map((m) => bb.write('memories', m, sessionId)),
+      bb.write('preferences', slot.preferences, sessionId),
+      ...slot.files.map((f) => bb.write('files', f, sessionId)),
+      ...slot.discoveries.map((d) => bb.write('discoveries', d, sessionId)),
+      ...slot.previous_outputs.map((o) => bb.write('outputs', o, sessionId)),
+      bb.write('security', slot.security, sessionId),
+    ]).catch(() => {});
+  }
+
+  private createDefaultSlot(): ContextSlot {
+    return {
+      project: { name: 'default', goals: [] },
+      memories: [],
+      preferences: {},
+      files: [],
+      discoveries: [],
+      previous_outputs: [],
+      security: { level: 'L1', maxRetries: 2 },
+    };
   }
 
   addMessage(sessionId: string, role: 'user' | 'assistant', content: string): void {

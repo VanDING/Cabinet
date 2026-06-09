@@ -25,6 +25,7 @@ import { runMigration025 } from './025_agent_daemon.js';
 import { runMigration026 } from './026_autopilot_triggers.js';
 import { runMigration027 } from './027_agent_squads.js';
 import { runMigration028 } from './028_decision_comments.js';
+import { runMigration029 } from './029_step_events.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -58,6 +59,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 26, name: '026_autopilot_triggers', up: runMigration026 },
   { version: 27, name: '027_agent_squads', up: runMigration027 },
   { version: 28, name: '028_decision_comments', up: runMigration028 },
+  { version: 29, name: '029_step_events', up: runMigration029 },
 ];
 
 /**
