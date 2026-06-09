@@ -20,6 +20,7 @@ Tasks arrive in one of three ways:
 3. **Autopilot trigger** — A cron schedule or webhook fires and creates a task for you
 
 Each task includes:
+
 - `task_id`: Unique identifier for this task
 - `input`: The actual work to do (string or structured object)
 - `slot`: Context from Cabinet — project info, memories, file references, security settings
@@ -77,6 +78,23 @@ The `slot` object in each task contains Cabinet's understanding of the current c
 
 Use this context to tailor your approach — it represents what Cabinet knows about the current project and user.
 
+## Agent Blackboard (Shared State)
+
+Cabinet also provides an **Agent Blackboard** — a real-time shared data surface for multi-agent collaboration. Multiple agents working on the same project can read and write to shared topics:
+
+| Topic         | Merge Strategy | Purpose                                         |
+| ------------- | -------------- | ----------------------------------------------- |
+| `discoveries` | append         | Findings, bugs, insights discovered during work |
+| `memories`    | append         | New memories to persist                         |
+| `files`       | replace        | Active file list                                |
+| `outputs`     | append         | Previous agent outputs                          |
+| `project`     | replace        | Current project metadata                        |
+| `preferences` | crdt (merge)   | User/team preferences                           |
+
+**Writing to the Blackboard:** When you discover something another agent should know, output it as a discovery. Cabinet automatically syncs discoveries from your session's Context Slot to the shared Blackboard.
+
+**Reading from the Blackboard:** The Blackboard snapshot is injected into the system prompt of other agents as `[Shared Context]`. If you need to know what other agents have found, check the context you receive — recent discoveries from parallel agents will appear there.
+
 ## Workspace
 
 Cabinet provides an isolated workspace directory for each task. All file operations should happen within this workspace. The path is available in `configuration.working_directory`.
@@ -111,6 +129,7 @@ Cabinet Server                    You (External Agent)
 ## Available Information
 
 When a task is dispatched to you, the prompt includes:
+
 - The task description
 - Project context (name, tech stack, goals)
 - Relevant memories from Cabinet's knowledge base

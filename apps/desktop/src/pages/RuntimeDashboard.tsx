@@ -22,10 +22,19 @@ interface AgentStats {
   last_active: string | null;
 }
 
+interface MCPServerStatus {
+  name: string;
+  connected: boolean;
+  toolCount: number;
+  resourceCount: number;
+  promptCount: number;
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export const RuntimeDashboard: React.FC = () => {
   const [stats, setStats] = useState<AgentStats[]>([]);
+  const [mcpStatus, setMcpStatus] = useState<MCPServerStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
@@ -35,20 +44,38 @@ export const RuntimeDashboard: React.FC = () => {
     try {
       const resp = await apiFetch('/api/telemetry/stats');
       if (resp.ok) {
-        const data = await resp.json() as { stats: AgentStats[] };
+        const data = (await resp.json()) as { stats: AgentStats[] };
         setStats(data.stats ?? []);
       }
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  const fetchMcpStatus = useCallback(async () => {
+    try {
+      const resp = await apiFetch('/api/settings/mcp-servers');
+      if (resp.ok) {
+        const data = (await resp.json()) as { servers: MCPServerStatus[] };
+        setMcpStatus(data.servers ?? []);
+      }
+    } catch {
+      /* non-critical */
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+    fetchMcpStatus();
+  }, [fetchStats, fetchMcpStatus]);
 
   // ── WebSocket live updates ───────────────────────────────────
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
+    const host =
+      window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
     const ws = new WebSocket(`${protocol}//${host}/ws/events`);
 
     ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', channel: 'agent_event' }));
@@ -59,7 +86,9 @@ export const RuntimeDashboard: React.FC = () => {
         if (data.type === 'agent_event' || data.type === 'telemetry') {
           fetchStats(); // Refresh on new event
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
     return () => ws.close();
@@ -68,77 +97,137 @@ export const RuntimeDashboard: React.FC = () => {
   // ── Derived metrics ──────────────────────────────────────────
 
   const selectedStats = selectedAgent
-    ? stats.find((s) => s.agent_id === selectedAgent) ?? null
+    ? (stats.find((s) => s.agent_id === selectedAgent) ?? null)
     : null;
 
   const totalTasks = stats.reduce((sum, s) => sum + s.total_tasks, 0);
-  const totalTokens = stats.reduce((sum, s) => sum + s.total_prompt_tokens + s.total_completion_tokens, 0);
-  const overallSuccess = totalTasks > 0
-    ? Math.round((stats.reduce((sum, s) => sum + s.completed, 0) / totalTasks) * 100)
-    : 100;
+  const totalTokens = stats.reduce(
+    (sum, s) => sum + s.total_prompt_tokens + s.total_completion_tokens,
+    0,
+  );
+  const overallSuccess =
+    totalTasks > 0
+      ? Math.round((stats.reduce((sum, s) => sum + s.completed, 0) / totalTasks) * 100)
+      : 100;
+
+  const mcpConnected = mcpStatus.filter((s) => s.connected).length;
+  const mcpTotalTools = mcpStatus.reduce((sum, s) => sum + s.toolCount, 0);
+  const mcpTotalResources = mcpStatus.reduce((sum, s) => sum + s.resourceCount, 0);
 
   // ── Render ────────────────────────────────────────────────────
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-content-tertiary">Loading telemetry...</div>;
+    return (
+      <div className="text-content-tertiary flex h-full items-center justify-center">
+        Loading telemetry...
+      </div>
+    );
   }
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <h1 className="text-2xl font-bold text-content-primary mb-6">Runtime Dashboard</h1>
+      <h1 className="text-content-primary mb-6 text-2xl font-bold">Runtime Dashboard</h1>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-4 gap-4">
         <MetricCard label="Total Tasks" value={totalTasks.toLocaleString()} color="blue" />
         <MetricCard label="Success Rate" value={`${overallSuccess}%`} color="green" />
         <MetricCard label="Total Tokens" value={formatTokens(totalTokens)} color="purple" />
-        <MetricCard label="Agents Active" value={stats.filter((s) => s.total_tasks > 0).length.toString()} color="amber" />
+        <MetricCard
+          label="Agents Active"
+          value={stats.filter((s) => s.total_tasks > 0).length.toString()}
+          color="amber"
+        />
       </div>
 
+      {/* MCP Server status */}
+      {mcpStatus.length > 0 && (
+        <div className="bg-surface-elevated border-divider mb-6 rounded-lg border p-4">
+          <h2 className="text-content-primary mb-3 text-sm font-semibold">MCP Servers</h2>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-content-tertiary">Connected:</span>{' '}
+              <span className={mcpConnected > 0 ? 'text-green-400' : 'text-content-tertiary'}>
+                {mcpConnected}/{mcpStatus.length}
+              </span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Tools:</span>{' '}
+              <span className="text-content-primary">{mcpTotalTools}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Resources:</span>{' '}
+              <span className="text-content-primary">{mcpTotalResources}</span>
+            </div>
+            <div>
+              <span className="text-content-tertiary">Servers:</span>{' '}
+              <span className="text-content-primary">
+                {mcpStatus.map((s) => s.name).join(', ') || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Agent table */}
-      <div className="bg-surface-elevated border border-divider rounded-lg overflow-hidden">
+      <div className="bg-surface-elevated border-divider overflow-hidden rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-surface-dark">
             <tr>
-              <th className="text-left px-4 py-2 text-content-tertiary font-medium">Agent</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Tasks</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Success</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Tokens</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Avg TTFT</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Avg Time</th>
-              <th className="text-right px-4 py-2 text-content-tertiary font-medium">Last Active</th>
+              <th className="text-content-tertiary px-4 py-2 text-left font-medium">Agent</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">Tasks</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">Success</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">Tokens</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">Avg TTFT</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">Avg Time</th>
+              <th className="text-content-tertiary px-4 py-2 text-right font-medium">
+                Last Active
+              </th>
             </tr>
           </thead>
           <tbody>
             {stats.map((s) => {
-              const successRate = s.total_tasks > 0 ? Math.round((s.completed / s.total_tasks) * 100) : 0;
+              const successRate =
+                s.total_tasks > 0 ? Math.round((s.completed / s.total_tasks) * 100) : 0;
               return (
                 <tr
                   key={s.agent_id}
-                  className={`border-t border-divider/50 hover:bg-surface-elevated cursor-pointer ${
+                  className={`border-divider/50 hover:bg-surface-elevated cursor-pointer border-t ${
                     selectedAgent === s.agent_id ? 'bg-accent-blue/10' : ''
                   }`}
                   onClick={() => setSelectedAgent(selectedAgent === s.agent_id ? null : s.agent_id)}
                 >
-                  <td className="px-4 py-2 font-medium text-content-primary">{s.agent_id}</td>
-                  <td className="px-4 py-2 text-right text-content-secondary">{s.total_tasks}</td>
+                  <td className="text-content-primary px-4 py-2 font-medium">{s.agent_id}</td>
+                  <td className="text-content-secondary px-4 py-2 text-right">{s.total_tasks}</td>
                   <td className="px-4 py-2 text-right">
-                    <span className={successRate >= 90 ? 'text-green-400' : successRate >= 70 ? 'text-yellow-400' : 'text-red-400'}>
+                    <span
+                      className={
+                        successRate >= 90
+                          ? 'text-green-400'
+                          : successRate >= 70
+                            ? 'text-yellow-400'
+                            : 'text-red-400'
+                      }
+                    >
                       {successRate}%
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-right text-content-tertiary">
+                  <td className="text-content-tertiary px-4 py-2 text-right">
                     {formatTokens(s.total_prompt_tokens + s.total_completion_tokens)}
                   </td>
-                  <td className="px-4 py-2 text-right text-content-tertiary">{s.avg_ttft_ms}ms</td>
-                  <td className="px-4 py-2 text-right text-content-tertiary">{formatDuration(s.avg_total_ms)}</td>
-                  <td className="px-4 py-2 text-right text-content-tertiary">{s.last_active ? timeAgo(s.last_active) : '—'}</td>
+                  <td className="text-content-tertiary px-4 py-2 text-right">{s.avg_ttft_ms}ms</td>
+                  <td className="text-content-tertiary px-4 py-2 text-right">
+                    {formatDuration(s.avg_total_ms)}
+                  </td>
+                  <td className="text-content-tertiary px-4 py-2 text-right">
+                    {s.last_active ? timeAgo(s.last_active) : '—'}
+                  </td>
                 </tr>
               );
             })}
             {stats.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-content-tertiary">
+                <td colSpan={7} className="text-content-tertiary px-4 py-8 text-center">
                   No telemetry data yet. Agent tasks will appear here.
                 </td>
               </tr>
@@ -149,8 +238,10 @@ export const RuntimeDashboard: React.FC = () => {
 
       {/* Agent detail panel */}
       {selectedStats && (
-        <div className="mt-4 bg-surface-elevated border border-divider rounded-lg p-4">
-          <h3 className="font-semibold text-content-primary mb-3">{selectedStats.agent_id} — Detail</h3>
+        <div className="bg-surface-elevated border-divider mt-4 rounded-lg border p-4">
+          <h3 className="text-content-primary mb-3 font-semibold">
+            {selectedStats.agent_id} — Detail
+          </h3>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-content-tertiary">Completed:</span>{' '}
@@ -162,11 +253,15 @@ export const RuntimeDashboard: React.FC = () => {
             </div>
             <div>
               <span className="text-content-tertiary">Prompt Tokens:</span>{' '}
-              <span className="text-content-primary">{formatTokens(selectedStats.total_prompt_tokens)}</span>
+              <span className="text-content-primary">
+                {formatTokens(selectedStats.total_prompt_tokens)}
+              </span>
             </div>
             <div>
               <span className="text-content-tertiary">Completion Tokens:</span>{' '}
-              <span className="text-content-primary">{formatTokens(selectedStats.total_completion_tokens)}</span>
+              <span className="text-content-primary">
+                {formatTokens(selectedStats.total_completion_tokens)}
+              </span>
             </div>
             <div>
               <span className="text-content-tertiary">Avg TTFT:</span>{' '}
@@ -174,7 +269,9 @@ export const RuntimeDashboard: React.FC = () => {
             </div>
             <div>
               <span className="text-content-tertiary">Avg Total Time:</span>{' '}
-              <span className="text-content-primary">{formatDuration(selectedStats.avg_total_ms)}</span>
+              <span className="text-content-primary">
+                {formatDuration(selectedStats.avg_total_ms)}
+              </span>
             </div>
           </div>
         </div>
@@ -185,12 +282,16 @@ export const RuntimeDashboard: React.FC = () => {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const MetricCard: React.FC<{ label: string; value: string; color: string }> = ({ label, value, color }) => {
+const MetricCard: React.FC<{ label: string; value: string; color: string }> = ({
+  label,
+  value,
+  color,
+}) => {
   const borderColor = `border-accent-${color}`;
   return (
     <div className={`bg-surface-elevated border-l-4 ${borderColor} rounded p-4`}>
-      <div className="text-xs text-content-tertiary mb-1">{label}</div>
-      <div className="text-xl font-bold text-content-primary">{value}</div>
+      <div className="text-content-tertiary mb-1 text-xs">{label}</div>
+      <div className="text-content-primary text-xl font-bold">{value}</div>
     </div>
   );
 };

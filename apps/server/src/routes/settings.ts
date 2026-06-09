@@ -9,6 +9,8 @@ import { DelegationTier } from '@cabinet/types';
 import { CABINET_DIR } from '@cabinet/storage';
 import { broadcast } from '../ws/handler.js';
 import { AISDKAdapter } from '@cabinet/gateway';
+import type { MCPServerConfig } from '../mcp/mcp-manager.js';
+import type { MCPTransportConfig } from '../mcp/mcp-transport.js';
 
 const MASTER_PW = config.masterPassword;
 const SETTINGS_PATH = join(CABINET_DIR, 'settings.json');
@@ -83,7 +85,7 @@ settingsRouter.put('/budget', async (c) => {
 });
 
 // ── API Keys (SQLite-backed) ──
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function ensureApiKeyColumns(db: any) {
   try {
     db.prepare("ALTER TABLE api_keys ADD COLUMN base_url TEXT DEFAULT ''").run();
@@ -288,6 +290,44 @@ settingsRouter.put('/delegation-tier', async (c) => {
   return c.json({ tier, status: 'updated' });
 });
 
+// ── MCP Config Normalization ──
+
+function normalizeMCPConfig(cfg: Record<string, unknown>): MCPServerConfig {
+  const transport = cfg.transport;
+
+  // New format: transport is an object { type, command?, url?, ... }
+  if (transport && typeof transport === 'object' && !Array.isArray(transport)) {
+    return {
+      name: String(cfg.name ?? ''),
+      transport: transport as MCPTransportConfig,
+      enabled: cfg.enabled !== false,
+    };
+  }
+
+  // Old flat format: command/args at top level
+  return {
+    name: String(cfg.name ?? ''),
+    transport: {
+      type: 'stdio',
+      command: String(cfg.command ?? 'npx'),
+      args: Array.isArray(cfg.args) ? (cfg.args as string[]) : [],
+      env: cfg.env as Record<string, string> | undefined,
+    },
+    enabled: cfg.enabled !== false,
+  };
+}
+
+function validateMCPConfig(cfg: MCPServerConfig): string | null {
+  if (!cfg.name) return 'Server name is required';
+  const t = cfg.transport;
+  if (t.type === 'sse') {
+    if (!t.url) return `SSE server "${cfg.name}" requires a URL`;
+  } else {
+    if (!t.command) return `stdio server "${cfg.name}" requires a command`;
+  }
+  return null;
+}
+
 // ── MCP Servers ──
 
 settingsRouter.get('/mcp-servers', (c) => {
@@ -298,12 +338,17 @@ settingsRouter.get('/mcp-servers', (c) => {
 settingsRouter.put('/mcp-servers', async (c) => {
   const { mcpManager, settingsRepo, logger } = getServerContext();
   const body = await c.req.json();
-  const configs = body.configs ?? [];
+  const rawConfigs: Array<Record<string, unknown>> = body.configs ?? [];
+
+  // Normalize old flat format to new MCPTransportConfig format
+  const configs = rawConfigs.map((cfg) => normalizeMCPConfig(cfg));
+
+  // Validate
   for (const cfg of configs) {
-    if (!cfg.command || typeof cfg.command !== 'string') {
-      return c.json({ error: `MCP server "${cfg.name}" requires a command string` }, 400);
-    }
+    const err = validateMCPConfig(cfg);
+    if (err) return c.json({ error: err }, 400);
   }
+
   // Persist to DB and settings.json
   settingsRepo.set('mcp_servers', JSON.stringify(configs));
   saveSettings({ mcpServers: configs });
