@@ -49,5 +49,8 @@ apps/server/bundle/
 # Playwright MCP logs
 .playwright-mcp/
 
+# Codegraph runtime
+.codegraph/daemon.pid
+
 # Screenshot artifacts (manual testing)
 part*_*.png
