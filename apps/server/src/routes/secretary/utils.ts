@@ -67,6 +67,15 @@ export function buildSystemPrompt(
     }
   }
   parts.push(roleSystemPrompt);
+  // 4.3 PIS: guide LLM to emit milestone markers so Goal Progress factor works
+  parts.push(
+    `## Progress Tracking\n` +
+    `When you complete a significant sub-task, milestone, or goal, include one of these markers in your response:\n` +
+    `- "milestone_complete" — when a major milestone is achieved\n` +
+    `- "subtask_done" — when a sub-task is finished\n` +
+    `- "goal_achieved" — when the overall goal is reached\n` +
+    `This helps the system track progress and maintain focus.`
+  );
   return parts.join('\n\n');
 }
 

@@ -21,9 +21,16 @@ export class ContextMonitorObserver implements AgentObserver {
       ),
       memory: 0,
     };
+    const prevZone = ctx.lastSnapshot?.zone ?? 'smart';
     const snap = this.monitor.snapshot(breakdown);
     ctx.zone = snap.zone;
     ctx.zoneCounts[snap.zone]++;
     ctx.lastSnapshot = snap;
+
+    // Record zone crossing for StepEventObserver and PIS
+    if (prevZone !== snap.zone) {
+      if (!ctx.zoneCrossings) ctx.zoneCrossings = [];
+      ctx.zoneCrossings.push({ from: prevZone, to: snap.zone });
+    }
   }
 }

@@ -195,3 +195,12 @@ export {
   buildSquadLeaderPrompt,
   buildDelegateTool,
 } from './daemon/squad/index.js';
+
+// Blackboard (4.2)
+export { AgentBlackboard } from './blackboard.js';
+export { BlackboardTopicRouter } from './blackboard-topic-router.js';
+export { compressSnapshot, injectBlackboardSnapshot } from './blackboard-compress.js';
+export { StepEventObserver, type StepEventConfig } from './observers/step-event-observer.js';
+export { ProcessIdentityObserver, type PISObserverConfig } from './observers/process-identity-observer.js';
+export { AdaptiveContextMonitor, type AdaptiveThresholdConfig } from './context-monitor-adaptive.js';
+export { calculatePIS, type ProcessIdentityScore, type PISFactor } from './process-identity-score.js';

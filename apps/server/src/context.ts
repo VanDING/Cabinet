@@ -102,6 +102,7 @@ import {
   AutopilotRepository,
 } from '@cabinet/storage';
 import { MCPManager } from './mcp/mcp-manager.js';
+import { AgentBlackboard } from '@cabinet/agent';
 import { TaskScheduler, setSchedulerBroadcast } from './scheduler.js';
 import { startApprovalPolling, stopApprovalPolling, runWorkflowById } from './routes/workflows.js';
 import {
@@ -160,6 +161,8 @@ export interface ServerContext {
   budgetGuard: BudgetGuard;
   // Session
   sessionManager: SessionManager;
+  // Blackboard (4.2)
+  blackboard?: AgentBlackboard;
   // File tracking (per-session, auto-populated by tool callbacks)
   fileTracker: FileAccessTracker;
   // Task tracking
@@ -629,6 +632,16 @@ export function getServerContext(): ServerContext {
   // Session
   const sessionManager = new SessionManager();
 
+  // Blackboard (4.2) — optional multi-agent shared state
+  let blackboard: AgentBlackboard | undefined;
+  try {
+    blackboard = new AgentBlackboard(eventBus);
+    sessionManager.useBlackboard(blackboard);
+    logger.info('Agent Blackboard initialized');
+  } catch (e) {
+    logger.warn('Blackboard initialization failed', { error: String(e) });
+  }
+
   // Metrics
   const metrics = new MetricsCollector({ repo: metricRepo });
   metrics.startPeriodicFlush();
@@ -878,9 +891,11 @@ export function getServerContext(): ServerContext {
           const cfg = JSON.parse(readFileSync(join(mcpDir, f), 'utf-8'));
           mcpConfigs.push({
             name: cfg.name ?? f.replace('.json', ''),
-            transport: 'stdio',
-            command: cfg.command ?? 'npx',
-            args: cfg.args ?? [],
+            transport: {
+              type: 'stdio',
+              command: cfg.command ?? 'npx',
+              args: cfg.args ?? [],
+            },
             enabled: cfg.enabled ?? true,
           });
         } catch {
@@ -893,18 +908,20 @@ export function getServerContext(): ServerContext {
     // Also load from DB settings (merge, file-based take priority)
     try {
       const value = settingsRepo.get('mcp_servers');
-      const dbConfigs: import('./mcp/mcp-manager.js').MCPServerConfig[] = JSON.parse(value ?? '[]');
+      const dbConfigs = JSON.parse(value ?? '[]') as Array<Record<string, unknown>>;
       for (const dbCfg of dbConfigs) {
-        if (!mcpConfigs.some((fc) => fc.name === dbCfg.name)) {
-          mcpConfigs.push({
-            name: dbCfg.name,
-            transport: 'stdio',
-            command: dbCfg.command ?? 'npx',
-            args: dbCfg.args ?? [],
-            enabled: dbCfg.enabled ?? true,
-            env: dbCfg.env,
-          });
-        }
+        const name = String(dbCfg.name ?? '');
+        if (!name || mcpConfigs.some((fc) => fc.name === name)) continue;
+        mcpConfigs.push({
+          name,
+          transport: {
+            type: 'stdio',
+            command: String(dbCfg.command ?? 'npx'),
+            args: Array.isArray(dbCfg.args) ? (dbCfg.args as string[]) : [],
+            env: dbCfg.env as Record<string, string> | undefined,
+          },
+          enabled: Boolean(dbCfg.enabled ?? true),
+        });
       }
     } catch {
       /* db settings not available */
@@ -1788,6 +1805,7 @@ Finally, remember: you are not a single-use tool. You are a participant in, and 
     daemonRepo: daemonContext.daemonRepo,
     autopilotRepo,
     triggerScheduler,
+    blackboard,
     shutdown,
   };
 

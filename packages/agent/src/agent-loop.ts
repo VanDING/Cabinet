@@ -29,6 +29,11 @@ import { HandoffObserver } from './observers/handoff.js';
 import { SafetyCheckObserver } from './observers/safety.js';
 import { ToolExecuteObserver } from './observers/tool-execute.js';
 import { CheckpointObserver } from './observers/checkpoint.js';
+import { StepEventObserver, type StepEventConfig } from './observers/step-event-observer.js';
+import { ProcessIdentityObserver, type PISObserverConfig } from './observers/process-identity-observer.js';
+import { AdaptiveContextMonitor, type AdaptiveThresholdConfig } from './context-monitor-adaptive.js';
+import type { SessionMetricsRepository } from '@cabinet/storage';
+import type Database from 'better-sqlite3';
 
 export interface AgentSessionSummary {
   sessionId: string;
@@ -135,6 +140,14 @@ export interface AgentLoopOptions {
   toolPruner?: ToolPruner;
   /** Role modules for modular prompt assembly (preferred over systemPrompt). */
   roleModules?: PromptModules;
+  /** SQLite database for step-event recording (4.0). */
+  db?: Database.Database;
+  /** Step event observer config (4.0). */
+  stepEvents?: StepEventConfig;
+  /** Adaptive threshold monitor config (4.1). */
+  adaptiveMonitor?: AdaptiveThresholdConfig & { metricsRepo?: SessionMetricsRepository };
+  /** Process Identity Score config (4.3). */
+  pis?: PISObserverConfig;
 }
 
 export interface AgentResult {
@@ -406,13 +419,25 @@ export class AgentLoop {
     if (options.rulesLoader) {
       this.contextBuilder.withRules(options.rulesLoader);
     }
-    this.contextMonitor = options.eventBus
-      ? ContextMonitor.forModel(
-          options.model ?? 'claude-sonnet-4-6',
-          options.eventBus,
-          options.contextBudget,
-        )
-      : null;
+    // Adaptive monitor (4.1)
+    if (options.adaptiveMonitor?.enabled && options.adaptiveMonitor.metricsRepo && options.eventBus) {
+      const adaptive = new AdaptiveContextMonitor(
+        options.eventBus,
+        options.adaptiveMonitor.metricsRepo,
+        options.adaptiveMonitor,
+        options.model,
+      );
+      adaptive.recalibrate(options.model ?? 'claude-sonnet-4-6').catch(() => {});
+      this.contextMonitor = adaptive;
+    } else {
+      this.contextMonitor = options.eventBus
+        ? ContextMonitor.forModel(
+            options.model ?? 'claude-sonnet-4-6',
+            options.eventBus,
+            options.contextBudget,
+          )
+        : null;
+    }
     this.options = options;
 
     // Pre-compile Observer Pipeline
@@ -420,10 +445,28 @@ export class AgentLoop {
       new SafetyCheckObserver(this.safetyChecker),
       new ToolExecuteObserver(),
     ];
+
+    // Step event recorder (4.0)
+    if (options.stepEvents?.enabled && options.db) {
+      observers.push(new StepEventObserver(options.sessionId, options.stepEvents, options.db));
+    }
+
     if (this.contextMonitor) {
       observers.push(new ContextMonitorObserver(this.contextMonitor));
       observers.push(new HandoffObserver());
     }
+
+    // Process Identity Score observer (4.3)
+    if (options.pis?.enabled) {
+      observers.push(
+        new ProcessIdentityObserver(
+          options.taskDescription ?? '',
+          options.pis,
+          options.eventBus,
+        ),
+      );
+    }
+
     observers.push(new CheckpointObserver(this.checkpointManager));
     this.observerPipeline = new ObserverPipeline(observers);
   }
@@ -910,6 +953,7 @@ export class AgentLoop {
       totalCompletionTokens: 0,
       zone: 'smart',
       toolCallHistory: executedToolCalls,
+      zoneCrossings: [],
       currentStepText: '',
       currentStepToolCalls: [],
       handoff: this.sessionHandoff,
