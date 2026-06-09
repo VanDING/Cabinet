@@ -93,7 +93,7 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Architecture
 
-Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Sixteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
+Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Fifteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
 
 ```
 Layer 4 (Interface):   ui, server, desktop, cli       ← user/network boundary
@@ -102,25 +102,25 @@ Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI interaction cor
 Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
 ```
 
-| Layer | Package              | Role                                                       |
-| :---- | :------------------- | :--------------------------------------------------------- |
-| 4     | `@cabinet/server`    | Hono REST + WebSocket API server                           |
-| 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                           |
-| 4     | `@cabinet/ui`        | Shared React component library                             |
-| 4     | `@cabinet/cli`       | CLI entry point (`cabinet start`)                          |
-| 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                         |
-| 3     | `@cabinet/secretary` | Natural-language entry point, session management, multi-agent routing |
-| 3     | `@cabinet/workflow`  | Workflow engine (18 node types incl. Agent, LLM, Skill, Human, External) |
-| 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability  |
-| 3     | `@cabinet/organize`  | Organization architecture and system design                |
-| 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                 |
-| 2     | `@cabinet/agent`     | Graph-based agent loop, adapters, daemon runtime, squad routing |
-| 2     | `@cabinet/memory`    | Four-layer memory (short-term, long-term, entity, project) |
-| 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)               |
-| 1     | `@cabinet/graph`     | StateGraph engine, Annotation, CheckpointStore, validation |
-| 1     | `@cabinet/events`    | Event bus with causation-chain tracking                    |
-| 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)               |
-| 1     | `@cabinet/types`     | Shared TypeScript types—universal dependency               |
+| Layer | Package              | Role                                                                                    |
+| :---- | :------------------- | :-------------------------------------------------------------------------------------- |
+| 4     | `@cabinet/server`    | Hono REST + WebSocket API server                                                        |
+| 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                                                        |
+| 4     | `@cabinet/ui`        | Shared React component library                                                          |
+| 4     | `@cabinet/cli`       | CLI entry point (`cabinet start`)                                                       |
+| 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                                                      |
+| 3     | `@cabinet/secretary` | Natural-language entry point, session management, multi-agent routing                   |
+| 3     | `@cabinet/workflow`  | Workflow engine (18 node types incl. Agent, LLM, Skill, Human, External)                |
+| 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability                               |
+| 3     | `@cabinet/organize`  | Organization architecture and system design                                             |
+| 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                                              |
+| 2     | `@cabinet/agent`     | ObserverPipeline agent loop, adapters, daemon runtime, Blackboard, ProcessIdentityScore |
+| 2     | `@cabinet/memory`    | Multi-tier memory (STM→WriteGate→CascadeBuffer→LTM+KG+Decay)                            |
+| 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)                                            |
+| 1     | `@cabinet/graph`     | StateGraph engine, Annotation, CheckpointStore, validation                              |
+| 1     | `@cabinet/events`    | Event bus with causation-chain tracking                                                 |
+| 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)                                            |
+| 1     | `@cabinet/types`     | Shared TypeScript types—universal dependency                                            |
 
 ---
 
@@ -145,13 +145,13 @@ Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
   Specialized capabilities packaged as Markdown-format Skills, installable on demand and infinitely extensible. Four built-in skills (Workflow Designer, Agent Creator, Skill Creator, MCP Builder) provide guided design assistants.
 
 - **MCP Integration · External Tool Ecosystem**
-  Connect to external MCP servers via stdio to dynamically register tools — open a door to the outside world without code changes.
+  Connect to external MCP servers via stdio or SSE to dynamically register tools, resources, and prompts — open a door to the outside world without code changes.
 
 - **Interactive Sub-Agents · Multi-Turn Agent Sessions**
   Spawn interactive sub-agents with dedicated sessions, mid-flight user input, and event-driven state synchronization.
 
-- **Four-Layer Memory · Your Externalized Mind**
-  Short-term session context, long-term semantic retrieval, entity preferences, and project knowledge—consolidated and project-isolated.
+- **Multi-Tier Memory · Your Externalized Mind**
+  Short-term session context → WriteGate quality filtering → CascadeBuffer staging → long-term semantic retrieval (SQLite + HNSW) → KnowledgeGraph entity extraction + contradiction detection → MemoryDecay lifecycle management. Consolidated and project-isolated.
 
 - **Harness Quality Assurance · Built-in Evaluation and Verification Gates**
   Every output passes through evaluators and quality gates before delivery, ensuring quality is never an afterthought.
@@ -166,7 +166,7 @@ Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
   A three-column strategic command center on desktop; REST and WebSocket APIs for integration.
 
 - **Observability · Transparent and Auditable**
-  Built-in observability collector tracks session metrics, tool health, cost, and context-zone distribution, generating daily reports and health checks so your AI team's operations are never a black box.
+  Built-in observability collector tracks session metrics, tool health, cost, context-zone distribution, and MCP server status. Generates daily reports and health checks so your AI team's operations are never a black box. Runtime Dashboard with live WebSocket updates.
 
 - **Optional Browser Automation · Playwright via MCP**
   Browser automation tools (navigate, click, screenshot, evaluate) are available when needed. Install `@anthropic/mcp-server-playwright` via MCP or run `npx playwright install chromium` to enable them. Not bundled in the installer, keeping the package lean.
@@ -331,35 +331,43 @@ Models are configured via the LLM gateway (`@cabinet/gateway`) with multi-provid
 
 ### MCP Servers
 
-Configure MCP servers in your Cabinet data directory:
+Configure MCP servers in `~/.cabinet/mcp/*.json` or via the Desktop Settings UI. Both stdio (local process) and SSE (remote server) transports are supported:
 
 ```json
 {
-  "mcp_servers": [
-    {
-      "name": "filesystem",
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
-    },
-    {
-      "name": "playwright",
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@anthropic/mcp-server-playwright"]
-    }
-  ]
+  "name": "filesystem",
+  "transport": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
+  },
+  "enabled": true
+}
+```
+
+For remote MCP servers via SSE:
+
+```json
+{
+  "name": "remote-server",
+  "transport": {
+    "type": "sse",
+    "url": "https://mcp.example.com/sse"
+  },
+  "enabled": true
 }
 ```
 
 ### Memory Storage
 
-Cabinet V2.0 uses a four-layer memory architecture backed by SQLite:
+Cabinet V2.0 uses a multi-tier memory architecture backed by SQLite:
 
-- **ShortTerm**: Session context, in-memory + SQLite
-- **LongTerm**: Cross-session semantic retrieval with consolidation
-- **Entity**: Captain preferences, employee configurations
-- **Project**: Goals, milestones, decisions—isolated per project
+- **ShortTerm**: Session context, in-memory + SQLite, TTL 30min
+- **WriteGate**: 5-tier regex classification for noise filtering
+- **CascadeBuffer**: L0 staging area, batched compression before LTM
+- **LongTerm**: Cross-session semantic retrieval (SQLite + HNSW vector index) with RRF hybrid search
+- **KnowledgeGraph**: Entity extraction + contradiction detection
+- **MemoryDecay**: Lifecycle management via Ebbinghaus forgetting curve
 
 ---
 
@@ -400,9 +408,10 @@ CI runs automatically on push and PR to `main` via GitHub Actions (Node 22, pnpm
 
 ## System Architecture & Control Theory
 
-Cabinet's design is informed by cybernetic principles — recursive viable systems, closed-loop cognition, and variety matching. For a comprehensive architectural audit against 8 control principles (scoring 6.6/10 maturity), see [`CYBERNETIC_AUDIT.md`](./CYBERNETIC_AUDIT.md). It identifies critical systemic risks and a prioritized remediation roadmap (P0–P3).
+Cabinet's design is informed by cybernetic principles — recursive viable systems, closed-loop cognition, and variety matching. For a comprehensive architectural audit against 8 control principles, see [`AUDIT_REPORT.md`](./AUDIT_REPORT.md).
 
 Key control layers:
+
 - **S1 (Operations)**: Agent loop, tool execution, memory I/O
 - **S2 (Coordination)**: Workflow engine, meeting protocol, decision state machine
 - **S3 (Control)**: Harness quality gates, observability, auto-adjustment
