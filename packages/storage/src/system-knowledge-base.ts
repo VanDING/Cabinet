@@ -51,20 +51,20 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
     id: 'agent_responsibilities',
     topic: 'Agent 分工',
     category: 'agent',
-    version: 3,
+    version: 4,
     content: `## Agent 职责边界
 - **secretary** — 入口路由、通用对话、意图识别、工具分发。Secretary 是唯一面向 Captain 的交互入口，负责将请求路由到合适的专业 Agent 或 Skill。
-- **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow + Skill + MCP 蓝图。统筹设计所有体系化工作（工作流、Agent、Skill、MCP）。不直接执行具体流程。
+- **organize** — 首席组织架构师。将业务目标转化为 Agent + Workflow + Skill + MCP 蓝图。定义于 agent-roles.ts 的 ORGANIZE_ROLE（原 packages/organize 已移除，功能无损）。
 - **curator** — 记忆管理员。会话总结、知识固化、模式提取、项目进度跟踪。后台角色，不直接参与路由。
-- **secretary** — 对话入口 + 路由 + 多 Agent 协调 + 决策分析。所有外部 Agent 任务的上下文打包和结果合成。
 
 **已移除角色**：
-- ~~decision_analyst~~ — 已内化为 secretary 的决策辅助能力，不再作为独立角色存在。
+- ~~meeting_chair~~ — 已删除 (Phase 2)，多 Agent 协作由 Blackboard + Dispatcher Parallel 替代。
+- ~~decision_analyst~~ — 已内化为 secretary 的决策辅助能力。
 
 **路由原则**：
 - 涉及"设计体系/创建 Agent/组织架构/写 Skill/搭 MCP" → organize
 - 涉及"总结/记忆/进度" → curator（后台）
-- 涉及"多角度分析/辩论" → secretary（多 Agent 路由 + 并行调度）
+- 涉及"多角度分析/辩论" → secretary（多 Agent 路由 + 并行调度 + Blackboard 共享）
 - 不确定 → secretary`,
   },
   {
@@ -231,52 +231,39 @@ Workflow 支持 cron_expression 字段，使用标准 5 字段 cron 表达式。
     id: 'mcp_capabilities',
     topic: 'MCP 扩展',
     category: 'capability',
-    version: 1,
+    version: 2,
     content: `## MCP (Model Context Protocol) 完整支持
 
-Cabinet 内置完整的 MCP 协议支持，通过 stdio 传输连接外部 MCP 服务器，动态发现并注册工具。
+Cabinet 内置完整的 MCP 协议支持（Phase 4.4），支持 stdio 和 SSE 两种传输方式，完整覆盖 tools、resources、prompts 三种能力。
 
-### 配置方式（三选一）
-1. **Web UI**：Settings → MCP Tab → 添加/测试/启用/禁用 MCP 服务器
-2. **HTTP API**：
-   - \`GET /api/settings/mcp-servers\` — 查看所有服务器状态和配置
-   - \`PUT /api/settings/mcp-servers\` — 批量更新配置。请求体：\`{ configs: [...] }\`
-   - \`POST /api/settings/mcp-servers/test\` — 测试单个服务器连接
-3. **手动文件配置**：
-   - 在 \`~/.cabinet/mcp/\` 目录放置 \`*.json\` 配置文件
-   - 或在 \`~/.cabinet/settings.json\` 中添加 \`mcpServers\` 字段
+### 传输方式
+- **stdio**：本地进程通信，通过 command + args 启动 MCP 服务器子进程
+- **SSE**：远程 HTTP 连接（Server-Sent Events），通过 URL 连接远程 MCP 服务
 
-### 配置格式
-每个 MCP 服务器的 JSON 配置：
+### 配置格式（新版 MCPTransportConfig）
 \`\`\`json
+// stdio 示例
 {
-  "name": "唯一名称",
-  "transport": "stdio",
-  "command": "可执行文件路径",
-  "args": ["参数1", "参数2"],
-  "enabled": true,
-  "env": { "KEY": "value" }
+  "name": "filesystem",
+  "transport": { "type": "stdio", "command": "npx", "args": ["-y", "@anthropic/mcp-server-filesystem", "/path"] },
+  "enabled": true
+}
+// SSE 示例
+{
+  "name": "remote-server",
+  "transport": { "type": "sse", "url": "https://mcp.example.com/sse" },
+  "enabled": true
 }
 \`\`\`
-\`env\` 字段可选，支持 \${VAR} 环境变量替换。
+兼容旧格式（transport 为字符串 "stdio" 时自动规范化）。
 
-### 工作原理
-1. Server 启动时读取 \`~/.cabinet/mcp/*.json\` + settings.json 中的 \`mcpServers\` 字段
-2. MCPManager 自动连接 \`enabled: true\` 的服务器
-3. 连接成功后调用 \`client.listTools()\` 发现该服务器提供的工具
-4. 工具以 \`mcp__<toolName>\` 命名注入到 ToolExecutor，所有 Agent 均可调用
-5. \`PUT /api/settings/mcp-servers\` 更新配置后会立即重连变更的服务器
-
-### MCP 工具的安全分类
-MCP 工具自动归类为 moderate 风险级别。在 T0 (Captain Review) 模式下调用需要确认。
-
-### 内置 MCP Builder 技能
-系统预置了 mcpBuilder 技能（通过 use_skill__mcpBuilder 或直接说"帮我开发 MCP 服务器"触发），可指导从零开发新的 MCP 服务器。
-
-### 给 AI Agent 的指导
-- 当用户说"安装 MCP server"时，不要猜测 — Cabinet 原生支持 MCP，引导用户到 Settings → MCP Tab 或使用 API
-- 如果你有 shell 访问权限，可以帮用户编写 \`~/.cabinet/mcp/<name>.json\` 配置文件
-- 如果你需要调用 MCP 工具但不确定是否已配置，用 query_system_knowledge 或 get_system_knowledge 查询`,
+### 工作方式
+1. Server 启动时读取 \`~/.cabinet/mcp/*.json\` + settings 数据库
+2. MCPManager 自动连接并发现 tools、resources、prompts
+3. 工具以 \`mcp__<toolName>\` 注册，资源以 \`mcp_res__<uri>\` 索引，提示以 \`mcp_prompt__<name>\` 存储
+4. 每 5 分钟自动重新发现（动态更新 tools/resources/prompts）
+5. Settings UI 支持 stdio/SSE 切换 + 测试连接
+6. Dashboard 展示 MCP 服务器连接状态、tools/resources 数量`,
   },
   {
     id: 'settings_management',
@@ -413,45 +400,34 @@ Playwright 和 Chromium **不再内置于安装包**（v0.9.0+）。浏览器自
     id: 'memory_system',
     topic: '记忆系统',
     category: 'infrastructure',
-    version: 2,
-    content: `## Cabinet 记忆系统
+    version: 3,
+    content: `## Cabinet 记忆系统 — 6 层管道架构
 
-### 四种基础记忆类型
-1. **短期记忆 (ShortTermMemory)**：Key-value 存储，会话级别，可选 TTL 过期
-2. **长期记忆 (LongTermMemory)**：持久化到 SQLite，支持语义搜索（embedding）和文本回退搜索
-3. **实体记忆 (EntityMemory)**：用户/Agent 偏好、决策历史、统计信息
-4. **项目记忆 (ProjectMemory)**：项目目标、里程碑、关键决策、摘要
+### 记忆管道 (STM → WriteGate → CascadeBuffer → LTM → KnowledgeGraph → Decay)
+1. **ShortTermMemory** — 会话级缓存 (LRU + SQLite, TTL 30min)。Key-value 存储，提供 onExpire 回调
+2. **WriteGate** — 5 层 regex 分层闸门：explicit_remember (T3) → behavior_changing / commitment / decision (T2) → stable_fact / length_fallback (T1) → transient_noise (拒绝)
+3. **CascadeBuffer** — L0 内存暂存区。按 sessionId:topic 分组，minCount≥3 或 maxAge≥30min 触发 seal → 压缩为 L1 摘要写入 LTM
+4. **LongTermMemory** — 永久存储 (SQLite + HNSW 向量索引)。RRF (Reciprocal Rank Fusion, k=60) 混合搜索：语义 (HNSW cosine) + 文本 (FTS5 BM25)。检索分数 = RRF × decayScore (importance × confidence × e^(-age/30) × ln(1+accessCount))
+5. **KnowledgeGraph** — 实体提取 (compromise.js + CJK token-boundary) + 矛盾检测 (LLM judge, confidence-graded supersede)
+6. **MemoryDecayService** — Ebbinghaus 遗忘曲线生命周期：validUntil 过期 / confidence<0.3 + 30天 归档 / importance<0.2 + 90天 归档。HNSW 索引每周重建
 
-### 记忆支撑模块
-- **WriteGate** — 写入分级闸门。所有记忆写入前经过分级检查：内容长度、敏感词过滤、重复检测、项目隔离验证
-- **CascadeBuffer** — 级联缓冲区。短期记忆在写入长期记忆前先在缓冲区排队，支持批量写入和去重
-- **ProjectIsolation** — 项目隔离记忆。确保不同项目的记忆在检索时不交叉污染，项目切换时自动加载对应上下文
-- **KnowledgeGraph** — 实体关系图。提取长期记忆中的实体和关系，构建结构化知识图谱，支持图遍历查询
+### 辅助组件
+- **EntityMemory** — Captain 偏好 + Employee 配置 (cache-through)
+- **ProjectMemory** — 项目目标/里程碑/决策 (cache-through + auto-init)
+- **MemoryFacade** — 统一接口 (packages/memory/src/memory-facade.ts)，Agent 不直接访问各层
+
+### 双轨 Consolidation
+- **consolidateBasic()** (每 30min)：处理 daily-tier 条目 via CascadeBuffer，零 LLM 成本
+- **Curator LLM consolidation** (session 关闭 / 每 4h nudge)：处理 register/working-tier 条目，深度整合
 
 ### 可用工具
 - \`remember(sessionId, key, value, ttlMs?)\` — 写入短期记忆
-- \`recall(sessionId, key?)\` — 读取短期记忆（不传 key 则获取全部）
-- \`search_memory(query, limit?)\` — 搜索长期记忆（语义搜索 + 文本回退）
+- \`recall(sessionId, key?)\` — 读取短期记忆
+- \`search_memory(query, limit?)\` — RRF 混合搜索长期记忆
 - \`write_memory(content, metadata?)\` — 写入长期记忆
 - \`update_memory(memoryId, status?, importance?, confidence?)\` — 更新记忆元数据
 - \`delete_memory(memoryId)\` — 删除记忆
-- \`list_memories(limit?, offset?, status?)\` — 列出长期记忆（支持分页和状态过滤）
-
-### 记忆状态
-- active — 正常 | expired — 已过期 | archived — 已归档 | superseded — 被替代
-
-### 后台机制
-- 记忆衰减 (MemoryDecayService)：每小时运行，根据 importance/confidence 自动过期或归档
-- 记忆整合 (ConsolidationService)：每 30 分钟将短期记忆整合到长期记忆
-- 冲突检测：新记忆与旧记忆冲突时（0.5-0.8 置信度）自动创建决策提醒 Captain
-- 会话关闭时 Curator 自动触发 consolidation
-- WriteGate 实时过滤写入请求，拒绝低质量或越权写入
-- CascadeBuffer 每 5 分钟自动 flush 到长期记忆
-
-### 向用户说明
-- 记忆系统是自动的 — AI 可以在对话中主动写入记忆
-- 长期记忆支持语义搜索，不需要精确的关键词匹配
-- 如果用户想"记住某件事"，直接告诉 AI 使用 write_memory`,
+- \`list_memories(limit?, offset?, status?)\` — 列出记忆`,
   },
   {
     id: 'knowledge_rag',
@@ -491,7 +467,7 @@ Playwright 和 Chromium **不再内置于安装包**（v0.9.0+）。浏览器自
 ### 内置 Agent 角色
 secretary, organize, curator
 
-- ~~meeting_chair~~ 已移除，由 Secretary 多 Agent 路由 + 结果合成吸收。
+- ~~meeting_chair~~ 已删除 (Phase 2)，多 Agent 协作由 Agent Blackboard + Dispatcher Parallel 替代。
 - ~~reviewer~~ 已移除，质量审查由外部 Agent 节点处理。
 - ~~decision_analyst~~ 已移除，其能力内化为 secretary 的决策辅助功能。
 
@@ -571,62 +547,57 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
     id: 'delegation_tiers_detail',
     topic: '委托层级详解',
     category: 'constraint',
-    version: 1,
+    version: 2,
     content: `## 委托层级 (Delegation Tiers) 详解
 
 ### 层级定义
-- **T0 - Captain Review（完全审查）**：每次写操作和决策需要 Captain 确认。MCP 和 Skill 工具在 T0 被阻止。适用于初始设置和安全审计期间。
-- **T1 - Strategic Guard（策略守护）**：低风险操作自动执行。产生费用（会议、工作流运行）和破坏性变更需要确认。
-- **T2 - Trusted Mode（可信模式）**：大部分操作自动执行。仅破坏性变更（删除、拒绝决策）需要确认。
+- **T0 - Captain Review（完全审查）**：每次写操作和决策需要 Captain 确认。MCP 和 Skill 工具在 T0 被阻止。
+- **T1 - Strategic Guard（策略守护）**：低风险操作自动执行。产生费用和破坏性变更需要确认。
+- **T2 - Trusted Mode（可信模式）**：大部分操作自动执行。仅破坏性变更需要确认。
 - **T3 - Full Autonomy（完全自主）**：完全自主。仅预算上限作为最后防线。
+
+### PolicyEngine 加权仲裁 (Phase 3.1)
+- S5 PolicyEngine 已从二元 yes/no 升级为基于 missionProfile 的加权仲裁
+- T0/T1: PolicyEngine.arbitrate(action, missionProfile) → approve / borderline(附解释) / reject(通知 Captain)
+- T2/T3: PolicyEngine.validate(action, missionProfile) → 高置信违反时 block + AuditLog, borderline 时 flag 供 Captain review
+- missionProfile 从 EntityMemory 中 Captain preferences 自动推断 (riskTolerance, costSensitivity)
 
 ### 与安全系统的集成
 - SafetyChecker 根据当前 tier 决定是否放行工具调用
-- MCP 工具（mcp__ 前缀）自动分类为 moderate 风险，T0 下被阻止
-- Skill 工具（use_skill__ 前缀）在 T0 下需要 Captain 确认
-- DecisionService 对高价值/破坏性操作自动升级为决策请求
-
-### 配置方式
-- \`GET /api/settings/delegation-tier\` — 查看当前层级及所有可选层级描述
-- \`PUT /api/settings/delegation-tier\` — 切换层级。Body: { tier: "T0" | "T1" | "T2" | "T3" }
-
-### 给 AI Agent 的指导
-- 在 T0/T1 模式下，文件写入、外部网络请求、shell 执行、MCP 工具调用可能需要审批
-- 不确定某个操作是否需要批准时，宁可创建 decision 让 Captain 确认
-- 可通过 get_system_knowledge("delegation_tiers") 查询当前模式`,
+- AutoAdjuster 在 T0/T1 下的调整需要 PolicyEngine 审批; T2/T3 下直接执行但事后审计
+- DecisionService 对高价值/破坏性操作自动升级为决策请求`,
   },
   {
     id: 'graph_engine',
-    topic: 'Graph Execution Engine',
+    topic: 'Agent 执行架构',
     category: 'infrastructure',
-    version: 1,
-    content: `## Graph Execution Engine (@cabinet/graph)
+    version: 2,
+    content: `## Agent 执行架构
 
-Cabinet 内置一个轻量级有向图执行引擎，替代原有的 while-loop 式 AgentLoop 实现。所有 Agent 运行和 Workflow 执行均基于此引擎。
+### ObserverPipeline (Phase 1.2)
+AgentLoop 使用统一的 ObserverPipeline 执行模型。run() 和 runStreaming() 共享同一个 \`_execute()\` 内部路径，Observer 按顺序挂载：
 
-### 核心概念
-- **StateGraph<S>** — 有向图构建器。通过 \`addNode(id, fn)\`、\`addEdge(from, to)\`、\`addConditionalEdges(from, router, targets)\`、\`addErrorEdge(from, to)\` 构建图结构，最后调用 \`compile()\` 生成 CompiledGraph
-- **Annotation<T>** — 状态字段定义。包含 \`reducer\`（合并函数）和 \`default\`（默认值）两个属性。常用 reducer：\`lastValue\`（覆盖）、\`appendValue\`（追加到数组）、\`mergeValue\`（浅合并对象）
-- **CompiledGraph** — 编译后的可执行图。提供 \`invoke(initialState)\`（同步执行）、\`stream(initialState)\`（流式事件）、\`resume(runId, resumeState)\`（从 checkpoint 恢复执行）
+\`\`\`
+SafetyCheck → ToolExecute → StepEvent* → ContextMonitor → Handoff → ProcessIdentity* → BlackboardSync* → Checkpoint
+\`\`\`
+(* 可选, 由配置控制)
 
-### Checkpoint / Time Travel
-- **CheckpointStore** — 基于 SQLite 的 linked-list checkpoint 存储（表：graph_checkpoints）。每个节点执行后自动保存状态快照
-- \`getRunHistory(runId)\` — 获取某次运行的全部 checkpoint 列表
-- \`resume(runId, state)\` — 从任意历史 checkpoint 恢复执行（"时间旅行"调试）
-- \`gc(runId, keepLast)\` — checkpoint 垃圾回收，保留最近 N 个快照
+### StateGraph (@cabinet/graph)
+Dispatcher 使用 StateGraph 进行多 Agent 编排（single/pipeline/parallel 模式）。Workflow 引擎基于 StateGraph 进行节点遍历。AgentLoop 本身不再使用 StateGraph 编译——改为预编译的 ObserverPipeline。
 
-### 图验证（编译时 6 轮校验）
-1. 节点存在性检查（跳过 \`__END__\` 哨兵）
-2. 入口可达性检查（BFS）
-3. 环路检测（DFS back-edge，条件性退出路径除外）
-4. 条件分支完整性（必须有 \`__default__\` 目标）
-5. 错误边目标存在性检查
-6. 状态字段兼容性检查
+### 核心概念 (StateGraph)
+- **StateGraph<S>** — 有向图构建器。addNode / addEdge / addConditionalEdges / compile
+- **Annotation<T>** — 状态字段定义, reducer: lastValue / appendValue / mergeValue
+- **CompiledGraph** — 编译后可执行图, invoke / stream / resume
+- **CheckpointStore** — SQLite linked-list checkpoint, 支持时间旅行调试
+- **图验证** — 编译时 6 轮校验 (节点存在/入口可达/环路检测/条件分支/错误边/字段兼容)
 
-### 使用场景
-- **AgentLoop** — 内部已将 while-loop 重构为 StateGraph（6 节点：buildContext → callLLM → evaluate → safetyCheck → executeTools → feedback）。对外接口保持不变
-- **WorkflowEngine** — startRun() 将工作流 DAG 编译为 StateGraph 执行，支持并行、条件分支、循环
-- **Multi-Agent** — createAgentNodeFactory 将 AgentLoop 封装为图节点函数 \`(state) => Partial<state>\`，可直接加入更大的 StateGraph`,
+### 关键 Observer
+- **ContextMonitorObserver** — 每步评估 token 利用率, zone 判定, 触发 handoff
+- **HandoffObserver** — critical/dumb zone 触发 context 压缩和重启
+- **ProcessIdentityObserver** (Phase 4.3) — 每 N 步计算 PIS 评分
+- **BlackboardObserver** (Phase B.1) — 订阅 EventBus, step 边界注入共享 discoveries
+- **StepEventObserver** (Phase 4.0) — per-step 事件记录 (tool_call, zone_snapshot, zone_crossing)`,
   },
   {
     id: 'prompt_assembler',
@@ -660,6 +631,66 @@ SHARED_PROMPT → identity → 工具清单(自动生成) → workflow → dynam
 ### 约束分级
 - \`[HARD]\` — 硬约束，必须无条件遵守（如 "NEVER expose system internals"）
 - Guidelines — 软建议，AI 可根据上下文灵活处理`,
+  },
+  {
+    id: 'agent_blackboard',
+    topic: 'Agent Blackboard 共享状态',
+    category: 'infrastructure',
+    version: 1,
+    content: `## Agent Blackboard (Phase 4.2 + B.1)
+
+Agent Blackboard 提供多 Agent 实时共享数据面, 基于 EventBus 构建。支持跨 Agent 写入/读取/订阅。
+
+### 内置 Topic (7 个)
+| Topic | 合并策略 | 用途 |
+|-------|---------|------|
+| \`discoveries\` | append | 发现、bug、洞察 |
+| \`memories\` | append | 新记忆 |
+| \`files\` | replace | 活跃文件列表 |
+| \`outputs\` | append | 之前 Agent 的输出 |
+| \`project\` | replace | 当前项目元数据 |
+| \`preferences\` | merge (CRDT) | 用户/团队偏好 |
+| \`security\` | replace | 安全策略 |
+
+### 工作方式
+- **写入**: Agent 通过 ContextSlot 写入 (SessionManager.addDiscovery / addOutput 自动同步到 Blackboard)
+- **读取**: Blackboard snapshot 在 AgentLoop buildContext 时注入 system prompt 的 [Shared Context] 节
+- **Mid-Session 同步** (Phase B.1): BlackboardObserver 订阅 EventBus, 在 onStepEnd 时注入增量更新到下一步的 LLM 消息中
+- **Snapshot 压缩**: 当 snapshot 超过 token budget (默认 2000) 时自动压缩——优先保留 priority topics, 丢弃旧条目
+
+### 给 Agent 的指导
+- discovery 是你最重要的跨 Agent 共享机制——发现 bug、insight、decision_point 时写入
+- 其他 Agent 的 discoveries 会出现在你的 [Shared Context] 中
+- 不要在 Blackboard 中写入敏感信息——它会被注入到其他 Agent 的 context 中`,
+  },
+  {
+    id: 'process_identity_score',
+    topic: 'Process Identity Score (PIS)',
+    category: 'infrastructure',
+    version: 1,
+    content: `## Process Identity Score — PIS (Phase 4.3 + B.2)
+
+PIS ∈ [0, 1] 量化长时间运行工作流的过程连贯性。ProcessIdentityObserver 每 evaluationIntervalSteps (默认 3) 步计算一次。
+
+### 4 因子模型
+| 因子 | 权重 | 计算方式 |
+|------|:--:|---------|
+| Intent Alignment | 0.35 | 原始任务 vs 最近 3 步 tool call 的语义相似度 (Phase 2: embedding cosine, Phase 1 fallback: keyword Jaccard) |
+| Tool Coherence | 0.25 | 1 - (uniqueTools / totalCalls), 窗口=最近 10 步 |
+| Goal Progress | 0.25 | tool result 中检测 milestone_complete / subtask_done / goal_achieved 标记 |
+| Context Stability | 0.15 | 1 - (zoneCrossingCount / stepCount) |
+
+### Trend 分类与建议动作
+- **improving** (delta > +0.15) → continue
+- **stable** → continue
+- **drifting** (delta < -0.10) → compact (context 压缩可能恢复 focus)
+- **lost** (delta < -0.25) → handoff 或 abort
+
+### 配置 (Settings → PIS Tab)
+- enabled: 默认 false
+- mode: log_only (仅记录) | intervene (PIS≤0.3 时通过 EventBus 发布 pis_alert, Dashboard 实时展示)
+- evaluationIntervalSteps: 默认 3
+- weights: 可调 (Dashboard Settings)`,
   },
 ];
 
