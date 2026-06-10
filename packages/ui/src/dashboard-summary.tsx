@@ -16,6 +16,7 @@ function AgentStatusCard({ agents }: { agents?: DashboardAgentStatus[] }) {
     offline: 'bg-intent-danger',
     busy: 'bg-intent-warning',
     error: 'bg-intent-danger',
+    unknown: 'bg-intent-neutral',
   };
 
   return (

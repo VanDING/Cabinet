@@ -159,6 +159,7 @@ export class TriggerExecutor {
 
   private buildSlot(trigger: AutopilotTriggerRow) {
     return {
+      version: 0,
       project: { name: trigger.workspace_id, goals: [] },
       memories: [],
       preferences: {},

@@ -13,6 +13,7 @@ export interface SkillRow {
   metadata: string | null;
   references_path: string | null;
   scripts_path: string | null;
+  exposure?: string | null;
 }
 
 export class SkillRepository {
@@ -138,6 +139,7 @@ export class SkillRepository {
       metadata: row.metadata as string | null,
       references_path: row.references_path as string | null,
       scripts_path: row.scripts_path as string | null,
+      exposure: (row.exposure as string | undefined) ?? null,
     };
   }
 }

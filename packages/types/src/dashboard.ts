@@ -47,7 +47,7 @@ export interface DashboardAgentStatus {
   id: string;
   name: string;
   type: 'internal' | 'external' | 'daemon';
-  status: 'online' | 'offline' | 'busy' | 'error';
+  status: 'online' | 'offline' | 'busy' | 'error' | 'unknown';
   lastHeartbeatAt?: Date;
   activeTasks?: number;
   queueDepth?: number;

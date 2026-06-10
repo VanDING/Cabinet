@@ -177,6 +177,7 @@ skillsRouter.post('/', async (c) => {
     name: d.name,
     description: d.description ?? '',
     kind: (d.kind ?? 'tool') as SkillEntry['kind'],
+    exposure: 'prompt',
     promptTemplate: d.promptTemplate ?? '',
     inputSchema: {},
     outputSchema: {},

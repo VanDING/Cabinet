@@ -290,6 +290,7 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
     // Build slot with harness context
     const projectId = this.context?.projectId ?? 'external-chat';
     const slot: ContextSlot = {
+      version: 0,
       project: {
         name: projectId,
         tech_stack: '',

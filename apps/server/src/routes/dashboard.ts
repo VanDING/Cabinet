@@ -8,6 +8,7 @@ import {
   type DashboardSummary,
   type DashboardCostHistory,
   type DashboardAgentStatus,
+  type DashboardBudgetStatus,
 } from '@cabinet/types';
 import { broadcast } from '../ws/handler.js';
 
@@ -122,18 +123,25 @@ dashboardRouter.get('/summary', (c) => {
       }
     }
 
+    const budgets = budgetGuard.checkAll();
+    const budgetStatus: DashboardBudgetStatus = {
+      daily: budgets.find((b) => b.period === 'daily')?.percentage ?? 0,
+      weekly: budgets.find((b) => b.period === 'weekly')?.percentage ?? 0,
+      monthly: budgets.find((b) => b.period === 'monthly')?.percentage ?? 0,
+    };
+
     const summary: DashboardSummary = {
       pendingDecisions,
       todayCost: costTracker.getDailyCost(),
       activeProjects,
       activeWorkflows,
       recentEvents,
-      budgetStatus: budgetGuard.checkAll(),
+      budgetStatus,
       summary: metrics.getSummary(),
     };
 
     // WebSocket broadcast (5.1)
-    broadcast('dashboard:summary', summary);
+    broadcast('dashboard:summary', summary as unknown as Record<string, unknown>);
 
     return summary;
   });
@@ -204,19 +212,31 @@ dashboardRouter.get('/cost-history', (c) => {
 // ── Agent Health Status (5.2) ──
 
 dashboardRouter.get('/agent-status', (c) => {
-  const { agentRoleRegistry, daemonManager, logger } = getServerContext();
+  const { agentRegistry, daemon, logger } = getServerContext();
   const agents: DashboardAgentStatus[] = [];
 
   try {
-    // Internal agents from registry
-    const roles = agentRoleRegistry.listAll?.() ?? [];
+    // Agents from registry — distinguish internal vs external
+    const roles = agentRegistry.list?.() ?? [];
     for (const role of roles) {
-      agents.push({
-        id: role.type,
-        name: role.name ?? role.type,
-        type: 'internal',
-        status: 'online',
-      });
+      const isExternal = role.type === 'external_a2a' || role.type === 'external_cli';
+      if (isExternal) {
+        const hasConfig = role.external?.baseUrl || role.external?.command;
+        agents.push({
+          id: role.type,
+          name: role.name ?? role.type,
+          type: 'external',
+          status: hasConfig ? 'unknown' : 'error',
+          lastHeartbeatAt: undefined,
+        });
+      } else {
+        agents.push({
+          id: role.type,
+          name: role.name ?? role.type,
+          type: 'internal',
+          status: 'online',
+        });
+      }
     }
   } catch (err) {
     logger.warn('Failed to load agent roles', { error: (err as Error).message });
@@ -224,18 +244,19 @@ dashboardRouter.get('/agent-status', (c) => {
 
   try {
     // Daemon status
-    if (daemonManager) {
-      const daemons = daemonManager.listActive?.() ?? [];
-      for (const d of daemons) {
-        agents.push({
-          id: d.id,
-          name: d.name ?? d.id,
-          type: 'daemon',
-          status: d.connected ? 'online' : 'offline',
-          lastHeartbeatAt: d.lastHeartbeat ? new Date(d.lastHeartbeat) : undefined,
-          activeTasks: d.activeTasks ?? 0,
-          queueDepth: d.queueDepth ?? 0,
-        });
+    if (daemon) {
+      const status = daemon.getStatus?.();
+      if (status) {
+        for (const d of status.agents ?? []) {
+          agents.push({
+            id: d.agentId,
+            name: d.agentId,
+            type: 'daemon',
+            status: d.status,
+            lastHeartbeatAt: d.lastHeartbeatAt ? new Date(d.lastHeartbeatAt) : undefined,
+            activeTasks: d.activeTaskCount ?? 0,
+          });
+        }
       }
     }
   } catch (err) {

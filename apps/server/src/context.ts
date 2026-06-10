@@ -870,6 +870,7 @@ export function getServerContext(): ServerContext {
         name: row.name,
         description: row.description,
         kind: row.kind as 'tool' | 'prompt' | 'composite',
+        exposure: (row.exposure as 'prompt' | 'tool' | 'both') ?? 'prompt',
         promptTemplate: row.prompt_template,
         inputSchema: JSON.parse(row.input_schema ?? '{}'),
         outputSchema: JSON.parse(row.output_schema ?? '{}'),

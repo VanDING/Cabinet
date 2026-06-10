@@ -183,6 +183,8 @@ export interface AgentLoopOptions {
   autoReplan?: AutoReplanConfig;
   /** Self-consistency config (P1-6). Engine exposed via getSelfConsistencyEngine(). */
   selfConsistency?: SelfConsistencyConfig;
+  /** Observer pipeline preset: minimal | standard | full (default: standard). */
+  observerPreset?: 'minimal' | 'standard' | 'full';
 }
 
 export interface AgentResult {
@@ -535,23 +537,33 @@ export class AgentLoop {
 
     // Reflection observer (P0-1) — placed before HandoffObserver so handoff happens after critique
     if (reflectionEnabled) {
-      observers.push(new ReflectionObserver(options.reflection ?? {}, options.gateway));
+      observers.push(new ReflectionObserver(
+        options.reflection ?? { enabled: false, maxRounds: 2, qualityThreshold: 0.7 },
+        options.gateway,
+      ));
     }
 
     // Judge observer (P0-3) — evaluates output quality
     if (judgeEnabled) {
-      observers.push(new JudgeObserver(options.judge ?? {}, options.gateway, options.taskDescription));
+      observers.push(new JudgeObserver(
+        options.judge ?? { enabled: false, sampleRate: 0.1, taskFilter: [] },
+        options.gateway,
+        options.taskDescription,
+      ));
     }
 
     // Auto-replan observer (P1-5) — detects tool errors and triggers LLM analysis
     if (autoReplanEnabled) {
-      observers.push(new AutoReplanObserver(options.autoReplan ?? {}, options.gateway));
+      observers.push(new AutoReplanObserver(
+        options.autoReplan ?? { enabled: false, errorThreshold: 2, maxReplanRounds: 3 },
+        options.gateway,
+      ));
     }
 
     // Self-consistency engine (P1-6) — exposed for callers to use on high-stakes tasks
     if (selfConsistencyEnabled) {
       this.selfConsistencyEngine = new SelfConsistencyEngine(
-        options.selfConsistency ?? {},
+        options.selfConsistency ?? { enabled: false, samples: 3, triggerTasks: [] },
         options.gateway,
       );
     }

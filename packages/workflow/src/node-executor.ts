@@ -252,6 +252,7 @@ export class NodeExecutor {
 
     const promises = childNodes.map(async (child) => {
       const slot = forkSlot({
+        version: 0,
         project: { name: 'parallel', goals: [] },
         memories: [], preferences: {}, files: [],
         discoveries: [],
@@ -322,6 +323,7 @@ export class NodeExecutor {
     const agentId = node.agentId ?? node.role ?? node.id;
     const allOutputs = run.steps.map((s) => s.output);
     const slot = {
+      version: 0,
       project: { name: 'workflow', goals: [] },
       memories: [], preferences: {}, files: [],
       discoveries: [], previous_outputs: allOutputs,

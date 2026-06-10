@@ -184,6 +184,7 @@ export async function buildContextSlot(
   }
 
   return {
+    version: 0,
     project: {
       name: projectName ?? projectId,
       tech_stack: projectTech,

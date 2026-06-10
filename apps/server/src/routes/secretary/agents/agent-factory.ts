@@ -279,7 +279,8 @@ export function getAgentLoopForRole(
       .extract(summary)
       .then((skill) => {
         if (skill) {
-          const path = ctx.skillExtractor.save(skill);
+          const quality = ctx.skillExtractor.scoreSkillQuality(skill);
+          const path = ctx.skillExtractor.save(skill, quality);
           ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
         }
       })
