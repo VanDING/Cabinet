@@ -68,6 +68,35 @@ Cabinet 内置基于 node-cron 的定时任务调度器，支持标准 5 字段 
 - 不确定 → secretary`,
   },
   {
+    id: 'observer_pipeline',
+    topic: 'Observer 管道与质量基础设施',
+    category: 'infrastructure',
+    version: 1,
+    content: `## Observer 管道 (ObserverPipeline)
+AgentLoop 的所有质量、安全、监控功能通过 ObserverPipeline 注入，无需改动核心循环。
+
+### 生命周期钩子
+onStreamStart → onUserInput → [per-step: onToolCall → onToolResult → onStepEnd] → onStreamEnd
+
+### 已注册 Observer（按执行顺序）
+- **ContentGuardObserver** (P0-2): onUserInput 注入检测 + onStreamEnd 输出有害内容标记。Layer 1 正则规则引擎（零延迟）+ Layer 2 LLM 分类器（可选）。
+- **ReflectionObserver** (P0-1): onStepEnd 检测 final answer 质量，低于阈值注入 critique，利用 handoff 触发 revise 循环。最多 maxRounds 轮。
+- **JudgeObserver** (P0-3): onStreamEnd LLM-as-Judge 评分（准确性/完整性/有用性/安全性/综合），采样率控制（默认 10%），强制 haiku。
+- **AutoReplanObserver** (P1-5): onToolResult 检测工具错误，累计超阈值后 LLM 分析 → 调整建议注入 messages → onStepEnd handoff。
+- **SafetyCheckObserver**: 每次工具调用前执行 4 层安全检查（cache/auto/whitelist/ai_classifier）。
+- **ContextMonitorObserver**: 实时 token 估算 + smart/warning/critical/dumb zone 分类。
+- **HandoffObserver**: Context 压缩与跨 Agent 状态交接。
+- **ProcessIdentityObserver**: 长任务过程一致性评分（意图对齐/工具聚焦/目标进展/上下文稳定性）。
+- **BlackboardObserver**: 跨 Agent 共享状态实时注入。
+- **StepEventObserver**: 每步事件记录到 SQLite step_events 表。
+
+### 架构原则
+- Observer 之间无直接依赖，通过 AgentExecutionContext 共享可变状态
+- onStepEnd 通过返回 { handoff: boolean } 控制循环是否继续
+- onToolCall 通过返回 { blocked: boolean } 控制工具是否执行
+- 单个 Observer 异常不影响 Pipeline 中其他 Observer`,
+  },
+  {
     id: 'system_constraints',
     topic: '系统约束',
     category: 'constraint',

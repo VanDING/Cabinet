@@ -6,7 +6,7 @@ Harness is Cabinet's **post-execution quality layer**. Unlike the Agent's `Safet
 
 AI systems generate output at high speed, but speed is not the same as quality. Harness sits between execution and delivery, ensuring that what reaches the Captain meets a baseline of rigor.
 
-> **Safety says *can*. Harness says *good*. Workflow says *compatible*.**
+> **Safety says _can_. Harness says _good_. Workflow says _compatible_.**
 
 ## Components
 
@@ -51,6 +51,18 @@ Monitors system performance and automatically tunes parameters:
 - **Temperature** — lowered when precision matters, raised for creative tasks
 - **Model selection** — upgraded for complex decisions, downgraded for routine tasks
 - **Budget allocation** — shifted toward high-value workflows
+
+The `applyAnalysisRecommendations(analysis: FailureAnalysis)` method accepts structured analysis from the `FailurePatternAnalyzer` and converts findings into `AdjustmentAction` objects — each with severity, Captain approval flag, and a description of the proposed change.
+
+### FailurePatternAnalyzer (P1-7)
+
+Analyzes historical tool execution data to identify systemic issues:
+
+- **Data sources**: StepEventObserver's `step_events` table (preferred) or in-memory tool statistics (fallback)
+- **Patterns detected**: failing tools ranked by error rate, error type distribution (timeout/permission/not_found/rate_limit/network), model-tier success rate correlation
+- **Recommendations**: automatically generated suggestions — deprecate high-failure tools, increase timeout, check permissions, add retry logic
+
+Integrated into the `SubconsciousLoop` (runs every 10 ticks) with results fed to `AutoAdjuster.applyAnalysisRecommendations()`.
 
 ### PreferenceLearner
 

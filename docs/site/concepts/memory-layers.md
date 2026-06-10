@@ -100,6 +100,42 @@ Long-term memories are not just vectors. The `KnowledgeGraph` extracts entities 
 
 This enables structured questions like "What blocks Feature X?" that pure vector search cannot answer.
 
+## RAG: Document Chunking & Hybrid Retrieval (P1-4)
+
+Cabinet provides a document indexing and hybrid search pipeline for Retrieval-Augmented Generation:
+
+### Document Chunking (`chunking.ts`)
+
+Splits long documents into overlapping chunks with configurable size and overlap:
+
+- **Strategy**: paragraph → sentence → hard split (3-level cascade)
+- **Default**: 800 char chunks with 100 char overlap
+- **Metadata preserved**: source document ID, chunk index, custom metadata fields
+- **Batch API**: `chunkDocuments()` processes multiple documents at once
+
+### BM25 Index (`BM25Index`)
+
+Pure TypeScript implementation of the Okapi BM25 ranking function — zero external dependencies:
+
+- Tokenizes with Unicode-aware word segmentation
+- IDF-weighted term scoring with configurable k1 (1.5) and b (0.75) parameters
+- Returns scored and sorted results by document ID
+
+### Hybrid Retriever (`HybridRetriever`)
+
+Combines keyword and semantic search via Reciprocal Rank Fusion (RRF, k=60):
+
+```
+User Query
+    ├─ BM25 keyword match → top 20
+    └─ Embedding cosine similarity → top 10
+    → RRF merge → top K results
+```
+
+- **Indexing**: batches of 16 chunks for embedding generation
+- **Interface**: depends on `SimpleEmbedder` — decoupled from any specific embedding provider
+- **Integration**: use `MemoryFacade.searchLongTerm()` for vector-only search, or `HybridRetriever.search()` for fused results
+
 ## Consolidation
 
 Memory consolidation runs on two tracks:
