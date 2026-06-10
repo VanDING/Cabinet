@@ -1222,7 +1222,7 @@ workflowsRouter.post('/export', async (c) => {
 // POST /api/workflows/import — import a cabinet-workflow/v1 blueprint
 workflowsRouter.post('/import', async (c) => {
   const { workflowRepo, projectRepo, agentRoleRepo } = getServerContext();
-  const { importBlueprint, validateWorkflowBlueprint } = await import('@cabinet/workflow');
+  const { importBlueprint, validateWorkflowExport } = await import('@cabinet/workflow');
   try {
     const body = await c.req.json();
     const blueprint = body.blueprint;
@@ -1232,7 +1232,7 @@ workflowsRouter.post('/import', async (c) => {
     if (!projectId) return c.json({ error: 'projectId is required' }, 400);
 
     // Validate blueprint structure
-    const issues = validateWorkflowBlueprint(blueprint);
+    const issues = validateWorkflowExport(blueprint);
     if (issues.length > 0) {
       return c.json({ error: 'Invalid blueprint', issues }, 400);
     }
@@ -1259,13 +1259,13 @@ workflowsRouter.post('/import', async (c) => {
 
 // POST /api/workflows/validate — validate a blueprint without importing
 workflowsRouter.post('/validate', async (c) => {
-  const { validateWorkflowBlueprint } = await import('@cabinet/workflow');
+  const { validateWorkflowExport } = await import('@cabinet/workflow');
   try {
     const body = await c.req.json();
     const blueprint = body.blueprint;
     if (!blueprint) return c.json({ error: 'blueprint is required' }, 400);
 
-    const issues = validateWorkflowBlueprint(blueprint);
+    const issues = validateWorkflowExport(blueprint);
     return c.json({ valid: issues.length === 0, issues });
   } catch (err) {
     return c.json({ error: `Validation failed: ${(err as Error).message}` }, 500);

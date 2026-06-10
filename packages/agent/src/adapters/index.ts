@@ -15,8 +15,12 @@ export type {
   AgentTaskMetrics,
 } from './harness-runtime.js';
 
+/** @deprecated Use HarnessRuntimeFactory or GenericCliRuntime directly. */
 export { CliAdapter } from './cli-adapter.js';
-export { A2AConnector } from './a2a-connector.js';
+
+/** @deprecated Use A2AHarnessRuntime or HarnessRuntimeFactory directly. */
+export { A2AConnector } from './harness/a2a.js';
+
 export {
   TaskIdempotencyGuard,
   approvalCallbackWithRetry,

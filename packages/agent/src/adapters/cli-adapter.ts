@@ -20,7 +20,9 @@ import type { HarnessRuntime, HarnessConfig } from './harness-runtime.js';
 import { HarnessRuntimeFactory } from './harness/factory.js';
 
 // ── CliAdapter (Facade) ──────────────────────────────────────────
+// @deprecated Use HarnessRuntimeFactory or GenericCliRuntime directly.
 
+/** @deprecated Use HarnessRuntimeFactory or GenericCliRuntime directly. */
 export class CliAdapter implements ExternalAgentAdapter {
   readonly protocol = 'cli' as const;
   private runtime: HarnessRuntime;

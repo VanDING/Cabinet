@@ -565,6 +565,20 @@ export class A2AHarnessRuntime implements HarnessRuntime {
   }
 }
 
+/** Backward-compatible alias for {@link A2AHarnessRuntime}.
+ *  Prefer {@link HarnessRuntimeFactory} for new code.
+ *  @deprecated Use A2AHarnessRuntime or HarnessRuntimeFactory directly.
+ */
+export class A2AConnector extends A2AHarnessRuntime implements ExternalAgentAdapter {
+  constructor(
+    agentId: string,
+    config: A2AAgentConfig,
+    logger?: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void },
+  ) {
+    super(agentId, { ...(config as unknown as HarnessConfig), harnessId: 'a2a' }, logger);
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

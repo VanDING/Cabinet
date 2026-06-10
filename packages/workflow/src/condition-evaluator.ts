@@ -16,6 +16,25 @@ export interface ConditionContext {
   resolve: (path: string) => string;
 }
 
+/** Compare two string values using a simple operator (== != > < >= <= contains startsWith endsWith matches). */
+export function compareValues(val: string, op: string, expected: string): boolean {
+  switch (op) {
+    case '==': return val === expected;
+    case '!=': return val !== expected;
+    case '>': return parseFloat(val) > parseFloat(expected);
+    case '<': return parseFloat(val) < parseFloat(expected);
+    case '>=': return parseFloat(val) >= parseFloat(expected);
+    case '<=': return parseFloat(val) <= parseFloat(expected);
+    case 'contains': return val.includes(expected);
+    case 'startsWith': return val.startsWith(expected);
+    case 'endsWith': return val.endsWith(expected);
+    case 'matches': {
+      try { return new RegExp(expected).test(val); } catch { return false; }
+    }
+    default: return val === expected;
+  }
+}
+
 // ── Public API ──
 
 export function evaluateCondition(expr: string, context: ConditionContext): boolean {
@@ -93,6 +112,21 @@ function tokenize(expr: string): Token[] {
     if (expr.slice(i, i + 8).toUpperCase() === 'CONTAINS') {
       tokens.push({ type: 'op', value: 'contains' });
       i += 8;
+      continue;
+    }
+    if (expr.slice(i, i + 10).toUpperCase() === 'STARTSWITH') {
+      tokens.push({ type: 'op', value: 'startsWith' });
+      i += 10;
+      continue;
+    }
+    if (expr.slice(i, i + 8).toUpperCase() === 'ENDSWITH') {
+      tokens.push({ type: 'op', value: 'endsWith' });
+      i += 8;
+      continue;
+    }
+    if (expr.slice(i, i + 7).toUpperCase() === 'MATCHES') {
+      tokens.push({ type: 'op', value: 'matches' });
+      i += 7;
       continue;
     }
     if (expr.slice(i, i + 2) === '>=') {
@@ -266,6 +300,25 @@ function compare(left: EvalValue, right: EvalValue, op: string): boolean {
     const ls = String(left ?? '');
     const rs = String(right ?? '');
     return ls.includes(rs);
+  }
+  if (op === 'startsWith') {
+    const ls = String(left ?? '');
+    const rs = String(right ?? '');
+    return ls.startsWith(rs);
+  }
+  if (op === 'endsWith') {
+    const ls = String(left ?? '');
+    const rs = String(right ?? '');
+    return ls.endsWith(rs);
+  }
+  if (op === 'matches') {
+    const ls = String(left ?? '');
+    const rs = String(right ?? '');
+    try {
+      return new RegExp(rs).test(ls);
+    } catch {
+      return false;
+    }
   }
 
   // Numeric comparison when both sides are numbers

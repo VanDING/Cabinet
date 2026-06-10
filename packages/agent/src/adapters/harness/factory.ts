@@ -34,6 +34,8 @@ export type HarnessId = (typeof HARNESS_IDS)[keyof typeof HARNESS_IDS];
 
 // ── Command-to-harness mapping for auto-detection ─────────────────
 
+let _customHarnessMap: Record<string, HarnessId> = {};
+
 const COMMAND_HARNESS_MAP: Record<string, HarnessId> = {
   claude: 'claude-code',
   'claude-code': 'claude-code',
@@ -46,6 +48,16 @@ const COMMAND_HARNESS_MAP: Record<string, HarnessId> = {
   kimi: 'generic',
   'kiro-cli': 'generic',
 };
+
+/** Register additional command-to-harness mappings at runtime. */
+export function registerHarnessMapping(command: string, harnessId: HarnessId): void {
+  _customHarnessMap[command.toLowerCase()] = harnessId;
+}
+
+/** Load custom harness mappings from a plain object (e.g. config file). */
+export function loadHarnessMappings(mappings: Record<string, HarnessId>): void {
+  _customHarnessMap = { ..._customHarnessMap, ...mappings };
+}
 
 // ── Logger type ──────────────────────────────────────────────────
 
@@ -102,7 +114,8 @@ export class HarnessRuntimeFactory {
     // Auto-detect from command name
     if (config.command) {
       const baseCommand = config.command.split('/').pop()?.split('\\').pop() ?? config.command;
-      const mapped = COMMAND_HARNESS_MAP[baseCommand.toLowerCase()];
+      const lower = baseCommand.toLowerCase();
+      const mapped = _customHarnessMap[lower] ?? COMMAND_HARNESS_MAP[lower];
       if (mapped) return mapped;
     }
 
@@ -120,7 +133,8 @@ export class HarnessRuntimeFactory {
    */
   static detectFromCommand(command: string): HarnessId {
     const base = command.split('/').pop()?.split('\\').pop() ?? command;
-    return COMMAND_HARNESS_MAP[base.toLowerCase()] ?? 'generic';
+    const lower = base.toLowerCase();
+    return _customHarnessMap[lower] ?? COMMAND_HARNESS_MAP[lower] ?? 'generic';
   }
 
   /**

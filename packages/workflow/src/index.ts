@@ -20,6 +20,7 @@ export {
   exportBlueprint,
   importBlueprint,
   validateWorkflowBlueprint,
+  validateWorkflowExport,
   type WorkflowBlueprint,
   type BlueprintNode,
   type BlueprintEdge,

@@ -21,7 +21,7 @@ import type {
 } from '@cabinet/storage';
 import type { AgentRoleRegistry } from '../agent-roles.js';
 import { CliAdapter } from '../adapters/cli-adapter.js';
-import { A2AConnector } from '../adapters/a2a-connector.js';
+import { A2AConnector } from '../adapters/harness/a2a.js';
 import { A2AHarnessRuntime } from '../adapters/harness/a2a.js';
 import { HarnessRuntimeFactory } from '../adapters/harness/factory.js';
 import type { ExternalAgentAdapter } from '../adapters/types.js';

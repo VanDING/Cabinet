@@ -341,7 +341,12 @@ function blueprintToNode(bn: BlueprintNode): WorkflowNodeDef {
  * Validate a blueprint structure without importing it.
  * Returns a list of issues (empty = valid).
  */
+/** @deprecated Renamed to {@link validateWorkflowExport}. */
 export function validateWorkflowBlueprint(blueprint: WorkflowBlueprint): string[] {
+  return validateWorkflowExport(blueprint);
+}
+
+export function validateWorkflowExport(blueprint: WorkflowBlueprint): string[] {
   const issues: string[] = [];
 
   if (!blueprint.format) {
