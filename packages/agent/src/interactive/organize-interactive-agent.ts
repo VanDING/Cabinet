@@ -1,11 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { LLMGateway } from '@cabinet/gateway';
 import type { AgentEvent } from '@cabinet/events';
-import {
-  AgentLoop,
-  type AgentLoopOptions,
-  type StreamingCallback,
-} from '../agent-loop.js';
+import { AgentLoop, type AgentLoopOptions, type StreamingCallback } from '../agent-loop.js';
 import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { CheckpointManager } from '../checkpoint.js';
@@ -13,6 +9,7 @@ import { ORGANIZE_ROLE, getOrganizePlanningTools, ORGANIZE_DEPLOY_TOOLS } from '
 import type { InteractiveSubAgent, InitContext, Deliverable } from '../interactive-sub-agent.js';
 
 type Phase = 'planning' | 'reviewing' | 'deploying' | 'completed' | 'error';
+type Mode = 'interactive' | 'autonomous';
 
 const DEPLOY_TOOL_SET = new Set<string>(ORGANIZE_DEPLOY_TOOLS);
 
@@ -26,12 +23,19 @@ export class OrganizeInteractiveAgent implements InteractiveSubAgent {
   private context!: InitContext;
   private baseOptions: Omit<AgentLoopOptions, 'sessionId' | 'projectId' | 'captainId'>;
   private resolveModel: (tier: string) => string;
+  private mode: Mode = 'interactive';
+  private maxRetries = 2;
+  private retryCount = 0;
 
   constructor(
     private readonly gateway: LLMGateway,
     private readonly toolExecutor: ToolExecutor,
     resolveModel?: string | ((tier: string) => string),
+    mode?: Mode,
+    maxRetries?: number,
   ) {
+    this.mode = mode ?? 'interactive';
+    this.maxRetries = maxRetries ?? 2;
     this.baseOptions = {
       gateway,
       toolExecutor,
@@ -115,9 +119,19 @@ for user review BEFORE any deployment.
 
     // After planning loop completes, check if blueprint was extracted
     if (this.currentBlueprint) {
+      if (this.mode === 'autonomous') {
+        // Skip review in autonomous mode
+        await this.executeDeployment();
+        return;
+      }
       this.phase = 'reviewing';
     } else {
       // Graceful fallback: LLM didn't call present_for_review but finished successfully
+      if (this.mode === 'autonomous' && this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        await this.init(this.context);
+        return;
+      }
       this.phase = 'reviewing';
     }
     this.emitStatus();
@@ -264,6 +278,12 @@ Approved blueprint: ${JSON.stringify(this.currentBlueprint, null, 2)}`);
         wrappedCallback,
       );
     } catch (err) {
+      if (this.mode === 'autonomous' && this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        this.phase = 'planning';
+        await this.init(this.context);
+        return;
+      }
       this.phase = 'error';
       this.emitEvent({ type: 'error', message: (err as Error).message, timestamp: Date.now() });
       this.emitStatus();

@@ -44,6 +44,12 @@ import type Database from 'better-sqlite3';
 import { AgentBlackboard } from './blackboard.js';
 import { injectBlackboardSnapshot } from './blackboard-compress.js';
 import { BlackboardObserver } from './observers/blackboard-observer.js';
+import { ContentGuardObserver } from './observers/content-guard.js';
+import type { ContentFilterConfig } from './guard/content-filter.js';
+import { AutoReplanObserver, type AutoReplanConfig } from './observers/auto-replan.js';
+import { SelfConsistencyEngine, type SelfConsistencyConfig } from './reasoning/self-consistency.js';
+import { ReflectionObserver, type ReflectionConfig } from './observers/reflection.js';
+import { JudgeObserver, type JudgeConfig } from './observers/judge.js';
 import { EmbeddingService } from './embedding-service.js';
 import { collectToolVariety } from './tool-variety-collector.js';
 
@@ -166,6 +172,16 @@ export interface AgentLoopOptions {
   mcpResources?: Array<{ uri: string; name: string; description?: string }>;
   /** MCP prompt metadata for system prompt injection (4.4). */
   mcpPrompts?: Array<{ name: string; description?: string }>;
+  /** Content guardrails config (P0-2). */
+  guardrails?: ContentFilterConfig;
+  /** Reflection config (P0-1). */
+  reflection?: ReflectionConfig;
+  /** Judge config (P0-3). */
+  judge?: JudgeConfig;
+  /** Auto-replan config (P1-5). */
+  autoReplan?: AutoReplanConfig;
+  /** Self-consistency config (P1-6). Engine exposed via getSelfConsistencyEngine(). */
+  selfConsistency?: SelfConsistencyConfig;
 }
 
 export interface AgentResult {
@@ -427,6 +443,8 @@ export class AgentLoop {
   private conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [];
   /** One-shot skill context to inject into the system prompt on the next run. */
   private skillContext: string | null = null;
+  /** Self-consistency engine for high-stakes task sampling (P1-6). */
+  private selfConsistencyEngine: SelfConsistencyEngine | null = null;
 
   constructor(options: AgentLoopOptions) {
     this.gateway = options.gateway;
@@ -501,6 +519,34 @@ export class AgentLoop {
       observers.push(new BlackboardObserver(options.eventBus, ['discoveries']));
     }
 
+    // Content guardrails observer (P0-2)
+    if (options.guardrails?.enabled) {
+      observers.unshift(new ContentGuardObserver(options.guardrails));
+    }
+
+    // Reflection observer (P0-1) — placed before HandoffObserver so handoff happens after critique
+    if (options.reflection?.enabled) {
+      observers.push(new ReflectionObserver(options.reflection, options.gateway));
+    }
+
+    // Judge observer (P0-3) — evaluates output quality
+    if (options.judge?.enabled) {
+      observers.push(new JudgeObserver(options.judge, options.gateway, options.taskDescription));
+    }
+
+    // Auto-replan observer (P1-5) — detects tool errors and triggers LLM analysis
+    if (options.autoReplan?.enabled) {
+      observers.push(new AutoReplanObserver(options.autoReplan, options.gateway));
+    }
+
+    // Self-consistency engine (P1-6) — exposed for callers to use on high-stakes tasks
+    if (options.selfConsistency?.enabled) {
+      this.selfConsistencyEngine = new SelfConsistencyEngine(
+        options.selfConsistency,
+        options.gateway,
+      );
+    }
+
     observers.push(new CheckpointObserver(this.checkpointManager));
     this.observerPipeline = new ObserverPipeline(observers);
   }
@@ -513,6 +559,11 @@ export class AgentLoop {
   /** Expose the context monitor for external querying. */
   get monitor(): ContextMonitor | null {
     return this.contextMonitor;
+  }
+
+  /** Expose the self-consistency engine for high-stakes task sampling (P1-6). */
+  getSelfConsistencyEngine(): SelfConsistencyEngine | null {
+    return this.selfConsistencyEngine;
   }
 
   /** Update delegation tier on the cached safety checker. */
@@ -615,6 +666,19 @@ export class AgentLoop {
     // 2. Notify stream start
     await pipeline.notify('onStreamStart', ctx);
 
+    // 2.5. Check user input for injection attempts (P0-2)
+    const inputChecks = await pipeline.notify('onUserInput', ctx, userMessage);
+    const blocked = inputChecks.find(
+      (r): r is { blocked: boolean; reason?: string } =>
+        r !== null && typeof r === 'object' && (r as any).blocked === true,
+    );
+    if (blocked) {
+      ctx.finalContent = `[BLOCKED] ${blocked.reason ?? 'Input blocked by content guard'}`;
+      yield { type: 'done', content: ctx.finalContent, steps: 0, toolCalls: [] };
+      await pipeline.notify('onStreamEnd', ctx);
+      return;
+    }
+
     // 3. Resolve tools
     const activeToolExecutor = await this.resolveToolExecutor(this.options.taskDescription);
     const toolDescriptors = activeToolExecutor.getToolDescriptors();
@@ -697,7 +761,15 @@ export class AgentLoop {
         }
 
         ctx.stepCount++;
-        await pipeline.notify('onStepEnd', ctx);
+        const stepResults = await pipeline.notify('onStepEnd', ctx);
+        const shouldContinue = stepResults.some(
+          (r) => r !== null && typeof r === 'object' && (r as any).handoff === true,
+        );
+        if (shouldContinue) {
+          ctx.currentStepText = '';
+          ctx.currentStepToolCalls = [];
+          continue;
+        }
         break;
       }
 

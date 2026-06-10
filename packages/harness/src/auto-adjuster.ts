@@ -3,6 +3,7 @@ import { MessageType, type DelegationTier } from '@cabinet/types';
 import type { AgentRoleRegistry } from '@cabinet/agent';
 import type { PolicyEngine } from '@cabinet/decision';
 import type { ObservabilityCollector } from './observability.js';
+import type { FailureAnalysis } from './failure-analyzer.js';
 
 export interface AdjustmentAction {
   type:
@@ -97,6 +98,51 @@ export class AutoAdjuster {
 
   getHistory(): readonly AdjustmentAction[] {
     return this.actionHistory;
+  }
+
+  /** Apply safe adjustments from failure analysis (P1-7). */
+  applyAnalysisRecommendations(analysis: FailureAnalysis): AdjustmentAction[] {
+    const actions: AdjustmentAction[] = [];
+
+    for (const rec of analysis.recommendations) {
+      if (rec.includes('timeout')) {
+        actions.push({
+          type: 'retry_config_update',
+          severity: 'warning',
+          description: rec,
+          details: { source: 'failure_analyzer' },
+          requiresCaptainApproval: false,
+          applied: true,
+          timestamp: new Date().toISOString(),
+        });
+      } else if (rec.includes('permissions')) {
+        actions.push({
+          type: 'notify_captain',
+          severity: 'warning',
+          description: rec,
+          details: { source: 'failure_analyzer' },
+          requiresCaptainApproval: true,
+          applied: false,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        actions.push({
+          type: 'evaluator_frequency_increase',
+          severity: 'info',
+          description: rec,
+          details: { source: 'failure_analyzer' },
+          requiresCaptainApproval: false,
+          applied: true,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    this.actionHistory.push(...actions);
+    if (this.actionHistory.length > 100) {
+      this.actionHistory.splice(0, this.actionHistory.length - 100);
+    }
+    return actions;
   }
 
   /** Subscribe to insight events and trigger reactive adjustments.

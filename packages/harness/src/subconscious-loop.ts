@@ -2,6 +2,7 @@ import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
 import type { LongTermMemory } from '@cabinet/memory';
 import type { KnowledgeGraph } from '@cabinet/memory';
+import type { FailurePatternAnalyzer, FailureAnalysis } from './failure-analyzer.js';
 
 export interface SubconsciousInsight {
   relevance: number;
@@ -22,7 +23,11 @@ export class SubconsciousLoop {
     private readonly longTerm: LongTermMemory,
     private readonly knowledgeGraph: KnowledgeGraph,
     private readonly eventBus: EventBus,
+    private readonly failureAnalyzer?: FailurePatternAnalyzer,
+    private readonly onAnalysis?: (analysis: FailureAnalysis) => void,
   ) {}
+
+  private analysisInterval = 0;
 
   async tick(): Promise<void> {
     // 1. Random sample from long-term memory
@@ -54,6 +59,18 @@ export class SubconsciousLoop {
           messageType: MessageType.SystemNotification,
           payload: { type: 'subconscious_insight', insight } as any,
         });
+      }
+    }
+
+    // 4. Periodic failure analysis (P1-7)
+    this.analysisInterval++;
+    if (this.failureAnalyzer && this.onAnalysis && this.analysisInterval >= 10) {
+      this.analysisInterval = 0;
+      try {
+        const analysis = this.failureAnalyzer.analyze([]);
+        this.onAnalysis(analysis);
+      } catch {
+        // Silently skip analysis errors
       }
     }
   }

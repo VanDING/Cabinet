@@ -57,3 +57,9 @@ export type {
 
 // ── Project isolation ──
 export { ProjectIsolatedMemory } from './project-isolation.js';
+
+// ── RAG (P1-4) ──
+export { chunkDocument, chunkDocuments } from './chunking.js';
+export type { Chunk, ChunkingOptions } from './chunking.js';
+export { BM25Index, HybridRetriever } from './hybrid-retriever.js';
+export type { SimpleEmbedder } from './hybrid-retriever.js';

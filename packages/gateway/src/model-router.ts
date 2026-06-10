@@ -1,5 +1,5 @@
 /** @deprecated Model tier routing is no longer needed — Cabinet uses a single default model per provider. */
-export type ModelRole = 'deep_think' | 'fast_execute' | 'default';
+export type ModelRole = 'deep_think' | 'fast_execute' | 'default' | 'reasoning';
 
 export interface RouterConfig {
   roles: Record<ModelRole, string[]>;
@@ -31,6 +31,7 @@ const DEFAULT_CONFIG: RouterConfig = {
     deep_think: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6'],
     fast_execute: ['anthropic/claude-haiku-4-5', 'openai/gpt-4o-mini'],
     default: ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'],
+    reasoning: ['anthropic/claude-opus-4-8', 'openai/o4-mini'],
   },
 };
 

@@ -89,6 +89,11 @@ export interface AgentObserver {
   onStepEnd?(ctx: AgentExecutionContext): Promise<{ handoff?: boolean } | void>;
   onSessionComplete?(summary: unknown): Promise<void> | void;
   onStreamEnd?(ctx: AgentExecutionContext): Promise<void> | void;
+  /** 在 LLM 调用前检查用户输入（安全过滤） */
+  onUserInput?(
+    ctx: AgentExecutionContext,
+    userMessage: string,
+  ): Promise<{ blocked?: boolean; reason?: string } | void>;
 }
 
 /** Orchestrates a chain of observers. Errors in one observer do not halt the pipeline. */

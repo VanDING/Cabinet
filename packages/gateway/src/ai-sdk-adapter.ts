@@ -161,6 +161,13 @@ export class AISDKAdapter implements LLMGateway {
       messages: messages as any,
       ...(options.maxTokens != null ? { maxOutputTokens: options.maxTokens } : {}),
       ...(options.temperature != null ? { temperature: options.temperature } : {}),
+      ...(options.thinkingBudget != null
+        ? {
+            providerOptions: {
+              anthropic: { thinking: { type: 'enabled', budgetTokens: options.thinkingBudget } },
+            },
+          }
+        : {}),
       tools: options.tools ? this.convertTools(options.tools) : undefined,
     } as any);
 
@@ -300,7 +307,9 @@ export class AISDKAdapter implements LLMGateway {
     } catch (e) {
       yield { type: 'error', content: (e as Error).message };
     }
-    let usage: { promptTokens: number; completionTokens: number; cachedPromptTokens: number } | undefined;
+    let usage:
+      | { promptTokens: number; completionTokens: number; cachedPromptTokens: number }
+      | undefined;
     try {
       const u = await result.usage;
       usage = {
@@ -559,17 +568,9 @@ export class AISDKAdapter implements LLMGateway {
 }
 
 /** Defensively coerce a value into a valid JSON Schema object with type: "object". */
-function normalizeToolSchema(
-  params: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  if (
-    !params ||
-    typeof params !== 'object' ||
-    Array.isArray(params) ||
-    params.type !== 'object'
-  ) {
+function normalizeToolSchema(params: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!params || typeof params !== 'object' || Array.isArray(params) || params.type !== 'object') {
     return { type: 'object', properties: {} };
   }
   return params;
 }
-
