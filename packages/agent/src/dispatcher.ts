@@ -164,10 +164,13 @@ class ResultSynthesizer {
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
     const na = normalize(a);
     const nb = normalize(b);
-    // Shared substring of >= 4 chars
-    if (na.length < 4 || nb.length < 4) return false;
-    for (let i = 0; i <= na.length - 4; i++) {
-      if (nb.includes(na.slice(i, i + 4))) return true;
+    // Detect script type and use appropriate threshold:
+    // CJK text: 6+ chars (~3-6 words), Latin text: 4+ chars (~part of a word)
+    const hasCjk = (s: string) => /[\u4e00-\u9fff]/.test(s);
+    const threshold = hasCjk(a) || hasCjk(b) ? 6 : 4;
+    if (na.length < threshold || nb.length < threshold) return false;
+    for (let i = 0; i <= na.length - threshold; i++) {
+      if (nb.includes(na.slice(i, i + threshold))) return true;
     }
     return false;
   }
