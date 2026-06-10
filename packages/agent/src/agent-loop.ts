@@ -593,7 +593,10 @@ export class AgentLoop {
   }
 
   /** Resolve the active tool executor, applying dynamic pruning if configured. */
-  private async resolveToolExecutor(taskDescription?: string): Promise<ToolExecutor> {
+  private async resolveToolExecutor(
+    taskDescription?: string,
+    recentMessages?: Array<{ role: string; content: string }>,
+  ): Promise<ToolExecutor> {
     if (!this.options.toolPruner || !taskDescription) {
       return this.toolExecutor;
     }
@@ -601,7 +604,14 @@ export class AgentLoop {
       if (!this.options.toolPruner.isIndexed()) {
         await this.options.toolPruner.indexTools(this.toolExecutor);
       }
-      const pruned = await this.options.toolPruner.prune(taskDescription);
+      const contextMessages = recentMessages
+        ?.filter((m) => m.role !== 'system')
+        .slice(-6)
+        .map((m) => `${m.role}: ${m.content}`);
+      const pruned = await this.options.toolPruner.pruneWithContext(
+        taskDescription,
+        contextMessages,
+      );
       return this.toolExecutor.createView(pruned.allowedTools);
     } catch {
       return this.toolExecutor;
@@ -685,7 +695,10 @@ export class AgentLoop {
     }
 
     // 3. Resolve tools
-    const activeToolExecutor = await this.resolveToolExecutor(this.options.taskDescription);
+    const activeToolExecutor = await this.resolveToolExecutor(
+      this.options.taskDescription,
+      ctx.messages,
+    );
     const toolDescriptors = activeToolExecutor.getToolDescriptors();
 
     // 4. Main execution loop

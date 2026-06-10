@@ -85,7 +85,7 @@ export { HandoffObserver } from './observers/handoff.js';
 export { SafetyCheckObserver } from './observers/safety.js';
 export { ToolExecuteObserver } from './observers/tool-execute.js';
 export { CheckpointObserver } from './observers/checkpoint.js';
-export { ToolPruner, type ToolPrunerOptions, type PrunedToolSet } from './tool-pruner.js';
+export { ToolPruner, type ToolPrunerOptions, type PrunedToolSet, type PrunerMetrics } from './tool-pruner.js';
 export {
   type InteractiveSubAgent,
   type InitContext,

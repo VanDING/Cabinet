@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { LLMGateway } from '@cabinet/gateway';
 import { ToolExecutor, type ToolDescriptor } from './tool-executor.js';
 
@@ -17,6 +18,16 @@ export interface ToolPrunerOptions {
 export interface PrunedToolSet {
   allowedTools: string[];
   reasoning: string;
+}
+
+export interface PrunerMetrics {
+  totalPrunes: number;
+  cacheHits: number;
+  cacheMisses: number;
+  embeddingOnlyCount: number;
+  llmRefinedCount: number;
+  llmFallbackCount: number;
+  avgToolCount: number;
 }
 
 interface CacheEntry {
@@ -46,6 +57,15 @@ export class ToolPruner {
   private semanticModel: string;
   private cacheTtlMs: number;
   private cache = new Map<string, CacheEntry>();
+  private metrics = {
+    totalPrunes: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
+    embeddingOnlyCount: 0,
+    llmRefinedCount: 0,
+    llmFallbackCount: 0,
+    totalToolCount: 0,
+  };
 
   constructor(options: ToolPrunerOptions) {
     this.gateway = options.gateway;
@@ -82,18 +102,81 @@ export class ToolPruner {
 
   /** Compute relevance-ranked tool subset for a task. */
   async prune(taskDescription: string): Promise<PrunedToolSet> {
+    return this._pruneInternal(taskDescription);
+  }
+
+  /**
+   * Context-aware pruning — enhances task description with recent conversation
+   * messages to adapt tool selection to the evolving dialogue.
+   *
+   * @param taskDescription  The original task / user message
+   * @param recentMessages   Last N conversation turns (user + assistant) to blend in
+   */
+  async pruneWithContext(
+    taskDescription: string,
+    recentMessages?: string[],
+  ): Promise<PrunedToolSet> {
+    if (!recentMessages || recentMessages.length === 0) {
+      return this._pruneInternal(taskDescription);
+    }
+    const blended = `${taskDescription}\n${recentMessages.join('\n')}`;
+    return this._pruneInternal(blended, { source: 'context-aware' });
+  }
+
+  /** Get current pruning metrics. */
+  getMetrics(): PrunerMetrics {
+    return {
+      totalPrunes: this.metrics.totalPrunes,
+      cacheHits: this.metrics.cacheHits,
+      cacheMisses: this.metrics.cacheMisses,
+      embeddingOnlyCount: this.metrics.embeddingOnlyCount,
+      llmRefinedCount: this.metrics.llmRefinedCount,
+      llmFallbackCount: this.metrics.llmFallbackCount,
+      avgToolCount:
+        this.metrics.totalPrunes > 0
+          ? Math.round((this.metrics.totalToolCount / this.metrics.totalPrunes) * 10) / 10
+          : 0,
+    };
+  }
+
+  /** Reset all metrics counters. */
+  resetMetrics(): void {
+    this.metrics = {
+      totalPrunes: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      embeddingOnlyCount: 0,
+      llmRefinedCount: 0,
+      llmFallbackCount: 0,
+      totalToolCount: 0,
+    };
+  }
+
+  /** Clear the internal cache (e.g. after tool re-indexing). */
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  private async _pruneInternal(
+    taskDescription: string,
+    opts?: { source?: string },
+  ): Promise<PrunedToolSet> {
     if (this.toolEmbeddings.size === 0) {
       throw new Error('ToolPruner has not been indexed. Call indexTools() first.');
     }
+
+    this.metrics.totalPrunes++;
 
     // 1. Check cache
     const cacheKey = this.hashTask(taskDescription);
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.cacheTtlMs) {
+      this.metrics.cacheHits++;
       return cached.result;
     }
+    this.metrics.cacheMisses++;
 
-    // 2. Phase 1: Embedding-based pre-filtering (topK=30)
+    // 2. Phase 1: Embedding-based pre-filtering
     const candidates = await this.embeddingFilter(taskDescription);
 
     // 3. Phase 2: LLM semantic refinement (only when candidates > 15)
@@ -105,15 +188,20 @@ export class ToolPruner {
         const llmResult = await this.llmSemanticFilter(taskDescription, candidates);
         selected = llmResult.tools;
         reasoning = `Selected ${selected.length} tools via embedding pre-filter + LLM semantic refinement`;
+        this.metrics.llmRefinedCount++;
       } catch (err) {
         // Fallback to embedding results on LLM failure
         selected = candidates;
         reasoning = `Selected ${selected.length} tools via embedding pre-filter (LLM refinement failed: ${(err as Error).message})`;
+        this.metrics.llmFallbackCount++;
       }
     } else {
       selected = candidates;
       reasoning = `Selected ${selected.length} tools via embedding pre-filter (candidates ≤ 15, skipped LLM refinement)`;
+      this.metrics.embeddingOnlyCount++;
     }
+
+    this.metrics.totalToolCount += selected.length;
 
     const result: PrunedToolSet = {
       allowedTools: selected,
@@ -123,11 +211,6 @@ export class ToolPruner {
     // 4. Cache result
     this.cache.set(cacheKey, { result, timestamp: Date.now() });
     return result;
-  }
-
-  /** Clear the internal cache (e.g. after tool re-indexing). */
-  clearCache(): void {
-    this.cache.clear();
   }
 
   private async embeddingFilter(taskDescription: string): Promise<string[]> {
@@ -148,18 +231,11 @@ export class ToolPruner {
 
     scored.sort((a, b) => b.score - a.score);
 
+    const targetSize = Math.max(this.maxTools, this.minTools);
     const selected = new Set<string>(this.alwaysInclude);
     for (const { name } of scored) {
-      if (selected.size >= this.maxTools) break;
+      if (selected.size >= targetSize) break;
       selected.add(name);
-    }
-
-    // Ensure minimum coverage
-    if (selected.size < this.minTools) {
-      for (const { name } of scored) {
-        if (selected.size >= this.minTools) break;
-        selected.add(name);
-      }
     }
 
     return [...selected];
@@ -224,14 +300,7 @@ export class ToolPruner {
   }
 
   private hashTask(taskDescription: string): string {
-    // Simple hash for caching
-    let hash = 0;
-    for (let i = 0; i < taskDescription.length; i++) {
-      const char = taskDescription.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return String(hash);
+    return createHash('sha256').update(taskDescription).digest('hex').slice(0, 16);
   }
 }
 

@@ -221,4 +221,187 @@ describe('ToolPruner', () => {
       await expect(pruner.prune('task')).rejects.toThrow('Failed to generate task embedding');
     });
   });
+
+  describe('pruneWithContext', () => {
+    it('falls back to prune when no recent messages provided', async () => {
+      const gw = createMockGateway([
+        [0.9, 0.1, 0.0],
+        [0.1, 0.9, 0.0],
+        [0.0, 0.0, 0.9],
+        [0.9, 0.1, 0.0],
+      ]);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 10, minTools: 5 });
+      const executor = createToolExecutor([
+        { name: 'read_file', description: 'read' },
+        { name: 'write_file', description: 'write' },
+        { name: 'analyze', description: 'analyze' },
+      ]);
+
+      await pruner.indexTools(executor);
+      const result = await pruner.pruneWithContext('read a file');
+      expect(result.allowedTools).toBeDefined();
+      expect(result.reasoning).toContain('Selected');
+    });
+
+    it('uses blended context when recent messages are provided', async () => {
+      const gw = createMockGateway([
+        [0.9, 0.1, 0.0],
+        [0.1, 0.9, 0.0],
+        [0.0, 0.0, 0.9],
+        [0.1, 0.9, 0.0], // blended context (similar to write)
+      ]);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 10, minTools: 5 });
+      const executor = createToolExecutor([
+        { name: 'read_file', description: 'read' },
+        { name: 'write_file', description: 'write' },
+        { name: 'analyze', description: 'analyze' },
+      ]);
+
+      await pruner.indexTools(executor);
+      const result = await pruner.pruneWithContext('read a file', [
+        'user: edit the document',
+        'assistant: I will help you edit',
+      ]);
+      expect(result.allowedTools).toBeDefined();
+      // The blended text should be different from the task alone
+      expect(gw.generateEmbeddings).toHaveBeenCalledTimes(2); // index + prune
+      const lastCall = (gw.generateEmbeddings as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0];
+      expect(lastCall.texts[0]).toContain('edit the document');
+    });
+  });
+
+  describe('metrics', () => {
+    it('tracks prune counts and cache hits', async () => {
+      const gw = createMockGateway([
+        [0.9, 0.1, 0.0],
+        [0.1, 0.9, 0.0],
+        [0.0, 0.0, 0.9],
+        [0.9, 0.1, 0.0],
+      ]);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 10, minTools: 5 });
+      const executor = createToolExecutor([
+        { name: 'read_file', description: 'read' },
+        { name: 'write_file', description: 'write' },
+        { name: 'analyze', description: 'analyze' },
+      ]);
+
+      await pruner.indexTools(executor);
+
+      // First prune — cache miss
+      await pruner.prune('read a file');
+      let m = pruner.getMetrics();
+      expect(m.totalPrunes).toBe(1);
+      expect(m.cacheMisses).toBe(1);
+      expect(m.cacheHits).toBe(0);
+
+      // Second prune with same text — cache hit
+      await pruner.prune('read a file');
+      m = pruner.getMetrics();
+      expect(m.totalPrunes).toBe(2);
+      expect(m.cacheHits).toBe(1);
+      expect(m.cacheMisses).toBe(1);
+
+      // Reset
+      pruner.resetMetrics();
+      m = pruner.getMetrics();
+      expect(m.totalPrunes).toBe(0);
+    });
+
+    it('tracks embedding-only vs LLM-refined counts', async () => {
+      // 17 tools → candidates > 15 triggers LLM refinement
+      const embeddings = Array.from({ length: 18 }, (_, i) => {
+        const arr = Array(18).fill(0);
+        arr[i] = 1.0;
+        return arr;
+      });
+      const gw = createMockGateway(embeddings);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 16, minTools: 5 });
+      const tools = Array.from({ length: 17 }, (_, i) => ({
+        name: `tool_${i}`,
+        description: `desc ${i}`,
+      }));
+      const executor = createToolExecutor(tools);
+
+      await pruner.indexTools(executor);
+
+      // Mock LLM response for refinement
+      (gw.generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+        content: JSON.stringify({ tools: ['tool_0', 'tool_1'] }),
+      });
+
+      await pruner.prune('use tool');
+      const m = pruner.getMetrics();
+      expect(m.llmRefinedCount).toBe(1);
+      expect(m.embeddingOnlyCount).toBe(0);
+    });
+
+    it('tracks LLM fallback count', async () => {
+      const embeddings = Array.from({ length: 18 }, (_, i) => {
+        const arr = Array(18).fill(0);
+        arr[i] = 1.0;
+        return arr;
+      });
+      const gw = createMockGateway(embeddings);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 16, minTools: 5 });
+      const tools = Array.from({ length: 17 }, (_, i) => ({
+        name: `tool_${i}`,
+        description: `desc ${i}`,
+      }));
+      const executor = createToolExecutor(tools);
+
+      await pruner.indexTools(executor);
+
+      // Mock LLM failure
+      (gw.generateText as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('timeout'));
+
+      await pruner.prune('use tool');
+      const m = pruner.getMetrics();
+      expect(m.llmFallbackCount).toBe(1);
+      expect(m.llmRefinedCount).toBe(0);
+    });
+  });
+
+  describe('minTools / maxTools boundary', () => {
+    it('fills up to maxTools when maxTools > minTools', async () => {
+      const emb = Array.from({ length: 6 }, (_, i) => {
+        const arr = [0, 0, 0, 0, 0];
+        arr[i] = 1.0;
+        return arr;
+      });
+      const gw = createMockGateway(emb);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 4, minTools: 2 });
+      const executor = createToolExecutor([
+        { name: 't1', description: 'd1' },
+        { name: 't2', description: 'd2' },
+        { name: 't3', description: 'd3' },
+        { name: 't4', description: 'd4' },
+        { name: 't5', description: 'd5' },
+      ]);
+
+      await pruner.indexTools(executor);
+      const result = await pruner.prune('use');
+      expect(result.allowedTools.length).toBe(4);
+    });
+
+    it('fills up to minTools when minTools > maxTools', async () => {
+      const emb = Array.from({ length: 6 }, (_, i) => {
+        const arr = [0, 0, 0, 0, 0];
+        arr[i] = 1.0;
+        return arr;
+      });
+      const gw = createMockGateway(emb);
+      const pruner = new ToolPruner({ gateway: gw, maxTools: 2, minTools: 4 });
+      const executor = createToolExecutor([
+        { name: 't1', description: 'd1' },
+        { name: 't2', description: 'd2' },
+        { name: 't3', description: 'd3' },
+        { name: 't4', description: 'd4' },
+        { name: 't5', description: 'd5' },
+      ]);
+
+      await pruner.indexTools(executor);
+      const result = await pruner.prune('use');
+      expect(result.allowedTools.length).toBe(4);
+    });
+  });
 });
