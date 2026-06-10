@@ -236,6 +236,7 @@ export class SkillExtractor {
       `tools: [${skill.requiredTools.map((t) => `"${t}"`).join(', ')}]`,
       `quality: ${quality.total.toFixed(2)}`,
       `tier: ${isAuto ? 'auto' : 'review'}`,
+      `exposure: prompt`,
       '---',
       '',
       `# ${skill.name}`,
