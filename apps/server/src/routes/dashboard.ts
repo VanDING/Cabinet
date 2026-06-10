@@ -1,7 +1,17 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
-import { DAILY_BUDGET, WEEKLY_BUDGET, MONTHLY_BUDGET, MessageType } from '@cabinet/types';
+import {
+  DAILY_BUDGET,
+  WEEKLY_BUDGET,
+  MONTHLY_BUDGET,
+  MessageType,
+  type DashboardSummary,
+  type DashboardCostHistory,
+  type DashboardAgentStatus,
+} from '@cabinet/types';
+import { broadcast } from '../ws/handler.js';
 
+// Static EVENT_LABELS — new types fall back to humanized string (5.4)
 const EVENT_LABELS: Record<string, string> = {
   [MessageType.DecisionRequest]: 'Decision requested',
   [MessageType.DecisionResolved]: 'Decision resolved',
@@ -20,6 +30,29 @@ const EVENT_LABELS: Record<string, string> = {
   [MessageType.AuditEvent]: 'Audit event',
 };
 
+/** Humanize an unknown event type: snake_case / camelCase → Title Case. */
+function humanizeEventType(type: string): string {
+  if (EVENT_LABELS[type]) return EVENT_LABELS[type]!;
+  return type
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+// ── Simple in-memory cache for dashboard summary (5.5) ──
+let summaryCache: { data: DashboardSummary; timestamp: number } | null = null;
+const SUMMARY_CACHE_TTL_MS = 10_000; // 10 seconds
+
+function getCachedSummary(factory: () => DashboardSummary): DashboardSummary {
+  const now = Date.now();
+  if (summaryCache && now - summaryCache.timestamp < SUMMARY_CACHE_TTL_MS) {
+    return summaryCache.data;
+  }
+  const data = factory();
+  summaryCache = { data, timestamp: now };
+  return data;
+}
+
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
@@ -33,84 +66,85 @@ dashboardRouter.get('/summary', (c) => {
     auditLogRepo,
     metrics,
     logger,
-    db,
   } = getServerContext();
   const projectId = c.req.query('projectId');
 
-  let pendingDecisions = 0,
-    activeProjects = 1,
-    activeWorkflows = 0;
-  const recentEvents: { message: string; type: string; time: Date }[] = [];
+  const result = getCachedSummary(() => {
+    let pendingDecisions = 0,
+      activeProjects = 1,
+      activeWorkflows = 0;
+    const recentEvents: { message: string; type: string; time: Date }[] = [];
 
-  try {
-    pendingDecisions = (
-      projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()
-    ).length;
-  } catch (err) {
-    logger.warn('Failed to load pending decisions', { error: (err as Error).message });
-  }
-  try {
-    activeProjects = projectRepo.listAll().filter((p) => !p.archived).length;
-  } catch (err) {
-    logger.warn('Failed to load projects', { error: (err as Error).message });
-  }
-  try {
-    activeWorkflows = workflowRepo.countByStatus(['running']);
-  } catch (err) {
-    logger.warn('Failed to load workflows', { error: (err as Error).message });
-  }
-  try {
-    const events = eventRepo.findAll().slice(-10);
-    for (const e of events) {
-      recentEvents.push({
-        message: EVENT_LABELS[e.messageType] ?? e.messageType,
-        type: e.messageType,
-        time: e.timestamp,
-      });
-    }
-  } catch (err) {
-    logger.warn('Failed to load events', { error: (err as Error).message });
-  }
-
-  // Fallback: if event_log is empty (broadcast doesn't write to it), synthesise
-  // recent events from audit_log which is reliably populated.
-  if (recentEvents.length === 0) {
     try {
-      const audits = auditLogRepo.findAll({ limit: 20 });
-      for (const row of audits.reverse()) {
-        const label = `${row.entity_type} ${row.action}`;
+      pendingDecisions = (
+        projectId ? decisionRepo.listPending(projectId) : decisionRepo.listAllPending()
+      ).length;
+    } catch (err) {
+      logger.warn('Failed to load pending decisions', { error: (err as Error).message });
+    }
+    try {
+      activeProjects = projectRepo.listAll().filter((p) => !p.archived).length;
+    } catch (err) {
+      logger.warn('Failed to load projects', { error: (err as Error).message });
+    }
+    try {
+      activeWorkflows = workflowRepo.countByStatus(['running']);
+    } catch (err) {
+      logger.warn('Failed to load workflows', { error: (err as Error).message });
+    }
+    try {
+      const events = eventRepo.findAll().slice(-10);
+      for (const e of events) {
         recentEvents.push({
-          message: label.charAt(0).toUpperCase() + label.slice(1),
-          type: row.entity_type,
-          time: new Date(row.timestamp),
+          message: humanizeEventType(e.messageType),
+          type: e.messageType,
+          time: e.timestamp,
         });
       }
     } catch (err) {
-      logger.warn('Failed to load audit fallback events', { error: (err as Error).message });
+      logger.warn('Failed to load events', { error: (err as Error).message });
     }
-  }
 
-  return c.json({
-    pendingDecisions,
-    todayCost: costTracker.getDailyCost(),
-    activeProjects,
-    activeWorkflows,
-    recentEvents,
-    budgetStatus: budgetGuard.checkAll(),
-    summary: metrics.getSummary(),
+    // Fallback: if event_log is empty, synthesise from audit_log
+    if (recentEvents.length === 0) {
+      try {
+        const audits = auditLogRepo.findAll({ limit: 20 });
+        for (const row of audits.reverse()) {
+          const label = `${row.entity_type} ${row.action}`;
+          recentEvents.push({
+            message: label.charAt(0).toUpperCase() + label.slice(1),
+            type: row.entity_type,
+            time: new Date(row.timestamp),
+          });
+        }
+      } catch (err) {
+        logger.warn('Failed to load audit fallback events', { error: (err as Error).message });
+      }
+    }
+
+    const summary: DashboardSummary = {
+      pendingDecisions,
+      todayCost: costTracker.getDailyCost(),
+      activeProjects,
+      activeWorkflows,
+      recentEvents,
+      budgetStatus: budgetGuard.checkAll(),
+      summary: metrics.getSummary(),
+    };
+
+    // WebSocket broadcast (5.1)
+    broadcast('dashboard:summary', summary);
+
+    return summary;
   });
+
+  return c.json(result);
 });
 
 dashboardRouter.get('/cost-history', (c) => {
   const { costTracker, db } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
-  const history: {
-    date: string;
-    cost: number;
-    calls: number;
-    tokens: number;
-    byModel: Record<string, number>;
-  }[] = [];
+  const history: DashboardCostHistory['history'] = [];
 
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date();
@@ -157,10 +191,56 @@ dashboardRouter.get('/cost-history', (c) => {
       }
     : { daily: 0, weekly: 0, monthly: 0 };
 
-  return c.json({
+  const result: DashboardCostHistory = {
     history,
     dailyCost: costTracker.getDailyCost(),
     budgetStatus,
     limits: { daily: DAILY_BUDGET, weekly: WEEKLY_BUDGET, monthly: MONTHLY_BUDGET },
-  });
+  };
+
+  return c.json(result);
+});
+
+// ── Agent Health Status (5.2) ──
+
+dashboardRouter.get('/agent-status', (c) => {
+  const { agentRoleRegistry, daemonManager, logger } = getServerContext();
+  const agents: DashboardAgentStatus[] = [];
+
+  try {
+    // Internal agents from registry
+    const roles = agentRoleRegistry.listAll?.() ?? [];
+    for (const role of roles) {
+      agents.push({
+        id: role.type,
+        name: role.name ?? role.type,
+        type: 'internal',
+        status: 'online',
+      });
+    }
+  } catch (err) {
+    logger.warn('Failed to load agent roles', { error: (err as Error).message });
+  }
+
+  try {
+    // Daemon status
+    if (daemonManager) {
+      const daemons = daemonManager.listActive?.() ?? [];
+      for (const d of daemons) {
+        agents.push({
+          id: d.id,
+          name: d.name ?? d.id,
+          type: 'daemon',
+          status: d.connected ? 'online' : 'offline',
+          lastHeartbeatAt: d.lastHeartbeat ? new Date(d.lastHeartbeat) : undefined,
+          activeTasks: d.activeTasks ?? 0,
+          queueDepth: d.queueDepth ?? 0,
+        });
+      }
+    }
+  } catch (err) {
+    logger.warn('Failed to load daemon status', { error: (err as Error).message });
+  }
+
+  return c.json({ agents });
 });
