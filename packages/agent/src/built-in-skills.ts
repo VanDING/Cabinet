@@ -7,6 +7,7 @@ export const WORKFLOW_DESIGNER_SKILL: SkillEntry = {
   description:
     'Design and modify Cabinet workflows. Guides step-by-step workflow creation, agent assignment, and validation. Use when the user wants to create, edit, or review a multi-step automated process.',
   kind: 'prompt',
+  exposure: 'prompt',
   version: 2,
   status: 'active',
   promptTemplate: `## Workflow Designer Skill
@@ -66,6 +67,7 @@ export const AGENT_CREATOR_SKILL: SkillEntry = {
   description:
     'Create, modify, and delete custom Cabinet AI agents. Guides the user through defining a role, system prompt, modelTier, and tool permissions. Use when the user wants to create or manage a custom agent.',
   kind: 'prompt',
+  exposure: 'prompt',
   version: 1,
   status: 'active',
   promptTemplate: `## Agent Creator Skill
@@ -133,6 +135,7 @@ export const SKILL_CREATOR_SKILL: SkillEntry = {
   description:
     'Create new Cabinet skills, modify and improve existing skills. Use when users want to create a skill from scratch, edit or optimize an existing skill, or write a SKILL.md file.',
   kind: 'prompt',
+  exposure: 'prompt',
   version: 1,
   status: 'active',
   promptTemplate: `## Skill Creator
@@ -297,6 +300,7 @@ export const MCP_BUILDER_SKILL: SkillEntry = {
   description:
     'Guide for creating high-quality MCP (Model Context Protocol) servers. Use when building MCP servers to integrate external APIs or services, in Python or TypeScript.',
   kind: 'prompt',
+  exposure: 'prompt',
   version: 1,
   status: 'active',
   promptTemplate: `## MCP Server Development Guide

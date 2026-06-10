@@ -9,6 +9,8 @@ export interface SkillMetadata {
   name: string;
   description: string;
   kind: 'tool' | 'prompt' | 'composite';
+  /** How the skill is exposed to the LLM. Default: 'prompt'. */
+  exposure: 'prompt' | 'tool' | 'both';
   version: number;
   /** Names of other skills this skill depends on. */
   dependencies?: string[];
@@ -30,6 +32,11 @@ export interface SkillEntry extends SkillMetadata {
   metadata?: Record<string, unknown>;
   /** Scope: global (shared) or project (local to a project). */
   scope?: 'global' | 'project';
+}
+
+function normalizeExposure(e?: string): SkillEntry['exposure'] {
+  if (e === 'tool' || e === 'both') return e;
+  return 'prompt';
 }
 
 // ── Simple async mutex for write serialization ──
@@ -102,6 +109,7 @@ export class SkillRegistry {
           name: s.name,
           description: s.description,
           kind: s.kind,
+          exposure: s.exposure,
           version: s.version,
         });
       }
@@ -134,16 +142,29 @@ export class SkillRegistry {
     const active = this.discover();
     if (active.length === 0) return '';
     return active
-      .map((s) => `- /${s.name}: ${s.description} (${s.kind}, v${s.version})`)
+      .map((s) => `- /${s.name}: ${s.description} (${s.kind}, ${s.exposure}, v${s.version})`)
       .join('\n');
   }
 
-  /** Convert all active skills to ToolDefinitions for injection into ToolExecutor. */
+  /** Return all active skills that should be injected into the system prompt. */
+  getPromptSkills(): SkillEntry[] {
+    const snapshot = new Map(this.skills);
+    const results: SkillEntry[] = [];
+    for (const s of snapshot.values()) {
+      if (s.status === 'active' && (s.exposure === 'prompt' || s.exposure === 'both')) {
+        results.push(s);
+      }
+    }
+    return results;
+  }
+
+  /** Convert active 'tool' / 'both' skills to ToolDefinitions for injection into ToolExecutor. */
   getToolDefinitions(): ToolDefinition[] {
     const snapshot = new Map(this.skills);
     const tools: ToolDefinition[] = [];
     for (const skill of snapshot.values()) {
       if (skill.status !== 'active') continue;
+      if (skill.exposure !== 'tool' && skill.exposure !== 'both') continue;
       tools.push({
         name: `use_skill__${skill.name}`,
         description: skill.description,
@@ -186,6 +207,7 @@ export class SkillRegistry {
           name: parsed.name,
           description: parsed.description,
           kind: parsed.kind ?? 'prompt',
+          exposure: normalizeExposure(parsed.exposure),
           promptTemplate: parsed.body,
           inputSchema: {},
           outputSchema: {},

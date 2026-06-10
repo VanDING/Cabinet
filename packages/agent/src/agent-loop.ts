@@ -28,6 +28,7 @@ import { ContextMonitorObserver } from './observers/context-monitor.js';
 import { HandoffObserver } from './observers/handoff.js';
 import { SafetyCheckObserver } from './observers/safety.js';
 import { ToolExecuteObserver } from './observers/tool-execute.js';
+import { getSkillRegistry } from './skill-registry.js';
 import { CheckpointObserver } from './observers/checkpoint.js';
 import { StepEventObserver, type StepEventConfig } from './observers/step-event-observer.js';
 import {
@@ -1049,6 +1050,15 @@ export class AgentLoop {
     if (this.skillContext) {
       sysPrompt = `${sysPrompt}\n\n## Active Skill Context\n${this.skillContext}`;
       this.skillContext = null;
+    }
+
+    // Inject prompt-exposed skills into system prompt (2.3)
+    const promptSkills = getSkillRegistry().getPromptSkills();
+    if (promptSkills.length > 0) {
+      const skillSections = promptSkills
+        .map((s) => `### ${s.name}\n${s.description}\n${s.promptTemplate.slice(0, 2000)}`)
+        .join('\n\n');
+      sysPrompt = `${sysPrompt}\n\n## Available Skills\n${skillSections}`;
     }
 
     // Inject Blackboard snapshot (4.2)

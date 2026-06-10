@@ -36,6 +36,7 @@ export function parseSkillMarkdown(content: string): ParsedSkill | null {
     effort: typeof fields['effort'] === 'string' ? fields['effort'] : undefined,
     context: typeof fields['context'] === 'string' ? fields['context'] : undefined,
     agent: typeof fields['agent'] === 'string' ? fields['agent'] : undefined,
+    exposure: validateExposure(fields['exposure']),
     userInvocable:
       typeof fields['user-invocable'] === 'boolean'
         ? fields['user-invocable']
@@ -88,6 +89,7 @@ export function importSkillFromMarkdown(
     name: parsed.name,
     description: parsed.description,
     kind: parsed.kind ?? 'prompt',
+    exposure: normalizeExposure(parsed.exposure),
     promptTemplate: parsed.body,
     inputSchema: {},
     outputSchema: {},
@@ -121,6 +123,7 @@ export function exportSkillToMarkdown(skill: SkillEntry): string {
     name: skill.name,
     description: skill.description,
     kind: skill.kind,
+    exposure: skill.exposure,
     version: skill.version,
   };
   if (skill.metadata) {
@@ -139,6 +142,18 @@ function validateKind(v: unknown): 'tool' | 'prompt' | 'composite' | undefined {
     return v as 'tool' | 'prompt' | 'composite';
   }
   return undefined;
+}
+
+function validateExposure(v: unknown): 'prompt' | 'tool' | 'both' | undefined {
+  if (typeof v === 'string' && ['prompt', 'tool', 'both'].includes(v)) {
+    return v as 'prompt' | 'tool' | 'both';
+  }
+  return undefined;
+}
+
+function normalizeExposure(e?: string): 'prompt' | 'tool' | 'both' {
+  if (e === 'tool' || e === 'both') return e;
+  return 'prompt';
 }
 
 function extractAllowedTools(fields: Record<string, unknown>): string[] | undefined {
@@ -171,6 +186,7 @@ function extractMetadata(fields: Record<string, unknown>): Record<string, unknow
     'when-to-use',
     'allowed-tools',
     'allowed_tools',
+    'exposure',
   ]);
   const meta: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {

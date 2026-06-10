@@ -9,6 +9,7 @@ describe('SkillRegistry concurrency', () => {
       name: `skill_${i}`,
       description: `desc_${i}`,
       kind: 'prompt',
+      exposure: 'prompt',
       promptTemplate: `template_${i}`,
       inputSchema: {},
       outputSchema: {},
@@ -34,15 +35,15 @@ describe('SkillRegistry concurrency', () => {
 
     // Seed with project-scoped skills via sync API
     registry.register({
-      id: 'p1', name: 'project_skill_1', description: 'd', kind: 'prompt',
+      id: 'p1', name: 'project_skill_1', description: 'd', kind: 'prompt', exposure: 'prompt',
       promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'project',
     });
     registry.register({
-      id: 'p2', name: 'project_skill_2', description: 'd', kind: 'prompt',
+      id: 'p2', name: 'project_skill_2', description: 'd', kind: 'prompt', exposure: 'prompt',
       promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'project',
     });
     registry.register({
-      id: 'g1', name: 'global_skill_1', description: 'd', kind: 'prompt',
+      id: 'g1', name: 'global_skill_1', description: 'd', kind: 'prompt', exposure: 'prompt',
       promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'global',
     });
 
@@ -61,7 +62,7 @@ describe('SkillRegistry concurrency', () => {
   it('getToolDefinitions uses snapshot and does not corrupt during registration', () => {
     const registry = new SkillRegistry();
     registry.register({
-      id: 's1', name: 'skill_a', description: 'd', kind: 'prompt',
+      id: 's1', name: 'skill_a', description: 'd', kind: 'tool', exposure: 'tool',
       promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active',
     });
 
@@ -69,7 +70,7 @@ describe('SkillRegistry concurrency', () => {
     expect(toolsBefore).toHaveLength(1);
 
     registry.register({
-      id: 's2', name: 'skill_b', description: 'd', kind: 'prompt',
+      id: 's2', name: 'skill_b', description: 'd', kind: 'tool', exposure: 'tool',
       promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active',
     });
 
