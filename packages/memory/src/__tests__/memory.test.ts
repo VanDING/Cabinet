@@ -6,6 +6,7 @@ import { EntityMemory } from '../entity.js';
 import { ProjectMemory } from '../project.js';
 import { LongTermMemory } from '../long-term.js';
 import { ConsolidationService } from '../consolidation.js';
+import { MemoryDecayService } from '../memory-decay.js';
 import { ProjectIsolatedMemory } from '../project-isolation.js';
 
 const hnswAvailable = (() => {
@@ -384,6 +385,20 @@ describe('ProjectIsolatedMemory', () => {
     expect(resultsA).toHaveLength(1);
     expect(resultsB).toHaveLength(1);
   });
+
+  it('records access history on search', async () => {
+    await isolatedA.longTermStore('Test memory', { importance: 0.8 }, [1, 0, 0]);
+    await isolatedA.longTermSearch('test', 5);
+    // Wait for async metadata update
+    await new Promise((r) => setTimeout(r, 50));
+
+    const rows = (isolatedA as any).longTerm.repo.searchByText('test', 5);
+    const meta = JSON.parse(rows[0]!.metadata ?? '{}') as Record<string, unknown>;
+    expect(meta.accessCount).toBe(1);
+    expect(Array.isArray(meta.accessHistory)).toBe(true);
+    expect((meta.accessHistory as Array<unknown>).length).toBe(1);
+    expect((meta.accessHistory as Array<{ source: string }>)[0]!.source).toBe('search');
+  });
 });
 
 // ── ConsolidationService ──────────────────────────────────────
@@ -430,5 +445,60 @@ describe('ConsolidationService', () => {
     expect(short.get('sess-1', 'insight')).toBeNull();
 
     long.close();
+  });
+});
+
+// ── MemoryDecayService (Ebbinghaus adaptive) ──────────────────
+
+describe('MemoryDecayService', () => {
+  it('computeAdaptiveHalfLife returns 30 for empty history', () => {
+    const halfLife = MemoryDecayService.computeAdaptiveHalfLife({});
+    expect(halfLife).toBe(30);
+  });
+
+  it('extends half-life for frequently accessed memories', () => {
+    const history = [
+      { at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+      { at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+      { at: new Date().toISOString(), source: 'search' },
+    ];
+    // avg interval = 3.5 days → half-life = 900/3.5 ≈ 257 → clamped to 90
+    const halfLife = MemoryDecayService.computeAdaptiveHalfLife({ accessHistory: history });
+    expect(halfLife).toBe(90);
+  });
+
+  it('score is higher for frequently accessed memories of same age', () => {
+    const timestamp = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const baseScore = MemoryDecayService.score({
+      timestamp,
+      metadata: { importance: 0.5, confidence: 0.5 },
+    });
+    const accessedScore = MemoryDecayService.score({
+      timestamp,
+      metadata: { importance: 0.5, confidence: 0.5, accessCount: 5, accessHistory: [
+        { at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+        { at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+        { at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+        { at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+        { at: new Date().toISOString(), source: 'search' },
+      ]},
+    });
+    expect(accessedScore).toBeGreaterThan(baseScore);
+  });
+
+  it('caps half-life at 90 days and floor at 7 days', () => {
+    const veryFrequent = Array.from({ length: 50 }, (_, i) => ({
+      at: new Date(Date.now() - i * 60 * 60 * 1000).toISOString(),
+      source: 'search',
+    })).reverse();
+    const halfLife = MemoryDecayService.computeAdaptiveHalfLife({ accessHistory: veryFrequent });
+    expect(halfLife).toBe(90);
+
+    const veryRare = [
+      { at: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+      { at: new Date().toISOString(), source: 'search' },
+    ];
+    const halfLifeRare = MemoryDecayService.computeAdaptiveHalfLife({ accessHistory: veryRare });
+    expect(halfLifeRare).toBe(7); // 900/365 = 2.46 → clamped to 7
   });
 });

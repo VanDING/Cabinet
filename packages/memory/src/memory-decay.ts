@@ -70,9 +70,36 @@ export class MemoryDecayService {
       if (status === 'superseded') {
         superseded++;
       }
+
+      // Persist adaptive half-life for next retrieval
+      const accessHistory = (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
+      if (accessHistory.length > 0 || (meta.accessCount as number) > 0) {
+        const halfLife = MemoryDecayService.computeAdaptiveHalfLife(meta);
+        if (halfLife !== (meta.halfLifeDays as number | undefined)) {
+          meta.halfLifeDays = halfLife;
+          this.longTerm._setMetadataSync(entry.id, meta);
+        }
+      }
     }
 
     return { expired, archived, superseded };
+  }
+
+  /** Compute adaptive half-life from access history. Range: 7–90 days. */
+  static computeAdaptiveHalfLife(metadata: Record<string, unknown>): number {
+    const accessHistory = (metadata.accessHistory as Array<{ at: string }> | undefined) ?? [];
+    if (accessHistory.length >= 2) {
+      const first = new Date(accessHistory[0]!.at).getTime();
+      const last = new Date(accessHistory[accessHistory.length - 1]!.at).getTime();
+      const avgIntervalDays = (last - first) / (1000 * 60 * 60 * 24) / (accessHistory.length - 1);
+      return Math.min(90, Math.max(7, 900 / avgIntervalDays));
+    }
+    const accessCount = (metadata.accessCount as number) ?? 0;
+    if (accessCount > 0) {
+      // Few accesses → moderate extension based on count
+      return Math.min(90, Math.max(7, 30 + accessCount * 5));
+    }
+    return (metadata.halfLifeDays as number) ?? 30;
   }
 
   /** Compute a retrieval score for a memory entry. Higher = more relevant. */
@@ -82,7 +109,8 @@ export class MemoryDecayService {
     const accessCount = (entry.metadata.accessCount as number) ?? 0;
     const ageDays = (Date.now() - entry.timestamp.getTime()) / (1000 * 60 * 60 * 24);
 
-    const recencyDecay = Math.exp(-ageDays / 30); // half-life 30 days
+    const halfLife = MemoryDecayService.computeAdaptiveHalfLife(entry.metadata);
+    const recencyDecay = Math.exp(-ageDays / halfLife);
     const accessBoost = 1 + Math.log1p(accessCount);
 
     return importance * confidence * recencyDecay * accessBoost;

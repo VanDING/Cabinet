@@ -378,6 +378,14 @@ export class LongTermMemory {
       if (rows.length === 0) return;
       const meta = JSON.parse(rows[0]!.metadata ?? '{}') as Record<string, unknown>;
       meta.accessCount = ((meta.accessCount as number) ?? 0) + 1;
+
+      const history = (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
+      history.push({ at: new Date().toISOString(), source: 'search' });
+      if (history.length > 20) {
+        history.shift(); // keep max 20 entries
+      }
+      meta.accessHistory = history;
+
       this.repo.updateMetadata(id, JSON.stringify(meta));
     } catch {
       // best-effort
