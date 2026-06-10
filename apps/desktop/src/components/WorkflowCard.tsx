@@ -1,11 +1,5 @@
 import { useMemo } from 'react';
-import {
-  ReactFlow,
-  Background,
-  type Node,
-  type Edge,
-  BackgroundVariant,
-} from '@xyflow/react';
+import { ReactFlow, Background, type Node, type Edge, BackgroundVariant } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Play, Pause, Pencil, History } from 'lucide-react';
 import { definitionToCanvas } from '../factory/converter';
@@ -53,15 +47,14 @@ const miniNodeTypes = {
 } as const;
 
 function MiniNode({ data, type }: { data?: Record<string, unknown>; type?: string }) {
-  const colorClass = NODE_COLORS[(type as CanvasNodeType) ?? 'pass'] ?? 'bg-surface-muted border-border';
+  const colorClass =
+    NODE_COLORS[(type as CanvasNodeType) ?? 'pass'] ?? 'bg-surface-muted border-border';
   return (
     <div
       className={`flex h-6 w-6 items-center justify-center rounded-full border ${colorClass}`}
       title={String(data?.title ?? type)}
     >
-      <span className="text-[8px]">
-        {(type?.charAt(0) ?? '').toUpperCase()}
-      </span>
+      <span className="text-[8px]">{(type?.charAt(0) ?? '').toUpperCase()}</span>
     </div>
   );
 }
@@ -92,11 +85,18 @@ function formatCron(expr: string): string {
   }
   const h = parseInt(hour!, 10);
   const m = parseInt(min!, 10);
-  if (!isNaN(h) && !isNaN(m)) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} daily`;
+  if (!isNaN(h) && !isNaN(m))
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} daily`;
   return expr;
 }
 
-export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }: WorkflowCardProps) {
+export function WorkflowCard({
+  workflow,
+  onRun,
+  onEdit,
+  onViewHistory,
+  onPause,
+}: WorkflowCardProps) {
   const { nodes, edges } = useMemo(() => {
     try {
       return definitionToCanvas(workflow.definition as any);
@@ -105,19 +105,17 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
     }
   }, [workflow.definition]);
 
-  const triggerLabel = workflow.cronExpression
-    ? formatCron(workflow.cronExpression)
-    : 'Manual';
+  const triggerLabel = workflow.cronExpression ? formatCron(workflow.cronExpression) : 'Manual';
 
   const isRunning = workflow.status === 'running';
 
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-surface-primary p-4 shadow-xs transition-shadow hover:shadow-md">
+    <div className="border-border bg-surface-primary flex flex-col rounded-xl border p-4 shadow-xs transition-shadow hover:shadow-md">
       {/* Top: name + status + trigger + last run */}
       <div className="mb-3 flex items-start justify-between">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-content-primary">{workflow.name}</h3>
-          <div className="mt-0.5 flex items-center gap-2 text-xs text-content-tertiary">
+          <h3 className="text-content-primary truncate text-sm font-semibold">{workflow.name}</h3>
+          <div className="text-content-tertiary mt-0.5 flex items-center gap-2 text-xs">
             <StatusBadge status={workflow.status} />
             <span>·</span>
             <span>{triggerLabel}</span>
@@ -133,7 +131,7 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
 
       {/* Middle: mini read-only flow */}
       {nodes.length > 0 && (
-        <div className="mb-3 h-[180px] w-full overflow-hidden rounded-lg border border-border bg-surface-muted">
+        <div className="border-border bg-surface-muted mb-3 h-[180px] w-full overflow-hidden rounded-lg border">
           <ReactFlow
             nodes={nodes as Node[]}
             edges={edges as Edge[]}
@@ -152,7 +150,12 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
             maxZoom={1}
             className="!bg-surface-muted"
           >
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--graph-bg-grid, #ccc)" />
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={20}
+              size={1}
+              color="var(--graph-bg-grid, #ccc)"
+            />
           </ReactFlow>
         </div>
       )}
@@ -162,7 +165,7 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
         <button
           onClick={() => onRun(workflow.id)}
           disabled={isRunning}
-          className="inline-flex items-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-content-inverse hover:bg-accent-hover disabled:opacity-50"
+          className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
         >
           <Play size={12} />
           {isRunning ? 'Running…' : 'Run'}
@@ -170,7 +173,7 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
         {isRunning && onPause && (
           <button
             onClick={() => onPause(workflow.id)}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+            className="border-border text-content-secondary hover:bg-surface-elevated inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs"
           >
             <Pause size={12} />
             Pause
@@ -178,14 +181,14 @@ export function WorkflowCard({ workflow, onRun, onEdit, onViewHistory, onPause }
         )}
         <button
           onClick={() => onEdit(workflow.id)}
-          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+          className="border-border text-content-secondary hover:bg-surface-elevated inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs"
         >
           <Pencil size={12} />
           Edit
         </button>
         <button
           onClick={() => onViewHistory(workflow.id)}
-          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+          className="border-border text-content-secondary hover:bg-surface-elevated inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs"
         >
           <History size={12} />
           History

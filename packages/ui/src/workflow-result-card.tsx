@@ -38,12 +38,10 @@ export function WorkflowResultCard({
   const durationSec = Math.round(data.durationMs / 1000);
 
   return (
-    <div className="my-3 rounded-lg border border-border bg-surface-primary p-3">
+    <div className="border-border bg-surface-primary my-3 rounded-lg border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-content-primary">🔧 {data.workflowName}</span>
-        <span
-          className={`rounded px-2 py-0.5 text-xs font-medium ${overallBg} ${overallColor}`}
-        >
+        <span className="text-content-primary text-sm font-semibold">🔧 {data.workflowName}</span>
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${overallBg} ${overallColor}`}>
           {overallIcon} {overallLabel} · {durationSec}s
         </span>
       </div>
@@ -72,16 +70,16 @@ export function WorkflowResultCard({
           {data.alerts.map((alert) => (
             <div
               key={alert.message}
-              className="flex items-start gap-1.5 border-b border-border-subtle py-1 last:border-0"
+              className="border-border-subtle flex items-start gap-1.5 border-b py-1 last:border-0"
             >
-              <span className="text-xs text-intent-warning mt-0.5">⚠</span>
+              <span className="text-intent-warning mt-0.5 text-xs">⚠</span>
               <div className="flex-1">
-                <span className="text-xs text-content-primary">{alert.message}</span>
+                <span className="text-content-primary text-xs">{alert.message}</span>
               </div>
               {onFixIssue && (
                 <button
                   onClick={() => onFixIssue(output.id, alert)}
-                  className="text-xs text-accent hover:underline shrink-0"
+                  className="text-accent shrink-0 text-xs hover:underline"
                 >
                   Fix
                 </button>
@@ -96,7 +94,7 @@ export function WorkflowResultCard({
         {onViewReport && (
           <button
             onClick={() => onViewReport(output.id)}
-            className="rounded border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+            className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-xs"
           >
             📋 View Report
           </button>
@@ -104,7 +102,7 @@ export function WorkflowResultCard({
         {onRerun && (
           <button
             onClick={() => onRerun(output.id)}
-            className="rounded border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+            className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-xs"
           >
             🔄 Rerun
           </button>

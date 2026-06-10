@@ -25,32 +25,26 @@ const statusClasses: Record<string, string> = {
   done: 'text-intent-success line-through',
 };
 
-export function TaskCard({
-  output,
-  onConfirm,
-  onAdjust,
-  onAddTask,
-  onToggleTask,
-}: TaskCardProps) {
+export function TaskCard({ output, onConfirm, onAdjust, onAddTask, onToggleTask }: TaskCardProps) {
   const data = getData(output);
   const isConfirmed = output.status !== 'proposed';
 
   return (
-    <div className="my-3 rounded-lg border border-border bg-surface-primary p-3">
+    <div className="border-border bg-surface-primary my-3 rounded-lg border p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-content-primary">📅 {data.title}</span>
+        <span className="text-content-primary text-sm font-semibold">📅 {data.title}</span>
         {isConfirmed ? (
-          <span className="rounded bg-intent-success-muted px-2 py-0.5 text-xs text-intent-success">
+          <span className="bg-intent-success-muted text-intent-success rounded px-2 py-0.5 text-xs">
             ✅ Confirmed
           </span>
         ) : (
-          <span className="rounded bg-accent-muted px-2 py-0.5 text-xs text-accent">
+          <span className="bg-accent-muted text-accent rounded px-2 py-0.5 text-xs">
             {data.tasks.length} tasks
           </span>
         )}
       </div>
 
-      <div className="divide-y divide-border-subtle">
+      <div className="divide-border-subtle divide-y">
         {data.tasks.map((task) => (
           <div
             key={task.id}
@@ -67,11 +61,9 @@ export function TaskCard({
               ) : (
                 <span className="text-sm">{statusIcons[task.status]}</span>
               )}
-              <span className={`text-xs ${statusClasses[task.status] ?? ''}`}>
-                {task.title}
-              </span>
+              <span className={`text-xs ${statusClasses[task.status] ?? ''}`}>{task.title}</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-content-tertiary">
+            <div className="text-content-tertiary flex items-center gap-2 text-xs">
               <span>{task.assignee}</span>
               {task.dueBy && <span>📋 {task.dueBy}</span>}
             </div>
@@ -84,7 +76,7 @@ export function TaskCard({
           {onConfirm && (
             <button
               onClick={() => onConfirm(output.id, data.tasks)}
-              className="rounded bg-intent-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+              className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
             >
               ✅ Confirm Plan
             </button>
@@ -92,7 +84,7 @@ export function TaskCard({
           {onAdjust && (
             <button
               onClick={() => onAdjust(output.id)}
-              className="rounded border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+              className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-xs"
             >
               🕐 Adjust Timing
             </button>
@@ -100,7 +92,7 @@ export function TaskCard({
           {onAddTask && (
             <button
               onClick={() => onAddTask(output.id)}
-              className="rounded px-3 py-1.5 text-xs text-content-tertiary hover:text-content-secondary"
+              className="text-content-tertiary hover:text-content-secondary rounded px-3 py-1.5 text-xs"
             >
               ＋ Add Task
             </button>

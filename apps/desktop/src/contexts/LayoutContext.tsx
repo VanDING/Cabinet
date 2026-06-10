@@ -54,7 +54,15 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       toggleSidebar,
       setSidebarWidth,
     }),
-    [activePage, sidebarCollapsed, sidebarWidth, navigate, navigateToProject, toggleSidebar, setSidebarWidth],
+    [
+      activePage,
+      sidebarCollapsed,
+      sidebarWidth,
+      navigate,
+      navigateToProject,
+      toggleSidebar,
+      setSidebarWidth,
+    ],
   );
 
   return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>;

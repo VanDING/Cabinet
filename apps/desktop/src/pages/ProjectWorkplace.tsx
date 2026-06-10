@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  FolderOpen,
-  ClipboardList,
-  Package,
-  Brain,
-  Workflow,
-  ChevronRight,
-  X,
-} from 'lucide-react';
+import { FolderOpen, ClipboardList, Package, Brain, Workflow, ChevronRight, X } from 'lucide-react';
 import { ProjectExplorer } from '../components/ProjectExplorer';
 import { useToast } from '../components/Toast';
 import { apiFetch, authHeaders } from '../utils/api.js';
@@ -164,9 +156,9 @@ export function ProjectWorkplace() {
   return (
     <div className="flex h-full overflow-hidden">
       {/* ── Left Panel ── */}
-      <div className="flex w-[280px] shrink-0 flex-col border-r border-border bg-surface-primary">
+      <div className="border-border bg-surface-primary flex w-[280px] shrink-0 flex-col border-r">
         {/* Nav items */}
-        <div className="shrink-0 space-y-0.5 border-b border-border p-2">
+        <div className="border-border shrink-0 space-y-0.5 border-b p-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = activeSection === item.id;
@@ -187,7 +179,7 @@ export function ProjectWorkplace() {
                 <Icon size={16} />
                 <span className="flex-1">{item.label}</span>
                 {counts[item.id] !== undefined && counts[item.id]! > 0 && (
-                  <span className="rounded-full bg-accent px-1.5 py-0 text-[10px] text-white">
+                  <span className="bg-accent rounded-full px-1.5 py-0 text-[10px] text-white">
                     {counts[item.id]}
                   </span>
                 )}
@@ -214,7 +206,7 @@ export function ProjectWorkplace() {
       </div>
 
       {/* ── Center Panel ── */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-primary">
+      <div className="bg-surface-primary flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* files */}
         {activeSection === 'files' && (
           <div className="flex h-full flex-col">
@@ -224,12 +216,14 @@ export function ProjectWorkplace() {
               </div>
             ) : filePreview ? (
               <div className="flex flex-1 flex-col overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border px-4 py-2">
-                  <div className="flex items-center gap-2 text-sm text-content-primary">
+                <div className="border-border flex items-center justify-between border-b px-4 py-2">
+                  <div className="text-content-primary flex items-center gap-2 text-sm">
                     <FolderOpen size={14} className="text-content-tertiary" />
                     <span className="font-medium">{filePreview.name}</span>
                     {filePreview.mimeType && (
-                      <span className="text-[10px] text-content-tertiary">{filePreview.mimeType}</span>
+                      <span className="text-content-tertiary text-[10px]">
+                        {filePreview.mimeType}
+                      </span>
                     )}
                   </div>
                   <button
@@ -237,7 +231,7 @@ export function ProjectWorkplace() {
                       setFilePreview(null);
                       setSelectedItemId(null);
                     }}
-                    className="rounded-sm p-1 text-content-tertiary hover:bg-surface-muted hover:text-content-primary"
+                    className="text-content-tertiary hover:bg-surface-muted hover:text-content-primary rounded-sm p-1"
                   >
                     <X size={14} />
                   </button>
@@ -252,14 +246,14 @@ export function ProjectWorkplace() {
                       />
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap break-all p-4 font-mono text-sm text-content-primary">
+                    <pre className="text-content-primary p-4 font-mono text-sm break-all whitespace-pre-wrap">
                       {filePreview.content || '(empty)'}
                     </pre>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center text-content-tertiary">
+              <div className="text-content-tertiary flex flex-1 items-center justify-center">
                 <div className="text-center">
                   <FolderOpen size={32} className="mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Select a file from the sidebar to preview</p>
@@ -273,7 +267,7 @@ export function ProjectWorkplace() {
         {activeSection === 'decisions' && (
           <div className="h-full overflow-y-auto p-4">
             {decisions.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-content-tertiary">
+              <div className="text-content-tertiary flex h-64 items-center justify-center">
                 <p className="text-sm">No decisions yet</p>
               </div>
             ) : (
@@ -282,7 +276,7 @@ export function ProjectWorkplace() {
                   <div
                     key={d.id}
                     onClick={() => setSelectedItemId(d.id)}
-                    className={`cursor-pointer transition-all ${selectedItemId === d.id ? 'ring-2 ring-accent' : ''}`}
+                    className={`cursor-pointer transition-all ${selectedItemId === d.id ? 'ring-accent ring-2' : ''}`}
                   >
                     <DecisionCard
                       decision={d}
@@ -300,7 +294,7 @@ export function ProjectWorkplace() {
         {activeSection === 'deliverables' && (
           <div className="h-full overflow-y-auto p-4">
             {deliverables.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-content-tertiary">
+              <div className="text-content-tertiary flex h-64 items-center justify-center">
                 <p className="text-sm">No deliverables yet</p>
               </div>
             ) : (
@@ -309,7 +303,7 @@ export function ProjectWorkplace() {
                   <div
                     key={d.id}
                     onClick={() => setSelectedItemId(d.id)}
-                    className={`cursor-pointer transition-all ${selectedItemId === d.id ? 'ring-2 ring-accent' : ''}`}
+                    className={`cursor-pointer transition-all ${selectedItemId === d.id ? 'ring-accent ring-2' : ''}`}
                   >
                     <DeliverableCard output={d} variant="compact" />
                   </div>
@@ -330,7 +324,7 @@ export function ProjectWorkplace() {
         {activeSection === 'workflows' && (
           <div className="h-full overflow-y-auto p-4">
             {workflows.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-content-tertiary">
+              <div className="text-content-tertiary flex h-64 items-center justify-center">
                 <p className="text-sm">No workflows yet</p>
               </div>
             ) : (
@@ -352,12 +346,12 @@ export function ProjectWorkplace() {
 
       {/* ── Right Panel ── */}
       {rightPanelVisible && (
-        <div className="flex w-[320px] shrink-0 flex-col border-l border-border bg-surface-primary">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="text-xs font-medium text-content-secondary">Context</span>
+        <div className="border-border bg-surface-primary flex w-[320px] shrink-0 flex-col border-l">
+          <div className="border-border flex items-center justify-between border-b px-3 py-2">
+            <span className="text-content-secondary text-xs font-medium">Context</span>
             <button
               onClick={() => setRightPanelVisible(false)}
-              className="rounded-sm p-1 text-content-tertiary hover:bg-surface-muted hover:text-content-primary"
+              className="text-content-tertiary hover:bg-surface-muted hover:text-content-primary rounded-sm p-1"
               title="Collapse"
             >
               <X size={14} />
@@ -365,11 +359,13 @@ export function ProjectWorkplace() {
           </div>
           <div className="flex-1 overflow-y-auto p-3">
             {activeSection === 'files' && selectedItemId && filePreview && (
-              <div className="space-y-2 text-xs text-content-secondary">
-                <div className="rounded-lg border border-border bg-surface-muted p-3">
-                  <p className="mb-1 font-medium text-content-primary">File Info</p>
+              <div className="text-content-secondary space-y-2 text-xs">
+                <div className="border-border bg-surface-muted rounded-lg border p-3">
+                  <p className="text-content-primary mb-1 font-medium">File Info</p>
                   <p className="break-all">{filePreview.path}</p>
-                  {filePreview.mimeType && <p className="mt-1 text-content-tertiary">{filePreview.mimeType}</p>}
+                  {filePreview.mimeType && (
+                    <p className="text-content-tertiary mt-1">{filePreview.mimeType}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -383,12 +379,12 @@ export function ProjectWorkplace() {
               <WorkflowContext workflow={workflows.find((w) => w.id === selectedItemId)} />
             )}
             {activeSection === 'graph' && (
-              <div className="text-xs text-content-tertiary">
+              <div className="text-content-tertiary text-xs">
                 Select a node in the graph to see details.
               </div>
             )}
             {!selectedItemId && activeSection !== 'graph' && (
-              <div className="text-xs text-content-tertiary">
+              <div className="text-content-tertiary text-xs">
                 Select an item to see context details.
               </div>
             )}
@@ -400,7 +396,7 @@ export function ProjectWorkplace() {
       {!rightPanelVisible && (
         <button
           onClick={() => setRightPanelVisible(true)}
-          className="flex w-8 shrink-0 items-center justify-center border-l border-border bg-surface-primary text-content-tertiary hover:bg-surface-muted hover:text-content-primary"
+          className="border-border bg-surface-primary text-content-tertiary hover:bg-surface-muted hover:text-content-primary flex w-8 shrink-0 items-center justify-center border-l"
           title="Expand context panel"
         >
           <ChevronRight size={14} className="-rotate-180" />
@@ -411,15 +407,15 @@ export function ProjectWorkplace() {
 }
 
 function DecisionContext({ decision }: { decision?: Decision }) {
-  if (!decision) return <p className="text-xs text-content-tertiary">Decision not found</p>;
+  if (!decision) return <p className="text-content-tertiary text-xs">Decision not found</p>;
   return (
     <div className="space-y-3 text-xs">
-      <div className="rounded-lg border border-border bg-surface-muted p-3">
-        <p className="mb-1 font-medium text-content-primary">{decision.title}</p>
+      <div className="border-border bg-surface-muted rounded-lg border p-3">
+        <p className="text-content-primary mb-1 font-medium">{decision.title}</p>
         <p className="text-content-secondary">{decision.description}</p>
       </div>
       <div>
-        <p className="mb-1 font-medium text-content-secondary">Status</p>
+        <p className="text-content-secondary mb-1 font-medium">Status</p>
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
             decision.status === 'pending'
@@ -433,16 +429,16 @@ function DecisionContext({ decision }: { decision?: Decision }) {
         </span>
       </div>
       <div>
-        <p className="mb-1 font-medium text-content-secondary">Level</p>
+        <p className="text-content-secondary mb-1 font-medium">Level</p>
         <p className="text-content-tertiary">{decision.level}</p>
       </div>
       {decision.options.length > 0 && (
         <div>
-          <p className="mb-1 font-medium text-content-secondary">Options</p>
+          <p className="text-content-secondary mb-1 font-medium">Options</p>
           <div className="space-y-1">
             {decision.options.map((opt) => (
-              <div key={opt.id} className="rounded border border-border p-2">
-                <p className="font-medium text-content-primary">{opt.label}</p>
+              <div key={opt.id} className="border-border rounded border p-2">
+                <p className="text-content-primary font-medium">{opt.label}</p>
                 <p className="text-content-tertiary">{opt.impact}</p>
               </div>
             ))}
@@ -454,16 +450,18 @@ function DecisionContext({ decision }: { decision?: Decision }) {
 }
 
 function DeliverableContext({ deliverable }: { deliverable?: StructuredOutput }) {
-  if (!deliverable) return <p className="text-xs text-content-tertiary">Deliverable not found</p>;
+  if (!deliverable) return <p className="text-content-tertiary text-xs">Deliverable not found</p>;
   const data = (deliverable.data ?? {}) as Record<string, unknown>;
   return (
     <div className="space-y-3 text-xs">
-      <div className="rounded-lg border border-border bg-surface-muted p-3">
-        <p className="mb-1 font-medium text-content-primary">{String(data.title ?? deliverable.id)}</p>
+      <div className="border-border bg-surface-muted rounded-lg border p-3">
+        <p className="text-content-primary mb-1 font-medium">
+          {String(data.title ?? deliverable.id)}
+        </p>
         <p className="text-content-secondary">{String(data.summary ?? '')}</p>
       </div>
       <div>
-        <p className="mb-1 font-medium text-content-secondary">Status</p>
+        <p className="text-content-secondary mb-1 font-medium">Status</p>
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
             deliverable.status === 'accepted'
@@ -481,15 +479,15 @@ function DeliverableContext({ deliverable }: { deliverable?: StructuredOutput })
 }
 
 function WorkflowContext({ workflow }: { workflow?: WorkflowItem }) {
-  if (!workflow) return <p className="text-xs text-content-tertiary">Workflow not found</p>;
+  if (!workflow) return <p className="text-content-tertiary text-xs">Workflow not found</p>;
   return (
     <div className="space-y-3 text-xs">
-      <div className="rounded-lg border border-border bg-surface-muted p-3">
-        <p className="mb-1 font-medium text-content-primary">{workflow.name}</p>
+      <div className="border-border bg-surface-muted rounded-lg border p-3">
+        <p className="text-content-primary mb-1 font-medium">{workflow.name}</p>
         <p className="text-content-secondary">ID: {workflow.id}</p>
       </div>
       <div>
-        <p className="mb-1 font-medium text-content-secondary">Status</p>
+        <p className="text-content-secondary mb-1 font-medium">Status</p>
         <span
           className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
             workflow.status === 'running'
@@ -506,7 +504,7 @@ function WorkflowContext({ workflow }: { workflow?: WorkflowItem }) {
       </div>
       {workflow.cronExpression && (
         <div>
-          <p className="mb-1 font-medium text-content-secondary">Schedule</p>
+          <p className="text-content-secondary mb-1 font-medium">Schedule</p>
           <p className="text-content-tertiary">{workflow.cronExpression}</p>
         </div>
       )}

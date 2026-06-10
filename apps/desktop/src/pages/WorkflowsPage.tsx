@@ -84,7 +84,7 @@ export function WorkflowsPage() {
       try {
         const projRes = await apiFetch('/api/projects', { headers: authHeaders() });
         const projData = await projRes.json();
-        pid = (projData.projects?.[0]?.id) as string | undefined;
+        pid = projData.projects?.[0]?.id as string | undefined;
         if (!pid) {
           addToast('error', 'No project found. Create a project first.');
           return;
@@ -118,14 +118,12 @@ export function WorkflowsPage() {
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-content-primary">Workflows</h1>
-          <span className="text-sm text-content-tertiary">
-            Build and run automated pipelines
-          </span>
+          <h1 className="text-content-primary text-2xl font-bold">Workflows</h1>
+          <span className="text-content-tertiary text-sm">Build and run automated pipelines</span>
         </div>
         <button
           onClick={handleNewWorkflow}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-content-inverse hover:bg-accent-hover"
+          className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
         >
           <Plus size={16} />
           New Workflow
@@ -139,9 +137,9 @@ export function WorkflowsPage() {
       )}
 
       {workflows.length === 0 && !loading && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
+        <div className="border-border rounded-lg border border-dashed p-8 text-center">
           <p className="text-content-tertiary">No workflows yet.</p>
-          <p className="mt-1 text-sm text-content-tertiary">
+          <p className="text-content-tertiary mt-1 text-sm">
             Create your first workflow to get started.
           </p>
         </div>

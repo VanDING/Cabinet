@@ -17,7 +17,7 @@ export function MobileNav({ activePage, onNavigate }: Props) {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface-primary text-content-primary md:hidden"
+      className="border-border bg-surface-primary text-content-primary fixed right-0 bottom-0 left-0 z-50 border-t md:hidden"
     >
       <div className="flex justify-around py-1">
         {items.map((item) => (

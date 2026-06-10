@@ -58,26 +58,27 @@ export function DecisionProposalCard({
 
   if (variant === 'compact') {
     return (
-      <div className="my-3 rounded-lg border border-border bg-surface-primary p-3">
+      <div className="border-border bg-surface-primary my-3 rounded-lg border p-3">
         {statusBar}
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-content-primary">📋 {data.title}</span>
+          <span className="text-content-primary text-sm font-semibold">📋 {data.title}</span>
           <span
             className={`rounded px-2 py-0.5 text-xs font-medium ${priorityColors[data.priority] ?? priorityColors.medium}`}
           >
             {priorityLabels[data.priority] ?? data.priority}
           </span>
         </div>
-        <p className="mb-1 text-xs text-content-secondary">{data.summary}</p>
-        <p className="mb-2 text-xs text-content-tertiary">
-          Recommendation: <span className="font-medium text-content-primary">{data.recommendation}</span>
+        <p className="text-content-secondary mb-1 text-xs">{data.summary}</p>
+        <p className="text-content-tertiary mb-2 text-xs">
+          Recommendation:{' '}
+          <span className="text-content-primary font-medium">{data.recommendation}</span>
         </p>
         {!isResolved && (
           <div className="flex gap-2">
             {onAdopt && (
               <button
                 onClick={() => onAdopt(output.id, selectedOption)}
-                className="rounded bg-intent-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
               >
                 ✅ Adopt {data.recommendation}
               </button>
@@ -85,7 +86,7 @@ export function DecisionProposalCard({
             {onRequestMore && (
               <button
                 onClick={() => onRequestMore(output.id)}
-                className="rounded border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+                className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-xs"
               >
                 ↩ Request More
               </button>
@@ -93,7 +94,7 @@ export function DecisionProposalCard({
             {onReject && (
               <button
                 onClick={() => onReject(output.id)}
-                className="rounded px-3 py-1.5 text-xs text-intent-danger hover:bg-intent-danger-muted"
+                className="text-intent-danger hover:bg-intent-danger-muted rounded px-3 py-1.5 text-xs"
               >
                 ❌ Reject
               </button>
@@ -105,25 +106,30 @@ export function DecisionProposalCard({
   }
 
   return (
-    <div className="my-3 rounded-lg border border-border bg-surface-primary p-4">
+    <div className="border-border bg-surface-primary my-3 rounded-lg border p-4">
       {statusBar}
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-content-primary">📋 {data.title}</h3>
+        <h3 className="text-content-primary font-semibold">📋 {data.title}</h3>
         <span
           className={`rounded px-2 py-0.5 text-xs font-medium ${priorityColors[data.priority] ?? priorityColors.medium}`}
         >
           {priorityLabels[data.priority] ?? data.priority}
         </span>
       </div>
-      <p className="mb-3 text-sm text-content-secondary">{data.summary}</p>
+      <p className="text-content-secondary mb-3 text-sm">{data.summary}</p>
 
       <div className="mb-3 overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-border">
-              <th className="py-1.5 pr-2 text-left font-medium text-content-secondary">Dimension</th>
+            <tr className="border-border border-b">
+              <th className="text-content-secondary py-1.5 pr-2 text-left font-medium">
+                Dimension
+              </th>
               {data.options.map((opt) => (
-                <th key={opt.label} className="px-2 py-1.5 text-center font-medium text-content-secondary">
+                <th
+                  key={opt.label}
+                  className="text-content-secondary px-2 py-1.5 text-center font-medium"
+                >
                   {opt.label}
                 </th>
               ))}
@@ -131,17 +137,16 @@ export function DecisionProposalCard({
           </thead>
           <tbody>
             {data.dimensions.map((dim) => (
-              <tr key={dim} className="border-b border-border-subtle last:border-0">
-                <td className="py-1.5 pr-2 text-content-primary">{dim}</td>
+              <tr key={dim} className="border-border-subtle border-b last:border-0">
+                <td className="text-content-primary py-1.5 pr-2">{dim}</td>
                 {data.options.map((opt) => {
                   const score = opt.scores[dim];
                   const isMax =
-                    score !== undefined &&
-                    data.options.every((o) => (o.scores[dim] ?? 0) <= score);
+                    score !== undefined && data.options.every((o) => (o.scores[dim] ?? 0) <= score);
                   return (
                     <td
                       key={opt.label}
-                      className={`px-2 py-1.5 text-center ${isMax ? 'font-semibold text-intent-success' : 'text-content-tertiary'}`}
+                      className={`px-2 py-1.5 text-center ${isMax ? 'text-intent-success font-semibold' : 'text-content-tertiary'}`}
                     >
                       {score !== undefined ? `${score}/10` : '-'}
                     </td>
@@ -153,7 +158,7 @@ export function DecisionProposalCard({
         </table>
       </div>
 
-      <p className="mb-3 text-xs text-accent">
+      <p className="text-accent mb-3 text-xs">
         AI recommends: <span className="font-semibold">{data.recommendation}</span>
       </p>
 
@@ -162,7 +167,7 @@ export function DecisionProposalCard({
           {onAdopt && (
             <button
               onClick={() => onAdopt(output.id, selectedOption)}
-              className="rounded bg-intent-success px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              className="bg-intent-success rounded px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
             >
               ✅ Adopt
             </button>
@@ -170,7 +175,7 @@ export function DecisionProposalCard({
           {onRequestMore && (
             <button
               onClick={() => onRequestMore(output.id)}
-              className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
+              className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-sm"
             >
               ↩ Request More
             </button>
@@ -178,7 +183,7 @@ export function DecisionProposalCard({
           {onReject && (
             <button
               onClick={() => onReject(output.id)}
-              className="rounded px-3 py-1.5 text-sm text-intent-danger hover:bg-intent-danger-muted"
+              className="text-intent-danger hover:bg-intent-danger-muted rounded px-3 py-1.5 text-sm"
             >
               ❌ Reject
             </button>
@@ -188,7 +193,7 @@ export function DecisionProposalCard({
       {onViewDetails && (
         <button
           onClick={() => onViewDetails(output.id)}
-          className="mt-2 text-xs text-content-tertiary hover:text-content-secondary"
+          className="text-content-tertiary hover:text-content-secondary mt-2 text-xs"
         >
           View details →
         </button>

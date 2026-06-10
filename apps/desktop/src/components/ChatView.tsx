@@ -669,10 +669,7 @@ interface StructuredOutputBlockProps {
   onToggleTask?: (id: string, taskId: string) => void;
   onViewWorkflowResult?: (id: string) => void;
   onRerunWorkflow?: (id: string) => void;
-  onFixWorkflowIssue?: (
-    id: string,
-    alert: { severity: string; message: string },
-  ) => void;
+  onFixWorkflowIssue?: (id: string, alert: { severity: string; message: string }) => void;
 }
 
 function StructuredOutputBlock({

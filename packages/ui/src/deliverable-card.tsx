@@ -47,17 +47,17 @@ export function DeliverableCard({
 
   if (variant === 'compact') {
     return (
-      <div className="my-3 rounded-lg border border-border bg-surface-primary p-3">
+      <div className="border-border bg-surface-primary my-3 rounded-lg border p-3">
         {statusBar}
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-content-primary">📄 {data.title}</span>
+          <span className="text-content-primary text-sm font-semibold">📄 {data.title}</span>
           {generationInfo && (
-            <span className="text-xs text-content-tertiary">{generationInfo}</span>
+            <span className="text-content-tertiary text-xs">{generationInfo}</span>
           )}
         </div>
-        <p className="mb-1 line-clamp-3 text-xs text-content-secondary">{data.summary}</p>
+        <p className="text-content-secondary mb-1 line-clamp-3 text-xs">{data.summary}</p>
         {data.sources && data.sources.length > 0 && (
-          <p className="mb-2 text-xs text-content-tertiary">
+          <p className="text-content-tertiary mb-2 text-xs">
             📊 Sources: {data.sources.join(', ')}
           </p>
         )}
@@ -65,7 +65,7 @@ export function DeliverableCard({
           {onExpand && (
             <button
               onClick={() => onExpand(output.id)}
-              className="rounded border border-border px-3 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated"
+              className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-xs"
             >
               📖 Expand full text
             </button>
@@ -75,7 +75,7 @@ export function DeliverableCard({
               {onApprove && (
                 <button
                   onClick={() => onApprove(output.id)}
-                  className="rounded bg-intent-success px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                  className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
                 >
                   ✅ Approve
                 </button>
@@ -83,7 +83,7 @@ export function DeliverableCard({
               {onRequestChanges && (
                 <button
                   onClick={() => onRequestChanges(output.id)}
-                  className="rounded px-3 py-1.5 text-xs text-intent-warning hover:bg-intent-warning-muted"
+                  className="text-intent-warning hover:bg-intent-warning-muted rounded px-3 py-1.5 text-xs"
                 >
                   ↩ Request Changes
                 </button>
@@ -91,7 +91,7 @@ export function DeliverableCard({
               {onDiscuss && (
                 <button
                   onClick={() => onDiscuss(output.id)}
-                  className="rounded px-3 py-1.5 text-xs text-content-tertiary hover:text-content-secondary"
+                  className="text-content-tertiary hover:text-content-secondary rounded px-3 py-1.5 text-xs"
                 >
                   💬 Discuss
                 </button>
@@ -104,20 +104,16 @@ export function DeliverableCard({
   }
 
   return (
-    <div className="my-3 rounded-lg border border-border bg-surface-primary p-4">
+    <div className="border-border bg-surface-primary my-3 rounded-lg border p-4">
       {statusBar}
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-content-primary">📄 {data.title}</h3>
-        {generationInfo && (
-          <span className="text-xs text-content-tertiary">{generationInfo}</span>
-        )}
+        <h3 className="text-content-primary font-semibold">📄 {data.title}</h3>
+        {generationInfo && <span className="text-content-tertiary text-xs">{generationInfo}</span>}
       </div>
       {data.sources && data.sources.length > 0 && (
-        <p className="mb-2 text-xs text-content-tertiary">
-          📊 Sources: {data.sources.join(', ')}
-        </p>
+        <p className="text-content-tertiary mb-2 text-xs">📊 Sources: {data.sources.join(', ')}</p>
       )}
-      <div className="mb-3 text-sm text-content-secondary">
+      <div className="text-content-secondary mb-3 text-sm">
         {expanded ? (
           <div className="whitespace-pre-wrap">{data.fullContent}</div>
         ) : (
@@ -125,7 +121,7 @@ export function DeliverableCard({
             <p className="line-clamp-6">{data.fullContent || data.summary}</p>
             <button
               onClick={() => setExpanded(true)}
-              className="mt-1 text-xs text-accent hover:underline"
+              className="text-accent mt-1 text-xs hover:underline"
             >
               Read more ↓
             </button>
@@ -138,7 +134,7 @@ export function DeliverableCard({
             {onApprove && (
               <button
                 onClick={() => onApprove(output.id)}
-                className="rounded bg-intent-success px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                className="bg-intent-success rounded px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
               >
                 ✅ Approve
               </button>
@@ -146,7 +142,7 @@ export function DeliverableCard({
             {onRequestChanges && (
               <button
                 onClick={() => onRequestChanges(output.id)}
-                className="rounded border border-border px-3 py-1.5 text-sm text-intent-warning hover:bg-intent-warning-muted"
+                className="border-border text-intent-warning hover:bg-intent-warning-muted rounded border px-3 py-1.5 text-sm"
               >
                 ↩ Request Changes
               </button>
@@ -154,7 +150,7 @@ export function DeliverableCard({
             {onDiscuss && (
               <button
                 onClick={() => onDiscuss(output.id)}
-                className="rounded px-3 py-1.5 text-sm text-content-tertiary hover:text-content-secondary"
+                className="text-content-tertiary hover:text-content-secondary rounded px-3 py-1.5 text-sm"
               >
                 💬 Discuss
               </button>
@@ -164,7 +160,7 @@ export function DeliverableCard({
         {onExpand && (
           <button
             onClick={() => onExpand(output.id)}
-            className="rounded border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
+            className="border-border text-content-secondary hover:bg-surface-elevated rounded border px-3 py-1.5 text-sm"
           >
             📥 Export / Share
           </button>

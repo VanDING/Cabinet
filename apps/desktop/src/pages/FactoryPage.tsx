@@ -36,8 +36,10 @@ function formatCron(expr: string): string {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return expr;
   const [min, hour, dom, month, dow] = parts as string[];
-  if (min === '*' && hour === '*' && dom === '*' && month === '*' && dow === '*') return 'Every minute';
-  if (min === '0' && hour === '*' && dom === '*' && month === '*' && dow === '*') return 'Every hour';
+  if (min === '*' && hour === '*' && dom === '*' && month === '*' && dow === '*')
+    return 'Every minute';
+  if (min === '0' && hour === '*' && dom === '*' && month === '*' && dow === '*')
+    return 'Every hour';
   if (min!.startsWith('*/') && hour === '*' && dom === '*' && month === '*' && dow === '*') {
     const interval = parseInt(min!.slice(2), 10);
     if (!isNaN(interval)) return `Every ${interval} min`;
@@ -45,7 +47,8 @@ function formatCron(expr: string): string {
   if (dom === '*' && month === '*' && dow === '*') {
     const h = parseInt(hour!, 10);
     const m = parseInt(min!, 10);
-    if (!isNaN(h) && !isNaN(m)) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} daily`;
+    if (!isNaN(h) && !isNaN(m))
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} daily`;
   }
   return expr;
 }
@@ -54,7 +57,8 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
   const { id: urlId } = useParams<{ id?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const isEditorRoute = location.pathname.startsWith('/workflows/') && location.pathname.endsWith('/edit');
+  const isEditorRoute =
+    location.pathname.startsWith('/workflows/') && location.pathname.endsWith('/edit');
   const projectId = isEditorRoute ? undefined : urlId;
   const editorWorkflowId = isEditorRoute ? urlId : undefined;
 
@@ -79,24 +83,18 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       if (!selectedId) return;
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        undoRedo.undo(
-          { nodes: canvasNodes, edges: canvasEdges },
-          (nodes, edges) => {
-            setCanvasNodes(nodes);
-            setCanvasEdges(edges);
-            setDirty(true);
-          },
-        );
+        undoRedo.undo({ nodes: canvasNodes, edges: canvasEdges }, (nodes, edges) => {
+          setCanvasNodes(nodes);
+          setCanvasEdges(edges);
+          setDirty(true);
+        });
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
-        undoRedo.redo(
-          { nodes: canvasNodes, edges: canvasEdges },
-          (nodes, edges) => {
-            setCanvasNodes(nodes);
-            setCanvasEdges(edges);
-            setDirty(true);
-          },
-        );
+        undoRedo.redo({ nodes: canvasNodes, edges: canvasEdges }, (nodes, edges) => {
+          setCanvasNodes(nodes);
+          setCanvasEdges(edges);
+          setDirty(true);
+        });
       }
     };
     window.addEventListener('keydown', handler);
@@ -123,7 +121,11 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         if (data.workflows) {
           setWorkflows(data.workflows);
           // If in editor route and workflow not yet found, try to auto-select
-          if (isEditorRoute && editorWorkflowId && !data.workflows.find((w: WorkflowItem) => w.id === editorWorkflowId)) {
+          if (
+            isEditorRoute &&
+            editorWorkflowId &&
+            !data.workflows.find((w: WorkflowItem) => w.id === editorWorkflowId)
+          ) {
             // Fallback: the workflow might not be in this project list, keep selectedId
           }
         }
@@ -251,7 +253,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         try {
           const projRes = await apiFetch('/api/projects', { headers: authHeaders() });
           const projData = await projRes.json();
-          pid = (projData.projects?.[0]?.id) as string | undefined;
+          pid = projData.projects?.[0]?.id as string | undefined;
           if (!pid) {
             addToast('error', 'No project found. Create a project first.');
             return;
@@ -296,7 +298,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       `Status: ${selected.status}`,
       selected.cronExpression ? `Schedule: ${selected.cronExpression}` : '',
       'Current definition:',
-      '```json', defStr, '```',
+      '```json',
+      defStr,
+      '```',
       '',
       'You are editing this workflow. Use workflow tools to modify it.',
     ].join('\n');
@@ -327,7 +331,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
 
   const handleNodeUpdate = (nodeId: string, data: Record<string, unknown>) => {
     setCanvasNodes((prev) => {
-      const updated = prev.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n));
+      const updated = prev.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
+      );
       recordUndo(updated, canvasEdges);
       return updated;
     });
@@ -355,7 +361,10 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     const parentId = parentGroup?.id;
     const pos = position ?? (parentGroup ? { x: 40, y: 50 } : { x: 250, y: 250 });
     const newNode: CanvasNode = {
-      id, type, position: pos, data: { title: type },
+      id,
+      type,
+      position: pos,
+      data: { title: type },
       ...(parentId ? { parentId, extent: 'parent' as const } : {}),
     };
     setCanvasNodes((prev) => {
@@ -374,14 +383,20 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       const minY = Math.min(...children.map((n) => n.position.y));
       const pad = 60;
       const groupNode: CanvasNode = {
-        id: groupId, type: 'agentGroup',
+        id: groupId,
+        type: 'agentGroup',
         position: { x: minX - pad, y: minY - pad - 30 },
         data: { title: 'Agent Group', role: 'secretary' },
       };
       setCanvasNodes((prev) => {
         const updated = prev.map((n) => {
           if (childIds.includes(n.id)) {
-            return { ...n, parentId: groupId, extent: 'parent' as const, position: { x: n.position.x - minX + pad, y: n.position.y - minY + pad } };
+            return {
+              ...n,
+              parentId: groupId,
+              extent: 'parent' as const,
+              position: { x: n.position.x - minX + pad, y: n.position.y - minY + pad },
+            };
           }
           return n;
         });
@@ -409,16 +424,16 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     <div className="flex h-full">
       {/* ── Left panel: Workflow list (hidden in editor route) ── */}
       {!isEditorRoute && (
-        <div className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-r border-border p-4">
+        <div className="border-border flex w-[340px] shrink-0 flex-col overflow-y-auto border-r p-4">
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-lg font-bold text-content-primary">Workflow Editor</h1>
+            <h1 className="text-content-primary text-lg font-bold">Workflow Editor</h1>
             <Button size="sm" onClick={handleNewWorkflow}>
               + New
             </Button>
           </div>
 
           {workflows.length === 0 ? (
-            <div className="py-16 text-center text-content-tertiary">
+            <div className="text-content-tertiary py-16 text-center">
               <p className="text-sm">No workflows yet</p>
               <p className="mt-1 text-xs">Click "+ New" to create one.</p>
             </div>
@@ -435,11 +450,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <h3 className={`text-sm font-medium truncate ${textClass}`}>
-                      {wf.name}
-                    </h3>
+                    <h3 className={`truncate text-sm font-medium ${textClass}`}>{wf.name}</h3>
                     {wf.cronExpression && (
-                      <span className="shrink-0 rounded-full bg-intent-info-muted px-1.5 py-0.5 text-[10px] text-intent-info leading-none">
+                      <span className="bg-intent-info-muted text-intent-info shrink-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none">
                         ⏱
                       </span>
                     )}
@@ -447,9 +460,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                   <p className={`mt-0.5 text-xs ${subtextClass}`}>
                     {stepCount(wf)} steps &middot; <StatusBadge status={wf.status} />
                     {wf.cronExpression && <> &middot; {formatCron(wf.cronExpression)}</>}
-                    {wf.createdAt && (
-                      <> &middot; {new Date(wf.createdAt).toLocaleDateString()}</>
-                    )}
+                    {wf.createdAt && <> &middot; {new Date(wf.createdAt).toLocaleDateString()}</>}
                   </p>
                 </div>
               ))}
@@ -461,7 +472,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       {/* ── Right panel: Canvas / Empty state ── */}
       <div className="flex flex-1 flex-col">
         {!selected ? (
-          <div className="flex h-full items-center justify-center text-content-tertiary">
+          <div className="text-content-tertiary flex h-full items-center justify-center">
             <div className="text-center">
               <p className="text-lg">{isEditorRoute ? 'Loading workflow…' : 'Select a workflow'}</p>
               <p className="mt-1 text-sm">
@@ -470,7 +481,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
               {isEditorRoute && (
                 <button
                   onClick={() => navigate('/workflows')}
-                  className="mt-4 text-sm text-accent hover:underline"
+                  className="text-accent mt-4 text-sm hover:underline"
                 >
                   ← Back to Workflows
                 </button>
@@ -482,17 +493,17 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
             {/* Canvas area */}
             <div className="flex flex-1 flex-col">
               {/* Toolbar */}
-              <div className="flex items-center justify-between border-b border-border px-4 py-2">
+              <div className="border-border flex items-center justify-between border-b px-4 py-2">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-content-primary">{selected.name}</h2>
+                  <h2 className="text-content-primary text-sm font-semibold">{selected.name}</h2>
                   <StatusBadge status={selected.status} />
                   {dirty && (
-                    <span className="rounded-sm bg-intent-warning-muted px-1.5 py-0.5 text-[10px] text-intent-warning">
+                    <span className="bg-intent-warning-muted text-intent-warning rounded-sm px-1.5 py-0.5 text-[10px]">
                       Unsaved
                     </span>
                   )}
                 </div>
-                <div className="flex gap-1.5 items-center">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() =>
                       undoRedo.undo({ nodes: canvasNodes, edges: canvasEdges }, (n, e) => {
@@ -503,7 +514,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                     }
                     disabled={!undoRedo.canUndo}
                     title="Undo (Ctrl+Z)"
-                    className="rounded-sm p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+                    className="text-content-tertiary hover:text-content-primary rounded-sm p-1 text-xs disabled:opacity-30"
                   >
                     ↩
                   </button>
@@ -517,7 +528,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                     }
                     disabled={!undoRedo.canRedo}
                     title="Redo (Ctrl+Y)"
-                    className="rounded-sm p-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+                    className="text-content-tertiary hover:text-content-primary rounded-sm p-1 text-xs disabled:opacity-30"
                   >
                     ↪
                   </button>
@@ -527,7 +538,12 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
                   <Button size="xs" variant="ghost" onClick={handleChatEdit}>
                     Chat Edit
                   </Button>
-                  <Button size="xs" variant="ghost" className="text-intent-danger" onClick={handleDelete}>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    className="text-intent-danger"
+                    onClick={handleDelete}
+                  >
                     Delete
                   </Button>
                 </div>

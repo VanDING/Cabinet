@@ -66,7 +66,9 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const refreshEmployees = () => {
     fetchEmployeesAPI()
       .then((emps) => setEmployees(emps))
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   };
 
   const filtered = useMemo(() => {
@@ -92,8 +94,11 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const handleScan = async () => {
     setScanning(true);
     try {
-      const res = await apiFetch('/api/agents/scan', { method: 'POST', headers: authJsonHeaders() });
-      const data = await res.json() as {
+      const res = await apiFetch('/api/agents/scan', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+      });
+      const data = (await res.json()) as {
         discovered: Array<{
           name: string;
           command: string;
@@ -207,26 +212,24 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-content-primary">Employees</h1>
-          <span className="text-sm text-content-tertiary">
-            Configure AI and human team members
-          </span>
+          <h1 className="text-content-primary text-2xl font-bold">Employees</h1>
+          <span className="text-content-tertiary text-sm">Configure AI and human team members</span>
         </div>
         <div className="relative">
           <button
             onClick={() => setAddMenuOpen(!addMenuOpen)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-content-inverse hover:bg-accent-hover"
+            className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
           >
             <Plus size={16} />
             Add
           </button>
           {addMenuOpen && (
             <div
-              className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-surface-primary py-1 shadow-xl"
+              className="border-border bg-surface-primary absolute top-full right-0 z-50 mt-1 w-52 rounded-lg border py-1 shadow-xl"
               onClick={() => setAddMenuOpen(false)}
             >
               <button
-                className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted"
+                className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setAddMenuOpen(false);
                   handleOpenCreate();
@@ -235,7 +238,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                 Add Human Employee
               </button>
               <button
-                className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted"
+                className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setAddMenuOpen(false);
                   handleOpenCreate();
@@ -243,16 +246,16 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
               >
                 Add Custom AI Agent
               </button>
-              <div className="my-1 border-t border-border" />
+              <div className="border-border my-1 border-t" />
               <button
-                className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted disabled:opacity-50"
+                className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm disabled:opacity-50"
                 onClick={handleScan}
                 disabled={scanning}
               >
                 {scanning ? 'Scanning…' : 'Scan for CLI Agents'}
               </button>
               <button
-                className="w-full px-3 py-2 text-left text-sm text-content-secondary hover:bg-surface-muted"
+                className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setAddMenuOpen(false);
                   handleOpenCreate();
@@ -268,28 +271,67 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       {/* Filter bar */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <button
-          onClick={() => { setKindFilter('all'); setSourceFilter('all'); }}
+          onClick={() => {
+            setKindFilter('all');
+            setSourceFilter('all');
+          }}
           className={filterButtonClass(kindFilter === 'all' && sourceFilter === 'all')}
         >
           全部
         </button>
-        <button onClick={() => { setKindFilter('ai'); setSourceFilter('all'); }} className={filterButtonClass(kindFilter === 'ai')}>
+        <button
+          onClick={() => {
+            setKindFilter('ai');
+            setSourceFilter('all');
+          }}
+          className={filterButtonClass(kindFilter === 'ai')}
+        >
           AI
         </button>
-        <button onClick={() => { setKindFilter('human'); setSourceFilter('all'); }} className={filterButtonClass(kindFilter === 'human')}>
+        <button
+          onClick={() => {
+            setKindFilter('human');
+            setSourceFilter('all');
+          }}
+          className={filterButtonClass(kindFilter === 'human')}
+        >
           Human
         </button>
-        <div className="mx-1 h-4 w-px bg-border" />
-        <button onClick={() => { setKindFilter('all'); setSourceFilter('builtin'); }} className={filterButtonClass(sourceFilter === 'builtin')}>
+        <div className="bg-border mx-1 h-4 w-px" />
+        <button
+          onClick={() => {
+            setKindFilter('all');
+            setSourceFilter('builtin');
+          }}
+          className={filterButtonClass(sourceFilter === 'builtin')}
+        >
           内置
         </button>
-        <button onClick={() => { setKindFilter('all'); setSourceFilter('custom'); }} className={filterButtonClass(sourceFilter === 'custom')}>
+        <button
+          onClick={() => {
+            setKindFilter('all');
+            setSourceFilter('custom');
+          }}
+          className={filterButtonClass(sourceFilter === 'custom')}
+        >
           自定义
         </button>
-        <button onClick={() => { setKindFilter('all'); setSourceFilter('external_cli'); }} className={filterButtonClass(sourceFilter === 'external_cli')}>
+        <button
+          onClick={() => {
+            setKindFilter('all');
+            setSourceFilter('external_cli');
+          }}
+          className={filterButtonClass(sourceFilter === 'external_cli')}
+        >
           CLI
         </button>
-        <button onClick={() => { setKindFilter('all'); setSourceFilter('external_a2a'); }} className={filterButtonClass(sourceFilter === 'external_a2a')}>
+        <button
+          onClick={() => {
+            setKindFilter('all');
+            setSourceFilter('external_a2a');
+          }}
+          className={filterButtonClass(sourceFilter === 'external_a2a')}
+        >
           A2A
         </button>
         <div className="ml-auto flex items-center gap-2">
@@ -299,14 +341,12 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search..."
-            className="w-40 rounded-lg border border-border bg-surface-primary px-3 py-1 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-hidden focus:ring-1 focus:ring-accent"
+            className="border-border bg-surface-primary text-content-primary placeholder:text-content-tertiary focus:ring-accent w-40 rounded-lg border px-3 py-1 text-xs focus:ring-1 focus:outline-hidden"
           />
         </div>
       </div>
 
-      <div className="mb-4 text-sm text-content-tertiary">
-        {filtered.length} team members
-      </div>
+      <div className="text-content-tertiary mb-4 text-sm">{filtered.length} team members</div>
 
       {loading && employees.length === 0 && (
         <div className="flex h-64 items-center justify-center">
@@ -315,7 +355,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       )}
 
       {filtered.length === 0 && !loading && (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
+        <div className="border-border rounded-lg border border-dashed p-8 text-center">
           <p className="text-content-tertiary">No employees match the filter.</p>
         </div>
       )}
@@ -326,16 +366,16 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
           <div
             key={emp.id}
             onClick={() => setDetailEmployee(emp)}
-            className="group relative cursor-pointer rounded-xl border border-border bg-surface-primary p-4 shadow-xs transition-all hover:shadow-md"
+            className="group border-border bg-surface-primary relative cursor-pointer rounded-xl border p-4 shadow-xs transition-all hover:shadow-md"
           >
             {/* Top row: status dot + name | source badge */}
             <div className="mb-2 flex items-start justify-between">
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass[emp.status]}`}
                   title={emp.status}
                 />
-                <h3 className="truncate text-sm font-semibold text-content-primary">{emp.name}</h3>
+                <h3 className="text-content-primary truncate text-sm font-semibold">{emp.name}</h3>
               </div>
               {emp.source && (
                 <span
@@ -349,7 +389,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
             </div>
 
             {/* Kind + model / role */}
-            <p className="mb-3 text-xs text-content-tertiary">
+            <p className="text-content-tertiary mb-3 text-xs">
               {emp.kind === 'ai' ? `AI · ${emp.model || 'Unknown model'}` : `Human · ${emp.role}`}
             </p>
 
@@ -358,13 +398,13 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
               {emp.expertise.slice(0, 3).map((exp) => (
                 <span
                   key={exp}
-                  className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] text-content-secondary"
+                  className="bg-surface-muted text-content-secondary rounded-full px-2 py-0.5 text-[10px]"
                 >
                   {exp}
                 </span>
               ))}
               {emp.expertise.length > 3 && (
-                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] text-content-tertiary">
+                <span className="bg-surface-muted text-content-tertiary rounded-full px-2 py-0.5 text-[10px]">
                   +{emp.expertise.length - 3}
                 </span>
               )}
@@ -372,7 +412,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
 
             {/* Permission + actions */}
             <div className="flex items-center justify-between">
-              <span className="rounded-sm bg-surface-elevated px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-content-tertiary">
+              <span className="bg-surface-elevated text-content-tertiary rounded-sm px-1.5 py-0.5 text-[10px] tracking-wider uppercase">
                 {permissionLabels[emp.permissionLevel] ?? emp.permissionLevel}
               </span>
               <div className="flex items-center gap-1.5">
@@ -381,7 +421,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                     e.stopPropagation();
                     handleOpenEdit(emp);
                   }}
-                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] text-content-secondary hover:bg-surface-elevated"
+                  className="border-border text-content-secondary hover:bg-surface-elevated inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px]"
                 >
                   <Settings size={10} />
                   配置
@@ -392,7 +432,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                       e.stopPropagation();
                       addToast('info', `Test ${emp.name} — placeholder`);
                     }}
-                    className="inline-flex items-center gap-1 rounded-md bg-intent-warning-muted px-2 py-1 text-[10px] text-intent-warning hover:bg-intent-warning/20"
+                    className="bg-intent-warning-muted text-intent-warning hover:bg-intent-warning/20 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px]"
                   >
                     <Zap size={10} />
                     测试
@@ -403,7 +443,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                     e.stopPropagation();
                     handleDelete(emp.id);
                   }}
-                  className="inline-flex items-center rounded-md p-1 text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                  className="text-content-tertiary hover:text-intent-danger inline-flex items-center rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100"
                   aria-label="Delete"
                 >
                   <Trash2 size={12} />
@@ -424,34 +464,41 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
         >
           <div className="px-6 pt-5 pb-3">
             <div className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${statusDotClass[detailEmployee.status]}`} />
-              <h2 className="text-lg font-semibold text-content-primary">{detailEmployee.name}</h2>
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${statusDotClass[detailEmployee.status]}`}
+              />
+              <h2 className="text-content-primary text-lg font-semibold">{detailEmployee.name}</h2>
             </div>
-            <p className="mt-0.5 text-xs text-content-tertiary">
+            <p className="text-content-tertiary mt-0.5 text-xs">
               {detailEmployee.kind === 'ai'
                 ? `AI · ${detailEmployee.model || 'Unknown model'}`
                 : `Human · ${detailEmployee.role}`}
               {detailEmployee.source && (
-                <span className="ml-2 rounded-full bg-surface-muted px-1.5 py-0 text-[10px]">
+                <span className="bg-surface-muted ml-2 rounded-full px-1.5 py-0 text-[10px]">
                   {sourceLabels[detailEmployee.source] ?? detailEmployee.source}
                 </span>
               )}
             </p>
           </div>
-          <div className="px-6 py-3 space-y-3 text-sm text-content-secondary">
+          <div className="text-content-secondary space-y-3 px-6 py-3 text-sm">
             <div>
-              <span className="text-xs font-medium text-content-tertiary">Role</span>
+              <span className="text-content-tertiary text-xs font-medium">Role</span>
               <p>{detailEmployee.role}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-content-tertiary">Permission</span>
-              <p>{permissionLabels[detailEmployee.permissionLevel] ?? detailEmployee.permissionLevel}</p>
+              <span className="text-content-tertiary text-xs font-medium">Permission</span>
+              <p>
+                {permissionLabels[detailEmployee.permissionLevel] ?? detailEmployee.permissionLevel}
+              </p>
             </div>
             <div>
-              <span className="text-xs font-medium text-content-tertiary">Expertise</span>
+              <span className="text-content-tertiary text-xs font-medium">Expertise</span>
               <div className="mt-1 flex flex-wrap gap-1">
                 {detailEmployee.expertise.map((exp) => (
-                  <span key={exp} className="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-content-secondary">
+                  <span
+                    key={exp}
+                    className="bg-surface-muted text-content-secondary rounded-full px-2 py-0.5 text-xs"
+                  >
                     {exp}
                   </span>
                 ))}
@@ -459,37 +506,42 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
             </div>
             {detailEmployee.allowedTools && detailEmployee.allowedTools.length > 0 && (
               <div>
-                <span className="text-xs font-medium text-content-tertiary">Allowed Tools</span>
+                <span className="text-content-tertiary text-xs font-medium">Allowed Tools</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {detailEmployee.allowedTools.slice(0, 8).map((t) => (
-                    <span key={t} className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] text-content-secondary">
+                    <span
+                      key={t}
+                      className="bg-surface-muted text-content-secondary rounded px-1.5 py-0.5 text-[10px]"
+                    >
                       {t}
                     </span>
                   ))}
                   {detailEmployee.allowedTools.length > 8 && (
-                    <span className="text-[10px] text-content-tertiary">+{detailEmployee.allowedTools.length - 8}</span>
+                    <span className="text-content-tertiary text-[10px]">
+                      +{detailEmployee.allowedTools.length - 8}
+                    </span>
                   )}
                 </div>
               </div>
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+          <div className="border-border flex items-center justify-end gap-2 border-t px-6 py-4">
             <button
               onClick={() => setDetailEmployee(null)}
-              className="rounded-lg border border-border bg-surface-primary px-4 py-2 text-sm text-content-secondary hover:bg-surface-elevated"
+              className="border-border bg-surface-primary text-content-secondary hover:bg-surface-elevated rounded-lg border px-4 py-2 text-sm"
             >
               Close
             </button>
             <button
               onClick={() => handleOpenEdit(detailEmployee)}
-              className="rounded-lg bg-accent px-4 py-2 text-sm text-content-inverse hover:bg-accent-hover"
+              className="bg-accent text-content-inverse hover:bg-accent-hover rounded-lg px-4 py-2 text-sm"
             >
               Configure
             </button>
             {detailEmployee.kind === 'ai' && (
               <button
                 onClick={() => addToast('info', `Test ${detailEmployee.name} — placeholder`)}
-                className="rounded-lg bg-intent-warning-muted px-4 py-2 text-sm text-intent-warning hover:bg-intent-warning/20"
+                className="bg-intent-warning-muted text-intent-warning hover:bg-intent-warning/20 rounded-lg px-4 py-2 text-sm"
               >
                 Test
               </button>

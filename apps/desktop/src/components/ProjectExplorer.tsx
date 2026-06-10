@@ -404,26 +404,28 @@ export function ProjectExplorer({
   const border = 'border-border';
 
   return (
-    <div className={`flex h-full shrink-0 flex-col border-r ${border} ${bg} ${className ?? 'w-56'}`}>
+    <div
+      className={`flex h-full shrink-0 flex-col border-r ${border} ${bg} ${className ?? 'w-56'}`}
+    >
       {/* Header */}
       <div className={`shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
           <Folder size={14} className="text-accent" />
-          <span className="truncate text-xs font-medium text-content-secondary">
+          <span className="text-content-secondary truncate text-xs font-medium">
             {projectName ?? 'Project'}
           </span>
         </div>
         <div className="relative">
           <Search
             size={12}
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 text-content-tertiary"
+            className="text-content-tertiary absolute top-1/2 left-1.5 -translate-y-1/2"
           />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter files..."
-            className="w-full rounded-sm border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-hidden focus:ring-1 focus:ring-accent"
+            className="border-border bg-surface-elevated text-content-secondary focus:ring-accent w-full rounded-sm border py-0.5 pr-2 pl-6 text-xs focus:ring-1 focus:outline-hidden"
           />
         </div>
       </div>
@@ -431,9 +433,9 @@ export function ProjectExplorer({
       {/* File tree */}
       <div className="flex-1 overflow-y-auto py-1">
         {loading ? (
-          <p className="px-3 py-2 text-xs italic text-content-tertiary">Loading...</p>
+          <p className="text-content-tertiary px-3 py-2 text-xs italic">Loading...</p>
         ) : displayFiles.length === 0 ? (
-          <p className="px-3 py-2 text-xs italic text-content-tertiary">
+          <p className="text-content-tertiary px-3 py-2 text-xs italic">
             {rootPath ? 'No files found' : 'No folder imported'}
           </p>
         ) : (
@@ -518,12 +520,12 @@ function FileTree({
                   >
                     {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Folder size={12} className="shrink-0 text-intent-warning" />
+                  <Folder size={12} className="text-intent-warning shrink-0" />
                 </>
               ) : (
                 <>
                   <span className="w-3 shrink-0" />
-                  <File size={12} className="shrink-0 text-content-tertiary" />
+                  <File size={12} className="text-content-tertiary shrink-0" />
                 </>
               )}
               {renamingPath === node.path ? (
@@ -536,15 +538,15 @@ function FileTree({
                     if (e.key === 'Enter') onCommitRename(node.path);
                     if (e.key === 'Escape') onCommitRename(node.path);
                   }}
-                  className="min-w-0 flex-1 rounded-sm border border-accent bg-surface-primary px-1 py-0 text-xs text-content-primary outline-hidden"
+                  className="border-accent bg-surface-primary text-content-primary min-w-0 flex-1 rounded-sm border px-1 py-0 text-xs outline-hidden"
                   onClick={(e) => e.stopPropagation()}
                   onContextMenu={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="truncate text-content-secondary">{node.name}</span>
+                <span className="text-content-secondary truncate">{node.name}</span>
               )}
               {node.size !== undefined && renamingPath !== node.path && (
-                <span className="ml-auto shrink-0 text-[10px] text-content-tertiary">
+                <span className="text-content-tertiary ml-auto shrink-0 text-[10px]">
                   {formatSize(node.size)}
                 </span>
               )}
