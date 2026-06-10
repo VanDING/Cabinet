@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import { Button } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
@@ -51,9 +51,15 @@ function formatCron(expr: string): string {
 }
 
 export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat }: Props) {
-  const { id: projectId } = useParams<{ id?: string }>();
+  const { id: urlId } = useParams<{ id?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isEditorRoute = location.pathname.startsWith('/workflows/') && location.pathname.endsWith('/edit');
+  const projectId = isEditorRoute ? undefined : urlId;
+  const editorWorkflowId = isEditorRoute ? urlId : undefined;
+
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(editorWorkflowId ?? null);
   const { addToast } = useToast();
 
   // Canvas state
@@ -114,10 +120,16 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     apiFetch(url, { headers: authHeaders() })
       .then((res) => res.json())
       .then((data) => {
-        if (data.workflows) setWorkflows(data.workflows);
+        if (data.workflows) {
+          setWorkflows(data.workflows);
+          // If in editor route and workflow not yet found, try to auto-select
+          if (isEditorRoute && editorWorkflowId && !data.workflows.find((w: WorkflowItem) => w.id === editorWorkflowId)) {
+            // Fallback: the workflow might not be in this project list, keep selectedId
+          }
+        }
       })
       .catch(() => addToast('error', 'Failed to load workflows'));
-  }, [addToast, projectId]);
+  }, [addToast, projectId, isEditorRoute, editorWorkflowId]);
 
   const fetchRuns = useCallback(async (wfId: string) => {
     try {
@@ -395,62 +407,74 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
 
   return (
     <div className="flex h-full">
-      {/* ── Left panel: Workflow list ── */}
-      <div className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-r border-border p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-content-primary">Factory</h1>
-          <Button size="sm" onClick={handleNewWorkflow}>
-            + New
-          </Button>
-        </div>
+      {/* ── Left panel: Workflow list (hidden in editor route) ── */}
+      {!isEditorRoute && (
+        <div className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-r border-border p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h1 className="text-lg font-bold text-content-primary">Workflow Editor</h1>
+            <Button size="sm" onClick={handleNewWorkflow}>
+              + New
+            </Button>
+          </div>
 
-        {workflows.length === 0 ? (
-          <div className="py-16 text-center text-content-tertiary">
-            <p className="text-sm">No workflows yet</p>
-            <p className="mt-1 text-xs">Click "+ New" to create one.</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {workflows.map((wf) => (
-              <div
-                key={wf.id}
-                onClick={() => handleSelectWorkflow(wf)}
-                className={`cursor-pointer rounded-lg border px-3 py-2.5 transition-colors ${
-                  selectedId === wf.id
-                    ? 'border-accent bg-accent-muted/20'
-                    : 'border-border bg-surface-input hover:bg-surface-elevated'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <h3 className={`text-sm font-medium truncate ${textClass}`}>
-                    {wf.name}
-                  </h3>
-                  {wf.cronExpression && (
-                    <span className="shrink-0 rounded-full bg-intent-info-muted px-1.5 py-0.5 text-[10px] text-intent-info leading-none">
-                      ⏱
-                    </span>
-                  )}
+          {workflows.length === 0 ? (
+            <div className="py-16 text-center text-content-tertiary">
+              <p className="text-sm">No workflows yet</p>
+              <p className="mt-1 text-xs">Click "+ New" to create one.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {workflows.map((wf) => (
+                <div
+                  key={wf.id}
+                  onClick={() => handleSelectWorkflow(wf)}
+                  className={`cursor-pointer rounded-lg border px-3 py-2.5 transition-colors ${
+                    selectedId === wf.id
+                      ? 'border-accent bg-accent-muted/20'
+                      : 'border-border bg-surface-input hover:bg-surface-elevated'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <h3 className={`text-sm font-medium truncate ${textClass}`}>
+                      {wf.name}
+                    </h3>
+                    {wf.cronExpression && (
+                      <span className="shrink-0 rounded-full bg-intent-info-muted px-1.5 py-0.5 text-[10px] text-intent-info leading-none">
+                        ⏱
+                      </span>
+                    )}
+                  </div>
+                  <p className={`mt-0.5 text-xs ${subtextClass}`}>
+                    {stepCount(wf)} steps &middot; <StatusBadge status={wf.status} />
+                    {wf.cronExpression && <> &middot; {formatCron(wf.cronExpression)}</>}
+                    {wf.createdAt && (
+                      <> &middot; {new Date(wf.createdAt).toLocaleDateString()}</>
+                    )}
+                  </p>
                 </div>
-                <p className={`mt-0.5 text-xs ${subtextClass}`}>
-                  {stepCount(wf)} steps &middot; <StatusBadge status={wf.status} />
-                  {wf.cronExpression && <> &middot; {formatCron(wf.cronExpression)}</>}
-                  {wf.createdAt && (
-                    <> &middot; {new Date(wf.createdAt).toLocaleDateString()}</>
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Right panel: Canvas / Empty state ── */}
       <div className="flex flex-1 flex-col">
         {!selected ? (
           <div className="flex h-full items-center justify-center text-content-tertiary">
             <div className="text-center">
-              <p className="text-lg">Select a workflow</p>
-              <p className="mt-1 text-sm">Click a workflow in the list or create a new one.</p>
+              <p className="text-lg">{isEditorRoute ? 'Loading workflow…' : 'Select a workflow'}</p>
+              <p className="mt-1 text-sm">
+                {isEditorRoute ? '' : 'Click a workflow in the list or create a new one.'}
+              </p>
+              {isEditorRoute && (
+                <button
+                  onClick={() => navigate('/workflows')}
+                  className="mt-4 text-sm text-accent hover:underline"
+                >
+                  ← Back to Workflows
+                </button>
+              )}
             </div>
           </div>
         ) : (

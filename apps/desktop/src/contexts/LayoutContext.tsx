@@ -31,7 +31,7 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
   const navigateToProject = useCallback(
     (projectId: string) => {
       setActivePage('office');
-      routerNavigate(`/project/${projectId}/office`);
+      routerNavigate(`/project/${projectId}`);
     },
     [routerNavigate],
   );

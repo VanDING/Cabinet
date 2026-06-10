@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Command, Workflow, UserRound, Brain, Compass } from 'lucide-react';
 
-export type NavPage = 'office' | 'factory' | 'employees' | 'memory' | 'discovery' | 'settings';
+export type NavPage = 'office' | 'workflows' | 'employees' | 'memory' | 'discovery' | 'settings';
 
 interface ProjectInfo {
   id: string;
@@ -28,7 +28,7 @@ export interface NavigationProps {
 
 const navItems: { id: NavPage; label: string }[] = [
   { id: 'office', label: 'Office' },
-  { id: 'factory', label: 'Factory' },
+  { id: 'workflows', label: 'Workflows' },
   { id: 'employees', label: 'Employees' },
   { id: 'memory', label: 'Memory' },
   { id: 'discovery', label: 'Discovery' },
@@ -36,7 +36,7 @@ const navItems: { id: NavPage; label: string }[] = [
 
 const navIcons: Partial<Record<NavPage, typeof Command>> = {
   office: Command,
-  factory: Workflow,
+  workflows: Workflow,
   employees: UserRound,
   memory: Brain,
   discovery: Compass,

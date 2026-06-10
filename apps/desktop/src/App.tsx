@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense, startTransition } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
 import { ChatPanel } from './components/ChatPanel';
@@ -31,6 +31,9 @@ const OfficePage = lazy(() =>
 const FactoryPage = lazy(() =>
   import('./pages/FactoryPage').then((m) => ({ default: m.FactoryPage })),
 );
+const WorkflowsPage = lazy(() =>
+  import('./pages/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage })),
+);
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -46,6 +49,9 @@ const DiscoveryPage = lazy(() =>
   import('./pages/DiscoveryPage').then((m) => ({ default: m.DiscoveryPage })),
 );
 const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ default: m.ChatView })));
+const ProjectWorkplace = lazy(() =>
+  import('./pages/ProjectWorkplace').then((m) => ({ default: m.ProjectWorkplace })),
+);
 
 function PageLoader() {
   return (
@@ -59,6 +65,8 @@ function PageLoader() {
 }
 
 export function App() {
+  const location = useLocation();
+  const isProjectWorkplace = location.pathname.startsWith('/project/');
   const { theme, themes, setTheme } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
@@ -359,13 +367,15 @@ export function App() {
             />
           )}
 
-          {/* Project Explorer */}
-          <ProjectExplorer
-            projectId={activeProjectId}
-            projectName={projects.find((p) => p.id === activeProjectId)?.name}
-            onAddFile={addFile}
-            activeSessionId={activeSession?.id}
-          />
+          {/* Project Explorer — hidden when inside ProjectWorkplace */}
+          {!isProjectWorkplace && (
+            <ProjectExplorer
+              projectId={activeProjectId}
+              projectName={projects.find((p) => p.id === activeProjectId)?.name}
+              onAddFile={addFile}
+              activeSessionId={activeSession?.id}
+            />
+          )}
 
           {/* Main content area (relative for floating ChatPanel) */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -380,26 +390,10 @@ export function App() {
                     <Routes>
                       <Route path="/" element={<OfficePage />} />
                       <Route path="/office" element={<OfficePage />} />
-                      <Route path="/project/:id/office" element={<OfficePage />} />
+                      <Route path="/project/:id" element={<ProjectWorkplace />} />
+                      <Route path="/workflows" element={<WorkflowsPage />} />
                       <Route
-                        path="/project/:id/factory"
-                        element={
-                          <FactoryPage
-                            onCreateChatSession={(options) => {
-                              const id = createSession(options);
-                              setChatMode(true);
-                              return id;
-                            }}
-                            onSwitchSession={(id) => {
-                              switchSession(id);
-                              setChatMode(true);
-                            }}
-                            onEnterChat={handleEnterChat}
-                          />
-                        }
-                      />
-                      <Route
-                        path="/factory"
+                        path="/workflows/:id/edit"
                         element={
                           <FactoryPage
                             onCreateChatSession={(options) => {
@@ -551,8 +545,8 @@ export function App() {
             )}
           </div>
 
-          {/* File Viewer — third column, right side */}
-          <FileViewer />
+          {/* File Viewer — third column, right side; hidden when inside ProjectWorkplace */}
+          {!isProjectWorkplace && <FileViewer />}
         </div>
 
         {/* Mobile bottom nav */}

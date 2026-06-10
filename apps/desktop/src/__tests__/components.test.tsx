@@ -71,17 +71,17 @@ describe('MobileNav', () => {
   it('renders all nav items', () => {
     render(<MobileNav activePage="office" onNavigate={() => {}} />);
     expect(screen.getByText('Office')).toBeInTheDocument();
-    expect(screen.getByText('Factory')).toBeInTheDocument();
+    expect(screen.getByText('Workflows')).toBeInTheDocument();
     expect(screen.getByText('Staff')).toBeInTheDocument();
     expect(screen.getByText('Memory')).toBeInTheDocument();
   });
 
   it('marks active page with aria-current', () => {
-    render(<MobileNav activePage="factory" onNavigate={() => {}} />);
+    render(<MobileNav activePage="workflows" onNavigate={() => {}} />);
     const officeBtn = screen.getByLabelText('Office');
-    const factoryBtn = screen.getByLabelText('Factory');
+    const workflowsBtn = screen.getByLabelText('Workflows');
     expect(officeBtn).not.toHaveAttribute('aria-current');
-    expect(factoryBtn).toHaveAttribute('aria-current', 'page');
+    expect(workflowsBtn).toHaveAttribute('aria-current', 'page');
   });
 
   it('calls onNavigate when a nav item is clicked', () => {

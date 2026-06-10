@@ -36,6 +36,12 @@ export interface SSEStreamCallbacks {
   onSubAgentThinking?: (agentName: string, content: string) => void;
   onSubAgentDone?: (agentName: string, result: string) => void;
   onSubAgentError?: (agentName: string, error: string) => void;
+  onStructuredOutput?: (output: {
+    id: string;
+    type: string;
+    data: Record<string, unknown>;
+    timestamp: number;
+  }) => void;
 }
 
 export async function readSSEStream(
@@ -163,6 +169,15 @@ export async function readSSEStream(
           }
           if (parsed.type === 'sub_agent_error') {
             callbacks.onSubAgentError?.(parsed.agentName ?? '', parsed.error ?? '');
+            continue;
+          }
+          if (parsed.type === 'structured_output') {
+            callbacks.onStructuredOutput?.({
+              id: parsed.id ?? `so_${Date.now()}`,
+              type: parsed.outputType ?? 'status_report',
+              data: parsed.data ?? {},
+              timestamp: Date.now(),
+            });
             continue;
           }
           if (parsed.type === 'status') {

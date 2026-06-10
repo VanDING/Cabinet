@@ -321,6 +321,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           let toolsSinceLastSegment = false;
           let thinkingStart: number | undefined;
           const streamStart = Date.now();
+          const structuredAccum: import('@cabinet/types').StructuredOutput[] = [];
 
           const subAgentMap = new Map<string, SubAgentActivity>();
           const flushSubAgents = () => {
@@ -492,6 +493,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                   flushSubAgents();
                 }
               },
+              onStructuredOutput(output) {
+                const so: import('@cabinet/types').StructuredOutput = {
+                  id: output.id,
+                  type: output.type as import('@cabinet/types').StructuredOutputType,
+                  data: output.data,
+                  status: 'proposed',
+                  timestamp: output.timestamp,
+                };
+                structuredAccum.push(so);
+                updateMessage(sessionId, streamId, {
+                  structuredOutputs: [...structuredAccum],
+                });
+              },
               onDone(fullContent, event) {
                 if (event?.meeting) meetingData = event.meeting as MeetingData;
                 if ((event as any)?.targetAgent) streamAgent = (event as any).targetAgent;
@@ -504,6 +518,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                   agentName: (event as any)?.agentName ?? streamAgent,
                   toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
                   durationMs: Date.now() - streamStart,
+                  structuredOutputs: structuredAccum.length > 0 ? [...structuredAccum] : undefined,
                 });
               },
               onError(error) {

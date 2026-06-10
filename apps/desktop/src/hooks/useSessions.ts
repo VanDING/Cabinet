@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { SubAgentActivity } from '@cabinet/ui';
 import { apiFetch, authHeaders } from '../utils/api.js';
 import type { AgentEvent } from '../types/agent-events';
+import type { StructuredOutput } from '@cabinet/types';
 
 export interface AttachedFile {
   id: string;
@@ -56,6 +57,7 @@ export interface ChatMessage {
   }>;
   stepBudget?: { remaining: number; maxSteps: number };
   subAgentActivities?: SubAgentActivity[];
+  structuredOutputs?: StructuredOutput[];
 }
 
 export interface Session {

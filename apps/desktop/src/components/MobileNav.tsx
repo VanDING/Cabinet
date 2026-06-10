@@ -1,7 +1,7 @@
 import type { NavPage } from '@cabinet/ui';
 
-const navLabels = ['Office', 'Factory', 'Staff', 'Memory', 'Discovery'];
-const navIds: NavPage[] = ['office', 'factory', 'employees', 'memory', 'discovery'];
+const navLabels = ['Office', 'Workflows', 'Staff', 'Memory', 'Discovery'];
+const navIds: NavPage[] = ['office', 'workflows', 'employees', 'memory', 'discovery'];
 
 interface Props {
   activePage: NavPage;

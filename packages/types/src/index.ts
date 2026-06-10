@@ -8,4 +8,5 @@ export * from './skills.js';
 export * from './agent-output.js';
 export * from './blackboard.js';
 export * from './agent-config.js';
+export * from './structured-output.js';
 export { cosineSimilarity } from './vector-utils.js';

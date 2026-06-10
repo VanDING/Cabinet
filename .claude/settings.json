@@ -5,7 +5,12 @@
       "Bash(git fetch *)",
       "Bash(git pull *)",
       "Bash(pnpm -r typecheck)",
-      "Bash(xargs -I{} sh -c 'git log {} -1 --format=\"%B\" | grep -q \"Co-Authored-By\" && echo {}')"
+      "Bash(xargs -I{} sh -c 'git log {} -1 --format=\"%B\" | grep -q \"Co-Authored-By\" && echo {}')",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat: P0-P1 全面优化 — Reflection、Guardrails、Judge、RAG、Replan、Reasoning、Learning *)",
+      "mcp__codegraph__codegraph_files",
+      "Bash(grep -E '\\\\.\\(ts|tsx|rs\\)$')",
+      "Bash(xargs wc -l)"
     ]
   }
 }

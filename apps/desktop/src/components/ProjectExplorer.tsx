@@ -35,6 +35,8 @@ interface Props {
   projectName?: string;
   onAddFile: (sessionId: string, file: AttachedFile) => void;
   activeSessionId?: string;
+  className?: string;
+  onFileSelect?: (node: FileNode) => void;
 }
 
 export function ProjectExplorer({
@@ -42,6 +44,8 @@ export function ProjectExplorer({
   projectName,
   onAddFile,
   activeSessionId,
+  className,
+  onFileSelect,
 }: Props) {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [rootPath, setRootPath] = useState<string | null>(null);
@@ -106,6 +110,7 @@ export function ProjectExplorer({
         // Single click — preview after 250ms (canceled if double-click arrives)
         const timer = setTimeout(() => {
           clickTimers.current.delete(node.path);
+          onFileSelect?.(node);
           window.dispatchEvent(
             new CustomEvent('open-file-viewer', {
               detail: { path: node.path, name: node.name, projectId },
@@ -115,7 +120,7 @@ export function ProjectExplorer({
         clickTimers.current.set(node.path, timer);
       }
     },
-    [projectId, activeSessionId, onAddFile],
+    [projectId, activeSessionId, onAddFile, onFileSelect],
   );
 
   const [contextMenu, setContextMenu] = useState<{
@@ -399,7 +404,7 @@ export function ProjectExplorer({
   const border = 'border-border';
 
   return (
-    <div className={`flex h-full w-56 shrink-0 flex-col border-r ${border} ${bg}`}>
+    <div className={`flex h-full shrink-0 flex-col border-r ${border} ${bg} ${className ?? 'w-56'}`}>
       {/* Header */}
       <div className={`shrink-0 border-b px-3 py-2 ${border}`}>
         <div className="mb-1.5 flex items-center gap-1.5">
