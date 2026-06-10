@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { createTransport, type MCPTransportConfig } from './mcp-transport.js';
 import { type Logger } from '@cabinet/storage';
+import type { AuditLogger } from '@cabinet/decision';
 
 export interface MCPServerConfig {
   name: string;
@@ -12,11 +13,14 @@ export interface MCPServerConfig {
   rediscoverIntervalMinutes?: number;
 }
 
+export type MCPSideEffectRisk = 'none' | 'readonly' | 'mutation' | 'destructive';
+
 export interface MCPTool {
   serverName: string;
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  sideEffectRisk: MCPSideEffectRisk;
 }
 
 export interface MCPResource {
@@ -50,8 +54,18 @@ export class MCPManager {
   private prompts = new Map<string, MCPPrompt>();
   private configs: MCPServerConfig[] = [];
   private discoveryTimers = new Map<string, ReturnType<typeof setInterval>>();
+  private auditLogger?: AuditLogger;
 
   constructor(private readonly logger: Logger) {}
+
+  setAuditLogger(audit: AuditLogger): void {
+    this.auditLogger = audit;
+  }
+
+  /** Get the side-effect risk classification for a given MCP tool. */
+  getToolRisk(fullName: string): MCPSideEffectRisk | undefined {
+    return this.tools.get(fullName)?.sideEffectRisk;
+  }
 
   /** Load saved configs and connect to enabled servers. */
   async initialize(configs: MCPServerConfig[]): Promise<void> {
@@ -81,15 +95,17 @@ export class MCPManager {
     const client = new Client({ name: 'cabinet', version: '2.0.0' }, { capabilities: {} });
     await client.connect(transport);
 
-    // Discover tools
+    // Discover tools with side-effect risk classification
     try {
       const { tools } = await client.listTools();
       for (const tool of tools) {
+        const risk = classifyToolRisk(tool);
         this.tools.set(`mcp__${tool.name}`, {
           serverName: config.name,
           name: tool.name,
           description: tool.description ?? '',
           inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
+          sideEffectRisk: risk,
         });
       }
     } catch {
@@ -190,6 +206,26 @@ export class MCPManager {
     if (!tool) throw new Error(`MCP tool not found: ${fullName}`);
     const client = this.clients.get(tool.serverName);
     if (!client) throw new Error(`MCP server not connected: ${tool.serverName}`);
+
+    // Audit log
+    this.auditLogger?.log({
+      entityType: 'mcp_tool',
+      entityId: fullName,
+      action: 'call',
+      actor: 'agent',
+      changes: { args, sideEffectRisk: tool.sideEffectRisk },
+    });
+
+    // Parameter validation for destructive tools: block file paths outside allowed directories
+    if (tool.sideEffectRisk === 'destructive') {
+      const pathArgs = Object.values(args).filter((v): v is string => typeof v === 'string' && (v.includes('/') || v.includes('\\')));
+      for (const p of pathArgs) {
+        if (isDisallowedPath(p)) {
+          throw new Error(`MCP tool '${fullName}' blocked: path '${p}' is outside allowed directories`);
+        }
+      }
+    }
+
     return client.callTool({ name: tool.name, arguments: args });
   }
 
@@ -267,11 +303,13 @@ export class MCPManager {
         if (!newToolNames.has(name)) this.tools.delete(`mcp__${name}`);
       }
       for (const tool of tools) {
+        const risk = classifyToolRisk(tool);
         this.tools.set(`mcp__${tool.name}`, {
           serverName,
           name: tool.name,
           description: tool.description ?? '',
           inputSchema: (tool.inputSchema as Record<string, unknown>) ?? {},
+          sideEffectRisk: risk,
         });
       }
     } catch {
@@ -344,4 +382,31 @@ export class MCPManager {
   private promptsForServer(name: string): MCPPrompt[] {
     return [...this.prompts.values()].filter((p) => p.serverName === name);
   }
+}
+
+// ── Tool risk classification ────────────────────────────────────
+
+function classifyToolRisk(tool: { annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean } }): MCPSideEffectRisk {
+  const annotations = tool.annotations;
+  if (annotations?.destructiveHint) return 'destructive';
+  if (annotations?.readOnlyHint) return 'readonly';
+  // Conservative default: assume mutation risk if not annotated
+  return 'mutation';
+}
+
+// ── Path validation ─────────────────────────────────────────────
+
+const DISALLOWED_PATTERNS = [
+  /\.\.\//,             // parent directory traversal
+  /\/etc\//,            // system config
+  /\/usr\/bin\//,       // system binaries
+  /\.ssh\//,            // SSH keys
+  /\.gnupg\//,          // GPG keys
+  /\.aws\//,            // AWS credentials
+  /\.env$/,             // env files
+];
+
+function isDisallowedPath(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/');
+  return DISALLOWED_PATTERNS.some((p) => p.test(normalized));
 }

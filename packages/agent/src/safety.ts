@@ -122,17 +122,27 @@ const TIER_LABELS: Record<DelegationTier, string> = {
 
 // ── Prefix-based tool classification for MCP / Skill tools ──
 
-type ToolCategory = 'read_only' | 'light_write' | 'moderate' | 'cost' | 'destructive';
+export type ToolCategory = 'read_only' | 'light_write' | 'moderate' | 'cost' | 'destructive';
+export type MCPSideEffectRisk = 'none' | 'readonly' | 'mutation' | 'destructive';
 
-function resolveEffectiveCategory(toolName: string): ToolCategory {
+function resolveEffectiveCategory(
+  toolName: string,
+  mcpRiskResolver?: (name: string) => MCPSideEffectRisk | undefined,
+): ToolCategory {
   if (READ_ONLY_TOOLS.has(toolName)) return 'read_only';
   if (LIGHT_WRITE_TOOLS.has(toolName)) return 'light_write';
   if (MODERATE_TOOLS.has(toolName)) return 'moderate';
   if (COST_TOOLS.has(toolName)) return 'cost';
   if (DESTRUCTIVE_TOOLS.has(toolName)) return 'destructive';
 
-  // MCP tools run external processes — treat as moderate (blocked at T0)
-  if (toolName.startsWith('mcp__')) return 'moderate';
+  // MCP tools: use server-provided risk annotation if available
+  if (toolName.startsWith('mcp__')) {
+    const risk = mcpRiskResolver?.(toolName);
+    if (risk === 'none' || risk === 'readonly') return 'read_only';
+    if (risk === 'destructive') return 'destructive';
+    // mutation or unknown → moderate (safe default)
+    return 'moderate';
+  }
 
   // Skill tools can trigger arbitrary actions — treat as moderate
   if (toolName.startsWith('use_skill__') || toolName === 'use_skill') return 'moderate';
@@ -225,6 +235,7 @@ export interface SafetyCheckOptions {
 export class SafetyChecker {
   private tier: DelegationTier;
   private readonly whitelist: Set<string>;
+  private mcpRiskResolver?: (name: string) => MCPSideEffectRisk | undefined;
 
   constructor(tier: DelegationTier = DelegationTier.StrategicGuard) {
     this.tier = tier;
@@ -241,6 +252,11 @@ export class SafetyChecker {
     return this.tier;
   }
 
+  /** Inject a resolver that maps MCP tool names to their side-effect risk. */
+  setMcpRiskResolver(resolver: (name: string) => MCPSideEffectRisk | undefined): void {
+    this.mcpRiskResolver = resolver;
+  }
+
   check(toolName: string, _args: Record<string, unknown>, opts?: SafetyCheckOptions): SafetyCheck {
     const filePath = _args.filePath as string | undefined;
     if (filePath && isSensitivePath(filePath)) {
@@ -250,7 +266,7 @@ export class SafetyChecker {
 
     // External agent sandbox: moderate/cost/destructive tools require elevated tier
     if (opts?.fromExternalAgent) {
-      const effectiveCategory = resolveEffectiveCategory(toolName);
+      const effectiveCategory = resolveEffectiveCategory(toolName, this.mcpRiskResolver);
       // External agents need T2+ for moderate operations and T3+ for cost/destructive
       if (effectiveCategory === 'destructive' && this.tier !== DelegationTier.FullAutonomy) {
         return {
@@ -295,7 +311,7 @@ export class SafetyChecker {
     }
 
     // Resolve the effective category for this tool
-    const effectiveCategory = resolveEffectiveCategory(toolName);
+    const effectiveCategory = resolveEffectiveCategory(toolName, this.mcpRiskResolver);
 
     // Check if blocked by current delegation tier
     const blocked = TIER_BLOCKLISTS[this.tier];
@@ -398,7 +414,7 @@ export class SafetyChecker {
   /** Quick check: would this tool be blocked at the current tier? */
   isBlocked(toolName: string): boolean {
     if (READ_ONLY_TOOLS.has(toolName)) return false;
-    const category = resolveEffectiveCategory(toolName);
+    const category = resolveEffectiveCategory(toolName, this.mcpRiskResolver);
     if (category === 'read_only') return false;
     if (category === 'moderate' && this.tier === DelegationTier.CaptainReview) return true;
     if (category === 'destructive') return true;

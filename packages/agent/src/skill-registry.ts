@@ -32,14 +32,49 @@ export interface SkillEntry extends SkillMetadata {
   scope?: 'global' | 'project';
 }
 
+// ── Simple async mutex for write serialization ──
+
+class Mutex {
+  private locked = false;
+  private queue: Array<() => void> = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise<void>((resolve) => this.queue.push(resolve));
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
 // ── Skill Registry ──
 
 export class SkillRegistry {
   private skills = new Map<string, SkillEntry>();
+  private writeMutex = new Mutex();
 
-  /** Register a skill (from DB or SKILL.md import). */
+  /** Register a skill (from DB or SKILL.md import). Synchronous — safe in single-threaded Node.js. */
   register(skill: SkillEntry): void {
     this.skills.set(skill.name, skill);
+  }
+
+  /** Async variant of register for concurrent scenarios. */
+  async registerAsync(skill: SkillEntry): Promise<void> {
+    await this.writeMutex.acquire();
+    try {
+      this.skills.set(skill.name, skill);
+    } finally {
+      this.writeMutex.release();
+    }
   }
 
   /** Unregister a skill by name. */
@@ -47,10 +82,21 @@ export class SkillRegistry {
     return this.skills.delete(name);
   }
 
+  /** Async variant of unregister for concurrent scenarios. */
+  async unregisterAsync(name: string): Promise<boolean> {
+    await this.writeMutex.acquire();
+    try {
+      return this.skills.delete(name);
+    } finally {
+      this.writeMutex.release();
+    }
+  }
+
   /** L1: Return metadata for all active skills (for LLM routing). */
   discover(): SkillMetadata[] {
+    const snapshot = new Map(this.skills);
     const results: SkillMetadata[] = [];
-    for (const s of this.skills.values()) {
+    for (const s of snapshot.values()) {
       if (s.status === 'active') {
         results.push({
           name: s.name,
@@ -75,12 +121,12 @@ export class SkillRegistry {
 
   /** List all registered skill names. */
   listNames(): string[] {
-    return [...this.skills.keys()];
+    return [...new Map(this.skills).keys()];
   }
 
   /** Get all entries. */
   listAll(): SkillEntry[] {
-    return [...this.skills.values()];
+    return [...new Map(this.skills).values()];
   }
 
   /** Build a prompt fragment describing available skills for LLM routing context. */
@@ -94,8 +140,9 @@ export class SkillRegistry {
 
   /** Convert all active skills to ToolDefinitions for injection into ToolExecutor. */
   getToolDefinitions(): ToolDefinition[] {
+    const snapshot = new Map(this.skills);
     const tools: ToolDefinition[] = [];
-    for (const skill of this.skills.values()) {
+    for (const skill of snapshot.values()) {
       if (skill.status !== 'active') continue;
       tools.push({
         name: `use_skill__${skill.name}`,
@@ -157,6 +204,16 @@ export class SkillRegistry {
     return count;
   }
 
+  /** Async variant of loadFromDirectory for concurrent scenarios. */
+  async loadFromDirectoryAsync(dir: string, scope: 'global' | 'project' = 'global'): Promise<number> {
+    await this.writeMutex.acquire();
+    try {
+      return this.loadFromDirectory(dir, scope);
+    } finally {
+      this.writeMutex.release();
+    }
+  }
+
   /** Remove all project-scoped skills. Call when switching away from a project. */
   clearProjectSkills(): number {
     let count = 0;
@@ -167,6 +224,16 @@ export class SkillRegistry {
       }
     }
     return count;
+  }
+
+  /** Async variant of clearProjectSkills for concurrent scenarios. */
+  async clearProjectSkillsAsync(): Promise<number> {
+    await this.writeMutex.acquire();
+    try {
+      return this.clearProjectSkills();
+    } finally {
+      this.writeMutex.release();
+    }
   }
 
   private usageCounts = new Map<string, number>();
@@ -192,11 +259,11 @@ export class SkillRegistry {
     prompt = prompt.replace(/\$ARGUMENTS/g, argumentStr);
     const positionalArgs = argumentStr.split(/\s+/).filter(Boolean);
     for (let i = 0; i < positionalArgs.length; i++) {
-      prompt = prompt.replace(new RegExp(`\\$${i}`, 'g'), positionalArgs[i]!);
+      prompt = prompt.replace(new RegExp(`\\\$${i}`, 'g'), positionalArgs[i]!);
     }
     // Named argument substitution ({{key}})
     for (const [key, value] of Object.entries(args)) {
-      prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
+      prompt = prompt.replace(new RegExp(`\\\{\{${key}\\\}\}`, 'g'), String(value));
     }
 
     const sections: string[] = [];

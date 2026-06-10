@@ -247,6 +247,62 @@ describe('LongTermMemory', () => {
     expect(results[0]!.embedding).toEqual([0.5, 0.5, 0.5]);
   });
 
+  it('falls back to brute-force cosine search when HNSW is unavailable', async () => {
+    await mem.store({
+      content: 'Apple makes computers',
+      embedding: [1, 0, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Bananas are yellow',
+      embedding: [0, 1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Microsoft makes software',
+      embedding: [0.9, 0.1, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+
+    // Force HNSW unavailable path
+    (mem as any).hnsw = null;
+
+    const results = await mem.semanticSearch([1, 0, 0], 5);
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    expect(results[0]!.content).toContain('Apple');
+    expect(results.some((r) => r.content.includes('Microsoft'))).toBe(true);
+  });
+
+  it('brute-force fallback filters expired and archived entries', async () => {
+    await mem.store({
+      content: 'Active entry about fruit',
+      embedding: [1, 0, 0],
+      metadata: {},
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Expired entry about fruit',
+      embedding: [0.95, 0.05, 0],
+      metadata: { status: 'expired' },
+      timestamp: new Date(),
+    });
+    await mem.store({
+      content: 'Archived entry about fruit',
+      embedding: [0.9, 0.1, 0],
+      metadata: { status: 'archived' },
+      timestamp: new Date(),
+    });
+
+    (mem as any).hnsw = null;
+
+    const results = await mem.semanticSearch([1, 0, 0], 5);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.content).toBe('Active entry about fruit');
+  });
+
   (hnswAvailable ? it : it.skip)(
     'HNSW semantic search is fast (p95 < 100ms for 1000 entries)',
     async () => {

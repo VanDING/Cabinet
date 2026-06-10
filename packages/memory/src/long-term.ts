@@ -466,7 +466,9 @@ export class LongTermMemory {
    * Semantic vector similarity search using HNSW index.
    */
   async semanticSearch(queryEmbedding: number[], limit = 20): Promise<SimilarityResult[]> {
-    if (!this.hnsw) return [];
+    if (!this.hnsw) {
+      return this.bruteForceSemanticSearch(queryEmbedding, limit);
+    }
 
     const k = Math.min(Math.max(limit * 3, 50), this.hnsw.getCurrentCount() || 1);
     if (k === 0) return [];
@@ -609,6 +611,48 @@ export class LongTermMemory {
     if (current >= max * 0.8) {
       this.hnsw.resizeIndex(max * 2);
     }
+  }
+
+  /** Brute-force cosine similarity fallback when HNSW native addon is unavailable. */
+  private async bruteForceSemanticSearch(queryEmbedding: number[], limit: number): Promise<SimilarityResult[]> {
+    console.warn('[LongTermMemory] HNSW index unavailable — falling back to brute-force cosine search');
+    const startTime = Date.now();
+    const scored: SimilarityResult[] = [];
+    let offset = 0;
+    const pageSize = 500;
+
+    while (true) {
+      const rows = this.repo.findWithEmbeddingsPaged(pageSize, offset);
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        if (!row.embedding) continue;
+        try {
+          const vec = JSON.parse(row.embedding) as number[];
+          if (vec.length !== this.dimension) continue;
+          const score = this.cosineSimilarity(queryEmbedding, vec);
+          if (score > SIMILARITY_THRESHOLD) {
+            const metadata = JSON.parse(row.metadata ?? '{}') as Record<string, unknown>;
+            const status = metadata.status as string | undefined;
+            if (status === 'expired' || status === 'archived') continue;
+            scored.push({
+              id: row.id,
+              content: row.content,
+              embedding: vec,
+              metadata,
+              timestamp: new Date(row.timestamp),
+              score,
+            });
+          }
+        } catch {
+          /* skip malformed embedding */
+        }
+      }
+      offset += pageSize;
+    }
+
+    const duration = Date.now() - startTime;
+    console.warn(`[LongTermMemory] Brute-force search completed in ${duration}ms, ${scored.length} results`);
+    return scored.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {

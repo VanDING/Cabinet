@@ -368,7 +368,14 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     costTracker: deps.costTracker,
     gateway,
     toolExecutor: executor,
-    safetyChecker: new SafetyChecker(deps.currentTier),
+    safetyChecker: (() => {
+      const s = new SafetyChecker(deps.currentTier);
+      const mcpMgr = (deps.ctx as any).mcpManager;
+      if (mcpMgr?.getToolRisk) {
+        s.setMcpRiskResolver((name: string) => mcpMgr.getToolRisk(name));
+      }
+      return s;
+    })(),
     checkpointManager,
     memoryProvider: deps.memoryFacade,
     sessionId: `curator_bg_${Date.now()}`,

@@ -493,7 +493,11 @@ function getEngine(): WorkflowEngine {
       const loop = new AgentLoop({
         gateway: ctx.gateway,
         toolExecutor: executor,
-        safetyChecker: new SafetyChecker(ctx.delegationTier),
+        safetyChecker: (() => {
+          const s = new SafetyChecker(ctx.delegationTier);
+          s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
+          return s;
+        })(),
         checkpointManager,
         memoryProvider: buildWorkflowMemoryProvider(runId),
         sessionId: cacheKey,

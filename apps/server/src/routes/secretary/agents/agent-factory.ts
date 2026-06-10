@@ -221,7 +221,11 @@ export function getAgentLoopForRole(
     costTracker: ctx.costTracker,
     gateway: ctx.gateway,
     toolExecutor: executor,
-    safetyChecker: new SafetyChecker(ctx.delegationTier),
+    safetyChecker: (() => {
+      const s = new SafetyChecker(ctx.delegationTier);
+      s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
+      return s;
+    })(),
     checkpointManager,
     memoryProvider: createStandardMemoryProvider(ctx, projectId),
     rulesLoader,
@@ -309,7 +313,11 @@ export function createReviewerLoop(ctx: ServerContext): AgentLoop | null {
     costTracker: ctx.costTracker,
     gateway: ctx.gateway,
     toolExecutor: executor,
-    safetyChecker: new SafetyChecker(ctx.delegationTier),
+    safetyChecker: (() => {
+      const s = new SafetyChecker(ctx.delegationTier);
+      s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
+      return s;
+    })(),
     checkpointManager,
     memoryProvider: createStandardMemoryProvider(ctx, 'default'),
     rulesLoader,
@@ -422,7 +430,11 @@ export function getOrCreateAgent(
       costTracker: ctx.costTracker,
       gateway: ctx.gateway!,
       toolExecutor: executor,
-      safetyChecker: new SafetyChecker(ctx.delegationTier),
+      safetyChecker: (() => {
+        const s = new SafetyChecker(ctx.delegationTier);
+        s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
+        return s;
+      })(),
       checkpointManager,
       memoryProvider,
       rulesLoader,
