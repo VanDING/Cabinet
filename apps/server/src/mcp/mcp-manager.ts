@@ -13,7 +13,8 @@ export interface MCPServerConfig {
   rediscoverIntervalMinutes?: number;
 }
 
-export type MCPSideEffectRisk = 'none' | 'readonly' | 'mutation' | 'destructive';
+import type { MCPSideEffectRisk } from '@cabinet/types';
+export type { MCPSideEffectRisk };
 
 export interface MCPTool {
   serverName: string;

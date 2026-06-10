@@ -72,3 +72,8 @@ export const BACKUP_KEEP_COUNT = 7;
 
 /** Budget period for cost tracking and alerts. */
 export type BudgetPeriod = 'daily' | 'weekly' | 'monthly';
+
+// ── MCP Tool Risk Levels ──
+
+/** Side-effect risk classification for MCP tools. */
+export type MCPSideEffectRisk = 'none' | 'readonly' | 'mutation' | 'destructive';

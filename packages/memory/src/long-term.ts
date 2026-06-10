@@ -52,6 +52,8 @@ const SIMILARITY_THRESHOLD = 0.15;
 const INDEX_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.index');
 const META_PATH = join(process.env.CABINET_DIR ?? homedir(), '.cabinet', 'memory.hnsw.meta.json');
 const INITIAL_MAX_ELEMENTS = 100_000;
+/** Maximum rows to scan in brute-force fallback to prevent unbounded latency. */
+const MAX_BRUTE_FORCE_ROWS = 50_000;
 
 /**
  * Long-term memory backed by SQLite with HNSW vector index for semantic search.
@@ -131,6 +133,10 @@ export class LongTermMemory {
     let offset = 0;
     const pageSize = 1000;
     while (true) {
+      if (offset >= MAX_BRUTE_FORCE_ROWS) {
+        console.warn(`[LongTermMemory] Brute-force search capped at ${MAX_BRUTE_FORCE_ROWS} rows — results may be incomplete`);
+        break;
+      }
       const rows = this.repo.findWithEmbeddingsPaged(pageSize, offset);
       if (rows.length === 0) break;
       for (const row of rows) {

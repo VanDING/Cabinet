@@ -123,7 +123,8 @@ const TIER_LABELS: Record<DelegationTier, string> = {
 // ── Prefix-based tool classification for MCP / Skill tools ──
 
 export type ToolCategory = 'read_only' | 'light_write' | 'moderate' | 'cost' | 'destructive';
-export type MCPSideEffectRisk = 'none' | 'readonly' | 'mutation' | 'destructive';
+import type { MCPSideEffectRisk } from '@cabinet/types';
+export type { MCPSideEffectRisk };
 
 function resolveEffectiveCategory(
   toolName: string,
