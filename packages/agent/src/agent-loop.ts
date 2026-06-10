@@ -589,11 +589,27 @@ export class AgentLoop {
   }
 
   async run(userMessage: string, resumeState?: CheckpointState | null): Promise<AgentResult> {
+    return this._wrapExecution(userMessage, resumeState, undefined);
+  }
+
+  async runStreaming(userMessage: string, callback: StreamingCallback): Promise<AgentResult> {
+    return this._wrapExecution(userMessage, undefined, callback);
+  }
+
+  private async _wrapExecution(
+    userMessage: string,
+    resumeState: CheckpointState | null | undefined,
+    streamingCallback?: StreamingCallback,
+  ): Promise<AgentResult> {
     const startTime = Date.now();
+    const adapter = streamingCallback
+      ? new StreamingCallbackAdapter(streamingCallback, this.options.maxSteps ?? 50)
+      : null;
     let result: AgentResult | undefined;
 
     try {
-      for await (const event of this._execute(userMessage, resumeState)) {
+      for await (const event of this._execute(userMessage, resumeState, streamingCallback)) {
+        adapter?.forward(event);
         if (event.type === 'done') {
           result = {
             content: event.content,
@@ -604,6 +620,7 @@ export class AgentLoop {
       }
     } catch (error) {
       const msg = (error as Error).message;
+      adapter?.forward({ type: 'error', message: msg });
       this._reportSession(
         startTime,
         0,
@@ -614,39 +631,6 @@ export class AgentLoop {
         false,
       );
       return { content: `Agent loop failed: ${msg}`, steps: 0, toolCalls: [] };
-    }
-
-    return result ?? { content: 'No output produced.', steps: 0, toolCalls: [] };
-  }
-
-  async runStreaming(userMessage: string, callback: StreamingCallback): Promise<AgentResult> {
-    const adapter = new StreamingCallbackAdapter(callback, this.options.maxSteps ?? 50);
-    let result: AgentResult | undefined;
-
-    try {
-      for await (const event of this._execute(userMessage, undefined, callback)) {
-        adapter.forward(event);
-        if (event.type === 'done') {
-          result = {
-            content: event.content,
-            steps: event.steps,
-            toolCalls: event.toolCalls,
-          };
-        }
-      }
-    } catch (error) {
-      const msg = (error as Error).message;
-      adapter.forward({ type: 'error', message: msg });
-      this._reportSession(
-        Date.now(),
-        0,
-        { smart: 0, warning: 0, critical: 0, dumb: 0 },
-        0,
-        { transient: 0, recoverable: 0, fatal: 1 },
-        { total: 0, succeeded: 0, failed: 0, blocked: 0 },
-        false,
-      );
-      return { content: `Streaming error: ${msg}`, steps: 0, toolCalls: [] };
     }
 
     return result ?? { content: 'No output produced.', steps: 0, toolCalls: [] };

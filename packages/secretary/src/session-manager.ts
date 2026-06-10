@@ -153,10 +153,8 @@ export class SessionManager {
   setContextSlot(sessionId: string, slot: ContextSlot): void {
     const session = this.sessions.get(sessionId);
     if (session) {
-      session.contextSlot = slot;
+      session.contextSlot = { ...slot, version: (slot.version ?? 0) + 1 };
       this.persist(session);
-      // Sync to Blackboard if enabled (4.2)
-      this.syncSlotToBlackboard(sessionId, slot);
     }
   }
 
@@ -196,23 +194,9 @@ export class SessionManager {
     }
   }
 
-  private syncSlotToBlackboard(sessionId: string, slot: ContextSlot): void {
-    if (!this.blackboard) return;
-    // Fire-and-forget sync of all slot fields to Blackboard topics
-    const bb = this.blackboard;
-    Promise.all([
-      bb.write('project', slot.project, sessionId),
-      ...slot.memories.map((m) => bb.write('memories', m, sessionId)),
-      bb.write('preferences', slot.preferences, sessionId),
-      ...slot.files.map((f) => bb.write('files', f, sessionId)),
-      ...slot.discoveries.map((d) => bb.write('discoveries', d, sessionId)),
-      ...slot.previous_outputs.map((o) => bb.write('outputs', o, sessionId)),
-      bb.write('security', slot.security, sessionId),
-    ]).catch(() => {});
-  }
-
   private createDefaultSlot(): ContextSlot {
     return {
+      version: 1,
       project: { name: 'default', goals: [] },
       memories: [],
       preferences: {},

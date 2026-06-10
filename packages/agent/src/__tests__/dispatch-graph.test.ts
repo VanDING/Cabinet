@@ -63,7 +63,7 @@ describe('compileDispatchGraph', () => {
     });
     // 3 agent nodes + 1 synthesize node
     expect(nodes).toHaveLength(4);
-    expect(nodes[3]!.join).toBe(true);
+    expect(nodes[3]!.isJoin).toBe(true);
   });
 });
 
@@ -72,9 +72,11 @@ describe('executeDispatchGraph', () => {
     makeStep(role, { input, output: `[${role}] processed: ${input.slice(0, 30)}` });
 
   const synthesize: SynthesizeFn = (outputs) => ({
-    summary: outputs.map((o) => o.summary).join(' | '),
-    confidence: outputs.reduce((s, o) => s + (o.confidence ?? 0.5), 0) / outputs.length,
-    findings: outputs.flatMap((o) => o.findings ?? []),
+    output: {
+      summary: outputs.map((o) => o.summary).join(' | '),
+      confidence: outputs.reduce((s, o) => s + (o.confidence ?? 0.5), 0) / outputs.length,
+      findings: outputs.flatMap((o) => o.findings ?? []),
+    },
   });
 
   it('executes single mode — returns one step', async () => {

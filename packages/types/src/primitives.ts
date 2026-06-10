@@ -298,6 +298,8 @@ export interface WorkflowStep {
 
 /** Task-level shared data bus — Agent nodes read from & write to this. */
 export interface ContextSlot {
+  /** Monotonic version for optimistic concurrency. Incremented on every write. */
+  version: number;
   project: {
     name: string;
     tech_stack?: string;

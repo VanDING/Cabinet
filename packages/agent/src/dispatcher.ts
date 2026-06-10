@@ -59,8 +59,45 @@ export interface DispatchResult {
 
 // ── Result Synthesizer (for Parallel mode) ────────────────────
 
+export type SynthesisStrategy = 'majority' | 'weighted' | 'keep_all';
+
+interface SynthesisResult {
+  output: AgentOutput;
+  conflicts?: Array<{ agentA: number; agentB: number; reason: string }>;
+  superseded?: number[];
+}
+
 class ResultSynthesizer {
-  synthesize(outputs: AgentOutput[]): AgentOutput {
+  constructor(private strategy: SynthesisStrategy = 'weighted') {}
+
+  synthesize(outputs: AgentOutput[]): SynthesisResult {
+    // 1. Detect contradictions
+    const conflicts = this.detectConflicts(outputs);
+    const hasConflict = conflicts.length > 0;
+
+    // 2. Detect low-confidence superseded outputs
+    const superseded = this.detectSuperseded(outputs);
+
+    // 3. If conflict detected and strategy is not keep_all, fall back to keep_all
+    const effectiveStrategy = hasConflict && this.strategy !== 'keep_all' ? 'keep_all' : this.strategy;
+
+    if (effectiveStrategy === 'keep_all') {
+      const summary = outputs.map((o, i) => `Agent ${i + 1}: ${o.summary}`).join('\n');
+      return {
+        output: {
+          summary,
+          findings: outputs.flatMap((o) => o.findings ?? []),
+          decisions: outputs.flatMap((o) => o.decisions ?? []),
+          openQuestions: [...new Set(outputs.flatMap((o) => o.openQuestions ?? []))],
+          confidence: Math.max(...outputs.map((o) => o.confidence ?? 0.5)),
+          suggestedNextSteps: [...new Set(outputs.flatMap((o) => o.suggestedNextSteps ?? []))],
+        },
+        conflicts,
+        superseded,
+      };
+    }
+
+    // weighted / majority: synthesize normally
     const summary = outputs
       .map((o) => o.summary)
       .filter(Boolean)
@@ -76,13 +113,63 @@ class ResultSynthesizer {
     const suggestedNextSteps = [...new Set(outputs.flatMap((o) => o.suggestedNextSteps ?? []))];
 
     return {
-      summary,
-      findings: dedupedFindings,
-      decisions,
-      openQuestions,
-      confidence: avgConfidence,
-      suggestedNextSteps,
+      output: {
+        summary,
+        findings: dedupedFindings,
+        decisions,
+        openQuestions,
+        confidence: avgConfidence,
+        suggestedNextSteps,
+      },
+      conflicts,
+      superseded,
     };
+  }
+
+  /** Detect contradictions: two agents with opposite conclusions on the same finding. */
+  private detectConflicts(outputs: AgentOutput[]): Array<{ agentA: number; agentB: number; reason: string }> {
+    const conflicts: Array<{ agentA: number; agentB: number; reason: string }> = [];
+    for (let i = 0; i < outputs.length; i++) {
+      for (let j = i + 1; j < outputs.length; j++) {
+        const a = outputs[i]!;
+        const b = outputs[j]!;
+        // Simple heuristic: opposite decisions on the same topic
+        for (const da of a.decisions ?? []) {
+          for (const db of b.decisions ?? []) {
+            if (da.decision && db.decision && da.decision !== db.decision && this.similarTopic(da.decision, db.decision)) {
+              conflicts.push({ agentA: i, agentB: j, reason: `Opposite decisions: "${da.decision}" vs "${db.decision}"` });
+            }
+          }
+        }
+      }
+    }
+    return conflicts;
+  }
+
+  /** Detect outputs that are clearly superseded by a much higher-confidence peer. */
+  private detectSuperseded(outputs: AgentOutput[]): number[] {
+    if (outputs.length < 2) return [];
+    const maxConfidence = Math.max(...outputs.map((o) => o.confidence ?? 0.5));
+    const superseded: number[] = [];
+    for (let i = 0; i < outputs.length; i++) {
+      const c = outputs[i]!.confidence ?? 0.5;
+      if (maxConfidence - c > 0.3) {
+        superseded.push(i);
+      }
+    }
+    return superseded;
+  }
+
+  private similarTopic(a: string, b: string): boolean {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+    const na = normalize(a);
+    const nb = normalize(b);
+    // Shared substring of >= 4 chars
+    if (na.length < 4 || nb.length < 4) return false;
+    for (let i = 0; i <= na.length - 4; i++) {
+      if (nb.includes(na.slice(i, i + 4))) return true;
+    }
+    return false;
   }
 
   private deduplicateFindings(findings: AgentOutput['findings']): AgentOutput['findings'] {
