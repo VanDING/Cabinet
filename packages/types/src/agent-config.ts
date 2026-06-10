@@ -57,7 +57,7 @@ export interface PISConfig {
 }
 
 export const DEFAULT_PIS_CONFIG: PISConfig = {
-  enabled: false,
+  enabled: true,
   mode: 'log_only',
   evaluationIntervalSteps: 3,
   weights: {

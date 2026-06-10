@@ -1,6 +1,6 @@
 import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
 import type { EventBus } from '@cabinet/events';
-import { MessageType, type DelegationTier } from '@cabinet/types';
+import { MessageType, type DelegationTier, DEFAULT_PIS_CONFIG } from '@cabinet/types';
 import { ToolExecutor, type ToolResult } from './tool-executor.js';
 import { SafetyChecker } from './safety.js';
 import { withRetry } from './retry.js';
@@ -486,6 +486,14 @@ export class AgentLoop {
         : null;
     }
     this.options = options;
+    const preset = options.observerPreset ?? 'standard';
+
+    // Resolve effective enabled states based on preset (explicit config overrides preset)
+    const pisEnabled = options.pis?.enabled ?? (preset === 'full');
+    const reflectionEnabled = options.reflection?.enabled ?? (preset !== 'minimal');
+    const judgeEnabled = options.judge?.enabled ?? (preset === 'full');
+    const autoReplanEnabled = options.autoReplan?.enabled ?? (preset === 'full');
+    const selfConsistencyEnabled = options.selfConsistency?.enabled ?? (preset === 'full');
 
     // Pre-compile Observer Pipeline
     const observers: AgentObserver[] = [
@@ -504,11 +512,11 @@ export class AgentLoop {
     }
 
     // Process Identity Score observer (4.3)
-    if (options.pis?.enabled) {
+    if (pisEnabled && options.eventBus) {
       observers.push(
         new ProcessIdentityObserver(
           options.taskDescription ?? '',
-          options.pis,
+          { ...DEFAULT_PIS_CONFIG, ...options.pis },
           options.eventBus,
           new EmbeddingService(this.gateway),
         ),
@@ -526,24 +534,24 @@ export class AgentLoop {
     }
 
     // Reflection observer (P0-1) — placed before HandoffObserver so handoff happens after critique
-    if (options.reflection?.enabled) {
-      observers.push(new ReflectionObserver(options.reflection, options.gateway));
+    if (reflectionEnabled) {
+      observers.push(new ReflectionObserver(options.reflection ?? {}, options.gateway));
     }
 
     // Judge observer (P0-3) — evaluates output quality
-    if (options.judge?.enabled) {
-      observers.push(new JudgeObserver(options.judge, options.gateway, options.taskDescription));
+    if (judgeEnabled) {
+      observers.push(new JudgeObserver(options.judge ?? {}, options.gateway, options.taskDescription));
     }
 
     // Auto-replan observer (P1-5) — detects tool errors and triggers LLM analysis
-    if (options.autoReplan?.enabled) {
-      observers.push(new AutoReplanObserver(options.autoReplan, options.gateway));
+    if (autoReplanEnabled) {
+      observers.push(new AutoReplanObserver(options.autoReplan ?? {}, options.gateway));
     }
 
     // Self-consistency engine (P1-6) — exposed for callers to use on high-stakes tasks
-    if (options.selfConsistency?.enabled) {
+    if (selfConsistencyEnabled) {
       this.selfConsistencyEngine = new SelfConsistencyEngine(
-        options.selfConsistency,
+        options.selfConsistency ?? {},
         options.gateway,
       );
     }

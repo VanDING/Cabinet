@@ -53,6 +53,13 @@ export interface EmbeddingProvider {
   generateEmbedding(text: string): Promise<number[]>;
 }
 
+export interface WriteGateStats {
+  totalEvaluated: number;
+  transientNoise: number;
+  byTier: Record<MemoryTier | 'rejected', number>;
+  byChannel: Record<WriteGateChannel, number>;
+}
+
 export interface WriteGateOptions {
   /** Optional embedding provider for slow-path semantic classification. */
   embeddingProvider?: EmbeddingProvider;
@@ -63,9 +70,38 @@ export interface WriteGateOptions {
 }
 
 export class WriteGate {
+  private stats: WriteGateStats = {
+    totalEvaluated: 0,
+    transientNoise: 0,
+    byTier: { daily: 0, register: 0, working: 0, rejected: 0 },
+    byChannel: { fast: 0, slow: 0, fallback: 0 },
+  };
+
   constructor(private readonly options: WriteGateOptions = {}) {}
 
+  /** Get current evaluation statistics. */
+  getStats(): WriteGateStats {
+    return { ...this.stats, byTier: { ...this.stats.byTier }, byChannel: { ...this.stats.byChannel } };
+  }
+
+  /** Reset statistics counters. */
+  resetStats(): void {
+    this.stats = {
+      totalEvaluated: 0,
+      transientNoise: 0,
+      byTier: { daily: 0, register: 0, working: 0, rejected: 0 },
+      byChannel: { fast: 0, slow: 0, fallback: 0 },
+    };
+  }
+
   evaluate(content: string, metadata: Record<string, unknown>): WriteGateResult {
+    this.stats.totalEvaluated++;
+    const result = this._evaluate(content, metadata);
+    this.recordStats(result);
+    return result;
+  }
+
+  private _evaluate(content: string, metadata: Record<string, unknown>): WriteGateResult {
     const key = typeof metadata.key === 'string' ? metadata.key : '';
 
     // Structural fast-path: keys with semantic prefixes are always retained
@@ -106,6 +142,16 @@ export class WriteGate {
     return { allowed: false, reason: 'transient_noise', tier: 'daily', channel: 'fast' };
   }
 
+  private recordStats(result: WriteGateResult): void {
+    this.stats.byChannel[result.channel]++;
+    if (result.allowed) {
+      this.stats.byTier[result.tier]++;
+    } else {
+      this.stats.byTier.rejected++;
+      this.stats.transientNoise++;
+    }
+  }
+
   /**
    * Async evaluation with embedding slow path.
    *
@@ -119,10 +165,11 @@ export class WriteGate {
     content: string,
     metadata: Record<string, unknown>,
   ): Promise<WriteGateResult> {
-    const fast = this.evaluate(content, metadata);
+    const fast = this._evaluate(content, metadata);
 
     // Only run slow path if fast path missed and slow path is enabled
     if (fast.allowed || !this.options.useEmbeddingSlowPath || !this.options.embeddingProvider) {
+      this.recordStats(fast);
       return fast;
     }
 
@@ -130,18 +177,22 @@ export class WriteGate {
       const embedding = await this.options.embeddingProvider.generateEmbedding(content);
       const tier = this.classifyByEmbedding(embedding);
       if (tier) {
-        return {
+        const slowResult: WriteGateResult = {
           allowed: true,
           reason: 'embedding_similarity',
           tier,
           channel: 'slow',
         };
+        this.recordStats(slowResult);
+        return slowResult;
       }
     } catch {
       // Embedding failure — gracefully fall back to fast path result
     }
 
-    return { ...fast, channel: 'fallback' };
+    const fallback: WriteGateResult = { ...fast, channel: 'fallback' };
+    this.recordStats(fallback);
+    return fallback;
   }
 
   /** 1. Did the user explicitly say "remember this"? */

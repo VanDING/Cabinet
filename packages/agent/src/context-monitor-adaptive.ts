@@ -9,6 +9,8 @@ import type { SessionMetricsRepository } from '@cabinet/storage';
 
 export interface AdaptiveThresholdConfig {
   enabled: boolean;
+  /** 'collect' = static thresholds + record metrics; 'shadow' = compute adaptive but don't use; 'active' = use adaptive thresholds */
+  mode: 'collect' | 'shadow' | 'active';
   explorationRate: number; // 0.0–1.0, default 0.1
   lookbackDays: number; // default 14
   minSamplesPerZone: number; // default 20
@@ -19,7 +21,8 @@ export interface AdaptiveThresholdConfig {
 }
 
 export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveThresholdConfig = {
-  enabled: false,
+  enabled: true,
+  mode: 'collect',
   explorationRate: 0.1,
   lookbackDays: 14,
   minSamplesPerZone: 20,
@@ -146,11 +149,27 @@ export class AdaptiveContextMonitor extends ContextMonitor {
     return this.currentConfig;
   }
 
-  /** Pick configuration for the next session (exploration vs exploitation). */
+  /** Pick configuration for the next session based on mode. */
   pickConfig(): ContextWindowConfig {
+    const mode = this.adaptiveConfig.mode;
+
+    // collect: always use static defaults, but metrics are recorded elsewhere
+    if (mode === 'collect') {
+      return DEFAULT_WINDOW_CONFIG;
+    }
+
+    // shadow: compute adaptive but still return static (for comparison logging)
+    if (mode === 'shadow') {
+      // Trigger background recalibration if not already done
+      if (this.currentConfig === DEFAULT_WINDOW_CONFIG) {
+        this.recalibrate('default').catch(() => {});
+      }
+      return DEFAULT_WINDOW_CONFIG;
+    }
+
+    // active: exploration vs exploitation with adaptive thresholds
     if (Math.random() < this.adaptiveConfig.explorationRate) {
-      // Exploration: random offsets within ±10%, respecting hard limits
-      const offset = () => (Math.random() - 0.5) * 0.2; // ±0.1
+      const offset = () => (Math.random() - 0.5) * 0.2;
       this.exploredConfig = {
         ...this.currentConfig,
         smartZoneThreshold: Math.max(
@@ -171,7 +190,6 @@ export class AdaptiveContextMonitor extends ContextMonitor {
       };
       return this.exploredConfig;
     }
-    // Exploitation: use current best
     this.exploredConfig = null;
     return this.currentConfig;
   }
