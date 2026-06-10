@@ -171,7 +171,10 @@ export class SkillExtractor {
       : 0;
 
     // Steps contain validation/check words? (+15%)
-    const checkWords = ['check', 'verify', 'validate', 'test', 'review', 'confirm', 'ensure'];
+    const checkWords = [
+      'check', 'verify', 'validate', 'test', 'review', 'confirm', 'ensure',
+      '检查', '验证', '测试', '审查', '确认', '确保', '核对', '校验',
+    ];
     const hasValidationStep = stepsLower.some((s) => checkWords.some((w) => s.includes(w)))
       ? 0.15
       : 0;
