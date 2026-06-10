@@ -299,6 +299,88 @@ memoryRouter.get('/stats', (c) => {
   }
 });
 
+// POST /api/memory/scope — change memory scope (project | global | workspace)
+memoryRouter.post('/scope', async (c) => {
+  const { longTerm, logger } = getServerContext();
+  const body = await c.req.json<{ ids: string[]; scope: string }>().catch(() => null);
+  if (!body || !Array.isArray(body.ids) || !body.scope) {
+    return c.json({ error: 'Missing ids or scope' }, 400);
+  }
+  try {
+    const { CrossProjectMigrator } = await import('@cabinet/memory');
+    const migrator = new CrossProjectMigrator(longTerm);
+    let updated = 0;
+    if (body.scope === 'global') {
+      updated = await migrator.markAsGlobal(body.ids);
+    } else if (body.scope === 'workspace') {
+      updated = await migrator.markAsWorkspace(body.ids);
+    }
+    logger.info('Memory scope updated', { count: updated, scope: body.scope });
+    return c.json({ updated, scope: body.scope });
+  } catch (err) {
+    logger.warn('Failed to update memory scope', { error: (err as Error).message });
+    return c.json({ error: 'Scope update failed' }, 500);
+  }
+});
+
+// POST /api/memory/migrate — copy memories to a different project
+memoryRouter.post('/migrate', async (c) => {
+  const { longTerm, logger } = getServerContext();
+  const body = await c.req.json<{ ids: string[]; targetProjectId: string }>().catch(() => null);
+  if (!body || !Array.isArray(body.ids) || !body.targetProjectId) {
+    return c.json({ error: 'Missing ids or targetProjectId' }, 400);
+  }
+  try {
+    const { CrossProjectMigrator } = await import('@cabinet/memory');
+    const migrator = new CrossProjectMigrator(longTerm);
+    const migrated = await migrator.migrateToProject(body.ids, body.targetProjectId);
+    logger.info('Memory migrated', { count: migrated, target: body.targetProjectId });
+    return c.json({ migrated, targetProjectId: body.targetProjectId });
+  } catch (err) {
+    logger.warn('Failed to migrate memories', { error: (err as Error).message });
+    return c.json({ error: 'Migration failed' }, 500);
+  }
+});
+
+// GET /api/memory/global — search globally-scoped memories
+memoryRouter.get('/global', async (c) => {
+  const { longTerm, logger } = getServerContext();
+  const query = c.req.query('query') ?? '';
+  const limit = parseInt(c.req.query('limit') ?? '20', 10);
+  try {
+    const { CrossProjectMigrator } = await import('@cabinet/memory');
+    const migrator = new CrossProjectMigrator(longTerm);
+    const results = await migrator.findGlobalMemories(query, limit);
+    return c.json({
+      entries: results.map((r) => ({
+        id: r.id,
+        content: r.content,
+        metadata: r.metadata,
+        timestamp: r.timestamp.toISOString(),
+      })),
+      total: results.length,
+    });
+  } catch (err) {
+    logger.warn('Global memory search failed', { error: (err as Error).message });
+    return c.json({ entries: [], total: 0 });
+  }
+});
+
+// GET /api/memory/patterns — detect cross-project memory patterns
+memoryRouter.get('/patterns', async (c) => {
+  const { longTerm, logger } = getServerContext();
+  const minSimilarity = parseFloat(c.req.query('minSimilarity') ?? '0.4');
+  try {
+    const { CrossProjectMigrator } = await import('@cabinet/memory');
+    const migrator = new CrossProjectMigrator(longTerm);
+    const patterns = await migrator.findCrossProjectPatterns(minSimilarity);
+    return c.json({ patterns });
+  } catch (err) {
+    logger.warn('Cross-project pattern detection failed', { error: (err as Error).message });
+    return c.json({ patterns: [] });
+  }
+});
+
 // Helper: get tracked session IDs from ShortTermMemory
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getAllSessionIds(shortTerm: any): string[] {

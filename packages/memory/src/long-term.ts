@@ -416,6 +416,30 @@ export class LongTermMemory {
     return this.repo.searchByText(query, limit);
   }
 
+  /** Filter memories by metadata key-value pairs. Returns parsed entries. */
+  findByMetadataFilter(filter: Record<string, unknown>, limit = 10): LongTermEntry[] {
+    const rows = this.repo.findByMetadataFilter(filter, limit);
+    return rows.map((r) => ({
+      id: r.id,
+      content: r.content,
+      embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
+      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
+      timestamp: new Date(r.timestamp),
+    }));
+  }
+
+  /** Retrieve specific memories by ID. */
+  findByIds(ids: string[]): LongTermEntry[] {
+    const rows = this.repo.findByIds(ids);
+    return rows.map((r) => ({
+      id: r.id,
+      content: r.content,
+      embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
+      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
+      timestamp: new Date(r.timestamp),
+    }));
+  }
+
   /** Synchronous metadata update (for decay service internal use). */
   _setMetadataSync(id: string, metadata: Record<string, unknown>): void {
     try {

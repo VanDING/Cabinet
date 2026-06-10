@@ -58,6 +58,10 @@ export type {
 // ── Project isolation ──
 export { ProjectIsolatedMemory } from './project-isolation.js';
 
+// ── Cross-project migration ──
+export { CrossProjectMigrator } from './cross-project-migrator.js';
+export type { MemoryScope, CrossProjectPattern } from './cross-project-migrator.js';
+
 // ── RAG (P1-4) ──
 export { chunkDocument, chunkDocuments } from './chunking.js';
 export type { Chunk, ChunkingOptions } from './chunking.js';
