@@ -29,10 +29,12 @@ export class SubconsciousLoop {
 
   private analysisInterval = 0;
 
-  async tick(): Promise<void> {
+  async tick(): Promise<SubconsciousInsight[]> {
+    const insights: SubconsciousInsight[] = [];
+
     // 1. Random sample from long-term memory
     const candidates = await this.sampleRandomMemories(10);
-    if (candidates.length === 0) return;
+    if (candidates.length === 0) return insights;
 
     // 2. Score = random() × importance × recencyBoost
     const scored = candidates
@@ -49,8 +51,9 @@ export class SubconsciousLoop {
     // 3. For each selected memory, expand via knowledge graph and generate insight
     for (const { mem } of scored) {
       const related = await this.findRelatedEntities(mem.content);
-      const insight = this.generateInsight(mem.content, related);
+      const insight = this.generateInsight(mem.content, related, mem.id);
       if (insight.relevance > 0.6) {
+        insights.push(insight);
         await this.eventBus.publish({
           messageId: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           correlationId: `sub_${Date.now()}`,
@@ -73,6 +76,8 @@ export class SubconsciousLoop {
         // Silently skip analysis errors
       }
     }
+
+    return insights;
   }
 
   private async sampleRandomMemories(count: number): Promise<
@@ -110,7 +115,7 @@ export class SubconsciousLoop {
     return related.map((e) => e.name);
   }
 
-  private generateInsight(content: string, related: string[]): SubconsciousInsight {
+  private generateInsight(content: string, related: string[], sourceMemoryId: string): SubconsciousInsight {
     // Simple heuristic: if there are related entities and the memory contains
     // a question or open topic, boost relevance.
     let relevance = 0.5;
@@ -126,7 +131,7 @@ export class SubconsciousLoop {
     return {
       relevance: Math.min(relevance, 0.95),
       text,
-      sourceMemoryId: '', // filled by caller
+      sourceMemoryId,
       relatedEntities: related,
     };
   }

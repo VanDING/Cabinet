@@ -287,6 +287,18 @@ export function getAgentLoopForRole(
       .catch((err) => {
         console.warn('Operation failed', err);
       });
+
+    // Subconscious loop tick — write insights to blackboard for next session context
+    if (ctx.subconsciousLoop && ctx.blackboard) {
+      ctx.subconsciousLoop
+        .tick()
+        .then((insights) => {
+          for (const insight of insights) {
+            ctx.blackboard!.write('insights', insight, summary.sessionId).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
   };
 
   agentLoopCache.set(cacheKey, loop);
@@ -481,6 +493,19 @@ export function getOrCreateAgent(
         durationMs: summary.durationMs,
         success: summary.success,
       });
+
+      // Subconscious loop tick — write insights to blackboard for next session context
+      const serverCtx = getServerContext();
+      if (serverCtx.subconsciousLoop && serverCtx.blackboard) {
+        serverCtx.subconsciousLoop
+          .tick()
+          .then((insights) => {
+            for (const insight of insights) {
+              serverCtx.blackboard!.write('insights', insight, summary.sessionId).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
     };
   }
 
