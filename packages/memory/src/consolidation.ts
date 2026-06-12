@@ -1,7 +1,7 @@
 import type { ShortTermMemory } from './short-term.js';
 import type { LongTermMemory } from './long-term.js';
-import { WriteGate } from './write-gate.js';
-import { CascadeBuffer } from './cascade-buffer.js';
+import { WriteGate, type EmbeddingProvider } from './write-gate.js';
+import { CascadeBuffer, type CascadeEntry, type SealResult } from './cascade-buffer.js';
 
 /**
  * Result of an LLM-powered consolidation pass.
@@ -29,6 +29,18 @@ export type ConsolidationCallBack = (
   transcript: string,
 ) => Promise<ConsolidationResult>;
 
+export interface ConsolidationServiceOptions {
+  /** Optional embedding provider for WriteGate slow-path sampling. */
+  embeddingProvider?: EmbeddingProvider;
+  /**
+   * Optional Curator-powered summarizer for CascadeBuffer seal.
+   * When provided, daily-tier buffers are summarized by the Curator agent
+   * instead of the default concatenation, unifying the Cascade and Curator
+   * pipelines.
+   */
+  curatorSummarizer?: (entries: CascadeEntry[]) => Promise<string>;
+}
+
 export class ConsolidationService {
   /** Minimum age (ms) for a short-term entry before it can be consolidated. */
   preserveRecentMs = 5 * 60 * 1000;
@@ -48,11 +60,21 @@ export class ConsolidationService {
    */
   private writeGate = new WriteGate();
   private cascade = new CascadeBuffer();
+  private curatorSummarizer?: (entries: CascadeEntry[]) => Promise<string>;
 
   constructor(
     private readonly shortTerm: ShortTermMemory,
     private readonly longTerm: LongTermMemory,
-  ) {}
+    options?: ConsolidationServiceOptions,
+  ) {
+    if (options?.embeddingProvider) {
+      this.writeGate = new WriteGate({
+        embeddingProvider: options.embeddingProvider,
+        useEmbeddingSlowPath: true,
+      });
+    }
+    this.curatorSummarizer = options?.curatorSummarizer;
+  }
 
   /**
    * Lightweight consolidation (no LLM).
@@ -66,6 +88,10 @@ export class ConsolidationService {
   async consolidateBasic(sessionId: string): Promise<number> {
     const startTime = Date.now();
     const entries = this.shortTerm.getEntriesOlderThan(sessionId, this.preserveRecentMs);
+
+    // Daily slow-path sampling (D.6): re-evaluate a random subset of
+    // transient_noise entries via embedding to measure recall lift.
+    await this.sampleSlowPath(sessionId, entries);
     let directMigrated = 0;
     const dailyKeys: string[] = [];
     const dailyEntries: { key: string; value: string }[] = [];
@@ -162,6 +188,56 @@ export class ConsolidationService {
     return directMigrated + sealResults;
   }
 
+  /**
+   * Sample up to 20 transient_noise entries and re-run them through the
+   * embedding slow path. Results are logged and recorded in WriteGate stats
+   * to support a cost/benefit analysis of activating the slow path by default.
+   */
+  async sampleSlowPath(
+    sessionId: string,
+    entries?: Array<{ key: string; value: unknown }>,
+  ): Promise<{ sampled: number; rescued: number }> {
+    const candidates =
+      entries ?? this.shortTerm.getEntriesOlderThan(sessionId, this.preserveRecentMs);
+    const noiseEntries: Array<{ key: string; value: string }> = [];
+
+    for (const entry of candidates) {
+      const stringValue =
+        typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value);
+      if (!stringValue) continue;
+      const fast = this.writeGate.evaluateFastPathOnly(stringValue, { key: entry.key, sessionId });
+      if (!fast.allowed) {
+        noiseEntries.push({ key: entry.key, value: stringValue });
+      }
+    }
+
+    // Fisher-Yates shuffle and take up to 20
+    for (let i = noiseEntries.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = noiseEntries[i]!;
+      noiseEntries[i] = noiseEntries[j]!;
+      noiseEntries[j] = tmp;
+    }
+    const sample = noiseEntries.slice(0, 20);
+
+    let rescued = 0;
+    for (const { key, value } of sample) {
+      const slow = await this.writeGate.evaluateAsync(value, { key, sessionId });
+      if (slow.allowed && slow.channel === 'slow') {
+        rescued++;
+      }
+    }
+
+    if (sample.length > 0) {
+      console.debug(
+        `[SlowPathSample] session=${sessionId} sampled=${sample.length} rescued=${rescued} ` +
+          `recallLift=${((rescued / sample.length) * 100).toFixed(1)}%`,
+      );
+    }
+
+    return { sampled: sample.length, rescued };
+  }
+
   /** Emit consolidation metrics for observability. */
   private logMetrics(metrics: {
     sessionId: string;
@@ -174,12 +250,22 @@ export class ConsolidationService {
     cascadeStaged: number;
     durationMs: number;
   }): void {
-    const { sessionId, totalEvaluated, working, register, daily, noise, directMigrated, cascadeStaged, durationMs } = metrics;
+    const {
+      sessionId,
+      totalEvaluated,
+      working,
+      register,
+      daily,
+      noise,
+      directMigrated,
+      cascadeStaged,
+      durationMs,
+    } = metrics;
     // Structured log for debugging and cost tracking
     console.debug(
       `[ConsolidationMetrics] session=${sessionId} ` +
-      `evaluated=${totalEvaluated} working=${working} register=${register} daily=${daily} noise=${noise} ` +
-      `migrated=${directMigrated} staged=${cascadeStaged} duration=${durationMs}ms`,
+        `evaluated=${totalEvaluated} working=${working} register=${register} daily=${daily} noise=${noise} ` +
+        `migrated=${directMigrated} staged=${cascadeStaged} duration=${durationMs}ms`,
     );
   }
 
@@ -189,9 +275,9 @@ export class ConsolidationService {
    * Returns the number of buffers that were sealed.
    */
   async flushSession(sessionId: string): Promise<number> {
-    const results = this.cascade.sealAll(sessionId);
     let sealedCount = 0;
-    for (const [topic, result] of results) {
+    for (const topic of this.cascade.getTopics(sessionId)) {
+      const result = await this.sealWithCurator(sessionId, topic);
       if (result.summaryContent.length === 0) continue;
       await this.longTerm.store({
         content: result.summaryContent,
@@ -209,6 +295,25 @@ export class ConsolidationService {
       sealedCount++;
     }
     return sealedCount;
+  }
+
+  /**
+   * Seal a topic buffer, optionally using the configured Curator summarizer.
+   * When a Curator callback is provided it becomes the single source of truth
+   * for L1 compression, unifying the Cascade and Curator consolidation paths.
+   */
+  private async sealWithCurator(sessionId: string, topic: string): Promise<SealResult> {
+    const entries = this.cascade.getBuffer(sessionId, topic);
+    if (entries.length === 0) {
+      return { sealed: [], summaryContent: '' };
+    }
+    if (this.curatorSummarizer) {
+      const summaryContent = await this.curatorSummarizer(entries);
+      // `seal` removes the buffer; the summarizer ignores entries and returns
+      // the pre-computed Curator summary.
+      return this.cascade.seal(sessionId, topic, () => summaryContent);
+    }
+    return this.cascade.seal(sessionId, topic);
   }
 
   /**
@@ -307,7 +412,7 @@ export class ConsolidationService {
 
       if (!shouldSeal) continue;
 
-      const result = this.cascade.seal(sessionId, topic);
+      const result = await this.sealWithCurator(sessionId, topic);
       if (result.summaryContent.length === 0) continue;
       await this.longTerm.store({
         content: result.summaryContent,

@@ -8,7 +8,8 @@ import type { MemoryProvider } from './context-builder.js';
 import type { AgentRole } from './agent-roles.js';
 import { buildHandoffFromResult, buildSimpleHandoff, type AgentHandoff } from './agent-handoff.js';
 import { assemblePrompt } from './prompt-assembler.js';
-import { END } from '@cabinet/graph';
+/** Sentinel value returned by selectors to end a multi-agent round-robin. */
+export const END = '__END__';
 
 export type { AgentHandoff };
 

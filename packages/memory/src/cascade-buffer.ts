@@ -39,6 +39,17 @@ export class CascadeBuffer {
     return this.buffers.get(`${sessionId}:${topic}`) ?? [];
   }
 
+  /** Return all topics that currently have buffered entries for a session. */
+  getTopics(sessionId: string): string[] {
+    const topics: string[] = [];
+    for (const key of this.buffers.keys()) {
+      if (key.startsWith(`${sessionId}:`)) {
+        topics.push(key.slice(sessionId.length + 1));
+      }
+    }
+    return topics;
+  }
+
   /** Restore buffer entries from short-term storage after a restart. */
   restoreFromShortTerm(sessionId: string, topic: string, entries: CascadeEntry[]): void {
     const key = `${sessionId}:${topic}`;
@@ -108,7 +119,7 @@ export class CascadeBuffer {
     }
   }
 
-  private defaultSummarizer(entries: CascadeEntry[]): string {
+  defaultSummarizer(entries: CascadeEntry[]): string {
     // Deduplicate: keep only the latest entry for each unique content hash
     const seen = new Map<string, CascadeEntry>();
     for (const e of entries) {

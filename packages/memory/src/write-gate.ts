@@ -81,7 +81,11 @@ export class WriteGate {
 
   /** Get current evaluation statistics. */
   getStats(): WriteGateStats {
-    return { ...this.stats, byTier: { ...this.stats.byTier }, byChannel: { ...this.stats.byChannel } };
+    return {
+      ...this.stats,
+      byTier: { ...this.stats.byTier },
+      byChannel: { ...this.stats.byChannel },
+    };
   }
 
   /** Reset statistics counters. */
@@ -99,6 +103,11 @@ export class WriteGate {
     const result = this._evaluate(content, metadata);
     this.recordStats(result);
     return result;
+  }
+
+  /** Fast-path evaluation without updating statistics (for sampling/analysis). */
+  evaluateFastPathOnly(content: string, metadata: Record<string, unknown>): WriteGateResult {
+    return this._evaluate(content, metadata);
   }
 
   private _evaluate(content: string, metadata: Record<string, unknown>): WriteGateResult {

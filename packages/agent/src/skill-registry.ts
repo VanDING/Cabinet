@@ -14,6 +14,8 @@ export interface SkillMetadata {
   version: number;
   /** Names of other skills this skill depends on. */
   dependencies?: string[];
+  /** Built-in skills are available as tools but not auto-injected into prompts. */
+  builtIn?: boolean;
 }
 
 // ── Full Skill (L2 — loaded on demand) ──
@@ -227,7 +229,10 @@ export class SkillRegistry {
   }
 
   /** Async variant of loadFromDirectory for concurrent scenarios. */
-  async loadFromDirectoryAsync(dir: string, scope: 'global' | 'project' = 'global'): Promise<number> {
+  async loadFromDirectoryAsync(
+    dir: string,
+    scope: 'global' | 'project' = 'global',
+  ): Promise<number> {
     await this.writeMutex.acquire();
     try {
       return this.loadFromDirectory(dir, scope);
@@ -281,11 +286,11 @@ export class SkillRegistry {
     prompt = prompt.replace(/\$ARGUMENTS/g, argumentStr);
     const positionalArgs = argumentStr.split(/\s+/).filter(Boolean);
     for (let i = 0; i < positionalArgs.length; i++) {
-      prompt = prompt.replace(new RegExp(`\\\$${i}`, 'g'), positionalArgs[i]!);
+      prompt = prompt.split(`$${i}`).join(positionalArgs[i]!);
     }
     // Named argument substitution ({{key}})
     for (const [key, value] of Object.entries(args)) {
-      prompt = prompt.replace(new RegExp(`\\\{\{${key}\\\}\}`, 'g'), String(value));
+      prompt = prompt.split(`{{${key}}}`).join(String(value));
     }
 
     const sections: string[] = [];

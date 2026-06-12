@@ -58,6 +58,14 @@ export interface AgentExecutionContext {
   // Blackboard mid-session updates (populated by BlackboardObserver)
   pendingBlackboardUpdates?: Array<{ topic: string; payload: unknown }>;
 
+  // Subconscious insight injections (populated by SubconsciousInsightObserver)
+  pendingSubconsciousInsights?: Array<{
+    relevance: number;
+    text: string;
+    sourceMemoryId: string;
+    relatedEntities: string[];
+  }>;
+
   // Current step accumulators
   currentStepText: string;
   currentStepToolCalls: { id: string; name: string; args: Record<string, unknown> }[];

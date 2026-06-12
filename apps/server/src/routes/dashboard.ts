@@ -265,3 +265,82 @@ dashboardRouter.get('/agent-status', (c) => {
 
   return c.json({ agents });
 });
+
+// ── Operational Trends (D.7) ──
+
+dashboardRouter.get('/trends', (c) => {
+  const { db, logger } = getServerContext();
+  const days = parseInt(c.req.query('days') ?? '7', 10);
+
+  const trends: import('@cabinet/types').DashboardTrendEntry[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    trends.push({
+      date: d.toISOString().slice(0, 10),
+      decisions: 0,
+      workflows: 0,
+      errors: 0,
+      tasks: 0,
+      sessions: 0,
+    });
+  }
+
+  try {
+    const decisionRows = db
+      .prepare(
+        `SELECT date(created_at) as date, COUNT(*) as count
+         FROM decisions
+         WHERE created_at >= date('now', ?)
+         GROUP BY date(created_at)`,
+      )
+      .all(`-${days} days`) as Array<{ date: string; count: number }>;
+    for (const row of decisionRows) {
+      const entry = trends.find((t) => t.date === row.date);
+      if (entry) entry.decisions = row.count ?? 0;
+    }
+  } catch (err) {
+    logger.warn('Failed to load decision trends', { error: (err as Error).message });
+  }
+
+  try {
+    const workflowRows = db
+      .prepare(
+        `SELECT date(started_at) as date, COUNT(*) as count
+         FROM workflow_runs
+         WHERE started_at >= date('now', ?)
+         GROUP BY date(started_at)`,
+      )
+      .all(`-${days} days`) as Array<{ date: string; count: number }>;
+    for (const row of workflowRows) {
+      const entry = trends.find((t) => t.date === row.date);
+      if (entry) entry.workflows = row.count ?? 0;
+    }
+  } catch (err) {
+    logger.warn('Failed to load workflow trends', { error: (err as Error).message });
+  }
+
+  try {
+    const sessionRows = db
+      .prepare(
+        `SELECT date(started_at) as date,
+                COUNT(*) as sessions,
+                SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as errors
+         FROM session_metrics
+         WHERE started_at >= date('now', ?)
+         GROUP BY date(started_at)`,
+      )
+      .all(`-${days} days`) as Array<{ date: string; sessions: number; errors: number }>;
+    for (const row of sessionRows) {
+      const entry = trends.find((t) => t.date === row.date);
+      if (entry) {
+        entry.sessions = row.sessions ?? 0;
+        entry.errors = row.errors ?? 0;
+      }
+    }
+  } catch (err) {
+    logger.warn('Failed to load session trends', { error: (err as Error).message });
+  }
+
+  return c.json({ trends });
+});

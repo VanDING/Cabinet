@@ -24,7 +24,7 @@ export function createStandardToolExecutor(
 
   registerMCPTools(
     executor,
-    (name, args) => ctx.mcpManager.callTool(name, args),
+    (name, args, trustLevel) => ctx.mcpManager.callTool(name, args, trustLevel),
     () => ctx.mcpManager.listTools(),
   );
 

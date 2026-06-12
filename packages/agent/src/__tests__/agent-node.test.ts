@@ -5,7 +5,13 @@ import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { SECRETARY_ROLE, ORGANIZE_ROLE } from '../agent-roles.js';
 import type { MemoryProvider } from '../context-builder.js';
-import type { LLMGateway, LLMResponse, LLMCallOptions, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMResponse,
+  LLMCallOptions,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from '@cabinet/gateway';
 
 function createDb(): Database.Database {
   const db = new Database(':memory:');
@@ -14,10 +20,18 @@ function createDb(): Database.Database {
 }
 
 class MockMemory implements MemoryProvider {
-  async getShortTerm() { return []; }
-  async getProjectContext() { return 'test'; }
-  async getEntityPreferences() { return {}; }
-  async searchLongTerm() { return []; }
+  async getShortTerm() {
+    return [];
+  }
+  async getProjectContext() {
+    return 'test';
+  }
+  async getEntityPreferences() {
+    return {};
+  }
+  async searchLongTerm() {
+    return [];
+  }
 }
 
 interface TestState {
@@ -46,8 +60,12 @@ describe('createAgentNodeFactory', () => {
           model: 'test-model',
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test-model']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
       async generateEmbeddings(_opts: EmbeddingOptions): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test', usage: { tokens: 0 } };
       },
@@ -112,8 +130,12 @@ describe('createAgentNodeFactory', () => {
         capturedSystemPrompt = opts.systemPrompt ?? '';
         return { content: 'ok', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test'];
+      },
       async generateEmbeddings(): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test', usage: { tokens: 0 } };
       },
@@ -136,7 +158,7 @@ describe('createAgentNodeFactory', () => {
 
     await nodeFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
     expect(capturedSystemPrompt).toContain(ORGANIZE_ROLE.modules.identity);
-    expect(capturedSystemPrompt).toContain('Available Tools');  // auto-generated
+    expect(capturedSystemPrompt).toContain('Available Tools'); // auto-generated
     expect(capturedSystemPrompt).toContain('Focus on risks.');
   });
 
@@ -154,8 +176,7 @@ describe('createAgentNodeFactory', () => {
 
 // ── createSelector tests ──
 
-import { createSelector } from '../agent-node.js';
-import { END } from '@cabinet/graph';
+import { createSelector, END } from '../agent-node.js';
 
 describe('createSelector', () => {
   it('routes based on decide function reading real state', async () => {

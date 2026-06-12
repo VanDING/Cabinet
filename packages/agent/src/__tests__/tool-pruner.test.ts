@@ -405,3 +405,49 @@ describe('ToolPruner', () => {
     });
   });
 });
+
+describe('adaptive tuning', () => {
+  it('raises candidate threshold when LLM fallback rate is high', () => {
+    const gw = createMockGateway([]);
+    const pruner = new ToolPruner({ gateway: gw, maxTools: 10, minTools: 5 });
+    // Simulate high-fallback metrics by directly mutating private metrics via pruning is hard;
+    // instead we exercise adaptFromMetrics after artificial prune calls.
+    (pruner as any).metrics = {
+      totalPrunes: 10,
+      cacheHits: 0,
+      cacheMisses: 10,
+      embeddingOnlyCount: 6,
+      llmRefinedCount: 1,
+      llmFallbackCount: 3,
+      totalToolCount: 80,
+    };
+    pruner.adaptFromMetrics();
+    expect(pruner.getTunedParameters().candidateThreshold).toBeGreaterThan(15);
+  });
+
+  it('expands maxTools when average tool count hits the ceiling', () => {
+    const gw = createMockGateway([]);
+    const pruner = new ToolPruner({ gateway: gw, maxTools: 10, minTools: 5 });
+    (pruner as any).metrics = {
+      totalPrunes: 10,
+      cacheHits: 0,
+      cacheMisses: 10,
+      embeddingOnlyCount: 10,
+      llmRefinedCount: 0,
+      llmFallbackCount: 0,
+      totalToolCount: 90, // avg 9, ceiling is 9 (90% of 10)
+    };
+    pruner.adaptFromMetrics();
+    expect(pruner.getTunedParameters().maxTools).toBeGreaterThan(10);
+  });
+
+  it('reports initial tuning parameters before adaptation', () => {
+    const gw = createMockGateway([]);
+    const pruner = new ToolPruner({ gateway: gw, maxTools: 12, minTools: 6 });
+    expect(pruner.getTunedParameters()).toEqual({
+      maxTools: 12,
+      minTools: 6,
+      candidateThreshold: 15,
+    });
+  });
+});

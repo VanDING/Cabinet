@@ -1,5 +1,8 @@
 // ── Delegation Tiers (permission levels) ──
 
+/** Trust level used for MCP tool execution gating (T0-T3). */
+export type TrustLevel = 'T0' | 'T1' | 'T2' | 'T3';
+
 export const DelegationTier = {
   /** T0: Every write operation and decision requires Captain confirmation. */
   CaptainReview: 'T0',

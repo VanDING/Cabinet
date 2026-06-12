@@ -24,10 +24,7 @@ export interface LlmJudgeResult {
   resolutionSuggestion: string;
 }
 
-export type LlmJudge = (
-  oldStatement: string,
-  newStatement: string,
-) => Promise<LlmJudgeResult>;
+export type LlmJudge = (oldStatement: string, newStatement: string) => Promise<LlmJudgeResult>;
 
 export interface LongTermEntry {
   id: string;
@@ -134,7 +131,9 @@ export class LongTermMemory {
     const pageSize = 1000;
     while (true) {
       if (offset >= MAX_BRUTE_FORCE_ROWS) {
-        console.warn(`[LongTermMemory] Brute-force search capped at ${MAX_BRUTE_FORCE_ROWS} rows — results may be incomplete`);
+        console.warn(
+          `[LongTermMemory] Brute-force search capped at ${MAX_BRUTE_FORCE_ROWS} rows — results may be incomplete`,
+        );
         break;
       }
       const rows = this.repo.findWithEmbeddingsPaged(pageSize, offset);
@@ -159,81 +158,95 @@ export class LongTermMemory {
   async store(entry: Omit<LongTermEntry, 'id'>): Promise<string> {
     const id = `ltm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // ── Populate knowledge graph with extracted entities ──
-    if (this.knowledgeGraph) {
-      const candidates = extractCandidateEntities(entry.content);
-      for (const name of candidates) {
-        try {
-          this.knowledgeGraph.addEntity(name, 'concept', { source: 'memory_store' });
-        } catch {
-          /* best-effort entity extraction */
-        }
+    this.populateKnowledgeGraph(entry.content);
+    this.handleGraphContradictions(id, entry.content);
+    this.scheduleLlmContradictionCheck(id, entry.content);
+    this.persistEntry(id, entry);
+    this.maybePrune();
+
+    return id;
+  }
+
+  /** Extract entities from the content and add them to the knowledge graph. */
+  private populateKnowledgeGraph(content: string): void {
+    if (!this.knowledgeGraph) return;
+    const candidates = extractCandidateEntities(content);
+    for (const name of candidates) {
+      try {
+        this.knowledgeGraph.addEntity(name, 'concept', { source: 'memory_store' });
+      } catch {
+        /* best-effort entity extraction */
       }
     }
+  }
 
-    // ── Contradiction detection (graph-based) ──
-    if (this.knowledgeGraph) {
-      const conflicts = this.knowledgeGraph.detectContradictions(entry.content);
-      for (const c of conflicts) {
-        if (c.confidence > 0.8) {
-          // Auto-mark old memory as superseded via metadata update
-          const oldRow = this.repo.findByIds([c.oldMemoryId])[0];
-          if (oldRow) {
-            const meta = JSON.parse(oldRow.metadata ?? '{}') as Record<string, unknown>;
-            meta.status = 'superseded';
-            meta.supersededBy = id;
-            meta.supersededReason = c.resolutionSuggestion;
-            this.repo.updateMetadata(oldRow.id, JSON.stringify(meta));
-          }
-        } else if (c.confidence >= 0.5 && this.onContradictionDetected) {
-          this.onContradictionDetected({
-            oldMemoryId: c.oldMemoryId,
-            oldContent: c.oldContent,
-            confidence: c.confidence,
-            newMemoryId: id,
-          });
+  /** Run graph-based contradiction detection and update superseded memories. */
+  private handleGraphContradictions(newId: string, content: string): void {
+    if (!this.knowledgeGraph) return;
+    const conflicts = this.knowledgeGraph.detectContradictions(content);
+    for (const c of conflicts) {
+      if (c.confidence > 0.8) {
+        const oldRow = this.repo.findByIds([c.oldMemoryId])[0];
+        if (oldRow) {
+          const meta = JSON.parse(oldRow.metadata ?? '{}') as Record<string, unknown>;
+          meta.status = 'superseded';
+          meta.supersededBy = newId;
+          meta.supersededReason = c.resolutionSuggestion;
+          this.repo.updateMetadata(oldRow.id, JSON.stringify(meta));
         }
+      } else if (c.confidence >= 0.5 && this.onContradictionDetected) {
+        this.onContradictionDetected({
+          oldMemoryId: c.oldMemoryId,
+          oldContent: c.oldContent,
+          confidence: c.confidence,
+          newMemoryId: newId,
+        });
       }
     }
+  }
 
-    // ── LLM-powered semantic contradiction detection ──
-    // Runs after graph-based detection to catch semantic contradictions that
-    // the graph structure misses (e.g. same concept expressed with different
-    // entity names).
-    if (this.llmJudge && this.knowledgeGraph && entry.content.length > 50) {
-      this.runLlmContradictionCheck(id, entry.content).catch(() => {
-        /* best-effort */
-      });
-    }
+  /** Fire-and-forget LLM semantic contradiction check. */
+  private scheduleLlmContradictionCheck(newId: string, content: string): void {
+    if (!this.llmJudge || !this.knowledgeGraph || content.length <= 50) return;
+    this.runLlmContradictionCheck(newId, content).catch(() => {
+      /* best-effort */
+    });
+  }
 
-    const embeddingJson = entry.embedding ? JSON.stringify(entry.embedding) : null;
-
+  /** Persist the entry to SQLite and the HNSW vector index. */
+  private persistEntry(id: string, entry: Omit<LongTermEntry, 'id'>): void {
     this.repo.insert({
       id,
       content: entry.content,
-      embedding: embeddingJson,
+      embedding: entry.embedding ? JSON.stringify(entry.embedding) : null,
       metadata: JSON.stringify(entry.metadata),
     });
 
     if (entry.embedding && this.hnsw) {
-      this.ensureCapacity();
-      try {
-        const label = this.nextLabel++;
-        this.hnsw.addPoint(entry.embedding, label);
-        this.labelToId.set(label, id);
-        this.idToLabel.set(id, label);
-      } catch {
-        /* best-effort index update */
-      }
+      this.addToVectorIndex(id, entry.embedding);
     }
+  }
 
-    // Prune if over capacity (every 1000th insert to amortize cost)
+  /** Add an embedding point to the HNSW index. */
+  private addToVectorIndex(id: string, embedding: number[]): void {
+    if (!this.hnsw) return;
+    this.ensureCapacity();
+    try {
+      const label = this.nextLabel++;
+      this.hnsw.addPoint(embedding, label);
+      this.labelToId.set(label, id);
+      this.idToLabel.set(id, label);
+    } catch {
+      /* best-effort index update */
+    }
+  }
+
+  /** Prune excess entries every ~1000 inserts to amortize cost. */
+  private maybePrune(): void {
     const count = this.repo.count();
     if (count > this.MAX_LONGTERM_ENTRIES && count % 1000 < 50) {
       this.pruneExcess();
     }
-
-    return id;
   }
 
   /** Remove lowest-scoring entries when over capacity. Expired/archived entries are removed first unconditionally. */
@@ -245,7 +258,13 @@ export class LongTermMemory {
       const scored: { id: string; score: number }[] = [];
 
       for (const row of rows) {
-        const meta = (() => { try { return JSON.parse(row.metadata ?? '{}'); } catch { return {}; } })();
+        const meta = (() => {
+          try {
+            return JSON.parse(row.metadata ?? '{}');
+          } catch {
+            return {};
+          }
+        })();
         const status = meta.status as string | undefined;
         if (status === 'expired' || status === 'archived') {
           expiredIds.push(row.id);
@@ -358,7 +377,9 @@ export class LongTermMemory {
 
     // Async accessCount update (best-effort)
     for (const entry of fused) {
-      this.incrementAccessCount(entry.id).catch((err) => { console.warn('Operation failed', err); });
+      this.incrementAccessCount(entry.id).catch((err) => {
+        console.warn('Operation failed', err);
+      });
     }
 
     return fused;
@@ -379,7 +400,8 @@ export class LongTermMemory {
       const meta = JSON.parse(rows[0]!.metadata ?? '{}') as Record<string, unknown>;
       meta.accessCount = ((meta.accessCount as number) ?? 0) + 1;
 
-      const history = (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
+      const history =
+        (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
       history.push({ at: new Date().toISOString(), source: 'search' });
       if (history.length > 20) {
         history.shift(); // keep max 20 entries
@@ -455,10 +477,7 @@ export class LongTermMemory {
    * Searches for related old memories and uses an LLM judge to determine
    * whether the new statement contradicts any existing memory.
    */
-  private async runLlmContradictionCheck(
-    newId: string,
-    newContent: string,
-  ): Promise<void> {
+  private async runLlmContradictionCheck(newId: string, newContent: string): Promise<void> {
     if (!this.llmJudge || !this.knowledgeGraph) return;
 
     // Use text search to find potentially related old memories
@@ -573,7 +592,10 @@ export class LongTermMemory {
   }
 
   /** Paginated list of all long-term memory entries (no embedding needed). */
-  findAll(limit = 20, offset = 0): Array<{ id: string; content: string; metadata: Record<string, unknown>; timestamp: Date }> {
+  findAll(
+    limit = 20,
+    offset = 0,
+  ): Array<{ id: string; content: string; metadata: Record<string, unknown>; timestamp: Date }> {
     const rows = this.repo.findAll();
     const sliced = rows.slice(offset, offset + limit);
     return sliced.map((r) => ({
@@ -652,8 +674,13 @@ export class LongTermMemory {
   }
 
   /** Brute-force cosine similarity fallback when HNSW native addon is unavailable. */
-  private async bruteForceSemanticSearch(queryEmbedding: number[], limit: number): Promise<SimilarityResult[]> {
-    console.warn('[LongTermMemory] HNSW index unavailable — falling back to brute-force cosine search');
+  private async bruteForceSemanticSearch(
+    queryEmbedding: number[],
+    limit: number,
+  ): Promise<SimilarityResult[]> {
+    console.warn(
+      '[LongTermMemory] HNSW index unavailable — falling back to brute-force cosine search',
+    );
     const startTime = Date.now();
     const scored: SimilarityResult[] = [];
     let offset = 0;
@@ -689,7 +716,9 @@ export class LongTermMemory {
     }
 
     const duration = Date.now() - startTime;
-    console.warn(`[LongTermMemory] Brute-force search completed in ${duration}ms, ${scored.length} results`);
+    console.warn(
+      `[LongTermMemory] Brute-force search completed in ${duration}ms, ${scored.length} results`,
+    );
     return scored.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 

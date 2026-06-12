@@ -311,9 +311,6 @@ importers:
       '@cabinet/gateway':
         specifier: workspace:*
         version: link:../gateway
-      '@cabinet/graph':
-        specifier: workspace:*
-        version: link:../graph
       '@cabinet/memory':
         specifier: workspace:*
         version: link:../memory
@@ -452,25 +449,6 @@ importers:
       vitest:
         specifier: ^4.0.0
         version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
-
-  packages/graph:
-    dependencies:
-      '@cabinet/storage':
-        specifier: workspace:*
-        version: link:../storage
-    devDependencies:
-      '@types/better-sqlite3':
-        specifier: ^7.6.0
-        version: 7.6.13
-      better-sqlite3:
-        specifier: ^11.0.0
-        version: 11.10.0
-      typescript:
-        specifier: ^5.9.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.0
-        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@25.7.0)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@25.7.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/harness:
     dependencies:
@@ -636,9 +614,6 @@ importers:
       '@cabinet/events':
         specifier: workspace:*
         version: link:../events
-      '@cabinet/graph':
-        specifier: workspace:*
-        version: link:../graph
       '@cabinet/storage':
         specifier: workspace:*
         version: link:../storage
@@ -2853,9 +2828,6 @@ packages:
   better-path-resolve@1.0.0:
     resolution: {integrity: sha512-pbnl5XzGBdrFU/wT4jqmJVPn2B6UHPBOhzMQkY/SPUPB6QtUXtmBHBIwCbXJol93mOpGMnQyP/+BB19q04xj7g==}
     engines: {node: '>=4'}
-
-  better-sqlite3@11.10.0:
-    resolution: {integrity: sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ==}
 
   better-sqlite3@12.10.0:
     resolution: {integrity: sha512-CyzaZRQKyHkB2ZInfTTl2nvT33EbDpjkLEbE8/Zck3Ll6O0qqvuGdrJ45HgtH+HykRg88ITY3AdreBGN70aBSQ==}
@@ -7787,11 +7759,6 @@ snapshots:
   better-path-resolve@1.0.0:
     dependencies:
       is-windows: 1.0.2
-
-  better-sqlite3@11.10.0:
-    dependencies:
-      bindings: 1.5.0
-      prebuild-install: 7.1.3
 
   better-sqlite3@12.10.0:
     dependencies:

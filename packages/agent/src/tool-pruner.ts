@@ -30,6 +30,12 @@ export interface PrunerMetrics {
   avgToolCount: number;
 }
 
+export interface PrunerTuningParameters {
+  maxTools: number;
+  minTools: number;
+  candidateThreshold: number;
+}
+
 interface CacheEntry {
   result: PrunedToolSet;
   timestamp: number;
@@ -52,10 +58,13 @@ export class ToolPruner {
   private gateway: LLMGateway;
   private maxTools: number;
   private minTools: number;
+  private initialMaxTools: number;
+  private initialMinTools: number;
   private alwaysInclude: Set<string>;
   private embeddingModel: string;
   private semanticModel: string;
   private cacheTtlMs: number;
+  private candidateThreshold: number;
   private cache = new Map<string, CacheEntry>();
   private metrics = {
     totalPrunes: 0,
@@ -69,12 +78,15 @@ export class ToolPruner {
 
   constructor(options: ToolPrunerOptions) {
     this.gateway = options.gateway;
-    this.maxTools = options.maxTools ?? 16;
-    this.minTools = options.minTools ?? 8;
+    this.initialMaxTools = options.maxTools ?? 16;
+    this.initialMinTools = options.minTools ?? 8;
+    this.maxTools = this.initialMaxTools;
+    this.minTools = this.initialMinTools;
     this.alwaysInclude = new Set(options.alwaysInclude ?? []);
     this.embeddingModel = options.embeddingModel ?? 'text-embedding-3-small';
     this.semanticModel = options.semanticModel ?? 'claude-haiku-4-5';
     this.cacheTtlMs = options.cacheTtlMs ?? 5 * 60 * 1000;
+    this.candidateThreshold = 15;
   }
 
   /** Index all tools from a ToolExecutor. Call after tool registration. */
@@ -157,6 +169,50 @@ export class ToolPruner {
     this.cache.clear();
   }
 
+  /**
+   * Metric-driven adaptive tuning. Adjusts maxTools, minTools, and the LLM
+   * refinement candidate threshold based on observed pruning behavior.
+   */
+  adaptFromMetrics(): void {
+    const metrics = this.getMetrics();
+    if (metrics.totalPrunes === 0) return;
+
+    const fallbackRate = metrics.llmFallbackCount / metrics.totalPrunes;
+    const embeddingOnlyRate = metrics.embeddingOnlyCount / metrics.totalPrunes;
+
+    // If LLM refinement often fails, raise the candidate threshold to rely more on embeddings
+    if (fallbackRate > 0.1) {
+      this.candidateThreshold = Math.min(50, this.candidateThreshold + 5);
+    } else if (fallbackRate === 0 && this.candidateThreshold > 15) {
+      // If LLM refinement is stable, gradually lower threshold back toward baseline
+      this.candidateThreshold = Math.max(15, this.candidateThreshold - 2);
+    }
+
+    // Expand window if we consistently hit the max, contract if we are well below it
+    if (metrics.avgToolCount >= this.maxTools * 0.9) {
+      this.maxTools = Math.min(this.initialMaxTools + 8, this.maxTools + 2);
+    } else if (metrics.avgToolCount <= this.minTools && this.maxTools > this.initialMaxTools) {
+      this.maxTools = Math.max(this.initialMaxTools, this.maxTools - 2);
+    }
+
+    // If embeddings alone are sufficient for most prunes, slightly reduce target size
+    if (embeddingOnlyRate > 0.8 && metrics.avgToolCount <= this.maxTools * 0.7) {
+      this.maxTools = Math.max(this.initialMaxTools, this.maxTools - 1);
+    }
+
+    // Ensure minTools stays bounded
+    this.minTools = Math.min(this.minTools, this.maxTools);
+  }
+
+  /** Expose current tuning parameters for observability/tests. */
+  getTunedParameters(): PrunerTuningParameters {
+    return {
+      maxTools: this.maxTools,
+      minTools: this.minTools,
+      candidateThreshold: this.candidateThreshold,
+    };
+  }
+
   private async _pruneInternal(
     taskDescription: string,
     opts?: { source?: string },
@@ -183,7 +239,7 @@ export class ToolPruner {
     let selected: string[];
     let reasoning: string;
 
-    if (candidates.length > 15) {
+    if (candidates.length > this.candidateThreshold) {
       try {
         const llmResult = await this.llmSemanticFilter(taskDescription, candidates);
         selected = llmResult.tools;
@@ -197,7 +253,7 @@ export class ToolPruner {
       }
     } else {
       selected = candidates;
-      reasoning = `Selected ${selected.length} tools via embedding pre-filter (candidates ≤ 15, skipped LLM refinement)`;
+      reasoning = `Selected ${selected.length} tools via embedding pre-filter (candidates ≤ ${this.candidateThreshold}, skipped LLM refinement)`;
       this.metrics.embeddingOnlyCount++;
     }
 

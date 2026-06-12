@@ -59,3 +59,18 @@ export interface DashboardStats extends DashboardSummary {
   costHistory?: DashboardCostHistory;
   agents?: DashboardAgentStatus[];
 }
+
+/** A single day's operational trend entry. */
+export interface DashboardTrendEntry {
+  date: string;
+  decisions: number;
+  workflows: number;
+  errors: number;
+  tasks: number;
+  sessions: number;
+}
+
+/** Trend data returned by GET /api/dashboard/trends. */
+export interface DashboardTrends {
+  trends: DashboardTrendEntry[];
+}

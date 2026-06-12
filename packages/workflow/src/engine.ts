@@ -1,10 +1,19 @@
 import { WorkflowRepository, type Database } from '@cabinet/storage';
-import type { WorkflowNodeDef, WorkflowNodeType, ContextSlot, WorkflowRunStep, StructuredInput } from '@cabinet/types';
-import { ManagerExecutor } from './manager-executor.js';
-import type { ManagerContextDeps } from './manager-context.js';
-import { StateGraph, Annotation } from '@cabinet/graph';
-import { evaluateCondition as evaluateExpr, compareValues, type ConditionContext } from './condition-evaluator.js';
-import { buildAdjacencyGraph, buildNodeInput, resolveVariable, resolveValue, findChildForBranch, withTimeout } from './engine-helpers.js';
+import type {
+  WorkflowNodeDef,
+  WorkflowNodeType,
+  ContextSlot,
+  WorkflowRunStep,
+  StructuredInput,
+} from '@cabinet/types';
+import { evaluateCondition as evaluateExpr } from './condition-evaluator.js';
+import {
+  buildAdjacencyGraph,
+  buildNodeInput,
+  resolveVariable,
+  resolveValue,
+  withTimeout,
+} from './engine-helpers.js';
 import { runCodeSandboxed } from './code-sandbox.js';
 import { executeNodeWithRecovery } from './error-recovery.js';
 import { WorkflowPersistence } from './persistence.js';
@@ -27,8 +36,13 @@ export interface WorkflowEdge {
 }
 
 export type WorkflowRunStatus =
-  | 'pending' | 'running' | 'paused' | 'completed' | 'failed'
-  | 'awaiting_approval' | 'awaiting_human'
+  | 'pending'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'awaiting_approval'
+  | 'awaiting_human'
   | 'completed_with_errors';
 
 export interface WorkflowRun {
@@ -44,21 +58,50 @@ export interface WorkflowRun {
 
 export interface WorkflowHandlers {
   createAgentLoop?: (
-    role: string, runId: string,
-    opts: { persistent?: boolean; segmentId?: string; systemPrompt?: string; model?: string; allowedTools?: string[] },
+    role: string,
+    runId: string,
+    opts: {
+      persistent?: boolean;
+      segmentId?: string;
+      systemPrompt?: string;
+      model?: string;
+      allowedTools?: string[];
+    },
   ) => Promise<AgentLoopHandle>;
   skill?: (skillId: string, input: unknown) => Promise<unknown>;
   tool?: (toolId: string, params: Record<string, unknown>) => Promise<unknown>;
   runCode?: (code: string, input: unknown, timeout: number) => Promise<unknown>;
   runSubWorkflow?: (workflowId: string, input: unknown) => Promise<unknown>;
-  humanApproval?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
-  humanTask?: (node: WorkflowNodeDef, run: WorkflowRun) => Promise<{ taskId: string; status: 'submitted' }>;
-  intentClassify?: (node: WorkflowNodeDef, input: unknown) => Promise<{ intent: string; confidence: number }>;
-  knowledgeBase?: (node: WorkflowNodeDef, input: unknown) => Promise<Array<{ content: string; score: number }>>;
+  humanApproval?: (
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+  ) => Promise<{ decisionId: string; status: 'approved' | 'pending' }>;
+  humanTask?: (
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+  ) => Promise<{ taskId: string; status: 'submitted' }>;
+  intentClassify?: (
+    node: WorkflowNodeDef,
+    input: unknown,
+  ) => Promise<{ intent: string; confidence: number }>;
+  knowledgeBase?: (
+    node: WorkflowNodeDef,
+    input: unknown,
+  ) => Promise<Array<{ content: string; score: number }>>;
   dispatchToExternalAgent?: (
     agentId: string,
-    task: { runId: string; nodeId: string; input: unknown; previousOutputs: string[]; slot: ContextSlot },
-  ) => Promise<{ status: 'completed' | 'failed' | 'awaiting_approval'; output?: unknown; decisionId?: string }>;
+    task: {
+      runId: string;
+      nodeId: string;
+      input: unknown;
+      previousOutputs: string[];
+      slot: ContextSlot;
+    },
+  ) => Promise<{
+    status: 'completed' | 'failed' | 'awaiting_approval';
+    output?: unknown;
+    decisionId?: string;
+  }>;
   aiAgent?: (node: WorkflowNodeDef, previousOutputs: string) => Promise<string>;
 }
 
@@ -78,7 +121,8 @@ export class WorkflowEngine {
       handlers: this.handlers,
       currentEdges: this.currentEdges,
       finalizeAgentSegment: (run) => this.finalizeAgentSegment(run),
-      appendStepAndResult: (run, nodeId, nodeType, output) => this.persistence.appendStepAndResult(run, nodeId, nodeType, output),
+      appendStepAndResult: (run, nodeId, nodeType, output) =>
+        this.persistence.appendStepAndResult(run, nodeId, nodeType, output),
       saveRun: (run) => this.persistence.saveRun(run),
     };
   }
@@ -93,12 +137,20 @@ export class WorkflowEngine {
   }
 
   async startRun(
-    workflowId: string, nodes: WorkflowNodeDef[], edges: WorkflowEdge[], entryNodeId: string,
+    workflowId: string,
+    nodes: WorkflowNodeDef[],
+    edges: WorkflowEdge[],
+    entryNodeId: string,
   ): Promise<WorkflowRun> {
     const runId = `run_${Date.now()}`;
     const run: WorkflowRun = {
-      runId, workflowId, status: 'running', currentNodeId: entryNodeId,
-      results: new Map(), steps: [], startedAt: new Date(),
+      runId,
+      workflowId,
+      status: 'running',
+      currentNodeId: entryNodeId,
+      results: new Map(),
+      steps: [],
+      startedAt: new Date(),
     };
     this.runs.set(runId, run);
     this.persistence.saveRun(run);
@@ -107,14 +159,8 @@ export class WorkflowEngine {
     this.currentEdges = edges;
 
     try {
-      const sg = this.buildStateGraph(nodes, edges, entryNodeId, run, nodeMap);
-      const compiled = sg.compile({ entry: entryNodeId });
-      if (compiled.ok) {
-        await compiled.graph!.invoke({});
-      } else {
-        const adjGraph = buildAdjacencyGraph(nodes, edges);
-        await this.executeNode(entryNodeId, nodeMap, adjGraph, run, new Set());
-      }
+      const adjGraph = buildAdjacencyGraph(nodes, edges);
+      await this.executeNode(entryNodeId, nodeMap, adjGraph, run, new Set());
       await this.finalizeAgentSegment(run);
     } catch (error) {
       await this.finalizeAgentSegment(run);
@@ -124,12 +170,17 @@ export class WorkflowEngine {
       return run;
     }
 
-    if (run.status === 'running') { run.status = 'completed'; this.persistence.saveRun(run); }
+    if (run.status === 'running') {
+      run.status = 'completed';
+      this.persistence.saveRun(run);
+    }
     return run;
   }
 
   async continueRun(
-    runId: string, nodes: WorkflowNodeDef[], edges: WorkflowEdge[],
+    runId: string,
+    nodes: WorkflowNodeDef[],
+    edges: WorkflowEdge[],
   ): Promise<WorkflowRun> {
     let run = this.runs.get(runId);
     if (!run) {
@@ -138,7 +189,11 @@ export class WorkflowEngine {
       run = loaded;
       this.runs.set(runId, run);
     }
-    if (run.status !== 'awaiting_approval' && run.status !== 'paused' && run.status !== 'awaiting_human') {
+    if (
+      run.status !== 'awaiting_approval' &&
+      run.status !== 'paused' &&
+      run.status !== 'awaiting_human'
+    ) {
       throw new Error(`Cannot continue run with status: ${run.status}`);
     }
 
@@ -162,7 +217,10 @@ export class WorkflowEngine {
       return run;
     }
 
-    if (run.status === 'running') { run.status = 'completed'; this.persistence.saveRun(run); }
+    if (run.status === 'running') {
+      run.status = 'completed';
+      this.persistence.saveRun(run);
+    }
     return run;
   }
 
@@ -178,72 +236,20 @@ export class WorkflowEngine {
         const handoffDoc = await run._agentLoop.handle.handoff();
         run.results.set(`_handoff:${run._agentLoop.agentId}`, handoffDoc);
         await run._agentLoop.handle.dispose();
-      } catch { /* cleanup failure is non-fatal */ }
+      } catch {
+        /* cleanup failure is non-fatal */
+      }
       run._agentLoop = null;
       this.persistence.saveRun(run);
     }
   }
 
-  private buildStateGraph(
-    nodes: WorkflowNodeDef[],
-    edges: WorkflowEdge[],
-    _entryNodeId: string,
-    run: WorkflowRun,
-    nodeMap: Map<string, WorkflowNodeDef>,
-  ): StateGraph<Record<string, Annotation<any>>> {
-    const schema: Record<string, Annotation<any>> = {};
-    for (const node of nodes) {
-      schema[node.id] = Annotation<unknown>({
-        reducer: (_a, b) => b,
-        default: () => null,
-      });
-    }
-
-    const sg = new StateGraph(schema);
-    const self = this;
-
-    for (const node of nodes) {
-      sg.addNode(node.id, async () => {
-        await self.nodeExecutor.runNode(node, run, nodeMap, self.executeNode.bind(self));
-        return {};
-      });
-    }
-
-    const ifElseNodes = new Set(nodes.filter((n) => n.type === 'ifElse').map((n) => n.id));
-
-    for (const edge of edges) {
-      if (ifElseNodes.has(edge.from)) continue;
-      sg.addEdge(edge.from, edge.to);
-    }
-
-    for (const nodeId of ifElseNodes) {
-      const children = edges.filter((e) => e.from === nodeId).map((e) => e.to);
-      const trueChild = children[0];
-      const falseChild = children.length >= 2 ? children[1] : undefined;
-
-      const targets: Record<string, string> = {};
-      if (trueChild) targets['true'] = trueChild;
-      if (falseChild) targets['false'] = falseChild;
-      targets['__default__'] = trueChild ?? falseChild ?? '__END__';
-
-      sg.addConditionalEdges(nodeId, () => {
-        const matchingSteps = run.steps.filter((s: { nodeId: string }) => s.nodeId === nodeId);
-        const step = matchingSteps[matchingSteps.length - 1];
-        if (!step) return '__default__';
-        const output = step.output;
-        if (output.includes('Matched branch')) return 'true';
-        if (output.includes('Condition evaluated: true')) return 'true';
-        if (output.includes('Condition evaluated: false')) return 'false';
-        return '__default__';
-      }, targets);
-    }
-
-    return sg;
-  }
-
   private async executeNode(
-    nodeId: string, nodeMap: Map<string, WorkflowNodeDef>,
-    graph: Map<string, string[]>, run: WorkflowRun, visited: Set<string>,
+    nodeId: string,
+    nodeMap: Map<string, WorkflowNodeDef>,
+    graph: Map<string, string[]>,
+    run: WorkflowRun,
+    visited: Set<string>,
   ): Promise<void> {
     if (visited.has(nodeId)) return;
     visited.add(nodeId);
@@ -252,7 +258,9 @@ export class WorkflowEngine {
 
     await executeNodeWithRecovery(
       (n, r, nm) => this.nodeExecutor.runNode(n, r, nm, this.executeNode.bind(this)),
-      node, run, nodeMap,
+      node,
+      run,
+      nodeMap,
       (r) => this.persistence.saveRun(r),
       (r, nid, nt, out) => this.persistence.appendStepAndResult(r, nid, nt, out),
     );
@@ -263,26 +271,49 @@ export class WorkflowEngine {
     }
 
     const children = graph.get(nodeId) ?? [];
-    for (const child of children) {
+    const nextIds =
+      node.type === 'ifElse' ? this.resolveIfElseChildren(nodeId, children, run) : children;
+
+    for (const child of nextIds) {
       if (!visited.has(child)) {
         await this.executeNode(child, nodeMap, graph, run, visited);
       }
     }
   }
 
-  private handleErrorTrigger(error: unknown, run: WorkflowRun, nodeMap: Map<string, WorkflowNodeDef>): void {
+  private resolveIfElseChildren(nodeId: string, children: string[], run: WorkflowRun): string[] {
+    if (children.length === 0) return [];
+    const step = run.steps.find((s) => s.nodeId === nodeId);
+    const output = step?.output ?? '';
+    const branchLabel = output.includes('Condition evaluated: false') ? 'false' : 'true';
+    const edge = this.currentEdges.find((e) => e.from === nodeId && e.branch === branchLabel);
+    const target = edge?.to ?? children[0]!;
+    return [target];
+  }
+
+  private handleErrorTrigger(
+    error: unknown,
+    run: WorkflowRun,
+    nodeMap: Map<string, WorkflowNodeDef>,
+  ): void {
     const failedNodeId = run.currentNodeId;
     const failedNode = nodeMap.get(failedNodeId);
     if (failedNode?.errorTriggerWorkflowId && this.handlers.runSubWorkflow) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       try {
-        this.handlers.runSubWorkflow(failedNode.errorTriggerWorkflowId, {
-          failedRunId: run.runId,
-          failedNodeId,
-          errorMessage: errorMsg,
-          partialResults: Object.fromEntries(run.results),
-        }).catch(() => { /* ErrorTrigger failure is non-fatal */ });
-      } catch { /* ignore */ }
+        this.handlers
+          .runSubWorkflow(failedNode.errorTriggerWorkflowId, {
+            failedRunId: run.runId,
+            failedNodeId,
+            errorMessage: errorMsg,
+            partialResults: Object.fromEntries(run.results),
+          })
+          .catch(() => {
+            /* ErrorTrigger failure is non-fatal */
+          });
+      } catch {
+        /* ignore */
+      }
     }
   }
 

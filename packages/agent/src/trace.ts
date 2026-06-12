@@ -1,10 +1,20 @@
-import type { CompiledGraph, StreamEvent } from '@cabinet/graph';
-
 export interface TraceOptions {
   runId?: string;
   /** Called for each trace line. Default: console.log with timestamp. */
   write?: (line: string) => void;
 }
+
+/**
+ * Minimal stream event shape consumed by the tracer.
+ * This used to be imported from `@cabinet/graph`; it is now local so the
+ * agent package no longer depends on the graph package.
+ */
+type StreamEvent =
+  | { type: 'node:start'; nodeId: string }
+  | { type: 'node:end'; nodeId: string }
+  | { type: 'error'; nodeId: string; error: unknown }
+  | { type: 'checkpoint:saved'; checkpointId: string }
+  | { type: string; nodeId?: string; checkpointId?: string; error?: unknown };
 
 /**
  * Consume a graph's stream and print a structured trace.

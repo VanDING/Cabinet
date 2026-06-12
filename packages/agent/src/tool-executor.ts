@@ -8,6 +8,8 @@ export interface ToolResult {
 
 export interface ToolContext {
   sessionId?: string;
+  /** Trust level of the executing agent (T0-T3). */
+  trustLevel?: import('@cabinet/types').TrustLevel;
 }
 
 export interface ToolDefinition {
@@ -77,10 +79,19 @@ export class ToolExecutor {
       const msg = (error as Error).message.toLowerCase();
       let errorType: ToolResult['errorType'];
       if (msg.includes('timeout') || msg.includes('timed out')) errorType = 'timeout';
-      else if (msg.includes('permission') || msg.includes('denied') || msg.includes('eacces')) errorType = 'permission';
-      else if (msg.includes('not found') || msg.includes('enoent') || msg.includes('no such file')) errorType = 'not_found';
-      else if (msg.includes('invalid') || msg.includes('required') || msg.includes('is required')) errorType = 'invalid_input';
-      else if (msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('socket') || msg.includes('network')) errorType = 'network';
+      else if (msg.includes('permission') || msg.includes('denied') || msg.includes('eacces'))
+        errorType = 'permission';
+      else if (msg.includes('not found') || msg.includes('enoent') || msg.includes('no such file'))
+        errorType = 'not_found';
+      else if (msg.includes('invalid') || msg.includes('required') || msg.includes('is required'))
+        errorType = 'invalid_input';
+      else if (
+        msg.includes('econnrefused') ||
+        msg.includes('enotfound') ||
+        msg.includes('socket') ||
+        msg.includes('network')
+      )
+        errorType = 'network';
       else errorType = 'internal';
       return { toolCallId, output: null, error: (error as Error).message, errorType };
     }
@@ -161,15 +172,8 @@ export class ToolExecutor {
 }
 
 /** Ensure parameters conform to a valid JSON Schema object with type: "object". */
-function normalizeParameters(
-  params: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  if (
-    !params ||
-    typeof params !== 'object' ||
-    Array.isArray(params) ||
-    params.type !== 'object'
-  ) {
+function normalizeParameters(params: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!params || typeof params !== 'object' || Array.isArray(params) || params.type !== 'object') {
     return { type: 'object', properties: {} };
   }
   return params;

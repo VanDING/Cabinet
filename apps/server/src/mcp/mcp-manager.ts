@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { createTransport, type MCPTransportConfig } from './mcp-transport.js';
 import { type Logger } from '@cabinet/storage';
 import type { AuditLogger } from '@cabinet/decision';
+import type { TrustLevel } from '@cabinet/types';
 
 export interface MCPServerConfig {
   name: string;
@@ -201,28 +202,50 @@ export class MCPManager {
     return [...this.prompts.values()];
   }
 
-  /** Call a tool by its MCP name. */
-  async callTool(fullName: string, args: Record<string, unknown>): Promise<unknown> {
+  /** Call a tool by its MCP name. Trust level is enforced natively inside the manager. */
+  async callTool(
+    fullName: string,
+    args: Record<string, unknown>,
+    trustLevel: TrustLevel = 'T3',
+  ): Promise<unknown> {
     const tool = this.tools.get(fullName);
     if (!tool) throw new Error(`MCP tool not found: ${fullName}`);
     const client = this.clients.get(tool.serverName);
     if (!client) throw new Error(`MCP server not connected: ${tool.serverName}`);
 
-    // Audit log
+    const category = mapRiskToCategory(tool.sideEffectRisk);
+    const decision = resolveMcpDecision(trustLevel, category);
+
+    // Audit log before enforcement so bypass attempts are recorded
     this.auditLogger?.log({
       entityType: 'mcp_tool',
       entityId: fullName,
       action: 'call',
       actor: 'agent',
-      changes: { args, sideEffectRisk: tool.sideEffectRisk },
+      changes: {
+        args,
+        sideEffectRisk: tool.sideEffectRisk,
+        trustLevel,
+        category,
+        decision: decision.allowed ? 'allowed' : 'blocked',
+        timestamp: new Date().toISOString(),
+      },
     });
+
+    if (!decision.allowed) {
+      throw new Error(decision.reason);
+    }
 
     // Parameter validation for destructive tools: block file paths outside allowed directories
     if (tool.sideEffectRisk === 'destructive') {
-      const pathArgs = Object.values(args).filter((v): v is string => typeof v === 'string' && (v.includes('/') || v.includes('\\')));
+      const pathArgs = Object.values(args).filter(
+        (v): v is string => typeof v === 'string' && (v.includes('/') || v.includes('\\')),
+      );
       for (const p of pathArgs) {
         if (isDisallowedPath(p)) {
-          throw new Error(`MCP tool '${fullName}' blocked: path '${p}' is outside allowed directories`);
+          throw new Error(
+            `MCP tool '${fullName}' blocked: path '${p}' is outside allowed directories`,
+          );
         }
       }
     }
@@ -385,9 +408,65 @@ export class MCPManager {
   }
 }
 
+// ── Trust-level gating ──────────────────────────────────────────
+
+type MCPToolCategory = 'read_only' | 'light_write' | 'moderate' | 'destructive';
+
+function mapRiskToCategory(risk: MCPSideEffectRisk): MCPToolCategory {
+  if (risk === 'none' || risk === 'readonly') return 'read_only';
+  if (risk === 'destructive') return 'destructive';
+  return 'moderate';
+}
+
+interface MCPDecision {
+  allowed: boolean;
+  reason: string;
+}
+
+function resolveMcpDecision(trustLevel: TrustLevel, category: MCPToolCategory): MCPDecision {
+  if (trustLevel === 'T3') {
+    return { allowed: true, reason: 'T3 Full Autonomy' };
+  }
+  if (category === 'read_only') {
+    return { allowed: true, reason: 'read-only tool allowed at all trust levels' };
+  }
+  if (trustLevel === 'T0') {
+    return {
+      allowed: false,
+      reason: `MCP tool blocked at T0 CaptainReview: category '${category}' requires confirmation`,
+    };
+  }
+  if (trustLevel === 'T1') {
+    if (category === 'destructive') {
+      return {
+        allowed: false,
+        reason: `MCP tool blocked at T1 StrategicGuard: destructive tool requires confirmation`,
+      };
+    }
+    if (category === 'moderate') {
+      return {
+        allowed: false,
+        reason: `MCP tool blocked at T1 StrategicGuard: moderate tool requires confirmation`,
+      };
+    }
+    // light_write (not produced by MCP risk mapping) would be allowed
+    return { allowed: true, reason: 'light-write tool allowed at T1' };
+  }
+  // T2
+  if (category === 'destructive') {
+    return {
+      allowed: false,
+      reason: `MCP tool blocked at T2 TrustedMode: destructive tool requires confirmation`,
+    };
+  }
+  return { allowed: true, reason: 'non-destructive tool allowed at T2' };
+}
+
 // ── Tool risk classification ────────────────────────────────────
 
-function classifyToolRisk(tool: { annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean } }): MCPSideEffectRisk {
+function classifyToolRisk(tool: {
+  annotations?: { destructiveHint?: boolean; readOnlyHint?: boolean };
+}): MCPSideEffectRisk {
   const annotations = tool.annotations;
   if (annotations?.destructiveHint) return 'destructive';
   if (annotations?.readOnlyHint) return 'readonly';
@@ -398,13 +477,13 @@ function classifyToolRisk(tool: { annotations?: { destructiveHint?: boolean; rea
 // ── Path validation ─────────────────────────────────────────────
 
 const DISALLOWED_PATTERNS = [
-  /\.\.\//,             // parent directory traversal
-  /\/etc\//,            // system config
-  /\/usr\/bin\//,       // system binaries
-  /\.ssh\//,            // SSH keys
-  /\.gnupg\//,          // GPG keys
-  /\.aws\//,            // AWS credentials
-  /\.env$/,             // env files
+  /\.\.\//, // parent directory traversal
+  /\/etc\//, // system config
+  /\/usr\/bin\//, // system binaries
+  /\.ssh\//, // SSH keys
+  /\.gnupg\//, // GPG keys
+  /\.aws\//, // AWS credentials
+  /\.env$/, // env files
 ];
 
 function isDisallowedPath(path: string): boolean {

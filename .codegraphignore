@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+build
+target
+.generated
+coverage
+.turbo
+node-v22.22.3-darwin-x64
+node-v22.22.3-darwin-x64.tar.gz
+node-v26.3.0-darwin-x64
+node-v26.3.0-darwin-x64.tar.gz
+*.lock
+pnpm-lock.yaml
+*.png
+*.ico
+*.tar.gz

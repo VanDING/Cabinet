@@ -22,10 +22,10 @@ export interface AdaptiveThresholdConfig {
 
 export const DEFAULT_ADAPTIVE_CONFIG: AdaptiveThresholdConfig = {
   enabled: true,
-  mode: 'collect',
+  mode: 'shadow',
   explorationRate: 0.1,
   lookbackDays: 14,
-  minSamplesPerZone: 20,
+  minSamplesPerZone: 10,
   hardLimits: {
     smartZoneMin: 0.3,
     criticalThresholdMax: 0.9,

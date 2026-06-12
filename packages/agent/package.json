@@ -13,7 +13,6 @@
   "dependencies": {
     "@cabinet/events": "workspace:*",
     "@cabinet/gateway": "workspace:*",
-    "@cabinet/graph": "workspace:*",
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",

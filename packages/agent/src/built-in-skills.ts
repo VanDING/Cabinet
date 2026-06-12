@@ -7,9 +7,10 @@ export const WORKFLOW_DESIGNER_SKILL: SkillEntry = {
   description:
     'Design and modify Cabinet workflows. Guides step-by-step workflow creation, agent assignment, and validation. Use when the user wants to create, edit, or review a multi-step automated process.',
   kind: 'prompt',
-  exposure: 'prompt',
+  exposure: 'both',
   version: 2,
   status: 'active',
+  builtIn: true,
   promptTemplate: `## Workflow Designer Skill
 
 You are using the Workflow Designer skill. Help the user design and modify Cabinet workflows — multi-step automated processes.
@@ -67,9 +68,10 @@ export const AGENT_CREATOR_SKILL: SkillEntry = {
   description:
     'Create, modify, and delete custom Cabinet AI agents. Guides the user through defining a role, system prompt, modelTier, and tool permissions. Use when the user wants to create or manage a custom agent.',
   kind: 'prompt',
-  exposure: 'prompt',
+  exposure: 'both',
   version: 1,
   status: 'active',
+  builtIn: true,
   promptTemplate: `## Agent Creator Skill
 
 You are using the Agent Creator skill. Help the user create, modify, and delete custom AI agents.
@@ -135,9 +137,10 @@ export const SKILL_CREATOR_SKILL: SkillEntry = {
   description:
     'Create new Cabinet skills, modify and improve existing skills. Use when users want to create a skill from scratch, edit or optimize an existing skill, or write a SKILL.md file.',
   kind: 'prompt',
-  exposure: 'prompt',
+  exposure: 'both',
   version: 1,
   status: 'active',
+  builtIn: true,
   promptTemplate: `## Skill Creator
 
 You are using the Skill Creator skill. Help the user create new skills and iteratively improve them.
@@ -297,10 +300,11 @@ The user might ask you to update an existing skill, not create a new one. In tha
 export const MCP_BUILDER_SKILL: SkillEntry = {
   id: 'builtin_mcp_builder',
   name: 'mcpBuilder',
+  builtIn: true,
   description:
     'Guide for creating high-quality MCP (Model Context Protocol) servers. Use when building MCP servers to integrate external APIs or services, in Python or TypeScript.',
   kind: 'prompt',
-  exposure: 'prompt',
+  exposure: 'both',
   version: 1,
   status: 'active',
   promptTemplate: `## MCP Server Development Guide

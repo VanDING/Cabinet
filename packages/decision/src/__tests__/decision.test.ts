@@ -67,9 +67,18 @@ describe('LevelClassifier', () => {
   });
 
   it('classifies L1 for low-risk within session', () => {
-    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCost: 0.05 })).toBe(
-      'L1',
-    );
+    expect(classifier.classify({ ...baseInput, optionCount: 2, estimatedCost: 0.05 })).toBe('L1');
+  });
+
+  it('classifies L0 before L1 when no cost and few options', () => {
+    expect(
+      classifier.classify({
+        ...baseInput,
+        optionCount: 2,
+        estimatedCost: 0,
+        isCrossSession: false,
+      }),
+    ).toBe('L0');
   });
 
   it('escalates on uncertainty', () => {

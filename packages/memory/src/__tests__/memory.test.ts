@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { unlinkSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { ShortTermMemory } from '../short-term.js';
@@ -446,6 +446,33 @@ describe('ConsolidationService', () => {
 
     long.close();
   });
+
+  it('uses a Curator summarizer when flushing cascade buffers', async () => {
+    const short = new ShortTermMemory();
+    const long = new LongTermMemory(
+      new Database(':memory:'),
+      3,
+      `/tmp/cabinet-consolidation-curator-${Date.now()}.hnsw.index`,
+    );
+    const summarizer = vi.fn().mockResolvedValue('Curator summary');
+    const svc = new ConsolidationService(short, long, { curatorSummarizer: summarizer });
+    svc.preserveRecentMs = 0;
+
+    short.set('sess-curator', 'insight', 'Important insight that should be summarized by Curator.');
+    await svc.consolidateBasic('sess-curator');
+    const flushed = await svc.flushSession('sess-curator');
+
+    expect(flushed).toBe(1);
+    expect(summarizer).toHaveBeenCalledTimes(1);
+    expect(summarizer).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ content: expect.stringContaining('Important insight') }),
+      ]),
+    );
+    expect(long.size()).toBe(1);
+
+    long.close();
+  });
 });
 
 // ── MemoryDecayService (Ebbinghaus adaptive) ──────────────────
@@ -475,13 +502,18 @@ describe('MemoryDecayService', () => {
     });
     const accessedScore = MemoryDecayService.score({
       timestamp,
-      metadata: { importance: 0.5, confidence: 0.5, accessCount: 5, accessHistory: [
-        { at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
-        { at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
-        { at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
-        { at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
-        { at: new Date().toISOString(), source: 'search' },
-      ]},
+      metadata: {
+        importance: 0.5,
+        confidence: 0.5,
+        accessCount: 5,
+        accessHistory: [
+          { at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+          { at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+          { at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+          { at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), source: 'search' },
+          { at: new Date().toISOString(), source: 'search' },
+        ],
+      },
     });
     expect(accessedScore).toBeGreaterThan(baseScore);
   });
@@ -501,4 +533,29 @@ describe('MemoryDecayService', () => {
     const halfLifeRare = MemoryDecayService.computeAdaptiveHalfLife({ accessHistory: veryRare });
     expect(halfLifeRare).toBe(7); // 900/365 = 2.46 → clamped to 7
   });
+});
+
+it('samples transient noise entries through the embedding slow path', async () => {
+  const short = new ShortTermMemory();
+  const long = new LongTermMemory(
+    new Database(':memory:'),
+    3,
+    `/tmp/cabinet-consolidation-${Date.now()}.hnsw.index`,
+  );
+  const provider = {
+    generateEmbedding: vi.fn().mockResolvedValue(new Array(384).fill(0.1)),
+  };
+  const svc = new ConsolidationService(short, long, { embeddingProvider: provider });
+  svc.preserveRecentMs = 0;
+
+  // 'ok' is too short and will be classified as transient_noise by fast path
+  short.set('sess-2', 'noise1', 'ok');
+  short.set('sess-2', 'noise2', 'hi');
+
+  const result = await svc.sampleSlowPath('sess-2');
+  expect(result.sampled).toBeGreaterThan(0);
+  expect(result.rescued).toBe(0); // random embedding does not match anchors
+  expect(provider.generateEmbedding).toHaveBeenCalled();
+
+  long.close();
 });

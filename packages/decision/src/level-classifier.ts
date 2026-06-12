@@ -34,12 +34,12 @@ export class LevelClassifier {
     } else if (input.isCrossSession || input.optionCount > 3 || totalCost > 0.1) {
       // L2: cross-session, many options, value trade-offs, or moderate cost
       level = DecisionLevel.L2;
+    } else if (!input.isCrossSession && input.optionCount <= 2 && totalCost === 0) {
+      // L0: no side effects, no cost, within single call (must be checked before L1)
+      level = DecisionLevel.L0;
     } else if (input.optionCount <= 3 && totalCost <= 0.1) {
       // L1: within session, few options, low cost
       level = DecisionLevel.L1;
-    } else if (!input.isCrossSession && input.optionCount <= 2 && totalCost === 0) {
-      // L0: no side effects, no cost, within single call
-      level = DecisionLevel.L0;
     } else {
       // Default: escalate (safe side)
       level = DecisionLevel.L2;
@@ -47,13 +47,27 @@ export class LevelClassifier {
 
     // External agent sandbox: command_execution from external agents gets +1 level
     if (input.fromExternalAgent && input.operationType === 'command_execution') {
-      const escalate: Record<string, string> = { L0: DecisionLevel.L1, L1: DecisionLevel.L2, L2: DecisionLevel.L3, L3: DecisionLevel.L3 };
+      const escalate: Record<string, string> = {
+        L0: DecisionLevel.L1,
+        L1: DecisionLevel.L2,
+        L2: DecisionLevel.L3,
+        L3: DecisionLevel.L3,
+      };
       level = escalate[level] ?? level;
     }
 
     // High trust level may downgrade one level (but never below L0)
-    if (input.agentTrustLevel !== undefined && input.agentTrustLevel >= 0.8 && level !== DecisionLevel.L0) {
-      const downgrade: Record<string, string> = { L3: DecisionLevel.L2, L2: DecisionLevel.L1, L1: DecisionLevel.L0, L0: DecisionLevel.L0 };
+    if (
+      input.agentTrustLevel !== undefined &&
+      input.agentTrustLevel >= 0.8 &&
+      level !== DecisionLevel.L0
+    ) {
+      const downgrade: Record<string, string> = {
+        L3: DecisionLevel.L2,
+        L2: DecisionLevel.L1,
+        L1: DecisionLevel.L0,
+        L0: DecisionLevel.L0,
+      };
       level = downgrade[level] ?? level;
     }
 

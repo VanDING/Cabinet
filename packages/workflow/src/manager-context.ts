@@ -9,7 +9,12 @@
 // route through SquadRouter for team-based agent selection.
 //
 
-import type { WorkflowNodeDef, WorkflowRunStep, StructuredInput, NodeOutputContract } from '@cabinet/types';
+import type {
+  WorkflowNodeDef,
+  WorkflowRunStep,
+  StructuredInput,
+  NodeOutputContract,
+} from '@cabinet/types';
 
 // ── ManagerContext interface ──────────────────────────────────────
 
@@ -104,8 +109,8 @@ export interface ManagerContextDeps {
 /**
  * Create a ManagerContext backed by the engine's execution infrastructure.
  *
- * The resulting context is passed to ManagerExecutor.run() which orchestrates
- * the Plan→Dispatch→Review→Iterate→Synthesize cycle.
+ * The resulting context is used by the manager node runner in engine/manager.ts
+ * which orchestrates the Plan→Dispatch→Review→Iterate→Synthesize cycle.
  */
 export function createManagerContext(deps: ManagerContextDeps): ManagerContext {
   let round = 0;
@@ -157,13 +162,19 @@ export function createManagerContext(deps: ManagerContextDeps): ManagerContext {
       return deps.synthesizeWithLLM(prompt);
     },
 
-    get currentRound() { return round; },
+    get currentRound() {
+      return round;
+    },
     maxRounds,
     shouldContinue: () => round < maxRounds,
     squadRouter: deps.squadRouter,
 
     // Internal mutable round counter (incremented by ManagerExecutor)
-    _incrementRound: () => { round++; },
-    _resetRounds: () => { round = 0; },
+    _incrementRound: () => {
+      round++;
+    },
+    _resetRounds: () => {
+      round = 0;
+    },
   } as ManagerContext & { _incrementRound(): void; _resetRounds(): void };
 }
