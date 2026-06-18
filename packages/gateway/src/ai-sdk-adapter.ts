@@ -530,10 +530,30 @@ export class AISDKAdapter implements LLMGateway {
    * Currently only OpenAI is supported for embeddings.
    */
   private async resolveEmbeddingModel(modelName: string): Promise<any> {
-    const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
-    if (!key) throw new Error('OPENAI_API_KEY not configured for embeddings');
-    const client = createOpenAI({ apiKey: key });
-    return client.embedding(modelName);
+    // Try OpenAI first (most embedding models)
+    const openAIKey = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
+    if (openAIKey) {
+      const baseURL = this.config.openai?.baseUrl;
+      const client = baseURL
+        ? createOpenAI({ apiKey: openAIKey, baseURL })
+        : createOpenAI({ apiKey: openAIKey });
+      return client.embedding(modelName);
+    }
+    // Fallback: Google embedding (via @ai-sdk/google)
+    const googleKey = this.config.google?.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (googleKey) {
+      try {
+        const { google } = await this.loadProvider('google');
+        return google({ apiKey: googleKey })(modelName);
+      } catch {
+        throw new Error(
+          'Google embedding requires @ai-sdk/google. Install it: pnpm add @ai-sdk/google',
+        );
+      }
+    }
+    throw new Error(
+      'No embedding provider configured. Set OPENAI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY.',
+    );
   }
 
   /**

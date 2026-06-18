@@ -49,9 +49,8 @@ export interface WriteGateResult {
  * When provided, WriteGate can fall back to embedding-based tier classification
  * if the regex fast path does not match any pattern.
  */
-export interface EmbeddingProvider {
-  generateEmbedding(text: string): Promise<number[]>;
-}
+/** @deprecated Use EmbeddingGateway from vector-utils. */
+export type EmbeddingProvider = EmbeddingGateway;
 
 export interface WriteGateStats {
   totalEvaluated: number;
@@ -183,7 +182,8 @@ export class WriteGate {
     }
 
     try {
-      const embedding = await this.options.embeddingProvider.generateEmbedding(content);
+      const result = await this.options.embeddingProvider.generateEmbeddings({ texts: [content] });
+      const embedding = result.embeddings[0]!;
       const tier = this.classifyByEmbedding(embedding);
       if (tier) {
         const slowResult: WriteGateResult = {
@@ -289,4 +289,4 @@ export class WriteGate {
   }
 }
 
-import { cosineSimilarity } from './vector-utils.js';
+import { cosineSimilarity, type EmbeddingGateway } from './vector-utils.js';

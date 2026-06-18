@@ -3,15 +3,16 @@ import { BM25Index, HybridRetriever } from '../hybrid-retriever.js';
 import type { Chunk } from '../chunking.js';
 
 class FakeEmbedder {
-  async embed(texts: string[]): Promise<number[][]> {
+  async generateEmbeddings(opts: { texts: string[] }): Promise<{ embeddings: number[][] }> {
     // Deterministic fake embeddings based on text length
-    return texts.map((t) => {
+    const embeddings = opts.texts.map((t) => {
       const vec = new Array(8).fill(0);
       for (let i = 0; i < t.length; i++) {
         vec[i % 8] = (vec[i % 8]! + t.charCodeAt(i)) % 100;
       }
       return vec.map((v) => v / 100);
     });
+    return { embeddings };
   }
 }
 

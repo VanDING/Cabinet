@@ -57,12 +57,10 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length > 1);
 }
 
-/** Minimal embedding interface for hybrid search. */
-export interface SimpleEmbedder {
-  embed(texts: string[]): Promise<number[][]>;
-}
+import { cosineSimilarity, type EmbeddingGateway } from './vector-utils.js';
 
-import { cosineSimilarity } from './vector-utils.js';
+/** @deprecated Use EmbeddingGateway from vector-utils. */
+export type SimpleEmbedder = EmbeddingGateway;
 
 /**
  * Hybrid retriever — BM25 + embedding similarity merged via RRF.
@@ -85,7 +83,8 @@ export class HybridRetriever {
     const batchSize = 16;
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize);
-      const vectors = await this.embedder.embed(batch.map((c) => c.text));
+      const result = await this.embedder.generateEmbeddings({ texts: batch.map((c) => c.text) });
+      const vectors = result.embeddings;
       for (let j = 0; j < batch.length; j++) {
         this.embeddings.set(batch[j]!.id, vectors[j]!);
       }
@@ -98,7 +97,8 @@ export class HybridRetriever {
     bm25Results.forEach((r, i) => bm25Ranks.set(r.id, i + 1));
 
     // Semantic search
-    const queryEmbedding = (await this.embedder.embed([query]))[0]!;
+    const queryResult = await this.embedder.generateEmbeddings({ texts: [query] });
+    const queryEmbedding = queryResult.embeddings[0]!;
     const semanticScores: { id: string; score: number }[] = [];
     for (const [id, vec] of this.embeddings) {
       const score = cosineSimilarity(queryEmbedding, vec);

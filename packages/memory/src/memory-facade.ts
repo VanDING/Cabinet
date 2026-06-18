@@ -35,10 +35,10 @@ export interface SessionManagerLike {
   ): { messages: { role: 'user' | 'assistant'; content: string }[] } | null | undefined;
 }
 
-/** Minimal gateway shape for embedding generation. */
-export interface EmbeddingGatewayLike {
-  generateEmbeddings(opts: { texts: string[] }): Promise<{ embeddings: number[][] }>;
-}
+import type { EmbeddingGateway } from './vector-utils.js';
+
+/** @deprecated Use EmbeddingGateway from vector-utils. Kept for backward compat. */
+export type EmbeddingGatewayLike = EmbeddingGateway;
 
 export interface MemoryFacadeOptions {
   shortTerm: ShortTermMemory;

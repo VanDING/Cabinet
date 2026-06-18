@@ -543,7 +543,7 @@ it('samples transient noise entries through the embedding slow path', async () =
     `/tmp/cabinet-consolidation-${Date.now()}.hnsw.index`,
   );
   const provider = {
-    generateEmbedding: vi.fn().mockResolvedValue(new Array(384).fill(0.1)),
+    generateEmbeddings: vi.fn().mockResolvedValue({ embeddings: [new Array(384).fill(0.1)] }),
   };
   const svc = new ConsolidationService(short, long, { embeddingProvider: provider });
   svc.preserveRecentMs = 0;
@@ -555,7 +555,7 @@ it('samples transient noise entries through the embedding slow path', async () =
   const result = await svc.sampleSlowPath('sess-2');
   expect(result.sampled).toBeGreaterThan(0);
   expect(result.rescued).toBe(0); // random embedding does not match anchors
-  expect(provider.generateEmbedding).toHaveBeenCalled();
+  expect(provider.generateEmbeddings).toHaveBeenCalled();
 
   long.close();
 });

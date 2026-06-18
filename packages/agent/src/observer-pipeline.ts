@@ -102,6 +102,8 @@ export interface AgentObserver {
     ctx: AgentExecutionContext,
     userMessage: string,
   ): Promise<{ blocked?: boolean; reason?: string } | void>;
+  /** Release resources (EventBus subscriptions, DB connections, timers). */
+  dispose?(): void;
 }
 
 /** Orchestrates a chain of observers. Errors in one observer do not halt the pipeline. */
@@ -121,5 +123,16 @@ export class ObserverPipeline {
       }
     }
     return results;
+  }
+
+  /** Release all observer resources (EventBus subscriptions, timers, DB connections). */
+  dispose(): void {
+    for (const observer of this.observers) {
+      try {
+        observer.dispose?.();
+      } catch (e) {
+        console.error(`Observer ${observer.name}.dispose() failed:`, e);
+      }
+    }
   }
 }

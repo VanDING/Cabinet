@@ -25,3 +25,12 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   }
   return dot / (Math.sqrt(normA) * Math.sqrt(normB) + EPSILON);
 }
+
+/**
+ * Minimal embedding gateway — canonical interface for all embedding operations.
+ * Consolidated from EmbeddingGatewayLike (memory-facade.ts), EmbeddingProvider (write-gate.ts),
+ * and SimpleEmbedder (hybrid-retriever.ts).
+ */
+export interface EmbeddingGateway {
+  generateEmbeddings(opts: { texts: string[] }): Promise<{ embeddings: number[][] }>;
+}
