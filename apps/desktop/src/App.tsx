@@ -25,6 +25,9 @@ import { useProject } from './contexts/ProjectContext';
 import { useLayout } from './contexts/LayoutContext';
 
 // Lazy-loaded pages
+const OfficePage = lazy(() =>
+  import('./pages/OfficePage').then((m) => ({ default: m.OfficePage })),
+);
 const FactoryPage = lazy(() =>
   import('./pages/FactoryPage').then((m) => ({ default: m.FactoryPage })),
 );
@@ -385,8 +388,8 @@ export function App() {
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
-                      <Route path="/" element={<Navigate to="/workflows" replace />} />
-                      <Route path="/office" element={<Navigate to="/workflows" replace />} />
+                      <Route path="/" element={<OfficePage />} />
+                      <Route path="/office" element={<OfficePage />} />
                       <Route path="/project/:id" element={<ProjectWorkplace />} />
                       <Route path="/workflows" element={<WorkflowsPage />} />
                       <Route
