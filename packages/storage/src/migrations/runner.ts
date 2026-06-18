@@ -26,6 +26,7 @@ import { runMigration026 } from './026_autopilot_triggers.js';
 import { runMigration027 } from './027_agent_squads.js';
 import { runMigration028 } from './028_decision_comments.js';
 import { runMigration029 } from './029_step_events.js';
+import { runMigration030 } from './030_task_kanban_fields.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -58,8 +59,10 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 25, name: '025_agent_daemon', up: runMigration025 },
   { version: 26, name: '026_autopilot_triggers', up: runMigration026 },
   { version: 27, name: '027_agent_squads', up: runMigration027 },
+  { version: 28, name: '028_task_kanban_fields', up: runMigration028 },
   { version: 28, name: '028_decision_comments', up: runMigration028 },
   { version: 29, name: '029_step_events', up: runMigration029 },
+  { version: 30, name: '030_task_kanban_fields', up: runMigration030 },
 ];
 
 /**

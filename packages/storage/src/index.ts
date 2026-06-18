@@ -19,11 +19,8 @@ export { runMigration024 } from './migrations/024_external_agent.js';
 export { runMigration025 } from './migrations/025_agent_daemon.js';
 export { runMigration026 } from './migrations/026_autopilot_triggers.js';
 export { runMigration027 } from './migrations/027_agent_squads.js';
-export {
-  SquadRepository,
-  type SquadRow,
-  type SquadMemberRow,
-} from './repositories/squad-repo.js';
+export { runMigration030 } from './migrations/030_task_kanban_fields.js';
+export { SquadRepository, type SquadRow, type SquadMemberRow } from './repositories/squad-repo.js';
 export {
   AutopilotRepository,
   type AutopilotTriggerRow,
@@ -34,7 +31,10 @@ export { runMigrations, MIGRATIONS, type MigrationEntry } from './migrations/run
 export { EventLogRepository } from './repositories/event-log.js';
 export { ProjectRepository } from './repositories/project.js';
 export { DecisionRepository } from './repositories/decision.js';
-export { DecisionCommentRepository, type DecisionCommentRow } from './repositories/decision-comment-repo.js';
+export {
+  DecisionCommentRepository,
+  type DecisionCommentRow,
+} from './repositories/decision-comment-repo.js';
 export {
   WorkflowRepository,
   type WorkflowRow,
@@ -84,7 +84,10 @@ export {
 } from './repositories/entity-memory-repo.js';
 export { CheckpointRepository } from './repositories/checkpoint-repo.js';
 export { SystemKnowledgeRepository } from './repositories/system-knowledge-repo.js';
-export { RouteFeedbackRepository, type RouteFeedbackRow } from './repositories/route-feedback-repo.js';
+export {
+  RouteFeedbackRepository,
+  type RouteFeedbackRow,
+} from './repositories/route-feedback-repo.js';
 export { TelemetryRepository, type TelemetryRow } from './repositories/telemetry-repo.js';
 export {
   AgentTaskQueueRepository,
