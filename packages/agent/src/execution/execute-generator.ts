@@ -9,33 +9,7 @@ import {
 } from '../observer-pipeline.js';
 import { TRUST_THRESHOLDS, type AgentLoopOptions } from './agent-loop-options.js';
 
-const READ_TOOL_NAMES = new Set([
-  'read_file',
-  'file_info',
-  'list_directory',
-  'glob',
-  'grep',
-  'search_memory',
-  'recall',
-  'query_decisions',
-  'get_decision',
-  'get_recent_events',
-  'get_project_context',
-  'get_captain_preferences',
-  'list_workflows',
-  'get_workflow',
-  'list_agents',
-  'list_projects',
-  'list_scheduled_tasks',
-  'search_documents',
-  'web_fetch',
-  'workspace_symbol',
-  'go_to_definition',
-  'find_references',
-  'diagnostics',
-  'recent_files',
-  'watch_file',
-]);
+import { READ_ONLY_TOOLS } from '../tool-categories.js';
 
 export interface ExecuteGeneratorDependencies {
   options: AgentLoopOptions;
@@ -192,7 +166,7 @@ export async function* executeGenerator(
     }));
 
     const toolResults: { role: 'user'; content: string }[] = [];
-    const allReadOnly = response.toolCalls.every((tc) => READ_TOOL_NAMES.has(tc.name));
+    const allReadOnly = response.toolCalls.every((tc) => READ_ONLY_TOOLS.has(tc.name));
 
     if (allReadOnly) {
       // Parallel execution for read-only tools

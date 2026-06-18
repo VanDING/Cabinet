@@ -14,32 +14,7 @@ export interface SafetyCheck {
 // ── Tool categorization ──────────────────────────────────────
 
 /** Pure read tools — always safe at any tier. */
-const READ_ONLY_TOOLS = new Set([
-  'query_decisions',
-  'get_decision',
-  'get_status',
-  'get_recent_events',
-  'get_project_context',
-  'get_captain_preferences',
-  'recall',
-  'search_memory',
-  'list_workflows',
-  'list_agents',
-  'read_file',
-  'list_directory',
-  'glob',
-  'grep',
-  'file_info',
-  'recent_files',
-  'watch_file',
-  'workspace_symbol',
-  'go_to_definition',
-  'find_references',
-  'diagnostics',
-  'web_fetch',
-  'list_scheduled_tasks',
-  'search_documents',
-]);
+import { READ_ONLY_TOOLS } from './tool-categories.js';
 
 /** Light write tools — reversible, no cost, no destruction. */
 const LIGHT_WRITE_TOOLS = new Set([

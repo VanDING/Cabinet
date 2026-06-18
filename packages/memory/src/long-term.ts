@@ -249,6 +249,17 @@ export class LongTermMemory {
     }
   }
 
+  /** Convert a raw DB row to a parsed LongTermEntry (shared by search/query methods). */
+  private rowToEntry(r: LongTermMemoryRow): LongTermEntry {
+    return {
+      id: r.id,
+      content: r.content,
+      embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
+      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
+      timestamp: new Date(r.timestamp),
+    };
+  }
+
   /** Remove lowest-scoring entries when over capacity. Expired/archived entries are removed first unconditionally. */
   private pruneExcess(): void {
     try {
@@ -442,25 +453,13 @@ export class LongTermMemory {
   /** Filter memories by metadata key-value pairs. Returns parsed entries. */
   findByMetadataFilter(filter: Record<string, unknown>, limit = 10): LongTermEntry[] {
     const rows = this.repo.findByMetadataFilter(filter, limit);
-    return rows.map((r) => ({
-      id: r.id,
-      content: r.content,
-      embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
-      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
-      timestamp: new Date(r.timestamp),
-    }));
+    return rows.map((r) => this.rowToEntry(r));
   }
 
   /** Retrieve specific memories by ID. */
   findByIds(ids: string[]): LongTermEntry[] {
     const rows = this.repo.findByIds(ids);
-    return rows.map((r) => ({
-      id: r.id,
-      content: r.content,
-      embedding: r.embedding ? JSON.parse(r.embedding) : undefined,
-      metadata: JSON.parse(r.metadata ?? '{}') as Record<string, unknown>,
-      timestamp: new Date(r.timestamp),
-    }));
+    return rows.map((r) => this.rowToEntry(r));
   }
 
   /** Synchronous metadata update (for decay service internal use). */
@@ -559,7 +558,7 @@ export class LongTermMemory {
       if (status === 'expired' || status === 'archived') continue;
       const tier = metadata.tier as string | undefined;
       const vec = JSON.parse(row.embedding) as number[];
-      let score = this.cosineSimilarity(queryEmbedding, vec);
+      let score = cosineSimilarity(queryEmbedding, vec);
       // Tier-based boost: working memories are most important, then register
       if (tier === 'working') score *= 1.15;
       else if (tier === 'register') score *= 1.05;
@@ -703,7 +702,7 @@ export class LongTermMemory {
           const status = metadata.status as string | undefined;
           if (status === 'expired' || status === 'archived') continue;
           const tier = metadata.tier as string | undefined;
-          let score = this.cosineSimilarity(queryEmbedding, vec);
+          let score = cosineSimilarity(queryEmbedding, vec);
           if (tier === 'working') score *= 1.15;
           else if (tier === 'register') score *= 1.05;
           if (score > SIMILARITY_THRESHOLD) {
@@ -729,18 +728,5 @@ export class LongTermMemory {
     );
     return scored.sort((a, b) => b.score - a.score).slice(0, limit);
   }
-
-  private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
-    let dotProduct = 0,
-      normA = 0,
-      normB = 0;
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i]! * b[i]!;
-      normA += a[i]! * a[i]!;
-      normB += b[i]! * b[i]!;
-    }
-    if (normA === 0 || normB === 0) return 0;
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-  }
 }
+import { cosineSimilarity } from './vector-utils.js';

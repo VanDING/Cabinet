@@ -5,7 +5,9 @@ import {
   buildNodeInput,
   resolveVariable,
   withTimeout,
+  forkSlot,
 } from './engine-helpers.js';
+import { compareValues, evaluateCondition as evaluateExpr } from './condition-evaluator.js';
 import { runCodeSandboxed } from './code-sandbox.js';
 import type { ManagerContextDeps } from './manager-context.js';
 import { runManagerNode } from './engine/manager.js';
@@ -249,7 +251,7 @@ export class NodeExecutor {
         const allTrue = branch.conditions.every((c) => {
           const val = resolveVariable(c.field, run);
           // Use condition-evaluator compare logic inline for simple ops
-          return this.compareOp(val, c.operator, c.value);
+          return compareValues(val, c.operator, c.value);
         });
         if (allTrue) {
           matched = true;
@@ -501,38 +503,6 @@ export class NodeExecutor {
 
   // ── Helpers ─────────────────────────────────────────────────────
 
-  private compareOp(val: string, op: string, expected: string): boolean {
-    switch (op) {
-      case '==':
-        return val === expected;
-      case '!=':
-        return val !== expected;
-      case '>':
-        return parseFloat(val) > parseFloat(expected);
-      case '<':
-        return parseFloat(val) < parseFloat(expected);
-      case '>=':
-        return parseFloat(val) >= parseFloat(expected);
-      case '<=':
-        return parseFloat(val) <= parseFloat(expected);
-      case 'contains':
-        return val.includes(expected);
-      case 'startsWith':
-        return val.startsWith(expected);
-      case 'endsWith':
-        return val.endsWith(expected);
-      case 'matches': {
-        try {
-          return new RegExp(expected).test(val);
-        } catch {
-          return false;
-        }
-      }
-      default:
-        return val === expected;
-    }
-  }
-
   private async evaluateCondition(
     expr: string,
     previousOutputs: string,
@@ -541,7 +511,6 @@ export class NodeExecutor {
     if (!expr || expr === 'true') return true;
     if (expr === 'false') return false;
     try {
-      const { evaluateCondition: evaluateExpr } = await import('./condition-evaluator.js');
       return evaluateExpr(expr, {
         resolve: (path: string) => resolveVariable(path, run),
       });
@@ -549,14 +518,4 @@ export class NodeExecutor {
       return previousOutputs.toLowerCase().includes(expr.toLowerCase());
     }
   }
-}
-
-function forkSlot(
-  parentSlot: import('@cabinet/types').ContextSlot,
-): import('@cabinet/types').ContextSlot {
-  return {
-    ...parentSlot,
-    discoveries: [...parentSlot.discoveries],
-    previous_outputs: [...parentSlot.previous_outputs],
-  };
 }

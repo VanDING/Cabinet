@@ -62,18 +62,7 @@ export interface SimpleEmbedder {
   embed(texts: string[]): Promise<number[][]>;
 }
 
-/** Cosine similarity between two vectors. */
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i]! * b[i]!;
-    na += a[i]! * a[i]!;
-    nb += b[i]! * b[i]!;
-  }
-  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-10);
-}
+import { cosineSimilarity } from './vector-utils.js';
 
 /**
  * Hybrid retriever — BM25 + embedding similarity merged via RRF.
