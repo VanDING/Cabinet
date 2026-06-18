@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import type { ProjectItem } from '../hooks/useProject';
+
+interface ProjectItem {
+  id: string;
+  name: string;
+  status: string;
+  description: string;
+}
 
 interface Props {
   projects: ProjectItem[];
@@ -29,7 +35,7 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-secondary transition-colors hover:bg-surface-elevated bg-surface-input"
+        className="border-border bg-surface-primary text-content-secondary hover:bg-surface-elevated bg-surface-input flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors"
       >
         <span
           className={`h-2 w-2 rounded-full ${current ? statusColors[current.status] : 'bg-surface-muted'}`}
@@ -39,8 +45,8 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-surface-primary py-1 shadow-lg">
-          <div className="px-3 py-2 text-xs uppercase text-content-tertiary">Projects</div>
+        <div className="border-border bg-surface-primary absolute top-full left-0 z-50 mt-1 w-64 rounded-lg border py-1 shadow-lg">
+          <div className="text-content-tertiary px-3 py-2 text-xs uppercase">Projects</div>
           {projects.map((p) => (
             <button
               key={p.id}
@@ -48,16 +54,14 @@ export function ProjectSwitcher({ projects, current, onSwitch }: Props) {
                 onSwitch(p.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-surface-elevated bg-surface-input ${
-                p.id === current?.id
-                  ? 'bg-accent-muted text-accent'
-                  : 'text-content-secondary'
+              className={`hover:bg-surface-elevated bg-surface-input flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                p.id === current?.id ? 'bg-accent-muted text-accent' : 'text-content-secondary'
               }`}
             >
               <span className={`h-2 w-2 rounded-full ${statusColors[p.status]}`} />
               <div>
                 <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-content-tertiary">{p.description.slice(0, 40)}</div>
+                <div className="text-content-tertiary text-xs">{p.description.slice(0, 40)}</div>
               </div>
             </button>
           ))}

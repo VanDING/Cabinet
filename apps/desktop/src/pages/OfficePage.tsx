@@ -12,17 +12,10 @@ import { PlaceholderWidget } from '../components/office/PlaceholderWidget';
 import { CostChart } from '../components/office/CostChart';
 import { SystemHealth } from '../components/office/SystemHealth';
 import { Deliverables } from '../components/office/Deliverables';
-import { ProjectList } from '../components/office/ProjectList';
-import { ApiSwitcher } from '../components/office/ApiSwitcher';
-import { Calendar } from '../components/office/Calendar';
-import { Clock } from '../components/office/Clock';
-import { Weather } from '../components/office/Weather';
 import { ProgressBoard } from '../components/office/ProgressBoard';
-import { DeliverablesPanel } from '../components/office/DeliverablesPanel';
 import { CostOverviewModal } from '../components/office/CostOverviewModal';
 import { ActiveWorkflowsModal } from '../components/office/ActiveWorkflowsModal';
 import { EventTimelineModal } from '../components/office/EventTimelineModal';
-import { WeatherForecastModal } from '../components/office/WeatherForecastModal';
 import { DeliverablesModal } from '../components/office/DeliverablesModal';
 import { InsightsWidget } from '../components/office/InsightsWidget';
 import { TelemetryWidget } from '../components/office/TelemetryWidget';
@@ -42,14 +35,8 @@ type WidgetType =
   | 'event-timeline'
   | 'cost-chart'
   | 'system-health'
-  | 'calendar'
-  | 'clock'
-  | 'weather'
   | 'deliverables'
-  | 'project-list'
-  | 'api-switcher'
   | 'progress-board'
-  | 'meeting-list'
   | 'insights'
   | 'harness'
   | 'telemetry-dashboard'
@@ -71,14 +58,8 @@ const WIDGET_POOL: WidgetDef[] = [
   { type: 'event-timeline', label: 'Event Timeline', w: 12, h: 3, available: true },
   { type: 'cost-chart', label: 'Cost Trend', w: 12, h: 5, available: true },
   { type: 'system-health', label: 'System Health', w: 8, h: 3, available: true },
-  { type: 'calendar', label: 'Calendar', w: 8, h: 5, available: true },
-  { type: 'clock', label: 'Clock', w: 4, h: 3, available: true },
-  { type: 'weather', label: 'Weather', w: 6, h: 3, available: true },
   { type: 'deliverables', label: 'Deliverables', w: 12, h: 5, available: true },
-  { type: 'project-list', label: 'Project List', w: 8, h: 5, available: true },
-  { type: 'api-switcher', label: 'API Switcher', w: 8, h: 3, available: true },
   { type: 'progress-board', label: 'Task Board', w: 12, h: 7, available: true },
-  { type: 'meeting-list', label: 'Meetings', w: 8, h: 5, available: true },
   { type: 'insights', label: 'Insights', w: 8, h: 5, available: true },
   { type: 'harness', label: 'Harness', w: 8, h: 5, available: true },
   { type: 'telemetry-dashboard', label: 'Telemetry', w: 12, h: 8, available: true },
@@ -286,14 +267,8 @@ export function OfficePage() {
         return (
           <Deliverables projectId={projectId} onExpand={() => handleWidgetClick('deliverables')} />
         );
-      case 'project-list':
-        return <ProjectList />;
-      case 'api-switcher':
-        return <ApiSwitcher />;
       case 'progress-board':
         return <ProgressBoard projectId={projectId} />;
-      case 'meeting-list':
-        return <div className="text-muted p-4">Meeting feature removed</div>;
       case 'insights':
         return <InsightsWidget onExpand={() => handleWidgetClick('insights')} />;
       case 'harness':
@@ -304,12 +279,6 @@ export function OfficePage() {
         return <ActivityFeed />;
       case 'agent-monitor':
         return <AgentMonitor />;
-      case 'calendar':
-        return <Calendar />;
-      case 'clock':
-        return <Clock />;
-      case 'weather':
-        return <Weather onExpand={() => handleWidgetClick('weather')} />;
       default: {
         const def = WIDGET_POOL.find((w) => w.type === type);
         return <PlaceholderWidget title={def?.label ?? type} />;
@@ -440,9 +409,6 @@ export function OfficePage() {
       {expandedWidget === 'event-timeline' && (
         <EventTimelineModal onClose={() => setExpandedWidget(null)} projectId={projectId} />
       )}
-      {expandedWidget === 'weather' && (
-        <WeatherForecastModal onClose={() => setExpandedWidget(null)} />
-      )}
       {expandedWidget === 'deliverables' && (
         <DeliverablesModal onClose={() => setExpandedWidget(null)} projectId={projectId} />
       )}
@@ -452,7 +418,6 @@ export function OfficePage() {
         expandedWidget !== 'today-cost' &&
         expandedWidget !== 'active-workflows' &&
         expandedWidget !== 'event-timeline' &&
-        expandedWidget !== 'weather' &&
         expandedWidget !== 'deliverables' &&
         expandedWidget !== 'insights' &&
         expandedWidget !== 'harness' && (
