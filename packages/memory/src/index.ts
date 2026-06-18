@@ -1,3 +1,6 @@
+// ── Factory ──
+export { createMemorySystem, type MemorySystemConfig, type MemorySystem } from './factory.js';
+
 // ── Entity Extractor ──
 export { extractCandidateEntities } from './entity-extractor.js';
 

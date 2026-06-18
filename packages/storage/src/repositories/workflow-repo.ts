@@ -1,3 +1,4 @@
+import { buildUpdateSql } from './base-repo.js';
 import type Database from 'better-sqlite3';
 
 export interface WorkflowRow {
@@ -26,7 +27,14 @@ export class WorkflowRepository {
 
   // ── Workflows ──
 
-  create(id: string, projectId: string, name: string, definition: string, status = 'draft', cronExpression?: string): void {
+  create(
+    id: string,
+    projectId: string,
+    name: string,
+    definition: string,
+    status = 'draft',
+    cronExpression?: string,
+  ): void {
     this.db
       .prepare(
         'INSERT INTO workflows (id, project_id, name, definition, status, cron_expression) VALUES (?, ?, ?, ?, ?, ?)',
