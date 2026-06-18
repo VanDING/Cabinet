@@ -19,11 +19,11 @@ export function OfficePage() {
 
       <div style={{ height: 1, background: 'var(--surface-muted)', margin: '0 32px' }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-        <ActivityHeatmap />
-        <div style={{ width: 1, background: 'var(--surface-muted)' }} />
-        <CostChart />
-      </div>
+      <ActivityHeatmap />
+
+      <div style={{ height: 1, background: 'var(--surface-muted)', margin: '0 32px' }} />
+
+      <CostChart />
 
       <div style={{ height: 1, background: 'var(--surface-muted)', margin: '0 32px' }} />
 

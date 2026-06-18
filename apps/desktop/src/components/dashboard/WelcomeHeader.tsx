@@ -1,4 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useChat } from '../../contexts/ChatContext.js';
+import { useProject } from '../../contexts/ProjectContext.js';
+import { useLayout } from '../../contexts/LayoutContext.js';
 
 const GREETINGS = ['Good morning', 'Good afternoon', 'Good evening'];
 
@@ -11,59 +14,36 @@ function getGreeting(): string {
 
 export function WelcomeHeader() {
   const greeting = useMemo(() => getGreeting(), []);
+  const { handleOpenProjectActionModal } = useProject();
+  const { handleCreateSession, setUIMode } = useChat();
+
+  const handleQuickTask = useCallback(() => {
+    handleCreateSession();
+    setUIMode('chat');
+  }, [handleCreateSession, setUIMode]);
 
   return (
-    <div style={{ padding: '32px 32px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* SecretaryOrb-style avatar */}
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: 'linear-gradient(135deg, var(--accent), var(--intent-purple))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(79,70,229,0.25)',
-          }}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--accent-foreground)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="9" cy="10" r="1.5" fill="var(--accent-foreground)" />
-            <circle cx="15" cy="10" r="1.5" fill="var(--accent-foreground)" />
-            <path d="M8 16c0 0 1.5 2 4 2s4-2 4-2" />
-          </svg>
+    <div style={{ padding: '48px 32px 36px' }}>
+      <div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--content-primary)' }}>
+          {greeting}, Captain
         </div>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--content-primary)' }}>
-            {greeting}, Captain
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--content-secondary)', marginTop: 2 }}>
-            Select a project or start a new task to begin working with your agents.
-          </div>
+        <div style={{ fontSize: 15, color: 'var(--content-secondary)', marginTop: 3 }}>
+          Select a project or start a new task to begin working with your agents.
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-        <div
+      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+        <button
+          onClick={handleOpenProjectActionModal}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '7px 16px',
+            padding: '9px 20px',
             borderRadius: 8,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 500,
-            cursor: 'default',
+            cursor: 'pointer',
             border: '1px solid var(--border-color)',
             background: 'var(--surface-elevated)',
             color: 'var(--content-primary)',
@@ -83,18 +63,21 @@ export function WelcomeHeader() {
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           New Project
-        </div>
-        <div
+        </button>
+        <button
+          onClick={handleQuickTask}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '7px 16px',
+            padding: '9px 20px',
             borderRadius: 8,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 500,
-            cursor: 'default',
+            cursor: 'pointer',
             color: 'var(--content-secondary)',
+            border: 'none',
+            background: 'transparent',
           }}
         >
           <svg
@@ -111,18 +94,21 @@ export function WelcomeHeader() {
             <polyline points="14 2 14 8 20 8" />
           </svg>
           Quick Task
-        </div>
-        <div
+        </button>
+        <button
+          onClick={handleOpenProjectActionModal}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '7px 16px',
+            padding: '9px 20px',
             borderRadius: 8,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: 500,
-            cursor: 'default',
+            cursor: 'pointer',
             color: 'var(--content-secondary)',
+            border: 'none',
+            background: 'transparent',
           }}
         >
           <svg
@@ -138,7 +124,7 @@ export function WelcomeHeader() {
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           Open Recent
-        </div>
+        </button>
       </div>
     </div>
   );

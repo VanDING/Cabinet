@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, ChevronRight, File, Image, FileCode } from 'lucide-react';
+import { FileViewer as LibFileViewer } from 'react-file-viewer-v2';
 import { apiFetch } from '../utils/api.js';
 
 interface FileTab {
@@ -21,6 +22,26 @@ const IMAGE_MIMES = [
   'image/bmp',
 ];
 
+/** File extensions supported by react-file-viewer-v2 (Blob-based rendering). */
+const VIEWER_EXTENSIONS = new Set([
+  'pdf',
+  'docx',
+  'xlsx',
+  'pptx',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'bmp',
+  'webm',
+  'mp4',
+]);
+
+function getExtension(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+}
+
 function safeBtoa(str: string): string {
   const bytes = new TextEncoder().encode(str);
   let binary = '';
@@ -28,6 +49,21 @@ function safeBtoa(str: string): string {
     binary += String.fromCharCode(b);
   });
   return btoa(binary);
+}
+
+/** Determine the fileType string for react-file-viewer-v2. */
+function resolveFileType(name: string, mimeType?: string): string {
+  const ext = getExtension(name);
+  if (ext && VIEWER_EXTENSIONS.has(ext)) return ext;
+  // Fallback: map MIME type to viewer type
+  if (mimeType) {
+    if (mimeType.startsWith('image/')) return mimeType.split('/')[1] ?? 'png';
+    if (mimeType === 'application/pdf') return 'pdf';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'docx';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'xlsx';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'pptx';
+  }
+  return '';
 }
 
 export function FileViewer() {
@@ -146,7 +182,30 @@ export function FileViewer() {
   };
 
   const active = tabs.find((t) => t.path === activeTab);
+
+  // Build a Blob for lib-viewer-supported file types
+  const fileBlob = useMemo<Blob | null>(() => {
+    if (!active || !active.content) return null;
+    const ext = getExtension(active.name);
+    if (!ext || !VIEWER_EXTENSIONS.has(ext)) return null;
+
+    const mime = active.mimeType ?? '';
+    if (active.encoding === 'base64') {
+      const binary = atob(active.content);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+    return new Blob([active.content], { type: mime });
+  }, [active]);
+
+  const viewerFileType = useMemo(() => {
+    if (!active) return '';
+    return resolveFileType(active.name, active.mimeType);
+  }, [active]);
+
   const isImage = active?.mimeType && IMAGE_MIMES.includes(active.mimeType);
+  const useLibViewer = !!(fileBlob && viewerFileType);
 
   if (!visible) return null;
 
@@ -158,7 +217,7 @@ export function FileViewer() {
     <div className="relative flex shrink-0" style={{ width }}>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute bottom-0 left-0 top-0 z-10 w-1 cursor-col-resize hover:bg-accent:bg-accent"
+        className="hover:bg-accent:bg-accent absolute top-0 bottom-0 left-0 z-10 w-1 cursor-col-resize"
       />
       <div className={`flex min-w-0 flex-1 flex-col border-l ${border} ${bg}`}>
         {/* Tab bar */}
@@ -169,9 +228,9 @@ export function FileViewer() {
             <div
               key={tab.path}
               onClick={() => setActiveTab(tab.path)}
-              className={`flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-t px-2 py-1 text-xs ${
+              className={`flex shrink-0 cursor-pointer items-center gap-1 rounded-t px-2 py-1 text-xs whitespace-nowrap ${
                 activeTab === tab.path
-                  ? `${bg} -mb-px border-l border-r border-t ${border}`
+                  ? `${bg} -mb-px border-t border-r border-l ${border}`
                   : 'text-content-tertiary hover:text-content-secondary:text-content-tertiary'
               }`}
             >
@@ -182,7 +241,7 @@ export function FileViewer() {
                   e.stopPropagation();
                   closeTab(tab.path);
                 }}
-                className="ml-1 rounded-full p-0.5 hover:bg-surface-muted bg-surface-input"
+                className="hover:bg-surface-muted bg-surface-input ml-1 rounded-full p-0.5"
               >
                 <X size={10} />
               </button>
@@ -190,7 +249,7 @@ export function FileViewer() {
           ))}
           <button
             onClick={closeAll}
-            className="ml-auto mr-2 rounded-sm p-1 hover:bg-surface-muted bg-surface-input"
+            className="hover:bg-surface-muted bg-surface-input mr-2 ml-auto rounded-sm p-1"
             title="Close all"
           >
             <X size={14} />
@@ -200,7 +259,13 @@ export function FileViewer() {
         {/* Content */}
         <div className="flex-1 overflow-auto">
           {active ? (
-            isImage ? (
+            useLibViewer && fileBlob ? (
+              /* react-file-viewer-v2 for PDF, DOCX, XLSX, PPTX, images, video */
+              <div className="h-full w-full">
+                <LibFileViewer file={fileBlob} fileType={viewerFileType} theme="auto" />
+              </div>
+            ) : isImage ? (
+              /* Native image fallback for SVG etc. */
               <div className="flex h-full items-center justify-center p-4">
                 <img
                   src={`data:${active.mimeType};base64,${active.encoding === 'base64' ? active.content : safeBtoa(active.content)}`}
@@ -208,13 +273,22 @@ export function FileViewer() {
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
+            ) : getExtension(active.name) === 'html' || getExtension(active.name) === 'htm' ? (
+              /* HTML preview via sandboxed iframe */
+              <iframe
+                srcDoc={active.content}
+                sandbox="allow-scripts"
+                title={active.name}
+                className="h-full w-full border-0"
+              />
             ) : (
-              <pre className="whitespace-pre-wrap break-all p-4 font-mono text-sm text-content-primary">
+              /* Text / code fallback */
+              <pre className="text-content-primary p-4 font-mono text-sm break-all whitespace-pre-wrap">
                 {active.content || '(empty)'}
               </pre>
             )
           ) : (
-            <div className="flex h-full items-center justify-center text-content-tertiary">
+            <div className="text-content-tertiary flex h-full items-center justify-center">
               <div className="text-center">
                 <ChevronRight size={32} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Click a file in Project Explorer to preview</p>

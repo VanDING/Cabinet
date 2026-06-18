@@ -112,10 +112,13 @@ export function App() {
     switchProject,
     showProjectActionModal,
     setShowProjectActionModal,
-    handleCreateNewProject,
+    createProject,
     handleImportProject,
     handleOpenProjectActionModal,
   } = useProject();
+
+  const [projectNameInput, setProjectNameInput] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const {
     activePage,
@@ -565,39 +568,160 @@ export function App() {
         {/* Project action modal */}
         <ModalOverlay
           isOpen={showProjectActionModal}
-          onClose={() => setShowProjectActionModal(false)}
+          onClose={() => {
+            setShowProjectActionModal(false);
+            setShowCreateForm(false);
+            setProjectNameInput('');
+          }}
           contentClassName="mx-4 w-full max-w-sm rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
         >
-          <h3 className="text-content-primary mb-4 text-lg font-semibold">Add Project</h3>
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                setShowProjectActionModal(false);
-                handleCreateNewProject();
-              }}
-              className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
-            >
-              <span className="text-content-primary block text-base">Create New Project</span>
-              <span className="text-content-tertiary mt-0.5 block text-xs">
-                Start with an empty project
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                setShowProjectActionModal(false);
-                handleImportProject();
-              }}
-              className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
-            >
-              <span className="text-content-primary block text-base">Import Existing Folder</span>
-              <span className="text-content-tertiary mt-0.5 block text-xs">
-                Import a local folder as project
-              </span>
-            </button>
-          </div>
+          <h3 className="text-content-primary mb-4 text-lg font-semibold">
+            {showCreateForm ? 'New Project' : 'Add / Open Project'}
+          </h3>
+
+          {showCreateForm ? (
+            /* ── Create project form ── */
+            <div className="space-y-4">
+              <input
+                autoFocus
+                value={projectNameInput}
+                onChange={(e) => setProjectNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const name = projectNameInput.trim();
+                    if (name) {
+                      createProject(name).then((id) => {
+                        if (id) {
+                          switchProject(id);
+                        }
+                        setShowProjectActionModal(false);
+                        setShowCreateForm(false);
+                        setProjectNameInput('');
+                      });
+                    }
+                  }
+                }}
+                placeholder="Project name"
+                className="border-border bg-surface-input text-content-primary placeholder:text-content-tertiary focus:border-accent w-full rounded-lg border px-3 py-2 text-sm outline-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const name = projectNameInput.trim();
+                    if (name) {
+                      createProject(name).then((id) => {
+                        if (id) {
+                          switchProject(id);
+                        }
+                        setShowProjectActionModal(false);
+                        setShowCreateForm(false);
+                        setProjectNameInput('');
+                      });
+                    }
+                  }}
+                  disabled={!projectNameInput.trim()}
+                  className="bg-accent text-accent-foreground flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setProjectNameInput('');
+                  }}
+                  className="border-border text-content-secondary hover:bg-surface-elevated rounded-lg border px-3 py-2 text-sm transition-colors"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Main modal: actions + recent projects ── */
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
+              >
+                <span className="text-content-primary block text-base">Create New Project</span>
+                <span className="text-content-tertiary mt-0.5 block text-xs">
+                  Start with an empty project
+                </span>
+              </button>
+
+              {projects.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="bg-surface-muted h-px flex-1" />
+                    <span className="text-content-tertiary text-[10px]">RECENT PROJECTS</span>
+                    <div className="bg-surface-muted h-px flex-1" />
+                  </div>
+                  <div className="max-h-48 space-y-1 overflow-auto">
+                    {[...projects]
+                      .sort((a, b) => {
+                        if (!a.lastActivityAt) return 1;
+                        if (!b.lastActivityAt) return -1;
+                        return (
+                          new Date(b.lastActivityAt).getTime() -
+                          new Date(a.lastActivityAt).getTime()
+                        );
+                      })
+                      .slice(0, 8)
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            switchProject(p.id);
+                            setShowProjectActionModal(false);
+                          }}
+                          className={`hover:bg-surface-elevated flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                            p.id === activeProjectId ? 'bg-surface-input' : ''
+                          }`}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-content-tertiary shrink-0"
+                          >
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span className="text-content-primary flex-1 truncate">{p.name}</span>
+                          {p.id === activeProjectId && (
+                            <span className="text-accent text-[10px] font-medium">ACTIVE</span>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowProjectActionModal(false);
+                  handleImportProject();
+                }}
+                className="border-border hover:bg-surface-elevated bg-surface-input w-full rounded-lg border px-4 py-3 text-left text-sm font-medium transition-colors"
+              >
+                <span className="text-content-primary block text-base">Import Existing Folder</span>
+                <span className="text-content-tertiary mt-0.5 block text-xs">
+                  Import a local folder as project
+                </span>
+              </button>
+            </div>
+          )}
+
           <div className="mt-4 flex justify-end">
             <button
-              onClick={() => setShowProjectActionModal(false)}
+              onClick={() => {
+                setShowProjectActionModal(false);
+                setShowCreateForm(false);
+                setProjectNameInput('');
+              }}
               className="border-border text-content-secondary rounded-sm border px-3 py-1.5 text-sm"
             >
               Cancel
