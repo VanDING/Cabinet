@@ -25,13 +25,17 @@ export function classifyError(error: Error): ErrorCategory {
     msg.includes('rate limit') ||
     msg.includes('econnrefused') ||
     msg.includes('enotfound') ||
-    msg.includes('socket')
+    msg.includes('socket') ||
+    msg.includes('econnreset')
   ) {
     return 'transient';
   }
   if (
     msg.includes('tool execution failed') ||
     msg.includes('temporary') ||
+    msg.includes('temporarily') ||
+    msg.includes('unavailable') ||
+    msg.includes('busy') ||
     msg.includes('retryable')
   ) {
     return 'recoverable';

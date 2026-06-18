@@ -1,7 +1,11 @@
 import type { WorkflowNodeDef, WorkflowNodeType } from '@cabinet/types';
 import type { WorkflowRun } from './engine.js';
 
-/** Error classification for retry decisions. Mirrors @cabinet/agent's classifyError. */
+/**
+ * Error classification for retry decisions.
+ * @deprecated Import from @cabinet/agent (canonical source). Kept locally to avoid
+ * adding a dependency on @cabinet/agent from @cabinet/workflow.
+ */
 export function classifyError(error: Error): 'transient' | 'recoverable' | 'fatal' {
   const msg = error.message.toLowerCase();
   if (
@@ -28,7 +32,11 @@ export function classifyError(error: Error): 'transient' | 'recoverable' | 'fata
 
 /** Execute a node with automatic retry for transient errors (Level 1 of Error Strategy). */
 export async function executeWithRetry(
-  runNode: (node: WorkflowNodeDef, run: WorkflowRun, nodeMap: Map<string, WorkflowNodeDef>) => Promise<string>,
+  runNode: (
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+    nodeMap: Map<string, WorkflowNodeDef>,
+  ) => Promise<string>,
   node: WorkflowNodeDef,
   run: WorkflowRun,
   nodeMap: Map<string, WorkflowNodeDef>,
@@ -63,7 +71,11 @@ export interface RecoveryResult {
 
 /** Execute a node with full error recovery: retry → continueOnFail → throw. */
 export async function executeNodeWithRecovery(
-  runNode: (node: WorkflowNodeDef, run: WorkflowRun, nodeMap: Map<string, WorkflowNodeDef>) => Promise<string>,
+  runNode: (
+    node: WorkflowNodeDef,
+    run: WorkflowRun,
+    nodeMap: Map<string, WorkflowNodeDef>,
+  ) => Promise<string>,
   node: WorkflowNodeDef,
   run: WorkflowRun,
   nodeMap: Map<string, WorkflowNodeDef>,

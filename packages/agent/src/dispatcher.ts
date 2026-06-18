@@ -79,7 +79,8 @@ class ResultSynthesizer {
     const superseded = this.detectSuperseded(outputs);
 
     // 3. If conflict detected and strategy is not keep_all, fall back to keep_all
-    const effectiveStrategy = hasConflict && this.strategy !== 'keep_all' ? 'keep_all' : this.strategy;
+    const effectiveStrategy =
+      hasConflict && this.strategy !== 'keep_all' ? 'keep_all' : this.strategy;
 
     if (effectiveStrategy === 'keep_all') {
       const summary = outputs.map((o, i) => `Agent ${i + 1}: ${o.summary}`).join('\n');
@@ -127,7 +128,9 @@ class ResultSynthesizer {
   }
 
   /** Detect contradictions: two agents with opposite conclusions on the same finding. */
-  private detectConflicts(outputs: AgentOutput[]): Array<{ agentA: number; agentB: number; reason: string }> {
+  private detectConflicts(
+    outputs: AgentOutput[],
+  ): Array<{ agentA: number; agentB: number; reason: string }> {
     const conflicts: Array<{ agentA: number; agentB: number; reason: string }> = [];
     for (let i = 0; i < outputs.length; i++) {
       for (let j = i + 1; j < outputs.length; j++) {
@@ -136,8 +139,17 @@ class ResultSynthesizer {
         // Simple heuristic: opposite decisions on the same topic
         for (const da of a.decisions ?? []) {
           for (const db of b.decisions ?? []) {
-            if (da.decision && db.decision && da.decision !== db.decision && this.similarTopic(da.decision, db.decision)) {
-              conflicts.push({ agentA: i, agentB: j, reason: `Opposite decisions: "${da.decision}" vs "${db.decision}"` });
+            if (
+              da.decision &&
+              db.decision &&
+              da.decision !== db.decision &&
+              this.similarTopic(da.decision, db.decision)
+            ) {
+              conflicts.push({
+                agentA: i,
+                agentB: j,
+                reason: `Opposite decisions: "${da.decision}" vs "${db.decision}"`,
+              });
             }
           }
         }
@@ -207,7 +219,7 @@ export class AgentDispatcher {
     private readonly memoryProvider: MemoryProvider,
     private readonly eventBus?: EventBus,
     externalRegistry?: AgentRoleRegistry,
-    private readonly rateLimitTracker?: RateLimitTracker,
+    private rateLimitTracker?: RateLimitTracker,
   ) {
     this.registry = externalRegistry ?? new AgentRoleRegistry();
     this.baseOptions = {
@@ -231,6 +243,15 @@ export class AgentDispatcher {
   /** Get the role registry (for routing decisions). */
   getRegistry(): AgentRoleRegistry {
     return this.registry;
+  }
+
+  /**
+   * Link a rate limit tracker from the LLM gateway.
+   * Call this at startup with `aiSdkAdapter.getRateLimitTracker()` so the
+   * Dispatcher shares the same tracker that AISDKAdapter updates from HTTP headers.
+   */
+  setRateLimitTracker(tracker: RateLimitTracker): void {
+    this.rateLimitTracker = tracker;
   }
 
   /** Dispatch a request in the specified mode. */

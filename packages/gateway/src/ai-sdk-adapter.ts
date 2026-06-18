@@ -141,6 +141,11 @@ export class AISDKAdapter implements LLMGateway {
     return tier;
   }
 
+  /** Expose the rate limit tracker for consumers (e.g. Dispatcher) to share a single instance. */
+  getRateLimitTracker(): import('./model-router.js').RateLimitTracker {
+    return this.router.getRateLimitTracker();
+  }
+
   /** Get the fallback chain for a model tier (for retry logic). */
   getModelChain(tier: string): string[] {
     const role = TIER_TO_ROLE[tier];
