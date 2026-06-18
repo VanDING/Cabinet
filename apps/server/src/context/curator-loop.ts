@@ -86,7 +86,7 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
         options: input.options,
         classification: input.classification,
         captainId: input.captainId,
-      }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      }) as any;
     },
     approveDecision: (decisionId, captainId, chosenOptionId) =>
       deps.decisionService.approve(decisionId, captainId, chosenOptionId),
@@ -121,7 +121,7 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
         name: input.name,
         description: input.description,
         modules: { identity: input.systemPrompt },
-        modelTier: (input as any).modelTier ?? 'default', // eslint-disable-line @typescript-eslint/no-explicit-any
+        modelTier: (input as any).modelTier ?? 'default',
         temperature: input.temperature,
         maxResponseTokens: input.maxResponseTokens,
         allowedTools: input.allowedTools,
@@ -382,7 +382,7 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     projectId: 'default',
     captainId: DEFAULT_CAPTAIN_ID,
     roleModules: role.modules,
-    model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.modelTier, // eslint-disable-line @typescript-eslint/no-explicit-any
+    model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.modelTier,
     maxSteps: role.maxSteps ?? 50,
     maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,

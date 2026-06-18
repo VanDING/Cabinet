@@ -73,28 +73,11 @@ export const INTENT_EXAMPLES: IntentExample[] = [
   },
   {
     intent: 'knowledge_query',
-    examples: [
-      '什么是',
-      '如何',
-      '怎么',
-      '为什么',
-      '解释一下',
-      '介绍一下',
-      '说明一下',
-      '是什么',
-    ],
+    examples: ['什么是', '如何', '怎么', '为什么', '解释一下', '介绍一下', '说明一下', '是什么'],
   },
   {
     intent: 'review_request',
-    examples: [
-      '审查一下',
-      '审核这个',
-      'review一下',
-      '检查质量',
-      '评估一下',
-      '审计',
-      '核查',
-    ],
+    examples: ['审查一下', '审核这个', 'review一下', '检查质量', '评估一下', '审计', '核查'],
     excludeWords: ['不用审查', '别审核'],
   },
   {
@@ -116,53 +99,24 @@ export const INTENT_EXAMPLES: IntentExample[] = [
   },
   {
     intent: 'skill_request',
-    examples: [
-      '创建skill',
-      '写一个skill',
-      '编写SKILL.md',
-      '创建技能',
-      '编写技能',
-    ],
+    examples: ['创建skill', '写一个skill', '编写SKILL.md', '创建技能', '编写技能'],
   },
   {
     intent: 'mcp_request',
-    examples: [
-      '搭建MCP',
-      '创建MCP server',
-      '写个mcp',
-      '构建mcp服务',
-      'MCP服务器',
-    ],
+    examples: ['搭建MCP', '创建MCP server', '写个mcp', '构建mcp服务', 'MCP服务器'],
   },
   {
     intent: 'schedule_request',
-    examples: [
-      '定时执行',
-      '周期性任务',
-      '设置定时',
-      '每天自动',
-      '定时任务',
-      'cron任务',
-    ],
+    examples: ['定时执行', '周期性任务', '设置定时', '每天自动', '定时任务', 'cron任务'],
     excludeWords: ['不要定时', '不需要定时'],
   },
   {
     intent: 'invoke_skill',
-    examples: [
-      '/workflow',
-      '/review',
-      '/organize',
-      '/skill-name',
-    ],
+    examples: ['/workflow', '/review', '/organize', '/skill-name'],
   },
   {
     intent: 'follow_up',
-    examples: [
-      '继续',
-      '然后呢',
-      '接下来',
-      '还有吗',
-    ],
+    examples: ['继续', '然后呢', '接下来', '还有吗'],
   },
 ];
 
@@ -200,17 +154,34 @@ export function matchIntentByPattern(
 
   // Follow-up detection
   const followUpPatterns = [
-    '继续', '然后', '接下来', '接着', '下一步',
-    'go on', 'continue', 'next',
-    '详细', '具体', '展开', '多说', '仔细',
-    'elaborate', 'explain', 'detail',
-    '上面', '刚才', '之前', '那', '那么', '所以',
-    '还有吗', '然后呢',
+    '继续',
+    '然后',
+    '接下来',
+    '接着',
+    '下一步',
+    'go on',
+    'continue',
+    'next',
+    '详细',
+    '具体',
+    '展开',
+    '多说',
+    '仔细',
+    'elaborate',
+    'explain',
+    'detail',
+    '上面',
+    '刚才',
+    '之前',
+    '那',
+    '那么',
+    '所以',
+    '还有吗',
+    '然后呢',
   ];
   const startsWithFollowUp = followUpPatterns.some((p) => trimmed.startsWith(p));
   const isFollowUp =
-    startsWithFollowUp ||
-    (trimmed.length < 40 && followUpPatterns.some((p) => lower.includes(p)));
+    startsWithFollowUp || (trimmed.length < 40 && followUpPatterns.some((p) => lower.includes(p)));
 
   if (isFollowUp && conversationContext?.lastIntent && conversationContext?.lastRoute) {
     return {
@@ -246,9 +217,15 @@ export function matchIntentByPattern(
     lower.includes('是否') || lower.includes('该不该') || lower.includes('决策');
   const hasAnalyticalContext =
     lower.includes('分析') &&
-    (lower.includes('选项') || lower.includes('方案') || lower.includes('选择') ||
-     lower.includes('对比') || lower.includes('比较') || lower.includes('优劣') ||
-     lower.includes('哪个') || lower.includes('怎么选') || lower.includes('权衡'));
+    (lower.includes('选项') ||
+      lower.includes('方案') ||
+      lower.includes('选择') ||
+      lower.includes('对比') ||
+      lower.includes('比较') ||
+      lower.includes('优劣') ||
+      lower.includes('哪个') ||
+      lower.includes('怎么选') ||
+      lower.includes('权衡'));
   if ((hasDecisionKeyword || hasAnalyticalContext) && !hasNegation(lower, 'decision_request')) {
     return {
       kind: 'decision_request',
@@ -261,18 +238,31 @@ export function matchIntentByPattern(
   // Meeting request
   const hasOrganizeMeeting =
     (lower.includes('组织') && lower.includes('讨论')) ||
-    lower.includes('组织会议') || lower.includes('组织个会') ||
-    lower.includes('开会') || lower.includes('开个会') ||
-    lower.includes('召集') || lower.includes('启动会议');
+    lower.includes('组织会议') ||
+    lower.includes('组织个会') ||
+    lower.includes('开会') ||
+    lower.includes('开个会') ||
+    lower.includes('召集') ||
+    lower.includes('启动会议');
   const hasAdvisorIntent =
     lower.includes('顾问') &&
-    (lower.includes('讨论') || lower.includes('分析') ||
-     lower.includes('会议') || lower.includes('咨询'));
+    (lower.includes('讨论') ||
+      lower.includes('分析') ||
+      lower.includes('会议') ||
+      lower.includes('咨询'));
   const hasDesignContext =
-    lower.includes('系统') || lower.includes('流程') ||
-    lower.includes('agent') || lower.includes('工作流') ||
-    lower.includes('自动化') || lower.includes('架构') || lower.includes('方案');
-  if ((hasOrganizeMeeting || hasAdvisorIntent) && !hasDesignContext && !hasNegation(lower, 'meeting_request')) {
+    lower.includes('系统') ||
+    lower.includes('流程') ||
+    lower.includes('agent') ||
+    lower.includes('工作流') ||
+    lower.includes('自动化') ||
+    lower.includes('架构') ||
+    lower.includes('方案');
+  if (
+    (hasOrganizeMeeting || hasAdvisorIntent) &&
+    !hasDesignContext &&
+    !hasNegation(lower, 'meeting_request')
+  ) {
     return {
       kind: 'meeting_request',
       topic: message,
@@ -284,31 +274,51 @@ export function matchIntentByPattern(
   const hasStatusKeyword = lower.includes('状态') || lower.includes('进度');
   const hasQueryWithContext =
     lower.includes('查询') &&
-    (lower.includes('项目') || lower.includes('工作流') || lower.includes('workflow') ||
-     lower.includes('决策') || lower.includes('状态') || lower.includes('进度') ||
-     lower.includes('任务') || lower.includes('执行'));
+    (lower.includes('项目') ||
+      lower.includes('工作流') ||
+      lower.includes('workflow') ||
+      lower.includes('决策') ||
+      lower.includes('状态') ||
+      lower.includes('进度') ||
+      lower.includes('任务') ||
+      lower.includes('执行'));
   if ((hasStatusKeyword || hasQueryWithContext) && !hasNegation(lower, 'status_query')) {
     return { kind: 'status_query', target: 'project', filters: { query: message } };
   }
 
   // Schedule request
   const hasScheduleKeyword =
-    lower.includes('定时') || lower.includes('周期') ||
-    lower.includes('cron') || lower.includes('schedule') || lower.includes('reminder');
+    lower.includes('定时') ||
+    lower.includes('周期') ||
+    lower.includes('cron') ||
+    lower.includes('schedule') ||
+    lower.includes('reminder');
   const hasRecurringIntent =
-    lower.includes('每天') || lower.includes('每小时') ||
-    lower.includes('每周') || lower.includes('每月') || lower.includes('自动');
+    lower.includes('每天') ||
+    lower.includes('每小时') ||
+    lower.includes('每周') ||
+    lower.includes('每月') ||
+    lower.includes('自动');
   if ((hasScheduleKeyword || hasRecurringIntent) && !hasNegation(lower, 'schedule_request')) {
     return { kind: 'schedule_request', topic: message.slice(0, 100), context: message };
   }
 
   // Organize request
   const hasCreateOrDesign =
-    lower.includes('创建') || lower.includes('设计') || lower.includes('搭建') ||
-    lower.includes('组织') || lower.includes('构建') || lower.includes('规划');
+    lower.includes('创建') ||
+    lower.includes('设计') ||
+    lower.includes('搭建') ||
+    lower.includes('组织') ||
+    lower.includes('构建') ||
+    lower.includes('规划');
   const hasSystemOrWorkflowOrAgent =
-    lower.includes('系统') || lower.includes('流程') || lower.includes('agent') ||
-    lower.includes('工作流') || lower.includes('自动化') || lower.includes('架构') || lower.includes('方案');
+    lower.includes('系统') ||
+    lower.includes('流程') ||
+    lower.includes('agent') ||
+    lower.includes('工作流') ||
+    lower.includes('自动化') ||
+    lower.includes('架构') ||
+    lower.includes('方案');
   if (hasCreateOrDesign && hasSystemOrWorkflowOrAgent && !hasNegation(lower, 'organize_request')) {
     return { kind: 'organize_request', topic: message.slice(0, 100), context: message };
   }

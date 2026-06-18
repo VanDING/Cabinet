@@ -311,8 +311,8 @@ export class WorkflowEngine {
           .catch(() => {
             /* ErrorTrigger failure is non-fatal */
           });
-      } catch {
-        /* ignore */
+      } catch (err) {
+        console.warn('[Workflow] handleErrorTrigger failed:', err);
       }
     }
   }

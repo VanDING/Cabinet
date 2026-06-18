@@ -428,7 +428,8 @@ export class LongTermMemory {
       if (updates.confidence !== undefined) meta.confidence = updates.confidence;
       this.repo.updateMetadata(id, JSON.stringify(meta));
       return true;
-    } catch {
+    } catch (err) {
+      console.warn('[LongTermMemory] updateMemory failed:', err);
       return false;
     }
   }

@@ -7,11 +7,7 @@ import type { LLMGateway } from '@cabinet/gateway';
 import type { AgentRoleType } from '@cabinet/agent';
 import { matchIntentByPattern } from './intent-pattern-matcher.js';
 import type { EmbeddingMatch } from './intent-pattern-matcher.js';
-import type {
-  ParsedIntent,
-  ConversationContext,
-  AgentRouteResult,
-} from './intent-parser.js';
+import type { ParsedIntent, ConversationContext, AgentRouteResult } from './intent-parser.js';
 
 // ── LLM-powered Intent Classification ──
 
@@ -116,7 +112,11 @@ export function parseJSONIntent(json: string): ParsedIntent {
       raw: json,
     };
     if (base.kind === 'invoke_skill') {
-      return { ...base, skillName: parsed.skillName ?? '', args: parsed.args ?? '' } as ParsedIntent;
+      return {
+        ...base,
+        skillName: parsed.skillName ?? '',
+        args: parsed.args ?? '',
+      } as ParsedIntent;
     }
     return base as ParsedIntent;
   } catch {
@@ -158,7 +158,7 @@ export async function routeWithLLM(
     : '';
 
   const embeddingHint =
-    embeddingMatch && embeddingMatch.confidence >= 0.50
+    embeddingMatch && embeddingMatch.confidence >= 0.5
       ? `\nEmbedding hint: The message is semantically similar to "${embeddingMatch.topExample}" (confidence ${(embeddingMatch.confidence * 100).toFixed(0)}%). Consider this when routing.`
       : '';
 
@@ -195,12 +195,14 @@ Message: "${message}"`;
 
     return parseRouteResult(response.content, intent, validAgentTypes, fallbackFn);
   } catch {
-    return fallbackFn ? fallbackFn(intent, message) : {
-      targetAgent: 'secretary',
-      confidence: 0.5,
-      reasoning: 'LLM routing failed; defaulting to Secretary.',
-      intent,
-    };
+    return fallbackFn
+      ? fallbackFn(intent, message)
+      : {
+          targetAgent: 'secretary',
+          confidence: 0.5,
+          reasoning: 'LLM routing failed; defaulting to Secretary.',
+          intent,
+        };
   }
 }
 

@@ -5,7 +5,6 @@ import { runEventBusContractTests } from './bus.contract.test';
 import { createConnection, closeConnection, getConnection } from '@cabinet/storage';
 import { runMigration001 } from '@cabinet/storage/migrations/001_initial';
 import { MessageType } from '@cabinet/types';
-import type { MessageEnvelope } from '@cabinet/types';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';

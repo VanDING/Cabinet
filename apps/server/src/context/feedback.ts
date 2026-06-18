@@ -59,7 +59,10 @@ export function initFeedbackLoop(state: BuildState): void {
       const match = response.content.match(/\{[\s\S]*\}/);
       if (!match) return PreferenceLearner.defaultProfile();
       return { ...PreferenceLearner.defaultProfile(), ...JSON.parse(match[0]) };
-    } catch {
+    } catch (err) {
+      state.logger?.warn('Preference analysis failed, using default profile', {
+        error: (err as Error).message,
+      });
       return PreferenceLearner.defaultProfile();
     }
   };

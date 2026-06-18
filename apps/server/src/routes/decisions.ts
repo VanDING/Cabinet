@@ -36,7 +36,9 @@ decisionsRouter.get('/:id', async (c) => {
 
   // Trigger background analysis if missing (non-blocking)
   const analysisService = new DecisionAnalysisService(getServerContext());
-  analysisService.ensureAnalysis(decision.id).catch((err) => { console.warn('Operation failed', err); });
+  analysisService.ensureAnalysis(decision.id).catch((err) => {
+    console.warn('Operation failed', err);
+  });
 
   return c.json({ decision });
 });
@@ -103,8 +105,11 @@ decisionsRouter.post('/', async (c) => {
         input.captainId ?? DEFAULT_CAPTAIN_ID,
         { title: decision.title, level: decision.level },
       );
-    } catch {
-      /* non-critical */
+    } catch (err) {
+      logger?.error('Audit log insert failed', {
+        decisionId: decision.id,
+        error: (err as Error).message,
+      });
     }
     return c.json({ decision }, 201);
   } catch (e) {
@@ -130,8 +135,11 @@ decisionsRouter.post('/:id/approve', async (c) => {
         body.captainId ?? DEFAULT_CAPTAIN_ID,
         { chosenOptionId: decision.chosenOptionId },
       );
-    } catch {
-      /* non-critical */
+    } catch (err) {
+      logger?.error('Audit log insert failed', {
+        decisionId: decision.id,
+        error: (err as Error).message,
+      });
     }
     return c.json({ status: decision.status, chosenOptionId: decision.chosenOptionId, decision });
   } catch (e) {
@@ -163,8 +171,11 @@ decisionsRouter.post('/:id/reject', async (c) => {
         body.captainId ?? DEFAULT_CAPTAIN_ID,
         {},
       );
-    } catch {
-      /* non-critical */
+    } catch (err) {
+      logger?.error('Audit log insert failed', {
+        decisionId: decision.id,
+        error: (err as Error).message,
+      });
     }
     return c.json({ status: decision.status, decision });
   } catch (e) {

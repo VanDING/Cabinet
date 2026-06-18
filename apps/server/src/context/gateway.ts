@@ -119,7 +119,10 @@ export function initGateway(state: BuildState): void {
             baseUrl: pref.base_url ?? undefined,
           };
         }
-      } catch {
+      } catch (err) {
+        state.logger?.warn('Failed to decrypt preferred API key, clearing active key', {
+          error: (err as Error).message,
+        });
         setActiveApiKeyId(null);
       }
     }

@@ -19,9 +19,7 @@ export class AgentEventRepository implements AgentEventStore {
 
   appendEvent(sessionId: string, event: AgentEvent): void {
     this.db
-      .prepare(
-        'INSERT INTO agent_events (session_id, event_type, payload) VALUES (?, ?, ?)',
-      )
+      .prepare('INSERT INTO agent_events (session_id, event_type, payload) VALUES (?, ?, ?)')
       .run(sessionId, event.type, JSON.stringify(event));
   }
 
@@ -35,9 +33,12 @@ export class AgentEventRepository implements AgentEventStore {
   }
 
   setDeliverable(sessionId: string, deliverable: unknown): void {
-    const type = typeof deliverable === 'object' && deliverable !== null
-      ? (deliverable as any).type ?? (deliverable as any).agentType ?? 'unknown'
-      : 'unknown';
+    const type =
+      typeof deliverable === 'object' && deliverable !== null
+        ? (((deliverable as Record<string, unknown>).type as string) ??
+          ((deliverable as Record<string, unknown>).agentType as string) ??
+          'unknown')
+        : 'unknown';
     this.db
       .prepare(
         'INSERT INTO sub_agent_deliverables (session_id, deliverable_type, deliverable_json) VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET deliverable_type = excluded.deliverable_type, deliverable_json = excluded.deliverable_json',
@@ -47,9 +48,7 @@ export class AgentEventRepository implements AgentEventStore {
 
   getDeliverable(sessionId: string): unknown | undefined {
     const row = this.db
-      .prepare(
-        'SELECT deliverable_json FROM sub_agent_deliverables WHERE session_id = ?',
-      )
+      .prepare('SELECT deliverable_json FROM sub_agent_deliverables WHERE session_id = ?')
       .get(sessionId) as { deliverable_json: string } | undefined;
     return row ? JSON.parse(row.deliverable_json) : undefined;
   }

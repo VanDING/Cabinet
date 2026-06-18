@@ -199,7 +199,12 @@ export function createFileCapabilities(
         let entries;
         try {
           entries = await readdir(currentDir, { withFileTypes: true });
-        } catch {
+        } catch (err) {
+          console.warn(
+            '[FileCapability] Directory read error in searchFiles:',
+            currentDir,
+            (err as Error).message,
+          );
           return;
         }
         for (const entry of entries) {
@@ -229,7 +234,12 @@ export function createFileCapabilities(
         let entries;
         try {
           entries = await readdir(currentDir, { withFileTypes: true });
-        } catch {
+        } catch (err) {
+          console.warn(
+            '[FileCapability] Directory read error in searchContent:',
+            currentDir,
+            (err as Error).message,
+          );
           return;
         }
         for (const entry of entries) {

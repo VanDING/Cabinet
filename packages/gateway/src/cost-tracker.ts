@@ -9,7 +9,10 @@ export interface CostEntry {
 }
 
 /** Approximate pricing per 1M tokens (RMB). Uses provider-qualified model names. */
-const MODEL_PRICING: Record<string, { prompt: number; completion: number; cacheHitPrompt?: number }> = {
+const MODEL_PRICING: Record<
+  string,
+  { prompt: number; completion: number; cacheHitPrompt?: number }
+> = {
   // Anthropic — USD converted to RMB at ~7.2 rate
   // Cache write costs 25% more but cache reads are ~90% cheaper
   'anthropic/claude-opus-4-7': { prompt: 108.0, completion: 540.0, cacheHitPrompt: 10.8 },
@@ -68,7 +71,12 @@ export class CostTracker {
     }
   }
 
-  record(model: string, promptTokens: number, completionTokens: number, cachedPromptTokens = 0): CostEntry {
+  record(
+    model: string,
+    promptTokens: number,
+    completionTokens: number,
+    cachedPromptTokens = 0,
+  ): CostEntry {
     const pricing = MODEL_PRICING[model] ?? { prompt: 1.0, completion: 4.0 };
     const uncachedPromptTokens = Math.max(0, promptTokens - cachedPromptTokens);
     const cachePrice = pricing.cacheHitPrompt ?? pricing.prompt;
@@ -91,7 +99,8 @@ export class CostTracker {
     if (this.persistCallback) {
       try {
         this.persistCallback(entry);
-      } catch {
+      } catch (err) {
+        console.warn('[CostTracker] Persist failed:', err);
         // Persistence failure must not break cost tracking
       }
     }

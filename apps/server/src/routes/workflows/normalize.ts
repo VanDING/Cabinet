@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type WorkflowNodeDef, type WorkflowEdge } from '@cabinet/workflow';
 import type { WorkflowNodeType } from '@cabinet/types';
 

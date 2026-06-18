@@ -188,7 +188,8 @@ export async function indexProject(
           batchTexts.push(chunk);
           batchChunks.push({ filePath: relPath, chunkIndex: batchChunks.length, content: chunk });
         }
-      } catch {
+      } catch (err) {
+        console.warn('[Indexer] File read error:', filePath, (err as Error).message);
         errors++;
       }
     }

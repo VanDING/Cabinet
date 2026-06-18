@@ -76,6 +76,7 @@ export class CheckpointManager {
       }
       return parsed;
     } catch {
+      console.warn('[Checkpoint] Failed to load full checkpoint, trying partial recovery');
       return null;
     }
   }
@@ -130,6 +131,7 @@ export class CheckpointManager {
           : { projectId: undefined, crashed: true },
       };
     } catch {
+      console.warn('[Checkpoint] Partial recovery failed, falling back to last-user-message');
       return null;
     }
   }
@@ -157,6 +159,9 @@ export class CheckpointManager {
         metadata: { crashed: true },
       };
     } catch {
+      console.warn(
+        '[Checkpoint] Last-user-message recovery failed — checkpoint completely unrecoverable',
+      );
       return null;
     }
   }

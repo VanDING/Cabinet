@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getServerContext } from '../../context.js';
 import type { ToolDependencies } from '@cabinet/agent';
 import type { WorkflowCapabilities } from '@cabinet/types';

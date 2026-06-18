@@ -8,7 +8,9 @@ export interface MemoryProvider {
   getEntityPreferences(captainId: string): Promise<Record<string, unknown>>;
   searchLongTerm(query: string, projectId: string): Promise<string[]>;
   /** Optional: fetch recent background insights to inject into agent context. */
-  getRecentInsights?(count: number): Promise<Array<{ text: string; relevance: number; source: string }>>;
+  getRecentInsights?(
+    count: number,
+  ): Promise<Array<{ text: string; relevance: number; source: string }>>;
 }
 
 export interface PrebuiltContext {
@@ -173,7 +175,8 @@ export class ContextBuilder {
         try {
           ragResults = await this.memory.searchLongTerm(options.taskDescription, options.projectId);
           this.ragCache.set(ragCacheKey, { results: ragResults, timestamp: now });
-        } catch {
+        } catch (err) {
+          console.warn('[ContextBuilder] RAG search failed, falling back to empty context:', err);
           ragResults = [];
         }
       }
@@ -192,7 +195,9 @@ export class ContextBuilder {
         const insights = await this.memory.getRecentInsights(3);
         if (insights.length > 0) {
           const insightText = insights
-            .map((i) => `- [${i.source}, relevance=${i.relevance.toFixed(2)}] ${i.text.slice(0, 200)}`)
+            .map(
+              (i) => `- [${i.source}, relevance=${i.relevance.toFixed(2)}] ${i.text.slice(0, 200)}`,
+            )
             .join('\n');
           systemPrompt += `\n\n## System Insights\nThe following insights from background analysis may be relevant:\n${insightText}`;
         }

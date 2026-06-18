@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ServerContext } from '../../../context.js';
 import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
 import { CABINET_DIR } from '@cabinet/storage';

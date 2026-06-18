@@ -336,8 +336,8 @@ export class MCPManager {
           sideEffectRisk: risk,
         });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      this.logger.warn('MCP rediscovery failed for server', { serverName, error: String(err) });
     }
 
     // Resources
@@ -360,8 +360,8 @@ export class MCPManager {
           description: res.description,
         });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      this.logger.warn('MCP rediscovery failed for server', { serverName, error: String(err) });
     }
 
     // Prompts
@@ -383,8 +383,8 @@ export class MCPManager {
           arguments: prompt.arguments,
         });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      this.logger.warn('MCP rediscovery failed for server', { serverName, error: String(err) });
     }
   }
 

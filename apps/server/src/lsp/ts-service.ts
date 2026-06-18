@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 

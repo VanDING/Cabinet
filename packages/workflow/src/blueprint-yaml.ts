@@ -27,6 +27,7 @@ export interface YamlParseResult {
  * Parse a YAML blueprint object (already parsed by a YAML library) into
  * WorkflowNodeDef[] + WorkflowEdge[].
  */
+
 export function parseYamlBlueprint(parsed: unknown): YamlParseResult {
   const errors: string[] = [];
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Hono } from 'hono';
 import { getServerContext } from '../../context.js';
 import { encryptApiKey, decryptApiKey } from '../../crypto.js';

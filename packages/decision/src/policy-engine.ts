@@ -46,10 +46,7 @@ export class PolicyEngine {
   private missions: MissionStatement[];
   private profile: MissionProfile;
 
-  constructor(
-    missions?: MissionStatement[],
-    profile?: Partial<MissionProfile>,
-  ) {
+  constructor(missions?: MissionStatement[], profile?: Partial<MissionProfile>) {
     this.missions = missions ?? PolicyEngine.defaultMissions();
     this.profile = {
       riskTolerance: 'medium',
@@ -65,13 +62,19 @@ export class PolicyEngine {
         id: 'user_autonomy',
         priority: 10,
         statement: 'Preserve Captain autonomy over system decisions',
-        implications: ['Never auto-approve L3 decisions', 'T0 adjustments require explicit approval'],
+        implications: [
+          'Never auto-approve L3 decisions',
+          'T0 adjustments require explicit approval',
+        ],
       },
       {
         id: 'cost_transparency',
         priority: 7,
         statement: 'Operate within transparent budget constraints',
-        implications: ['Prefer model downgrade over budget overrun', 'Alert before expensive operations'],
+        implications: [
+          'Prefer model downgrade over budget overrun',
+          'Alert before expensive operations',
+        ],
       },
       {
         id: 'quality_first',
@@ -166,7 +169,7 @@ export class PolicyEngine {
     }
 
     // S4 score: insight quality via quality_first mission
-    let s4Score = (qualityMission?.priority ?? 0) * s4Insight.relevance;
+    const s4Score = (qualityMission?.priority ?? 0) * s4Insight.relevance;
 
     // Apply profile bias
     const bias =
@@ -181,7 +184,11 @@ export class PolicyEngine {
     if (Math.abs(diff) < threshold) {
       return {
         s3Proposal: s3Action,
-        s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
+        s4Proposal: {
+          type: 'insight',
+          description: s4Insight.text,
+          details: { relevance: s4Insight.relevance },
+        },
         missionId: 'compromise',
         resolution: 'compromise',
         reason: `S3 score=${s3Score.toFixed(1)} vs S4 score=${s4Score.toFixed(1)} — within threshold; merging both recommendations`,
@@ -191,7 +198,11 @@ export class PolicyEngine {
     if (diff > threshold) {
       return {
         s3Proposal: s3Action,
-        s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
+        s4Proposal: {
+          type: 'insight',
+          description: s4Insight.text,
+          details: { relevance: s4Insight.relevance },
+        },
         missionId: 's3_control',
         resolution: 's3_wins',
         reason: `S3 score=${s3Score.toFixed(1)} outweighs S4 score=${s4Score.toFixed(1)} per mission priorities`,
@@ -200,7 +211,11 @@ export class PolicyEngine {
 
     return {
       s3Proposal: s3Action,
-      s4Proposal: { type: 'insight', description: s4Insight.text, details: { relevance: s4Insight.relevance } },
+      s4Proposal: {
+        type: 'insight',
+        description: s4Insight.text,
+        details: { relevance: s4Insight.relevance },
+      },
       missionId: 's4_intelligence',
       resolution: 's4_wins',
       reason: `S4 score=${s4Score.toFixed(1)} outweighs S3 score=${s3Score.toFixed(1)} per mission priorities`,
@@ -210,8 +225,16 @@ export class PolicyEngine {
   /** Check if a decision is consistent with policy. */
   checkDecision(decision: Decision): { allowed: boolean; reason?: string } {
     const autonomy = this.missions.find((m) => m.id === 'user_autonomy');
-    if (autonomy && decision.level === 'L3' && decision.status === 'approved' && decision.captainId === 'system') {
-      return { allowed: false, reason: 'L3 decisions cannot be auto-approved per user_autonomy mission' };
+    if (
+      autonomy &&
+      decision.level === 'L3' &&
+      decision.status === 'approved' &&
+      decision.captainId === 'system'
+    ) {
+      return {
+        allowed: false,
+        reason: 'L3 decisions cannot be auto-approved per user_autonomy mission',
+      };
     }
 
     // External agent sandbox: L2 operations from external agents must be explicitly approved
@@ -220,7 +243,11 @@ export class PolicyEngine {
       const source = (decision as any)._source as { agentType?: string } | undefined;
       const isExternal = source?.agentType?.startsWith('external_');
       if (isExternal && decision.level === 'L2' && decision.captainId === 'system') {
-        return { allowed: false, reason: 'L2 operations from external agents require Captain approval per external_agent_sandbox mission' };
+        return {
+          allowed: false,
+          reason:
+            'L2 operations from external agents require Captain approval per external_agent_sandbox mission',
+        };
       }
     }
 
@@ -231,10 +258,7 @@ export class PolicyEngine {
 
   private isL3Equivalent(action: AdjustmentAction): boolean {
     // Actions that affect system-wide configuration or data integrity
-    const l3Types = new Set([
-      'trigger_reconsolidation',
-      'evaluator_frequency_increase',
-    ]);
+    const l3Types = new Set(['trigger_reconsolidation', 'evaluator_frequency_increase']);
     return l3Types.has(action.type) && action.applied && !action.requiresCaptainApproval;
   }
 
@@ -267,10 +291,7 @@ export class PolicyEngine {
    * - Its priority (1-10)
    * - Its relevance to the proposal type
    */
-  private scoreProposal(
-    proposal: AdjustmentAction,
-    source: 's3' | 's4',
-  ): number {
+  private scoreProposal(proposal: AdjustmentAction, source: 's3' | 's4'): number {
     let score = 0;
     for (const mission of this.missions) {
       const relevance = this.missionRelevance(mission, proposal, source);
@@ -286,17 +307,23 @@ export class PolicyEngine {
   ): number {
     switch (mission.id) {
       case 'user_autonomy':
-        return proposal.type === 'notify_captain' ? 1.0 : proposal.requiresCaptainApproval ? 0.5 : 0.1;
+        return proposal.type === 'notify_captain'
+          ? 1.0
+          : proposal.requiresCaptainApproval
+            ? 0.5
+            : 0.1;
       case 'cost_transparency':
         return ['model_swap', 'context_budget_reduce'].includes(proposal.type) ? 0.8 : 0.2;
       case 'quality_first':
         return source === 's4' && proposal.type === 'insight'
-          ? (proposal.details.relevance as number) ?? 0.5
+          ? ((proposal.details.relevance as number) ?? 0.5)
           : 0.3;
       case 'explainability':
         return proposal.severity === 'critical' ? 0.7 : 0.3;
       case 'external_agent_sandbox':
-        return (proposal.details.agentType as string | undefined)?.startsWith('external_') ? 1.0 : 0.1;
+        return (proposal.details.agentType as string | undefined)?.startsWith('external_')
+          ? 1.0
+          : 0.1;
       default:
         return 0.2;
     }

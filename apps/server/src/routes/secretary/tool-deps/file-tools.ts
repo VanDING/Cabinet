@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ServerContext } from '../../../context.js';
 import {
   readFile,

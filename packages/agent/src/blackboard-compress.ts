@@ -52,7 +52,7 @@ export function compressSnapshot(snapshot: string, options: CompressOptions): st
   });
 
   // Strategy 2: if still over budget, drop oldest entries per topic
-  let tokens = estimateTokens(lines.join('\n'));
+  const tokens = estimateTokens(lines.join('\n'));
   if (tokens <= budget) {
     return lines.join('\n');
   }

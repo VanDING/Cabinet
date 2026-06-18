@@ -18,8 +18,8 @@ const ARTIFACT_PATTERNS = ['node_modules', '.next', '.turbo', 'dist', '.cache'];
 
 export interface WorkspaceManagerConfig {
   rootDir?: string;
-  fullCleanupTtlMs?: number;    // default 24h
-  orphanCleanupTtlMs?: number;  // default 72h
+  fullCleanupTtlMs?: number; // default 24h
+  orphanCleanupTtlMs?: number; // default 72h
   artifactCleanupTtlMs?: number; // default 12h
 }
 
@@ -105,9 +105,13 @@ export class WorkspaceManager {
           }
           this.repo.updateWorkspaceStatus(ws.id, 'cleaned');
           result.fullCleaned++;
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
-    } catch { /* DB error — skip */ }
+    } catch {
+      /* DB error — skip */
+    }
 
     // Orphan cleanup: directories without .gc_meta.json
     try {
@@ -125,16 +129,21 @@ export class WorkspaceManager {
             if (!existsSync(metaFile)) {
               try {
                 const stat = statSync(taskPath);
+
                 if (now - stat.mtimeMs > this.orphanCleanupTtlMs) {
                   rmSync(taskPath, { recursive: true, force: true });
                   result.orphanCleaned++;
                 }
-              } catch { /* skip */ }
+              } catch {
+                /* skip */
+              }
             }
           }
         }
       }
-    } catch { /* FS error — skip */ }
+    } catch {
+      /* FS error — skip */
+    }
 
     // Artifact cleanup: remove regenerable build output
     try {
@@ -142,13 +151,18 @@ export class WorkspaceManager {
         const now = Date.now();
         this.cleanArtifactsRecursive(this.rootDir, now, result);
       }
-    } catch { /* FS error — skip */ }
+    } catch {
+      /* FS error — skip */
+    }
 
     return result;
   }
 
   private cleanArtifactsRecursive(
-    dir: string, now: number, result: { artifactCleaned: number }, depth = 0,
+    dir: string,
+    now: number,
+    result: { artifactCleaned: number },
+    depth = 0,
   ): void {
     if (depth > 4) return;
     try {
@@ -164,11 +178,15 @@ export class WorkspaceManager {
               rmSync(full, { recursive: true, force: true });
               result.artifactCleaned++;
             }
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         } else {
           this.cleanArtifactsRecursive(full, now, result, depth + 1);
         }
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 }

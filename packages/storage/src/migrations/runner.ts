@@ -99,7 +99,7 @@ export function runMigrations(db: Database.Database): void {
 
   if (appliedCount > 0) {
     // Use stdout directly so it works even without a logger instance
-    console.log(
+    console.warn(
       `[storage] Applied ${appliedCount} migration(s): ${MIGRATIONS.filter(
         (m) => !applied.has(m.version),
       )

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getServerContext } from '../../context.js';
 import { getEngine } from './engine.js';
 import { normalizeDefinition, findEntryNode } from './normalize.js';
