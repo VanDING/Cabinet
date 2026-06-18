@@ -20,10 +20,6 @@ import { harnessRouter } from './routes/harness.js';
 import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
-// Meeting agent removed — absorbed by Secretary multi-agent routing
-// import { meetingsRouter } from './routes/meetings.js';
-// Scheduled tasks have been merged into workflows (cron_expression column).
-// import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { evaluationsRouter } from './routes/evaluations.js';
 import { externalAgentRouter } from './routes/external-agent.js';
 import { daemonRouter } from './routes/daemon.js';

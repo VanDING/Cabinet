@@ -24,7 +24,7 @@ export class MetricsCollector {
   startPeriodicFlush(): void {
     if (!this.repo || this.flushTimer) return;
     this.flushTimer = setInterval(() => {
-      this.flushToDb();
+      // Individual record() calls already persist to DB.
     }, this.flushIntervalMs);
   }
 
@@ -34,7 +34,6 @@ export class MetricsCollector {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
     }
-    this.flushToDb();
   }
 
   record(name: string, value: number, tags: Record<string, string> = {}): void {
@@ -87,12 +86,6 @@ export class MetricsCollector {
 
   clear(): void {
     this.metrics = [];
-  }
-
-  /** Flush pending metrics to DB (they are already written individually; this is a no-op). */
-  private flushToDb(): void {
-    // Individual record() calls already persist to DB via repo.insert().
-    // This method exists for API symmetry and for potential future batch-insert optimization.
   }
 }
 

@@ -12,6 +12,8 @@ import {
 } from 'ai';
 import { ModelRouter } from './model-router.js';
 import type { ModelRole } from './model-router.js';
+import { BudgetGuard } from './budget-guard.js';
+import { CostTracker } from './cost-tracker.js';
 import type {
   LLMGateway,
   LLMCallOptions,
@@ -82,12 +84,18 @@ export class AISDKAdapter implements LLMGateway {
   private readonly embeddingConfig: EmbeddingConfig;
   private modelMapping: ModelMapping;
   private router: ModelRouter;
+  private budgetGuard: BudgetGuard | null;
+  private costTracker: CostTracker | null;
 
   constructor(
     config: ProviderConfig,
     modelMapping?: ModelMapping,
     embeddingConfig?: EmbeddingConfig,
+    budgetGuard?: BudgetGuard,
+    costTracker?: CostTracker,
   ) {
+    this.budgetGuard = budgetGuard ?? null;
+    this.costTracker = costTracker ?? null;
     this.config = config;
     this.embeddingConfig = embeddingConfig ?? {};
     this.modelMapping = modelMapping ?? {};
@@ -141,6 +149,14 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async generateText(options: LLMCallOptions): Promise<LLMResponse> {
+    // Budget check before LLM call
+    if (this.budgetGuard) {
+      const budget = this.budgetGuard.canProceed(options.decisionLevel);
+      if (!budget.allowed) {
+        throw new Error(`[BudgetGuard] ${budget.reason}`);
+      }
+    }
+
     const model = await this.resolveModelObj(options.model);
     const provider = options.model.includes('/')
       ? options.model.split('/')[0]!
@@ -192,6 +208,16 @@ export class AISDKAdapter implements LLMGateway {
       }
     }
 
+    // Record cost after successful LLM call
+    if (this.costTracker) {
+      this.costTracker.record(
+        options.model,
+        result.usage?.inputTokens ?? 0,
+        result.usage?.outputTokens ?? 0,
+        (result.usage as any)?.inputTokenDetails?.cacheReadTokens ?? 0,
+      );
+    }
+
     return {
       content: result.text ?? '',
       toolCalls: result.toolCalls?.map((tc: any) => ({
@@ -209,6 +235,15 @@ export class AISDKAdapter implements LLMGateway {
   }
 
   async *streamText(options: LLMStreamOptions): AsyncIterable<StreamChunk> {
+    // Budget check before LLM call
+    if (this.budgetGuard) {
+      const budget = this.budgetGuard.canProceed(options.decisionLevel);
+      if (!budget.allowed) {
+        yield { type: 'error', content: `[BudgetGuard] ${budget.reason}` };
+        return;
+      }
+    }
+
     const model = await this.resolveModelObj(options.model);
 
     const messages = options.messages.map((m) => ({
@@ -325,6 +360,15 @@ export class AISDKAdapter implements LLMGateway {
       steps = stepArray.length;
     } catch {
       // steps not available for this provider/model
+    }
+    // Record cost after successful streaming call
+    if (this.costTracker && usage) {
+      this.costTracker.record(
+        options.model,
+        usage.promptTokens,
+        usage.completionTokens,
+        usage.cachedPromptTokens,
+      );
     }
     yield { type: 'done', content: fullText, usage, steps };
   }

@@ -40,14 +40,11 @@ export interface AgentSessionSummary {
 
 export type SessionCompleteCallback = (summary: AgentSessionSummary) => void;
 
-export const TRUST_THRESHOLDS: Record<
-  TrustLevel,
-  { maxConsecutiveErrors: number; maxProbeTools: number }
-> = {
-  T0: { maxConsecutiveErrors: 2, maxProbeTools: 3 },
-  T1: { maxConsecutiveErrors: 3, maxProbeTools: 5 },
-  T2: { maxConsecutiveErrors: 5, maxProbeTools: 10 },
-  T3: { maxConsecutiveErrors: 10, maxProbeTools: Infinity },
+export const TRUST_THRESHOLDS: Record<TrustLevel, { maxConsecutiveErrors: number }> = {
+  T0: { maxConsecutiveErrors: 2 },
+  T1: { maxConsecutiveErrors: 3 },
+  T2: { maxConsecutiveErrors: 5 },
+  T3: { maxConsecutiveErrors: 10 },
 };
 
 export interface AgentLoopOptions {

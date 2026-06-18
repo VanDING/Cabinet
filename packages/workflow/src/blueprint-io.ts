@@ -198,7 +198,9 @@ export function importBlueprint(
 
   // Validate format
   if (blueprint.format !== 'cabinet-workflow/v1') {
-    throw new Error(`Unsupported blueprint format: ${blueprint.format}. Expected cabinet-workflow/v1.`);
+    throw new Error(
+      `Unsupported blueprint format: ${blueprint.format}. Expected cabinet-workflow/v1.`,
+    );
   }
 
   // Resolve agents
@@ -215,9 +217,7 @@ export function importBlueprint(
   }
 
   // Convert blueprint nodes back to WorkflowNodeDef
-  const nodes: WorkflowNodeDef[] = blueprint.definition.nodes.map((bn) =>
-    blueprintToNode(bn),
-  );
+  const nodes: WorkflowNodeDef[] = blueprint.definition.nodes.map((bn) => blueprintToNode(bn));
 
   const edges: WorkflowEdge[] = blueprint.definition.edges.map((be) => ({
     from: be.from,
@@ -244,11 +244,13 @@ function nodeToBlueprint(node: WorkflowNodeDef): BlueprintNode {
     model: node.model,
     prompt: node.prompt,
     input: node.input,
-    output: node.output ? {
-      schema: node.output.schema,
-      passThrough: node.output.passThrough,
-      role: node.output.role,
-    } : undefined,
+    output: node.output
+      ? {
+          schema: node.output.schema,
+          passThrough: node.output.passThrough,
+          role: node.output.role,
+        }
+      : undefined,
     outputAs: node.outputAs,
     onError: node.onError,
     errorTriggerWorkflowId: node.errorTriggerWorkflowId,
@@ -296,11 +298,13 @@ function blueprintToNode(bn: BlueprintNode): WorkflowNodeDef {
     model: bn.model,
     prompt: bn.prompt,
     input: bn.input,
-    output: bn.output ? {
-      schema: bn.output.schema,
-      passThrough: bn.output.passThrough,
-      role: bn.output.role as 'intermediate' | 'final' | 'passthrough' | undefined,
-    } : undefined,
+    output: bn.output
+      ? {
+          schema: bn.output.schema,
+          passThrough: bn.output.passThrough,
+          role: bn.output.role as 'intermediate' | 'final' | 'passthrough' | undefined,
+        }
+      : undefined,
     outputAs: bn.outputAs,
     onError: bn.onError,
     errorTriggerWorkflowId: bn.errorTriggerWorkflowId,
@@ -341,10 +345,6 @@ function blueprintToNode(bn: BlueprintNode): WorkflowNodeDef {
  * Validate a blueprint structure without importing it.
  * Returns a list of issues (empty = valid).
  */
-/** @deprecated Renamed to {@link validateWorkflowExport}. */
-export function validateWorkflowBlueprint(blueprint: WorkflowBlueprint): string[] {
-  return validateWorkflowExport(blueprint);
-}
 
 export function validateWorkflowExport(blueprint: WorkflowBlueprint): string[] {
   const issues: string[] = [];

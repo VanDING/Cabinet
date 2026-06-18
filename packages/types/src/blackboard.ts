@@ -2,7 +2,7 @@
 
 export type MergeStrategy = 'append' | 'replace' | 'merge';
 
-export interface BlackboardTopic {
+export interface BlackboardTopic<T = unknown> {
   name: string;
   mergeStrategy: MergeStrategy;
   /** Runtime schema validation is the consumer's responsibility. */

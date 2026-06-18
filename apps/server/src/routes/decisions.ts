@@ -61,7 +61,7 @@ const createSchema = z.object({
 });
 
 decisionsRouter.post('/', async (c) => {
-  const { decisionService } = getServerContext();
+  const { decisionService, logger } = getServerContext();
   const body = await c.req.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: parsed.error }, 400);
@@ -118,7 +118,7 @@ decisionsRouter.post('/', async (c) => {
 });
 
 decisionsRouter.post('/:id/approve', async (c) => {
-  const { decisionService } = getServerContext();
+  const { decisionService, logger } = getServerContext();
   const body = await c.req.json();
   try {
     const decision = decisionService.approve(
@@ -150,7 +150,7 @@ decisionsRouter.post('/:id/approve', async (c) => {
 });
 
 decisionsRouter.post('/:id/reject', async (c) => {
-  const { decisionService } = getServerContext();
+  const { decisionService, logger } = getServerContext();
   let body: Record<string, string> = {};
   try {
     body = await c.req.json();

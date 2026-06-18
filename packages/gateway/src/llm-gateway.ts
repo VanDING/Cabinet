@@ -5,6 +5,8 @@ export interface LLMCallOptions {
   tools?: ToolDefinition[];
   maxTokens?: number;
   temperature?: number;
+  /** The delegation level of the calling agent (T0-T3). Used by BudgetGuard to allow/block expensive calls. */
+  decisionLevel?: string;
   /** Anthropic extended thinking budget in tokens (1024–128000). */
   thinkingBudget?: number;
   /** Cache the system prompt (Anthropic cache_control). Reduces token cost for multi-step loops. */

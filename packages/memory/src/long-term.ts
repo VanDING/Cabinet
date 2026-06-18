@@ -557,8 +557,12 @@ export class LongTermMemory {
       const metadata = JSON.parse(row.metadata ?? '{}') as Record<string, unknown>;
       const status = metadata.status as string | undefined;
       if (status === 'expired' || status === 'archived') continue;
+      const tier = metadata.tier as string | undefined;
       const vec = JSON.parse(row.embedding) as number[];
-      const score = this.cosineSimilarity(queryEmbedding, vec);
+      let score = this.cosineSimilarity(queryEmbedding, vec);
+      // Tier-based boost: working memories are most important, then register
+      if (tier === 'working') score *= 1.15;
+      else if (tier === 'register') score *= 1.05;
       if (score > SIMILARITY_THRESHOLD) {
         scored.push({
           id,
@@ -695,11 +699,14 @@ export class LongTermMemory {
         try {
           const vec = JSON.parse(row.embedding) as number[];
           if (vec.length !== this.dimension) continue;
-          const score = this.cosineSimilarity(queryEmbedding, vec);
+          const metadata = JSON.parse(row.metadata ?? '{}') as Record<string, unknown>;
+          const status = metadata.status as string | undefined;
+          if (status === 'expired' || status === 'archived') continue;
+          const tier = metadata.tier as string | undefined;
+          let score = this.cosineSimilarity(queryEmbedding, vec);
+          if (tier === 'working') score *= 1.15;
+          else if (tier === 'register') score *= 1.05;
           if (score > SIMILARITY_THRESHOLD) {
-            const metadata = JSON.parse(row.metadata ?? '{}') as Record<string, unknown>;
-            const status = metadata.status as string | undefined;
-            if (status === 'expired' || status === 'archived') continue;
             scored.push({
               id: row.id,
               content: row.content,

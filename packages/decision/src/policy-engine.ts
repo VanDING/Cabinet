@@ -283,49 +283,4 @@ export class PolicyEngine {
   private isSignificant(action: AdjustmentAction): boolean {
     return action.severity === 'warning' || action.severity === 'critical';
   }
-
-  /**
-   * Score a proposal against all missions.
-   *
-   * Returns a weighted sum where each mission contributes based on:
-   * - Its priority (1-10)
-   * - Its relevance to the proposal type
-   */
-  private scoreProposal(proposal: AdjustmentAction, source: 's3' | 's4'): number {
-    let score = 0;
-    for (const mission of this.missions) {
-      const relevance = this.missionRelevance(mission, proposal, source);
-      score += mission.priority * relevance;
-    }
-    return score;
-  }
-
-  private missionRelevance(
-    mission: MissionStatement,
-    proposal: AdjustmentAction,
-    source: 's3' | 's4',
-  ): number {
-    switch (mission.id) {
-      case 'user_autonomy':
-        return proposal.type === 'notify_captain'
-          ? 1.0
-          : proposal.requiresCaptainApproval
-            ? 0.5
-            : 0.1;
-      case 'cost_transparency':
-        return ['model_swap', 'context_budget_reduce'].includes(proposal.type) ? 0.8 : 0.2;
-      case 'quality_first':
-        return source === 's4' && proposal.type === 'insight'
-          ? ((proposal.details.relevance as number) ?? 0.5)
-          : 0.3;
-      case 'explainability':
-        return proposal.severity === 'critical' ? 0.7 : 0.3;
-      case 'external_agent_sandbox':
-        return (proposal.details.agentType as string | undefined)?.startsWith('external_')
-          ? 1.0
-          : 0.1;
-      default:
-        return 0.2;
-    }
-  }
 }

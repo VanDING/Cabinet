@@ -19,7 +19,6 @@ export { parseYamlBlueprint, type YamlBlueprint, type YamlParseResult } from './
 export {
   exportBlueprint,
   importBlueprint,
-  validateWorkflowBlueprint,
   validateWorkflowExport,
   type WorkflowBlueprint,
   type BlueprintNode,
