@@ -7,9 +7,40 @@ import {
   type AgentEvent,
   type AgentExecutionContext,
 } from '../observer-pipeline.js';
+import type { TrustLevel } from '@cabinet/types';
 import { TRUST_THRESHOLDS, type AgentLoopOptions } from './agent-loop-options.js';
 
 import { READ_ONLY_TOOLS } from '../tool-categories.js';
+
+/** Execute a tool call with a timeout. Used in both parallel and sequential execution paths. */
+function executeToolWithTimeout(
+  executor: ToolExecutor,
+  name: string,
+  id: string,
+  args: Record<string, unknown>,
+  opts: { sessionId: string; trustLevel?: TrustLevel; toolTimeoutMs?: number },
+): Promise<import('../tool-executor.js').ToolResult> {
+  return Promise.race([
+    executor.execute(name, id, args, {
+      sessionId: opts.sessionId,
+      trustLevel: opts.trustLevel ?? 'T1',
+    }),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Tool '${name}' timed out`)),
+        opts.toolTimeoutMs ?? 300_000,
+      ),
+    ),
+  ]);
+}
+
+/** Shared helper: check observer pipeline results for blocked signals. */
+function findBlocked(results: unknown[]): { blocked: boolean; reason?: string } | undefined {
+  return results.find(
+    (r): r is { blocked: boolean; reason?: string } =>
+      r !== null && typeof r === 'object' && (r as Record<string, unknown>).blocked === true,
+  );
+}
 
 export interface ExecuteGeneratorDependencies {
   options: AgentLoopOptions;
@@ -43,10 +74,7 @@ export async function* executeGenerator(
 
   // Check user input for injection attempts (P0-2)
   const inputChecks = await pipeline.notify('onUserInput', ctx, userMessage);
-  const blocked = inputChecks.find(
-    (r): r is { blocked: boolean; reason?: string } =>
-      r !== null && typeof r === 'object' && (r as any).blocked === true,
-  );
+  const blocked = findBlocked(inputChecks);
   if (blocked) {
     ctx.finalContent = `[BLOCKED] ${blocked.reason ?? 'Input blocked by content guard'}`;
     yield { type: 'done', content: ctx.finalContent, steps: 0, toolCalls: [] };
@@ -176,10 +204,7 @@ export async function* executeGenerator(
           { id: tc.id, name: tc.name, args: tc.arguments },
           ctx,
         );
-        const blocked = safetyResults.find(
-          (r): r is { blocked: boolean; reason?: string } =>
-            r !== null && typeof r === 'object' && (r as any).blocked === true,
-        );
+        const blocked = findBlocked(safetyResults);
         if (blocked) {
           const blockedResult = `BLOCKED: ${blocked.reason}`;
           await pipeline.notify(
@@ -199,18 +224,13 @@ export async function* executeGenerator(
             },
           };
         }
-        const execResult = await Promise.race([
-          activeToolExecutor.execute(tc.name, tc.id, tc.arguments, {
-            sessionId: options.sessionId,
-            trustLevel: options.trustLevel ?? 'T1',
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error(`Tool '${tc.name}' timed out`)),
-              options.toolTimeoutMs ?? 300_000,
-            ),
-          ),
-        ]);
+        const execResult = await executeToolWithTimeout(
+          activeToolExecutor,
+          tc.name,
+          tc.id,
+          tc.arguments,
+          options,
+        );
         const result = execResult.error ?? execResult.output;
         await pipeline.notify(
           'onToolResult',
@@ -241,10 +261,7 @@ export async function* executeGenerator(
           { id: tc.id, name: tc.name, args: tc.arguments },
           ctx,
         );
-        const blocked = safetyResults.find(
-          (r): r is { blocked: boolean; reason?: string } =>
-            r !== null && typeof r === 'object' && (r as any).blocked === true,
-        );
+        const blocked = findBlocked(safetyResults);
 
         if (blocked) {
           const blockedResult = `BLOCKED: ${blocked.reason}`;
@@ -264,18 +281,13 @@ export async function* executeGenerator(
 
         let result: unknown;
         try {
-          const execResult = await Promise.race([
-            activeToolExecutor.execute(tc.name, tc.id, tc.arguments, {
-              sessionId: options.sessionId,
-              trustLevel: options.trustLevel ?? 'T1',
-            }),
-            new Promise<never>((_, reject) =>
-              setTimeout(
-                () => reject(new Error(`Tool '${tc.name}' timed out`)),
-                options.toolTimeoutMs ?? 300_000,
-              ),
-            ),
-          ]);
+          const execResult = await executeToolWithTimeout(
+            activeToolExecutor,
+            tc.name,
+            tc.id,
+            tc.arguments,
+            options,
+          );
           result = execResult.error ?? execResult.output;
         } catch (timeoutError) {
           checkpointManager.save({

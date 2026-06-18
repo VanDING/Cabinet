@@ -18,6 +18,13 @@ export type {
   BlueprintValidationResult,
 };
 
+/**
+ * Validate a legacy Blueprint configuration.
+ *
+ * @deprecated Use validateWorkflowExport() from blueprint-io.ts for the modern
+ * cabinet-workflow/v1 format. This function only validates the legacy Blueprint
+ * schema (agents + steps + authorization) which is superseded by WorkflowBlueprint.
+ */
 export function validateBlueprint(
   blueprint: Blueprint,
   existingAgentNames?: Set<string>,

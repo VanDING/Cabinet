@@ -10,6 +10,7 @@ export {
 } from './engine.js';
 export { evaluateCondition, type ConditionContext } from './condition-evaluator.js';
 export {
+  /** @deprecated Use validateWorkflowExport() for cabinet-workflow/v1 format. */
   validateBlueprint,
   type Blueprint,
   type BlueprintValidationResult,

@@ -15,6 +15,8 @@ export interface SafetyCheck {
 
 /** Pure read tools — always safe at any tier. */
 import { READ_ONLY_TOOLS } from './tool-categories.js';
+import { assessCommandRisk, type CommandRiskAssessment } from './command-risks.js';
+import { isSensitivePath } from './sensitive-paths.js';
 
 /** Light write tools — reversible, no cost, no destruction. */
 const LIGHT_WRITE_TOOLS = new Set([
@@ -125,78 +127,6 @@ function resolveEffectiveCategory(
 
   // Unknown tools — conservative: treat as light_write (blocked at T0 only)
   return 'light_write';
-}
-
-// ── Sensitive path detection ─────────────────────────────────
-
-export function isSensitivePath(filePath: string): boolean {
-  const normalized = filePath.toLowerCase();
-  if (normalized.includes('/etc/passwd')) return true;
-  if (normalized.includes('/etc/shadow')) return true;
-  if (normalized.includes('/etc/ssh/sshd_config')) return true;
-  if (normalized.includes('.ssh/id_rsa')) return true;
-  if (normalized.includes('.ssh/id_ed25519')) return true;
-  if (normalized.includes('.ssh/id_ecdsa')) return true;
-  if (normalized.includes('.ssh/authorized_keys')) return true;
-  if (normalized.includes('.gnupg')) return true;
-  if (normalized.includes('.aws/credentials') || normalized.includes('.aws\\credentials'))
-    return true;
-  if (normalized.endsWith('.env')) return true;
-  return false;
-}
-
-// ── Command risk assessment ──────────────────────────────────
-
-export interface CommandRiskAssessment {
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  reason: string;
-  blockedPatterns?: string[];
-}
-
-export function assessCommandRisk(command: string): CommandRiskAssessment {
-  const lower = command.toLowerCase();
-  const blockedPatterns: string[] = [];
-
-  if (/\brm\s+-rf\s+\//.test(lower)) blockedPatterns.push('rm -rf /');
-  if (/\bdd\s+if=/.test(lower)) blockedPatterns.push('dd');
-  if (/:\s*\(\)\s*\{/.test(lower)) blockedPatterns.push('fork bomb');
-  if (/>\s*\/dev\/sda/.test(lower)) blockedPatterns.push('raw device write');
-  if (/\bmkfs\./.test(lower)) blockedPatterns.push('mkfs');
-  if (/(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/.test(lower))
-    blockedPatterns.push('pipe to shell');
-
-  if (blockedPatterns.length > 0) {
-    return {
-      riskLevel: 'critical',
-      reason: `Dangerous command detected: ${blockedPatterns.join(', ')}`,
-      blockedPatterns,
-    };
-  }
-
-  if (/\brm\s+.*-rf\b/.test(lower)) return { riskLevel: 'high', reason: 'Recursive deletion' };
-  if (/\bchmod\s+.*\/etc\//.test(lower))
-    return { riskLevel: 'high', reason: 'Modifying system files' };
-  if (/\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/.test(lower))
-    return { riskLevel: 'high', reason: 'Accessing SSH keys' };
-  if (/\bfind\b.*-name\s*id_rsa/.test(lower))
-    return { riskLevel: 'high', reason: 'Searching for SSH keys' };
-
-  if (/\bnpm\s+(install|ci)/.test(lower))
-    return { riskLevel: 'medium', reason: 'Package installation' };
-  if (/\b(git\s+clone|curl|wget)\b/.test(lower))
-    return { riskLevel: 'medium', reason: 'Network download' };
-  if (/\bdocker\s+(run|exec)/.test(lower))
-    return { riskLevel: 'medium', reason: 'Docker execution' };
-
-  if (
-    /^(\s*(ls|cat|pwd|echo|ps|top|df|du|head|tail|grep|find|git\s+(status|log|diff|show))\b)/.test(
-      lower,
-    )
-  ) {
-    return { riskLevel: 'low', reason: 'Read-only inspection command' };
-  }
-
-  return { riskLevel: 'medium', reason: 'Unclassified command' };
 }
 
 // ── SafetyChecker ────────────────────────────────────────────
