@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { buildUpdateSql } from './base-repo.js';
 
 export interface EmployeeRow {
   id: string;
@@ -39,9 +40,17 @@ export class EmployeeRepository {
         'INSERT INTO employees (id, project_id, name, role, kind, pipeline_config, persona, permission_level, allowed_tools, source, external_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .run(
-        emp.id, emp.project_id, emp.name, emp.role, emp.kind,
-        emp.pipeline_config, emp.persona, emp.permission_level, emp.allowed_tools,
-        emp.source ?? 'custom', emp.external_config ?? null,
+        emp.id,
+        emp.project_id,
+        emp.name,
+        emp.role,
+        emp.kind,
+        emp.pipeline_config,
+        emp.persona,
+        emp.permission_level,
+        emp.allowed_tools,
+        emp.source ?? 'custom',
+        emp.external_config ?? null,
       );
   }
 
@@ -50,28 +59,31 @@ export class EmployeeRepository {
     changes: Partial<
       Pick<
         EmployeeRow,
-        'name' | 'role' | 'kind' | 'pipeline_config' | 'persona' | 'permission_level' | 'allowed_tools' | 'source' | 'external_config'
+        | 'name'
+        | 'role'
+        | 'kind'
+        | 'pipeline_config'
+        | 'persona'
+        | 'permission_level'
+        | 'allowed_tools'
+        | 'source'
+        | 'external_config'
       >
     >,
   ): void {
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    const map: Record<string, string> = {
-      name: 'name', role: 'role', kind: 'kind',
-      pipeline_config: 'pipeline_config', persona: 'persona',
-      permission_level: 'permission_level', allowed_tools: 'allowed_tools',
-      source: 'source', external_config: 'external_config',
-    };
-    for (const [key, col] of Object.entries(map)) {
-      const val = (changes as Record<string, unknown>)[key];
-      if (val !== undefined) {
-        sets.push(`${col} = ?`);
-        values.push(val);
-      }
-    }
-    if (sets.length === 0) return;
-    values.push(id);
-    this.db.prepare(`UPDATE employees SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+    const result = buildUpdateSql('employees', changes, {
+      name: 'name',
+      role: 'role',
+      kind: 'kind',
+      pipeline_config: 'pipeline_config',
+      persona: 'persona',
+      permission_level: 'permission_level',
+      allowed_tools: 'allowed_tools',
+      source: 'source',
+      external_config: 'external_config',
+    });
+    if (!result) return;
+    this.db.prepare(result.sql).run(...result.values, id);
   }
 
   delete(id: string): void {

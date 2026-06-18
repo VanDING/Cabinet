@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { Project, ProjectStatus } from '@cabinet/types';
+import { buildUpdateSql } from './base-repo.js';
 
 export class ProjectRepository {
   constructor(private readonly db: Database.Database) {}
@@ -63,34 +64,15 @@ export class ProjectRepository {
       icon?: string;
     },
   ): void {
-    const sets: string[] = [];
-    const values: unknown[] = [];
-
-    if (changes.name !== undefined) {
-      sets.push('name = ?');
-      values.push(changes.name);
-    }
-    if (changes.description !== undefined) {
-      sets.push('description = ?');
-      values.push(changes.description);
-    }
-    if (changes.status !== undefined) {
-      sets.push('status = ?');
-      values.push(changes.status);
-    }
-    if (changes.rootPath !== undefined) {
-      sets.push('root_path = ?');
-      values.push(changes.rootPath);
-    }
-    if (changes.icon !== undefined) {
-      sets.push('icon = ?');
-      values.push(changes.icon);
-    }
-
-    if (sets.length > 0) {
-      values.push(id);
-      this.db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...values);
-    }
+    const result = buildUpdateSql('projects', changes, {
+      name: 'name',
+      description: 'description',
+      status: 'status',
+      rootPath: 'root_path',
+      icon: 'icon',
+    });
+    if (!result) return;
+    this.db.prepare(result.sql).run(...result.values, id);
   }
 
   archive(id: string): void {

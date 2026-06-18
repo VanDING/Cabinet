@@ -1,3 +1,4 @@
+import { buildUpdateSql } from './base-repo.js';
 //
 // SquadRepository — persistence for agent squads and members.
 //
@@ -37,24 +38,38 @@ export class SquadRepository {
   findAll(workspaceId?: string): SquadRow[] {
     const where = workspaceId ? 'WHERE workspace_id = ?' : '';
     const params = workspaceId ? [workspaceId] : [];
-    const rows = this.db.prepare(
-      `SELECT * FROM agent_squads ${where} ORDER BY created_at DESC`,
-    ).all(...params) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(`SELECT * FROM agent_squads ${where} ORDER BY created_at DESC`)
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => this.rowToSquad(r));
   }
 
   findById(id: string): SquadRow | null {
-    const row = this.db.prepare('SELECT * FROM agent_squads WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM agent_squads WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     return row ? this.rowToSquad(row) : null;
   }
 
   create(row: Omit<SquadRow, 'created_at' | 'updated_at'>): string {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO agent_squads (id, name, description, workspace_id, leader_agent_id,
         routing_strategy, fallback_agent_id, enabled)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(row.id, row.name, row.description, row.workspace_id, row.leader_agent_id,
-      row.routing_strategy, row.fallback_agent_id, row.enabled);
+    `,
+      )
+      .run(
+        row.id,
+        row.name,
+        row.description,
+        row.workspace_id,
+        row.leader_agent_id,
+        row.routing_strategy,
+        row.fallback_agent_id,
+        row.enabled,
+      );
     return row.id;
   }
 
@@ -77,24 +92,39 @@ export class SquadRepository {
   // ── Members ──
 
   findMembers(squadId: string): SquadMemberRow[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM agent_squad_members WHERE squad_id = ? ORDER BY priority DESC',
-    ).all(squadId) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare('SELECT * FROM agent_squad_members WHERE squad_id = ? ORDER BY priority DESC')
+      .all(squadId) as Record<string, unknown>[];
     return rows.map((r) => this.rowToMember(r));
   }
 
   findActiveMembers(squadId: string): SquadMemberRow[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM agent_squad_members WHERE squad_id = ? AND active = 1 ORDER BY priority DESC',
-    ).all(squadId) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(
+        'SELECT * FROM agent_squad_members WHERE squad_id = ? AND active = 1 ORDER BY priority DESC',
+      )
+      .all(squadId) as Record<string, unknown>[];
     return rows.map((r) => this.rowToMember(r));
   }
 
   addMember(row: Omit<SquadMemberRow, 'created_at'>): string {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO agent_squad_members (id, squad_id, agent_id, member_type, skills_json, priority, max_concurrent_tasks, active)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(row.id, row.squad_id, row.agent_id, row.member_type, row.skills_json, row.priority, row.max_concurrent_tasks, row.active);
+    `,
+      )
+      .run(
+        row.id,
+        row.squad_id,
+        row.agent_id,
+        row.member_type,
+        row.skills_json,
+        row.priority,
+        row.max_concurrent_tasks,
+        row.active,
+      );
     return row.id;
   }
 
@@ -108,7 +138,9 @@ export class SquadRepository {
     }
     if (sets.length === 0) return;
     params.push(id);
-    this.db.prepare(`UPDATE agent_squad_members SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    this.db
+      .prepare(`UPDATE agent_squad_members SET ${sets.join(', ')} WHERE id = ?`)
+      .run(...params);
   }
 
   removeMember(id: string): void {
@@ -118,24 +150,28 @@ export class SquadRepository {
   // ── Round-robin ──
 
   getNextRoundRobin(squadId: string): number {
-    const row = this.db.prepare(
-      'SELECT last_member_index FROM agent_squad_round_robin WHERE squad_id = ?',
-    ).get(squadId) as { last_member_index: number } | undefined;
+    const row = this.db
+      .prepare('SELECT last_member_index FROM agent_squad_round_robin WHERE squad_id = ?')
+      .get(squadId) as { last_member_index: number } | undefined;
     return row?.last_member_index ?? 0;
   }
 
   advanceRoundRobin(squadId: string, memberCount: number): number {
     const txn = this.db.transaction(() => {
-      const row = this.db.prepare(
-        'SELECT last_member_index FROM agent_squad_round_robin WHERE squad_id = ?',
-      ).get(squadId) as { last_member_index: number } | undefined;
+      const row = this.db
+        .prepare('SELECT last_member_index FROM agent_squad_round_robin WHERE squad_id = ?')
+        .get(squadId) as { last_member_index: number } | undefined;
       const current = row?.last_member_index ?? 0;
       const next = (current + 1) % memberCount;
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         INSERT INTO agent_squad_round_robin (squad_id, last_member_index)
         VALUES (?, ?)
         ON CONFLICT(squad_id) DO UPDATE SET last_member_index = excluded.last_member_index
-      `).run(squadId, next);
+      `,
+        )
+        .run(squadId, next);
       return next;
     });
     return txn();

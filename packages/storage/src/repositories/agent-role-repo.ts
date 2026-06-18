@@ -1,3 +1,4 @@
+import { buildUpdateSql } from './base-repo.js';
 import type Database from 'better-sqlite3';
 
 export interface AgentRoleRow {
@@ -94,29 +95,22 @@ export class AgentRoleRepository {
       >
     >,
   ): void {
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    const fieldMap: Record<string, string> = {
-      system_prompt: 'system_prompt',
-      model: 'model',
-      model_tier: 'model_tier',
-      temperature: 'temperature',
-      max_response_tokens: 'max_response_tokens',
-      allowed_tools: 'allowed_tools',
-      context_budget: 'context_budget',
-    };
-    for (const [key, col] of Object.entries(fieldMap)) {
-      const val = (changes as Record<string, unknown>)[key];
-      if (val !== undefined) {
-        sets.push(`${col} = ?`);
-        values.push(val);
-      }
-    }
-    if (sets.length === 0) return;
-    values.push(name);
-    this.db
-      .prepare(`UPDATE agent_roles SET ${sets.join(', ')} WHERE name = ? AND is_builtin = 0`)
-      .run(...values);
+    const result = buildUpdateSql(
+      'agent_roles',
+      changes,
+      {
+        system_prompt: 'system_prompt',
+        model: 'model',
+        model_tier: 'model_tier',
+        temperature: 'temperature',
+        max_response_tokens: 'max_response_tokens',
+        allowed_tools: 'allowed_tools',
+        context_budget: 'context_budget',
+      },
+      'WHERE name = ? AND is_builtin = 0',
+    );
+    if (!result) return;
+    this.db.prepare(result.sql).run(...result.values, name);
   }
 
   deleteByName(name: string): void {

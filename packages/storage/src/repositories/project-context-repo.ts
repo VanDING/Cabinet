@@ -1,3 +1,4 @@
+import { buildUpdateSql } from './base-repo.js';
 import type Database from 'better-sqlite3';
 
 export interface ProjectContextRow {
