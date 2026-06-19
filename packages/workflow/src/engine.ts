@@ -111,9 +111,22 @@ export class WorkflowEngine {
   private currentEdges: WorkflowEdge[] = [];
   private persistence = new WorkflowPersistence();
   private nodeExecutor: NodeExecutor;
+  private maxCompletedRuns: number;
+  private completedRunIds: string[] = [];
 
-  constructor() {
+  constructor(maxCompletedRuns = 50) {
+    this.maxCompletedRuns = maxCompletedRuns;
     this.nodeExecutor = new NodeExecutor(this.buildNodeExecutorDeps());
+  }
+
+  private evictCompletedRun(runId: string, status: WorkflowRunStatus): void {
+    if (status === 'completed' || status === 'failed' || status === 'completed_with_errors') {
+      this.completedRunIds.push(runId);
+      if (this.completedRunIds.length > this.maxCompletedRuns) {
+        const oldest = this.completedRunIds.shift()!;
+        this.runs.delete(oldest);
+      }
+    }
   }
 
   private buildNodeExecutorDeps(): NodeExecutorDeps {
@@ -167,6 +180,7 @@ export class WorkflowEngine {
       run.status = 'failed';
       this.persistence.saveRun(run);
       this.handleErrorTrigger(error, run, nodeMap);
+      this.evictCompletedRun(run.runId, run.status);
       return run;
     }
 
@@ -174,6 +188,7 @@ export class WorkflowEngine {
       run.status = 'completed';
       this.persistence.saveRun(run);
     }
+    this.evictCompletedRun(run.runId, run.status);
     return run;
   }
 
@@ -214,6 +229,7 @@ export class WorkflowEngine {
       run.status = 'failed';
       this.persistence.saveRun(run);
       this.handleErrorTrigger(error, run, nodeMap);
+      this.evictCompletedRun(run.runId, run.status);
       return run;
     }
 
@@ -221,6 +237,7 @@ export class WorkflowEngine {
       run.status = 'completed';
       this.persistence.saveRun(run);
     }
+    this.evictCompletedRun(run.runId, run.status);
     return run;
   }
 
