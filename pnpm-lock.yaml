@@ -4,10 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@cabinet/types': link:packages/types
+
 importers:
 
   .:
     dependencies:
+      '@cabinet/types':
+        specifier: link:packages/types
+        version: link:packages/types
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -76,7 +82,7 @@ importers:
   apps/desktop:
     dependencies:
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../../packages/types
         version: link:../../packages/types
       '@cabinet/ui':
         specifier: workspace:*
@@ -183,7 +189,7 @@ importers:
         version: 6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0)
       vitest:
         specifier: ^4.0.0
-        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
 
   apps/server:
     dependencies:
@@ -212,7 +218,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../../packages/types
         version: link:../../packages/types
       '@cabinet/workflow':
         specifier: workspace:*
@@ -321,7 +327,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
       js-tiktoken:
         specifier: ^1.0.21
@@ -346,7 +352,7 @@ importers:
   packages/agent-sdk:
     dependencies:
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       typescript:
@@ -362,7 +368,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       '@types/node':
@@ -384,7 +390,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       '@types/better-sqlite3':
@@ -406,7 +412,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       typescript:
@@ -434,7 +440,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
       ai:
         specifier: ^6.0.0
@@ -451,7 +457,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.0
-        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/harness:
     dependencies:
@@ -474,7 +480,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       '@types/node':
@@ -485,7 +491,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.0
-        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
     optionalDependencies:
       playwright:
         specifier: ^1.50.0
@@ -497,7 +503,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
       compromise:
         specifier: ^14.15.1
@@ -534,7 +540,7 @@ importers:
         specifier: workspace:*
         version: link:../memory
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       typescript:
@@ -557,7 +563,7 @@ importers:
         version: 4.0.0
     devDependencies:
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
       '@types/better-sqlite3':
         specifier: ^7.6.0
@@ -584,7 +590,7 @@ importers:
   packages/ui:
     dependencies:
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
       lucide-react:
         specifier: ^1.16.0
@@ -621,7 +627,7 @@ importers:
         specifier: workspace:*
         version: link:../storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../types
         version: link:../types
     devDependencies:
       typescript:
@@ -640,7 +646,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../../packages/types
         version: link:../../packages/types
     devDependencies:
       vitest:
@@ -665,7 +671,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@cabinet/types':
-        specifier: workspace:*
+        specifier: link:../../packages/types
         version: link:../../packages/types
       better-sqlite3:
         specifier: ^12.10.0
@@ -10753,7 +10759,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0)):
+  vitest@4.1.7(@opentelemetry/api@1.9.0)(@types/node@24.12.4)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.7
       '@vitest/mocker': 4.1.7(vite@6.4.2(@types/node@24.12.4)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
