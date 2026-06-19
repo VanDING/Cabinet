@@ -118,4 +118,63 @@ describe('SlotClient', () => {
 
     await expect(client.readSlot()).rejects.toThrow('SlotClient HTTP 401');
   });
+
+  it('strips trailing slash from baseUrl', () => {
+    const c = new SlotClient({
+      baseUrl: 'http://localhost:3000/',
+      taskToken: 'tok',
+      taskId: 't1',
+    });
+    // Trigger a request to verify URL construction
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          version: 1,
+          project: { name: 'x', goals: [] },
+          memories: [],
+          files: [],
+          discoveries: [],
+          previous_outputs: [],
+          security: { level: 'L1', maxRetries: 2 },
+        }),
+    });
+    c.readSlot();
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/slot/t1/read',
+      expect.anything(),
+    );
+  });
+
+  it('defaults agentId to external', () => {
+    const c = new SlotClient({
+      baseUrl: 'http://localhost:3000',
+      taskToken: 'tok',
+      taskId: 't1',
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ deliverable_id: 'd_1' }),
+    });
+    c.submitDeliverable('title', 'content');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.stringContaining('"agent_id":"external"'),
+      }),
+    );
+  });
+
+  it('writes outputs via writeOutputs', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    await client.writeOutputs(['step 1 done', 'step 2 done']);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/slot/task-1/write',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('step 1 done'),
+      }),
+    );
+  });
 });

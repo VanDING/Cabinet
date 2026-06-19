@@ -67,4 +67,43 @@ describe('A2A helper', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/json');
   });
+
+  it('builds failed task result Response', () => {
+    const res = taskResultResponse({ status: 'failed', output: 'error' });
+    expect(res.status).toBe(200);
+  });
+
+  it('handles description in card creation', () => {
+    const card = createAgentCard({
+      agent_id: 'desc-agent',
+      display_name: 'Desc Agent',
+      description: 'An agent with description',
+      base_url: 'http://localhost',
+      capabilities: [{ name: 'test', description: 'a test', security_level: 'L1' }],
+    });
+    expect(card.description).toBe('An agent with description');
+    expect(card.capabilities[0]!.security_level).toBe('L1');
+  });
+
+  it('parses task with defaults for missing fields', () => {
+    const task = parseTask({
+      task_id: 't2',
+      capability: 'code',
+      input: 'hello',
+    });
+    expect(task.session_id).toBe('');
+    expect(task.slot).toEqual({});
+    expect(task.configuration.max_retries).toBe(2);
+    expect(task.configuration.timeout_ms).toBe(120_000);
+  });
+
+  it('generates health_check from base_url', () => {
+    const card = createAgentCard({
+      agent_id: 'h-agent',
+      display_name: 'Health Agent',
+      base_url: 'http://localhost:4000',
+      capabilities: [],
+    });
+    expect(card.connection.health_check).toBe('http://localhost:4000/health');
+  });
 });

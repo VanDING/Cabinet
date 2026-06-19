@@ -475,9 +475,6 @@ export class AgentRoleRegistry {
     maxRetries?: number;
   }): boolean {
     if (this.customRoles.has(params.name)) return false;
-    for (const [name, role] of this.customRoles) {
-      if (name === params.name || role.name === params.name) return false;
-    }
     const type = params.protocol === 'cli' ? 'external_cli' : 'external_a2a';
     const external: import('@cabinet/types').ExternalAgentConfig = {
       protocol: params.protocol,
