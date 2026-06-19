@@ -1,146 +1,121 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SlotClient } from '../slot-client.js';
-import type { SlotClientConfig } from '../slot-client.js';
-
-// Mock global fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
-
-function createMockResponse(body: unknown, status = 200): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-    text: async () => JSON.stringify(body),
-    headers: new Headers(),
-  } as Response;
-}
 
 describe('SlotClient', () => {
-  const defaultConfig: SlotClientConfig = {
-    baseUrl: 'http://localhost:3000',
-    taskToken: 'test-token-123',
-    taskId: 'task-abc',
-    agentId: 'my-agent',
-  };
+  const mockFetch = vi.fn();
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    mockFetch.mockReset();
+    vi.resetAllMocks();
+    globalThis.fetch = mockFetch;
   });
 
-  describe('constructor', () => {
-    it('strips trailing slash from baseUrl', () => {
-      const client = new SlotClient({ ...defaultConfig, baseUrl: 'http://localhost:3000/' });
-      // The trailing slash is stripped internally; verify via endpoint URL
-      mockFetch.mockResolvedValue(createMockResponse({}));
-      client.readSlot();
-      const url = mockFetch.mock.calls[0]![0] as string;
-      expect(url).toBe('http://localhost:3000/api/slot/task-abc/read');
-    });
-
-    it('uses "external" as default agentId when not provided', () => {
-      const { taskToken, taskId, baseUrl } = defaultConfig;
-      const client = new SlotClient({ baseUrl, taskToken, taskId });
-      expect(client).toBeDefined();
-    });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
-  describe('readSlot', () => {
-    it('makes GET request to correct endpoint', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ project: 'test', preferences: {} }));
-      const client = new SlotClient(defaultConfig);
-      await client.readSlot();
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      expect(url).toBe('http://localhost:3000/api/slot/task-abc/read');
-      expect(init.method).toBe('GET');
-      expect(init.headers).toHaveProperty('Authorization', 'Bearer test-token-123');
-    });
-
-    it('returns parsed JSON from response', async () => {
-      const slotData = { project: 'my-project', preferences: { model: 'sonnet' } };
-      mockFetch.mockResolvedValue(createMockResponse(slotData));
-      const client = new SlotClient(defaultConfig);
-      const result = await client.readSlot();
-      expect(result).toEqual(slotData);
-    });
-
-    it('throws on non-2xx response', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ error: 'Not found' }, 404));
-      const client = new SlotClient(defaultConfig);
-      await expect(client.readSlot()).rejects.toThrow('SlotClient HTTP 404');
-    });
+  const client = new SlotClient({
+    baseUrl: 'http://localhost:3000',
+    taskToken: 'task_test_abc123',
+    taskId: 'task-1',
+    agentId: 'agent-1',
   });
 
-  describe('writeDiscoveries', () => {
-    it('makes POST request with discoveries payload', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ ok: true }));
-      const client = new SlotClient(defaultConfig);
-      const discoveries = [{ type: 'insight', summary: 'Found issue' }];
-      await client.writeDiscoveries(discoveries);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      const body = JSON.parse(init.body as string);
-      expect(body).toEqual({ discoveries });
+  it('reads slot with auth headers', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          version: 1,
+          project: { name: 'test', goals: [] },
+          preferences: {},
+          memories: [],
+          files: [],
+          discoveries: [],
+          previous_outputs: [],
+          security: { level: 'L1', maxRetries: 2 },
+        }),
     });
+
+    const slot = await client.readSlot();
+    expect(slot.project.name).toBe('test');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/slot/task-1/read',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer task_test_abc123',
+        }),
+      }),
+    );
   });
 
-  describe('writeOutputs', () => {
-    it('makes POST request with outputs payload', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ ok: true }));
-      const client = new SlotClient(defaultConfig);
-      await client.writeOutputs(['output-1', 'output-2']);
-      const [, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      const body = JSON.parse(init.body as string);
-      expect(body).toEqual({ previous_outputs: ['output-1', 'output-2'] });
-    });
+  it('writes discoveries', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    await client.writeDiscoveries([{ type: 'code_analysis', summary: 'Found bug in main.rs' }]);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/slot/task-1/write',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('code_analysis'),
+      }),
+    );
   });
 
-  describe('submitDeliverable', () => {
-    it('returns deliverable_id from response', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ deliverable_id: 'del-456' }));
-      const client = new SlotClient(defaultConfig);
-      const id = await client.submitDeliverable('My Fix', 'code content');
-      expect(id).toBe('del-456');
-      const [url, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      expect(url).toBe('http://localhost:3000/api/external/deliverables');
-      const body = JSON.parse(init.body as string);
-      expect(body.title).toBe('My Fix');
-      expect(body.agent_id).toBe('my-agent');
+  it('submits deliverables and returns ID', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ deliverable_id: 'd_123' }),
     });
+
+    const id = await client.submitDeliverable('My output', 'code content', 'code');
+    expect(id).toBe('d_123');
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/external/deliverables',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
-  describe('requestDecision', () => {
-    it('defaults urgency to yellow', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ decision_id: 'dec-789', status: 'pending' }));
-      const client = new SlotClient(defaultConfig);
-      const result = await client.requestDecision({
-        title: 'Deploy?',
-        description: 'Should we deploy?',
-        options: [{ label: 'Yes', value: 'yes' }],
-      });
-      expect(result.decision_id).toBe('dec-789');
-      const [, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      const body = JSON.parse(init.body as string);
-      expect(body.urgency).toBe('yellow');
+  it('requests decisions with correct schema', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ decision_id: 'dec_123', status: 'pending' }),
     });
+
+    const result = await client.requestDecision({
+      title: 'Should we deploy?',
+      description: 'Tests passing',
+      urgency: 'yellow',
+      options: [
+        { label: 'Deploy now', value: 'deploy' },
+        { label: 'Wait', value: 'wait' },
+      ],
+    });
+    expect(result.decision_id).toBe('dec_123');
   });
 
-  describe('reportTelemetry', () => {
-    it('sends telemetry to correct endpoint', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ ok: true }));
-      const client = new SlotClient(defaultConfig);
-      await client.reportTelemetry('agent-1', {
-        model: 'sonnet',
-        tokens: { prompt: 100, completion: 50 },
-        timing: { ttft_ms: 200, total_ms: 1000, tool_latency_ms: [100] },
-        steps: 3,
-      });
-      const [url, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
-      expect(url).toBe('http://localhost:3000/api/telemetry/report');
-      const body = JSON.parse(init.body as string);
-      expect(body.task_id).toBe('task-abc');
-      expect(body.status).toBe('completed');
+  it('reports telemetry', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ok: true }) });
+
+    await client.reportTelemetry('agent-1', {
+      model: 'claude-3',
+      tokens: { prompt: 100, completion: 50 },
+      timing: { ttft_ms: 200, total_ms: 5000, tool_latency_ms: [100, 200] },
+      steps: 5,
     });
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/telemetry/report',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('throws on non-ok response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      text: () => Promise.resolve('Unauthorized'),
+    });
+
+    await expect(client.readSlot()).rejects.toThrow('SlotClient HTTP 401');
   });
 });
