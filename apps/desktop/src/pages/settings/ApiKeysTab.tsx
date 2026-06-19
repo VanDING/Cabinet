@@ -29,7 +29,9 @@ export function ApiKeysTab() {
     apiFetch('/api/settings/api-keys', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setKeys(d.keys ?? []))
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   };
 
   useEffect(() => {
@@ -69,17 +71,17 @@ export function ApiKeysTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-content-primary">API Keys</h2>
+        <h2 className="text-content-primary text-lg font-semibold">API Keys</h2>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Key'}
         </Button>
       </div>
 
       {showForm && (
-        <div className="mb-4 rounded-lg border border-border bg-surface-elevated p-4">
+        <div className="border-border bg-surface-elevated mb-4 rounded-lg border p-4">
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-content-tertiary">Provider</label>
+              <label className="text-content-tertiary mb-1 block text-xs">Provider</label>
               <select
                 value={formData.provider}
                 onChange={(e) =>
@@ -89,7 +91,7 @@ export function ApiKeysTab() {
                     model: PROVIDER_MODELS[e.target.value]?.[0] ?? '',
                   }))
                 }
-                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
               >
                 <option value="anthropic">Anthropic</option>
                 <option value="openai">OpenAI</option>
@@ -99,37 +101,64 @@ export function ApiKeysTab() {
                 <option value="moonshot">Moonshot</option>
                 <option value="zhipu">Zhipu</option>
                 <option value="baichuan">Baichuan</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="custom">Custom (OpenAI-compatible)</option>
               </select>
             </div>
+            {(formData.provider === 'custom' ||
+              formData.provider === 'openrouter' ||
+              formData.baseUrl) && (
+              <div>
+                <label className="text-content-tertiary mb-1 block text-xs">
+                  Base URL (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder={
+                    formData.provider === 'custom'
+                      ? 'https://api.openai.com/v1'
+                      : 'https://openrouter.ai/api/v1'
+                  }
+                  value={formData.baseUrl}
+                  onChange={(e) => setFormData((p) => ({ ...p, baseUrl: e.target.value }))}
+                  className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+                />
+              </div>
+            )}
             <div>
-              <label className="mb-1 block text-xs text-content-tertiary">Base URL (optional)</label>
-              <input
-                type="text"
-                placeholder="https://api.anthropic.com"
-                value={formData.baseUrl}
-                onChange={(e) => setFormData((p) => ({ ...p, baseUrl: e.target.value }))}
-                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-content-tertiary">API Key</label>
+              <label className="text-content-tertiary mb-1 block text-xs">API Key</label>
               <input
                 type="password"
                 placeholder="sk-ant-..."
                 value={formData.apiKey}
                 onChange={(e) => setFormData((p) => ({ ...p, apiKey: e.target.value }))}
-                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+                className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-content-tertiary">Model</label>
-              <input
-                type="text"
-                placeholder="e.g. claude-sonnet-4-6"
-                value={formData.model}
-                onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
-                className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
-              />
+              <label className="text-content-tertiary mb-1 block text-xs">Model</label>
+              {PROVIDER_MODELS[formData.provider] ? (
+                <select
+                  value={formData.model}
+                  onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
+                  className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+                >
+                  <option value="">Select a model...</option>
+                  {PROVIDER_MODELS[formData.provider]!.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="e.g. openai/gpt-4o"
+                  value={formData.model}
+                  onChange={(e) => setFormData((p) => ({ ...p, model: e.target.value }))}
+                  className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+                />
+              )}
             </div>
             <Button size="sm" fullWidth onClick={handleAdd} disabled={!formData.apiKey.trim()}>
               Add Key (AES-256 Encrypted)
@@ -139,7 +168,7 @@ export function ApiKeysTab() {
       )}
 
       {keys.length === 0 ? (
-        <p className="py-4 text-sm text-content-tertiary">
+        <p className="text-content-tertiary py-4 text-sm">
           No API keys configured. Add keys to enable LLM features.
         </p>
       ) : (
@@ -193,35 +222,68 @@ function ApiKeyRow({ item, onRemove }: { item: ApiKeyItem; onRemove: (id: string
     <Card padding="sm" className="flex items-center justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium capitalize text-content-primary">
+          <span className="text-content-primary text-sm font-medium capitalize">
             {item.provider}
           </span>
-          {item.model && <span className="font-mono text-xs text-content-tertiary">{item.model}</span>}
+          {item.model && (
+            <span className="text-content-tertiary font-mono text-xs">{item.model}</span>
+          )}
         </div>
-        <p className="mt-0.5 font-mono text-xs text-content-tertiary">{item.keyPreview}</p>
+        <p className="text-content-tertiary mt-0.5 font-mono text-xs">{item.keyPreview}</p>
         {testStatus === 'ok' && testResult && (
-          <p className="mt-1 text-xs text-intent-success">
+          <p className="text-intent-success mt-1 text-xs">
             OK — {testResult.latencyMs}ms · {testResult.model}
           </p>
         )}
         {testStatus === 'error' && testResult && (
-          <p className="mt-1 text-xs text-intent-danger">{testResult.message}</p>
+          <p className="text-intent-danger mt-1 text-xs">{testResult.message}</p>
         )}
       </div>
       <div className="flex items-center gap-2">
+        <Button variant="ghost" size="xs" onClick={handleTest} disabled={testStatus === 'testing'}>
+          {testStatus === 'testing' ? 'Testing...' : 'Test'}
+        </Button>
         <Button
           variant="ghost"
           size="xs"
-          onClick={handleTest}
-          disabled={testStatus === 'testing'}
+          className="text-intent-danger"
+          onClick={() => onRemove(item.id)}
         >
-          {testStatus === 'testing' ? 'Testing...' : 'Test'}
-        </Button>
-        <Button variant="ghost" size="xs" className="text-intent-danger" onClick={() => onRemove(item.id)}>
           Remove
         </Button>
       </div>
     </Card>
+  );
+}
+
+function ModelInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const allModels = Object.values(PROVIDER_MODELS).flat();
+  const customSuggestion = value && !allModels.includes(value) ? [value] : [];
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        list="model-suggestions"
+        className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+      />
+      <datalist id="model-suggestions">
+        {[...new Set([...allModels, ...customSuggestion])].map((m) => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
+    </div>
   );
 }
 
@@ -245,7 +307,9 @@ function ModelMappingSection() {
           fast_execution: m.fast_execution ?? '',
         });
       })
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -275,56 +339,48 @@ function ModelMappingSection() {
 
   if (loading) {
     return (
-      <div className="mt-6 border-t border-border pt-6">
-        <p className="text-sm text-content-tertiary">Loading model configuration...</p>
+      <div className="border-border mt-6 border-t pt-6">
+        <p className="text-content-tertiary text-sm">Loading model configuration...</p>
       </div>
     );
   }
 
   return (
-    <div className="mt-6 border-t border-border pt-6">
-      <h3 className="mb-3 text-base font-semibold text-content-primary">
-        Model Mapping
-      </h3>
-      <p className="mb-3 text-xs text-content-tertiary">
+    <div className="border-border mt-6 border-t pt-6">
+      <h3 className="text-content-primary mb-3 text-base font-semibold">Model Mapping</h3>
+      <p className="text-content-tertiary mb-3 text-xs">
         Leave empty to use automatic inference. Cross-provider mixing is supported, e.g.
         openai/gpt-4o, deepseek/deepseek-v4-flash.
       </p>
       <div className="max-w-lg space-y-3">
         <div>
-          <label className="mb-1 block text-sm text-content-secondary">
+          <label className="text-content-secondary mb-1 block text-sm">
             Default Model (default)
           </label>
-          <input
-            type="text"
-            placeholder="e.g. openai/gpt-4o"
+          <ModelInput
             value={mapping.default}
-            onChange={(e) => setMapping((p) => ({ ...p, default: e.target.value }))}
-            className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            onChange={(v) => setMapping((p) => ({ ...p, default: v }))}
+            placeholder="e.g. openai/gpt-4o"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-content-secondary">
+          <label className="text-content-secondary mb-1 block text-sm">
             Deep Reasoning Model (deep_reasoning)
           </label>
-          <input
-            type="text"
-            placeholder="e.g. anthropic/claude-opus-4-7"
+          <ModelInput
             value={mapping.deep_reasoning}
-            onChange={(e) => setMapping((p) => ({ ...p, deep_reasoning: e.target.value }))}
-            className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            onChange={(v) => setMapping((p) => ({ ...p, deep_reasoning: v }))}
+            placeholder="e.g. anthropic/claude-opus-4-7"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm text-content-secondary">
+          <label className="text-content-secondary mb-1 block text-sm">
             Fast Execution Model (fast_execution)
           </label>
-          <input
-            type="text"
-            placeholder="e.g. anthropic/claude-haiku-4-5"
+          <ModelInput
             value={mapping.fast_execution}
-            onChange={(e) => setMapping((p) => ({ ...p, fast_execution: e.target.value }))}
-            className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+            onChange={(v) => setMapping((p) => ({ ...p, fast_execution: v }))}
+            placeholder="e.g. anthropic/claude-haiku-4-5"
           />
         </div>
       </div>
@@ -346,7 +402,9 @@ function BudgetSection() {
         setBudget({ daily: d.daily ?? 5, weekly: d.weekly ?? 25, monthly: d.monthly ?? 100 });
         setCurrentSpend(d.currentSpend ?? 0);
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   }, []);
 
   const handleSave = async () => {
@@ -358,29 +416,25 @@ function BudgetSection() {
   };
 
   return (
-    <div className="mt-6 border-t border-border pt-6">
-      <h3 className="mb-3 text-base font-semibold text-content-primary">
-        Budget Limits
-      </h3>
+    <div className="border-border mt-6 border-t pt-6">
+      <h3 className="text-content-primary mb-3 text-base font-semibold">Budget Limits</h3>
       <div className="mb-3 flex items-center gap-2 text-sm">
         <span className="text-content-tertiary">Today's spend:</span>
-        <span className="font-medium text-accent">${currentSpend.toFixed(4)}</span>
+        <span className="text-accent font-medium">${currentSpend.toFixed(4)}</span>
       </div>
       <div className="grid max-w-lg grid-cols-3 gap-4">
         {['daily', 'weekly', 'monthly'].map((period) => (
           <div key={period}>
-            <label className="mb-1 block text-sm capitalize text-content-secondary">
-              {period}
-            </label>
+            <label className="text-content-secondary mb-1 block text-sm capitalize">{period}</label>
             <div className="flex items-center gap-1">
-              <span className="text-sm text-content-tertiary">$</span>
+              <span className="text-content-tertiary text-sm">$</span>
               <input
                 type="number"
                 value={(budget as any)[period]}
                 onChange={(e) =>
                   setBudget((p) => ({ ...p, [period]: parseFloat(e.target.value) || 0 }))
                 }
-                className="w-24 rounded-sm border border-border bg-surface-primary px-2 py-1.5 text-sm text-content-primary"
+                className="border-border bg-surface-primary text-content-primary w-24 rounded-sm border px-2 py-1.5 text-sm"
               />
             </div>
           </div>

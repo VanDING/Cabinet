@@ -21,6 +21,13 @@ export const PROVIDER_MODELS: Record<string, string[]> = {
   moonshot: ['moonshot/moonshot-v1-8k', 'moonshot/moonshot-v1-32k', 'moonshot/moonshot-v1-128k'],
   zhipu: ['zhipu/glm-4', 'zhipu/glm-4-flash'],
   baichuan: ['baichuan/baichuan4', 'baichuan/baichuan3-turbo'],
+  openrouter: [
+    'openrouter/anthropic/claude-sonnet-4',
+    'openrouter/anthropic/claude-opus-4',
+    'openrouter/openai/gpt-4o',
+    'openrouter/deepseek/deepseek-v4-flash',
+    'openrouter/google/gemini-2.5-flash',
+  ],
   custom: ['custom/custom-model'],
 };
 
@@ -65,7 +72,9 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
             localStorage.removeItem('cabinet-available-models');
           }
         })
-        .catch((err) => { console.warn('Operation failed', err); });
+        .catch((err) => {
+          console.warn('Operation failed', err);
+        });
     }
     refresh();
     window.addEventListener('apikeys_changed', refresh);
