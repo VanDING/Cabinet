@@ -242,29 +242,162 @@ agentsRouter.post('/discover', async (c) => {
   return c.json({ discovered: true, agentCard: card });
 });
 
+// ── A2A Inbound Task Routing ──
+const a2aTasks = new Map<
+  string,
+  {
+    status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+    output?: unknown;
+    message?: string;
+    tokens_used?: number;
+    model?: string;
+    timestamp: string;
+  }
+>();
+
 agentsRouter.post('/message', async (c) => {
-  const { logger } = getServerContext();
-  logger.warn('A2A /message called but not yet implemented');
-  return c.json(
-    {
-      error: 'not_implemented',
-      message:
-        'A2A message routing is not yet implemented. Use POST /api/agents/import to register agents, then use the Employees page to dispatch tasks.',
-    },
-    501,
-  );
+  const { logger, agentRegistry } = getServerContext();
+  const body = await c.req.json().catch(() => ({}));
+  const task = body as {
+    task_id?: string;
+    session_id?: string;
+    capability?: string;
+    input?: unknown;
+  };
+
+  if (!task.task_id || !task.input) {
+    return c.json({ error: 'task_id and input are required' }, 400);
+  }
+
+  const taskId = task.task_id;
+  const capability = task.capability ?? 'default';
+
+  const agents = agentRegistry.list();
+  const target =
+    agents.find((a) => a.type === 'custom') ??
+    agents.find((a) => a.type === 'secretary' || a.type === 'curator' || a.type === 'organize');
+
+  if (!target) {
+    a2aTasks.set(taskId, {
+      status: 'failed',
+      message: 'No available agent',
+      timestamp: new Date().toISOString(),
+    });
+    return c.json({ task_id: taskId, status: 'rejected', error: 'No available agent' }, 503);
+  }
+
+  logger.info('A2A inbound task', { taskId, capability, targetAgent: target.name });
+  a2aTasks.set(taskId, { status: 'in_progress', timestamp: new Date().toISOString() });
+
+  try {
+    const { dispatchToSpecialist } = await import('./secretary/agents.js');
+    const output = await dispatchToSpecialist(
+      target.type,
+      typeof task.input === 'string' ? task.input : JSON.stringify(task.input),
+      task.session_id ?? `a2a_${taskId}`,
+      'default',
+      'system',
+    );
+    a2aTasks.set(taskId, { status: 'completed', output, timestamp: new Date().toISOString() });
+    return c.json({ task_id: taskId, status: 'accepted' });
+  } catch (err) {
+    a2aTasks.set(taskId, {
+      status: 'failed',
+      message: String(err),
+      timestamp: new Date().toISOString(),
+    });
+    return c.json({ task_id: taskId, status: 'rejected', error: String(err) }, 500);
+  }
 });
 
 agentsRouter.post('/message/stream', async (c) => {
-  const { logger } = getServerContext();
-  logger.warn('A2A /message/stream called but not yet implemented');
-  return c.json(
-    {
-      error: 'not_implemented',
-      message: 'A2A streaming is not yet implemented.',
+  const { logger, agentRegistry } = getServerContext();
+  const body = await c.req.json().catch(() => ({}));
+  const task = body as { task_id?: string; input?: unknown; session_id?: string };
+
+  if (!task.task_id) {
+    return c.json({ error: 'task_id is required' }, 400);
+  }
+
+  const taskId = task.task_id;
+  const input = typeof task.input === 'string' ? task.input : JSON.stringify(task.input ?? '');
+
+  c.header('Content-Type', 'text/event-stream');
+  c.header('Cache-Control', 'no-cache');
+  c.header('Connection', 'keep-alive');
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+
+      try {
+        const agents = agentRegistry.list();
+        const target =
+          agents.find((a) => a.type === 'custom') ??
+          agents.find(
+            (a) => a.type === 'secretary' || a.type === 'curator' || a.type === 'organize',
+          );
+
+        if (!target) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: 'No available agent' })}\n\n`),
+          );
+          controller.close();
+          return;
+        }
+
+        const { dispatchToSpecialistStreaming } = await import('./secretary/agents.js');
+
+        await dispatchToSpecialistStreaming(
+          target.type,
+          input,
+          task.session_id ?? `a2a_${taskId}`,
+          'default',
+          'system',
+          {
+            onChunk: (content: string) => {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content })}\n\n`),
+              );
+            },
+            onThinking: (content: string) => {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'thinking', content })}\n\n`),
+              );
+            },
+            onDone: (content: string) => {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'done', content })}\n\n`),
+              );
+              controller.close();
+            },
+            onError: (error: string) => {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'error', error })}\n\n`),
+              );
+              controller.close();
+            },
+            onToolCall: (_name: string, _args: Record<string, unknown>) => {},
+            onToolResult: (_name: string, _result: unknown) => {},
+          },
+        );
+      } catch (err) {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: 'error', error: String(err) })}\n\n`),
+        );
+        controller.close();
+      }
     },
-    501,
-  );
+  });
+
+  return c.newResponse(stream);
+});
+
+agentsRouter.get('/tasks/:taskId', (c) => {
+  const taskId = c.req.param('taskId');
+  const task = a2aTasks.get(taskId);
+  if (!task) return c.json({ error: 'Task not found' }, 404);
+  return c.json({ task_id: taskId, ...task });
 });
 
 // ── POST /api/agents/scan ──────────────────────────────────────
