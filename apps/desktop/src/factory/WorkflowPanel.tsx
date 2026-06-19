@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CanvasNode, CanvasNodeType } from './node-types';
 import { CANVAS_NODE_TYPES, NODE_LABELS } from './node-types';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
+import { useToast } from '../components/Toast';
 
 interface WorkflowMeta {
   id: string;
@@ -62,7 +63,7 @@ export function WorkflowPanel({
     else setNodeData({});
   }, [selectedNode?.id]);
 
-
+  const { addToast } = useToast();
 
   const handleSaveNode = () => {
     if (selectedNode && onNodeUpdate) {
@@ -92,7 +93,10 @@ export function WorkflowPanel({
       a.download = `${workflow.name ?? 'workflow'}.cabinet.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* non-fatal */ }
+      addToast('success', `Exported: ${workflow.name}.cabinet.json`);
+    } catch {
+      /* non-fatal */
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,17 +113,24 @@ export function WorkflowPanel({
       const data = await res.json();
       if (data.id) {
         onWorkflowSave?.({ name: data.name });
+        addToast(
+          'success',
+          `Imported: ${data.nodes} nodes${data.missingAgents?.length ? `, ${data.missingAgents.length} missing agents` : ''}`,
+        );
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      addToast('error', 'Import failed: invalid blueprint');
+    }
   };
 
-  const inputClasses = 'rounded border border-border bg-surface-input px-3 py-1.5 text-sm text-content-primary w-full';
+  const inputClasses =
+    'rounded border border-border bg-surface-input px-3 py-1.5 text-sm text-content-primary w-full';
   const labelClasses = 'text-xs font-medium text-content-secondary mb-0.5 block';
 
   return (
-    <div className="flex h-full flex-col border-l border-border bg-surface-primary">
+    <div className="border-border bg-surface-primary flex h-full flex-col border-l">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="border-border flex items-center justify-between border-b px-4 py-3">
         <div className="flex gap-1">
           <button
             onClick={() => onTabChange('canvas')}
@@ -147,24 +158,27 @@ export function WorkflowPanel({
           <button
             onClick={() => handleExport()}
             disabled={!workflow?.id}
-            className="rounded px-2 py-1 text-xs text-content-tertiary hover:text-content-primary disabled:opacity-30"
+            className="text-content-tertiary hover:text-content-primary rounded px-2 py-1 text-xs disabled:opacity-30"
             title="Export workflow"
           >
             ⤓ Export
           </button>
-          <label className="cursor-pointer rounded px-2 py-1 text-xs text-content-tertiary hover:text-content-primary" title="Import workflow">
+          <label
+            className="text-content-tertiary hover:text-content-primary cursor-pointer rounded px-2 py-1 text-xs"
+            title="Import workflow"
+          >
             ⤒ Import
             <input type="file" accept=".json" className="hidden" onChange={handleImport} />
           </label>
           <button
             onClick={onClose}
-            className="rounded-sm p-1 text-content-tertiary hover:text-content-primary"
+            className="text-content-tertiary hover:text-content-primary rounded-sm p-1"
           >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
-          </svg>
-        </button>
-      </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -173,8 +187,10 @@ export function WorkflowPanel({
           <div className="space-y-4">
             {/* Workflow meta */}
             {workflow && (
-              <section className="rounded-lg border border-border bg-surface-elevated p-3">
-                <h3 className="mb-2 text-xs font-semibold text-content-primary">Workflow Settings</h3>
+              <section className="border-border bg-surface-elevated rounded-lg border p-3">
+                <h3 className="text-content-primary mb-2 text-xs font-semibold">
+                  Workflow Settings
+                </h3>
                 <div className="space-y-2">
                   <div>
                     <label className={labelClasses}>Name</label>
@@ -196,14 +212,14 @@ export function WorkflowPanel({
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveWorkflow}
-                      className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover"
+                      className="bg-accent text-content-inverse hover:bg-accent-hover rounded-sm px-3 py-1 text-xs"
                     >
                       Save
                     </button>
                     {onRunWorkflow && (
                       <button
                         onClick={onRunWorkflow}
-                        className="rounded-sm bg-intent-success px-3 py-1 text-xs text-content-inverse hover:bg-intent-success"
+                        className="bg-intent-success text-content-inverse hover:bg-intent-success rounded-sm px-3 py-1 text-xs"
                       >
                         Run
                       </button>
@@ -239,16 +255,21 @@ export function WorkflowPanel({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[11px] font-medium text-content-secondary mb-0.5 block">{label}</label>
+      <label className="text-content-secondary mb-0.5 block text-[11px] font-medium">{label}</label>
       {children}
     </div>
   );
 }
 
-const inputCls = 'rounded border border-border bg-surface-input px-2 py-1 text-xs text-content-primary w-full';
+const inputCls =
+  'rounded border border-border bg-surface-input px-2 py-1 text-xs text-content-primary w-full';
 
 function NodeEditor({
-  node, data, onChange, onSave, onDelete,
+  node,
+  data,
+  onChange,
+  onSave,
+  onDelete,
 }: {
   node: CanvasNode;
   data: Record<string, unknown>;
@@ -283,21 +304,25 @@ function NodeEditor({
             const parsed = JSON.parse(raw);
             setAiEmployees(parsed.filter((e: { kind: string }) => e.kind === 'ai'));
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       });
   }, []);
 
   return (
-    <section className="rounded-lg border border-border bg-surface-elevated p-3">
-      <h3 className="mb-3 text-xs font-semibold text-content-primary">
-        {NODE_LABELS[t] ?? t}
-      </h3>
+    <section className="border-border bg-surface-elevated rounded-lg border p-3">
+      <h3 className="text-content-primary mb-3 text-xs font-semibold">{NODE_LABELS[t] ?? t}</h3>
 
       <div className="space-y-2">
         {/* Common: Title */}
         {t !== 'start' && t !== 'end' && (
           <Field label="Title">
-            <input className={inputCls} value={(data.title as string) ?? ''} onChange={(e) => set('title', e.target.value)} />
+            <input
+              className={inputCls}
+              value={(data.title as string) ?? ''}
+              onChange={(e) => set('title', e.target.value)}
+            />
           </Field>
         )}
 
@@ -305,19 +330,48 @@ function NodeEditor({
         {t === 'llm' && (
           <>
             <Field label="Prompt">
-              <textarea className={inputCls} rows={3} value={(data.prompt as string) ?? ''} onChange={(e) => set('prompt', e.target.value)} />
+              <textarea
+                className={inputCls}
+                rows={3}
+                value={(data.prompt as string) ?? ''}
+                onChange={(e) => set('prompt', e.target.value)}
+              />
             </Field>
             <Field label="Model">
-              <input className={inputCls} value={(data.model as string) ?? ''} onChange={(e) => set('model', e.target.value)} placeholder="default" />
+              <input
+                className={inputCls}
+                value={(data.model as string) ?? ''}
+                onChange={(e) => set('model', e.target.value)}
+                placeholder="default"
+              />
             </Field>
             <Field label="Temperature">
-              <input className={inputCls} type="number" step="0.1" min="0" max="2" value={(data.temperature as number) ?? ''} onChange={(e) => set('temperature', parseFloat(e.target.value) || undefined)} placeholder="0.7" />
+              <input
+                className={inputCls}
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                value={(data.temperature as number) ?? ''}
+                onChange={(e) => set('temperature', parseFloat(e.target.value) || undefined)}
+                placeholder="0.7"
+              />
             </Field>
             <Field label="Max Tokens">
-              <input className={inputCls} type="number" value={(data.maxTokens as number) ?? ''} onChange={(e) => set('maxTokens', parseInt(e.target.value, 10) || undefined)} placeholder="4096" />
+              <input
+                className={inputCls}
+                type="number"
+                value={(data.maxTokens as number) ?? ''}
+                onChange={(e) => set('maxTokens', parseInt(e.target.value, 10) || undefined)}
+                placeholder="4096"
+              />
             </Field>
             <Field label="Output Format">
-              <select className={inputCls} value={(data.outputFormat as string) ?? 'text'} onChange={(e) => set('outputFormat', e.target.value)}>
+              <select
+                className={inputCls}
+                value={(data.outputFormat as string) ?? 'text'}
+                onChange={(e) => set('outputFormat', e.target.value)}
+              >
                 <option value="text">Text</option>
                 <option value="json">JSON</option>
                 <option value="markdown">Markdown</option>
@@ -330,10 +384,27 @@ function NodeEditor({
         {t === 'skill' && (
           <>
             <Field label="Skill ID">
-              <input className={inputCls} value={(data.skillId as string) ?? ''} onChange={(e) => set('skillId', e.target.value)} placeholder="Registered skill name" />
+              <input
+                className={inputCls}
+                value={(data.skillId as string) ?? ''}
+                onChange={(e) => set('skillId', e.target.value)}
+                placeholder="Registered skill name"
+              />
             </Field>
             <Field label="Input Mapping (JSON)">
-              <textarea className={inputCls} rows={2} value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''} onChange={(e) => { try { set('inputMapping', JSON.parse(e.target.value)); } catch { set('inputMapping', e.target.value); } }} placeholder='{"field": "{{steps.prev.output}}"}' />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('inputMapping', JSON.parse(e.target.value));
+                  } catch {
+                    set('inputMapping', e.target.value);
+                  }
+                }}
+                placeholder='{"field": "{{steps.prev.output}}"}'
+              />
             </Field>
           </>
         )}
@@ -342,10 +413,27 @@ function NodeEditor({
         {t === 'tool' && (
           <>
             <Field label="Tool ID">
-              <input className={inputCls} value={(data.toolId as string) ?? ''} onChange={(e) => set('toolId', e.target.value)} placeholder="readFile / execCommand / httpRequest" />
+              <input
+                className={inputCls}
+                value={(data.toolId as string) ?? ''}
+                onChange={(e) => set('toolId', e.target.value)}
+                placeholder="readFile / execCommand / httpRequest"
+              />
             </Field>
             <Field label="Params (JSON)">
-              <textarea className={inputCls} rows={2} value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''} onChange={(e) => { try { set('inputMapping', JSON.parse(e.target.value)); } catch { set('inputMapping', e.target.value); } }} placeholder='{"path": "{{steps.prev.output}}"}' />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('inputMapping', JSON.parse(e.target.value));
+                  } catch {
+                    set('inputMapping', e.target.value);
+                  }
+                }}
+                placeholder='{"path": "{{steps.prev.output}}"}'
+              />
             </Field>
           </>
         )}
@@ -354,10 +442,21 @@ function NodeEditor({
         {t === 'code' && (
           <>
             <Field label="Code">
-              <textarea className={`${inputCls} font-mono`} rows={5} value={(data.code as string) ?? ''} onChange={(e) => set('code', e.target.value)} placeholder="function main(input) { return input; }" />
+              <textarea
+                className={`${inputCls} font-mono`}
+                rows={5}
+                value={(data.code as string) ?? ''}
+                onChange={(e) => set('code', e.target.value)}
+                placeholder="function main(input) { return input; }"
+              />
             </Field>
             <Field label="Timeout (ms)">
-              <input className={inputCls} type="number" value={(data.codeTimeout as number) ?? 5000} onChange={(e) => set('codeTimeout', parseInt(e.target.value, 10) || 5000)} />
+              <input
+                className={inputCls}
+                type="number"
+                value={(data.codeTimeout as number) ?? 5000}
+                onChange={(e) => set('codeTimeout', parseInt(e.target.value, 10) || 5000)}
+              />
             </Field>
           </>
         )}
@@ -366,10 +465,27 @@ function NodeEditor({
         {t === 'workflow' && (
           <>
             <Field label="Workflow ID">
-              <input className={inputCls} value={(data.workflowId as string) ?? ''} onChange={(e) => set('workflowId', e.target.value)} placeholder="wf_xxx" />
+              <input
+                className={inputCls}
+                value={(data.workflowId as string) ?? ''}
+                onChange={(e) => set('workflowId', e.target.value)}
+                placeholder="wf_xxx"
+              />
             </Field>
             <Field label="Input Mapping (JSON)">
-              <textarea className={inputCls} rows={2} value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''} onChange={(e) => { try { set('inputMapping', JSON.parse(e.target.value)); } catch { set('inputMapping', e.target.value); } }} placeholder='{"param": "{{steps.prev.output}}"}' />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={data.inputMapping ? JSON.stringify(data.inputMapping, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('inputMapping', JSON.parse(e.target.value));
+                  } catch {
+                    set('inputMapping', e.target.value);
+                  }
+                }}
+                placeholder='{"param": "{{steps.prev.output}}"}'
+              />
             </Field>
           </>
         )}
@@ -401,7 +517,7 @@ function NodeEditor({
               </select>
             </Field>
             {aiEmployees.length === 0 && (
-              <p className="text-[11px] text-content-tertiary">
+              <p className="text-content-tertiary text-[11px]">
                 No AI employees found. Create one in the Employees page first.
               </p>
             )}
@@ -426,13 +542,27 @@ function NodeEditor({
               <input
                 className={inputCls}
                 value={((data.allowedTools as string[]) ?? []).join(', ')}
-                onChange={(e) => set('allowedTools', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+                onChange={(e) =>
+                  set(
+                    'allowedTools',
+                    e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  )
+                }
                 placeholder="Inherited from employee"
               />
             </Field>
             <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={(data.persistent as boolean) ?? false} onChange={(e) => set('persistent', e.target.checked)} />
-              <span className="text-content-secondary">Persistent (keep context across workflow runs)</span>
+              <input
+                type="checkbox"
+                checked={(data.persistent as boolean) ?? false}
+                onChange={(e) => set('persistent', e.target.checked)}
+              />
+              <span className="text-content-secondary">
+                Persistent (keep context across workflow runs)
+              </span>
             </label>
           </>
         )}
@@ -441,10 +571,27 @@ function NodeEditor({
         {t === 'ifElse' && (
           <>
             <Field label="Condition Expression">
-              <input className={inputCls} value={(data.loopCondition as string) ?? ''} onChange={(e) => set('loopCondition', e.target.value)} placeholder="e.g. {{steps.prev.output}} === 'approved'" />
+              <input
+                className={inputCls}
+                value={(data.loopCondition as string) ?? ''}
+                onChange={(e) => set('loopCondition', e.target.value)}
+                placeholder="e.g. {{steps.prev.output}} === 'approved'"
+              />
             </Field>
             <Field label="Branches (JSON)">
-              <textarea className={inputCls} rows={3} value={data.branches ? JSON.stringify(data.branches, null, 2) : ''} onChange={(e) => { try { set('branches', JSON.parse(e.target.value)); } catch { set('branches', e.target.value); } }} placeholder='[{"label":"success","conditions":[{"field":"status","operator":"==","value":"ok","logic":"AND"}],"priority":0}]' />
+              <textarea
+                className={inputCls}
+                rows={3}
+                value={data.branches ? JSON.stringify(data.branches, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('branches', JSON.parse(e.target.value));
+                  } catch {
+                    set('branches', e.target.value);
+                  }
+                }}
+                placeholder='[{"label":"success","conditions":[{"field":"status","operator":"==","value":"ok","logic":"AND"}],"priority":0}]'
+              />
             </Field>
           </>
         )}
@@ -453,22 +600,41 @@ function NodeEditor({
         {t === 'loop' && (
           <>
             <Field label="Loop Type">
-              <select className={inputCls} value={(data.loopType as string) ?? 'count'} onChange={(e) => set('loopType', e.target.value)}>
+              <select
+                className={inputCls}
+                value={(data.loopType as string) ?? 'count'}
+                onChange={(e) => set('loopType', e.target.value)}
+              >
                 <option value="count">Count</option>
                 <option value="condition">Condition</option>
               </select>
             </Field>
             {(data.loopType as string) !== 'condition' ? (
               <Field label="Loop Count">
-                <input className={inputCls} type="number" value={(data.loopCount as number) ?? 1} onChange={(e) => set('loopCount', parseInt(e.target.value, 10) || 1)} />
+                <input
+                  className={inputCls}
+                  type="number"
+                  value={(data.loopCount as number) ?? 1}
+                  onChange={(e) => set('loopCount', parseInt(e.target.value, 10) || 1)}
+                />
               </Field>
             ) : (
               <Field label="Loop Condition">
-                <input className={inputCls} value={(data.loopCondition as string) ?? ''} onChange={(e) => set('loopCondition', e.target.value)} placeholder="e.g. {{output}}.length < 10" />
+                <input
+                  className={inputCls}
+                  value={(data.loopCondition as string) ?? ''}
+                  onChange={(e) => set('loopCondition', e.target.value)}
+                  placeholder="e.g. {{output}}.length < 10"
+                />
               </Field>
             )}
             <Field label="Max Iterations">
-              <input className={inputCls} type="number" value={(data.loopMaxIterations as number) ?? 1000} onChange={(e) => set('loopMaxIterations', parseInt(e.target.value, 10) || 1000)} />
+              <input
+                className={inputCls}
+                type="number"
+                value={(data.loopMaxIterations as number) ?? 1000}
+                onChange={(e) => set('loopMaxIterations', parseInt(e.target.value, 10) || 1000)}
+              />
             </Field>
           </>
         )}
@@ -477,13 +643,21 @@ function NodeEditor({
         {t === 'parallel' && (
           <>
             <Field label="Wait Strategy">
-              <select className={inputCls} value={(data.waitStrategy as string) ?? 'all'} onChange={(e) => set('waitStrategy', e.target.value)}>
+              <select
+                className={inputCls}
+                value={(data.waitStrategy as string) ?? 'all'}
+                onChange={(e) => set('waitStrategy', e.target.value)}
+              >
                 <option value="all">All complete</option>
                 <option value="first">First complete</option>
               </select>
             </Field>
             <Field label="Fail Strategy">
-              <select className={inputCls} value={(data.failStrategy as string) ?? 'failAll'} onChange={(e) => set('failStrategy', e.target.value)}>
+              <select
+                className={inputCls}
+                value={(data.failStrategy as string) ?? 'failAll'}
+                onChange={(e) => set('failStrategy', e.target.value)}
+              >
                 <option value="failAll">Fail all</option>
                 <option value="continue">Continue</option>
               </select>
@@ -494,7 +668,11 @@ function NodeEditor({
         {/* ── Merge ── */}
         {t === 'merge' && (
           <Field label="Merge Strategy">
-            <select className={inputCls} value={(data.mergeStrategy as string) ?? 'object'} onChange={(e) => set('mergeStrategy', e.target.value)}>
+            <select
+              className={inputCls}
+              value={(data.mergeStrategy as string) ?? 'object'}
+              onChange={(e) => set('mergeStrategy', e.target.value)}
+            >
               <option value="object">Object</option>
               <option value="array">Array</option>
               <option value="concat">Concat</option>
@@ -507,10 +685,30 @@ function NodeEditor({
         {t === 'intentClassify' && (
           <>
             <Field label="Intents (JSON)">
-              <textarea className={inputCls} rows={3} value={data.intents ? JSON.stringify(data.intents, null, 2) : ''} onChange={(e) => { try { set('intents', JSON.parse(e.target.value)); } catch { set('intents', e.target.value); } }} placeholder='[{"name":"order_query","description":"User asks about order status","examples":["where is my order"]}]' />
+              <textarea
+                className={inputCls}
+                rows={3}
+                value={data.intents ? JSON.stringify(data.intents, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('intents', JSON.parse(e.target.value));
+                  } catch {
+                    set('intents', e.target.value);
+                  }
+                }}
+                placeholder='[{"name":"order_query","description":"User asks about order status","examples":["where is my order"]}]'
+              />
             </Field>
             <Field label="Confidence Threshold">
-              <input className={inputCls} type="number" step="0.1" min="0" max="1" value={(data.intentThreshold as number) ?? 0.7} onChange={(e) => set('intentThreshold', parseFloat(e.target.value) || 0.7)} />
+              <input
+                className={inputCls}
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={(data.intentThreshold as number) ?? 0.7}
+                onChange={(e) => set('intentThreshold', parseFloat(e.target.value) || 0.7)}
+              />
             </Field>
           </>
         )}
@@ -519,16 +717,39 @@ function NodeEditor({
         {t === 'knowledgeBase' && (
           <>
             <Field label="KB ID">
-              <input className={inputCls} value={(data.kbId as string) ?? ''} onChange={(e) => set('kbId', e.target.value)} placeholder="Knowledge base name" />
+              <input
+                className={inputCls}
+                value={(data.kbId as string) ?? ''}
+                onChange={(e) => set('kbId', e.target.value)}
+                placeholder="Knowledge base name"
+              />
             </Field>
             <Field label="Query Template">
-              <input className={inputCls} value={(data.queryTemplate as string) ?? ''} onChange={(e) => set('queryTemplate', e.target.value)} placeholder="{{input}}" />
+              <input
+                className={inputCls}
+                value={(data.queryTemplate as string) ?? ''}
+                onChange={(e) => set('queryTemplate', e.target.value)}
+                placeholder="{{input}}"
+              />
             </Field>
             <Field label="Top-K">
-              <input className={inputCls} type="number" value={(data.topK as number) ?? 5} onChange={(e) => set('topK', parseInt(e.target.value, 10) || 5)} />
+              <input
+                className={inputCls}
+                type="number"
+                value={(data.topK as number) ?? 5}
+                onChange={(e) => set('topK', parseInt(e.target.value, 10) || 5)}
+              />
             </Field>
             <Field label="Score Threshold">
-              <input className={inputCls} type="number" step="0.1" min="0" max="1" value={(data.scoreThreshold as number) ?? 0.7} onChange={(e) => set('scoreThreshold', parseFloat(e.target.value) || 0.7)} />
+              <input
+                className={inputCls}
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={(data.scoreThreshold as number) ?? 0.7}
+                onChange={(e) => set('scoreThreshold', parseFloat(e.target.value) || 0.7)}
+              />
             </Field>
           </>
         )}
@@ -537,13 +758,35 @@ function NodeEditor({
         {t === 'approval' && (
           <>
             <Field label="Approval Title">
-              <input className={inputCls} value={(data.approvalTitle as string) ?? ''} onChange={(e) => set('approvalTitle', e.target.value)} placeholder="Approval required" />
+              <input
+                className={inputCls}
+                value={(data.approvalTitle as string) ?? ''}
+                onChange={(e) => set('approvalTitle', e.target.value)}
+                placeholder="Approval required"
+              />
             </Field>
             <Field label="Description">
-              <textarea className={inputCls} rows={2} value={(data.description as string) ?? ''} onChange={(e) => set('description', e.target.value)} />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={(data.description as string) ?? ''}
+                onChange={(e) => set('description', e.target.value)}
+              />
             </Field>
             <Field label="Options (comma-separated)">
-              <input className={inputCls} value={((data.options as string[]) ?? ['approve', 'reject']).join(', ')} onChange={(e) => set('options', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} />
+              <input
+                className={inputCls}
+                value={((data.options as string[]) ?? ['approve', 'reject']).join(', ')}
+                onChange={(e) =>
+                  set(
+                    'options',
+                    e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  )
+                }
+              />
             </Field>
           </>
         )}
@@ -552,16 +795,43 @@ function NodeEditor({
         {t === 'human' && (
           <>
             <Field label="Task Title">
-              <input className={inputCls} value={(data.title as string) ?? ''} onChange={(e) => set('title', e.target.value)} placeholder="Human task name" />
+              <input
+                className={inputCls}
+                value={(data.title as string) ?? ''}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="Human task name"
+              />
             </Field>
             <Field label="Description">
-              <textarea className={inputCls} rows={2} value={(data.description as string) ?? ''} onChange={(e) => set('description', e.target.value)} />
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={(data.description as string) ?? ''}
+                onChange={(e) => set('description', e.target.value)}
+              />
             </Field>
             <Field label="Output Schema (JSON Schema)">
-              <textarea className={`${inputCls} font-mono`} rows={3} value={data.outputSchema ? JSON.stringify(data.outputSchema, null, 2) : ''} onChange={(e) => { try { set('outputSchema', JSON.parse(e.target.value)); } catch { set('outputSchema', e.target.value); } }} placeholder='{"type":"object","properties":{"checked":{"type":"number"},"fixed":{"type":"boolean"}}}' />
+              <textarea
+                className={`${inputCls} font-mono`}
+                rows={3}
+                value={data.outputSchema ? JSON.stringify(data.outputSchema, null, 2) : ''}
+                onChange={(e) => {
+                  try {
+                    set('outputSchema', JSON.parse(e.target.value));
+                  } catch {
+                    set('outputSchema', e.target.value);
+                  }
+                }}
+                placeholder='{"type":"object","properties":{"checked":{"type":"number"},"fixed":{"type":"boolean"}}}'
+              />
             </Field>
             <Field label="Deadline (ISO string)">
-              <input className={inputCls} value={(data.humanDeadline as string) ?? ''} onChange={(e) => set('humanDeadline', e.target.value)} placeholder="2026-06-01T12:00:00Z" />
+              <input
+                className={inputCls}
+                value={(data.humanDeadline as string) ?? ''}
+                onChange={(e) => set('humanDeadline', e.target.value)}
+                placeholder="2026-06-01T12:00:00Z"
+              />
             </Field>
           </>
         )}
@@ -569,12 +839,22 @@ function NodeEditor({
         {/* ── Start / End ── */}
         {(t === 'start' || t === 'end') && (
           <Field label="Label">
-            <input className={inputCls} value={(data.title as string) ?? ''} onChange={(e) => set('title', e.target.value)} placeholder={t === 'start' ? 'Start' : 'End'} />
+            <input
+              className={inputCls}
+              value={(data.title as string) ?? ''}
+              onChange={(e) => set('title', e.target.value)}
+              placeholder={t === 'start' ? 'Start' : 'End'}
+            />
           </Field>
         )}
         {t === 'end' && (
           <Field label="Output Variable Name">
-            <input className={inputCls} value={(data.outputAs as string) ?? ''} onChange={(e) => set('outputAs', e.target.value)} placeholder="result" />
+            <input
+              className={inputCls}
+              value={(data.outputAs as string) ?? ''}
+              onChange={(e) => set('outputAs', e.target.value)}
+              placeholder="result"
+            />
           </Field>
         )}
 
@@ -582,9 +862,19 @@ function NodeEditor({
       </div>
 
       <div className="mt-3 flex gap-2">
-        <button onClick={onSave} className="rounded-sm bg-accent px-3 py-1 text-xs text-content-inverse hover:bg-accent-hover">Apply</button>
+        <button
+          onClick={onSave}
+          className="bg-accent text-content-inverse hover:bg-accent-hover rounded-sm px-3 py-1 text-xs"
+        >
+          Apply
+        </button>
         {onDelete && (
-          <button onClick={onDelete} className="rounded-sm px-3 py-1 text-xs text-intent-danger hover:bg-intent-danger-muted">Delete</button>
+          <button
+            onClick={onDelete}
+            className="text-intent-danger hover:bg-intent-danger-muted rounded-sm px-3 py-1 text-xs"
+          >
+            Delete
+          </button>
         )}
       </div>
     </section>
@@ -593,7 +883,11 @@ function NodeEditor({
 
 // ─── Add Node ─────────────────────────────────────────────────
 
-function AddNodeSection({ onAdd }: { onAdd?: (type: CanvasNodeType, position?: {x:number;y:number}) => void }) {
+function AddNodeSection({
+  onAdd,
+}: {
+  onAdd?: (type: CanvasNodeType, position?: { x: number; y: number }) => void;
+}) {
   if (!onAdd) return null;
 
   const handleDragStart = (event: React.DragEvent, type: CanvasNodeType) => {
@@ -602,9 +896,9 @@ function AddNodeSection({ onAdd }: { onAdd?: (type: CanvasNodeType, position?: {
   };
 
   return (
-    <section className="rounded-lg border border-dashed border-border bg-surface-input p-3">
-      <h3 className="mb-2 text-xs font-semibold text-content-secondary">
-        Node Palette <span className="font-normal text-content-tertiary">(drag to canvas)</span>
+    <section className="border-border bg-surface-input rounded-lg border border-dashed p-3">
+      <h3 className="text-content-secondary mb-2 text-xs font-semibold">
+        Node Palette <span className="text-content-tertiary font-normal">(drag to canvas)</span>
       </h3>
       <div className="grid grid-cols-2 gap-1.5">
         {CANVAS_NODE_TYPES.map((type) => (
@@ -613,7 +907,7 @@ function AddNodeSection({ onAdd }: { onAdd?: (type: CanvasNodeType, position?: {
             draggable
             onDragStart={(e) => handleDragStart(e, type)}
             onClick={() => onAdd(type)}
-            className="cursor-grab active:cursor-grabbing rounded-sm border border-border bg-surface-primary px-2 py-1.5 text-xs text-content-secondary hover:bg-surface-elevated hover:text-content-primary transition-colors select-none"
+            className="border-border bg-surface-primary text-content-secondary hover:bg-surface-elevated hover:text-content-primary cursor-grab rounded-sm border px-2 py-1.5 text-xs transition-colors select-none active:cursor-grabbing"
           >
             + {NODE_LABELS[type]}
           </div>
@@ -631,7 +925,7 @@ function RunHistory({ runs }: { runs: RunItem[] }) {
   if (runs.length === 0) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-content-tertiary">No run history yet</p>
+        <p className="text-content-tertiary text-sm">No run history yet</p>
       </div>
     );
   }
@@ -639,37 +933,40 @@ function RunHistory({ runs }: { runs: RunItem[] }) {
   return (
     <div className="space-y-2">
       {runs.map((run) => (
-        <div
-          key={run.runId}
-          className="rounded-lg border border-border bg-surface-elevated p-3"
-        >
+        <div key={run.runId} className="border-border bg-surface-elevated rounded-lg border p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span
                 className={`h-2 w-2 rounded-full ${
-                  run.status === 'completed' ? 'bg-intent-success' : run.status === 'failed' ? 'bg-intent-danger' : 'bg-accent'
+                  run.status === 'completed'
+                    ? 'bg-intent-success'
+                    : run.status === 'failed'
+                      ? 'bg-intent-danger'
+                      : 'bg-accent'
                 }`}
               />
-              <span className="text-xs font-medium text-content-primary">{run.status}</span>
-              <span className="text-[11px] text-content-tertiary">
+              <span className="text-content-primary text-xs font-medium">{run.status}</span>
+              <span className="text-content-tertiary text-[11px]">
                 {new Date(run.timestamp).toLocaleString()}
               </span>
             </div>
             <button
               onClick={() => setExpanded(expanded === run.runId ? null : run.runId)}
-              className="text-xs text-accent hover:underline"
+              className="text-accent text-xs hover:underline"
             >
               {expanded === run.runId ? 'Hide' : 'Steps'} ({run.steps.length})
             </button>
           </div>
 
           {expanded === run.runId && (
-            <div className="mt-2 space-y-1 border-t border-border pt-2">
+            <div className="border-border mt-2 space-y-1 border-t pt-2">
               {run.steps.map((step, i) => (
                 <div key={i} className="text-[11px]">
-                  <span className="text-content-tertiary font-mono">{step.nodeId ?? step.type ?? `step_${i}`}</span>
+                  <span className="text-content-tertiary font-mono">
+                    {step.nodeId ?? step.type ?? `step_${i}`}
+                  </span>
                   {step.output && (
-                    <p className="mt-0.5 text-content-secondary truncate max-w-[300px]">
+                    <p className="text-content-secondary mt-0.5 max-w-[300px] truncate">
                       {step.output.slice(0, 120)}
                     </p>
                   )}
