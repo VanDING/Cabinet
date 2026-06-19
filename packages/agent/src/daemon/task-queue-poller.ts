@@ -13,6 +13,7 @@ export class TaskQueuePoller {
   private readonly minIntervalMs: number;
   private readonly maxIntervalMs: number;
   private wsDisconnected = true; // start in polling mode until WS connects
+  private running = false;
 
   constructor(
     private readonly onPoll: () => Promise<boolean>, // returns true if a task was claimed
@@ -60,19 +61,20 @@ export class TaskQueuePoller {
   }
 
   private async tick(): Promise<void> {
-    if (!this.wsDisconnected) return; // WS mode active, skip poll
-
+    if (!this.wsDisconnected) return;
+    if (this.running) return; // skip overlapping polls
+    this.running = true;
     try {
       const claimed = await this.onPoll();
       if (claimed) {
-        // Reset interval on activity
         this.adjustInterval(this.minIntervalMs);
       } else {
-        // Gradually increase interval when queue is empty
         this.adjustInterval(Math.min(this.currentIntervalMs * 2, this.maxIntervalMs));
       }
     } catch {
-      // Poll errors are non-fatal; keep the loop running
+      // non-fatal
+    } finally {
+      this.running = false;
     }
   }
 
