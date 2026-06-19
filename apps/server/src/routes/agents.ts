@@ -254,63 +254,84 @@ agentsRouter.post('/discover', async (c) => {
 });
 
 agentsRouter.post('/message', async (c) => {
-  const { agentRegistry } = getServerContext();
-  const body = await c.req.json();
-  const message = body.message as { role: string; content: string };
-  if (!message?.content) return c.json({ error: 'message.content is required' }, 400);
-
-  return c.json({
-    response: `Cabinet received: ${message.content.slice(0, 200)}`,
-    agentCount: agentRegistry.list().length,
-  });
+  const { logger } = getServerContext();
+  logger.warn('A2A /message called but not yet implemented');
+  return c.json(
+    {
+      error: 'not_implemented',
+      message:
+        'A2A message routing is not yet implemented. Use POST /api/agents/import to register agents, then use the Employees page to dispatch tasks.',
+    },
+    501,
+  );
 });
 
 agentsRouter.post('/message/stream', async (c) => {
-  const body = await c.req.json();
-  const message = body.message as { role: string; content: string };
-  if (!message?.content) return c.json({ error: 'message.content is required' }, 400);
-
-  const sseStream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-      controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ type: 'chunk', content: `Processing: ${message.content.slice(0, 100)}...` })}\n\n`,
-        ),
-      );
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
-      controller.close();
+  const { logger } = getServerContext();
+  logger.warn('A2A /message/stream called but not yet implemented');
+  return c.json(
+    {
+      error: 'not_implemented',
+      message: 'A2A streaming is not yet implemented.',
     },
-  });
-
-  return new Response(sseStream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+    501,
+  );
 });
 
 // ── POST /api/agents/scan ──────────────────────────────────────
 
 const CLI_DETECT_LIST = [
-  { name: 'Claude Code',   command: 'claude',   detectCmd: 'which claude',   installCmd: 'npm install -g @anthropic-ai/claude-code' },
-  { name: 'Codex',         command: 'codex',    detectCmd: 'which codex',    installCmd: 'npm install -g @openai/codex' },
-  { name: 'OpenCode',      command: 'opencode', detectCmd: 'which opencode', installCmd: 'npm install -g opencode' },
-  { name: 'Qwen Code',     command: 'qwen-code', detectCmd: 'which qwen-code', installCmd: 'npm install -g @qwen-code/qwen-code' },
-  { name: 'DeepSeek TUI',  command: 'deepseek-tui', detectCmd: 'which deepseek-tui', installCmd: 'npm install -g deepseek-tui' },
-  { name: 'Cursor',        command: 'cursor',   detectCmd: 'which cursor',   installCmd: null },
+  {
+    name: 'Claude Code',
+    command: 'claude',
+    detectCmd: 'which claude',
+    installCmd: 'npm install -g @anthropic-ai/claude-code',
+  },
+  {
+    name: 'Codex',
+    command: 'codex',
+    detectCmd: 'which codex',
+    installCmd: 'npm install -g @openai/codex',
+  },
+  {
+    name: 'OpenCode',
+    command: 'opencode',
+    detectCmd: 'which opencode',
+    installCmd: 'npm install -g opencode',
+  },
+  {
+    name: 'Qwen Code',
+    command: 'qwen-code',
+    detectCmd: 'which qwen-code',
+    installCmd: 'npm install -g @qwen-code/qwen-code',
+  },
+  {
+    name: 'DeepSeek TUI',
+    command: 'deepseek-tui',
+    detectCmd: 'which deepseek-tui',
+    installCmd: 'npm install -g deepseek-tui',
+  },
+  { name: 'Cursor', command: 'cursor', detectCmd: 'which cursor', installCmd: null },
 ];
 
 agentsRouter.post('/scan', async (c) => {
   const { spawn } = await import('node:child_process');
   const { agentRegistry, logger } = getServerContext();
   const registered = new Set(agentRegistry.list().map((r) => r.name));
-  const discovered: Array<{ name: string; command: string; installed: boolean; version?: string; registered: boolean }> = [];
+  const discovered: Array<{
+    name: string;
+    command: string;
+    installed: boolean;
+    version?: string;
+    registered: boolean;
+  }> = [];
 
   const isWindows = process.platform === 'win32';
-  logger.info('[scan] platform', { platform: process.platform, shell: isWindows ? 'cmd' : 'sh', path: process.env.PATH?.slice(0, 500) });
+  logger.info('[scan] platform', {
+    platform: process.platform,
+    shell: isWindows ? 'cmd' : 'sh',
+    path: process.env.PATH?.slice(0, 500),
+  });
 
   for (const entry of CLI_DETECT_LIST) {
     let installed = false;
@@ -325,11 +346,20 @@ agentsRouter.post('/scan', async (c) => {
       });
       let stdout = '';
       let stderr = '';
-      vProc.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
-      vProc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+      vProc.stdout?.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString();
+      });
+      vProc.stderr?.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
       const vOut = await new Promise<string>((resolve, reject) => {
         vProc.on('close', (code) => {
-          logger.info('[scan] version attempt', { command: entry.command, code, stdout: stdout.trim().slice(0, 200), stderr: stderr.trim().slice(0, 200) });
+          logger.info('[scan] version attempt', {
+            command: entry.command,
+            code,
+            stdout: stdout.trim().slice(0, 200),
+            stderr: stderr.trim().slice(0, 200),
+          });
           if (code === 0 && stdout.trim().length > 0) resolve(stdout.trim());
           else reject(new Error(`exit ${code} or empty output`));
         });
@@ -351,12 +381,22 @@ agentsRouter.post('/scan', async (c) => {
         });
         let stdout2 = '';
         let stderr2 = '';
-        proc.stdout?.on('data', (chunk: Buffer) => { stdout2 += chunk.toString(); });
-        proc.stderr?.on('data', (chunk: Buffer) => { stderr2 += chunk.toString(); });
+        proc.stdout?.on('data', (chunk: Buffer) => {
+          stdout2 += chunk.toString();
+        });
+        proc.stderr?.on('data', (chunk: Buffer) => {
+          stderr2 += chunk.toString();
+        });
         await new Promise<string>((resolve, reject) => {
           proc.on('close', (code) => {
-            logger.info('[scan] locate attempt', { command: entry.command, code, stdout: stdout2.trim().slice(0, 200), stderr: stderr2.trim().slice(0, 200) });
-            if (code === 0) resolve(stdout2.trim()); else reject(new Error(`exit ${code}`));
+            logger.info('[scan] locate attempt', {
+              command: entry.command,
+              code,
+              stdout: stdout2.trim().slice(0, 200),
+              stderr: stderr2.trim().slice(0, 200),
+            });
+            if (code === 0) resolve(stdout2.trim());
+            else reject(new Error(`exit ${code}`));
           });
           proc.on('error', (err) => {
             logger.info('[scan] locate error', { command: entry.command, error: err.message });
