@@ -83,6 +83,7 @@ export class SessionManager {
   private readonly hardLimit: number;
 
   private taskSessions = new Map<string, string>(); // taskId → sessionId
+  private sessionTasks = new Map<string, string[]>(); // sessionId → taskIds[]
 
   private pendingWrites = new Map<string, Session>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -156,6 +157,9 @@ export class SessionManager {
   /** Associate a task ID with a session ID for direct lookup by external agents. */
   associateTask(taskId: string, sessionId: string): void {
     this.taskSessions.set(taskId, sessionId);
+    const existing = this.sessionTasks.get(sessionId) ?? [];
+    existing.push(taskId);
+    this.sessionTasks.set(sessionId, existing);
   }
 
   /** Look up a session by its associated task ID. */
@@ -310,6 +314,14 @@ export class SessionManager {
   close(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (session) {
+      // Clean up associated task mappings
+      const taskIds = this.sessionTasks.get(sessionId);
+      if (taskIds) {
+        for (const taskId of taskIds) {
+          this.taskSessions.delete(taskId);
+        }
+        this.sessionTasks.delete(sessionId);
+      }
       this.persist(session);
       this.sessions.delete(sessionId);
       // Fire close callbacks asynchronously (non-blocking)

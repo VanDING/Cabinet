@@ -59,6 +59,9 @@ export async function dispatchToExternalAgent(
   }
 
   // ── Push-mode (fallback): direct adapter dispatch ──
+  // In push-mode task_id = childSessionId, so getSessionByTaskId would find it
+  // via sessionManager.get(taskId) fallback, but register for consistency
+  ctx.sessionManager.associateTask(childSessionId, childSessionId);
 
   // ── Build external task ──
   const task = {

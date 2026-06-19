@@ -89,7 +89,7 @@ externalAgentRouter.get('/:taskId/read', async (c) => {
 
   try {
     const { sessionManager } = getServerContext();
-    const session = sessionManager.get(taskId);
+    const session = sessionManager.getSessionByTaskId(taskId) ?? sessionManager.get(taskId);
     if (!session) {
       return c.json({ error: 'Session not found' }, 404);
     }
