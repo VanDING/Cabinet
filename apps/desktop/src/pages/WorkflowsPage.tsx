@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useToast } from '../components/Toast';
@@ -19,6 +19,7 @@ export function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [runs, setRuns] = useState<Record<string, RunItem[]>>({});
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchWorkflows = useCallback(() => {
     setLoading(true);
@@ -114,6 +115,54 @@ export function WorkflowsPage() {
     }
   };
 
+  const handleExport = async (workflowId: string) => {
+    const wf = workflows.find((w) => w.id === workflowId);
+    try {
+      const res = await apiFetch('/api/workflows/export', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ workflowId }),
+      });
+      const blueprint = await res.json();
+      const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${wf?.name ?? 'workflow'}.cabinet.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      addToast('success', `Workflow "${wf?.name ?? workflowId}" exported`);
+    } catch {
+      addToast('error', 'Failed to export workflow');
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const blueprint = JSON.parse(text);
+      const projRes = await apiFetch('/api/projects', { headers: authHeaders() });
+      const projData = await projRes.json();
+      const pid = (projData.projects?.[0]?.id as string) ?? 'default';
+      const res = await apiFetch('/api/workflows/import', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ blueprint, projectId: pid }),
+      });
+      const data = await res.json();
+      const nodeCount = data.nodes?.length ?? 0;
+      const missing = data.missingAgents?.length ?? 0;
+      const summary = `Imported workflow with ${nodeCount} nodes${missing ? ` (${missing} missing agents)` : ''}`;
+      addToast('success', summary);
+      fetchWorkflows();
+    } catch {
+      addToast('error', 'Failed to import workflow');
+    }
+    e.target.value = '';
+  };
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -121,13 +170,46 @@ export function WorkflowsPage() {
           <h1 className="text-content-primary text-2xl font-bold">Workflows</h1>
           <span className="text-content-tertiary text-sm">Build and run automated pipelines</span>
         </div>
-        <button
-          onClick={handleNewWorkflow}
-          className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          <Plus size={16} />
-          New Workflow
-        </button>
+        <div className="flex items-center gap-2">
+          {workflows.length > 0 && (
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const val = e.target.value;
+                e.target.value = '';
+                if (val) handleExport(val);
+              }}
+              className="border-border bg-surface-input text-content-primary rounded-lg border px-3 py-2 text-sm"
+            >
+              <option value="">Export…</option>
+              {workflows.map((wf) => (
+                <option key={wf.id} value={wf.id}>
+                  {wf.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="border-border text-content-tertiary hover:text-content-primary rounded-lg border px-3 py-2 text-sm"
+          >
+            Import
+          </button>
+          <input
+            type="file"
+            accept=".json"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={handleNewWorkflow}
+            className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
+          >
+            <Plus size={16} />
+            New Workflow
+          </button>
+        </div>
       </div>
 
       {loading && workflows.length === 0 && (
