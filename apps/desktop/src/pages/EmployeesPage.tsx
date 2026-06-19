@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Settings, Zap, Trash2, X, Plus } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 import { useToast } from '../components/Toast.js';
 import { EmployeeEditModal } from '../components/EmployeeEditModal.js';
 import { ModalOverlay } from '../components/ModalOverlay.js';
+import { AgentBadge } from '../components/AgentBadge.js';
 
 interface EmployeeItem {
   id: string;
@@ -46,6 +47,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const [detailEmployee, setDetailEmployee] = useState<EmployeeItem | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -174,18 +176,31 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
     refreshEmployees();
   };
 
+  const handleTest = async (id: string, name: string) => {
+    setTestingId(id);
+    try {
+      const res = await apiFetch(`/api/employees/${id}/test`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        addToast('success', `${name}: OK — ${data.latency_ms}ms · ${data.model}`);
+      } else {
+        addToast('error', `${name}: ${data.message ?? 'Connection failed'}`);
+      }
+    } catch (e) {
+      addToast('error', `${name}: ${(e as Error).message}`);
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const sourceLabels: Record<string, string> = {
     builtin: '内置',
     custom: '自定义',
     external_cli: 'CLI',
     external_a2a: 'A2A',
-  };
-
-  const sourceBadgeClass: Record<string, string> = {
-    builtin: 'bg-blue-600/15 text-blue-400',
-    custom: 'bg-purple-600/15 text-purple-400',
-    external_cli: 'bg-amber-600/15 text-amber-400',
-    external_a2a: 'bg-teal-600/15 text-teal-400',
   };
 
   const statusDotClass: Record<string, string> = {
@@ -363,94 +378,20 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       {/* Card grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((emp) => (
-          <div
+          <AgentBadge
             key={emp.id}
+            name={emp.name}
+            model={emp.model}
+            kind={emp.kind}
+            source={emp.source}
+            status={emp.status}
+            expertise={emp.expertise}
+            permissionLevel={emp.permissionLevel}
             onClick={() => setDetailEmployee(emp)}
-            className="group border-border bg-surface-primary relative cursor-pointer rounded-xl border p-4 shadow-xs transition-all hover:shadow-md"
-          >
-            {/* Top row: status dot + name | source badge */}
-            <div className="mb-2 flex items-start justify-between">
-              <div className="flex min-w-0 items-center gap-2">
-                <span
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass[emp.status]}`}
-                  title={emp.status}
-                />
-                <h3 className="text-content-primary truncate text-sm font-semibold">{emp.name}</h3>
-              </div>
-              {emp.source && (
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    sourceBadgeClass[emp.source] ?? 'bg-surface-muted text-content-secondary'
-                  }`}
-                >
-                  {sourceLabels[emp.source] ?? emp.source}
-                </span>
-              )}
-            </div>
-
-            {/* Kind + model / role */}
-            <p className="text-content-tertiary mb-3 text-xs">
-              {emp.kind === 'ai' ? `AI · ${emp.model || 'Unknown model'}` : `Human · ${emp.role}`}
-            </p>
-
-            {/* Expertise tags */}
-            <div className="mb-3 flex flex-wrap gap-1">
-              {emp.expertise.slice(0, 3).map((exp) => (
-                <span
-                  key={exp}
-                  className="bg-surface-muted text-content-secondary rounded-full px-2 py-0.5 text-[10px]"
-                >
-                  {exp}
-                </span>
-              ))}
-              {emp.expertise.length > 3 && (
-                <span className="bg-surface-muted text-content-tertiary rounded-full px-2 py-0.5 text-[10px]">
-                  +{emp.expertise.length - 3}
-                </span>
-              )}
-            </div>
-
-            {/* Permission + actions */}
-            <div className="flex items-center justify-between">
-              <span className="bg-surface-elevated text-content-tertiary rounded-sm px-1.5 py-0.5 text-[10px] tracking-wider uppercase">
-                {permissionLabels[emp.permissionLevel] ?? emp.permissionLevel}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenEdit(emp);
-                  }}
-                  className="border-border text-content-secondary hover:bg-surface-elevated inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px]"
-                >
-                  <Settings size={10} />
-                  配置
-                </button>
-                {emp.kind === 'ai' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addToast('info', `Test ${emp.name} — placeholder`);
-                    }}
-                    className="bg-intent-warning-muted text-intent-warning hover:bg-intent-warning/20 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px]"
-                  >
-                    <Zap size={10} />
-                    测试
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(emp.id);
-                  }}
-                  className="text-content-tertiary hover:text-intent-danger inline-flex items-center rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-label="Delete"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-          </div>
+            onConfigure={() => handleOpenEdit(emp)}
+            onTest={() => handleTest(emp.id, emp.name)}
+            onDelete={() => handleDelete(emp.id)}
+          />
         ))}
       </div>
 
@@ -540,7 +481,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
             </button>
             {detailEmployee.kind === 'ai' && (
               <button
-                onClick={() => addToast('info', `Test ${detailEmployee.name} — placeholder`)}
+                onClick={() => handleTest(detailEmployee.id, detailEmployee.name)}
                 className="bg-intent-warning-muted text-intent-warning hover:bg-intent-warning/20 rounded-lg px-4 py-2 text-sm"
               >
                 Test

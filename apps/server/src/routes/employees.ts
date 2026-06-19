@@ -24,7 +24,11 @@ employeesRouter.get('/', (c) => {
       kind: 'ai' as const,
       model: r.model,
       expertise: (() => {
-        try { return JSON.parse(r.allowed_tools ?? '[]'); } catch { return []; }
+        try {
+          return JSON.parse(r.allowed_tools ?? '[]');
+        } catch {
+          return [];
+        }
       })(),
       permissionLevel: 'read',
       status: 'active',
@@ -47,7 +51,7 @@ employeesRouter.get('/', (c) => {
         permissionLevel: 'read',
         status: r.type.startsWith('external_') ? 'online' : 'active',
         projectId: 'default',
-        source: r.type,  // e.g. 'external_cli', 'external_a2a' — for UI filtering
+        source: r.type, // e.g. 'external_cli', 'external_a2a' — for UI filtering
       }));
 
     return c.json({ employees: [...employees, ...agentsFromRoles, ...runtimeAgents] });
@@ -90,12 +94,15 @@ employeesRouter.post('/', async (c) => {
     expertise: d.expertise ?? [],
     status: d.status ?? 'active',
   });
-  const pipelineConfig = d.kind === 'ai' ? JSON.stringify({
-    model: d.model ?? 'claude-sonnet-4-6',
-    systemPrompt: d.systemPrompt ?? '',
-    temperature: d.temperature ?? 0.7,
-    maxTokens: d.maxTokens ?? 4000,
-  }) : null;
+  const pipelineConfig =
+    d.kind === 'ai'
+      ? JSON.stringify({
+          model: d.model ?? 'claude-sonnet-4-6',
+          systemPrompt: d.systemPrompt ?? '',
+          temperature: d.temperature ?? 0.7,
+          maxTokens: d.maxTokens ?? 4000,
+        })
+      : null;
 
   // Read source/external from raw body (Zod strips unknown fields from parsed.data)
   const source: string = body.source ?? (d.kind === 'ai' ? 'custom' : 'human');
@@ -136,12 +143,15 @@ employeesRouter.put('/:id', async (c) => {
     expertise: body.expertise ?? oldPersona.expertise ?? [],
     status: body.status ?? oldPersona.status ?? 'active',
   });
-  const newPipeline = body.kind === 'human' ? null : JSON.stringify({
-    model: body.model ?? oldPipeline.model ?? oldPersona.model ?? 'claude-sonnet-4-6',
-    systemPrompt: body.systemPrompt ?? oldPipeline.systemPrompt ?? '',
-    temperature: body.temperature ?? oldPipeline.temperature ?? 0.7,
-    maxTokens: body.maxTokens ?? oldPipeline.maxTokens ?? 4000,
-  });
+  const newPipeline =
+    body.kind === 'human'
+      ? null
+      : JSON.stringify({
+          model: body.model ?? oldPipeline.model ?? oldPersona.model ?? 'claude-sonnet-4-6',
+          systemPrompt: body.systemPrompt ?? oldPipeline.systemPrompt ?? '',
+          temperature: body.temperature ?? oldPipeline.temperature ?? 0.7,
+          maxTokens: body.maxTokens ?? oldPipeline.maxTokens ?? 4000,
+        });
 
   const updates: Parameters<typeof employeeRepo.update>[1] = {
     name: body.name ?? existing.name,
@@ -200,6 +210,50 @@ employeesRouter.delete('/:id', (c) => {
   return c.json({ status: 'deleted' });
 });
 
+// ── POST /:id/test — test employee LLM connection ──
+employeesRouter.post('/:id/test', async (c) => {
+  const { employeeRepo } = getServerContext();
+  const id = c.req.param('id');
+  const row = employeeRepo.findById(id);
+  if (!row) {
+    return c.json({ status: 'error', message: 'Employee not found' }, 404);
+  }
+
+  const pipeline = (() => {
+    try {
+      return JSON.parse(row.pipeline_config ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const persona = (() => {
+    try {
+      return JSON.parse(row.persona ?? '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const model = pipeline.model ?? persona.model;
+  if (!model) {
+    return c.json({ status: 'error', message: 'No model configured for this employee' }, 400);
+  }
+
+  const { AISDKAdapter } = await import('@cabinet/gateway');
+  const adapter = new AISDKAdapter({}, {});
+  const start = Date.now();
+  try {
+    const result = await adapter.generateText({
+      model,
+      messages: [{ role: 'user', content: 'Reply with just "OK".' }],
+      maxTokens: 10,
+    });
+    const latency = Date.now() - start;
+    return c.json({ status: 'ok', latency_ms: latency, model: result.model });
+  } catch (e) {
+    return c.json({ status: 'error', message: (e as Error).message ?? 'Connection failed' }, 503);
+  }
+});
+
 // ── Helper ──
 function rowToEmployee(row: any) {
   const persona = (() => {
@@ -224,7 +278,11 @@ function rowToEmployee(row: any) {
     }
   })();
   const external = (() => {
-    try { return JSON.parse(row.external_config ?? 'null'); } catch { return null; }
+    try {
+      return JSON.parse(row.external_config ?? 'null');
+    } catch {
+      return null;
+    }
   })();
 
   return {
