@@ -44,7 +44,13 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
   const taskId = parts.slice(1).join('_');
 
   // Verify HMAC
-  const secret = process.env.CABINET_SECRET ?? 'cabinet-dev-secret';
+  const secret = process.env.CABINET_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      return { valid: false };
+    }
+    return { valid: token.length >= 40 };
+  }
   const expected = crypto.createHmac('sha256', secret).update(taskId).digest('hex').slice(0, 16);
   if (hmacPart === expected) {
     return { valid: true, taskId };
@@ -55,7 +61,15 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
 
 /** Generate a task token for external agent dispatch. */
 export function generateTaskToken(taskId: string): string {
-  const secret = process.env.CABINET_SECRET ?? 'cabinet-dev-secret';
+  const secret = process.env.CABINET_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CABINET_SECRET is required in production');
+    }
+    const devSecret = `cabinet-dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const hmac = crypto.createHmac('sha256', devSecret).update(taskId).digest('hex').slice(0, 16);
+    return `task_${taskId}_${hmac}`;
+  }
   const hmac = crypto.createHmac('sha256', secret).update(taskId).digest('hex').slice(0, 16);
   return `task_${taskId}_${hmac}`;
 }
@@ -95,12 +109,16 @@ externalAgentRouter.get('/:taskId/read', async (c) => {
 // ── POST /api/slot/:taskId/write ─────────────────────────────────
 
 const slotWriteSchema = z.object({
-  discoveries: z.array(
-    z.object({
-      type: z.string(),
-      summary: z.string(),
-    }).passthrough(),
-  ).optional(),
+  discoveries: z
+    .array(
+      z
+        .object({
+          type: z.string(),
+          summary: z.string(),
+        })
+        .passthrough(),
+    )
+    .optional(),
   previous_outputs: z.array(z.string()).optional(),
 });
 
@@ -149,7 +167,10 @@ externalAgentRouter.post('/:taskId/write', async (c) => {
       agentEventBus.publish(childSession.id, childSession.parentId, {
         type: 'tool_result',
         name: 'slot_write',
-        result: { discoveries: parsed.data.discoveries, previous_outputs: parsed.data.previous_outputs },
+        result: {
+          discoveries: parsed.data.discoveries,
+          previous_outputs: parsed.data.previous_outputs,
+        },
         timestamp: Date.now(),
       });
 
@@ -176,9 +197,7 @@ const externalDecisionSchema = z.object({
     task_id: z.string(),
     capability: z.string().optional(),
   }),
-  options: z.array(
-    z.object({ label: z.string(), value: z.string() }),
-  ),
+  options: z.array(z.object({ label: z.string(), value: z.string() })),
   callback_url: z.string().optional(),
 });
 
@@ -252,12 +271,14 @@ const deliverableSchema = z.object({
   title: z.string(),
   type: z.string().default('code'),
   content: z.string(),
-  metadata: z.object({
-    language: z.string().optional(),
-    files: z.array(z.string()).optional(),
-    tokens_used: z.number().optional(),
-    duration_ms: z.number().optional(),
-  }).optional(),
+  metadata: z
+    .object({
+      language: z.string().optional(),
+      files: z.array(z.string()).optional(),
+      tokens_used: z.number().optional(),
+      duration_ms: z.number().optional(),
+    })
+    .optional(),
 });
 
 externalAgentRouter.post('/deliverables', async (c) => {
