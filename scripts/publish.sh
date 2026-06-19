@@ -11,7 +11,6 @@ PACKAGES=(
   "packages/memory"
   "packages/decision"
   "packages/secretary"
-  "packages/meeting"
   "packages/workflow"
   "packages/harness"
 )

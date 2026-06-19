@@ -33,7 +33,6 @@ COPY --from=builder /app/packages/agent/package.json /app/packages/agent/
 COPY --from=builder /app/packages/memory/package.json /app/packages/memory/
 COPY --from=builder /app/packages/decision/package.json /app/packages/decision/
 COPY --from=builder /app/packages/secretary/package.json /app/packages/secretary/
-COPY --from=builder /app/packages/meeting/package.json /app/packages/meeting/
 COPY --from=builder /app/packages/workflow/package.json /app/packages/workflow/
 COPY --from=builder /app/packages/harness/package.json /app/packages/harness/
 COPY --from=builder /app/packages/ui/package.json /app/packages/ui/
