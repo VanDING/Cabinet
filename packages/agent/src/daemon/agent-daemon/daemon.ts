@@ -22,7 +22,7 @@ import type {
 import type { AgentTaskQueueRepository, AgentDaemonRepository } from '@cabinet/storage';
 import type { AgentRoleRegistry } from '../../agent-roles.js';
 import type { ExternalAgentAdapter } from '../../adapters/types.js';
-import type { HarnessRuntime, HarnessContext } from '../../adapters/harness-runtime.js';
+import type { HarnessRuntime } from '../../adapters/harness-runtime.js';
 import { TaskQueuePoller } from '../task-queue-poller.js';
 import { WorkspaceManager } from '../workspace-manager.js';
 import { AutoDiscoverer, type DiscoveryResult } from '../auto-discoverer.js';
@@ -37,7 +37,7 @@ import {
   scanAllListeningPorts,
   killOrphanPort as killOrphanPortImpl,
 } from './metrics.js';
-import { getAdapter, getHarnessRuntime, buildHarnessContext } from './adapters.js';
+import { getAdapter, getHarnessRuntime } from './adapters.js';
 import {
   getDiscoveredAgents,
   triggerDiscovery,
@@ -100,8 +100,30 @@ export class AgentDaemon {
     });
   }
 
+  private createState(): AgentDaemonState {
+    return {
+      taskRepo: this.taskRepo,
+      daemonRepo: this.daemonRepo,
+      registry: this.registry,
+      opts: this.opts,
+      workspaceManager: this.workspaceManager,
+      discoverer: this.discoverer,
+      adapterCache: this.adapterCache,
+      harnessRuntimeCache: this.harnessRuntimeCache,
+      activeTasks: this.activeTasks,
+      startedAt: this.startedAt,
+      completedCount: this.completedCount,
+      failedCount: this.failedCount,
+      wsClient: this.wsClient,
+      squadRouter: this.squadRouter,
+      processMetrics: this.processMetrics,
+      lastCpuUsage: this.lastCpuUsage,
+      logger: this.logger,
+    };
+  }
+
   private get state(): AgentDaemonState {
-    return this as unknown as AgentDaemonState;
+    return this.createState();
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────
@@ -378,33 +400,11 @@ export class AgentDaemon {
     return this.poller;
   }
 
-  // ── Internal ────────────────────────────────────────────────────
-
   /**
    * Execute a task that was assigned externally (WS push or squad routing).
    * This bypasses the claim step — the task is already assigned to an agent.
    */
   async executeAssignedTask(taskId: string): Promise<boolean> {
     return executeAssignedTask(this.state, taskId);
-  }
-
-  /** Get or create an adapter for the given agent. */
-  private getAdapter(agentId: string): ExternalAgentAdapter | null {
-    return getAdapter(this.state, agentId);
-  }
-
-  /** Get or create a HarnessRuntime for the given agent. */
-  private getHarnessRuntime(agentId: string): HarnessRuntime | null {
-    return getHarnessRuntime(this.state, agentId);
-  }
-
-  /** Build harness context for injection into a task slot. */
-  private buildHarnessContext(runtime: HarnessRuntime, workspacePath?: string): HarnessContext {
-    return buildHarnessContext(runtime, workspacePath);
-  }
-
-  /** Convert a DB row to a TaskQueueEntry. */
-  private rowToEntry(row: import('@cabinet/storage').TaskQueueRow): TaskQueueEntry {
-    return rowToEntry(row);
   }
 }

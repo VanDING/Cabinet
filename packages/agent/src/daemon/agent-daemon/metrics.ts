@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import type { AgentDaemonState } from './internal.js';
+import { rowToEntry } from './conversion.js';
 
 /** Collect OS-level metrics for active agent processes. */
 export function collectProcessMetrics(daemon: AgentDaemonState): void {
@@ -14,7 +15,7 @@ export function collectProcessMetrics(daemon: AgentDaemonState): void {
   for (const [taskId, adapter] of daemon.activeTasks) {
     const row = daemon.taskRepo.findById(taskId);
     if (!row) continue;
-    const task = daemon.rowToEntry(row);
+    const task = rowToEntry(row);
     const agentId = task.agentId;
 
     // Get ports for this agent's tasks

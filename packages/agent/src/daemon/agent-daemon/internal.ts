@@ -13,6 +13,19 @@ import type { SquadRouter } from '../squad/squad-router.js';
 import type { WSDaemonClient } from '../ws-daemon-client.js';
 import type { AgentDaemonOptions } from './config.js';
 
+export interface PidMetrics {
+  pid: number;
+  cpu: number;
+  mem: number;
+  ports: number[];
+}
+
+export interface Logger {
+  info: (msg: string, ctx?: unknown) => void;
+  warn: (msg: string, ctx?: unknown) => void;
+  error: (msg: string, ctx?: unknown) => void;
+}
+
 export interface AgentDaemonState {
   taskRepo: AgentTaskQueueRepository;
   daemonRepo: AgentDaemonRepository;
@@ -28,15 +41,7 @@ export interface AgentDaemonState {
   failedCount: number;
   wsClient: WSDaemonClient | null;
   squadRouter: SquadRouter | null;
-  processMetrics: Map<string, { pid: number; cpu: number; mem: number; ports: number[] }>;
+  processMetrics: Map<string, PidMetrics>;
   lastCpuUsage: ReturnType<typeof process.cpuUsage>;
-  logger: {
-    info: (msg: string, ctx?: unknown) => void;
-    warn: (msg: string, ctx?: unknown) => void;
-    error: (msg: string, ctx?: unknown) => void;
-  };
-  rowToEntry(row: TaskQueueRow): TaskQueueEntry;
-  getAdapter(agentId: string): ExternalAgentAdapter | null;
-  getHarnessRuntime(agentId: string): HarnessRuntime | null;
-  buildHarnessContext(runtime: HarnessRuntime, workspacePath?: string): HarnessContext;
+  logger: Logger;
 }

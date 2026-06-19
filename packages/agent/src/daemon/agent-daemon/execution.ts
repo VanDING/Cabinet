@@ -1,5 +1,6 @@
 import type { TaskQueueEntry } from '@cabinet/types';
 import type { AgentDaemonState } from './internal.js';
+import { rowToEntry } from './conversion.js';
 import { getAdapter, getHarnessRuntime, buildHarnessContext } from './adapters.js';
 import { buildLoadMap } from './discovery.js';
 
@@ -16,7 +17,7 @@ export async function executeAssignedTask(
     // Try claiming it if still pending
     const claimed = daemon.taskRepo.claimSpecific(taskId, daemon.opts.daemonId);
     if (!claimed) return false;
-    const entry = daemon.rowToEntry(claimed);
+    const entry = rowToEntry(claimed);
     executeTask(daemon, entry).catch((err) => {
       daemon.logger.error('Assigned task execution failed', {
         taskId: entry.id,
@@ -25,7 +26,7 @@ export async function executeAssignedTask(
     });
     return true;
   }
-  const entry = daemon.rowToEntry(row);
+  const entry = rowToEntry(row);
   executeTask(daemon, entry).catch((err) => {
     daemon.logger.error('Assigned task execution failed', { taskId: entry.id, error: String(err) });
   });
@@ -39,7 +40,7 @@ export async function claimAndExecute(daemon: AgentDaemonState): Promise<boolean
   const row = findAnyClaimable(daemon);
   if (!row) return false;
 
-  const entry = daemon.rowToEntry(row);
+  const entry = rowToEntry(row);
   executeTask(daemon, entry).catch((err) => {
     daemon.logger.error('Task execution failed', { taskId: entry.id, error: String(err) });
   });
