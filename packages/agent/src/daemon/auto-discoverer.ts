@@ -138,27 +138,18 @@ export class AutoDiscoverer {
   // ── Registration ──────────────────────────────────────────────
 
   private registerCliAgent(agentId: string, agent: KnownCliAgent): void {
-    if (this.registry.get(agentId)) return; // already registered
-    this.registry.register({
-      type: 'external_cli',
+    const registered = this.registry.registerExternalAgent({
+      protocol: 'cli',
       name: agentId,
       description: `${agent.name} CLI agent (auto-discovered)`,
-      modules: {
-        identity: `You are ${agent.name}, running as a CLI agent dispatched by Cabinet.`,
-      },
-      modelTier: 'default',
-      temperature: 0.7,
-      allowedTools: [],
-      contextBudget: 0.3,
-      external: {
-        protocol: 'cli',
-        configSource: 'agent_native',
-        command: agent.command,
-        args: ['--print'],
-        timeoutMs: 300_000,
-        maxRetries: 2,
-      },
+      identity: `You are ${agent.name}, running as a CLI agent dispatched by Cabinet.`,
+      command: agent.command,
+      args: ['--print'],
+      timeoutMs: 300_000,
+      maxRetries: 2,
     });
+
+    if (!registered) return; // already exists
 
     // Persist to DB so it survives restarts and shows in UI
     if (this.agentRoleRepo && !this.agentRoleRepo.findByName(agentId)) {
@@ -177,32 +168,29 @@ export class AutoDiscoverer {
           is_builtin: 0,
           created_at: new Date().toISOString(),
         });
-      } catch { /* DB write is best-effort */ }
+      } catch {
+        /* DB write is best-effort */
+      }
     }
   }
 
   private registerA2AAgent(agentId: string, card: Record<string, unknown>, dirName: string): void {
-    if (this.registry.get(agentId)) return;
     const conn = (card.connection ?? {}) as Record<string, unknown>;
-    const identity = (card.systemPrompt as string) ?? (card.instructions as string) ?? `You are ${dirName}.`;
-    this.registry.register({
-      type: 'external_a2a',
+    const identity =
+      (card.systemPrompt as string) ?? (card.instructions as string) ?? `You are ${dirName}.`;
+
+    const registered = this.registry.registerExternalAgent({
+      protocol: 'a2a',
       name: agentId,
       description: (card.description as string) ?? `${dirName} A2A agent (auto-discovered)`,
-      modules: { identity },
-      modelTier: 'default',
-      temperature: 0.7,
-      allowedTools: [],
-      contextBudget: 0.3,
-      external: {
-        protocol: 'a2a',
-        configSource: 'agent_native',
-        baseUrl: (conn.base_url as string) ?? (card.baseUrl as string) ?? `http://localhost:${dirName}`,
-        healthCheckUrl: (conn.health_check as string),
-        timeoutMs: 120_000,
-        maxRetries: 2,
-      },
+      identity,
+      baseUrl:
+        (conn.base_url as string) ?? (card.baseUrl as string) ?? `http://localhost:${dirName}`,
+      timeoutMs: 120_000,
+      maxRetries: 2,
     });
+
+    if (!registered) return;
 
     // Persist to DB
     if (this.agentRoleRepo && !this.agentRoleRepo.findByName(agentId)) {
@@ -221,7 +209,9 @@ export class AutoDiscoverer {
           is_builtin: 0,
           created_at: new Date().toISOString(),
         });
-      } catch { /* DB write is best-effort */ }
+      } catch {
+        /* DB write is best-effort */
+      }
     }
   }
 }

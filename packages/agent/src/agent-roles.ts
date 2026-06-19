@@ -459,6 +459,56 @@ export class AgentRoleRegistry {
     return lines.join('\n');
   }
 
+  /**
+   * Register an external agent (CLI or A2A) with dedup check.
+   * Returns true if registered, false if already exists.
+   */
+  registerExternalAgent(params: {
+    protocol: 'cli' | 'a2a';
+    name: string;
+    description: string;
+    identity: string;
+    command?: string;
+    args?: string[];
+    baseUrl?: string;
+    timeoutMs?: number;
+    maxRetries?: number;
+  }): boolean {
+    if (this.customRoles.has(params.name)) return false;
+    for (const [name, role] of this.customRoles) {
+      if (name === params.name || role.name === params.name) return false;
+    }
+    const type = params.protocol === 'cli' ? 'external_cli' : 'external_a2a';
+    const external: import('@cabinet/types').ExternalAgentConfig = {
+      protocol: params.protocol,
+      configSource: 'agent_native',
+      ...(params.protocol === 'cli'
+        ? {
+            command: params.command!,
+            args: params.args ?? ['--print'],
+            timeoutMs: params.timeoutMs ?? 300_000,
+            maxRetries: params.maxRetries ?? 2,
+          }
+        : {
+            baseUrl: params.baseUrl!,
+            timeoutMs: params.timeoutMs ?? 120_000,
+            maxRetries: params.maxRetries ?? 2,
+          }),
+    } as import('@cabinet/types').ExternalAgentConfig;
+    this.register({
+      type,
+      name: params.name,
+      description: params.description,
+      modules: { identity: params.identity },
+      modelTier: 'default',
+      temperature: 0.7,
+      allowedTools: [],
+      contextBudget: 0.3,
+      external,
+    });
+    return true;
+  }
+
   /** Return all valid agent type strings (built-in types + custom/external agent names). */
   getValidAgentTypes(): Set<string> {
     const types = new Set<string>();
