@@ -12,13 +12,7 @@
 // Push-mode (existing Secretary dispatch) is preserved as fallback.
 //
 
-import type {
-  ContextSlot,
-  TaskQueueEntry,
-  TaskQueueStatus,
-  DaemonStatus,
-  DaemonAgentInfo,
-} from '@cabinet/types';
+import type { ContextSlot, TaskQueueEntry, DaemonStatus } from '@cabinet/types';
 import type { AgentTaskQueueRepository, AgentDaemonRepository } from '@cabinet/storage';
 import type { AgentRoleRegistry } from '../../agent-roles.js';
 import type { ExternalAgentAdapter } from '../../adapters/types.js';
@@ -31,19 +25,16 @@ import { SquadRouter } from '../squad/squad-router.js';
 import type { AgentDaemonOptions } from './config.js';
 import { DEFAULTS } from './config.js';
 import type { AgentDaemonState } from './internal.js';
-import { rowToEntry } from './conversion.js';
+import { getAdapter } from './adapters.js';
 import {
-  collectProcessMetrics,
-  scanAllListeningPorts,
-  killOrphanPort as killOrphanPortImpl,
-} from './metrics.js';
-import { getAdapter, getHarnessRuntime } from './adapters.js';
-import {
+  getDaemonStatus,
+  getPortsInfo,
+  killOrphanPort,
   getDiscoveredAgents,
   triggerDiscovery,
   runWorkspaceGC,
-  buildLoadMap,
-} from './discovery.js';
+} from './status.js';
+import { enqueueTask, cancelTask, retryTask, getTask, listTasks } from './tasks.js';
 import {
   executeAssignedTask,
   claimAndExecute,
@@ -220,31 +211,7 @@ export class AgentDaemon {
     maxRetries?: number;
     timeoutMs?: number;
   }): Promise<string> {
-    const id = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    this.taskRepo.enqueue({
-      id,
-      agent_id: params.agentId,
-      session_id: params.sessionId,
-      capability: params.capability ?? 'default',
-      input: typeof params.input === 'string' ? params.input : JSON.stringify(params.input),
-      slot_json: JSON.stringify(params.slot),
-      status: 'pending',
-      priority: params.priority ?? 0,
-      retry_count: 0,
-      max_retries: params.maxRetries ?? 3,
-      timeout_ms: params.timeoutMs ?? this.opts.taskTimeoutMs,
-      claimed_by: null,
-      claimed_at: null,
-      started_at: null,
-      completed_at: null,
-      progress_json: '{}',
-      error_message: null,
-      output_json: null,
-      cron_expression: null,
-      webhook_url: null,
-    });
-    this.logger.info('Task enqueued', { taskId: id, agentId: params.agentId });
-    return id;
+    return enqueueTask(this.state, params);
   }
 
   /** Check if the daemon has an adapter for the given agent. */
@@ -254,114 +221,37 @@ export class AgentDaemon {
 
   /** Cancel a pending or claimed task. */
   cancelTask(taskId: string): boolean {
-    const row = this.taskRepo.findById(taskId);
-    if (!row) return false;
-    if (row.status === 'completed' || row.status === 'cancelled') return false;
-
-    if (row.status === 'running') {
-      const adapter = this.activeTasks.get(taskId);
-      if (adapter) {
-        adapter.cancelTask?.(taskId).catch(() => {});
-        this.activeTasks.delete(taskId);
-      }
-    }
-
-    this.taskRepo.updateStatus(taskId, 'cancelled');
-    this.logger.info('Task cancelled', { taskId });
-    return true;
+    return cancelTask(this.state, taskId);
   }
 
   /** Retry a failed task. */
   retryTask(taskId: string): TaskQueueEntry | null {
-    const row = this.taskRepo.retryTask(taskId);
-    if (!row) return null;
-    this.logger.info('Task retried', { taskId });
-    return rowToEntry(row);
+    return retryTask(this.state, taskId);
   }
 
   /** Get task by ID. */
   getTask(taskId: string): TaskQueueEntry | null {
-    const row = this.taskRepo.findById(taskId);
-    return row ? rowToEntry(row) : null;
+    return getTask(this.state, taskId);
   }
 
   /** List tasks with optional filters. */
   listTasks(filter?: { status?: string; agentId?: string; limit?: number }): TaskQueueEntry[] {
-    if (filter?.agentId && filter?.status) {
-      return this.taskRepo
-        .findByAgent(filter.agentId, filter.status, filter.limit)
-        .map((r) => rowToEntry(r));
-    }
-    if (filter?.status) {
-      return this.taskRepo.findByStatus(filter.status, filter.limit).map((r) => rowToEntry(r));
-    }
-    if (filter?.agentId) {
-      return this.taskRepo
-        .findByAgent(filter.agentId, undefined, filter.limit)
-        .map((r) => rowToEntry(r));
-    }
-    return this.taskRepo
-      .findByStatus(['pending', 'claimed', 'running'], filter?.limit ?? 50)
-      .map((r) => rowToEntry(r));
+    return listTasks(this.state, filter);
   }
 
   /** Get daemon status. */
   getStatus(): DaemonStatus {
-    collectProcessMetrics(this.state);
-    const agents: DaemonAgentInfo[] = [];
-    const discovered = this.discoverer.getLastResults();
-    const knownPorts: number[] = [];
-    for (const d of discovered) {
-      const counts = this.taskRepo.countByStatus(d.agentId);
-      const metrics = this.processMetrics.get(d.agentId);
-      const agentInfo: DaemonAgentInfo = {
-        agentId: d.agentId,
-        command: d.command ?? d.baseUrl ?? 'unknown',
-        detected: d.detected,
-        status: 'online',
-        activeTaskCount: (counts.running ?? 0) + (counts.claimed ?? 0),
-        lastHeartbeatAt: null,
-        cpuPercent: metrics?.cpu,
-        memoryMb: metrics?.mem,
-        openPorts: metrics?.ports,
-        pid: metrics?.pid,
-      };
-      if (metrics?.ports) knownPorts.push(...metrics.ports);
-      agents.push(agentInfo);
-    }
-
-    // Detect orphan ports (LISTEN ports not associated with known agents)
-    const allListening = scanAllListeningPorts();
-    const orphanPorts = allListening.filter((p) => !knownPorts.includes(p));
-
-    return {
-      daemonId: this.opts.daemonId,
-      status: 'online',
-      uptimeMs: Date.now() - this.startedAt,
-      activeTaskCount: this.activeTasks.size,
-      completedTaskCount: this.completedCount,
-      failedTaskCount: this.failedCount,
-      agents,
-      orphanPorts,
-    };
+    return getDaemonStatus(this.state);
   }
 
   /** Get ports info including orphans. */
   getPorts(): { agentPorts: Record<string, number[]>; orphans: number[] } {
-    collectProcessMetrics(this.state);
-    const agentPorts: Record<string, number[]> = {};
-    const knownPorts: number[] = [];
-    for (const [agentId, metrics] of this.processMetrics) {
-      agentPorts[agentId] = metrics.ports;
-      knownPorts.push(...metrics.ports);
-    }
-    const allListening = scanAllListeningPorts();
-    return { agentPorts, orphans: allListening.filter((p) => !knownPorts.includes(p)) };
+    return getPortsInfo(this.state);
   }
 
   /** Kill a specific orphan port. */
   killOrphanPort(port: number): boolean {
-    return killOrphanPortImpl(port);
+    return killOrphanPort(port);
   }
 
   /** Get discovered agents. */
