@@ -41,6 +41,8 @@ export async function dispatchToExternalAgent(
       timeoutMs: roleDef.external.timeoutMs ?? 120_000,
     });
 
+    ctx.sessionManager.associateTask(taskId, childSessionId);
+
     if (childSession) {
       childSession.status = 'active';
       // Store task reference so EventBus can correlate result later

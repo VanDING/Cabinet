@@ -141,11 +141,7 @@ externalAgentRouter.post('/:taskId/write', async (c) => {
     }
 
     const { sessionManager, agentEventBus } = getServerContext();
-    // Find the child session for this task
-    const sessions = sessionManager.list();
-    const childSession = sessions.find(
-      (s) => s.contextSlot !== undefined && s.agentType?.startsWith('external_'),
-    );
+    const childSession = sessionManager.getSessionByTaskId(taskId) ?? sessionManager.get(taskId);
 
     if (childSession?.contextSlot) {
       const serverCtx = getServerContext();
@@ -307,10 +303,9 @@ externalAgentRouter.post('/deliverables', async (c) => {
     } as any);
 
     // Find child session and inject deliverable
-    const sessions = sessionManager.list();
-    const childSession = sessions.find(
-      (s) => s.parentId !== undefined && s.agentType?.startsWith('external_'),
-    );
+    const childSession =
+      sessionManager.getSessionByTaskId(parsed.data.task_id) ??
+      sessionManager.get(parsed.data.task_id);
     if (childSession) {
       childSession.deliverable = parsed.data.content;
       agentEventBus.publish(childSession.id, childSession.parentId, {

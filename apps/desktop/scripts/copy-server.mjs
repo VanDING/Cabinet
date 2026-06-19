@@ -153,8 +153,13 @@ try {
 }
 
 try {
-  const tsEntry = storageRequire.resolve('thread-stream');
-  copyPackage('thread-stream', tsEntry);
+  // Resolve thread-stream via the store path, not from a consumer package
+  const tsDir = join(pnpmStore, 'thread-stream@4.2.0', 'node_modules', 'thread-stream');
+  if (existsSync(tsDir)) {
+    copyPackage('thread-stream', join(tsDir, 'index.js'));
+  } else {
+    console.warn('thread-stream store dir not found, skipping copy');
+  }
 } catch (e) {
   console.warn('thread-stream not found, skipping copy');
 }

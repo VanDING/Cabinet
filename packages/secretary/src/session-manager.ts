@@ -82,6 +82,8 @@ export class SessionManager {
   private readonly softLimit: number;
   private readonly hardLimit: number;
 
+  private taskSessions = new Map<string, string>(); // taskId → sessionId
+
   private pendingWrites = new Map<string, Session>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -140,13 +142,27 @@ export class SessionManager {
     this.persist(session);
     // Fire create callbacks asynchronously (non-blocking)
     for (const cb of this.onCreateCallbacks) {
-      Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
+      Promise.resolve(cb(session)).catch((err) => {
+        console.warn('Operation failed', err);
+      });
     }
     return session;
   }
 
   get(id: string): Session | null {
     return this.sessions.get(id) ?? null;
+  }
+
+  /** Associate a task ID with a session ID for direct lookup by external agents. */
+  associateTask(taskId: string, sessionId: string): void {
+    this.taskSessions.set(taskId, sessionId);
+  }
+
+  /** Look up a session by its associated task ID. */
+  getSessionByTaskId(taskId: string): Session | null {
+    const sessionId = this.taskSessions.get(taskId);
+    if (!sessionId) return null;
+    return this.sessions.get(sessionId) ?? null;
   }
 
   /** Set the shared Context Slot for a session (task-level data bus). */
@@ -210,13 +226,16 @@ export class SessionManager {
   addMessage(sessionId: string, role: 'user' | 'assistant', content: string): void {
     const session = this.sessions.get(sessionId);
     if (session) {
-      const isFirstUserMessage = role === 'user' && !session.messages.some((m) => m.role === 'user');
+      const isFirstUserMessage =
+        role === 'user' && !session.messages.some((m) => m.role === 'user');
       session.messages.push({ role, content, timestamp: new Date() });
       session.updatedAt = new Date();
 
       if (isFirstUserMessage) {
         for (const cb of this.onFirstUserMessageCallbacks) {
-          Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
+          Promise.resolve(cb(session)).catch((err) => {
+            console.warn('Operation failed', err);
+          });
         }
       }
 
@@ -225,7 +244,9 @@ export class SessionManager {
       // Trigger compression callback when soft limit exceeded
       if (totalTokens > this.softLimit && totalTokens <= this.hardLimit) {
         for (const cb of this.onCompressionCallbacks) {
-          Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
+          Promise.resolve(cb(session)).catch((err) => {
+            console.warn('Operation failed', err);
+          });
         }
       }
 
@@ -293,7 +314,9 @@ export class SessionManager {
       this.sessions.delete(sessionId);
       // Fire close callbacks asynchronously (non-blocking)
       for (const cb of this.onCloseCallbacks) {
-        Promise.resolve(cb(session)).catch((err) => { console.warn('Operation failed', err); });
+        Promise.resolve(cb(session)).catch((err) => {
+          console.warn('Operation failed', err);
+        });
       }
     }
   }
