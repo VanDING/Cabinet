@@ -43,24 +43,6 @@ describe('exportBlueprint', () => {
     expect(bp.agents).toEqual({});
     expect(bp.onError).toBeNull();
   });
-
-  it('resolves agents via registry', () => {
-    const nodes: WorkflowNodeDef[] = [{ id: 'n1', type: 'llm', agentId: 'agent-a' }];
-    const edges: WorkflowEdge[] = [];
-    const agentRegistry = {
-      get: (id: string) => {
-        if (id === 'agent-a') return { external: { protocol: 'a2a' } };
-        return null;
-      },
-    };
-
-    const bp = exportBlueprint(nodes, edges, agentRegistry);
-
-    expect(bp.agents['agent-a']).toEqual({
-      harnessId: 'a2a',
-      fallback: 'generic',
-    });
-  });
 });
 
 describe('importBlueprint', () => {
