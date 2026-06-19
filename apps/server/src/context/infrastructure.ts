@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { SessionManager } from '@cabinet/secretary';
 import { AgentBlackboard } from '@cabinet/agent';
 import { MetricsCollector, BackupManager } from '@cabinet/storage';
+import { A2AClient } from '../a2a/a2a-client.js';
 import type { BuildState } from './build-state.js';
 
 export function initInfrastructure(state: BuildState): void {
@@ -50,8 +51,11 @@ export function initInfrastructure(state: BuildState): void {
     state.logger?.warn('Backup manager unavailable');
   }
 
+  const a2aClient = new A2AClient(state.logger!);
+
   state.sessionManager = sessionManager;
   state.blackboard = blackboard;
   state.metrics = metrics;
   state.backupManager = backupManager;
+  state.a2aClient = a2aClient;
 }

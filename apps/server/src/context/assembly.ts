@@ -101,6 +101,7 @@ export function assembleContext(state: BuildState): ServerContext {
     daemonRepo: state.daemonRepo!,
     autopilotRepo: state.autopilotRepo!,
     triggerScheduler: state.triggerScheduler ?? null,
+    a2aClient: state.a2aClient!,
     blackboard: state.blackboard,
     shutdown: state.shutdown!,
   };

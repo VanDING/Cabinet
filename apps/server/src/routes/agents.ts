@@ -3,22 +3,11 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
-import { A2AClient } from '../a2a/a2a-client.js';
 import { CABINET_DIR } from '@cabinet/storage';
 
 const AGENTS_DIR = join(CABINET_DIR, 'agents');
 
 export const agentsRouter = new Hono();
-
-// Shared A2A client instance
-let a2aClient: A2AClient | null = null;
-function getA2AClient(): A2AClient {
-  if (!a2aClient) {
-    const { logger } = getServerContext();
-    a2aClient = new A2AClient(logger);
-  }
-  return a2aClient;
-}
 
 // Parse wshobson-format .md agent metadata
 function parseAgentMarkdown(content: string): Record<string, unknown> | null {
@@ -247,8 +236,8 @@ agentsRouter.post('/discover', async (c) => {
   const body = await c.req.json();
   const url = body.url as string;
   if (!url) return c.json({ error: 'url is required' }, 400);
-  const client = getA2AClient();
-  const card = await client.discoverAgent(url);
+  const { a2aClient } = getServerContext();
+  const card = await a2aClient.discoverAgent(url);
   if (!card) return c.json({ error: 'Agent discovery failed' }, 502);
   return c.json({ discovered: true, agentCard: card });
 });

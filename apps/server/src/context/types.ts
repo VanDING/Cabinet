@@ -59,6 +59,7 @@ import type { DelegationTier } from '@cabinet/types';
 import type { getLogger } from '@cabinet/storage';
 import type { EventBus } from '@cabinet/events';
 import type { TriggerScheduler } from '@cabinet/agent';
+import type { A2AClient } from '../a2a/a2a-client.js';
 
 export type SystemMode = 'normal' | 'maintenance' | 'readonly' | 'emergency';
 
@@ -142,6 +143,8 @@ export interface ServerContext {
   metrics: MetricsCollector;
   logger: ReturnType<typeof getLogger>;
   backupManager: BackupManager | null;
+  // A2A client
+  a2aClient: A2AClient;
   /** Clean up all timers, close DB, stop backup. Call on process exit. */
   shutdown: () => void;
 }
