@@ -7,7 +7,6 @@
 //   - POST /api/deliverables          — Agent submits deliverables
 //
 // Authentication: task_token (HMAC) or agent_api_key via Authorization header.
-// See task-reliability.ts for token generation and validation.
 //
 
 import { Hono } from 'hono';
@@ -27,7 +26,7 @@ function extractAuthToken(c: any): string | null {
   return match?.[1] ?? null;
 }
 
-/** HMAC-based task token validation. Uses CABINET_SECRET env var or auto-generated key. */
+/** HMAC-based task token validation. Uses CABINET_SECRET env var for HMAC signing/verification. In production, tokens are rejected if CABINET_SECRET is not set. */
 function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
   if (!token || token.length < 20) return { valid: false };
 
