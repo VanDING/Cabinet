@@ -1,4 +1,3 @@
-import { useRef, useState, type MouseEvent } from 'react';
 import { Card, Tag } from '@cabinet/ui';
 import { getAgentIcon } from './AgentIconSprite.js';
 
@@ -42,97 +41,106 @@ export function AgentBadge({
   onDelete,
   onClick,
 }: AgentBadgeProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0, mx: 50, my: 50, active: false });
-
   const matched = getAgentIcon(name, model);
-
-  const handleMove = (e: MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    setTilt({
-      x: (y - 0.5) * -20,
-      y: (x - 0.5) * 20,
-      mx: x * 100,
-      my: y * 100,
-      active: true,
-    });
-  };
-
-  const handleLeave = () => {
-    setTilt({ x: 0, y: 0, mx: 50, my: 50, active: false });
-  };
 
   const tags = expertise.slice(0, 3);
   const extra = expertise.length - 3;
 
-  const avatarNode = matched ? (
-    <div
-      className="mb-2.5 flex h-[52px] w-[52px] items-center justify-center rounded-full"
-      style={{
-        background: matched.gradient,
-        boxShadow: '0 0 0 2px var(--border-color), 0 4px 20px rgba(0,0,0,0.3)',
-      }}
-    >
-      {matched.icon(26)}
+  const avatarEl = matched ? (
+    <div className="relative h-[110px] w-[110px] shrink-0">
+      <div
+        className="absolute top-0 left-0 z-[1] h-[84px] w-[84px] overflow-hidden rounded-full"
+        style={{
+          background: matched.gradient,
+          boxShadow: '0 0 0 2px var(--border-color), 0 4px 14px rgba(0,0,0,0.2)',
+        }}
+      >
+        <img src={matched.dataUri} alt="" width={84} height={84} className="block" />
+      </div>
+      {matched.watermarkSvg && (
+        <div
+          className="absolute right-[-12px] bottom-[-12px] z-0 flex h-[64px] w-[64px] items-center justify-center rounded-full"
+          style={{
+            border: `2px solid ${matched.brandColor}`,
+            background: 'var(--surface-elevated)',
+            color: matched.brandColor,
+          }}
+          dangerouslySetInnerHTML={{ __html: matched.watermarkSvg }}
+        />
+      )}
     </div>
   ) : (
     <div
-      className="bg-surface-muted mb-2.5 flex h-[52px] w-[52px] items-center justify-center rounded-full text-base font-semibold"
-      style={{ boxShadow: '0 0 0 2px var(--border-color), 0 4px 20px rgba(0,0,0,0.3)' }}
+      className="bg-surface-muted flex h-[84px] w-[84px] shrink-0 items-center justify-center rounded-full text-2xl font-semibold"
+      style={{ boxShadow: '0 0 0 2px var(--border-color), 0 4px 14px rgba(0,0,0,0.2)' }}
     >
       {name.charAt(0).toUpperCase()}
     </div>
   );
 
+  const wmStyle = matched
+    ? {
+        maskImage: `url(${matched.watermark})`,
+        WebkitMaskImage: `url(${matched.watermark})`,
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
+        maskPosition: 'center 28%',
+        WebkitMaskPosition: 'center 28%',
+        maskSize: '68%',
+        WebkitMaskSize: '68%',
+      }
+    : undefined;
+
   return (
-    <div
-      ref={ref}
-      className="cursor-pointer"
-      style={{ perspective: '600px' }}
-      onClick={onClick}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-    >
-      <div
-        style={{
-          transform: tilt.active ? `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` : undefined,
-          transition: tilt.active ? 'none' : 'transform 0.4s ease',
-        }}
-      >
-        <Card padding="none" hoverable>
-          <div
-            className="flex flex-col items-center px-4 pt-6 pb-3 text-center"
-            style={{ aspectRatio: '0.72' }}
-          >
-            {avatarNode}
-            <div className="text-content-primary mb-0 text-[15px] font-semibold">{name}</div>
-
-            <div className="min-h-3 flex-1" />
-
-            <div className="flex w-full flex-col items-center gap-1">
-              {model && <div className="text-content-secondary text-[11px]">{model}</div>}
-
-              <div
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-[1px] text-[10px] ${
-                  status === 'active'
-                    ? 'bg-intent-success-muted text-intent-success'
-                    : status === 'idle'
-                      ? 'bg-intent-warning-muted text-intent-warning'
-                      : 'bg-surface-muted text-content-tertiary'
-                }`}
-              >
+    <div className="cursor-pointer" onClick={onClick}>
+      <Card padding="none" hoverable>
+        <div className="relative">
+          {wmStyle && (
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ ...wmStyle, background: 'var(--content-primary)', opacity: 0.045 }}
+            />
+          )}
+          <div className="flex items-center gap-6 px-6 py-5">
+            {avatarEl}
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <div className="flex items-center gap-2.5">
                 <span
-                  className={`h-[5px] w-[5px] rounded-full ${statusConfig[status]?.dot ?? 'bg-content-tertiary'}`}
-                />
-                {statusConfig[status]?.label ?? status}
-                {source && <span> · {sourceLabels[source] ?? source}</span>}
+                  className="truncate text-[22px] font-bold"
+                  style={{ color: 'var(--content-primary)' }}
+                >
+                  {name}
+                </span>
+                {model && (
+                  <span
+                    className="shrink-0 text-[13px]"
+                    style={{ color: 'var(--content-secondary)' }}
+                  >
+                    {model}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-[3px] text-[12px] ${
+                    status === 'active'
+                      ? 'bg-intent-success-muted text-intent-success'
+                      : status === 'idle'
+                        ? 'bg-intent-warning-muted text-intent-warning'
+                        : 'bg-surface-muted text-content-tertiary'
+                  }`}
+                >
+                  <span
+                    className={`h-[8px] w-[8px] rounded-full ${statusConfig[status]?.dot ?? 'bg-content-tertiary'}`}
+                  />
+                  {statusConfig[status]?.label ?? status}
+                  {source && <span> · {sourceLabels[source] ?? source}</span>}
+                </span>
               </div>
 
               {tags.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {tags.map((exp) => (
                     <Tag key={exp} variant="info">
                       {exp}
@@ -142,46 +150,48 @@ export function AgentBadge({
                 </div>
               )}
 
-              <div className="border-border mt-1 flex w-full items-center gap-1 border-t pt-[8px]">
-                {onConfigure && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onConfigure();
-                    }}
-                    className="bg-accent text-accent-foreground hover:bg-accent-hover flex-1 rounded-[6px] border-none py-[4px] text-[10px] font-medium transition-colors"
-                  >
-                    Configure
-                  </button>
-                )}
-                {onTest && kind === 'ai' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTest();
-                    }}
-                    className="text-content-secondary hover:bg-surface-muted flex-1 rounded-[6px] border border-[var(--border-color)] bg-transparent py-[4px] text-[10px] font-medium transition-colors"
-                  >
-                    Test
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                    className="text-content-tertiary hover:text-intent-danger flex-[0_0_30px] rounded-[6px] border-none bg-transparent py-[4px] text-[10px] transition-colors"
-                    aria-label="Delete"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              {(onConfigure || onTest || onDelete) && (
+                <div className="mt-1 flex items-center gap-2">
+                  {onConfigure && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onConfigure();
+                      }}
+                      className="bg-accent text-accent-foreground hover:bg-accent-hover flex-1 rounded-[6px] border-none py-[5px] text-[12px] font-semibold transition-colors"
+                    >
+                      Configure
+                    </button>
+                  )}
+                  {onTest && kind === 'ai' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTest();
+                      }}
+                      className="text-content-secondary hover:bg-surface-muted flex-1 rounded-[6px] border border-[var(--border-color)] bg-transparent py-[5px] text-[12px] font-semibold transition-colors"
+                    >
+                      Test
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                      }}
+                      className="text-content-tertiary hover:text-intent-danger flex-[0_0_36px] rounded-[6px] border-none bg-transparent py-[5px] text-[14px] transition-colors"
+                      aria-label="Delete"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }
