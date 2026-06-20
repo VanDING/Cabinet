@@ -42,7 +42,7 @@ const navIcons: Partial<Record<NavPage, typeof Command>> = {
   discovery: Compass,
 };
 
-const sidebarBgClasses = 'bg-surface-primary';
+const sidebarBgClasses = 'bg-surface-sidebar';
 const borderClasses = 'border-border';
 const textMutedClasses = 'text-content-tertiary';
 const activeClasses = 'bg-accent-muted text-accent border-r-2 border-accent';
@@ -103,7 +103,7 @@ export function Navigation({
         })}
 
         {/* Divider before projects */}
-        <div className={`my-1 border-t ${borderClasses} ${collapsed ? 'mx-2' : 'mx-4'}`} />
+        <div className={`border-hairline my-1 border-t ${collapsed ? 'mx-2' : 'mx-4'}`} />
 
         {/* Project list */}
         {collapsed ? (
@@ -117,7 +117,7 @@ export function Navigation({
                   title={p.name}
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-medium transition-colors ${
                     activeProjectId === p.id
-                      ? 'bg-accent text-white'
+                      ? 'bg-accent text-accent-foreground'
                       : 'bg-surface-muted text-content-secondary hover:bg-surface-elevated'
                   }`}
                 >

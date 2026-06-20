@@ -9,9 +9,7 @@ export interface ContextMenuItem {
   disabled?: boolean;
 }
 
-export type ContextMenuEntry =
-  | { type: 'item'; item: ContextMenuItem }
-  | { type: 'separator' };
+export type ContextMenuEntry = { type: 'item'; item: ContextMenuItem } | { type: 'separator' };
 
 interface Props {
   x: number;
@@ -54,17 +52,17 @@ export function ContextMenu({ x, y, title, entries, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="fixed z-50 min-w-[180px] rounded-lg border border-border bg-surface-primary py-1 shadow-lg"
+      className="border-border bg-surface-primary fixed z-50 min-w-[180px] rounded-lg border py-1 shadow-lg"
       style={{ left: x, top: y }}
     >
       {title && (
-        <div className="truncate border-b border-border px-3 py-1.5 text-xs font-medium text-content-secondary">
+        <div className="border-hairline text-content-secondary truncate border-b px-3 py-1.5 text-xs font-medium">
           {title}
         </div>
       )}
       {entries.map((entry, i) => {
         if (entry.type === 'separator') {
-          return <div key={`sep-${i}`} className="mx-2 my-1 h-px bg-border" />;
+          return <div key={`sep-${i}`} className="bg-hairline mx-2 my-1 h-px" />;
         }
         const { label, icon, onClick, danger, disabled } = entry.item;
         return (
@@ -77,7 +75,7 @@ export function ContextMenu({ x, y, title, entries, onClose }: Props) {
             }}
             className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
               disabled
-                ? 'cursor-default text-content-tertiary'
+                ? 'text-content-tertiary cursor-default'
                 : danger
                   ? 'text-intent-danger hover:bg-intent-danger-muted'
                   : 'text-content-secondary hover:bg-surface-muted'

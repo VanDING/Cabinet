@@ -101,7 +101,7 @@ export function CostChart() {
                     <Tooltip
                       contentStyle={{
                         background: 'var(--surface-overlay)',
-                        border: '1px solid var(--border)',
+                        border: '1px solid var(--border-color)',
                         borderRadius: 6,
                         fontSize: 11,
                       }}
@@ -141,7 +141,7 @@ export function CostChart() {
                     <Tooltip
                       contentStyle={{
                         background: 'var(--surface-overlay)',
-                        border: '1px solid var(--border)',
+                        border: '1px solid var(--border-color)',
                         borderRadius: 6,
                         fontSize: 11,
                       }}

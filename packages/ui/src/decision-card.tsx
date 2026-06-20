@@ -28,26 +28,24 @@ export function DecisionCard({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-surface-primary p-4 shadow-xs transition-shadow hover:shadow-md">
+    <div className="border-border bg-surface-primary rounded-lg border p-4 shadow-xs transition-shadow hover:shadow-md">
       <div className="mb-2 flex items-center justify-between">
         <span
           className={`rounded px-2 py-0.5 text-xs font-semibold ${levelColors[decision.level] ?? 'bg-surface-muted'}`}
         >
           {decision.level}
         </span>
-        <span className="text-xs text-content-tertiary">{decision.type}</span>
+        <span className="text-content-tertiary text-xs">{decision.type}</span>
       </div>
-      <h3 className="mb-1 font-medium text-content-primary">{decision.title}</h3>
-      <p className="mb-3 line-clamp-2 text-sm text-content-tertiary">
-        {decision.description}
-      </p>
+      <h3 className="text-content-primary mb-1 font-medium">{decision.title}</h3>
+      <p className="text-content-tertiary mb-3 line-clamp-2 text-sm">{decision.description}</p>
 
       {variant === 'full' && (
         <div className="mb-3">
           {decision.options.map((opt) => (
             <label
               key={opt.id}
-              className="flex items-start gap-2 border-b border-border py-1.5 text-sm last:border-0"
+              className="border-hairline flex items-start gap-2 border-b py-1.5 text-sm last:border-0"
             >
               <input
                 type="radio"
@@ -58,8 +56,8 @@ export function DecisionCard({
                 onChange={() => setSelectedOptionId(opt.id)}
               />
               <div>
-                <div className="font-medium text-content-secondary">{opt.label}</div>
-                <div className="text-xs text-content-tertiary">{opt.impact}</div>
+                <div className="text-content-secondary font-medium">{opt.label}</div>
+                <div className="text-content-tertiary text-xs">{opt.impact}</div>
               </div>
             </label>
           ))}
@@ -70,7 +68,7 @@ export function DecisionCard({
         {onApprove && decision.status === 'pending' && (
           <button
             onClick={() => onApprove(decision.id, selectedOptionId)}
-            className="rounded-sm bg-intent-success px-3 py-1.5 text-sm text-content-inverse hover:bg-intent-success"
+            className="bg-intent-success text-content-inverse hover:bg-intent-success rounded-sm px-3 py-1.5 text-sm"
           >
             Approve
           </button>
@@ -78,7 +76,7 @@ export function DecisionCard({
         {onReject && decision.status === 'pending' && (
           <button
             onClick={() => onReject(decision.id)}
-            className="rounded-sm bg-intent-danger-muted px-3 py-1.5 text-sm text-intent-danger hover:bg-intent-danger-muted"
+            className="bg-intent-danger-muted text-intent-danger hover:bg-intent-danger-muted rounded-sm px-3 py-1.5 text-sm"
           >
             Reject
           </button>
@@ -86,7 +84,7 @@ export function DecisionCard({
         {onViewDetails && (
           <button
             onClick={() => onViewDetails(decision.id)}
-            className="rounded-sm border border-border px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-elevated"
+            className="border-border text-content-secondary hover:bg-surface-elevated rounded-sm border px-3 py-1.5 text-sm"
           >
             Details
           </button>

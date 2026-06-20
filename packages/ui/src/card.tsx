@@ -16,7 +16,7 @@ const paddingClasses: Record<CardPadding, string> = {
   none: '',
   xs: 'p-2',
   sm: 'p-3',
-  md: 'p-4',
+  md: 'p-5',
   lg: 'p-6',
 };
 
@@ -33,10 +33,10 @@ export function Card({
       <Tag
         onClick={onClick}
         className={cn(
-          'rounded-lg border border-border bg-surface-primary shadow-xs',
+          'border-border bg-surface-primary rounded-xl border shadow-xs',
           paddingClasses[padding],
           onClick && 'cursor-pointer',
-          hoverable && 'transition-shadow hover:shadow-xs',
+          hoverable && 'transition-shadow hover:shadow-sm',
           className,
         )}
       >

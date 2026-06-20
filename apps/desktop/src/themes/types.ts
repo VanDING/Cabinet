@@ -4,20 +4,26 @@ export interface ThemeColors {
   surface: {
     primary: string;
     elevated: string;
+    surface2?: string;
+    surface3?: string;
     overlay: string;
     input: string;
     muted: string;
     sidebar: string;
+    floating: string;
   };
   content: {
     primary: string;
     secondary: string;
     tertiary: string;
     inverse: string;
+    link: string;
   };
   border: {
     color: string;
     subtle: string;
+    hairline?: string;
+    hairlineStrong?: string;
   };
   accent: {
     base: string;
@@ -71,14 +77,28 @@ export interface ThemeColors {
     c7: string;
     c8: string;
   };
+  brand: {
+    accent: string;
+    success: string;
+    danger: string;
+    warning: string;
+    info: string;
+    purple: string;
+  };
+  icon: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
 }
 
 export interface ThemeStyle {
   radius: { sm: string; md: string; lg: string; xl: string };
-  shadow: { sm: string; md: string; lg: string };
+  shadow: { xs?: string; sm: string; md: string; lg: string; popover: string; modal: string };
   font: {
     family: string;
     display: string;
+    mono?: string;
     letterSpacing: string;
     lineHeight: string;
     sizeBase: string;
@@ -92,7 +112,7 @@ export interface ThemeStyle {
     weightBold: string;
   };
   border: { width: string; style: string };
-  transition: { duration: string; easing: string };
+  transition: { duration: string; fast: string; slow: string; easing: string };
   opacity: { hover: string; disabled: string; overlay: string };
   glass: { blur: string; opacity: string };
   focusRing: { width: string; color: string; offset: string };

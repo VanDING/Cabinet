@@ -11,12 +11,14 @@ export const cyberpunk: Theme = {
       input: '#151A22',
       muted: 'rgba(0, 255, 255, 0.08)',
       sidebar: '#1A2430',
+      floating: '#1F2A38',
     },
     content: {
       primary: '#00FFF0',
       secondary: '#FF007F',
       tertiary: '#C5C6C7',
       inverse: '#06060A',
+      link: '#00C8FF',
     },
     border: {
       color: '#45A29E',
@@ -29,11 +31,11 @@ export const cyberpunk: Theme = {
       foreground: '#06060A',
     },
     intent: {
-      success:  { color: '#00FF41', muted: 'rgba(0, 255, 65, 0.12)', foreground: '#06060A' },
-      danger:   { color: '#FF003C', muted: 'rgba(255, 0, 60, 0.12)', foreground: '#06060A' },
-      warning:  { color: '#FFAA00', muted: 'rgba(255, 170, 0, 0.12)', foreground: '#06060A' },
-      info:     { color: '#00C8FF', muted: 'rgba(0, 200, 255, 0.12)', foreground: '#06060A' },
-      purple:   { color: '#C800FF', muted: 'rgba(200, 0, 255, 0.12)', foreground: '#06060A' },
+      success: { color: '#00FF41', muted: 'rgba(0, 255, 65, 0.12)', foreground: '#06060A' },
+      danger: { color: '#FF003C', muted: 'rgba(255, 0, 60, 0.12)', foreground: '#06060A' },
+      warning: { color: '#FFAA00', muted: 'rgba(255, 170, 0, 0.12)', foreground: '#06060A' },
+      info: { color: '#00C8FF', muted: 'rgba(0, 200, 255, 0.12)', foreground: '#06060A' },
+      purple: { color: '#C800FF', muted: 'rgba(200, 0, 255, 0.12)', foreground: '#06060A' },
     },
     code: {
       blockBg: '#151A22',
@@ -65,16 +67,38 @@ export const cyberpunk: Theme = {
       minimapMask: 'rgba(0,0,0,0.7)',
     },
     chart: {
-      c1: '#00C8FF', c2: '#00FF41', c3: '#FFAA00', c4: '#C800FF',
-      c5: '#FF003C', c6: '#FF007F', c7: '#00FFF0', c8: '#FCEE0A',
+      c1: '#00C8FF',
+      c2: '#00FF41',
+      c3: '#FFAA00',
+      c4: '#C800FF',
+      c5: '#FF003C',
+      c6: '#FF007F',
+      c7: '#00FFF0',
+      c8: '#FCEE0A',
+    },
+    brand: {
+      accent: '#1A2A25',
+      success: '#0A1A10',
+      danger: '#1A0A10',
+      warning: '#1A1508',
+      info: '#0A1520',
+      purple: '#150A20',
+    },
+    icon: {
+      primary: '#00FFF0',
+      secondary: '#FF007F',
+      accent: '#FCEE0A',
     },
   },
   style: {
-    radius:  { sm: '0', md: '1px', lg: '2px', xl: '4px' },
-    shadow:  {
+    radius: { sm: '0', md: '1px', lg: '2px', xl: '4px' },
+    shadow: {
       sm: '0 0 10px rgba(0, 255, 255, 0.20), 0 0 2px rgba(0, 255, 255, 0.10)',
       md: '0 0 18px rgba(0, 255, 255, 0.25), 0 0 4px rgba(255, 0, 127, 0.08)',
       lg: '0 0 32px rgba(0, 255, 255, 0.22), 0 0 64px rgba(255, 0, 127, 0.12), 0 0 8px rgba(0, 255, 255, 0.08)',
+      popover: '0 0 20px rgba(0, 255, 255, 0.25), 0 0 4px rgba(255, 0, 127, 0.10)',
+      modal:
+        '0 0 48px rgba(0, 255, 255, 0.30), 0 0 80px rgba(255, 0, 127, 0.15), 0 0 12px rgba(0, 255, 255, 0.10)',
     },
     font: {
       family: "'Share Tech Mono', 'Courier New', monospace",
@@ -92,12 +116,13 @@ export const cyberpunk: Theme = {
       weightBold: '700',
     },
     border: { width: '2px', style: 'solid' },
-    transition: { duration: '80ms', easing: 'step-end' },
+    transition: { duration: '80ms', fast: '50ms', slow: '300ms', easing: 'step-end' },
     opacity: { hover: '1.0', disabled: '0.5', overlay: '0.7' },
     glass: { blur: '0px', opacity: '1' },
     focusRing: { width: '2px', color: '#00FFF0', offset: '2px' },
     selection: { bg: '#FF007F', fg: '#06060A' },
     scrollbar: { width: '6px', thumb: '#45A29E', track: '#06060A' },
-    bodyBg: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.02) 2px, rgba(0,255,255,0.02) 3px), repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,255,255,0.01) 40px, rgba(0,255,255,0.01) 41px), #06060A',
+    bodyBg:
+      'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.02) 2px, rgba(0,255,255,0.02) 3px), repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,255,255,0.01) 40px, rgba(0,255,255,0.01) 41px), #06060A',
   },
 };

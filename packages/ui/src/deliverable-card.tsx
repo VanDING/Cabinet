@@ -75,28 +75,28 @@ export function DeliverableCard({
               {onApprove && (
                 <button
                   onClick={() => onApprove(output.id)}
-                  className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                  className="bg-intent-success text-content-inverse rounded px-3 py-1.5 text-xs font-medium hover:opacity-90"
                 >
                   ✅ Approve
                 </button>
               )}
-              {onRequestChanges && (
-                <button
-                  onClick={() => onRequestChanges(output.id)}
-                  className="text-intent-warning hover:bg-intent-warning-muted rounded px-3 py-1.5 text-xs"
-                >
-                  ↩ Request Changes
-                </button>
-              )}
-              {onDiscuss && (
-                <button
-                  onClick={() => onDiscuss(output.id)}
-                  className="text-content-tertiary hover:text-content-secondary rounded px-3 py-1.5 text-xs"
-                >
-                  💬 Discuss
-                </button>
-              )}
             </>
+          )}
+          {onRequestChanges && (
+            <button
+              onClick={() => onRequestChanges(output.id)}
+              className="text-intent-warning hover:bg-intent-warning-muted rounded px-3 py-1.5 text-xs"
+            >
+              ↩ Request Changes
+            </button>
+          )}
+          {onDiscuss && (
+            <button
+              onClick={() => onDiscuss(output.id)}
+              className="text-content-tertiary hover:text-content-secondary rounded px-3 py-1.5 text-xs"
+            >
+              💬 Discuss
+            </button>
           )}
         </div>
       </div>
@@ -134,7 +134,7 @@ export function DeliverableCard({
             {onApprove && (
               <button
                 onClick={() => onApprove(output.id)}
-                className="bg-intent-success rounded px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                className="bg-intent-success text-content-inverse rounded px-3 py-1.5 text-sm font-medium hover:opacity-90"
               >
                 ✅ Approve
               </button>

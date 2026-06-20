@@ -16,32 +16,23 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'bg-accent text-accent-foreground hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50',
   secondary:
-    'bg-surface-muted text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
+    'border border-border bg-surface-muted text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
   destructive:
     'bg-intent-danger text-intent-danger-foreground hover:bg-intent-danger hover:opacity-80 focus-visible:ring-2 focus-visible:ring-intent-danger disabled:opacity-50',
   ghost:
-    'border text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
+    'text-content-tertiary hover:text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
   outline:
-    'border bg-surface-primary text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
+    'border border-border bg-surface-primary text-content-secondary hover:bg-surface-elevated focus-visible:ring-2 focus-visible:ring-border',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  xs: 'rounded px-3 py-1 text-xs',
-  sm: 'rounded-lg px-3 py-1.5 text-sm',
-  md: 'rounded-lg px-4 py-2 text-sm',
+  xs: 'rounded-md px-2.5 py-1 text-xs',
+  sm: 'rounded-md px-3.5 py-1.5 text-sm',
+  md: 'rounded-md px-3.5 py-2 text-sm',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  {
-    variant = 'primary',
-    size = 'sm',
-    fullWidth,
-    loading,
-    disabled,
-    className,
-    children,
-    ...rest
-  },
+  { variant = 'primary', size = 'sm', fullWidth, loading, disabled, className, children, ...rest },
   ref,
 ) {
   const content = (
@@ -67,7 +58,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 
   return (
-    <ClickSpark sparkColor="var(--accent)" sparkCount={5} sparkSize={5} sparkRadius={10} duration={300}>
+    <ClickSpark
+      sparkColor="var(--accent)"
+      sparkCount={5}
+      sparkSize={5}
+      sparkRadius={10}
+      duration={300}
+    >
       <button
         ref={ref}
         disabled={disabled || loading}

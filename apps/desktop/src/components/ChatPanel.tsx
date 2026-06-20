@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Clock, Plus, CheckCircle, Shield, Terminal, ArrowUp, Square, ChevronDown } from 'lucide-react';
+import {
+  Clock,
+  Plus,
+  CheckCircle,
+  Shield,
+  Terminal,
+  ArrowUp,
+  Square,
+  ChevronDown,
+} from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import type { InputTarget } from '../contexts/ChatContext';
 import { FileSearchPanel } from './FileSearchPanel';
@@ -110,7 +119,9 @@ export function ChatPanel({
       .then((d) => {
         if (d.tier) setDelegationTier(d.tier);
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   }, []);
   const [isTauri, setIsTauri] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
@@ -132,9 +143,10 @@ export function ChatPanel({
   const inputBgClass = 'bg-surface-primary';
   const textClass = 'text-content-primary';
   const subtextClass = 'text-content-tertiary';
-  const hoverClass = 'hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
+  const hoverClass =
+    'hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
   const btnBaseClass = 'text-content-tertiary';
-  const dropdownBgClass = 'bg-surface-primary border-border';
+  const dropdownBgClass = 'bg-surface-2 border-border';
   const dropdownItemClass = 'text-content-secondary hover:bg-surface-muted bg-surface-input';
 
   useEffect(() => {
@@ -277,13 +289,13 @@ export function ChatPanel({
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const activeTabClass =
-    'bg-surface-primary text-content-primary border-accent';
-  const inactiveTabClass =
-    'text-content-tertiary hover:bg-surface-muted bg-surface-input';
+  const activeTabClass = 'bg-surface-primary text-content-primary border-accent';
+  const inactiveTabClass = 'text-content-tertiary hover:bg-surface-muted bg-surface-input';
 
   return (
-    <div className={`pointer-events-none z-10 flex justify-center ${floating ? 'absolute bottom-4 left-4 right-4' : 'relative w-full'}`}>
+    <div
+      className={`pointer-events-none z-10 flex justify-center ${floating ? 'absolute right-4 bottom-4 left-4' : 'relative w-full'}`}
+    >
       <div
         className={`chat-panel-inner rounded-2xl border shadow-2xl ${borderClass} ${bgClass} pointer-events-auto mb-4 w-full max-w-[1080px]`}
       >
@@ -296,19 +308,15 @@ export function ChatPanel({
             <button
               ref={agentBtnRef}
               onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className="flex items-center gap-0.5 rounded-sm bg-accent-muted px-1.5 py-0.5 text-xs font-bold text-accent transition-colors hover:bg-accent:bg-accent-hover/60"
+              className="bg-accent-muted text-accent hover:bg-accent:bg-accent-hover/60 flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-xs font-bold transition-colors"
               title="Switch agent"
             >
               @{activeAgent}
               <span className="text-[10px]">▼</span>
             </button>
             {agentMenuOpen && (
-              <div
-                className="dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border border-border bg-surface-primary py-1 shadow-xl"
-              >
-                <div
-                  className="border-b border-border px-3 py-1 text-xs text-content-tertiary"
-                >
+              <div className="dropdown-enter border-border bg-surface-2 absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl">
+                <div className="border-hairline text-content-tertiary border-b px-3 py-1 text-xs">
                   Switch Agent
                 </div>
                 {[
@@ -354,9 +362,9 @@ export function ChatPanel({
             </button>
             {projectMenuOpen && (
               <div
-                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter border-border absolute bottom-full left-0 z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
               >
-                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-hairline border-b`}>
                   Switch Project
                 </div>
                 <button
@@ -378,15 +386,13 @@ export function ChatPanel({
                         setProjectMenuOpen(false);
                       }}
                       className={`w-full px-3 py-1.5 text-left text-xs ${
-                        activeProjectId === p.id
-                          ? 'bg-accent-muted text-accent'
-                          : dropdownItemClass
+                        activeProjectId === p.id ? 'bg-accent-muted text-accent' : dropdownItemClass
                       }`}
                     >
                       {p.name}
                     </button>
                   ))}
-                <div className={`mt-1 border-t pt-1 ${borderClass}`}>
+                <div className={`border-hairline mt-1 border-t pt-1`}>
                   <button
                     onClick={() => {
                       setProjectMenuOpen(false);
@@ -410,7 +416,7 @@ export function ChatPanel({
                   <div
                     key={session.id}
                     onClick={() => onSwitchSession(session.id)}
-                    className={`group flex min-w-[60px] max-w-[140px] flex-shrink cursor-pointer items-center gap-1 rounded border-b-2 px-2 py-0.5 text-xs transition-colors ${
+                    className={`group flex max-w-[140px] min-w-[60px] flex-shrink cursor-pointer items-center gap-1 rounded border-b-2 px-2 py-0.5 text-xs transition-colors ${
                       isActive
                         ? activeTabClass + ' border-b-2'
                         : `${inactiveTabClass} border-b-2 border-transparent`
@@ -418,9 +424,7 @@ export function ChatPanel({
                   >
                     <span
                       className={`h-2 w-2 shrink-0 rounded-full ${
-                        hasActivity
-                          ? 'animate-pulse bg-accent'
-                          : `border border-border`
+                        hasActivity ? 'bg-accent animate-pulse' : `border-border border`
                       }`}
                     />
                     <span className="flex-1 truncate">{session.title}</span>
@@ -429,7 +433,7 @@ export function ChatPanel({
                         e.stopPropagation();
                         onCloseSession(session.id);
                       }}
-                      className="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                      className="text-content-tertiary hover:text-intent-danger flex h-3 w-3 shrink-0 items-center justify-center rounded-sm opacity-0 transition-opacity group-hover:opacity-100"
                     >
                       &times;
                     </button>
@@ -437,8 +441,11 @@ export function ChatPanel({
                 );
               })}
             {activeProjectId &&
-              sessions.filter((s) => !s.parentId && s.projectId === activeProjectId).length === 0 && (
-                <span className="px-2 text-[10px] text-content-tertiary">No sessions in this project</span>
+              sessions.filter((s) => !s.parentId && s.projectId === activeProjectId).length ===
+                0 && (
+                <span className="text-content-tertiary px-2 text-[10px]">
+                  No sessions in this project
+                </span>
               )}
           </div>
 
@@ -492,7 +499,7 @@ export function ChatPanel({
             {attachedFiles.map((file) => (
               <span
                 key={file.id}
-                className="inline-flex items-center gap-1 rounded-sm bg-accent-muted px-2 py-0.5 text-xs text-accent"
+                className="bg-accent-muted text-accent inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs"
               >
                 <span className="max-w-[160px] truncate" title={file.path}>
                   {file.type === 'project' ? file.path : file.name}
@@ -540,19 +547,19 @@ export function ChatPanel({
             placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
             disabled={isProcessing}
             rows={2}
-            className={`w-full resize-none border-0 bg-transparent text-sm placeholder-content-tertiary focus:outline-hidden disabled:opacity-50 ${textClass}`}
+            className={`placeholder-content-tertiary w-full resize-none border-0 bg-transparent text-sm focus:outline-hidden disabled:opacity-50 ${textClass}`}
             style={{ minHeight: '40px', maxHeight: '200px' }}
           />
           {slashMenuOpen && (
             <div
               ref={slashMenuRef}
-              className={`dropdown-enter absolute bottom-full left-3 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+              className={`dropdown-enter border-border absolute bottom-full left-3 z-50 mb-1 max-h-48 w-64 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
             >
-              <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+              <div className={`px-3 py-1 text-xs ${subtextClass} border-hairline border-b`}>
                 Select a skill
               </div>
               {skills.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-content-tertiary">
+                <div className="text-content-tertiary px-3 py-3 text-center text-xs">
                   No skills registered.
                 </div>
               ) : (
@@ -566,12 +573,12 @@ export function ChatPanel({
                     }}
                     className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                   >
-                    <span className="mr-1.5 inline-block rounded-sm bg-surface-muted px-1 py-0.5 text-content-secondary">
+                    <span className="bg-surface-muted text-content-secondary mr-1.5 inline-block rounded-sm px-1 py-0.5">
                       /
                     </span>
                     {skill.name}
                     {skill.description && (
-                      <span className="ml-2 text-content-tertiary">— {skill.description}</span>
+                      <span className="text-content-tertiary ml-2">— {skill.description}</span>
                     )}
                   </button>
                 ))
@@ -594,7 +601,7 @@ export function ChatPanel({
             </button>
             {addMenuOpen && (
               <div
-                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter border-border absolute bottom-full left-0 z-50 mb-1 w-40 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
               >
                 <button
                   onClick={handleAddLocalFile}
@@ -623,13 +630,13 @@ export function ChatPanel({
             </button>
             {skillMenuOpen && (
               <div
-                className={`dropdown-enter absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter border-border absolute bottom-full left-0 z-50 mb-1 max-h-48 w-48 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
               >
-                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-hairline border-b`}>
                   Select a skill
                 </div>
                 {skills.length === 0 ? (
-                  <div className="px-3 py-3 text-center text-xs text-content-tertiary">
+                  <div className="text-content-tertiary px-3 py-3 text-center text-xs">
                     No skills registered.
                   </div>
                 ) : (
@@ -639,7 +646,7 @@ export function ChatPanel({
                       onClick={() => handleSelectSkill(skill.name)}
                       className={`w-full px-3 py-1.5 text-left font-mono text-xs ${dropdownItemClass}`}
                     >
-                      <span className="mr-1.5 inline-block rounded-sm bg-surface-muted px-1 py-0.5 text-content-secondary">
+                      <span className="bg-surface-muted text-content-secondary mr-1.5 inline-block rounded-sm px-1 py-0.5">
                         /
                       </span>
                       {skill.name}
@@ -666,9 +673,9 @@ export function ChatPanel({
             </button>
             {tierMenuOpen && (
               <div
-                className={`dropdown-enter absolute bottom-full right-0 z-50 mb-1 w-44 rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter border-border absolute right-0 bottom-full z-50 mb-1 w-44 rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
               >
-                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-hairline border-b`}>
                   Delegation Tier
                 </div>
                 {TIERS.map((t) => (
@@ -681,18 +688,18 @@ export function ChatPanel({
                         method: 'PUT',
                         headers: authJsonHeaders(),
                         body: JSON.stringify({ tier: t.id }),
-                      }).catch((err) => { console.warn('Operation failed', err); });
+                      }).catch((err) => {
+                        console.warn('Operation failed', err);
+                      });
                     }}
                     className={`w-full px-4 py-1.5 text-left transition-colors ${
-                      delegationTier === t.id
-                        ? 'bg-accent-muted text-accent'
-                        : dropdownItemClass
+                      delegationTier === t.id ? 'bg-accent-muted text-accent' : dropdownItemClass
                     }`}
                   >
                     <div className="text-xs font-medium">
                       {t.id} — {t.label}
                     </div>
-                    <div className="text-[10px] text-content-tertiary">{t.desc}</div>
+                    <div className="text-content-tertiary text-[10px]">{t.desc}</div>
                   </button>
                 ))}
               </div>
@@ -712,9 +719,9 @@ export function ChatPanel({
             </button>
             {modelMenuOpen && (
               <div
-                className={`dropdown-enter absolute bottom-full right-0 z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-border py-1 shadow-xl ${dropdownBgClass}`}
+                className={`dropdown-enter border-border absolute right-0 bottom-full z-50 mb-1 max-h-64 w-56 overflow-y-auto rounded-lg border py-1 shadow-xl ${dropdownBgClass}`}
               >
-                <div className={`px-3 py-1 text-xs ${subtextClass} border-b ${borderClass}`}>
+                <div className={`px-3 py-1 text-xs ${subtextClass} border-hairline border-b`}>
                   Select model
                 </div>
                 {availableModels.map(({ provider, models }) => (
@@ -767,7 +774,7 @@ export function ChatPanel({
                 ? 'bg-intent-danger text-content-inverse hover:bg-intent-danger'
                 : input.trim()
                   ? 'bg-accent text-content-inverse hover:bg-accent-hover'
-                  : 'cursor-not-allowed bg-surface-muted text-content-tertiary'
+                  : 'bg-surface-muted text-content-tertiary cursor-not-allowed'
             }`}
             aria-label={isProcessing ? 'Stop' : 'Send'}
           >

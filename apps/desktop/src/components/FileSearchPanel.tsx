@@ -64,37 +64,41 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
       contentClassName="file-search-enter max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs shadow-xl"
       backdropClassName="items-start justify-center pt-20"
     >
-        <div className="border-b border-border p-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search project files..."
-            className="w-full rounded-sm border border-border bg-surface-elevated px-3 py-1.5 text-sm text-content-primary focus:outline-hidden focus:ring-2 focus:ring-accent"
-          />
-        </div>
-        <div className="max-h-60 overflow-y-auto">
-          {loading ? (
-            <div className="px-4 py-6 text-center text-sm text-content-tertiary">Loading file tree...</div>
-          ) : filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-content-tertiary">No files found</div>
-          ) : (
-            filtered.map((f) => (
-              <button
-                key={f.path}
-                onClick={() => {
-                  onSelect(f);
-                  onClose();
-                }}
-                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-surface-muted bg-surface-input"
-              >
-                <span className="font-medium text-content-primary">{f.name}</span>
-                <span className="ml-2 max-w-[200px] truncate text-xs text-content-tertiary">{f.path}</span>
-              </button>
-            ))
-          )}
-        </div>
+      <div className="border-hairline border-b p-3">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search project files..."
+          className="border-border bg-surface-elevated text-content-primary focus:ring-accent w-full rounded-sm border px-3 py-1.5 text-sm focus:ring-2 focus:outline-hidden"
+        />
+      </div>
+      <div className="max-h-60 overflow-y-auto">
+        {loading ? (
+          <div className="text-content-tertiary px-4 py-6 text-center text-sm">
+            Loading file tree...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-content-tertiary px-4 py-6 text-center text-sm">No files found</div>
+        ) : (
+          filtered.map((f) => (
+            <button
+              key={f.path}
+              onClick={() => {
+                onSelect(f);
+                onClose();
+              }}
+              className="hover:bg-surface-muted bg-surface-input flex w-full items-center justify-between px-4 py-2 text-left text-sm"
+            >
+              <span className="text-content-primary font-medium">{f.name}</span>
+              <span className="text-content-tertiary ml-2 max-w-[200px] truncate text-xs">
+                {f.path}
+              </span>
+            </button>
+          ))
+        )}
+      </div>
     </ModalOverlay>
   );
 }

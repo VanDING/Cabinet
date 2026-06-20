@@ -78,7 +78,7 @@ export function DecisionProposalCard({
             {onAdopt && (
               <button
                 onClick={() => onAdopt(output.id, selectedOption)}
-                className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                className="bg-intent-success text-content-inverse rounded px-3 py-1.5 text-xs font-medium hover:opacity-90"
               >
                 ✅ Adopt {data.recommendation}
               </button>
@@ -167,7 +167,7 @@ export function DecisionProposalCard({
           {onAdopt && (
             <button
               onClick={() => onAdopt(output.id, selectedOption)}
-              className="bg-intent-success rounded px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              className="bg-intent-success text-content-inverse rounded px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
               ✅ Adopt
             </button>

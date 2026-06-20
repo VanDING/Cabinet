@@ -76,7 +76,7 @@ export function TaskCard({ output, onConfirm, onAdjust, onAddTask, onToggleTask 
           {onConfirm && (
             <button
               onClick={() => onConfirm(output.id, data.tasks)}
-              className="bg-intent-success rounded px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+              className="bg-intent-success text-content-inverse rounded px-3 py-1.5 text-xs font-medium hover:opacity-90"
             >
               ✅ Confirm Plan
             </button>

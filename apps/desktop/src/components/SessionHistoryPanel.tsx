@@ -29,32 +29,34 @@ export function SessionHistoryPanel({ isOpen, onClose, history, onReopen, onDele
   return (
     <div
       ref={panelRef}
-      className="absolute bottom-full right-0 z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-lg border border-border bg-surface-primary shadow-xl"
+      className="border-border bg-surface-2 absolute right-0 bottom-full z-50 mb-1 max-h-64 w-72 overflow-y-auto rounded-lg border shadow-xl"
     >
-      <div className="border-b border-border px-3 py-2 text-xs uppercase text-content-tertiary">
+      <div className="border-border text-content-tertiary border-b px-3 py-2 text-xs uppercase">
         Recent Sessions
       </div>
       {history.length === 0 ? (
-        <div className="px-4 py-6 text-center text-sm text-content-tertiary">No recent sessions</div>
+        <div className="text-content-tertiary px-4 py-6 text-center text-sm">
+          No recent sessions
+        </div>
       ) : (
         history.map((session) => (
           <div
             key={session.id}
-            className="group flex items-center justify-between px-3 py-2 hover:bg-surface-elevated bg-surface-input"
+            className="group hover:bg-surface-elevated bg-surface-input flex items-center justify-between px-3 py-2"
           >
             <button
               onClick={() => onReopen(session)}
-              className="flex-1 truncate text-left text-sm text-content-secondary"
+              className="text-content-secondary flex-1 truncate text-left text-sm"
             >
               {session.title}
-              <span className="block text-xs text-content-tertiary">
+              <span className="text-content-tertiary block text-xs">
                 {session.messages.length} msgs &middot;{' '}
                 {new Date(session.createdAt).toLocaleDateString()}
               </span>
             </button>
             <button
               onClick={() => onDelete(session.id)}
-              className="ml-2 p-1 text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+              className="text-content-tertiary hover:text-intent-danger ml-2 p-1 opacity-0 transition-opacity group-hover:opacity-100"
               aria-label="Delete session"
             >
               <Trash2 size={14} />

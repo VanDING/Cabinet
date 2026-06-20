@@ -87,9 +87,7 @@ export function GraphTab() {
 
   const filteredRelations = useMemo(
     () =>
-      data.relations.filter(
-        (r) => filteredEntityIds.has(r.from) && filteredEntityIds.has(r.to),
-      ),
+      data.relations.filter((r) => filteredEntityIds.has(r.from) && filteredEntityIds.has(r.to)),
     [data.relations, filteredEntityIds],
   );
 
@@ -178,10 +176,9 @@ export function GraphTab() {
       return;
     }
     try {
-      const res = await apiFetch(
-        `/api/memory/graph/search?q=${encodeURIComponent(q)}`,
-        { headers: authHeaders() },
-      );
+      const res = await apiFetch(`/api/memory/graph/search?q=${encodeURIComponent(q)}`, {
+        headers: authHeaders(),
+      });
       const json = await res.json();
       setSearchResults(json.entities ?? []);
     } catch {
@@ -210,13 +207,13 @@ export function GraphTab() {
       {/* Main graph area */}
       <div className="flex flex-1 flex-col">
         {/* Toolbar */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+        <div className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2">
           <button
             onClick={() => {
               fetchGraph();
               setSelectedEntityId(null);
             }}
-            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary"
+            className="text-content-tertiary hover:bg-surface-muted hover:text-content-secondary flex items-center gap-1 rounded-sm px-2 py-1 text-xs transition-colors"
             title="Refresh"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -229,7 +226,7 @@ export function GraphTab() {
               onClick={() => toggleType(t)}
               className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] transition-colors ${
                 activeTypes.has(t)
-                  ? 'text-white'
+                  ? 'text-content-inverse'
                   : 'text-content-tertiary opacity-50 hover:opacity-80'
               }`}
               style={
@@ -241,9 +238,7 @@ export function GraphTab() {
               <span
                 className="h-1.5 w-1.5 rounded-full"
                 style={{
-                  backgroundColor: activeTypes.has(t)
-                    ? 'white'
-                    : entityColor(t),
+                  backgroundColor: activeTypes.has(t) ? 'white' : entityColor(t),
                 }}
               />
               {t}
@@ -255,7 +250,7 @@ export function GraphTab() {
             <div className="relative">
               <Search
                 size={12}
-                className="absolute left-1.5 top-1/2 -translate-y-1/2 text-content-tertiary"
+                className="text-content-tertiary absolute top-1/2 left-1.5 -translate-y-1/2"
               />
               <input
                 type="text"
@@ -269,10 +264,10 @@ export function GraphTab() {
                   }
                 }}
                 placeholder="Search entity..."
-                className="w-40 rounded-sm border border-border bg-surface-elevated py-0.5 pl-6 pr-2 text-xs text-content-secondary focus:outline-hidden focus:ring-1 focus:ring-accent"
+                className="border-border bg-surface-elevated text-content-secondary focus:ring-accent w-40 rounded-sm border py-0.5 pr-2 pl-6 text-xs focus:ring-1 focus:outline-hidden"
               />
               {searchResults.length > 0 && (
-                <div className="absolute left-0 top-full z-50 mt-1 max-h-40 w-56 overflow-y-auto rounded-md border border-border bg-surface-primary shadow-lg">
+                <div className="border-border bg-surface-primary absolute top-full left-0 z-50 mt-1 max-h-40 w-56 overflow-y-auto rounded-md border shadow-lg">
                   {searchResults.map((e) => (
                     <button
                       key={e.id}
@@ -281,14 +276,14 @@ export function GraphTab() {
                         setSearchQuery('');
                         setSearchResults([]);
                       }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs text-content-secondary hover:bg-surface-muted"
+                      className="text-content-secondary hover:bg-surface-muted flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs"
                     >
                       <span
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: entityColor(e.type) }}
                       />
                       <span className="truncate">{e.name}</span>
-                      <span className="ml-auto shrink-0 text-[10px] text-content-tertiary">
+                      <span className="text-content-tertiary ml-auto shrink-0 text-[10px]">
                         {e.type}
                       </span>
                     </button>
@@ -303,11 +298,11 @@ export function GraphTab() {
         <div className="flex-1">
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-content-tertiary italic">Loading graph...</p>
+              <p className="text-content-tertiary text-sm italic">Loading graph...</p>
             </div>
           ) : filteredEntities.length === 0 ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-content-tertiary italic">
+              <p className="text-content-tertiary text-sm italic">
                 No entities found. Enable types above or populate the knowledge graph.
               </p>
             </div>
@@ -332,11 +327,11 @@ export function GraphTab() {
             >
               <Background color="var(--graph-bg-grid)" gap={24} />
               <Controls
-                className="!rounded-md !border !border-border !bg-surface-primary !shadow-lg"
+                className="!border-border !bg-surface-primary !rounded-md !border !shadow-lg"
                 position="bottom-right"
               />
               <MiniMap
-                className="!rounded-md !border !border-border !bg-surface-primary"
+                className="!border-border !bg-surface-primary !rounded-md !border"
                 nodeColor={(n) => {
                   const nodeData = (n as EntityNode)?.data;
                   return nodeData?.type ? entityColor(nodeData.type) : entityColor('memory');
