@@ -54,3 +54,9 @@ apps/server/bundle/
 
 # Screenshot artifacts (manual testing)
 part*_*.png
+
+# Node.js portable (development convenience)
+node-v*/
+
+# Generated documentation site
+docs/site/.vitepress/dist/
