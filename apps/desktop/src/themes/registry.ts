@@ -7,13 +7,11 @@ import { darkDefault } from './dark-default';
 
 // Warm Minimal
 import { warm } from './warm';
-import { zen } from './zen';
 import { brutalism } from './brutalism';
 
 // Retro-Futurism
 // Synth & Neon
 import { synthwave } from './synthwave';
-import { vaporwave } from './vaporwave';
 import { cyberpunk } from './cyberpunk';
 
 // Dark Industrial
@@ -31,17 +29,12 @@ import { afrofuturism } from './afrofuturism';
 // Eastern Ink
 import { sumie } from './sumi-e';
 
-// Nostalgic
-import { showaRetro } from './showa-retro';
-
 export const registry: Theme[] = [
   lightDefault,
   darkDefault,
   warm,
-  zen,
   brutalism,
   synthwave,
-  vaporwave,
   cyberpunk,
   techno,
   polar,
@@ -49,7 +42,6 @@ export const registry: Theme[] = [
   geek,
   afrofuturism,
   sumie,
-  showaRetro,
 ];
 
 export const defaultTheme = lightDefault;

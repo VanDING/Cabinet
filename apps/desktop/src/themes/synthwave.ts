@@ -7,6 +7,8 @@ export const synthwave: Theme = {
     surface: {
       primary: '#1A1530',
       elevated: '#221D3D',
+      surface2: '#272045',
+      surface3: '#2A234A',
       overlay: 'rgba(20, 10, 40, 0.92)',
       input: '#2A2142',
       muted: '#2E2550',

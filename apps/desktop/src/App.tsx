@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, lazy, Suspense, startTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, startTransition } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
@@ -83,6 +83,9 @@ export function App() {
     setUIMode,
     activeAgent,
     setActiveAgent,
+    agents,
+    sidebarOpen,
+    setSidebarOpen,
     isSessionActive,
     handleSend,
     handleCreateSession,
@@ -119,6 +122,14 @@ export function App() {
 
   const [projectNameInput, setProjectNameInput] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+
+  // Resolve the active agent's external CLI command (if any) for terminal spawning
+  const activeExternalAgent = useMemo(() => {
+    const agent = agents.find((a) => a.id === activeAgent);
+    if (!agent || agent.source !== 'external_cli') return null;
+    return { command: agent.id.replace('external_cli:', ''), args: [] as string[], env: undefined as Record<string, string> | undefined };
+  }, [agents, activeAgent]);
 
   const {
     activePage,
@@ -502,6 +513,17 @@ export function App() {
                           }
                         }}
                         onBack={() => setUIMode('work')}
+                        agents={agents}
+                        activeAgentId={activeAgent}
+                        onSelectAgent={setActiveAgent}
+                        allSessions={sessions}
+                        sidebarOpen={sidebarOpen}
+                        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                        onSelectSession={switchSession}
+                        activeSessionId={activeSession?.id ?? null}
+                        terminalOpen={terminalOpen}
+                        onToggleTerminal={() => setTerminalOpen(!terminalOpen)}
+                        activeExternalAgent={activeExternalAgent}
                       />
                     </Suspense>
                   </ErrorBoundary>

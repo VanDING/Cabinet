@@ -7,6 +7,8 @@ export const polar: Theme = {
     surface: {
       primary: 'rgba(255, 255, 255, 0.90)',
       elevated: 'rgba(220, 240, 255, 0.70)',
+      surface2: 'rgba(210, 232, 252, 0.60)',
+      surface3: 'rgba(205, 228, 251, 0.55)',
       overlay: 'rgba(200, 230, 255, 0.85)',
       input: 'rgba(255, 255, 255, 0.85)',
       muted: 'rgba(200, 225, 250, 0.50)',

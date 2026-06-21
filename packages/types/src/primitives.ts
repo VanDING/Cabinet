@@ -321,6 +321,10 @@ export interface ContextSlot {
     tier?: string;
     maxRetries: number;
   };
+  /** Skills bound to this agent (names) */
+  skills?: string[];
+  /** MCP server names bound to this agent */
+  mcpServers?: string[];
 }
 
 // ── External Agent ──

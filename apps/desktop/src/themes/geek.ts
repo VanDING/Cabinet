@@ -6,7 +6,9 @@ export const geek: Theme = {
   colors: {
     surface: {
       primary: '#0D1117',
-      elevated: '#0A0F0A',
+      elevated: '#131E13',
+      surface2: '#162016',
+      surface3: '#182218',
       overlay: '#111911',
       input: '#161F16',
       muted: '#1A241A',

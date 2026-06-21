@@ -7,6 +7,8 @@ export const sumie: Theme = {
     surface: {
       primary: '#F7F5F0',
       elevated: '#FAFAF7',
+      surface2: '#F4F3EE',
+      surface3: '#F0EDE7',
       overlay: 'rgba(247,245,240,0.9)',
       input: '#F0EDE6',
       muted: '#EBE8E0',

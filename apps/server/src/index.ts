@@ -27,6 +27,8 @@ import { autopilotRouter, webhookRouter } from './routes/autopilot.js';
 import { squadRouter } from './routes/squads.js';
 import { telemetryRouter } from './routes/telemetry.js';
 import { tasksRouter } from './routes/tasks.js';
+import { installRouter } from './routes/install.js';
+import { workbenchRouter } from './routes/workbench.js';
 
 import { documentsRouter } from './routes/documents.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -97,6 +99,8 @@ export function createApp() {
   app.route('/api/squads', squadRouter);
   app.route('/api/telemetry', telemetryRouter);
   app.route('/api/tasks', tasksRouter);
+  app.route('/api/install', installRouter);
+  app.route('/api/workbench', workbenchRouter);
 
   // GeoIP proxy — avoids CORS issues with ipapi.co from browser
   app.get('/api/geoip', async (c) => {

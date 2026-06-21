@@ -20,6 +20,7 @@ import {
   SessionMetricsRepository,
   SettingsRepository,
   SystemKnowledgeRepository,
+  AgentBindingRepository,
   syncSystemKnowledge,
   SYSTEM_KNOWLEDGE_BASE,
   getLogger,
@@ -103,6 +104,7 @@ export function initDatabase(state: BuildState): void {
   state.costHistoryRepo = new CostHistoryRepository(db);
   state.sessionMetricsRepo = new SessionMetricsRepository(db);
   state.settingsRepo = new SettingsRepository(db);
+  state.agentBindingRepo = new AgentBindingRepository(db);
 
   const systemKnowledgeRepo = new SystemKnowledgeRepository(db);
   systemKnowledgeRepo.ensureTable();

@@ -74,6 +74,8 @@ export interface Session {
   status?: 'active' | 'waiting_for_user' | 'completed' | 'error';
   events?: AgentEvent[];
   deliverable?: unknown;
+  // Agent binding for top-level sessions
+  agentId?: string;
 }
 
 /** Raw session data from localStorage/API (dates are strings). */
@@ -89,6 +91,7 @@ interface SessionJSON {
   agentType?: string;
   status?: string;
   deliverable?: unknown;
+  agentId?: string;
 }
 
 function generateId(): string {
@@ -197,12 +200,14 @@ export function useSessions() {
       initialContext?: string;
       attachedFiles?: AttachedFile[];
       projectId?: string;
+      agentId?: string;
     }): string => {
       const id = generateId();
       const session: Session = {
         id,
         title: options?.title ?? `Session-${shortId(id)}`,
         projectId: options?.projectId,
+        agentId: options?.agentId,
         messages: options?.initialContext
           ? [
               {
@@ -438,6 +443,7 @@ export function useSessions() {
 
   return {
     sessions,
+    setSessions,
     history,
     activeSessionId,
     activeSession,

@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import type { ChatMessage, AttachedFile, Session } from '../hooks/useSessions';
 import type { ToolCallStatus } from '../hooks/useSessions';
+import type { AgentInfo } from '../hooks/useAgents';
 import { WorkflowRunCard } from './WorkflowRunCard';
 import { TaskPanel } from './TaskPanel';
 import { SubAgentWindow } from './SubAgentWindow';
+import { AgentTopBar } from './chat/AgentTopBar';
+import { SessionSidebar } from './chat/SessionSidebar';
+import { TerminalPanel, type TerminalTabConfig } from './terminal';
 import {
   SubAgentCard,
   DecryptedText,
@@ -35,6 +38,17 @@ interface Props {
   onSubAgentApprove?: (sessionId: string) => void;
   onResetInputTarget?: () => void;
   onBack?: () => void;
+  agents: AgentInfo[];
+  activeAgentId: string;
+  onSelectAgent: (id: string) => void;
+  allSessions: Session[];
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  onSelectSession: (id: string) => void;
+  activeSessionId: string | null;
+  terminalOpen: boolean;
+  onToggleTerminal: () => void;
+  activeExternalAgent: { command: string; args: string[]; env?: Record<string, string> } | null;
 }
 
 function escapeHtml(text: string): string {
@@ -233,10 +247,42 @@ export const ChatView = memo(function ChatView({
   onSubAgentApprove,
   onResetInputTarget,
   onBack,
+  agents,
+  activeAgentId,
+  onSelectAgent,
+  allSessions,
+  sidebarOpen,
+  onToggleSidebar,
+  onSelectSession,
+  activeSessionId,
+  terminalOpen,
+  onToggleTerminal,
+  activeExternalAgent,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [terminalTabs, setTerminalTabs] = useState<TerminalTabConfig[]>([]);
+  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
+
+  // Auto-spawn terminal when toggle opens with a CLI agent
+  useEffect(() => {
+    if (terminalOpen && activeTerminalId === null && activeExternalAgent) {
+      const id = `term_${Date.now()}`;
+      setTerminalTabs([{
+        id,
+        label: 'Shell',
+        command: activeExternalAgent.command,
+        args: activeExternalAgent.args,
+        env: activeExternalAgent.env,
+      }]);
+      setActiveTerminalId(id);
+    }
+    if (!terminalOpen) {
+      setTerminalTabs([]);
+      setActiveTerminalId(null);
+    }
+  }, [terminalOpen, activeExternalAgent, activeTerminalId]);
 
   // Track whether user is near bottom; only auto-scroll if they are
   useEffect(() => {
@@ -260,30 +306,41 @@ export const ChatView = memo(function ChatView({
   }, [messages]);
 
   return (
-    <div
-      className="flex h-full flex-col"
-      onClick={(e) => {
-        // Only reset if clicking the background (not a message or sub-agent window)
-        if (e.currentTarget === e.target) {
-          onResetInputTarget?.();
-        }
-      }}
-    >
-      <div className="border-border bg-surface-elevated flex shrink-0 items-center justify-between gap-3 border-b px-5 py-2.5">
-        <h2 className="text-content-secondary min-w-0 flex-1 truncate text-sm font-medium">
-          {sessionTitle}
-        </h2>
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="border-border bg-surface-overlay/80 text-content-secondary hover:bg-surface-elevated flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-1 text-xs transition-colors"
-          >
-            <ArrowLeft size={12} />
-            Back
-          </button>
+    <div className="flex h-full flex-col">
+      <AgentTopBar
+        agents={agents}
+        activeAgentId={activeAgentId}
+        onSelectAgent={onSelectAgent}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        terminalOpen={terminalOpen}
+        onToggleTerminal={onToggleTerminal}
+        terminalEnabled={activeExternalAgent !== null}
+        sessionTitle={sessionTitle}
+        onBack={onBack}
+      />
+      <div className="flex flex-1 overflow-hidden">
+        {sidebarOpen && (
+          <SessionSidebar
+            sessions={allSessions}
+            activeAgentId={activeAgentId}
+            activeSessionId={activeSessionId}
+            onSelectSession={onSelectSession}
+            onCreateSession={() => {
+              // Create will be handled by parent via handleCreateSession
+              // We trigger it via a custom event for now
+              window.dispatchEvent(new CustomEvent('cabinet-create-session'));
+            }}
+          />
         )}
-      </div>
-
+        <div
+          className="flex h-full flex-1 flex-col"
+          onClick={(e) => {
+            if (e.currentTarget === e.target) {
+              onResetInputTarget?.();
+            }
+          }}
+        >
       {attachedFiles.length > 0 && (
         <div className="border-border bg-surface-elevated flex shrink-0 flex-wrap items-center gap-1.5 border-b px-5 py-1.5">
           <span className="text-content-tertiary text-xs">{'Attached:'}</span>
@@ -393,6 +450,35 @@ export const ChatView = memo(function ChatView({
           >
             New messages ↓
           </button>
+        )}
+      </div>
+        </div>
+        {terminalOpen && (
+          <TerminalPanel
+            tabs={terminalTabs}
+            activeTabId={activeTerminalId}
+            onActiveTabChange={setActiveTerminalId}
+            onTabClose={(id) => {
+              setTerminalTabs((prev) => prev.filter((t) => t.id !== id));
+              setActiveTerminalId((curr) => (curr === id ? null : curr));
+            }}
+            onAddTab={() => {
+              if (!activeExternalAgent) return;
+              const id = `term_${Date.now()}`;
+              setTerminalTabs((prev) => [
+                ...prev,
+                {
+                  id,
+                  label: `Shell ${prev.length + 1}`,
+                  command: activeExternalAgent.command,
+                  args: activeExternalAgent.args,
+                  env: activeExternalAgent.env,
+                },
+              ]);
+              setActiveTerminalId(id);
+            }}
+            onClose={onToggleTerminal}
+          />
         )}
       </div>
     </div>

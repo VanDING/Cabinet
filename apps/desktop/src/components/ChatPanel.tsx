@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Clock,
   Plus,
   CheckCircle,
   Shield,
@@ -12,7 +11,6 @@ import {
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import type { InputTarget } from '../contexts/ChatContext';
 import { FileSearchPanel } from './FileSearchPanel';
-import { SessionHistoryPanel } from './SessionHistoryPanel';
 import { useSkills } from '../hooks/useSkills';
 import { useAvailableModels } from '../hooks/useAvailableModels';
 import { useOutsideClick } from '../hooks/useOutsideClick';
@@ -94,7 +92,6 @@ export function ChatPanel({
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -102,9 +99,7 @@ export function ChatPanel({
   });
   const [delegationTier, setDelegationTier] = useState<string>('T2');
   const [tierMenuOpen, setTierMenuOpen] = useState(false);
-  const [agentMenuOpen, setAgentMenuOpen] = useState(false);
   const tierBtnRef = useRef<HTMLButtonElement>(null);
-  const agentBtnRef = useRef<HTMLButtonElement>(null);
 
   const TIERS = [
     { id: 'T0', label: 'Captain Review', desc: 'All writes blocked' },
@@ -129,7 +124,6 @@ export function ChatPanel({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const skillBtnRef = useRef<HTMLButtonElement>(null);
-  const historyBtnRef = useRef<HTMLButtonElement>(null);
   const modelBtnRef = useRef<HTMLButtonElement>(null);
 
   const skills = useSkills();
@@ -159,7 +153,6 @@ export function ChatPanel({
 
   // Close menus on outside click
   useOutsideClick(tierBtnRef, () => setTierMenuOpen(false), tierMenuOpen);
-  useOutsideClick(agentBtnRef, () => setAgentMenuOpen(false), agentMenuOpen);
   useOutsideClick(addBtnRef, () => setAddMenuOpen(false), addMenuOpen);
   useOutsideClick(skillBtnRef, () => setSkillMenuOpen(false), skillMenuOpen);
   useOutsideClick(slashMenuRef, () => setSlashMenuOpen(false), slashMenuOpen);
@@ -303,44 +296,11 @@ export function ChatPanel({
         <div
           className={`flex h-8 items-center gap-1 rounded-t-2xl border-b px-2 ${borderClass} ${tabBgClass}`}
         >
-          {/* Fixed @agent label */}
-          <div className="relative shrink-0">
-            <button
-              ref={agentBtnRef}
-              onClick={() => setAgentMenuOpen(!agentMenuOpen)}
-              className="bg-accent-muted text-accent hover:bg-accent:bg-accent-hover/60 flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-xs font-bold transition-colors"
-              title="Switch agent"
-            >
+          {/* Agent label (selection via AgentTopBar) */}
+          <div className="shrink-0">
+            <span className="bg-accent-muted text-accent flex items-center rounded-sm px-1.5 py-0.5 text-xs font-bold">
               @{activeAgent}
-              <span className="text-[10px]">▼</span>
-            </button>
-            {agentMenuOpen && (
-              <div className="dropdown-enter border-border bg-surface-2 absolute bottom-full left-0 z-50 mb-1 w-48 rounded-lg border py-1 shadow-xl">
-                <div className="border-hairline text-content-tertiary border-b px-3 py-1 text-xs">
-                  Switch Agent
-                </div>
-                {[
-                  { id: 'secretary', name: 'Secretary' },
-                  { id: 'organize', name: 'Organize' },
-                  { id: 'curator', name: 'Curator' },
-                ].map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => {
-                      onAgentChange?.(a.id);
-                      setAgentMenuOpen(false);
-                    }}
-                    className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
-                      activeAgent === a.id
-                        ? 'bg-accent-muted text-accent'
-                        : 'text-content-secondary hover:bg-surface-muted bg-surface-input'
-                    }`}
-                  >
-                    @{a.id}
-                  </button>
-                ))}
-              </div>
-            )}
+            </span>
           </div>
           {/* Project selector */}
           <div className="relative shrink-0">
@@ -460,26 +420,6 @@ export function ChatPanel({
                 <ChevronDown size={14} />
               </button>
             )}
-            <div className="relative">
-              <button
-                ref={historyBtnRef}
-                onClick={() => setHistoryOpen(!historyOpen)}
-                className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${btnBaseClass} ${hoverClass}`}
-                aria-label="Session history"
-              >
-                <Clock size={14} />
-              </button>
-              <SessionHistoryPanel
-                isOpen={historyOpen}
-                onClose={() => setHistoryOpen(false)}
-                history={history}
-                onReopen={(session) => {
-                  onReopenSession(session);
-                  setHistoryOpen(false);
-                }}
-                onDelete={(id) => onDeleteHistorySession(id)}
-              />
-            </div>
 
             <button
               onClick={handleCreateSession}

@@ -26,7 +26,7 @@ export async function dispatchToExternalAgent(
   }
 
   // ── Initialize Context Slot ──
-  const slot = await buildContextSlot(projectId, captainId, message, sessionId);
+  const slot = await buildContextSlot(projectId, captainId, message, sessionId, agentId);
   ctx.sessionManager.setContextSlot(childSessionId, slot);
 
   // ── Pull-mode (daemon): enqueue task for async execution ──
@@ -115,6 +115,7 @@ export async function buildContextSlot(
   captainId: string,
   taskDescription: string,
   sessionId: string,
+  agentType?: string,
 ): Promise<ContextSlot> {
   const ctx = getServerContext();
   const projectCtx = ctx.project.get(projectId);
@@ -143,6 +144,26 @@ export async function buildContextSlot(
     /* memory search is best-effort */
   }
 
+  // Inject skills bound to this agent
+  let boundSkills: string[] = [];
+  if (agentType && (ctx as any).agentBindingRepo) {
+    try {
+      boundSkills = (ctx as any).agentBindingRepo.getEnabledSkillsForAgent(agentType);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  // Inject MCP servers bound to this agent
+  let boundMcpServers: string[] = [];
+  if (agentType && (ctx as any).agentBindingRepo) {
+    try {
+      boundMcpServers = (ctx as any).agentBindingRepo.getEnabledMcpServersForAgent(agentType);
+    } catch {
+      /* best-effort */
+    }
+  }
+
   return {
     version: 0,
     project: {
@@ -159,6 +180,8 @@ export async function buildContextSlot(
       level: 'L1',
       maxRetries: 2,
     },
+    skills: boundSkills.length > 0 ? boundSkills : undefined,
+    mcpServers: boundMcpServers.length > 0 ? boundMcpServers : undefined,
   };
 }
 

@@ -27,6 +27,7 @@ import { runMigration027 } from './027_agent_squads.js';
 import { runMigration028 } from './028_decision_comments.js';
 import { runMigration029 } from './029_step_events.js';
 import { runMigration030 } from './030_task_kanban_fields.js';
+import { runMigration031 } from './031_agent_bindings.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -63,6 +64,7 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 28, name: '028_decision_comments', up: runMigration028 },
   { version: 29, name: '029_step_events', up: runMigration029 },
   { version: 30, name: '030_task_kanban_fields', up: runMigration030 },
+  { version: 31, name: '031_agent_bindings', up: runMigration031 },
 ];
 
 /**

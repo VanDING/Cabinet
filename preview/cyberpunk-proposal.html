@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk 主题方案</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Rajdhani', 'Inter', -apple-system, sans-serif; background: #0A0E1A; color: #E0E4EE; line-height: 1.5; padding: 40px; }
+  h1 { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; margin-bottom: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .subtitle { color: #8892A8; font-size: 0.875rem; margin-bottom: 28px; letter-spacing: 0.02em; }
+
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 1100px; margin: 0 auto; }
+  .panel { border-radius: 4px; overflow: hidden; }
+  .panel-header { padding: 10px 20px; font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .panel.current .panel-header { background: #1C2436; color: #00FFF0; }
+  .panel.proposed .panel-header { background: #1C2436; color: #00E5D5; }
+  .theme-preview { padding: 24px; }
+  .panel.current .theme-preview { background: #0D111C; }
+  .panel.proposed .theme-preview { background: #080C18; }
+
+  .mock-sidebar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .mock-nav-item { padding: 6px 14px; font-family: 'Rajdhani', sans-serif; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 2px; }
+  .panel.current .mock-nav-item { background: rgba(0,255,240,0.06); color: #8892A8; }
+  .panel.current .mock-nav-item.active { background: rgba(0,255,240,0.12); color: #00FFF0; box-shadow: 0 0 6px rgba(0,255,240,0.15); }
+  .panel.proposed .mock-nav-item { background: rgba(0,229,213,0.06); color: #8892A8; }
+  .panel.proposed .mock-nav-item.active { background: rgba(0,229,213,0.12); color: #00E5D5; box-shadow: 0 0 6px rgba(0,229,213,0.15); }
+
+  .mock-card { border-radius: 4px; padding: 16px; margin-bottom: 12px; }
+  .panel.current .mock-card { background: #131926; border: 1px solid #1E2A40; }
+  .panel.proposed .mock-card { background: #0F1422; border: 1px solid rgba(0,229,213,0.12); }
+  .card-title { font-size: 0.9375rem; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.02em; }
+  .card-desc { font-size: 0.8125rem; }
+  .panel.current .card-desc { color: #8892A8; }
+  .panel.proposed .card-desc { color: #7A84A0; }
+
+  .mock-button { display: inline-block; padding: 8px 20px; border-radius: 2px; font-family: 'Rajdhani', sans-serif; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 8px; margin-bottom: 8px; cursor: default; }
+  .panel.current .mock-button.primary { background: #00FFF0; color: #06080E; border: none; }
+  .panel.current .mock-button.secondary { background: transparent; color: #00FFF0; border: 1px solid rgba(0,255,240,0.3); }
+  .panel.proposed .mock-button.primary { background: #00E5D5; color: #06080E; border: none; box-shadow: 0 0 8px rgba(0,229,213,0.3); }
+  .panel.proposed .mock-button.secondary { background: transparent; color: #00E5D5; border: 1px solid rgba(0,229,213,0.3); }
+
+  .mock-tag { display: inline-block; padding: 3px 10px; border-radius: 2px; font-family: 'Rajdhani', sans-serif; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; margin-right: 6px; }
+  .panel.current .mock-tag { background: rgba(255,0,128,0.15); color: #FF0080; }
+  .panel.proposed .mock-tag { background: rgba(255,0,128,0.15); color: #FF0080; }
+
+  .token-table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 0.8125rem; max-width: 720px; margin-left: auto; margin-right: auto; }
+  .token-table th, .token-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(0,255,240,0.06); }
+  .token-table th { font-family: 'Orbitron', sans-serif; font-weight: 500; font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6478; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; border: 1px solid rgba(255,255,255,0.06); }
+  .tag { display: inline-block; font-size: 0.625rem; padding: 2px 8px; border-radius: 2px; margin-left: 8px; font-family: 'Rajdhani', sans-serif; font-weight: 600; letter-spacing: 0.05em; }
+  .tag.keep { background: rgba(255,255,255,0.06); color: #8892A8; }
+  .tag.tweak { background: rgba(0,229,213,0.2); color: #00E5D5; }
+
+  h2 { font-family: 'Orbitron', sans-serif; font-size: 0.85rem; margin: 36px 0 16px; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; color: #E0E4EE; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; max-width: 800px; margin: 0 auto; }
+  .card-note { background: #0F1422; border-radius: 4px; padding: 16px; font-size: 0.8125rem; border: 1px solid rgba(0,229,213,0.1); }
+  .card-note strong { color: #00E5D5; }
+  .footer { text-align: center; color: #5A6478; font-size: 0.8125rem; margin-top: 32px; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.03em; }
+</style>
+</head>
+<body>
+
+<h1>CYBERPUNK — v2 方案</h1>
+<p class="subtitle">让霓虹更沉稳，减少视觉噪音</p>
+
+<div class="comparison">
+  <div class="panel current">
+    <div class="panel-header">当前 Cyberpunk</div>
+    <div class="theme-preview">
+      <div class="mock-sidebar">
+        <div class="mock-nav-item">Network</div>
+        <div class="mock-nav-item active">Nodes</div>
+        <div class="mock-nav-item">Logs</div>
+      </div>
+      <div class="mock-card">
+        <div class="card-title">NODE_AI_CORE</div>
+        <div class="card-desc">Status: operational · 42 connections active</div>
+        <div style="margin-top: 12px;">
+          <span class="mock-button primary">Execute</span>
+          <span class="mock-button secondary">Scan</span>
+          <span class="mock-tag">DANGER</span>
+        </div>
+      </div>
+      <div class="mock-card">
+        <div class="card-title">DATA_STREAM</div>
+        <div class="card-desc">3 new signals detected</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel proposed">
+    <div class="panel-header">Cyberpunk v2</div>
+    <div class="theme-preview">
+      <div class="mock-sidebar">
+        <div class="mock-nav-item">Network</div>
+        <div class="mock-nav-item active">Nodes</div>
+        <div class="mock-nav-item">Logs</div>
+      </div>
+      <div class="mock-card">
+        <div class="card-title">NODE_AI_CORE</div>
+        <div class="card-desc">Status: operational · 42 connections active</div>
+        <div style="margin-top: 12px;">
+          <span class="mock-button primary">Execute</span>
+          <span class="mock-button secondary">Scan</span>
+          <span class="mock-tag">DANGER</span>
+        </div>
+      </div>
+      <div class="mock-card">
+        <div class="card-title">DATA_STREAM</div>
+        <div class="card-desc">3 new signals detected</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>改动一览</h2>
+
+<table class="token-table">
+  <tr><th style="width:28%">Token</th><th style="width:30%">当前</th><th style="width:30%">v2</th><th style="width:12%"></th></tr>
+  <tr>
+    <td><strong>accent</strong></td>
+    <td><span class="swatch" style="background:#00FFF0"></span>#00FFF0</td>
+    <td><span class="swatch" style="background:#00E5D5"></span><strong>#00E5D5</strong></td>
+    <td><span class="tag tweak">沉一点</span></td>
+  </tr>
+  <tr>
+    <td style="padding-left:24px; font-size:0.75rem; color:#5A6478;">accent-hover</td>
+    <td><span class="swatch" style="background:#00E6D8"></span>#00E6D8</td>
+    <td><span class="swatch" style="background:#00CCBE"></span><strong>#00CCBE</strong></td>
+    <td><span class="tag tweak">同步</span></td>
+  </tr>
+  <tr>
+    <td><strong>surface-primary</strong></td>
+    <td><span class="swatch" style="background:#0D111C"></span>#0D111C</td>
+    <td><span class="swatch" style="background:#080C18"></span><strong>#080C18</strong></td>
+    <td><span class="tag tweak">更深</span></td>
+  </tr>
+  <tr>
+    <td>surface-elevated</td>
+    <td><span class="swatch" style="background:#131926"></span>#131926</td>
+    <td><span class="swatch" style="background:#0F1422"></span><strong>#0F1422</strong></td>
+    <td><span class="tag tweak">更深</span></td>
+  </tr>
+  <tr>
+    <td>surface-muted</td>
+    <td><span class="swatch" style="background:#1C2436"></span>#1C2436</td>
+    <td><span class="swatch" style="background:#1C2436"></span>#1C2436</td>
+    <td><span class="tag keep">不变</span></td>
+  </tr>
+  <tr>
+    <td><strong>border-color</strong></td>
+    <td><span class="swatch" style="background:#1E2A40"></span>#1E2A40</td>
+    <td><span class="swatch" style="background:rgba(0,229,213,0.12)"></span><strong>rgba(0,229,213,0.12)</strong></td>
+    <td><span class="tag tweak">带霓虹调</span></td>
+  </tr>
+  <tr>
+    <td>content-primary</td>
+    <td>#E0E4EE</td>
+    <td>#E0E4EE</td>
+    <td><span class="tag keep">不变</span></td>
+  </tr>
+  <tr>
+    <td>body-bg</td>
+    <td>扫描线效果</td>
+    <td><strong>扫描线保留</strong></td>
+    <td><span class="tag keep">不变</span></td>
+  </tr>
+</table>
+
+<h2>设计思路</h2>
+
+<div class="grid-3">
+  <div class="card-note">
+    <strong>accent 校准</strong><br>
+    #00FFF0 太接近纯白，在暗色上会刺眼。降到 #00E5D5 仍然是非常亮的青蓝，但更接近真实霓虹管的颜色
+  </div>
+  <div class="card-note">
+    <strong>基底加深</strong><br>
+    从 #0D111C → #080C18，让深色基底和霓虹的对比更大，发光效果更突出
+  </div>
+  <div class="card-note">
+    <strong>边框带霓虹</strong><br>
+    卡片/组件的边框从纯灰蓝改为半透明霓虹色，增加 cyberpunk 的氛围感
+  </div>
+</div>
+
+<p class="footer">Neon city. Dark code. Cleaner signal.</p>
+
+</body>
+</html>

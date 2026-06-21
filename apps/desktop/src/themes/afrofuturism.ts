@@ -7,6 +7,8 @@ export const afrofuturism: Theme = {
     surface: {
       primary: '#2A2E45',
       elevated: '#A65E4A',
+      surface2: '#303044',
+      surface3: '#353048',
       overlay: 'rgba(30, 20, 40, 0.92)',
       input: '#3A2E40',
       muted: '#3E3040',

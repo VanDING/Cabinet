@@ -7,6 +7,8 @@ export const techno: Theme = {
     surface: {
       primary: '#1C1C1C',
       elevated: '#2A2A2A',
+      surface2: '#282828',
+      surface3: '#272727',
       overlay: 'rgba(0, 0, 0, 0.90)',
       input: '#333333',
       muted: '#252525',

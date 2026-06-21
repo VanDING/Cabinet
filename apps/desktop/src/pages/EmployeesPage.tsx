@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast.js';
 import { EmployeeEditModal } from '../components/EmployeeEditModal.js';
 import { ModalOverlay } from '../components/ModalOverlay.js';
 import { AgentBadge } from '../components/AgentBadge.js';
+import { AgentMarketContent } from './AgentMarketPage.js';
 
 interface EmployeeItem {
   id: string;
@@ -31,15 +32,15 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
 }
 
 type KindFilter = 'all' | 'ai' | 'human';
-type SourceFilter = 'all' | 'builtin' | 'custom' | 'external_cli' | 'external_a2a';
+type EmployeesView = 'employees' | 'market';
 
 export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | null }) {
   const { addToast } = useToast();
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [viewMode, setViewMode] = useState<EmployeesView>('employees');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -78,9 +79,6 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
     if (kindFilter !== 'all') {
       result = result.filter((e) => e.kind === kindFilter);
     }
-    if (sourceFilter !== 'all') {
-      result = result.filter((e) => e.source === sourceFilter);
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -91,7 +89,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       );
     }
     return result;
-  }, [employees, kindFilter, sourceFilter, searchQuery]);
+  }, [employees, kindFilter, searchQuery]);
 
   const handleScan = async () => {
     setScanning(true);
@@ -283,117 +281,93 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* View toggle */}
+      <div className="mb-4 flex items-center gap-2">
         <button
-          onClick={() => {
-            setKindFilter('all');
-            setSourceFilter('all');
-          }}
-          className={filterButtonClass(kindFilter === 'all' && sourceFilter === 'all')}
+          onClick={() => setViewMode('employees')}
+          className={filterButtonClass(viewMode === 'employees')}
         >
-          全部
+          Employees
         </button>
         <button
-          onClick={() => {
-            setKindFilter('ai');
-            setSourceFilter('all');
-          }}
-          className={filterButtonClass(kindFilter === 'ai')}
+          onClick={() => setViewMode('market')}
+          className={filterButtonClass(viewMode === 'market')}
         >
-          AI
+          Agent Market
         </button>
-        <button
-          onClick={() => {
-            setKindFilter('human');
-            setSourceFilter('all');
-          }}
-          className={filterButtonClass(kindFilter === 'human')}
-        >
-          Human
-        </button>
-        <div className="bg-border mx-1 h-4 w-px" />
-        <button
-          onClick={() => {
-            setKindFilter('all');
-            setSourceFilter('builtin');
-          }}
-          className={filterButtonClass(sourceFilter === 'builtin')}
-        >
-          内置
-        </button>
-        <button
-          onClick={() => {
-            setKindFilter('all');
-            setSourceFilter('custom');
-          }}
-          className={filterButtonClass(sourceFilter === 'custom')}
-        >
-          自定义
-        </button>
-        <button
-          onClick={() => {
-            setKindFilter('all');
-            setSourceFilter('external_cli');
-          }}
-          className={filterButtonClass(sourceFilter === 'external_cli')}
-        >
-          CLI
-        </button>
-        <button
-          onClick={() => {
-            setKindFilter('all');
-            setSourceFilter('external_a2a');
-          }}
-          className={filterButtonClass(sourceFilter === 'external_a2a')}
-        >
-          A2A
-        </button>
-        <div className="ml-auto flex items-center gap-2">
-          <Search size={14} className="text-content-tertiary" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search..."
-            className="border-border bg-surface-primary text-content-primary placeholder:text-content-tertiary focus:ring-accent w-40 rounded-lg border px-3 py-1 text-xs focus:ring-1 focus:outline-hidden"
-          />
-        </div>
       </div>
 
-      <div className="text-content-tertiary mb-4 text-sm">{filtered.length} team members</div>
+      {viewMode === 'market' ? (
+        <AgentMarketContent embedded />
+      ) : (
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setKindFilter('all')}
+              className={filterButtonClass(kindFilter === 'all')}
+            >
+              全部
+            </button>
+            <button
+              onClick={() => setKindFilter('ai')}
+              className={filterButtonClass(kindFilter === 'ai')}
+            >
+              AI
+            </button>
+            <button
+              onClick={() => setKindFilter('human')}
+              className={filterButtonClass(kindFilter === 'human')}
+            >
+              Human
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <Search size={14} className="text-content-tertiary" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="border-border bg-surface-primary text-content-primary placeholder:text-content-tertiary focus:ring-accent w-40 rounded-lg border px-3 py-1 text-xs focus:ring-1 focus:outline-hidden"
+              />
+            </div>
+          </div>
 
-      {loading && employees.length === 0 && (
-        <div className="flex h-64 items-center justify-center">
-          <div className="border-accent h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
-        </div>
+          <div className="text-content-tertiary mb-4 text-sm">{filtered.length} team members</div>
+
+          {loading && employees.length === 0 && (
+            <div className="flex h-64 items-center justify-center">
+              <div className="border-accent h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
+            </div>
+          )}
+
+          {filtered.length === 0 && !loading && (
+            <div className="border-border rounded-lg border border-dashed p-8 text-center">
+              <p className="text-content-tertiary">No employees match the filter.</p>
+            </div>
+          )}
+
+          {/* Card grid */}
+          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((emp) => (
+              <AgentBadge
+                key={emp.id}
+                name={emp.name}
+                model={emp.model}
+                kind={emp.kind}
+                source={emp.source}
+                status={emp.status}
+                expertise={emp.expertise}
+                permissionLevel={emp.permissionLevel}
+                onClick={() => setDetailEmployee(emp)}
+                onConfigure={() => handleOpenEdit(emp)}
+                onTest={() => handleTest(emp.id, emp.name)}
+                onDelete={() => handleDelete(emp.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
-
-      {filtered.length === 0 && !loading && (
-        <div className="border-border rounded-lg border border-dashed p-8 text-center">
-          <p className="text-content-tertiary">No employees match the filter.</p>
-        </div>
-      )}
-
-      {/* Card grid */}
-      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((emp) => (
-          <AgentBadge
-            key={emp.id}
-            name={emp.name}
-            model={emp.model}
-            kind={emp.kind}
-            source={emp.source}
-            status={emp.status}
-            expertise={emp.expertise}
-            permissionLevel={emp.permissionLevel}
-            onClick={() => setDetailEmployee(emp)}
-            onConfigure={() => handleOpenEdit(emp)}
-            onTest={() => handleTest(emp.id, emp.name)}
-            onDelete={() => handleDelete(emp.id)}
-          />
-        ))}
-      </div>
 
       {/* Detail Modal */}
       {detailEmployee && (

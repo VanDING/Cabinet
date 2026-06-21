@@ -14,9 +14,10 @@ import {
   type AttachedFile,
   type Session,
 } from '../hooks/useSessions';
+import type { AgentInfo } from '../hooks/useAgents.js';
 import { useProject } from './ProjectContext';
 import { readSSEStream } from '../utils/streaming.js';
-import { apiFetch, authJsonHeaders } from '../utils/api.js';
+import { apiFetch, authJsonHeaders, authHeaders } from '../utils/api.js';
 import type { MeetingData } from '../hooks/useSessions';
 import type { SubAgentActivity } from '@cabinet/ui';
 import type { AgentEvent } from '../types/agent-events';
@@ -54,6 +55,9 @@ interface ChatContextValue {
   setUIMode: (mode: UIMode) => void;
   activeAgent: string;
   setActiveAgent: (v: string) => void;
+  agents: AgentInfo[];
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
   isSessionActive: (id: string) => boolean;
   inputTarget: InputTarget;
   setInputTarget: (target: InputTarget) => void;
@@ -103,6 +107,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { addToast } = useToast();
   const {
     sessions,
+    setSessions,
     activeSession,
     history,
     createSession,
@@ -140,9 +145,39 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const setChatMode = useCallback((v: boolean) => {
     setUIMode(v ? 'chat' : 'work');
   }, []);
-  const [activeAgent, setActiveAgent] = useState('secretary');
+  const [activeAgent, setActiveAgentRaw] = useState('secretary');
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<SecretaryNotification[]>([]);
   const [orbMood, setOrbMood] = useState<OrbMood>('idle');
+
+  // Fetch agents on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/employees', { headers: authHeaders() });
+        const data = await res.json();
+        if (!cancelled) {
+          const all = data.employees ?? [];
+          setAgents(all.filter((e: { kind: string }) => e.kind === 'ai'));
+        }
+      } catch {
+        if (!cancelled) setAgents([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Wrap setActiveAgent to stamp agentId on current session
+  const setActiveAgent = useCallback((agentId: string) => {
+    setActiveAgentRaw(agentId);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSession?.id ? { ...s, agentId } : s,
+      ),
+    );
+  }, [activeSession, setSessions]);
 
   // Persist uiMode
   useEffect(() => {
@@ -189,10 +224,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const handleCreateSession = useCallback((): string => {
-    const id = createSession({ projectId: activeProjectId ?? undefined });
+    const id = createSession({ projectId: activeProjectId ?? undefined, agentId: activeAgent });
     setChatMode(true);
     return id;
-  }, [createSession, activeProjectId]);
+  }, [createSession, activeProjectId, activeAgent]);
 
   const handleStop = useCallback((sessionId: string) => {
     abortRef.current.get(sessionId)?.abort();
@@ -606,6 +641,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setUIMode,
       activeAgent,
       setActiveAgent,
+      agents,
+      sidebarOpen,
+      setSidebarOpen,
       inputTarget,
       setInputTarget,
       isSessionActive,
@@ -641,6 +679,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       chatMode,
       uiMode,
       activeAgent,
+      agents,
+      sidebarOpen,
       inputTarget,
       isSessionActive,
       handleSend,

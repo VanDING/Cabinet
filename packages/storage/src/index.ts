@@ -99,6 +99,11 @@ export {
   type WorkspaceRow,
 } from './repositories/agent-daemon-repo.js';
 export {
+  AgentBindingRepository,
+  type AgentMcpBindingRow,
+  type AgentSkillBindingRow,
+} from './repositories/agent-binding-repo.js';
+export {
   SYSTEM_KNOWLEDGE_BASE,
   syncSystemKnowledge,
   type SystemKnowledgeBaseEntry,

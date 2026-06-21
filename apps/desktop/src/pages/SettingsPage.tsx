@@ -4,16 +4,14 @@ import {
   ApiKeysTab,
   OthersTab,
   ThemeTab,
-  ExternalAgentsTab,
   MonitorTab,
   PisTab,
 } from './settings/index.js';
 
-type SettingsTab = 'api' | 'external' | 'theme' | 'others' | 'monitor' | 'pis';
+type SettingsTab = 'api' | 'theme' | 'others' | 'monitor' | 'pis';
 
 const tabLabels: Record<SettingsTab, string> = {
   api: 'API Keys',
-  external: 'External Agents',
   theme: 'Theme',
   others: 'Others',
   monitor: 'Monitor',
@@ -41,7 +39,6 @@ export function SettingsPage() {
 
       {/* Tab Content */}
       {activeTab === 'api' && <ApiKeysTab />}
-      {activeTab === 'external' && <ExternalAgentsTab />}
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
       {activeTab === 'monitor' && <MonitorTab />}

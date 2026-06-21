@@ -348,7 +348,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(ServerProcess(Arc::new(Mutex::new(None))))
-        .manage(PtyManager::new())
+        .manage(PtyManager::default())
         .setup(|app| {
             let child = start_server();
             let server_running = child.is_some();
@@ -463,7 +463,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet, minimize, maximize, close, is_maximized, open_devtools,
-            pty::pty_spawn, pty::pty_write, pty::pty_resize, pty::pty_kill, pty::pty_read
+            pty::pty_spawn, pty::pty_write, pty::pty_resize, pty::pty_kill, pty::pty_list
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cabinet");

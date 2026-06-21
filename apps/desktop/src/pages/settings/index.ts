@@ -7,6 +7,5 @@ export { RulesTab } from './RulesTab.js';
 export { McpTab } from './McpTab.js';
 export { OthersTab } from './OthersTab.js';
 export { ThemeTab } from './ThemeTab.js';
-export { ExternalAgentsTab } from './ExternalAgentsTab.js';
 export { MonitorTab } from './MonitorTab.js';
 export { PisTab } from './PisTab.js';

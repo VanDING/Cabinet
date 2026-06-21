@@ -220,3 +220,34 @@ export {
   type ProcessIdentityScore,
   type PISFactor,
 } from './process-identity-score.js';
+
+// Agent discovery & config scanning
+export {
+  AGENT_DEFINITIONS,
+  getAgentDefinition,
+  getAgentDefinitionByCommand,
+  getCurrentPlatform,
+  type AgentDefinition,
+  type InstallMethod,
+} from './discovery/agent-definitions.js';
+export {
+  scanAgentConfig,
+  scanAllAgentConfigs,
+  type ScannedConfig,
+} from './discovery/config-scanner.js';
+export {
+  detectAgent,
+  scanAllAgents,
+  type DetectedAgent,
+} from './discovery/index.js';
+
+// Install system
+export {
+  getInstallMethods,
+  startInstall,
+  cancelInstall,
+  getInstallTask,
+  getAvailableAgents,
+  type InstallProgress,
+  type InstallTask,
+} from './install/installer.js';

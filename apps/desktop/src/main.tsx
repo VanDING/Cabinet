@@ -11,6 +11,7 @@ import { LayoutProvider } from './contexts/LayoutContext';
 import { EventBusProvider } from './contexts/EventBusContext';
 import { App } from './App';
 import './index.css';
+import '@xterm/xterm/css/xterm.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

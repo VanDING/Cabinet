@@ -21,6 +21,7 @@ import type {
   AgentTaskQueueRepository,
   AgentDaemonRepository,
   AutopilotRepository,
+  AgentBindingRepository,
   BackupManager,
   MetricsCollector,
 } from '@cabinet/storage';
@@ -82,6 +83,7 @@ export interface ServerContext {
   costHistoryRepo: CostHistoryRepository;
   sessionMetricsRepo: SessionMetricsRepository;
   settingsRepo: SettingsRepository;
+  agentBindingRepo: AgentBindingRepository;
   systemKnowledgeRepo: SystemKnowledgeRepository;
   routeFeedbackRepo: RouteFeedbackRepository;
   telemetryRepo: TelemetryRepository;

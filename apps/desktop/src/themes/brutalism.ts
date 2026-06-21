@@ -7,6 +7,8 @@ export const brutalism: Theme = {
     surface: {
       primary: '#FFFFFF',
       elevated: '#F0F0F0',
+      surface2: '#EAEAEA',
+      surface3: '#E5E5E5',
       overlay: '#FFFFFF',
       input: '#FFFFFF',
       muted: '#E0E0E0',

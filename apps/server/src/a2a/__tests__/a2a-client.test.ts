@@ -91,13 +91,20 @@ describe('A2AClient', () => {
   });
 
   describe('sendMessage', () => {
-    it('sends a POST to the agent message endpoint', async () => {
+    it('sends a task to the A2A v1.0 endpoint and polls for completion', async () => {
       const logger = createMockLogger();
       const client = new A2AClient(logger);
+      const taskIdPattern = /\/a2a\/tasks\/(.+)$/;
 
+      // First call: submit task — returns accepted
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ response: 'Hello from agent!' }),
+        json: () => Promise.resolve({ status: 'accepted' }),
+      });
+      // Second call: poll status — returns completed with output
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: 'completed', output: 'Hello from agent!' }),
       });
 
       const result = await client.sendMessage('https://agent.example.com', {
@@ -106,45 +113,27 @@ describe('A2AClient', () => {
       });
 
       expect(result).toBe('Hello from agent!');
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://agent.example.com/api/a2a/message',
-        expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        }),
+      // First call should go to /a2a/tasks
+      expect(mockFetch.mock.calls[0][0]).toMatch(/https:\/\/agent\.example\.com\/a2a\/tasks$/);
+      expect(mockFetch.mock.calls[0][1]?.method).toBe('POST');
+      // Second call should poll /a2a/tasks/{taskId}
+      expect(mockFetch.mock.calls[1][0]).toMatch(
+        /https:\/\/agent\.example\.com\/a2a\/tasks\/task_\d+$/,
       );
     });
 
-    it('falls back to content field if response is missing', async () => {
+    it('throws on rejected task', async () => {
       const logger = createMockLogger();
       const client = new A2AClient(logger);
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ content: 'Content field used' }),
+        json: () => Promise.resolve({ status: 'rejected', error: 'too busy' }),
       });
 
-      const result = await client.sendMessage('https://agent.example.com', {
-        role: 'user',
-        content: 'Hi',
-      });
-      expect(result).toBe('Content field used');
-    });
-
-    it('falls back to JSON.stringify if no response or content', async () => {
-      const logger = createMockLogger();
-      const client = new A2AClient(logger);
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ something: 'else' }),
-      });
-
-      const result = await client.sendMessage('https://agent.example.com', {
-        role: 'user',
-        content: 'Hi',
-      });
-      expect(result).toBe(JSON.stringify({ something: 'else' }));
+      await expect(
+        client.sendMessage('https://agent.example.com', { role: 'user', content: 'Hi' }),
+      ).rejects.toThrow('A2A task rejected: too busy');
     });
 
     it('throws on non-ok response', async () => {
