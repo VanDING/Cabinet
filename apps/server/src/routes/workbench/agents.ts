@@ -47,6 +47,26 @@ workbenchAgentsRouter.get('/:agentId', (c) => {
   return c.json({ agent: { ...row, external, mcpBindings, skillBindings } });
 });
 
+workbenchAgentsRouter.get('/:agentId/env', (c) => {
+  const agentId = c.req.param('agentId');
+  const { agentRoleRepo, apiKeyRepo, agentBindingRepo, mcpServerRepo } = getServerContext();
+  const row = agentRoleRepo.findByName(agentId);
+  if (!row) return c.json({ error: 'Not found' }, 404);
+  const external = row.external_config ? JSON.parse(row.external_config) : null;
+  const env: Record<string, string> = {};
+  const boundMcp = agentBindingRepo.getMcpBindingsForAgent(agentId).filter((b) => b.enabled);
+  for (const mcpServer of mcpServerRepo
+    .findAll()
+    .filter((s) => s.enabled && boundMcp.some((b) => b.mcp_server_name === s.name))) {
+    env[`MCP_CONFIG_${mcpServer.name.toUpperCase()}`] = mcpServer.command ?? '';
+  }
+  for (const key of apiKeyRepo.findAll()) {
+    const upper = key.provider.toUpperCase();
+    env[`${upper}_API_KEY`] = key.encrypted_key;
+  }
+  return c.json({ env });
+});
+
 workbenchAgentsRouter.post('/:agentId/project', async (c) => {
   const agentId = c.req.param('agentId');
   const { agentRoleRepo, apiKeyRepo, mcpServerRepo, agentBindingRepo, skillRepo } =

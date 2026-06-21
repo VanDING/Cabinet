@@ -48,7 +48,12 @@ interface Props {
   activeSessionId: string | null;
   terminalOpen: boolean;
   onToggleTerminal: () => void;
-  activeExternalAgent: { command: string; args: string[]; env?: Record<string, string> } | null;
+  activeExternalAgent: {
+    command: string;
+    args: string[];
+    env?: Record<string, string>;
+    dispatchProtocol?: string;
+  } | null;
 }
 
 function escapeHtml(text: string): string {
@@ -269,13 +274,15 @@ export const ChatView = memo(function ChatView({
   useEffect(() => {
     if (terminalOpen && activeTerminalId === null && activeExternalAgent) {
       const id = `term_${Date.now()}`;
-      setTerminalTabs([{
-        id,
-        label: 'Shell',
-        command: activeExternalAgent.command,
-        args: activeExternalAgent.args,
-        env: activeExternalAgent.env,
-      }]);
+      setTerminalTabs([
+        {
+          id,
+          label: 'Shell',
+          command: activeExternalAgent.command,
+          args: activeExternalAgent.args,
+          env: activeExternalAgent.env,
+        },
+      ]);
       setActiveTerminalId(id);
     }
     if (!terminalOpen) {
@@ -319,6 +326,14 @@ export const ChatView = memo(function ChatView({
         sessionTitle={sessionTitle}
         onBack={onBack}
       />
+      {activeExternalAgent?.dispatchProtocol === 'terminal-only' && (
+        <div className="bg-surface-muted border-b border-[var(--border-color)] px-4 py-2 text-sm">
+          This agent doesn't support headless chat.
+          <button onClick={onToggleTerminal} className="text-accent ml-2 underline">
+            Open Terminal
+          </button>
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && (
           <SessionSidebar
@@ -341,117 +356,117 @@ export const ChatView = memo(function ChatView({
             }
           }}
         >
-      {attachedFiles.length > 0 && (
-        <div className="border-border bg-surface-elevated flex shrink-0 flex-wrap items-center gap-1.5 border-b px-5 py-1.5">
-          <span className="text-content-tertiary text-xs">{'Attached:'}</span>
-          {attachedFiles.map((f) => (
-            <span
-              key={f.id}
-              className="bg-accent-muted text-accent rounded-sm px-1.5 py-0.5 text-xs"
-            >
-              {f.type === 'project' ? f.path : f.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4 pb-48">
-        {messages.length === 0 && !isProcessing && (
-          <div className="flex h-full flex-col items-center justify-center gap-4">
-            <div className="text-content-tertiary text-center">
-              <p className="text-base">{'Start a conversation'}</p>
-              <p className="mt-1 text-xs">
-                {'Ask a question, analyze a decision, or design a workflow.'}
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {[
-                'Help me analyze a decision',
-                'Design a workflow for me',
-                'Check project status',
-                'What can you help me with?',
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => {
-                    // Dispatch a custom event that ChatPanel listens for
-                    window.dispatchEvent(
-                      new CustomEvent('quick-suggestion', { detail: suggestion }),
-                    );
-                  }}
-                  className="border-border text-content-tertiary hover:border-accent hover:bg-accent-muted hover:text-accent:border-accent:bg-accent-hover/20:text-accent rounded-full border px-3 py-1.5 text-xs transition-colors"
+          {attachedFiles.length > 0 && (
+            <div className="border-border bg-surface-elevated flex shrink-0 flex-wrap items-center gap-1.5 border-b px-5 py-1.5">
+              <span className="text-content-tertiary text-xs">{'Attached:'}</span>
+              {attachedFiles.map((f) => (
+                <span
+                  key={f.id}
+                  className="bg-accent-muted text-accent rounded-sm px-1.5 py-0.5 text-xs"
                 >
-                  {suggestion}
-                </button>
+                  {f.type === 'project' ? f.path : f.name}
+                </span>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {messages.map((msg) => (
-          <MessageRow
-            key={msg.id}
-            msg={msg}
-            isProcessing={isProcessing}
-            onEditMessage={onEditMessage}
-            onRegenerate={onRegenerate}
-            onForkMessage={onForkMessage}
-            onContinue={onContinue}
-          />
-        ))}
+          <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto px-5 py-4 pb-48">
+            {messages.length === 0 && !isProcessing && (
+              <div className="flex h-full flex-col items-center justify-center gap-4">
+                <div className="text-content-tertiary text-center">
+                  <p className="text-base">{'Start a conversation'}</p>
+                  <p className="mt-1 text-xs">
+                    {'Ask a question, analyze a decision, or design a workflow.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {[
+                    'Help me analyze a decision',
+                    'Design a workflow for me',
+                    'Check project status',
+                    'What can you help me with?',
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => {
+                        // Dispatch a custom event that ChatPanel listens for
+                        window.dispatchEvent(
+                          new CustomEvent('quick-suggestion', { detail: suggestion }),
+                        );
+                      }}
+                      className="border-border text-content-tertiary hover:border-accent hover:bg-accent-muted hover:text-accent:border-accent:bg-accent-hover/20:text-accent rounded-full border px-3 py-1.5 text-xs transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {childSessions && childSessions.length > 0 && (
-          <div className="space-y-2">
-            {childSessions.map((child) => (
-              <SubAgentWindow
-                key={child.id}
-                sessionId={child.id}
-                agentType={child.agentType ?? 'unknown'}
-                status={
-                  (child.status ?? 'active') as
-                    | 'active'
-                    | 'waiting_for_user'
-                    | 'completed'
-                    | 'error'
-                }
-                events={(child.events ?? []) as import('../types/agent-events').AgentEvent[]}
-                onClick={() => onSubAgentClick?.(child.id)}
-                onApprove={
-                  child.status === 'waiting_for_user'
-                    ? () => onSubAgentApprove?.(child.id)
-                    : undefined
-                }
+            {messages.map((msg) => (
+              <MessageRow
+                key={msg.id}
+                msg={msg}
+                isProcessing={isProcessing}
+                onEditMessage={onEditMessage}
+                onRegenerate={onRegenerate}
+                onForkMessage={onForkMessage}
+                onContinue={onContinue}
               />
             ))}
-          </div>
-        )}
 
-        {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <span className="text-content-tertiary text-sm italic">
-                <DecryptedText text={'Thinking...'} speed={50} maxIterations={8} />
-              </span>
-            </div>
-          </div>
-        )}
+            {childSessions && childSessions.length > 0 && (
+              <div className="space-y-2">
+                {childSessions.map((child) => (
+                  <SubAgentWindow
+                    key={child.id}
+                    sessionId={child.id}
+                    agentType={child.agentType ?? 'unknown'}
+                    status={
+                      (child.status ?? 'active') as
+                        | 'active'
+                        | 'waiting_for_user'
+                        | 'completed'
+                        | 'error'
+                    }
+                    events={(child.events ?? []) as import('../types/agent-events').AgentEvent[]}
+                    onClick={() => onSubAgentClick?.(child.id)}
+                    onApprove={
+                      child.status === 'waiting_for_user'
+                        ? () => onSubAgentApprove?.(child.id)
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            )}
 
-        {showScrollButton && (
-          <button
-            onClick={() => {
-              const el = scrollRef.current;
-              if (el) {
-                el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-                isNearBottomRef.current = true;
-                setShowScrollButton(false);
-              }
-            }}
-            className="bg-accent text-content-inverse hover:bg-accent-hover sticky bottom-4 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs shadow-lg"
-          >
-            New messages ↓
-          </button>
-        )}
-      </div>
+            {isProcessing && (!messages.length || !messages[messages.length - 1]?.isStreaming) && (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <span className="text-content-tertiary text-sm italic">
+                    <DecryptedText text={'Thinking...'} speed={50} maxIterations={8} />
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {showScrollButton && (
+              <button
+                onClick={() => {
+                  const el = scrollRef.current;
+                  if (el) {
+                    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                    isNearBottomRef.current = true;
+                    setShowScrollButton(false);
+                  }
+                }}
+                className="bg-accent text-content-inverse hover:bg-accent-hover sticky bottom-4 left-1/2 -translate-x-1/2 rounded-full px-3 py-1.5 text-xs shadow-lg"
+              >
+                New messages ↓
+              </button>
+            )}
+          </div>
         </div>
         {terminalOpen && (
           <TerminalPanel

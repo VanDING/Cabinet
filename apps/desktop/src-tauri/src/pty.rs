@@ -56,6 +56,9 @@ pub fn pty_spawn(
 
     let mut cmd = CommandBuilder::new(&args.command);
     cmd.args(&args.args);
+    for (k, v) in std::env::vars() {
+        cmd.env(k, v);
+    }
     for (k, v) in &args.env {
         cmd.env(k, v);
     }

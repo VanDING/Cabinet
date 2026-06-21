@@ -134,14 +134,42 @@ export function App() {
   const [terminalOpen, setTerminalOpen] = useState(false);
 
   // Resolve the active agent's external CLI command (if any) for terminal spawning
+  const [resolvedEnv, setResolvedEnv] = useState<Record<string, string> | undefined>(undefined);
   const activeExternalAgent = useMemo(() => {
     const agent = agents.find((a) => a.id === activeAgent);
     if (!agent || agent.source !== 'external_cli') return null;
     const ext = agent.external;
     if (!ext?.command)
-      return { command: agent.id.replace('external_cli:', ''), args: [], env: undefined };
-    return { command: ext.command, args: ext.args ?? [], env: ext.env };
-  }, [agents, activeAgent]);
+      return {
+        command: agent.id.replace('external_cli:', ''),
+        args: [],
+        env: undefined,
+        dispatchProtocol: undefined,
+      };
+    return {
+      command: ext.command,
+      args: ext.args ?? [],
+      env: resolvedEnv ?? ext.env,
+      dispatchProtocol: ext.dispatchProtocol,
+    };
+  }, [agents, activeAgent, resolvedEnv]);
+
+  useEffect(() => {
+    if (!activeAgent || !activeAgent.startsWith('external_cli:')) {
+      setResolvedEnv(undefined);
+      return;
+    }
+    const controller = new AbortController();
+    apiFetch(`/api/workbench/agents/${encodeURIComponent(activeAgent)}/env`, {
+      signal: controller.signal,
+    })
+      .then((r) => r.json())
+      .then((data) => setResolvedEnv((data as { env: Record<string, string> }).env))
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => controller.abort();
+  }, [activeAgent]);
 
   const {
     activePage,
