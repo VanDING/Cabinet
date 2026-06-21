@@ -43,6 +43,7 @@ export {
 export { AuditLogRepository, type AuditLogRow } from './repositories/audit-log-repo.js';
 export { ApiKeyRepository, type ApiKeyRow } from './repositories/api-key-repo.js';
 export { AgentRoleRepository, type AgentRoleRow } from './repositories/agent-role-repo.js';
+export { McpServerRepository, type McpServerRow } from './repositories/mcp-server-repo.js';
 export { SkillRepository, type SkillRow } from './repositories/skill-repo.js';
 export { EmployeeRepository, type EmployeeRow } from './repositories/employee-repo.js';
 export {

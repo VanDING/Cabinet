@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { getCurrentPlatform, type InstallMethod, type AgentDefinition, getAgentDefinition, AGENT_DEFINITIONS } from '../discovery/agent-definitions.js';
+import { RECIPES } from '../discovery/scanner-recipe.js';
+import type { InstallMethod } from '@cabinet/types';
 
 const isWindows = process.platform === 'win32';
 
@@ -20,11 +21,18 @@ export interface InstallTask {
 
 const activeTasks = new Map<string, InstallTask>();
 
+function currentPlatform(): 'win32' | 'darwin' | 'linux' {
+  return process.platform === 'win32'
+    ? 'win32'
+    : process.platform === 'darwin'
+      ? 'darwin'
+      : 'linux';
+}
+
 export function getInstallMethods(agentId: string): InstallMethod[] | null {
-  const def = getAgentDefinition(agentId);
-  if (!def) return null;
-  const platform = getCurrentPlatform();
-  return def.install[platform] ?? [];
+  const recipe = RECIPES.find((r) => r.id === agentId || r.command === agentId);
+  if (!recipe) return null;
+  return recipe.install[currentPlatform()] ?? [];
 }
 
 export function startInstall(
@@ -98,10 +106,15 @@ export function getInstallTask(taskId: string): InstallTask | undefined {
   return activeTasks.get(taskId);
 }
 
-export function getAvailableAgents(): Array<{ definition: AgentDefinition; methods: InstallMethod[] }> {
-  const platform = getCurrentPlatform();
-  return AGENT_DEFINITIONS.map((def) => ({
-    definition: def,
-    methods: def.install[platform] ?? [],
+export function getAvailableAgents(): Array<{
+  id: string;
+  name: string;
+  methods: InstallMethod[];
+}> {
+  const platform = currentPlatform();
+  return RECIPES.map((r) => ({
+    id: r.id,
+    name: r.name,
+    methods: r.install[platform] ?? [],
   }));
 }

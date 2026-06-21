@@ -475,12 +475,20 @@ export class AgentRoleRegistry {
     baseUrl?: string;
     timeoutMs?: number;
     maxRetries?: number;
+    dispatchProtocol?: 'acp' | 'headless' | 'terminal-only';
+    nativeConfigPaths?: { win32: string[]; darwin: string[]; linux: string[] };
+    sdkPackage?: string;
   }): boolean {
     const existing = this.customRoles.get(params.name);
     if (existing) {
       const external =
         params.protocol === 'cli'
-          ? buildCliExternalConfig(params.command!, params.args)
+          ? buildCliExternalConfig(params.command!, {
+              args: params.args,
+              dispatchProtocol: params.dispatchProtocol,
+              nativeConfigPaths: params.nativeConfigPaths,
+              sdkPackage: params.sdkPackage,
+            })
           : buildA2AExternalConfig(params.baseUrl!);
       this.customRoles.set(params.name, { ...existing, external });
       return true;
@@ -488,7 +496,12 @@ export class AgentRoleRegistry {
     const type = params.protocol === 'cli' ? 'external_cli' : 'external_a2a';
     const external =
       params.protocol === 'cli'
-        ? buildCliExternalConfig(params.command!, params.args)
+        ? buildCliExternalConfig(params.command!, {
+            args: params.args,
+            dispatchProtocol: params.dispatchProtocol,
+            nativeConfigPaths: params.nativeConfigPaths,
+            sdkPackage: params.sdkPackage,
+          })
         : buildA2AExternalConfig(params.baseUrl!);
     this.register({
       type,

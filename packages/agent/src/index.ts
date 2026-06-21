@@ -230,16 +230,11 @@ export {
   type AgentDefinition,
   type InstallMethod,
 } from './discovery/agent-definitions.js';
-export {
-  scanAgentConfig,
-  scanAllAgentConfigs,
-  type ScannedConfig,
-} from './discovery/config-scanner.js';
-export {
-  detectAgent,
-  scanAllAgents,
-  type DetectedAgent,
-} from './discovery/index.js';
+// New scanner + recipes
+export { Scanner } from './discovery/scanner.js';
+export { RECIPES } from './discovery/scanner-recipe.js';
+export { getProjector, registerProjector } from './projector/index.js';
+export { ClaudeCodeProjector } from './projector/claude-code.js';
 
 // Install system
 export {

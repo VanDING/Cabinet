@@ -1,4 +1,4 @@
-import { AgentRoleRegistry } from '@cabinet/agent';
+import { AgentRoleRegistry, Scanner } from '@cabinet/agent';
 import type { ModelTier } from '@cabinet/gateway';
 import type { ExternalAgentConfig } from '@cabinet/types';
 import type { BuildState } from './build-state.js';
@@ -46,6 +46,12 @@ export function initAgentRegistry(state: BuildState): void {
   } catch (e) {
     state.logger?.warn('Failed to load custom agents from DB', { error: String(e) });
   }
+
+  // Run scanner to discover newly installed CLI agents (non-blocking)
+  const scanner = new Scanner(agentRegistry, agentRoleRepo);
+  scanner
+    .scanAll()
+    .catch((e) => state.logger?.warn('Scanner discovery failed', { error: String(e) }));
 
   state.agentRegistry = agentRegistry;
 }

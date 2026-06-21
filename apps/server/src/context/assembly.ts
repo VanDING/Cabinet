@@ -103,6 +103,8 @@ export function assembleContext(state: BuildState): ServerContext {
     triggerScheduler: state.triggerScheduler ?? null,
     a2aClient: state.a2aClient!,
     blackboard: state.blackboard,
+    agentBindingRepo: state.agentBindingRepo!,
+    mcpServerRepo: state.mcpServerRepo!,
     shutdown: state.shutdown!,
   };
 

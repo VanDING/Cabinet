@@ -6,8 +6,8 @@ import {
   cancelInstall,
   getInstallTask,
   getAvailableAgents,
-  AGENT_DEFINITIONS,
-  scanAllAgents,
+  RECIPES,
+  Scanner,
   type InstallMethod,
 } from '@cabinet/agent';
 
@@ -16,31 +16,34 @@ export const installRouter = new Hono();
 installRouter.get('/market', (c) => {
   const available = getAvailableAgents();
   return c.json({
-    agents: available.map(({ definition, methods }) => ({
-      id: definition.id,
-      name: definition.name,
-      description: definition.description,
-      command: definition.command,
-      methods: methods.map((m) => ({
-        type: m.type,
-        label: m.label,
-        command: m.command,
-        checkCommand: m.checkCommand,
-        elevated: m.elevated ?? false,
-        url: m.url,
-      })),
-    })),
+    agents: available.map((a) => {
+      const recipe = RECIPES.find((r) => r.id === a.id);
+      return {
+        id: a.id,
+        name: a.name,
+        description: recipe?.description ?? '',
+        command: recipe?.command ?? '',
+        methods: a.methods.map((m) => ({
+          type: m.type,
+          label: m.label,
+          command: m.command,
+          checkCommand: m.checkCommand,
+          elevated: m.elevated ?? false,
+          url: m.url,
+        })),
+      };
+    }),
   });
 });
 
 installRouter.get('/definitions', (c) => {
   return c.json({
-    definitions: AGENT_DEFINITIONS.map((d) => ({
-      id: d.id,
-      name: d.name,
-      command: d.command,
-      description: d.description,
-      configPaths: d.configPaths,
+    definitions: RECIPES.map((r) => ({
+      id: r.id,
+      name: r.name,
+      command: r.command,
+      description: r.description,
+      nativeConfigPaths: r.nativeConfigPaths,
     })),
   });
 });
@@ -52,13 +55,19 @@ installRouter.post('/install', (c) => {
 
     const methods = getInstallMethods(agentId);
     if (!methods || methodIndex < 0 || methodIndex >= methods.length) {
-      await stream.writeSSE({ event: 'error', data: JSON.stringify({ error: 'Invalid agent or method' }) });
+      await stream.writeSSE({
+        event: 'error',
+        data: JSON.stringify({ error: 'Invalid agent or method' }),
+      });
       return;
     }
 
     const method = methods[methodIndex];
     if (!method) {
-      await stream.writeSSE({ event: 'error', data: JSON.stringify({ error: 'Method not found' }) });
+      await stream.writeSSE({
+        event: 'error',
+        data: JSON.stringify({ error: 'Method not found' }),
+      });
       return;
     }
 
@@ -95,20 +104,21 @@ installRouter.post('/cancel/:taskId', (c) => {
 });
 
 installRouter.post('/deep-scan', async (c) => {
-  const results = await scanAllAgents();
+  const results = await new Scanner(
+    (await import('../../context.js')).getServerContext().agentRegistry,
+    (await import('../../context.js')).getServerContext().agentRoleRepo,
+  ).scanAll();
   return c.json({
     agents: results.map((r) => ({
-      id: r.definition.id,
-      name: r.definition.name,
-      command: r.definition.command,
+      id: r.recipe.id,
+      name: r.recipe.name,
+      command: r.recipe.command,
       installed: r.installed,
       version: r.version,
-      config: r.config
+      config: r.extracted
         ? {
-            apiKeys: r.config.apiKeys.map((k) => ({ provider: k.provider, source: k.source })),
-            mcpServers: r.config.mcpServers.map((s) => ({ name: s.name, source: s.source })),
-            skills: r.config.skills.map((s) => ({ name: s.name, source: s.source })),
-            configFiles: r.config.rawConfigs.map((rc) => rc.path),
+            apiKeys: r.extracted.apiKeys,
+            mcpServers: r.extracted.mcpServers,
           }
         : null,
     })),

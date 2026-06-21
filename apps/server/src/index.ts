@@ -29,6 +29,7 @@ import { telemetryRouter } from './routes/telemetry.js';
 import { tasksRouter } from './routes/tasks.js';
 import { installRouter } from './routes/install.js';
 import { workbenchRouter } from './routes/workbench.js';
+import { workbenchAgentsRouter } from './routes/workbench/agents.js';
 
 import { documentsRouter } from './routes/documents.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -101,6 +102,7 @@ export function createApp() {
   app.route('/api/tasks', tasksRouter);
   app.route('/api/install', installRouter);
   app.route('/api/workbench', workbenchRouter);
+  app.route('/api/workbench/agents', workbenchAgentsRouter);
 
   // GeoIP proxy — avoids CORS issues with ipapi.co from browser
   app.get('/api/geoip', async (c) => {
