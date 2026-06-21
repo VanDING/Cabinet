@@ -22,10 +22,16 @@ workbenchAgentsRouter.get('/', (c) => {
 });
 
 workbenchAgentsRouter.post('/scan', async (c) => {
-  const { agentRegistry, agentRoleRepo } = getServerContext();
-  const scanner = new Scanner(agentRegistry, agentRoleRepo);
-  const results = await scanner.scanAll();
-  return c.json({ results });
+  try {
+    const { agentRegistry, agentRoleRepo } = getServerContext();
+    const scanner = new Scanner(agentRegistry, agentRoleRepo);
+    const results = await scanner.scanAll();
+    return c.json({ results });
+  } catch (err) {
+    const logger = getServerContext().logger;
+    logger?.error('Scan failed', { error: String(err) });
+    return c.json({ error: 'Scan failed', detail: String(err) }, 500);
+  }
 });
 
 workbenchAgentsRouter.post('/scan/:recipeId', async (c) => {

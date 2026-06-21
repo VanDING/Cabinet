@@ -42,7 +42,11 @@ export class Scanner {
   }
 
   async scanAll(): Promise<ScanResult[]> {
-    const results = await Promise.all(RECIPES.map((r) => this.scanOne(r)));
+    const settled = await Promise.allSettled(RECIPES.map((r) => this.scanOne(r)));
+    const results = settled.map((s, i) => {
+      if (s.status === 'fulfilled') return s.value;
+      return { recipe: RECIPES[i]!, installed: false, error: `Scan error: ${s.reason}` };
+    });
     this.lastResults = results.map((r) => ({
       agentId: `external_cli:${r.recipe.command}`,
       name: r.recipe.name,

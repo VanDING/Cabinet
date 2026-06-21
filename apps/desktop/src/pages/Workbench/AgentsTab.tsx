@@ -36,11 +36,15 @@ export function AgentsTab() {
     setScanning(true);
     try {
       const res = await apiFetch('/api/workbench/agents/scan', { method: 'POST' });
-      await res.json();
-      addToast('success', 'Scan complete');
+      const data = (await res.json()) as { results?: unknown[]; error?: string };
+      if (!res.ok || data.error) {
+        addToast('error', data.error ?? `Scan failed (${res.status})`);
+      } else {
+        addToast('success', 'Scan complete');
+      }
       await fetchAgents();
     } catch {
-      addToast('error', 'Scan failed');
+      addToast('error', 'Scan failed — network error');
     } finally {
       setScanning(false);
     }

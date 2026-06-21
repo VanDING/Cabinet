@@ -29,9 +29,9 @@ export interface NavigationProps {
 const navItems: { id: NavPage; label: string }[] = [
   { id: 'office', label: 'Office' },
   { id: 'workflows', label: 'Workflows' },
-  { id: 'workbench', label: 'Workbench' },
   { id: 'employees', label: 'Employees' },
   { id: 'memory', label: 'Memory' },
+  { id: 'workbench', label: 'Workbench' },
 ];
 
 const navIcons: Partial<Record<NavPage, typeof Command>> = {
