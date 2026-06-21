@@ -191,17 +191,19 @@ export function App() {
   const handleNavigate = useCallback(
     (page: NavPage) => {
       navigate(page);
-      if (uiMode === 'chat') setUIMode('browse');
+      switchProject(null);
+      setUIMode('browse');
     },
-    [navigate, uiMode, setUIMode],
+    [navigate, switchProject, setUIMode],
   );
 
   const handleNavigateToProject = useCallback(
     (projectId: string) => {
       switchProject(projectId);
       navigateToProject(projectId);
+      setUIMode('chat');
     },
-    [switchProject, navigateToProject],
+    [switchProject, navigateToProject, setUIMode],
   );
 
   // Keyboard shortcuts
