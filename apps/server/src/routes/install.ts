@@ -8,8 +8,8 @@ import {
   getAvailableAgents,
   RECIPES,
   Scanner,
-  type InstallMethod,
 } from '@cabinet/agent';
+import type { InstallMethod } from '@cabinet/types';
 
 export const installRouter = new Hono();
 
