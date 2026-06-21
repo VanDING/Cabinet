@@ -94,6 +94,8 @@ export interface HarnessRuntime extends ExternalAgentAdapter {
 export interface HarnessConfig {
   /** Harness identifier. */
   harnessId: string;
+  /** Dispatch protocol override (acp/headless/terminal-only). */
+  dispatchProtocol?: string;
   /** CLI command (for CLI-based harnesses). */
   command?: string;
   /** CLI arguments. */

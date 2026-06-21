@@ -1,4 +1,4 @@
-import { CliAdapter, A2AConnector } from '@cabinet/agent';
+import { CliAdapter, A2AConnector, HarnessRuntimeFactory } from '@cabinet/agent';
 import type { ContextSlot } from '@cabinet/types';
 import { getServerContext } from '../../../../context.js';
 import { broadcast } from '../../../../ws/handler.js';
@@ -14,6 +14,10 @@ export async function dispatchToExternalAgent(
   const registry = ctx.agentRegistry;
   const roleDef = registry.get(agentId);
   if (!roleDef?.external) return `[Error] Agent ${agentId} has no external config.`;
+
+  if (roleDef.external.dispatchProtocol === 'terminal-only') {
+    return `[Terminal-only] ${agentId} does not support headless chat. Open it in the terminal panel.`;
+  }
 
   // ── Create child session ──
   const childSessionId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -197,6 +201,20 @@ export function getOrCreateAdapter(
   if (cached) return cached;
 
   const ext = roleDef.external!;
+
+  if (ext.dispatchProtocol === 'acp' || ext.dispatchProtocol === 'headless') {
+    const runtime = HarnessRuntimeFactory.create(agentId, {
+      harnessId: ext.command ?? agentId,
+      dispatchProtocol: ext.dispatchProtocol,
+      command: ext.command,
+      args: ext.args,
+      env: ext.env,
+      timeoutMs: ext.timeoutMs,
+    });
+    adapterCache.set(agentId, runtime);
+    return runtime;
+  }
+
   if (ext.protocol === 'cli') {
     const adapter = new CliAdapter(agentId, {
       command: ext.command ?? agentId,

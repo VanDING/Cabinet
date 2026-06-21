@@ -13,6 +13,7 @@
 //
 
 import type { HarnessRuntime, HarnessConfig } from '../harness-runtime.js';
+import { AcpRuntime } from '../acp/acp-runtime.js';
 import type { AgentCapability } from '../types.js';
 import { ClaudeCodeRuntime } from './claude-code.js';
 import { CodexRuntime } from './codex.js';
@@ -83,6 +84,10 @@ export class HarnessRuntimeFactory {
     capabilities: AgentCapability[] = [],
     logger?: Logger,
   ): HarnessRuntime {
+    if (config.dispatchProtocol === 'acp') {
+      return new AcpRuntime(agentId, { ...config, harnessId: 'acp' }, capabilities);
+    }
+
     const harnessId = HarnessRuntimeFactory.resolveHarnessId(config);
 
     switch (harnessId) {
@@ -142,6 +147,11 @@ export class HarnessRuntimeFactory {
    * (as opposed to 'generic' fallback).
    */
   static isKnownHarness(harnessId: string): boolean {
-    return harnessId === 'claude-code' || harnessId === 'codex' || harnessId === 'opencode' || harnessId === 'a2a';
+    return (
+      harnessId === 'claude-code' ||
+      harnessId === 'codex' ||
+      harnessId === 'opencode' ||
+      harnessId === 'a2a'
+    );
   }
 }

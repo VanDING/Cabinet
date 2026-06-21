@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Theme Preview · Neumorphism</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          'Nunito',
+          'Quicksand',
+          -apple-system,
+          sans-serif;
+        background: #e0e5ec;
+        color: #4a4d55;
+        min-height: 100vh;
+        padding: 40px;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #4a4d55;
+      }
+      .sub {
+        color: #8a8f99;
+        font-size: 0.8125rem;
+        margin-bottom: 32px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        max-width: 800px;
+      }
+
+      /* Neumorphic raised */
+      .neu {
+        background: #e0e5ec;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow:
+          -8px -8px 16px rgba(255, 255, 255, 0.8),
+          8px 8px 16px rgba(0, 0, 0, 0.08);
+      }
+      .neu h3 {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #4a4d55;
+      }
+      .neu p {
+        font-size: 0.8125rem;
+        color: #8a8f99;
+        line-height: 1.5;
+      }
+
+      /* Neumorphic pressed */
+      .neu-pressed {
+        background: #e0e5ec;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow:
+          inset 4px 4px 8px rgba(0, 0, 0, 0.06),
+          inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+      }
+      .neu-pressed h3 {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: #4a4d55;
+      }
+      .neu-pressed p {
+        font-size: 0.8125rem;
+        color: #8a8f99;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .btn {
+        display: inline-block;
+        border: none;
+        border-radius: 14px;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: default;
+        padding: 10px 20px;
+      }
+      .btn-raised {
+        background: #e0e5ec;
+        color: #4a4d55;
+        box-shadow:
+          -5px -5px 10px rgba(255, 255, 255, 0.7),
+          5px 5px 10px rgba(0, 0, 0, 0.08);
+      }
+      .btn-accent {
+        background: #a78bfa;
+        color: #fff;
+        box-shadow:
+          -5px -5px 10px rgba(255, 255, 255, 0.5),
+          5px 5px 10px rgba(167, 139, 250, 0.3);
+      }
+      .btn-pressed {
+        background: #e0e5ec;
+        color: #4a4d55;
+        box-shadow:
+          inset 3px 3px 6px rgba(0, 0, 0, 0.06),
+          inset -3px -3px 6px rgba(255, 255, 255, 0.8);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 999px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        background: #e0e5ec;
+      }
+      .badge-success {
+        color: #6bba8a;
+        box-shadow:
+          inset 2px 2px 4px rgba(0, 0, 0, 0.04),
+          inset -2px -2px 4px rgba(255, 255, 255, 0.6);
+      }
+      .badge-danger {
+        color: #e07a7a;
+        box-shadow:
+          inset 2px 2px 4px rgba(0, 0, 0, 0.04),
+          inset -2px -2px 4px rgba(255, 255, 255, 0.6);
+      }
+
+      .tokens {
+        margin-top: 32px;
+        max-width: 800px;
+      }
+      .tokens h2 {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #8a8f99;
+        margin-bottom: 12px;
+      }
+      .token-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 8px;
+      }
+      .t {
+        font-size: 0.75rem;
+        color: #6a6f79;
+      }
+      .swatch {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        vertical-align: middle;
+        margin-right: 6px;
+        background: #e0e5ec;
+        box-shadow:
+          inset 2px 2px 4px rgba(0, 0, 0, 0.05),
+          inset -2px -2px 4px rgba(255, 255, 255, 0.5);
+      }
+
+      .note {
+        margin-top: 24px;
+        background: #d8dde4;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 0.75rem;
+        line-height: 1.7;
+        color: #5a5f69;
+      }
+      .code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        margin-top: 8px;
+        line-height: 1.6;
+      }
+
+      .dark-toggle {
+        margin-top: 32px;
+      }
+      .dark-toggle summary {
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        color: #8a8f99;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Neumorphism</h1>
+    <p class="sub">光影塑形 · 无边框 · 凸凹立体</p>
+
+    <div class="grid">
+      <!-- Raised -->
+      <div class="neu">
+        <h3>凸起层</h3>
+        <p>surface-primary · raised shadow</p>
+        <div class="row">
+          <span class="btn btn-raised">Button</span>
+          <span class="btn btn-accent">Accent</span>
+        </div>
+        <div class="row">
+          <span class="badge badge-success">online</span>
+          <span class="badge badge-danger">offline</span>
+        </div>
+      </div>
+      <!-- Pressed -->
+      <div class="neu-pressed">
+        <h3>凹陷层</h3>
+        <p>input / pressed · inset shadow</p>
+        <div class="row">
+          <span class="btn btn-pressed">Pressed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tokens">
+      <h2>Token</h2>
+      <div class="token-grid">
+        <div class="t"><span class="swatch"></span>--body-bg #E0E5EC</div>
+        <div class="t">--surface-primary: #E0E5EC</div>
+        <div class="t">--surface-elevated: #D8DDE4</div>
+        <div class="t">
+          <div class="swatch" style="background: #a78bfa; box-shadow: none"></div>
+          --accent #A78BFA
+        </div>
+        <div class="t">--shadow-sm: raised 1级</div>
+        <div class="t">--shadow-md: raised 2级</div>
+        <div class="t">--shadow-lg: raised 3级</div>
+        <div class="t">[inset] --shadow-popover: pressed</div>
+        <div class="t">[inset] --shadow-modal: pressed 深</div>
+        <div class="t">--border-color: transparent</div>
+        <div class="t">--radius: 12-16px</div>
+        <div class="t">--font-family: Nunito / Quicksand</div>
+      </div>
+    </div>
+
+    <details class="dark-toggle">
+      <summary>暗色版本示意</summary>
+      <div style="margin-top: 12px; background: #2e3238; border-radius: 16px; padding: 20px">
+        <div
+          style="
+            background: #2e3238;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow:
+              -6px -6px 12px rgba(255, 255, 255, 0.04),
+              6px 6px 12px rgba(0, 0, 0, 0.3);
+          "
+        >
+          <div style="font-size: 0.8125rem; font-weight: 600; color: #d0d5dd">Dark Surface</div>
+          <div style="font-size: 0.75rem; color: #80868f; margin-top: 4px">box-shadow 反向</div>
+        </div>
+      </div>
+    </details>
+
+    <div class="note">
+      <strong>实施要点：</strong><br />
+      6 级 shadow 需要拆为 3 级凸起 + 3 级凹陷（当前系统只支持 6 级单向 shadow）。<br />
+      可能需要新增 --shadow-inset-sm/md/lg 或复用 popover/modal 为 inset。<br />
+      所有 border-width 设为 0 或 border-color transparent。<br />
+      所有 surface 层使用与 body-bg 同色系的纯色。<br />
+      需要确保内容对比度 ≥ 4.5:1（深色内容在浅色背景上）。
+    </div>
+  </body>
+</html>
