@@ -58,8 +58,8 @@ const WorkbenchPage = lazy(() =>
   import('./pages/Workbench/WorkbenchPage').then((m) => ({ default: m.WorkbenchPage })),
 );
 const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ default: m.ChatView })));
-const ProjectWorkplace = lazy(() =>
-  import('./pages/ProjectWorkplace').then((m) => ({ default: m.ProjectWorkplace })),
+const ProjectPage = lazy(() =>
+  import('./pages/ProjectPage').then((m) => ({ default: m.ProjectPage })),
 );
 
 function PageLoader() {
@@ -74,8 +74,6 @@ function PageLoader() {
 }
 
 export function App() {
-  const location = useLocation();
-  const isProjectWorkplace = location.pathname.startsWith('/project/');
   const { theme, themes, setTheme } = useTheme();
   const { addToast } = useToast();
   const { addNotification } = useNotifications();
@@ -86,8 +84,6 @@ export function App() {
     sessions,
     activeSession,
     history,
-    chatMode,
-    setChatMode,
     uiMode,
     setUIMode,
     activeAgent,
@@ -184,38 +180,20 @@ export function App() {
   const isActiveSessionProcessing = activeSession ? isSessionActive(activeSession.id) : false;
   const isChatVisible = uiMode === 'chat';
 
-  /* ── Orb ↔ ChatPanel slide transition ── */
-  const [transitionPhase, setTransitionPhase] = useState<null | 'opening' | 'closing'>(null);
-  const isTransitioning = transitionPhase !== null;
-
   const handleOrbOpen = useCallback(() => {
-    if (transitionPhase !== null) return;
-    setTransitionPhase('opening');
-    setTimeout(() => {
-      setUIMode('work');
-      setTransitionPhase(null);
-    }, 450);
-  }, [transitionPhase, setUIMode]);
+    setUIMode('chat');
+  }, [setUIMode]);
 
   const handlePanelClose = useCallback(() => {
-    if (transitionPhase !== null) {
-      setUIMode('idle');
-      return;
-    }
-    setTransitionPhase('closing');
-    setTimeout(() => {
-      setUIMode('idle');
-      setTransitionPhase(null);
-    }, 450);
-  }, [transitionPhase, setUIMode]);
+    setUIMode('idle');
+  }, [setUIMode]);
 
   const handleNavigate = useCallback(
     (page: NavPage) => {
       navigate(page);
-      switchProject(null);
-      if (uiMode === 'chat') setUIMode('work');
+      if (uiMode === 'chat') setUIMode('browse');
     },
-    [navigate, switchProject, uiMode, setUIMode],
+    [navigate, uiMode, setUIMode],
   );
 
   const handleNavigateToProject = useCallback(
@@ -365,10 +343,7 @@ export function App() {
 
   return (
     <ServerLoading>
-      <div
-        className={`flex h-screen flex-col overflow-hidden ${transitionPhase || ''}`}
-        data-ui-mode={uiMode}
-      >
+      <div className="flex h-screen flex-col overflow-hidden" data-ui-mode={uiMode}>
         {/* Custom Title Bar */}
         <TitleBar themes={themes} currentTheme={theme} onSetTheme={setTheme} />
 
@@ -383,7 +358,7 @@ export function App() {
               onToggleCollapse={toggleSidebar}
               onNavigateToSession={(sessionId) => {
                 switchSession(sessionId);
-                setChatMode(true);
+                setUIMode('chat');
               }}
               onNavigateToProject={handleNavigateToProject}
               activeProjectId={activeProjectId}
@@ -421,30 +396,26 @@ export function App() {
             />
           )}
 
-          {/* Project Explorer — hidden when inside ProjectWorkplace */}
-          {!isProjectWorkplace && (
-            <ProjectExplorer
-              projectId={activeProjectId}
-              projectName={projects.find((p) => p.id === activeProjectId)?.name}
-              onAddFile={addFile}
-              activeSessionId={activeSession?.id}
-            />
-          )}
+          <ProjectExplorer
+            projectId={activeProjectId}
+            projectName={projects.find((p) => p.id === activeProjectId)?.name}
+            onAddFile={addFile}
+            activeSessionId={activeSession?.id}
+          />
 
           {/* Main content area (relative for floating ChatPanel) */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
             {/* Content: browse pages or chat view */}
             <div className="relative min-h-0 flex-1">
-              {/* Keep pages mounted (hidden) so WebSocket listeners stay active */}
               <div
-                className={`page-viewport h-full overflow-auto ${uiMode === 'chat' && activeSession ? 'page-hidden' : ''}`}
+                className={`h-full overflow-auto ${uiMode === 'chat' && activeSession ? 'hidden' : ''}`}
               >
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
                       <Route path="/" element={<OfficePage />} />
                       <Route path="/office" element={<OfficePage />} />
-                      <Route path="/project/:id" element={<ProjectWorkplace />} />
+                      <Route path="/project/:id" element={<ProjectPage />} />
                       <Route path="/workflows" element={<WorkflowsPage />} />
                       <Route
                         path="/workflows/:id/edit"
@@ -452,12 +423,12 @@ export function App() {
                           <FactoryPage
                             onCreateChatSession={(options) => {
                               const id = createSession(options);
-                              setChatMode(true);
+                              setUIMode('chat');
                               return id;
                             }}
                             onSwitchSession={(id) => {
                               switchSession(id);
-                              setChatMode(true);
+                              setUIMode('chat');
                             }}
                             onEnterChat={handleEnterChat}
                           />
@@ -552,7 +523,7 @@ export function App() {
                             setInputTarget({ type: 'secretary', sessionId: activeSession.id });
                           }
                         }}
-                        onBack={() => setUIMode('work')}
+                        onBack={() => setUIMode('browse')}
                         agents={agents}
                         activeAgentId={activeAgent}
                         onSelectAgent={setActiveAgent}
@@ -572,7 +543,7 @@ export function App() {
             </div>
 
             {/* Floating ChatPanel at the bottom of main content area */}
-            {(uiMode !== 'idle' || isTransitioning) && (
+            {uiMode === 'chat' && (
               <ChatPanel
                 sessions={sessions}
                 activeSession={activeSession}
@@ -586,7 +557,7 @@ export function App() {
                     switchProject(targetSession.projectId);
                   }
                   switchSession(id);
-                  setChatMode(true);
+                  setUIMode('chat');
                 }}
                 onAddFile={addFile}
                 onRemoveFile={removeFile}
@@ -610,17 +581,14 @@ export function App() {
             )}
           </div>
 
-          {/* File Viewer — third column, right side; hidden when inside ProjectWorkplace */}
-          {!isProjectWorkplace && <FileViewer />}
+          <FileViewer />
         </div>
 
         {/* Mobile bottom nav */}
         <MobileNav activePage={activePage} onNavigate={handleNavigate} />
 
         {/* Secretary Orb */}
-        {(uiMode === 'idle' || isTransitioning) && (
-          <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />
-        )}
+        {uiMode === 'idle' && <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />}
 
         {/* Notification Bubbles — only when ChatPanel is open (no orb visible) */}
         {uiMode === 'chat' && <NotificationManager />}

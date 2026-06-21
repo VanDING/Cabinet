@@ -26,7 +26,7 @@ export type InputTarget =
   | { type: 'secretary'; sessionId: string }
   | { type: 'subagent'; sessionId: string; agentId: string };
 
-export type UIMode = 'idle' | 'work' | 'chat';
+export type UIMode = 'idle' | 'browse' | 'chat';
 
 export type OrbMood = 'idle' | 'thinking' | 'happy' | 'surprised' | 'sleepy';
 
@@ -49,8 +49,6 @@ interface ChatContextValue {
   activeSession: Session | null;
   history: Session[];
   processingSessions: Set<string>;
-  chatMode: boolean;
-  setChatMode: (v: boolean) => void;
   uiMode: UIMode;
   setUIMode: (mode: UIMode) => void;
   activeAgent: string;
@@ -134,17 +132,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [uiMode, setUIMode] = useState<UIMode>(() => {
     try {
       const saved = localStorage.getItem('cabinet-ui-mode');
-      if (saved === 'chat' || saved === 'work') return saved;
-      if (saved === 'collapsed' || saved === 'overlay') return 'work';
+      if (saved === 'chat') return 'chat';
+      if (saved === 'work' || saved === 'collapsed' || saved === 'overlay') return 'browse';
     } catch {
       /* JSON parse error */
     }
     return 'idle';
   });
-  const chatMode = uiMode === 'chat';
-  const setChatMode = useCallback((v: boolean) => {
-    setUIMode(v ? 'chat' : 'work');
-  }, []);
   const [activeAgent, setActiveAgentRaw] = useState('secretary');
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -166,18 +160,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setAgents([]);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Wrap setActiveAgent to stamp agentId on current session
-  const setActiveAgent = useCallback((agentId: string) => {
-    setActiveAgentRaw(agentId);
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSession?.id ? { ...s, agentId } : s,
-      ),
-    );
-  }, [activeSession, setSessions]);
+  const setActiveAgent = useCallback(
+    (agentId: string) => {
+      setActiveAgentRaw(agentId);
+      setSessions((prev) => prev.map((s) => (s.id === activeSession?.id ? { ...s, agentId } : s)));
+    },
+    [activeSession, setSessions],
+  );
 
   // Persist uiMode
   useEffect(() => {
@@ -187,7 +182,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Reset to work if chat is active but no session exists
   useEffect(() => {
     if (uiMode === 'chat' && !activeSession) {
-      setUIMode('work');
+      setUIMode('browse');
     }
   }, [uiMode, activeSession]);
 
@@ -225,7 +220,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleCreateSession = useCallback((): string => {
     const id = createSession({ projectId: activeProjectId ?? undefined, agentId: activeAgent });
-    setChatMode(true);
+    setUIMode('chat');
     return id;
   }, [createSession, activeProjectId, activeAgent]);
 
@@ -235,7 +230,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const handleEnterChat = useCallback(() => {
-    setChatMode(true);
+    setUIMode('chat');
   }, []);
 
   const sendNotification = useCallback(
@@ -304,7 +299,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const controller = new AbortController();
       abortRef.current.set(sessionId, controller);
 
-      setChatMode(true);
+      setUIMode('chat');
       setSessionActive(sessionId, true);
 
       const userMsg: ChatMessage = {
@@ -635,8 +630,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeSession,
       history,
       processingSessions,
-      chatMode,
-      setChatMode,
       uiMode,
       setUIMode,
       activeAgent,
@@ -676,7 +669,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       activeSession,
       history,
       processingSessions,
-      chatMode,
       uiMode,
       activeAgent,
       agents,
