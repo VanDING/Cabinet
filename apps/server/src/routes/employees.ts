@@ -18,7 +18,7 @@ employeesRouter.get('/', (c) => {
     const agentRows = agentRoleRepo.findCustom();
     const dbAgentNames = new Set(agentRows.map((r) => r.name));
     const agentsFromRoles = agentRows.map((r) => ({
-      id: `agent_${r.name}`,
+      id: r.type.startsWith('external_') ? r.name : `agent_${r.name}`,
       name: r.name,
       role: r.type,
       kind: 'ai' as const,
@@ -31,8 +31,9 @@ employeesRouter.get('/', (c) => {
         }
       })(),
       permissionLevel: 'read',
-      status: 'active',
+      status: r.type.startsWith('external_') ? 'online' : 'active',
       projectId: 'default',
+      source: r.type,
     }));
 
     // Fallback: include runtime-registered agents that may not yet be in DB
@@ -185,6 +186,16 @@ employeesRouter.delete('/:id', (c) => {
   const id = c.req.param('id');
 
   // Custom agents are stored in agent_roles, not employees table
+  if (id.startsWith('external_cli:') || id.startsWith('external_a2a:')) {
+    const agent = agentRegistry.get(id);
+    if (agent) {
+      agentRegistry.unregister(id);
+    }
+    agentRoleRepo.deleteByName(id);
+    logger.info('External agent deleted via employees', { name: id });
+    return c.json({ status: 'deleted' });
+  }
+
   if (id.startsWith('agent_')) {
     const name = id.slice('agent_'.length);
     // Allow deletion even if not in runtime registry (may be DB-only after restart)

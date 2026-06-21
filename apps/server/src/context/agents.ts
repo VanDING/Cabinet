@@ -1,6 +1,18 @@
 import { AgentRoleRegistry } from '@cabinet/agent';
 import type { ModelTier } from '@cabinet/gateway';
+import type { ExternalAgentConfig } from '@cabinet/types';
 import type { BuildState } from './build-state.js';
+
+function parseExternalConfig(raw: string | null | undefined): ExternalAgentConfig | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as ExternalAgentConfig;
+    if (parsed.protocol !== 'cli' && parsed.protocol !== 'a2a') return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
 
 export function initAgentRegistry(state: BuildState): void {
   const { agentRoleRepo } = state;
@@ -16,6 +28,7 @@ export function initAgentRegistry(state: BuildState): void {
         row.type === 'external_cli' || row.type === 'external_a2a' || row.type === 'custom'
           ? (row.type as 'custom' | 'external_cli' | 'external_a2a')
           : ('custom' as const);
+      const isExternal = agentType === 'external_cli' || agentType === 'external_a2a';
       agentRegistry.register({
         type: agentType,
         name: row.name,
@@ -26,6 +39,7 @@ export function initAgentRegistry(state: BuildState): void {
         maxResponseTokens: row.max_response_tokens,
         allowedTools: JSON.parse(row.allowed_tools ?? '[]'),
         contextBudget: row.context_budget,
+        external: isExternal ? parseExternalConfig(row.external_config) : undefined,
       });
     }
     state.logger?.info('Custom agents loaded from DB', { count: customRows.length });

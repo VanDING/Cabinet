@@ -12,6 +12,8 @@
 //   - context budget (how much context this role typically needs)
 //
 
+import { buildCliExternalConfig, buildA2AExternalConfig } from './daemon/build-external-config.js';
+
 // ── Role Definition ────────────────────────────────────────────
 
 export type AgentRoleType =
@@ -474,24 +476,20 @@ export class AgentRoleRegistry {
     timeoutMs?: number;
     maxRetries?: number;
   }): boolean {
-    if (this.customRoles.has(params.name)) return false;
+    const existing = this.customRoles.get(params.name);
+    if (existing) {
+      const external =
+        params.protocol === 'cli'
+          ? buildCliExternalConfig(params.command!, params.args)
+          : buildA2AExternalConfig(params.baseUrl!);
+      this.customRoles.set(params.name, { ...existing, external });
+      return true;
+    }
     const type = params.protocol === 'cli' ? 'external_cli' : 'external_a2a';
-    const external: import('@cabinet/types').ExternalAgentConfig = {
-      protocol: params.protocol,
-      configSource: 'agent_native',
-      ...(params.protocol === 'cli'
-        ? {
-            command: params.command!,
-            args: params.args ?? ['--print'],
-            timeoutMs: params.timeoutMs ?? 300_000,
-            maxRetries: params.maxRetries ?? 2,
-          }
-        : {
-            baseUrl: params.baseUrl!,
-            timeoutMs: params.timeoutMs ?? 120_000,
-            maxRetries: params.maxRetries ?? 2,
-          }),
-    } as import('@cabinet/types').ExternalAgentConfig;
+    const external =
+      params.protocol === 'cli'
+        ? buildCliExternalConfig(params.command!, params.args)
+        : buildA2AExternalConfig(params.baseUrl!);
     this.register({
       type,
       name: params.name,

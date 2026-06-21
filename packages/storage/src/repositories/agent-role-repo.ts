@@ -14,6 +14,7 @@ export interface AgentRoleRow {
   context_budget: number;
   is_builtin: number;
   created_at: string;
+  external_config?: string;
 }
 
 export class AgentRoleRepository {
@@ -135,6 +136,7 @@ export class AgentRoleRepository {
       context_budget: row.context_budget as number,
       is_builtin: row.is_builtin as number,
       created_at: row.created_at as string,
+      external_config: row.external_config as string | undefined,
     };
   }
 }

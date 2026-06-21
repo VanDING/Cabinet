@@ -6,7 +6,8 @@
 // ClaudeCodeRuntime.
 //
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
+import { spawnCrossPlatform } from '../../utils/spawn.js';
 import type { ExternalTask, ExternalTaskResult, AgentCapability } from '../types.js';
 import type {
   HarnessRuntime,
@@ -129,7 +130,7 @@ export abstract class BaseCliRuntime implements HarnessRuntime {
     try {
       const prompt = this.convertPrompt(task);
 
-      const proc = spawn(command, args, {
+      const proc = spawnCrossPlatform(command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, ...this.config.env },
         cwd: task.configuration.working_directory ?? process.cwd(),
@@ -249,7 +250,7 @@ export abstract class BaseCliRuntime implements HarnessRuntime {
 
   protected execSimple(command: string, args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      const proc = spawn(command, args, {
+      const proc = spawnCrossPlatform(command, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 10_000,
       });

@@ -118,16 +118,28 @@ export interface SkillDefinition {
 
 export type WorkflowNodeType =
   // Flow control (7)
-  | 'start' | 'end'
-  | 'ifElse' | 'loop' | 'parallel' | 'merge' | 'pass'
+  | 'start'
+  | 'end'
+  | 'ifElse'
+  | 'loop'
+  | 'parallel'
+  | 'merge'
+  | 'pass'
   // Container (2)
-  | 'agentGroup' | 'manager'
+  | 'agentGroup'
+  | 'manager'
   // Execution (5)
-  | 'llm' | 'skill' | 'tool' | 'code' | 'workflow'
+  | 'llm'
+  | 'skill'
+  | 'tool'
+  | 'code'
+  | 'workflow'
   // AI (2)
-  | 'intentClassify' | 'knowledgeBase'
+  | 'intentClassify'
+  | 'knowledgeBase'
   // Human-in-the-loop (2)
-  | 'approval' | 'human'
+  | 'approval'
+  | 'human'
   // External agent dispatch
   | 'externalAgent';
 
@@ -339,6 +351,9 @@ export type ExternalAgentProtocol = 'a2a' | 'cli';
 export interface ExternalAgentConfig {
   protocol: ExternalAgentProtocol;
   configSource: AgentConfigSource;
+  dispatchProtocol?: 'acp' | 'headless' | 'terminal-only';
+  nativeConfigPaths?: { win32: string[]; darwin: string[]; linux: string[] };
+  sdkPackage?: string;
   // A2A
   baseUrl?: string;
   healthCheckUrl?: string;
@@ -421,8 +436,12 @@ export type WorkflowDefinitionStatus = 'draft' | 'active' | 'paused' | 'complete
 // ── Daemon / Task Queue ──
 
 export type TaskQueueStatus =
-  | 'pending' | 'claimed' | 'running'
-  | 'completed' | 'failed' | 'cancelled';
+  | 'pending'
+  | 'claimed'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 
 export interface TaskProgress {
   percent: number;

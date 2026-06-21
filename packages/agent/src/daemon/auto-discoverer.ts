@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { CABINET_DIR } from '@cabinet/storage';
 import type { AgentRoleRepository } from '@cabinet/storage';
 import type { AgentRoleRegistry } from '../agent-roles.js';
+import { buildCliExternalConfig, buildA2AExternalConfig } from './build-external-config.js';
 
 // ── Known CLI agents ──────────────────────────────────────────────
 
@@ -167,6 +168,7 @@ export class AutoDiscoverer {
           context_budget: 0.3,
           is_builtin: 0,
           created_at: new Date().toISOString(),
+          external_config: JSON.stringify(buildCliExternalConfig(agent.command)),
         });
       } catch {
         /* DB write is best-effort */
@@ -208,6 +210,7 @@ export class AutoDiscoverer {
           context_budget: 0.3,
           is_builtin: 0,
           created_at: new Date().toISOString(),
+          external_config: JSON.stringify(buildA2AExternalConfig((card.baseUrl as string) ?? '')),
         });
       } catch {
         /* DB write is best-effort */

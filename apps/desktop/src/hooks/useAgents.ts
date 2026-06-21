@@ -9,6 +9,13 @@ export interface AgentInfo {
   source: 'builtin' | 'custom' | 'external_cli' | 'external_a2a';
   status: 'active' | 'idle' | 'offline';
   expertise: string[];
+  external?: {
+    command?: string;
+    args?: string[];
+    env?: Record<string, string>;
+    protocol?: string;
+    dispatchProtocol?: string;
+  };
 }
 
 export function useAgents() {

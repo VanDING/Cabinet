@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, startTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+  startTransition,
+} from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navigation, type NavPage } from '@cabinet/ui';
 import { TitleBar } from './components/TitleBar';
@@ -128,7 +137,10 @@ export function App() {
   const activeExternalAgent = useMemo(() => {
     const agent = agents.find((a) => a.id === activeAgent);
     if (!agent || agent.source !== 'external_cli') return null;
-    return { command: agent.id.replace('external_cli:', ''), args: [] as string[], env: undefined as Record<string, string> | undefined };
+    const ext = agent.external;
+    if (!ext?.command)
+      return { command: agent.id.replace('external_cli:', ''), args: [], env: undefined };
+    return { command: ext.command, args: ext.args ?? [], env: ext.env };
   }, [agents, activeAgent]);
 
   const {
