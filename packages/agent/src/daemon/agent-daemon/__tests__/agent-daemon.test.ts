@@ -16,11 +16,12 @@ vi.mock('../../workspace-manager.js', () => ({
   },
 }));
 
-vi.mock('../../auto-discoverer.js', () => ({
-  AutoDiscoverer: function () {
+vi.mock('../../../discovery/scanner.js', () => ({
+  Scanner: function () {
     return {
       discover: () => Promise.resolve([]),
       getLastResults: () => [],
+      scanAll: () => Promise.resolve([]),
     };
   },
 }));

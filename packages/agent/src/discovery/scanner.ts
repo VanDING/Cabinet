@@ -6,14 +6,52 @@ import { RECIPES } from './scanner-recipe.js';
 import { extractConfig } from './config-extractor.js';
 import { buildCliExternalConfig, buildA2AExternalConfig } from '../daemon/build-external-config.js';
 
+export interface DiscoveryResult {
+  agentId: string;
+  name: string;
+  protocol: 'cli' | 'a2a';
+  command?: string;
+  baseUrl?: string;
+  detected: boolean;
+  error?: string;
+}
+
 export class Scanner {
+  private lastResults: DiscoveryResult[] = [];
+
   constructor(
     private registry: AgentRoleRegistry,
     private agentRoleRepo?: AgentRoleRepository,
   ) {}
 
+  getLastResults(): DiscoveryResult[] {
+    return this.lastResults;
+  }
+
+  async discover(): Promise<DiscoveryResult[]> {
+    const results = await this.scanAll();
+    this.lastResults = results.map((r) => ({
+      agentId: `external_cli:${r.recipe.command}`,
+      name: r.recipe.name,
+      protocol: 'cli' as const,
+      command: r.recipe.command,
+      detected: r.installed,
+      error: r.error ?? (r.installed ? undefined : 'Not found on PATH'),
+    }));
+    return this.lastResults;
+  }
+
   async scanAll(): Promise<ScanResult[]> {
-    return Promise.all(RECIPES.map((r) => this.scanOne(r)));
+    const results = await Promise.all(RECIPES.map((r) => this.scanOne(r)));
+    this.lastResults = results.map((r) => ({
+      agentId: `external_cli:${r.recipe.command}`,
+      name: r.recipe.name,
+      protocol: 'cli' as const,
+      command: r.recipe.command,
+      detected: r.installed,
+      error: r.error ?? (r.installed ? undefined : 'Not found on PATH'),
+    }));
+    return results;
   }
 
   async scanOne(recipe: ScannerRecipe): Promise<ScanResult> {

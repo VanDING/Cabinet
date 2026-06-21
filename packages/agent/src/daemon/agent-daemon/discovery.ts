@@ -1,4 +1,4 @@
-import type { DiscoveryResult } from '../auto-discoverer.js';
+import type { DiscoveryResult } from '../../discovery/scanner.js';
 import type { AgentDaemonState } from './internal.js';
 
 /** Get discovered agents. */

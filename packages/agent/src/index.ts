@@ -178,9 +178,6 @@ export {
   TaskQueuePoller,
   WorkspaceManager,
   type WorkspaceManagerConfig,
-  AutoDiscoverer,
-  type DiscoveryResult,
-  type KnownCliAgent,
   WSDaemonClient,
   type WSDaemonClientConfig,
   type WSCtor,
@@ -222,7 +219,7 @@ export {
 } from './process-identity-score.js';
 
 // New scanner + recipes
-export { Scanner } from './discovery/scanner.js';
+export { Scanner, type DiscoveryResult } from './discovery/scanner.js';
 export { RECIPES } from './discovery/scanner-recipe.js';
 export { getProjector, registerProjector } from './projector/index.js';
 export { ClaudeCodeProjector } from './projector/claude-code.js';

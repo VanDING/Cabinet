@@ -19,7 +19,7 @@ import type { ExternalAgentAdapter } from '../../adapters/types.js';
 import type { HarnessRuntime } from '../../adapters/harness-runtime.js';
 import { TaskQueuePoller } from '../task-queue-poller.js';
 import { WorkspaceManager } from '../workspace-manager.js';
-import { AutoDiscoverer, type DiscoveryResult } from '../auto-discoverer.js';
+import { Scanner, type DiscoveryResult } from '../../discovery/scanner.js';
 import { SquadRepository } from '@cabinet/storage';
 import { SquadRouter } from '../squad/squad-router.js';
 import type { AgentDaemonOptions } from './config.js';
@@ -46,7 +46,10 @@ export class AgentDaemon {
   private opts: Required<AgentDaemonOptions>;
   private poller: TaskQueuePoller;
   private workspaceManager: WorkspaceManager;
-  private discoverer: AutoDiscoverer;
+  private discoverer: {
+    discover(): Promise<DiscoveryResult[]>;
+    getLastResults(): DiscoveryResult[];
+  };
   private adapterCache = new Map<string, ExternalAgentAdapter>();
   private harnessRuntimeCache = new Map<string, HarnessRuntime>(); // agentId → HarnessRuntime
   private activeTasks = new Map<string, ExternalAgentAdapter>(); // taskId → adapter
@@ -85,7 +88,7 @@ export class AgentDaemon {
     this.workspaceManager = new WorkspaceManager(daemonRepo, {
       fullCleanupTtlMs: this.opts.workspaceTtlMs,
     });
-    this.discoverer = new AutoDiscoverer(registry, undefined);
+    this.discoverer = new Scanner(registry, undefined);
     this.poller = new TaskQueuePoller(() => claimAndExecute(this.state), {
       pollIntervalMs: this.opts.pollIntervalMs,
     });

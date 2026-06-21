@@ -8,7 +8,7 @@ import type { AgentRoleRegistry } from '../../agent-roles.js';
 import type { ExternalAgentAdapter } from '../../adapters/types.js';
 import type { HarnessRuntime, HarnessContext } from '../../adapters/harness-runtime.js';
 import type { WorkspaceManager } from '../workspace-manager.js';
-import type { AutoDiscoverer, DiscoveryResult } from '../auto-discoverer.js';
+import type { DiscoveryResult } from '../../discovery/scanner.js';
 import type { SquadRouter } from '../squad/squad-router.js';
 import type { WSDaemonClient } from '../ws-daemon-client.js';
 import type { AgentDaemonOptions } from './config.js';
@@ -32,7 +32,7 @@ export interface AgentDaemonState {
   registry: AgentRoleRegistry;
   opts: Required<AgentDaemonOptions>;
   workspaceManager: WorkspaceManager;
-  discoverer: AutoDiscoverer;
+  discoverer: { discover(): Promise<DiscoveryResult[]>; getLastResults(): DiscoveryResult[] };
   adapterCache: Map<string, ExternalAgentAdapter>;
   harnessRuntimeCache: Map<string, HarnessRuntime>;
   activeTasks: Map<string, ExternalAgentAdapter>;
