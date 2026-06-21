@@ -35,53 +35,76 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [showProjectActionModal, setShowProjectActionModal] = useState(false);
 
   const refreshProjects = useCallback(() => {
-    apiFetch('/api/projects?archived=false', { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => setProjects(d.projects ?? []))
-      .catch((err) => { console.warn('Operation failed', err); });
+    let retries = 0;
+    const attempt = () => {
+      apiFetch('/api/projects?archived=false', { headers: authHeaders() })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((d) => setProjects(d.projects ?? []))
+        .catch((err) => {
+          if (retries < 3) {
+            retries++;
+            setTimeout(attempt, 1000 * retries);
+          } else {
+            console.warn('Failed to load projects after 3 retries', err);
+          }
+        });
+    };
+    attempt();
   }, []);
 
-  const createProject = useCallback(async (name: string, rootPath = ''): Promise<string | undefined> => {
-    const r = await apiFetch('/api/projects', {
-      method: 'POST',
-      headers: authJsonHeaders(),
-      body: JSON.stringify({ name: name.trim(), rootPath }),
-    });
-    if (r.ok) {
-      const data = await r.json();
-      refreshProjects();
-      return data.project?.id;
-    }
-    return undefined;
-  }, [refreshProjects]);
-
-  const deleteProject = useCallback(async (projectId: string, _name: string) => {
-    try {
-      const r = await apiFetch(`/api/projects/${projectId}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
+  const createProject = useCallback(
+    async (name: string, rootPath = ''): Promise<string | undefined> => {
+      const r = await apiFetch('/api/projects', {
+        method: 'POST',
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ name: name.trim(), rootPath }),
       });
       if (r.ok) {
+        const data = await r.json();
         refreshProjects();
-        if (projectId === activeProjectId) setActiveProjectId(null);
+        return data.project?.id;
       }
-    } catch {
-      addToast('error', 'Failed to delete project');
-    }
-  }, [refreshProjects, activeProjectId, addToast]);
+      return undefined;
+    },
+    [refreshProjects],
+  );
 
-  const renameProject = useCallback(async (projectId: string, name: string) => {
-    try {
-      const r = await apiFetch(`/api/projects/${projectId}`, {
-        method: 'PUT',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ name }),
-      });
-      if (r.ok) refreshProjects();
-    } catch {
-      addToast('error', 'Failed to rename project');
-    }
-  }, [refreshProjects, addToast]);
+  const deleteProject = useCallback(
+    async (projectId: string, _name: string) => {
+      try {
+        const r = await apiFetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+          headers: authHeaders(),
+        });
+        if (r.ok) {
+          refreshProjects();
+          if (projectId === activeProjectId) setActiveProjectId(null);
+        }
+      } catch {
+        addToast('error', 'Failed to delete project');
+      }
+    },
+    [refreshProjects, activeProjectId, addToast],
+  );
+
+  const renameProject = useCallback(
+    async (projectId: string, name: string) => {
+      try {
+        const r = await apiFetch(`/api/projects/${projectId}`, {
+          method: 'PUT',
+          headers: authJsonHeaders(),
+          body: JSON.stringify({ name }),
+        });
+        if (r.ok) refreshProjects();
+      } catch {
+        addToast('error', 'Failed to rename project');
+      }
+    },
+    [refreshProjects, addToast],
+  );
 
   const switchProject = useCallback((projectId: string | null) => {
     setActiveProjectId(projectId);
