@@ -54,8 +54,8 @@ const EmployeesPage = lazy(() =>
 const MemoryPage = lazy(() =>
   import('./pages/MemoryPage').then((m) => ({ default: m.MemoryPage })),
 );
-const DiscoveryPage = lazy(() =>
-  import('./pages/DiscoveryPage').then((m) => ({ default: m.DiscoveryPage })),
+const WorkbenchPage = lazy(() =>
+  import('./pages/Workbench/WorkbenchPage').then((m) => ({ default: m.WorkbenchPage })),
 );
 const ChatView = lazy(() => import('./components/ChatView').then((m) => ({ default: m.ChatView })));
 const ProjectWorkplace = lazy(() =>
@@ -435,8 +435,8 @@ export function App() {
                           />
                         }
                       />
-                      <Route path="/skills" element={<Navigate to="/discovery" replace />} />
-                      <Route path="/discovery" element={<DiscoveryPage />} />
+                      <Route path="/skills" element={<Navigate to="/workbench" replace />} />
+                      <Route path="/workbench" element={<WorkbenchPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route
                         path="/employees"

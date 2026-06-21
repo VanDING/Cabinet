@@ -5,7 +5,6 @@ import { useToast } from '../components/Toast.js';
 import { EmployeeEditModal } from '../components/EmployeeEditModal.js';
 import { ModalOverlay } from '../components/ModalOverlay.js';
 import { AgentBadge } from '../components/AgentBadge.js';
-import { AgentMarketContent } from './AgentMarketPage.js';
 
 interface EmployeeItem {
   id: string;
@@ -32,14 +31,11 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
 }
 
 type KindFilter = 'all' | 'ai' | 'human';
-type EmployeesView = 'employees' | 'market';
-
 export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | null }) {
   const { addToast } = useToast();
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [viewMode, setViewMode] = useState<EmployeesView>('employees');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -47,7 +43,6 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
   const [editingEmployee, setEditingEmployee] = useState<EmployeeItem | null>(null);
   const [detailEmployee, setDetailEmployee] = useState<EmployeeItem | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,61 +85,6 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
     }
     return result;
   }, [employees, kindFilter, searchQuery]);
-
-  const handleScan = async () => {
-    setScanning(true);
-    try {
-      const res = await apiFetch('/api/agents/scan', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-      });
-      const data = (await res.json()) as {
-        discovered: Array<{
-          name: string;
-          command: string;
-          installed: boolean;
-          version?: string;
-          registered: boolean;
-        }>;
-      };
-      const unregistered = data.discovered.filter((d) => d.installed && !d.registered);
-      if (unregistered.length > 0) {
-        for (const agent of unregistered) {
-          const id = `emp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-          await apiFetch('/api/employees', {
-            method: 'POST',
-            headers: authJsonHeaders(),
-            body: JSON.stringify({
-              id,
-              name: agent.name,
-              role: agent.command,
-              kind: 'ai',
-              projectId: activeProjectId ?? 'default',
-              permissionLevel: 'write',
-              expertise: [],
-              source: 'external_cli',
-              external: {
-                protocol: 'cli',
-                configSource: 'agent_native',
-                command: agent.command,
-                args: ['--print'],
-                detectCommand: `which ${agent.command}`,
-              },
-            }),
-          });
-        }
-        addToast?.('success', 'Registered ' + unregistered.length + ' CLI agent(s)');
-        refreshEmployees();
-      } else {
-        addToast?.('info', 'All installed agents are already registered');
-      }
-    } catch (err) {
-      addToast?.('error', 'Scan failed: ' + String(err));
-    } finally {
-      setScanning(false);
-      setAddMenuOpen(false);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     const emp = employees.find((e) => e.id === id);
@@ -259,14 +199,6 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
               >
                 Add Custom AI Agent
               </button>
-              <div className="border-border my-1 border-t" />
-              <button
-                className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm disabled:opacity-50"
-                onClick={handleScan}
-                disabled={scanning}
-              >
-                {scanning ? 'Scanning…' : 'Scan for CLI Agents'}
-              </button>
               <button
                 className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
@@ -281,93 +213,71 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
         </div>
       </div>
 
-      {/* View toggle */}
-      <div className="mb-4 flex items-center gap-2">
+      {/* Filter bar */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <button
-          onClick={() => setViewMode('employees')}
-          className={filterButtonClass(viewMode === 'employees')}
+          onClick={() => setKindFilter('all')}
+          className={filterButtonClass(kindFilter === 'all')}
         >
-          Employees
+          All
         </button>
         <button
-          onClick={() => setViewMode('market')}
-          className={filterButtonClass(viewMode === 'market')}
+          onClick={() => setKindFilter('ai')}
+          className={filterButtonClass(kindFilter === 'ai')}
         >
-          Agent Market
+          AI
         </button>
+        <button
+          onClick={() => setKindFilter('human')}
+          className={filterButtonClass(kindFilter === 'human')}
+        >
+          Human
+        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <Search size={14} className="text-content-tertiary" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="border-border bg-surface-primary text-content-primary placeholder:text-content-tertiary focus:ring-accent w-40 rounded-lg border px-3 py-1 text-xs focus:ring-1 focus:outline-hidden"
+          />
+        </div>
       </div>
 
-      {viewMode === 'market' ? (
-        <AgentMarketContent embedded />
-      ) : (
-        <>
-          {/* Filter bar */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setKindFilter('all')}
-              className={filterButtonClass(kindFilter === 'all')}
-            >
-              全部
-            </button>
-            <button
-              onClick={() => setKindFilter('ai')}
-              className={filterButtonClass(kindFilter === 'ai')}
-            >
-              AI
-            </button>
-            <button
-              onClick={() => setKindFilter('human')}
-              className={filterButtonClass(kindFilter === 'human')}
-            >
-              Human
-            </button>
-            <div className="ml-auto flex items-center gap-2">
-              <Search size={14} className="text-content-tertiary" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="border-border bg-surface-primary text-content-primary placeholder:text-content-tertiary focus:ring-accent w-40 rounded-lg border px-3 py-1 text-xs focus:ring-1 focus:outline-hidden"
-              />
-            </div>
-          </div>
+      <div className="text-content-tertiary mb-4 text-sm">{filtered.length} team members</div>
 
-          <div className="text-content-tertiary mb-4 text-sm">{filtered.length} team members</div>
-
-          {loading && employees.length === 0 && (
-            <div className="flex h-64 items-center justify-center">
-              <div className="border-accent h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
-            </div>
-          )}
-
-          {filtered.length === 0 && !loading && (
-            <div className="border-border rounded-lg border border-dashed p-8 text-center">
-              <p className="text-content-tertiary">No employees match the filter.</p>
-            </div>
-          )}
-
-          {/* Card grid */}
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((emp) => (
-              <AgentBadge
-                key={emp.id}
-                name={emp.name}
-                model={emp.model}
-                kind={emp.kind}
-                source={emp.source}
-                status={emp.status}
-                expertise={emp.expertise}
-                permissionLevel={emp.permissionLevel}
-                onClick={() => setDetailEmployee(emp)}
-                onConfigure={() => handleOpenEdit(emp)}
-                onTest={() => handleTest(emp.id, emp.name)}
-                onDelete={() => handleDelete(emp.id)}
-              />
-            ))}
-          </div>
-        </>
+      {loading && employees.length === 0 && (
+        <div className="flex h-64 items-center justify-center">
+          <div className="border-accent h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
+        </div>
       )}
+
+      {filtered.length === 0 && !loading && (
+        <div className="border-border rounded-lg border border-dashed p-8 text-center">
+          <p className="text-content-tertiary">No employees match the filter.</p>
+        </div>
+      )}
+
+      {/* Card grid */}
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((emp) => (
+          <AgentBadge
+            key={emp.id}
+            name={emp.name}
+            model={emp.model}
+            kind={emp.kind}
+            source={emp.source}
+            status={emp.status}
+            expertise={emp.expertise}
+            permissionLevel={emp.permissionLevel}
+            onClick={() => setDetailEmployee(emp)}
+            onConfigure={() => handleOpenEdit(emp)}
+            onTest={() => handleTest(emp.id, emp.name)}
+            onDelete={() => handleDelete(emp.id)}
+          />
+        ))}
+      </div>
 
       {/* Detail Modal */}
       {detailEmployee && (

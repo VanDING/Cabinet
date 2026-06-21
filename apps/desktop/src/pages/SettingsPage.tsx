@@ -1,17 +1,11 @@
 import { useState } from 'react';
 import { Tabs, type Tab } from '@cabinet/ui';
-import {
-  ApiKeysTab,
-  OthersTab,
-  ThemeTab,
-  MonitorTab,
-  PisTab,
-} from './settings/index.js';
+import { RulesTab, OthersTab, ThemeTab, MonitorTab, PisTab } from './settings/index.js';
 
-type SettingsTab = 'api' | 'theme' | 'others' | 'monitor' | 'pis';
+type SettingsTab = 'rules' | 'theme' | 'others' | 'monitor' | 'pis';
 
 const tabLabels: Record<SettingsTab, string> = {
-  api: 'API Keys',
+  rules: 'Rules',
   theme: 'Theme',
   others: 'Others',
   monitor: 'Monitor',
@@ -19,7 +13,7 @@ const tabLabels: Record<SettingsTab, string> = {
 };
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('api');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('rules');
 
   const tabItems: Tab[] = (Object.keys(tabLabels) as SettingsTab[]).map((id) => ({
     id,
@@ -38,7 +32,7 @@ export function SettingsPage() {
       />
 
       {/* Tab Content */}
-      {activeTab === 'api' && <ApiKeysTab />}
+      {activeTab === 'rules' && <RulesTab />}
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
       {activeTab === 'monitor' && <MonitorTab />}
