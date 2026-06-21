@@ -37,6 +37,7 @@ interface Props {
   activeSessionId?: string;
   className?: string;
   onFileSelect?: (node: FileNode) => void;
+  onClose?: () => void;
 }
 
 export function ProjectExplorer({
@@ -46,6 +47,7 @@ export function ProjectExplorer({
   activeSessionId,
   className,
   onFileSelect,
+  onClose,
 }: Props) {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [rootPath, setRootPath] = useState<string | null>(null);
@@ -414,6 +416,15 @@ export function ProjectExplorer({
           <span className="text-content-secondary truncate text-xs font-medium">
             {projectName ?? 'Project'}
           </span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-content-tertiary hover:text-content-primary ml-auto shrink-0 rounded-sm px-1 text-xs"
+              title="Close project explorer"
+            >
+              &times;
+            </button>
+          )}
         </div>
         <div className="relative">
           <Search

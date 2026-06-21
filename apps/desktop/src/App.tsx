@@ -401,6 +401,7 @@ export function App() {
             projectName={projects.find((p) => p.id === activeProjectId)?.name}
             onAddFile={addFile}
             activeSessionId={activeSession?.id}
+            onClose={() => switchProject(null)}
           />
 
           {/* Main content area (relative for floating ChatPanel) */}
@@ -587,8 +588,8 @@ export function App() {
         {/* Mobile bottom nav */}
         <MobileNav activePage={activePage} onNavigate={handleNavigate} />
 
-        {/* Secretary Orb */}
-        {uiMode === 'idle' && <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />}
+        {/* Secretary Orb — available whenever not in full-screen chat */}
+        {uiMode !== 'chat' && <SecretaryOrb onOpen={handleOrbOpen} uiMode={uiMode} />}
 
         {/* Notification Bubbles — only when ChatPanel is open (no orb visible) */}
         {uiMode === 'chat' && <NotificationManager />}

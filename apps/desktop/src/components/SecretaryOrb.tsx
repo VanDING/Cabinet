@@ -27,7 +27,7 @@ type Accessory = 'none' | 'hat' | 'crown' | 'headphones' | 'blush' | 'heart-eyes
 
 interface SecretaryOrbProps {
   onOpen?: () => void;
-  uiMode: 'idle' | 'work' | 'chat';
+  uiMode: 'idle' | 'browse' | 'chat';
 }
 
 export function SecretaryOrb({ onOpen, uiMode }: SecretaryOrbProps) {
@@ -198,7 +198,6 @@ export function SecretaryOrb({ onOpen, uiMode }: SecretaryOrbProps) {
 
     autoMorphTimerRef.current = setTimeout(cycle, 12000 + Math.random() * 8000);
     return () => stopAutoMorph();
-     
   }, [orbMood]);
 
   function stopAutoMorph() {
