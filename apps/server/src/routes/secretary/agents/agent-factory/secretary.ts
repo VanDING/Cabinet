@@ -119,6 +119,8 @@ export function getOrCreateAgent(
       contextBudget: secretaryRole?.contextBudget,
       thinkingBudget,
       trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
+      observerPreset: 'standard',
+      reflection: { enabled: true, maxRounds: 2, qualityThreshold: 0.6 },
       // toolPruner removed from ServerContext — fixed small tool set
     });
     secretaryLoop.onSessionComplete = (summary: any) => {

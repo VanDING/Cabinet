@@ -15,10 +15,12 @@ export function InstallDialog({
 }) {
   const [output, setOutput] = useState<string[]>([]);
   const [status, setStatus] = useState<'running' | 'completed' | 'failed'>('running');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let buffer = '';
     const run = async () => {
       try {
         const res = await fetch('/api/install/install', {
@@ -32,18 +34,34 @@ export function InstallDialog({
         while (true) {
           const { done, value } = await reader.read();
           if (done || cancelled) break;
-          const text = decoder.decode(value, { stream: true });
-          for (const line of text.split('\n')) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
             if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6)) as { stage: string; data?: string };
-              setOutput((prev) => [...prev, `[${data.stage}] ${data.data ?? ''}`]);
-              if (data.stage === 'completed') setStatus('completed');
-              if (data.stage === 'failed') setStatus('failed');
+              try {
+                const data = JSON.parse(line.slice(6)) as {
+                  stage?: string;
+                  data?: string;
+                  error?: string;
+                  exitCode?: number;
+                };
+                const stage = data.stage ?? 'output';
+                setOutput((prev) => [...prev, `[${stage}] ${data.data ?? data.error ?? ''}`]);
+                if (stage === 'completed') setStatus('completed');
+                if (stage === 'failed' || stage === 'error') {
+                  setStatus('failed');
+                  setErrorMsg(data.error ?? 'Install failed');
+                }
+              } catch {
+                /* partial JSON — skip */
+              }
             }
           }
         }
       } catch {
         setStatus('failed');
+        setErrorMsg('Network error');
       }
     };
     void run();
@@ -75,7 +93,8 @@ export function InstallDialog({
           {output.map((line, i) => (
             <div key={i}>{line}</div>
           ))}
-          {status === 'running' && <div className="animate-pulse">Running\u2026</div>}
+          {status === 'running' && <div className="animate-pulse">Running...</div>}
+          {errorMsg && <div className="text-red-400">{errorMsg}</div>}
         </div>
         <div className="flex justify-end gap-2">
           {status === 'completed' && (

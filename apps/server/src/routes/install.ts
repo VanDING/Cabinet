@@ -10,6 +10,7 @@ import {
   Scanner,
 } from '@cabinet/agent';
 import type { InstallMethod } from '@cabinet/types';
+import { getServerContext } from '../context.js';
 
 export const installRouter = new Hono();
 
@@ -51,22 +52,40 @@ installRouter.get('/definitions', (c) => {
 installRouter.post('/install', (c) => {
   return streamSSE(c, async (stream) => {
     const body = await c.req.json();
-    const { agentId, methodIndex } = body as { agentId: string; methodIndex: number };
+    const {
+      agentId,
+      methodIndex,
+      method: methodObj,
+    } = body as {
+      agentId: string;
+      methodIndex?: number;
+      method?: InstallMethod;
+    };
 
-    const methods = getInstallMethods(agentId);
-    if (!methods || methodIndex < 0 || methodIndex >= methods.length) {
-      await stream.writeSSE({
-        event: 'error',
-        data: JSON.stringify({ error: 'Invalid agent or method' }),
-      });
-      return;
+    let method: InstallMethod | undefined;
+    if (methodObj && methodObj.command) {
+      method = methodObj;
+    } else {
+      const methods = getInstallMethods(agentId);
+      if (
+        !methods ||
+        methodIndex === undefined ||
+        methodIndex < 0 ||
+        methodIndex >= methods.length
+      ) {
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({ stage: 'error', error: 'Invalid agent or method' }),
+        });
+        return;
+      }
+      method = methods[methodIndex];
     }
 
-    const method = methods[methodIndex];
     if (!method) {
       await stream.writeSSE({
         event: 'error',
-        data: JSON.stringify({ error: 'Method not found' }),
+        data: JSON.stringify({ stage: 'error', error: 'Method not found' }),
       });
       return;
     }
@@ -75,6 +94,7 @@ installRouter.post('/install', (c) => {
       await stream.writeSSE({
         event: progress.stage,
         data: JSON.stringify({
+          stage: progress.stage,
           taskId,
           data: progress.data,
           exitCode: progress.exitCode,
@@ -82,9 +102,6 @@ installRouter.post('/install', (c) => {
       });
     });
 
-    // Keep stream open until install finishes
-    // The startInstall callback sends progress events
-    // We need to wait for completion
     await new Promise<void>((resolve) => {
       const checkInterval = setInterval(() => {
         const task = getInstallTask(taskId);
@@ -104,7 +121,6 @@ installRouter.post('/cancel/:taskId', (c) => {
 });
 
 installRouter.post('/deep-scan', async (c) => {
-  const { getServerContext } = await import('../context.js');
   const { agentRegistry, agentRoleRepo } = getServerContext();
   const results = await new Scanner(agentRegistry, agentRoleRepo).scanAll();
   return c.json({

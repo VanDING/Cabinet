@@ -1,4 +1,9 @@
-import type { LLMGateway, LLMResponse, StreamingToolDefinition } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMResponse,
+  StreamingToolDefinition,
+  StreamChunk,
+} from '@cabinet/gateway';
 import { withRetry } from '../retry.js';
 import { ToolExecutor } from '../tool-executor.js';
 import { CheckpointManager } from '../checkpoint.js';
@@ -123,22 +128,85 @@ export async function* executeGenerator(
       ctx.pendingSubconsciousInsights = [];
     }
 
-    // LLM call
+    // LLM call — use streamText for real token-level streaming + thinking support
     let response: LLMResponse;
     try {
-      response = await withRetry(
-        () =>
-          gateway.generateText({
-            model: options.model ?? 'claude-sonnet-4-6',
-            systemPrompt: ctx.systemPrompt,
-            messages: ctx.messages,
-            tools: toolDescriptors,
-            cacheSystemPrompt: true,
-            ...(options.maxResponseTokens != null ? { maxTokens: options.maxResponseTokens } : {}),
-            ...(options.temperature != null ? { temperature: options.temperature } : {}),
-          }),
-        new Error('LLM call'),
-      );
+      const stream = gateway.streamText({
+        model: options.model ?? 'claude-sonnet-4-6',
+        systemPrompt: ctx.systemPrompt,
+        messages: ctx.messages,
+        tools: toolDescriptors.map((t) => ({
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+          execute: async (args: Record<string, unknown>) => {
+            const r = await activeToolExecutor.execute(t.name, '', args, {
+              sessionId: options.sessionId,
+              trustLevel: options.trustLevel,
+            });
+            return r.error ?? r.output;
+          },
+        })),
+        cacheSystemPrompt: true,
+        ...(options.maxResponseTokens != null ? { maxTokens: options.maxResponseTokens } : {}),
+        ...(options.temperature != null ? { temperature: options.temperature } : {}),
+        ...(options.thinkingBudget != null ? { thinkingBudget: options.thinkingBudget } : {}),
+        maxSteps: 1,
+      });
+
+      let textContent = '';
+      let thinkingContent = '';
+      let thinkingStarted = false;
+      const toolCalls: NonNullable<LLMResponse['toolCalls']> = [];
+      let usage: LLMResponse['usage'] = {
+        promptTokens: 0,
+        completionTokens: 0,
+        cachedPromptTokens: 0,
+      };
+      const modelName = options.model ?? 'claude-sonnet-4-6';
+
+      for await (const chunk of stream) {
+        switch (chunk.type) {
+          case 'thinking':
+            if (!thinkingStarted) {
+              thinkingStarted = true;
+              yield { type: 'thinking', content: '' };
+            }
+            thinkingContent += chunk.content ?? '';
+            yield { type: 'thinking', content: chunk.content ?? '' };
+            break;
+          case 'thinking_done':
+            if (thinkingStarted) yield { type: 'thinking_done' };
+            break;
+          case 'text':
+            textContent += chunk.content ?? '';
+            ctx.currentStepText += chunk.content ?? '';
+            yield { type: 'text', content: chunk.content ?? '' };
+            if (_streamingCallback) await new Promise((r) => setTimeout(r, 4));
+            break;
+          case 'tool_call':
+            if (chunk.toolCall) {
+              toolCalls.push({
+                id: chunk.toolCall.id,
+                name: chunk.toolCall.name,
+                arguments: chunk.toolCall.args,
+              });
+            }
+            break;
+          case 'done':
+            if (chunk.usage) usage = chunk.usage;
+            break;
+          case 'error':
+            throw new Error(chunk.content ?? 'LLM stream error');
+        }
+      }
+
+      response = {
+        content: textContent,
+        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        usage,
+        model: modelName,
+      };
     } catch (error) {
       ctx.errorCounts.fatal++;
       ctx.consecutiveErrors++;
@@ -164,12 +232,6 @@ export async function* executeGenerator(
       ctx.messages.push({ role: 'assistant', content: response.content });
       if (ctx.handoff) {
         ctx.handoff.recordDecision(response.content.slice(0, 200), 'agent final response');
-      }
-
-      // Simulate streaming for UI
-      for (let i = 0; i < response.content.length; i += 4) {
-        yield { type: 'text', content: response.content.slice(i, i + 4) };
-        if (_streamingCallback) await new Promise((r) => setTimeout(r, 8));
       }
 
       ctx.stepCount++;

@@ -3,7 +3,10 @@ import type { CanvasNode, CanvasNodeData, CanvasNodeType } from './node-types';
 import type { WorkflowNodeDef } from '@cabinet/types';
 
 export function definitionToCanvas(
-  def: { nodes?: WorkflowNodeDef[]; edges?: { from: string; to: string; branch?: string; label?: string }[] },
+  def: {
+    nodes?: WorkflowNodeDef[];
+    edges?: { from: string; to: string; branch?: string; label?: string }[];
+  },
   savedNodes?: CanvasNode[],
 ): { nodes: CanvasNode[]; edges: CanvasEdge[] } {
   const serverNodes = def.nodes ?? [];
@@ -18,7 +21,11 @@ export function definitionToCanvas(
   let needsLayout = false;
 
   // Flatten nested nodes and restore parentId relationships
-  function addNode(raw: WorkflowNodeDef, parentId?: string, parentOffset?: { x: number; y: number }) {
+  function addNode(
+    raw: WorkflowNodeDef,
+    parentId?: string,
+    parentOffset?: { x: number; y: number },
+  ) {
     const savedPos = positionMap.get(raw.id);
     if (!savedPos && !parentId) needsLayout = true;
 
@@ -78,7 +85,9 @@ export function definitionToCanvas(
 
     // Recursively add children
     if (raw.children && raw.children.length > 0) {
-      const childOffset = parentOffset ? { x: parentOffset.x + position.x, y: parentOffset.y + position.y } : position;
+      const childOffset = parentOffset
+        ? { x: parentOffset.x + position.x, y: parentOffset.y + position.y }
+        : position;
       // If no saved positions for children, arrange them in a grid inside parent
       const hasSavedChildPositions = raw.children.some((c) => positionMap.has(c.id));
       if (!hasSavedChildPositions) {
@@ -129,7 +138,11 @@ export function definitionToCanvas(
 export function canvasToDefinition(
   nodes: CanvasNode[],
   edges: CanvasEdge[],
-): { nodes: WorkflowNodeDef[]; edges: { from: string; to: string; branch?: string; label?: string }[] } {
+): {
+  nodes: WorkflowNodeDef[];
+  edges: { from: string; to: string; branch?: string; label?: string }[];
+  capabilities?: Record<string, unknown>;
+} {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const childrenMap = new Map<string, CanvasNode[]>();
 
@@ -202,11 +215,22 @@ export function canvasToDefinition(
   const outEdges = edges.map((e) => ({
     from: e.source,
     to: e.target,
-    branch: (e.sourceHandle as string | undefined),
-    label: (e.label as string | undefined),
+    branch: e.sourceHandle as string | undefined,
+    label: e.label as string | undefined,
   }));
 
-  return { nodes: outNodes, edges: outEdges };
+  return {
+    nodes: outNodes,
+    edges: outEdges,
+    capabilities: {
+      files: { read: true, write: true },
+      web: { fetch: true, http: true },
+      shell: true,
+      scheduler: true,
+      knowledge: { search: true, index: true },
+      evaluation: true,
+    },
+  };
 }
 
 function dagreLayout(nodes: CanvasNode[], edges: CanvasEdge[]): void {

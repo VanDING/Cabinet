@@ -87,6 +87,15 @@ export class NodeExecutor {
       case 'manager':
         output = await this.execManager(node, run, nodeMap, executeNode);
         break;
+      case 'merge':
+      case 'pass':
+      case 'notification':
+      case 'wait':
+        output = previousOutputs || '';
+        break;
+      case 'intentClassify':
+        output = await this.execLlm(node, run, previousOutputs);
+        break;
       default:
         throw new Error(`Unknown node type: ${(node as any).type}`);
     }

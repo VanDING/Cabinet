@@ -270,7 +270,6 @@ export function getEngine(): WorkflowEngine {
       }
 
       const ext = roleDef.external;
-      // Cache adapters keyed by agentId
       const cacheKey = `wf_adapter:${agentId}`;
       let adapter: any = (engine as any)._adapterCache?.get(cacheKey);
       if (!adapter) {
@@ -318,6 +317,71 @@ export function getEngine(): WorkflowEngine {
         return { status: 'failed', output: result.error, decisionId: result.decision_id };
       }
       return { status: 'completed', output: result.output };
+    },
+
+    tool: async (node: WorkflowNodeDef, _prev: string) => {
+      const d = node.data ?? {};
+      const toolId = (d.toolId as string) ?? node.id;
+      const { agentRegistry, agentRoleRepo } = getServerContext();
+      return `Tool ${toolId} executed (stub)`;
+    },
+
+    runSubWorkflow: async (workflowId: string, _input: unknown) => {
+      try {
+        const result = await runWorkflowById(workflowId);
+        return `Sub-workflow completed: ${result.runId}`;
+      } catch (e: any) {
+        return `Sub-workflow failed: ${e.message}`;
+      }
+    },
+
+    knowledgeBase: async (node: WorkflowNodeDef, _prev: string) => {
+      const d = node.data ?? {};
+      const query = (d.query as string) ?? (d.prompt as string) ?? _prev;
+      try {
+        const ctx = getServerContext();
+        const results = await ctx.longTerm.search(query, 5);
+        return results.map((r: any) => r.content).join('\n\n');
+      } catch {
+        return 'Knowledge base search failed';
+      }
+    },
+
+    humanTask: async (node: WorkflowNodeDef, run: WorkflowRun) => {
+      const d = node.data ?? {};
+      const { decisionService, auditLogRepo } = getServerContext();
+      const decisionId = `dec_${Date.now()}`;
+      decisionService.create({
+        id: decisionId,
+        projectId: 'default',
+        type: 'action',
+        title: `Human Task: ${(d.label as string) ?? node.id}`,
+        description: (d.description as string) ?? `Please complete the task at: ${node.id}`,
+        options: [
+          { id: 'complete', label: 'Complete', impact: 'Task done.' },
+          { id: 'skip', label: 'Skip', impact: 'Skip this task.' },
+        ],
+        classification: {
+          scopeDescription: 'Workflow human task',
+          isCrossSession: true,
+          optionCount: 2,
+          estimatedCost: 0,
+          involvesFunds: false,
+          involvesPermissions: false,
+          involvesDataDeletion: false,
+          involvesOrgConfig: false,
+        },
+      });
+      auditLogRepo.insert('workflow_humantask', decisionId, 'pending', 'system', {
+        workflowId: run.workflowId,
+        nodeId: node.id,
+      });
+      broadcast('decision_created', {
+        decisionId,
+        title: `Human Task: ${(d.label as string) ?? node.id}`,
+        level: 'L1',
+      });
+      return { status: 'pending' as const, decisionId };
     },
   });
 
