@@ -3,23 +3,6 @@ import { useChat } from '../../contexts/ChatContext.js';
 import { useProject } from '../../contexts/ProjectContext.js';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAY_TAG: Record<number, string> = {
-  0: 'Rest and recharge',
-  1: 'Fresh week ahead',
-  2: 'Building momentum',
-  3: 'Midweek push',
-  4: 'Almost there',
-  5: 'Finish strong',
-  6: 'Weekend mode',
-};
-
-const ALT_GREETINGS = [
-  'Back in action, Captain',
-  'Ready when you are, Captain',
-  'Your Cabinet is standing by',
-  "What's the plan, Captain?",
-  "Let's make something happen",
-];
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -34,30 +17,21 @@ function getGreeting(): string {
   return 'Night owl, Captain';
 }
 
-function maybeAltGreeting(): string {
-  if (Math.random() < 0.15) {
-    return ALT_GREETINGS[Math.floor(Math.random() * ALT_GREETINGS.length)]!;
-  }
-  return '';
-}
-
-function getDayTag(): string {
-  return DAY_TAG[new Date().getDay()] ?? '';
-}
-
 function getTagline(hasProjects: boolean, sessionCount: number, agentCount: number): string {
-  if (!hasProjects) return 'Create your first project to get started.';
-  if (agentCount > 0 && sessionCount === 0)
-    return `${agentCount} agent(s) ready — Claude Code, Codex, and more.`;
-  if (sessionCount > 0) return `${sessionCount} session(s) available — pick up where you left off.`;
-  return 'Your Cabinet is ready. What would you like to do?';
+  if (!hasProjects) return 'Set up your first project to get started with Cabinet.';
+  if (sessionCount > 0 && agentCount > 0) {
+    return `${sessionCount} open sessions${agentCount > 1 ? `, ${agentCount} agents ready` : ''}. Pick one up or start something new.`;
+  }
+  if (sessionCount > 0) {
+    return `${sessionCount} open session${sessionCount > 1 ? 's' : ''}. Continue where you left off or start a new task.`;
+  }
+  if (agentCount > 0)
+    return `${agentCount} agent${agentCount > 1 ? 's are' : ' is'} ready. Start a session whenever you are.`;
+  return 'Your Cabinet is ready. Start a project or a quick task.';
 }
 
 export function WelcomeHeader() {
   const greeting = useMemo(() => getGreeting(), []);
-  const altGreeting = useMemo(() => maybeAltGreeting(), []);
-  const displayGreeting = altGreeting || greeting;
-  const dayTag = useMemo(() => getDayTag(), []);
   const { history, agents, handleCreateSession, setUIMode } = useChat();
   const { projects, handleOpenProjectActionModal } = useProject();
 
@@ -74,32 +48,20 @@ export function WelcomeHeader() {
     setUIMode('chat');
   }, [handleCreateSession, setUIMode]);
 
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const dayName = DAYS[now.getDay()]!;
+  const dayName = DAYS[new Date().getDay()]!;
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div style={{ padding: '64px 32px 48px' }}>
-      <div className="flex items-center justify-between">
-        <div>
-          <div
-            style={{
-              fontSize: 32,
-              fontWeight: 700,
-              color: 'var(--content-primary)',
-              lineHeight: 1.2,
-            }}
-          >
-            {displayGreeting}
-          </div>
-          <div style={{ fontSize: 14, color: 'var(--content-tertiary)', marginTop: 6 }}>
-            {timeStr} · {dayName} · {dayTag}
-          </div>
-        </div>
-      </div>
       <div
-        style={{ fontSize: 16, color: 'var(--content-secondary)', marginTop: 12, maxWidth: 480 }}
+        style={{ fontSize: 32, fontWeight: 700, color: 'var(--content-primary)', lineHeight: 1.2 }}
       >
+        {greeting}
+      </div>
+      <div style={{ fontSize: 15, color: 'var(--content-secondary)', marginTop: 8 }}>
+        {dayName} · {timeStr}
+      </div>
+      <div style={{ fontSize: 16, color: 'var(--content-tertiary)', marginTop: 16, maxWidth: 480 }}>
         {tagline}
       </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
