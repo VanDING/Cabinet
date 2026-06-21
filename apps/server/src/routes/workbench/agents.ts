@@ -63,6 +63,19 @@ workbenchAgentsRouter.post('/:agentId/project', async (c) => {
   const projector = getProjector(recipe.projectorId);
   if (!projector) return c.json({ error: `No projector for ${recipe.projectorId}` }, 400);
 
+  const isDryRun = c.req.query('dryRun') === '1';
+  const hasProjectedOnce = (external as Record<string, unknown>).projectedOnce === true;
+
+  if (!isDryRun && !hasProjectedOnce) {
+    const forcedDryRun = c.req.query('confirm') !== '1';
+    if (forcedDryRun) {
+      return c.json({
+        status: 'confirm_required',
+        message: 'This is the first projection for this agent. A dry-run is recommended.',
+      });
+    }
+  }
+
   const apiKeys = apiKeyRepo.findAll().map((k) => ({ provider: k.provider, key: k.encrypted_key }));
   const boundMcp = agentBindingRepo.getMcpBindingsForAgent(agentId).filter((b) => b.enabled);
   const mcpServers = mcpServerRepo
@@ -80,9 +93,15 @@ workbenchAgentsRouter.post('/:agentId/project', async (c) => {
       skills: skills.map(rowToSkillEntry),
       agentSpecific: {},
     },
-    { dryRun: c.req.query('dryRun') === '1' },
+    { dryRun: isDryRun },
   );
-  return c.json({ status: 'projected', dryRun: c.req.query('dryRun') === '1' });
+
+  if (!isDryRun && !hasProjectedOnce) {
+    const updatedExternal = { ...external, projectedOnce: true };
+    agentRoleRepo.upsert({ ...row, external_config: JSON.stringify(updatedExternal) });
+  }
+
+  return c.json({ status: 'projected', dryRun: isDryRun });
 });
 
 workbenchAgentsRouter.delete('/:agentId', (c) => {

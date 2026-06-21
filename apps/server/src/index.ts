@@ -30,6 +30,7 @@ import { tasksRouter } from './routes/tasks.js';
 import { installRouter } from './routes/install.js';
 import { workbenchRouter } from './routes/workbench.js';
 import { workbenchAgentsRouter } from './routes/workbench/agents.js';
+import { mcpRegistryRouter } from './routes/workbench/mcp-reg.js';
 
 import { documentsRouter } from './routes/documents.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -103,6 +104,7 @@ export function createApp() {
   app.route('/api/install', installRouter);
   app.route('/api/workbench', workbenchRouter);
   app.route('/api/workbench/agents', workbenchAgentsRouter);
+  app.route('/api/workbench/mcp/registry', mcpRegistryRouter);
 
   // GeoIP proxy — avoids CORS issues with ipapi.co from browser
   app.get('/api/geoip', async (c) => {
