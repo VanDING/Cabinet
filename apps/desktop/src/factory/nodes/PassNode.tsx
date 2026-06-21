@@ -6,19 +6,37 @@ export function PassNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-content-secondary">Pass</span>
+        <span className="bg-surface-overlay border-border text-content-secondary rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          Pass
+        </span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[130px] overflow-hidden shadow-xs transition-shadow border-border wf-bg-surface-25 ${selected ? 'shadow-md ring-2 ring-border/40' : ''}`}>
-        <div className="flex items-center gap-1.5 wf-bg-surface-35 px-3 py-1.5">
-          <span className="text-sm text-content-secondary">→</span>
-          <span className="text-xs font-semibold text-content-secondary">Pass</span>
+      <div
+        className={`border-border wf-bg-surface-25 min-w-[130px] overflow-hidden rounded-xl border-2 shadow-xs transition-shadow ${selected ? 'ring-border/40 shadow-md ring-2' : ''}`}
+      >
+        <div className="wf-bg-surface-35 flex items-center gap-1.5 px-3 py-1.5">
+          <span className="text-content-secondary text-sm">→</span>
+          <span className="text-content-secondary text-xs font-semibold">Pass</span>
         </div>
         <div className="px-3 py-2">
-          <p className="text-xs font-medium text-content-primary">{title}</p>
+          <p className="text-content-primary text-xs font-medium">{title}</p>
         </div>
-        <Handle type="target" position={Position.Left} id="in-1" className="!bg-content-secondary !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="target" position={Position.Top} id="in-2" className="!bg-content-secondary !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-content-secondary !border-2 !border-surface-primary !w-3 !h-3" />
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="in-1"
+          className="!bg-content-secondary !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="in-2"
+          className="!bg-content-secondary !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-content-secondary !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

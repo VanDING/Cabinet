@@ -34,10 +34,22 @@ describe('SessionMetricsRepository + step_events', () => {
   });
 
   it('getToolSequence returns tool calls ordered by step', () => {
-    const stmt = db.prepare('INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)');
-    stmt.run('s1', 1, 'tool_call', JSON.stringify({ tool_name: 'read_file', args: { path: 'a.ts' } }));
+    const stmt = db.prepare(
+      'INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)',
+    );
+    stmt.run(
+      's1',
+      1,
+      'tool_call',
+      JSON.stringify({ tool_name: 'read_file', args: { path: 'a.ts' } }),
+    );
     stmt.run('s1', 1, 'tool_result', JSON.stringify({ tool_name: 'read_file', success: true }));
-    stmt.run('s1', 2, 'tool_call', JSON.stringify({ tool_name: 'write_file', args: { path: 'b.ts' } }));
+    stmt.run(
+      's1',
+      2,
+      'tool_call',
+      JSON.stringify({ tool_name: 'write_file', args: { path: 'b.ts' } }),
+    );
 
     const seq = repo.getToolSequence('s1');
     expect(seq.length).toBe(3);
@@ -47,7 +59,9 @@ describe('SessionMetricsRepository + step_events', () => {
   });
 
   it('getZoneCrossings returns zone changes', () => {
-    const stmt = db.prepare('INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)');
+    const stmt = db.prepare(
+      'INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)',
+    );
     stmt.run('s1', 3, 'zone_crossing', JSON.stringify({ from: 'smart', to: 'warning' }));
     stmt.run('s1', 7, 'zone_crossing', JSON.stringify({ from: 'warning', to: 'critical' }));
 
@@ -58,7 +72,9 @@ describe('SessionMetricsRepository + step_events', () => {
   });
 
   it('getUtilizationSeries returns snapshots', () => {
-    const stmt = db.prepare('INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)');
+    const stmt = db.prepare(
+      'INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)',
+    );
     stmt.run('s1', 1, 'zone_snapshot', JSON.stringify({ utilization: 0.3, zone: 'smart' }));
     stmt.run('s1', 2, 'zone_snapshot', JSON.stringify({ utilization: 0.6, zone: 'warning' }));
 
@@ -69,10 +85,12 @@ describe('SessionMetricsRepository + step_events', () => {
   });
 
   it('pruneOlderThan cleans step_events too', () => {
-    db.prepare("INSERT INTO step_events (session_id, step_number, event_type, timestamp) VALUES (?, ?, ?, datetime('now', '-91 days'))")
-      .run('old', 1, 'tool_call');
-    db.prepare("INSERT INTO step_events (session_id, step_number, event_type, timestamp) VALUES (?, ?, ?, datetime('now'))")
-      .run('new', 1, 'tool_call');
+    db.prepare(
+      "INSERT INTO step_events (session_id, step_number, event_type, timestamp) VALUES (?, ?, ?, datetime('now', '-91 days'))",
+    ).run('old', 1, 'tool_call');
+    db.prepare(
+      "INSERT INTO step_events (session_id, step_number, event_type, timestamp) VALUES (?, ?, ?, datetime('now'))",
+    ).run('new', 1, 'tool_call');
 
     repo.pruneOlderThan(90);
     const rows = db.prepare('SELECT session_id FROM step_events').all() as any[];
@@ -82,10 +100,13 @@ describe('SessionMetricsRepository + step_events', () => {
 
   it('getPeakUtilizationDistribution groups into bins', () => {
     // Insert a session metric
-    db.prepare(`INSERT INTO session_metrics (session_id, model, started_at, success) VALUES (?, ?, datetime('now'), 1)`)
-      .run('s1', 'gpt-4o');
+    db.prepare(
+      `INSERT INTO session_metrics (session_id, model, started_at, success) VALUES (?, ?, datetime('now'), 1)`,
+    ).run('s1', 'gpt-4o');
     // Insert zone snapshots with different utilization values
-    const stmt = db.prepare('INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)');
+    const stmt = db.prepare(
+      'INSERT INTO step_events (session_id, step_number, event_type, payload) VALUES (?, ?, ?, ?)',
+    );
     stmt.run('s1', 1, 'zone_snapshot', JSON.stringify({ utilization: 0.42 }));
 
     const dist = repo.getPeakUtilizationDistribution('gpt-4o', 30);

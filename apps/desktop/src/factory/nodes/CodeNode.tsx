@@ -7,18 +7,33 @@ export function CodeNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-info">Code</span>
+        <span className="bg-surface-overlay border-border text-intent-info rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          Code
+        </span>
       </NodeToolbar>
-      <div className={`rounded-md border px-3 py-2 min-w-[130px] max-w-[200px] shadow-xs transition-shadow wf-border-info-40 wf-bg-info-15 ${selected ? 'shadow-md ring-2 wf-ring-info-50' : ''}`}>
+      <div
+        className={`wf-border-info-40 wf-bg-info-15 max-w-[200px] min-w-[130px] rounded-md border px-3 py-2 shadow-xs transition-shadow ${selected ? 'wf-ring-info-50 shadow-md ring-2' : ''}`}
+      >
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-content-primary">{'<>'}</span>
-          <span className="text-xs font-medium text-content-primary truncate">{title}</span>
+          <span className="text-content-primary text-xs font-semibold">{'<>'}</span>
+          <span className="text-content-primary truncate text-xs font-medium">{title}</span>
         </div>
         {code ? (
-          <p className="mt-1 rounded-sm wf-bg-info-25 px-1.5 py-0.5 text-[10px] text-content-tertiary font-mono truncate">{code.slice(0, 50)}{code.length > 50 ? '...' : ''}</p>
+          <p className="wf-bg-info-25 text-content-tertiary mt-1 truncate rounded-sm px-1.5 py-0.5 font-mono text-[10px]">
+            {code.slice(0, 50)}
+            {code.length > 50 ? '...' : ''}
+          </p>
         ) : null}
-        <Handle type="target" position={Position.Top} className="!bg-intent-info !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-intent-info !border-2 !border-surface-primary !w-3 !h-3" />
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!bg-intent-info !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-intent-info !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

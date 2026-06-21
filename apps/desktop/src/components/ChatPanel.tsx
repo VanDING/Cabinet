@@ -1,13 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Plus,
-  CheckCircle,
-  Shield,
-  Terminal,
-  ArrowUp,
-  Square,
-  ChevronDown,
-} from 'lucide-react';
+import { Plus, CheckCircle, Shield, Terminal, ArrowUp, Square, ChevronDown } from 'lucide-react';
 import type { Session, AttachedFile } from '../hooks/useSessions';
 import type { InputTarget } from '../contexts/ChatContext';
 import { FileSearchPanel } from './FileSearchPanel';

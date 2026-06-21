@@ -12,23 +12,24 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|----------------|
-| `apps/desktop/src-tauri/src/pty.rs` | Modify | Refactor polling to event-push via background thread |
-| `apps/desktop/src-tauri/src/lib.rs` | Modify | Register new PTY commands |
-| `apps/desktop/package.json` | Modify | Add xterm dependencies |
-| `apps/desktop/src/hooks/useTerminal.ts` | Create | Tauri event subscription + PTY lifecycle |
-| `apps/desktop/src/components/terminal/TerminalTab.tsx` | Create | Single xterm.js instance |
-| `apps/desktop/src/components/terminal/TerminalPanel.tsx` | Create | Multi-tab + resizable panel |
-| `apps/desktop/src/components/chat/AgentTopBar.tsx` | Modify | Add terminal toggle button |
-| `apps/desktop/src/components/ChatView.tsx` | Modify | Embed TerminalPanel |
-| `apps/desktop/src/App.tsx` | Modify | Pass terminal state to ChatView |
+| File                                                     | Action | Responsibility                                       |
+| -------------------------------------------------------- | ------ | ---------------------------------------------------- |
+| `apps/desktop/src-tauri/src/pty.rs`                      | Modify | Refactor polling to event-push via background thread |
+| `apps/desktop/src-tauri/src/lib.rs`                      | Modify | Register new PTY commands                            |
+| `apps/desktop/package.json`                              | Modify | Add xterm dependencies                               |
+| `apps/desktop/src/hooks/useTerminal.ts`                  | Create | Tauri event subscription + PTY lifecycle             |
+| `apps/desktop/src/components/terminal/TerminalTab.tsx`   | Create | Single xterm.js instance                             |
+| `apps/desktop/src/components/terminal/TerminalPanel.tsx` | Create | Multi-tab + resizable panel                          |
+| `apps/desktop/src/components/chat/AgentTopBar.tsx`       | Modify | Add terminal toggle button                           |
+| `apps/desktop/src/components/ChatView.tsx`               | Modify | Embed TerminalPanel                                  |
+| `apps/desktop/src/App.tsx`                               | Modify | Pass terminal state to ChatView                      |
 
 ---
 
 ## Task 1: Refactor `pty.rs` to event-push
 
 **Files:**
+
 - Modify: `apps/desktop/src-tauri/src/pty.rs` (full rewrite)
 
 - [ ] **Step 1: Rewrite `pty.rs` with event-push architecture**
@@ -209,6 +210,7 @@ git commit -m "feat(pty): refactor to event-push architecture with background re
 ## Task 2: Register new PTY commands in `lib.rs`
 
 **Files:**
+
 - Modify: `apps/desktop/src-tauri/src/lib.rs`
 
 - [ ] **Step 1: Update invoke_handler with new commands**
@@ -242,6 +244,7 @@ git commit -m "feat(pty): register new pty_list command, drop pty_read"
 ## Task 3: Add xterm.js dependencies
 
 **Files:**
+
 - Modify: `apps/desktop/package.json`
 
 - [ ] **Step 1: Add xterm dependencies**
@@ -270,6 +273,7 @@ git commit -m "feat(terminal): add xterm.js and xterm-addon-fit dependencies"
 ## Task 4: Create `useTerminal` hook
 
 **Files:**
+
 - Create: `apps/desktop/src/hooks/useTerminal.ts`
 
 - [ ] **Step 1: Create the hook**
@@ -323,12 +327,15 @@ export function useTerminal(opts: UseTerminalOptions) {
             optsRef.current.onOutput?.(event.payload.data);
           }
         });
-        unlistenExit = await listen<{ ptyId: string; exitCode: number | null }>('pty:exit', (event) => {
-          if (event.payload.ptyId === ptyId) {
-            setIsRunning(false);
-            optsRef.current.onExit?.(event.payload.exitCode);
-          }
-        });
+        unlistenExit = await listen<{ ptyId: string; exitCode: number | null }>(
+          'pty:exit',
+          (event) => {
+            if (event.payload.ptyId === ptyId) {
+              setIsRunning(false);
+              optsRef.current.onExit?.(event.payload.exitCode);
+            }
+          },
+        );
       } catch (err) {
         console.error('Failed to spawn PTY:', err);
         setIsRunning(false);
@@ -389,6 +396,7 @@ git commit -m "feat(terminal): add useTerminal hook for PTY lifecycle management
 ## Task 5: Create `TerminalTab` component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/terminal/TerminalTab.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -508,6 +516,7 @@ git commit -m "feat(terminal): add TerminalTab component with xterm.js"
 ## Task 6: Create `TerminalPanel` component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/terminal/TerminalPanel.tsx`
 
 - [ ] **Step 1: Create the panel**
@@ -651,6 +660,7 @@ git commit -m "feat(terminal): add TerminalPanel with multi-tab + resizable layo
 ## Task 7: Import xterm CSS in entry
 
 **Files:**
+
 - Modify: `apps/desktop/src/index.tsx` (or whichever file is the entry point)
 
 - [ ] **Step 1: Find the entry file**
@@ -681,6 +691,7 @@ git commit -m "feat(terminal): import xterm CSS in entry point"
 ## Task 8: Add terminal toggle to `AgentTopBar`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/chat/AgentTopBar.tsx`
 
 - [ ] **Step 1: Add new props**
@@ -726,6 +737,7 @@ git commit -m "feat(terminal): add terminal toggle button to AgentTopBar"
 ## Task 9: Add `TerminalPanel` to `ChatView`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/ChatView.tsx`
 
 - [ ] **Step 1: Add imports**
@@ -751,27 +763,29 @@ Add to `Props` interface:
 Inside the `ChatView` function, add:
 
 ```typescript
-  const [terminalTabs, setTerminalTabs] = useState<TerminalTabConfig[]>([]);
-  const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
+const [terminalTabs, setTerminalTabs] = useState<TerminalTabConfig[]>([]);
+const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
 
-  // Auto-spawn terminal when toggle opens and we have a CLI agent
-  useEffect(() => {
-    if (terminalOpen && activeTerminalId === null && activeExternalAgent) {
-      const id = `term_${Date.now()}`;
-      setTerminalTabs([{
+// Auto-spawn terminal when toggle opens and we have a CLI agent
+useEffect(() => {
+  if (terminalOpen && activeTerminalId === null && activeExternalAgent) {
+    const id = `term_${Date.now()}`;
+    setTerminalTabs([
+      {
         id,
         label: 'Shell',
         command: activeExternalAgent.command,
         args: activeExternalAgent.args,
         env: activeExternalAgent.env,
-      }]);
-      setActiveTerminalId(id);
-    }
-    if (!terminalOpen) {
-      setTerminalTabs([]);
-      setActiveTerminalId(null);
-    }
-  }, [terminalOpen, activeExternalAgent]);
+      },
+    ]);
+    setActiveTerminalId(id);
+  }
+  if (!terminalOpen) {
+    setTerminalTabs([]);
+    setActiveTerminalId(null);
+  }
+}, [terminalOpen, activeExternalAgent]);
 ```
 
 - [ ] **Step 4: Pass new props to AgentTopBar**
@@ -839,6 +853,7 @@ git commit -m "feat(terminal): embed TerminalPanel in ChatView with auto-spawn f
 ## Task 10: Wire up `App.tsx` with terminal state and CLI agent resolution
 
 **Files:**
+
 - Modify: `apps/desktop/src/App.tsx`
 
 - [ ] **Step 1: Add state**
@@ -846,7 +861,7 @@ git commit -m "feat(terminal): embed TerminalPanel in ChatView with auto-spawn f
 Inside the main component, add:
 
 ```typescript
-  const [terminalOpen, setTerminalOpen] = useState(false);
+const [terminalOpen, setTerminalOpen] = useState(false);
 ```
 
 - [ ] **Step 2: Resolve active external agent**
@@ -854,11 +869,11 @@ Inside the main component, add:
 After the existing `useChat()` destructuring, add:
 
 ```typescript
-  const activeExternalAgent = useMemo(() => {
-    const agent = agents.find((a) => a.id === activeAgent);
-    if (!agent || agent.source !== 'external_cli') return null;
-    return { command: agent.id.replace('external_cli:', ''), args: [], env: undefined };
-  }, [agents, activeAgent]);
+const activeExternalAgent = useMemo(() => {
+  const agent = agents.find((a) => a.id === activeAgent);
+  if (!agent || agent.source !== 'external_cli') return null;
+  return { command: agent.id.replace('external_cli:', ''), args: [], env: undefined };
+}, [agents, activeAgent]);
 ```
 
 (If `AgentInfo` doesn't yet have `external.command`, we can fall back to the agent's `name` or `id` for the command name)
@@ -890,6 +905,7 @@ git commit -m "feat(terminal): wire App.tsx with terminal state and active agent
 ## Task 11: Final integration test
 
 **Files:**
+
 - None (verification only)
 
 - [ ] **Step 1: Run full typecheck**
@@ -906,6 +922,7 @@ Expected: Build succeeds
 
 Run: `cd apps/desktop && pnpm dev`
 Open browser to `http://localhost:5173`. Click the Secretary Orb. Switch to a CLI agent (e.g., external_cli:claude). Click the terminal icon in the top bar. Verify:
+
 1. Terminal panel opens at the bottom
 2. If Claude CLI is installed, it launches in interactive mode
 3. Output streams to xterm.js

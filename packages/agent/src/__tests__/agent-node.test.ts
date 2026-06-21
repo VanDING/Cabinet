@@ -5,13 +5,7 @@ import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { SECRETARY_ROLE, ORGANIZE_ROLE } from '../agent-roles.js';
 import type { MemoryProvider } from '../context-builder.js';
-import type {
-  LLMGateway,
-  LLMResponse,
-  LLMCallOptions,
-  EmbeddingOptions,
-  EmbeddingResult,
-} from '@cabinet/gateway';
+import { createMockGateway } from './helpers/mock-gateway.js';
 
 function createDb(): Database.Database {
   const db = new Database(':memory:');
@@ -52,24 +46,11 @@ describe('createAgentNodeFactory', () => {
       execute: async (args) => args.message ?? 'echo',
     });
 
-    const mockGateway: LLMGateway = {
-      async generateText(_opts: LLMCallOptions): Promise<LLMResponse> {
-        return {
-          content: '{"summary":"test result","confidence":0.8}',
-          usage: { promptTokens: 10, completionTokens: 5 },
-          model: 'test-model',
-        };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test-model'];
-      },
-      async generateEmbeddings(_opts: EmbeddingOptions): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test', usage: { tokens: 0 } };
-      },
-    };
+    const mockGateway = createMockGateway(async () => ({
+      content: '{"summary":"test result","confidence":0.8}',
+      usage: { promptTokens: 10, completionTokens: 5 },
+      model: 'test-model',
+    }));
 
     deps = {
       gateway: mockGateway,
@@ -125,21 +106,10 @@ describe('createAgentNodeFactory', () => {
 
   it('appends systemPrompt override to role.systemPrompt', async () => {
     let capturedSystemPrompt = '';
-    const gateway: LLMGateway = {
-      async generateText(opts: LLMCallOptions): Promise<LLMResponse> {
-        capturedSystemPrompt = opts.systemPrompt ?? '';
-        return { content: 'ok', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test'];
-      },
-      async generateEmbeddings(): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test', usage: { tokens: 0 } };
-      },
-    };
+    const gateway = createMockGateway(async (opts) => {
+      capturedSystemPrompt = opts.systemPrompt ?? '';
+      return { content: 'ok', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' };
+    });
 
     // Register a tool that's actually in ORGANIZE_ROLE.allowedTools
     const testExec = new ToolExecutor();

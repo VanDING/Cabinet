@@ -1,9 +1,7 @@
 import type { ToolDefinition } from '../tool-executor.js';
 
 export interface ArchiveToolDeps {
-  listZip: (
-    path: string,
-  ) => Promise<{ name: string; size: number; isDirectory: boolean }[]>;
+  listZip: (path: string) => Promise<{ name: string; size: number; isDirectory: boolean }[]>;
   extractZip: (
     path: string,
     targetDir: string,
@@ -55,8 +53,7 @@ export function createArchiveTools(deps: ArchiveToolDeps): ToolDefinition[] {
           },
           entries: {
             type: 'array',
-            description:
-              'Optional list of specific entry names to extract (default: all entries)',
+            description: 'Optional list of specific entry names to extract (default: all entries)',
             items: { type: 'string' },
           },
         },

@@ -70,7 +70,6 @@ describe('Security Audit', () => {
     expect(result.tier).toBe('delegation_block');
   });
 
-
   // ---- Backup plaintext safety ----
 
   it('backups should not store plaintext keys', () => {

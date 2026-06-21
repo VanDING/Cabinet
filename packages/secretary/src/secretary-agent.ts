@@ -74,7 +74,11 @@ export class SecretaryAgent {
     };
 
     // Route with conversation context for follow-up detection
-    const routeResult = await this.intentParser.routeToAgent(message, conversationContext, sessionId);
+    const routeResult = await this.intentParser.routeToAgent(
+      message,
+      conversationContext,
+      sessionId,
+    );
 
     // Update routing state
     await this.updateRoutingState(sessionId, routeResult, message);
@@ -177,7 +181,11 @@ export class SecretaryAgent {
       topicEmbedding: routingState?.topicEmbedding,
     };
 
-    const routeResult = await this.intentParser.routeToAgent(message, conversationContext, sessionId);
+    const routeResult = await this.intentParser.routeToAgent(
+      message,
+      conversationContext,
+      sessionId,
+    );
     await this.updateRoutingState(sessionId, routeResult, message);
 
     if (feedback === 'negative' && routingState?.lastRoute) {
@@ -426,7 +434,17 @@ Respond with ONLY a JSON object (no markdown, no backticks):
       // Short acknowledgment (<15 chars) is likely real feedback
       if (lower.length < 15) return 'positive';
       // Longer messages: only treat as positive if no substantive query words are present
-      const substantiveWords = ['什么', '如何', '怎么', '为什么', '分析', '帮我', '方案', '项目', '代码'];
+      const substantiveWords = [
+        '什么',
+        '如何',
+        '怎么',
+        '为什么',
+        '分析',
+        '帮我',
+        '方案',
+        '项目',
+        '代码',
+      ];
       if (!substantiveWords.some((w) => lower.includes(w))) return 'positive';
       return 'none';
     }

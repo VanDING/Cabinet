@@ -22,16 +22,17 @@
 
 ## 实施总览
 
-| Phase | 主题 | 预估工期 | 新增文件 | 修改文件 | 新增依赖 |
-|:---|:---|:---|:---|:---|:---|
-| Phase 0 | 前置修复与架构统一 | 3 工作日 | 0 | 4 | 0 |
-| Phase 1 | 文件感知层 | 10 工作日 | 3 | 6 | 4 |
-| Phase 2 | 网络行动层（核心） | 12 工作日 | 3 | 6 | 1-2 |
-| Phase 2.5 | 通信增强（RSS/邮件） | 4 工作日 | 1 | 3 | 2 |
-| Phase 3 | 系统行动层 | 10 工作日 | 2 | 6 | 2 |
-| **合计** | | **39 工作日** | **9** | **25** | **9-11** |
+| Phase     | 主题                 | 预估工期      | 新增文件 | 修改文件 | 新增依赖 |
+| :-------- | :------------------- | :------------ | :------- | :------- | :------- |
+| Phase 0   | 前置修复与架构统一   | 3 工作日      | 0        | 4        | 0        |
+| Phase 1   | 文件感知层           | 10 工作日     | 3        | 6        | 4        |
+| Phase 2   | 网络行动层（核心）   | 12 工作日     | 3        | 6        | 1-2      |
+| Phase 2.5 | 通信增强（RSS/邮件） | 4 工作日      | 1        | 3        | 2        |
+| Phase 3   | 系统行动层           | 10 工作日     | 2        | 6        | 2        |
+| **合计**  |                      | **39 工作日** | **9**    | **25**   | **9-11** |
 
 **排期建议**：
+
 - Phase 0 必须先完成，否则后续每阶段都会遇到 ToolPruner 和重复代码问题。
 - Phase 1 可与 Phase 2 前半段（BrowserPool PoC）并行。
 - Phase 2.5（RSS/邮件）可独立排期，不阻塞主线。
@@ -48,10 +49,9 @@
 **修改文件**：`apps/server/src/context.ts:2213`
 
 当前配置：
+
 ```typescript
-const toolPruner = gateway
-  ? new ToolPruner({ gateway, maxTools: 16, minTools: 8 })
-  : undefined;
+const toolPruner = gateway ? new ToolPruner({ gateway, maxTools: 16, minTools: 8 }) : undefined;
 ```
 
 **问题**：新增约 20 个工具后，总数达 60+，新工具 embedding 无历史数据，relevance score 低，会被静默裁剪。
@@ -59,6 +59,7 @@ const toolPruner = gateway
 **决策**：提升上限并增加核心工具白名单。经评估，当前 LLM（Claude Sonnet 4.6 / GPT-4o）在 24 个工具内的选择准确率仍可接受。
 
 **修改后**：
+
 ```typescript
 const toolPruner = gateway
   ? new ToolPruner({
@@ -67,17 +68,26 @@ const toolPruner = gateway
       minTools: 8,
       alwaysInclude: [
         // 核心文件工具（几乎所有任务都会用到）
-        'read_file', 'write_file', 'edit_file', 'list_directory', 'glob', 'grep',
+        'read_file',
+        'write_file',
+        'edit_file',
+        'list_directory',
+        'glob',
+        'grep',
         // 核心上下文工具
-        'query_system_knowledge', 'recall', 'remember',
+        'query_system_knowledge',
+        'recall',
+        'remember',
         // 核心项目工具
-        'get_project_context', 'set_project_context',
+        'get_project_context',
+        'set_project_context',
       ],
     })
   : undefined;
 ```
 
 **验收标准**：
+
 - [ ] `pnpm build` / `typecheck` 通过
 - [ ] 注册全部工具后，`toolPruner.prune()` 返回的列表包含所有 `alwaysInclude` 工具
 
@@ -90,6 +100,7 @@ const toolPruner = gateway
 **决策**：重构 `secretary.ts`，使其复用 `capabilities.ts` 的 factory 函数。
 
 **具体步骤**：
+
 1. 在 `secretary.ts` 顶部导入 factory 函数：
    ```typescript
    import {
@@ -109,24 +120,28 @@ const toolPruner = gateway
 > **决策**：统一为 `capabilities.ts` 的 50MB。secretary 的 5MB 限制是历史遗留，没有明确的产品理由。统一后减少不一致的困惑。
 
 **验收标准**：
+
 - [ ] `secretary.ts` 中不再出现 `resolveSafePath`、`MIME_MAP`、`isTextFile`、`readTextFile` 等 capability 层逻辑
 - [ ] `pnpm build` / `typecheck` 通过
-- [ ]  secretary 路由的端到端行为不变（文件读写、web fetch、shell exec 正常）
+- [ ] secretary 路由的端到端行为不变（文件读写、web fetch、shell exec 正常）
 
 ### Task 0.3：确认应用并发模型并记录
 
 **新建文件**：`docs/superpowers/notes/concurrency-model.md`
 
 Cabinet 是一个基于 HTTP/WebSocket 的 server 应用，支持：
+
 - 多个 Captain 会话并发（`SessionManager` 管理）
 - 后台 Curator 任务与前台请求并发
 - 工作流执行中的并行子任务（`parallel` 节点）
 
 ** implications**：
+
 - BrowserPool 必须为每个会话维护独立的 `Page`/`Context`。
 - 系统工具（剪贴板、通知、进程）的操作影响范围是"整个 OS"，不是会话隔离的。需要确认是否只允许单用户桌面模式使用。
 
 **验收标准**：
+
 - [ ] 文档记录并发模型
 - [ ] 如果桌面端和 server 端部署模式有差异，记录差异对 Phase 3 系统工具的影响
 
@@ -138,13 +153,13 @@ Cabinet 是一个基于 HTTP/WebSocket 的 server 应用，支持：
 
 ### 技术选型（修订）
 
-| 格式 | 选型 | 版本 | 理由 |
-|:---|:---|:---|:---|
-| PDF | `pdf-parse` | latest | 最流行，返回 `{ text, numpages, info }` |
-| DOCX | `mammoth` | latest | 纯 JS，无原生依赖，提取文本+样式 |
-| XLSX | `xlsx` (SheetJS) | latest | 标准库，返回 JSON/CSV，支持 stream |
+| 格式 | 选型                 | 版本   | 理由                                                                               |
+| :--- | :------------------- | :----- | :--------------------------------------------------------------------------------- |
+| PDF  | `pdf-parse`          | latest | 最流行，返回 `{ text, numpages, info }`                                            |
+| DOCX | `mammoth`            | latest | 纯 JS，无原生依赖，提取文本+样式                                                   |
+| XLSX | `xlsx` (SheetJS)     | latest | 标准库，返回 JSON/CSV，支持 stream                                                 |
 | PPTX | `adm-zip` + 手动 XML | 已安装 | 放弃 `pptx-parser`（维护不活跃），复用已有 `adm-zip` 解压后读取 `ppt/slides/*.xml` |
-| ZIP | `adm-zip` | 已安装 | `apps/server/package.json` 中已存在 |
+| ZIP  | `adm-zip`            | 已安装 | `apps/server/package.json` 中已存在                                                |
 
 **关于 OCR**：本阶段**不引入** `tesseract.js`。PDF 扫描件暂不支持；图片 OCR 通过多模态 LLM vision 能力解决（Agent 已有 `read_file` 返回 base64，后续由上层选择是否调用 vision model）。如需离线 OCR，作为 Phase 1.5 独立迭代。
 
@@ -178,12 +193,12 @@ export function createDocumentTools(deps: DocumentToolDeps): ToolDefinition[] { 
 
 **工具参数设计**：
 
-| 工具名 | 输入参数 | 返回结构 |
-|:---|:---|:---|
-| `read_pdf` | `{ path: string }` | `{ text, pages, info, path }` |
-| `read_docx` | `{ path: string }` | `{ text, styles, path }` |
-| `read_xlsx` | `{ path: string, sheet?: string }` | `{ sheets, data, path, sheet }` |
-| `read_pptx` | `{ path: string }` | `{ slides: [{ text, notes }], path }` |
+| 工具名      | 输入参数                           | 返回结构                              |
+| :---------- | :--------------------------------- | :------------------------------------ |
+| `read_pdf`  | `{ path: string }`                 | `{ text, pages, info, path }`         |
+| `read_docx` | `{ path: string }`                 | `{ text, styles, path }`              |
+| `read_xlsx` | `{ path: string, sheet?: string }` | `{ sheets, data, path, sheet }`       |
+| `read_pptx` | `{ path: string }`                 | `{ slides: [{ text, notes }], path }` |
 
 **错误处理**：所有工具统一返回 `{ error: string }` 模式，与现有工具一致。具体实现中，capability 层捕获异常并转为 `error` 字段，不在 agent 层抛异常。
 
@@ -210,12 +225,14 @@ export function createArchiveTools(deps: ArchiveToolDeps): ToolDefinition[] { ..
 **修改文件**。
 
 1. 导入新增模块：
+
    ```typescript
    import { createDocumentTools, type DocumentToolDeps } from './document-tools.js';
    import { createArchiveTools, type ArchiveToolDeps } from './archive-tools.js';
    ```
 
 2. 扩展 `ToolDependencies` 接口：
+
    ```typescript
    export interface ToolDependencies
      extends
@@ -232,6 +249,7 @@ export function createArchiveTools(deps: ArchiveToolDeps): ToolDefinition[] { ..
    ```
 
 3. 在 `createCabinetTools` 中展开新工具（放在 `createFileTools` 之后）：
+
    ```typescript
    // ═══════════════════════════════════════════════════════════
    // Document Tools
@@ -277,9 +295,9 @@ export function createDocumentCapabilities() {
       const zip = new AdmZip(path);
       const entries = zip.getEntries();
       const slideEntries = entries
-        .filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'))
+        .filter((e) => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'))
         .sort((a, b) => a.entryName.localeCompare(b.entryName));
-      
+
       const slides: { text: string; notes: string }[] = [];
       for (const entry of slideEntries) {
         const xml = zip.readAsText(entry);
@@ -300,7 +318,7 @@ export function createArchiveCapabilities() {
   return {
     listZip: async (path: string) => {
       const zip = new AdmZip(path);
-      return zip.getEntries().map(e => ({
+      return zip.getEntries().map((e) => ({
         name: e.entryName,
         size: e.header.size,
         isDirectory: e.isDirectory,
@@ -315,7 +333,7 @@ export function createArchiveCapabilities() {
       } else {
         zip.extractAllTo(targetDir, true);
       }
-      return { extracted: entries ?? zip.getEntries().map(e => e.entryName) };
+      return { extracted: entries ?? zip.getEntries().map((e) => e.entryName) };
     },
   };
 }
@@ -391,12 +409,14 @@ pnpm add playwright
 **Tauri 打包 PoC（Gate）**：在投入大量编码之前，必须先验证 Playwright 的 Chromium 在 Tauri 打包后能否正常启动。这是本 Phase 的最高风险点。
 
 **PoC 步骤**（1-2 工作日）：
+
 1. 写最小脚本：用 Playwright 启动 Chromium，访问 `https://example.com`，提取标题，关闭。
 2. 在桌面端打包（`pnpm tauri build`）。
 3. 在干净环境（未安装 Playwright 的虚拟机）运行打包产物。
 4. 观察 Chromium 是否能自动下载/启动。
 
 **PoC 结果决策**：
+
 - **通过**：继续 Phase 2 正常实施。
 - **失败**：改用 `puppeteer-core` + 系统自带 Chrome（要求用户预先安装 Chrome/Edge），或放弃打包后的浏览器能力（仅保留开发/服务器模式）。
 
@@ -448,6 +468,7 @@ export class BrowserPool {
 ```
 
 **关键变更（对比原计划）**：
+
 - 所有方法增加 `sessionId` 参数，用 `Map<string, SessionPage>` 隔离不同会话的 page/context。
 - 增加 `pruneIdleSessions` 方法，防止内存泄漏。
 - `maxContexts` 默认从 2 提升到 3，因为会话隔离后单个用户可能同时持有多个 context（如秘书会话 + 工作流执行）。
@@ -512,8 +533,10 @@ export function createBrowserCapabilities() {
     browserRead: async (sessionId, selector) => {
       const page = await pool.acquire(sessionId);
       const target = selector ? await page.$(selector) : page;
-      const text = target ? await target.textContent() ?? '' : '';
-      const links = await page.$$eval('a', as => as.map(a => ({ text: a.textContent ?? '', href: a.href })));
+      const text = target ? ((await target.textContent()) ?? '') : '';
+      const links = await page.$$eval('a', (as) =>
+        as.map((a) => ({ text: a.textContent ?? '', href: a.href })),
+      );
       return { text, links };
     },
     browserScreenshot: async (sessionId, selector) => {
@@ -537,10 +560,16 @@ export function createBrowserCapabilities() {
 **优雅关闭**：在 `context.ts` 的 `shutdown()` 中增加 `await getBrowserPool().shutdown()`。
 
 **空闲清理**：在 `context.ts` 的定时器区段增加 BrowserPool 空闲会话清理（每 10 分钟）：
+
 ```typescript
-const browserPoolCleanupTimer = setInterval(() => {
-  getBrowserPool().pruneIdleSessions(10 * 60 * 1000).catch(() => {});
-}, 10 * 60 * 1000);
+const browserPoolCleanupTimer = setInterval(
+  () => {
+    getBrowserPool()
+      .pruneIdleSessions(10 * 60 * 1000)
+      .catch(() => {});
+  },
+  10 * 60 * 1000,
+);
 browserPoolCleanupTimer.unref();
 ```
 
@@ -561,6 +590,7 @@ browserPoolCleanupTimer.unref();
 **修改文件**：`packages/agent/src/agent-roles.ts`
 
 将新工具加入：
+
 - `SECRETARY_ROLE`：`browser_navigate`, `browser_click`, `browser_type`, `browser_read`, `browser_screenshot`, `browser_evaluate`
 - `ORGANIZE_ROLE`：全部浏览器工具
 - `REVIEWER_ROLE`：`browser_navigate`, `browser_read`, `browser_screenshot`（用于独立验证）
@@ -619,7 +649,7 @@ import nodemailer from 'nodemailer';
 
 export function createCommunicationCapabilities(ctx: CapabilitiesContext) {
   const rssParser = new Parser();
-  
+
   // SMTP 配置从 settings 表读取
   const getSmtpConfig = () => {
     const settings = ctx.settingsRepo.get('smtp_config');
@@ -671,12 +701,12 @@ export function createCommunicationCapabilities(ctx: CapabilitiesContext) {
 
 ### 技术选型
 
-| 能力 | 选型 | 理由 |
-|:---|:---|:---|
-| 剪贴板 | `clipboardy` | 纯 Node.js，跨平台，无需 Tauri |
-| 文件对话框 | Tauri `dialog` plugin | 必须 GUI，命令行无法替代 |
-| 系统通知 | `node-notifier` | 简单跨平台；Tauri notification 更原生但需 Rust |
-| 后台进程 | `node:child_process.spawn` | 原生模块，零安装 |
+| 能力       | 选型                       | 理由                                           |
+| :--------- | :------------------------- | :--------------------------------------------- |
+| 剪贴板     | `clipboardy`               | 纯 Node.js，跨平台，无需 Tauri                 |
+| 文件对话框 | Tauri `dialog` plugin      | 必须 GUI，命令行无法替代                       |
+| 系统通知   | `node-notifier`            | 简单跨平台；Tauri notification 更原生但需 Rust |
+| 后台进程   | `node:child_process.spawn` | 原生模块，零安装                               |
 
 ### Task 3.1：安装依赖
 
@@ -704,12 +734,14 @@ export function createSystemTools(deps: SystemToolDeps): ToolDefinition[] { ... 
 ```
 
 **关键变更（对比原计划）**：
+
 - `startProcess` 签名从 `(command: string, cwd?: string)` 改为 `(command: string, args?: string[], cwd?: string)`，**禁止 `shell: true`**。
 - `showOpenDialog` 是桌面端专用工具，在纯 server 模式下返回 `{ error: 'Dialog only available in desktop mode' }`。
 
 ### Task 3.3：Tauri 文件对话框桥接
 
 **涉及文件**：
+
 - `apps/desktop/src-tauri/src/lib.rs` — 新增 Rust command
 - `apps/desktop/src-tauri/tauri.conf.json` — 注册权限
 - `apps/desktop/src/` — 前端 WebSocket 桥接
@@ -726,6 +758,7 @@ export function createSystemTools(deps: SystemToolDeps): ToolDefinition[] { ... 
 5. Server 将结果返回给 Agent
 
 **Rust 侧（`apps/desktop/src-tauri/src/lib.rs`）**：
+
 ```rust
 use tauri_plugin_dialog::DialogExt;
 
@@ -780,7 +813,7 @@ export function createSystemCapabilities(isDesktopMode: boolean) {
       const fullCommand = args ? `${command} ${args.join(' ')}` : command;
       const blocked = detectDangerousCommand(fullCommand);
       if (blocked) throw new Error(`Command blocked for safety: ${blocked}`);
-      
+
       const child = spawn(command, args ?? [], { cwd, detached: true, shell: false });
       return { pid: child.pid! };
     },
@@ -807,6 +840,7 @@ export function createSystemCapabilities(isDesktopMode: boolean) {
 ```
 
 **关键安全变更**：
+
 - `startProcess` 使用 `shell: false`，`args` 作为数组传入，避免命令注入。
 - 复用 `detectDangerousCommand` 进行命令审查。
 - `killProcess` 拒绝 pid < 100 的系统进程。
@@ -858,8 +892,10 @@ export function createSystemCapabilities(isDesktopMode: boolean) {
 新增工具后更新知识库，让 `query_system_knowledge` 能返回准确的新工具信息（存在性、使用场景、参数）。
 
 **内容模板**（每新增一个工具）：
+
 ```markdown
 ## read_pdf
+
 - 存在性：是
 - 使用场景：需要提取 PDF 文档文本内容时
 - 参数：path（文件路径）
@@ -878,6 +914,7 @@ pnpm test
 ```
 
 **测试要求**：
+
 - 每个新增 capability factory 需有单元测试（happy path + error path）
 - BrowserPool 需有集成测试（会话隔离、并发、空闲清理）
 - 端到端测试：通过 AgentLoop 调用新工具，验证完整链路
@@ -945,6 +982,7 @@ Phase 3: 系统行动层 (10d)
 ```
 
 **可并行点**：
+
 - Phase 1 的 `read_zip` 可与文档解析并行
 - Phase 2 的 BrowserPool PoC 可与 Phase 1 后半段并行
 - Phase 2.5 可与 Phase 3 并行
@@ -953,16 +991,16 @@ Phase 3: 系统行动层 (10d)
 
 ## 风险与回退方案（修订）
 
-| 风险 | 影响 | 概率 | 回退方案 |
-|:---|:---|:---|:---|
-| `pdf-parse` 的 `pdfjs-dist` native 模块在 Tauri 打包时失败 | Phase 1 阻塞 | 中 | 换 `pdfjs-dist` 纯 JS 版或 `mupdf` WASM |
-| `mammoth` 解析复杂 DOCX 效果差 | Phase 1 质量下降 | 低 | 降级为 ZIP+XML 手动提取 |
-| Playwright 在 Tauri 打包后找不到 Chromium | Phase 2 阻塞 | **高** | **PoC 先行**：若失败，改用 `puppeteer-core` + 系统 Chrome；或仅保留开发/服务器模式 |
-| BrowserPool 内存泄漏 | Phase 2 稳定性 | 中 | `pruneIdleSessions` 每 10 分钟自动回收 + 进程监控 |
-| 多会话并发操作同一 page | Phase 2 数据安全 | 中 | **已解决**：通过 `sessionId` 隔离 |
-| Tauri 对话框桥接实现复杂 | Phase 3 延期 | 中 | **纯 Node.js 回退**：用 `start`/`xdg-open` 打开文件管理器，用户手动粘贴路径 |
-| `node-notifier` 在 Tauri 打包后失效 | Phase 3 质量下降 | 低 | 改用 Tauri notification API（需 Rust 代码）|
-| ToolPruner 新工具 relevance 过低 | 所有 Phase | 低 | **已解决**：alwaysInclude 白名单 + maxTools 提升到 24 |
+| 风险                                                       | 影响             | 概率   | 回退方案                                                                           |
+| :--------------------------------------------------------- | :--------------- | :----- | :--------------------------------------------------------------------------------- |
+| `pdf-parse` 的 `pdfjs-dist` native 模块在 Tauri 打包时失败 | Phase 1 阻塞     | 中     | 换 `pdfjs-dist` 纯 JS 版或 `mupdf` WASM                                            |
+| `mammoth` 解析复杂 DOCX 效果差                             | Phase 1 质量下降 | 低     | 降级为 ZIP+XML 手动提取                                                            |
+| Playwright 在 Tauri 打包后找不到 Chromium                  | Phase 2 阻塞     | **高** | **PoC 先行**：若失败，改用 `puppeteer-core` + 系统 Chrome；或仅保留开发/服务器模式 |
+| BrowserPool 内存泄漏                                       | Phase 2 稳定性   | 中     | `pruneIdleSessions` 每 10 分钟自动回收 + 进程监控                                  |
+| 多会话并发操作同一 page                                    | Phase 2 数据安全 | 中     | **已解决**：通过 `sessionId` 隔离                                                  |
+| Tauri 对话框桥接实现复杂                                   | Phase 3 延期     | 中     | **纯 Node.js 回退**：用 `start`/`xdg-open` 打开文件管理器，用户手动粘贴路径        |
+| `node-notifier` 在 Tauri 打包后失效                        | Phase 3 质量下降 | 低     | 改用 Tauri notification API（需 Rust 代码）                                        |
+| ToolPruner 新工具 relevance 过低                           | 所有 Phase       | 低     | **已解决**：alwaysInclude 白名单 + maxTools 提升到 24                              |
 
 > **最高风险点**：Playwright 的 Chromium 在 Tauri 打包后的分发。**Phase 2 正式开始前必须先完成 PoC**。
 
@@ -980,11 +1018,13 @@ Phase 3: 系统行动层 (10d)
 6. **Task 2.0a** Playwright Tauri 打包 PoC
 
 这 5 个任务覆盖：
+
 - 架构债务清理（Phase 0）
 - 用户反馈中最痛的文件格式缺口（PDF + ZIP）
 - Phase 2 的最高风险技术验证（Playwright 打包）
 
 **Sprint 1 验收**：
+
 - [ ] PDF 和 ZIP 工具可用
 - [ ] Tauri 打包后 Playwright 能启动 Chromium（或明确回退方案）
 - [ ] pnpm build / typecheck / test 通过

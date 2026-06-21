@@ -28,8 +28,7 @@ export function createBrowserTools(deps: BrowserToolDeps): ToolDefinition[] {
   return [
     {
       name: 'browser_navigate',
-      description:
-        'Navigate the browser to a URL. Each session maintains its own page state.',
+      description: 'Navigate the browser to a URL. Each session maintains its own page state.',
       timeoutMs: 30000,
       parameters: {
         type: 'object',
@@ -119,8 +118,7 @@ export function createBrowserTools(deps: BrowserToolDeps): ToolDefinition[] {
     },
     {
       name: 'browser_read',
-      description:
-        'Read text content and links from the current page, or from a specific element.',
+      description: 'Read text content and links from the current page, or from a specific element.',
       timeoutMs: 15000,
       parameters: {
         type: 'object',

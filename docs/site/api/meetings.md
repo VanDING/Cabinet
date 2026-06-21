@@ -1,6 +1,8 @@
-# Meetings API
+# Meetings API (Deprecated)
 
-Meetings are structured multi-agent deliberations with cost estimation, parallel reasoning, and cross-validation.
+> **Status**: Deprecated. The `meeting_chair` role and MeetingService have been removed. The `/api/meetings` route is disabled in the current server. Multi-agent deliberation is handled through the AgentDispatcher's `parallel` dispatch mode and the `Organize` agent's design workflow instead.
+
+Meetings were structured multi-agent deliberations with cost estimation, parallel reasoning, and cross-validation.
 
 ## Endpoints
 
@@ -48,13 +50,13 @@ Create and run a multi-agent meeting.
 }
 ```
 
-| Field | Type | Required | Description |
-| :---- | :--- | :------- | :---------- |
-| `topic` | string | Yes | Meeting topic |
-| `advisorIds` | string[] | Yes | Agent roles to invite as advisors |
-| `projectId` | string | No | Project scope |
-| `context` | string | No | Background information |
-| `maxRounds` | number | No | Debate rounds (default: 3, hard max: 3) |
+| Field        | Type     | Required | Description                             |
+| :----------- | :------- | :------- | :-------------------------------------- |
+| `topic`      | string   | Yes      | Meeting topic                           |
+| `advisorIds` | string[] | Yes      | Agent roles to invite as advisors       |
+| `projectId`  | string   | No       | Project scope                           |
+| `context`    | string   | No       | Background information                  |
+| `maxRounds`  | number   | No       | Debate rounds (default: 3, hard max: 3) |
 
 **Response**:
 
@@ -121,22 +123,22 @@ Retrieve a meeting report.
 
 ## Cost Controls
 
-| Parameter | Default | Description |
-| :-------- | :------ | :---------- |
-| Max advisors | 5 | Hard limit on parallel agents |
-| Max rounds | 3 | Hard limit on debate iterations |
-| Tokens per speech | 4,096 | Maximum per-advisor output |
-| Budget threshold | ¥0.50 | Confirmation required above this |
-| Rumination threshold | 0.85 | Semantic similarity limit for duplicate arguments |
+| Parameter            | Default | Description                                       |
+| :------------------- | :------ | :------------------------------------------------ |
+| Max advisors         | 5       | Hard limit on parallel agents                     |
+| Max rounds           | 3       | Hard limit on debate iterations                   |
+| Tokens per speech    | 4,096   | Maximum per-advisor output                        |
+| Budget threshold     | ¥0.50   | Confirmation required above this                  |
+| Rumination threshold | 0.85    | Semantic similarity limit for duplicate arguments |
 
 ## Meeting vs Chat
 
-| | Meeting | Chat |
-| :- | :------ | :--- |
-| **Cost** | Pre-estimated and capped | Per-message, visible in real time |
-| **Structure** | Bounded rounds, formal synthesis | Open-ended conversation |
-| **Output** | Consensus + minority report + decision card | Direct answer or tool results |
-| **Agents** | Multiple advisors + chair | Secretary + routed specialist |
-| **Use case** | Complex trade-off analysis | Quick questions and tasks |
+|               | Meeting                                     | Chat                              |
+| :------------ | :------------------------------------------ | :-------------------------------- |
+| **Cost**      | Pre-estimated and capped                    | Per-message, visible in real time |
+| **Structure** | Bounded rounds, formal synthesis            | Open-ended conversation           |
+| **Output**    | Consensus + minority report + decision card | Direct answer or tool results     |
+| **Agents**    | Multiple advisors + chair                   | Secretary + routed specialist     |
+| **Use case**  | Complex trade-off analysis                  | Quick questions and tasks         |
 
 Use meetings when the problem has multiple dimensions and you want structured disagreement. Use chat for everything else.

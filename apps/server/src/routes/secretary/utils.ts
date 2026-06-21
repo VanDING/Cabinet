@@ -11,11 +11,7 @@ import { buildEnvironmentSection } from '../../capabilities.js';
 export const execAsync = promisify(exec);
 
 /** Roles that need the system environment section in their prompt. */
-export const ROLES_NEEDING_ENV = new Set([
-  'secretary',
-  'organize',
-  'curator',
-]);
+export const ROLES_NEEDING_ENV = new Set(['secretary', 'organize', 'curator']);
 
 // ── CABINET.md auto-injection cache ──
 export const cabinetMdCache = new Map<string, { content: string; mtime: number }>();
@@ -70,11 +66,11 @@ export function buildSystemPrompt(
   // 4.3 PIS: guide LLM to emit milestone markers so Goal Progress factor works
   parts.push(
     `## Progress Tracking\n` +
-    `When you complete a significant sub-task, milestone, or goal, include one of these markers in your response:\n` +
-    `- "milestone_complete" — when a major milestone is achieved\n` +
-    `- "subtask_done" — when a sub-task is finished\n` +
-    `- "goal_achieved" — when the overall goal is reached\n` +
-    `This helps the system track progress and maintain focus.`
+      `When you complete a significant sub-task, milestone, or goal, include one of these markers in your response:\n` +
+      `- "milestone_complete" — when a major milestone is achieved\n` +
+      `- "subtask_done" — when a sub-task is finished\n` +
+      `- "goal_achieved" — when the overall goal is reached\n` +
+      `This helps the system track progress and maintain focus.`,
   );
   return parts.join('\n\n');
 }
@@ -99,23 +95,78 @@ export async function readTextFile(filePath: string): Promise<string> {
 // ── File tool helpers ──
 
 export const MIME_MAP: Record<string, string> = {
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.bmp': 'image/bmp', '.ico': 'image/x-icon', '.pdf': 'application/pdf',
-  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.zip': 'application/zip',
-  '.tar': 'application/x-tar', '.gz': 'application/gzip',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.zip': 'application/zip',
+  '.tar': 'application/x-tar',
+  '.gz': 'application/gzip',
 };
 
 export const TEXT_EXTENSIONS = new Set([
-  '.txt', '.md', '.mdx', '.json', '.xml', '.yml', '.yaml', '.toml', '.ini', '.cfg',
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.css', '.scss', '.less', '.html', '.htm', '.vue', '.svelte',
-  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp',
-  '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd',
-  '.sql', '.graphql', '.proto',
-  '.env', '.gitignore', '.dockerignore', '.editorconfig',
-  '.csv', '.tsv', '.log', '.lock',
+  '.txt',
+  '.md',
+  '.mdx',
+  '.json',
+  '.xml',
+  '.yml',
+  '.yaml',
+  '.toml',
+  '.ini',
+  '.cfg',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.scss',
+  '.less',
+  '.html',
+  '.htm',
+  '.vue',
+  '.svelte',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.swift',
+  '.c',
+  '.cpp',
+  '.h',
+  '.hpp',
+  '.sh',
+  '.bash',
+  '.zsh',
+  '.fish',
+  '.ps1',
+  '.bat',
+  '.cmd',
+  '.sql',
+  '.graphql',
+  '.proto',
+  '.env',
+  '.gitignore',
+  '.dockerignore',
+  '.editorconfig',
+  '.csv',
+  '.tsv',
+  '.log',
+  '.lock',
 ]);
 
 export function isTextFile(ext: string): boolean {
@@ -134,12 +185,33 @@ export async function resolveSafePath(filePath: string): Promise<string> {
 }
 
 export const SAFE_ENV_KEYS = new Set([
-  'PATH', 'HOME', 'USER', 'USERNAME', 'TEMP', 'TMP', 'TMPDIR',
-  'SHELL', 'LANG', 'LC_ALL', 'TERM', 'COLORTERM',
-  'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'COMSPEC', 'PATHEXT',
-  'NODE_ENV', 'NODE_PATH', 'DISPLAY', 'WAYLAND_DISPLAY', 'SSH_AUTH_SOCK',
-  'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME',
-  'PNPM_HOME', 'npm_config_cache',
+  'PATH',
+  'HOME',
+  'USER',
+  'USERNAME',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'TERM',
+  'COLORTERM',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'WINDIR',
+  'COMSPEC',
+  'PATHEXT',
+  'NODE_ENV',
+  'NODE_PATH',
+  'DISPLAY',
+  'WAYLAND_DISPLAY',
+  'SSH_AUTH_SOCK',
+  'XDG_CACHE_HOME',
+  'XDG_CONFIG_HOME',
+  'XDG_DATA_HOME',
+  'PNPM_HOME',
+  'npm_config_cache',
 ]);
 
 export function buildSafeEnv(): Record<string, string> {

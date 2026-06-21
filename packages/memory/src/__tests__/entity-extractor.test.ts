@@ -52,8 +52,7 @@ describe('extractCandidateEntities', () => {
   });
 
   it('handles mixed content', () => {
-    const text =
-      'John Smith decided to use React for the frontend. 项目截止日期是2024-12-01。';
+    const text = 'John Smith decided to use React for the frontend. 项目截止日期是2024-12-01。';
     const result = extractCandidateEntities(text);
     expect(result).toContain('React');
     expect(result.some((r) => r.includes('项目'))).toBe(true);

@@ -28,40 +28,41 @@ Each known agent defines a `ScannerRecipe`:
 
 ```typescript
 interface ScannerRecipe {
-  id: string;                    // 'claude-code'
+  id: string; // 'claude-code'
   name: string;
-  detectCommand: string;         // 'claude --version'
+  detectCommand: string; // 'claude --version'
   platforms: {
-    [platform: string]: {        // 'win32-x64' | 'darwin-arm64' | 'linux-x64'
-      configPaths: string[];     // e.g. ['~/.claude.json', '%APPDATA%/Claude/claude.json']
+    [platform: string]: {
+      // 'win32-x64' | 'darwin-arm64' | 'linux-x64'
+      configPaths: string[]; // e.g. ['~/.claude.json', '%APPDATA%/Claude/claude.json']
       parsers: ConfigParser[];
     };
   };
 }
 
 interface ConfigParser {
-  file: string;                  // config file path (relative to configPaths)
+  file: string; // config file path (relative to configPaths)
   format: 'json' | 'yaml' | 'toml';
   extract: {
-    apiKeys?: { provider: string; path: string }[];        // JSON path to key
+    apiKeys?: { provider: string; path: string }[]; // JSON path to key
     mcpServers?: { path: string; nameTemplate: string }[]; // path to MCP server list
-    skills?: { path: string }[];                            // path to skill list
+    skills?: { path: string }[]; // path to skill list
   };
 }
 ```
 
 ### Pre-built Scanner Recipes
 
-| Agent | Config Files | Extractable |
-|-------|-------------|-------------|
+| Agent       | Config Files                                  | Extractable                          |
+| ----------- | --------------------------------------------- | ------------------------------------ |
 | Claude Code | `~/.claude.json`, `~/.claude/projects/*.json` | MCP servers, API keys, skills, hooks |
-| Codex | `~/.codex/config.json`, `~/.codex/mcp.json` | API keys, MCP servers |
-| OpenCode | `opencode.json` (project root + global) | Model config, MCP, permissions |
-| Cursor | `~/.cursor/config.json` | MCP servers, model config |
-| Gemini CLI | `~/.config/google-gemini/config.json` | API keys |
-| Kimi | `~/.kimi/config.json` | API keys |
-| Qwen Code | `~/.qwen/config.json` | API keys |
-| GLM | `~/.zhipu/config.json` | API keys |
+| Codex       | `~/.codex/config.json`, `~/.codex/mcp.json`   | API keys, MCP servers                |
+| OpenCode    | `opencode.json` (project root + global)       | Model config, MCP, permissions       |
+| Cursor      | `~/.cursor/config.json`                       | MCP servers, model config            |
+| Gemini CLI  | `~/.config/google-gemini/config.json`         | API keys                             |
+| Kimi        | `~/.kimi/config.json`                         | API keys                             |
+| Qwen Code   | `~/.qwen/config.json`                         | API keys                             |
+| GLM         | `~/.zhipu/config.json`                        | API keys                             |
 
 ### Flow
 
@@ -100,7 +101,7 @@ interface InstallRecipe {
   id: string;
   name: string;
   description: string;
-  icon: string;                  // brand icon reference
+  icon: string; // brand icon reference
   platforms: {
     [platform: string]: {
       methods: InstallMethod[];
@@ -110,23 +111,23 @@ interface InstallRecipe {
 
 interface InstallMethod {
   type: 'brew' | 'npm' | 'pip' | 'winget' | 'choco' | 'binary' | 'cargo' | 'manual';
-  label: string;                 // "Homebrew" / "npm" / etc.
-  command: string;               // install command template
-  checkCommand: string;          // post-install verification
-  elevated?: boolean;            // requires admin/sudo
+  label: string; // "Homebrew" / "npm" / etc.
+  command: string; // install command template
+  checkCommand: string; // post-install verification
+  elevated?: boolean; // requires admin/sudo
 }
 ```
 
 ### Pre-built Recipes
 
-| Agent | Windows | macOS | Linux |
-|-------|---------|-------|-------|
-| Claude Code | npm install | npm install / brew | npm install |
-| Codex | winget/npm | brew/npm | curl+chmod/npm |
-| Kimi | pip install | pip install | pip install |
-| GLM | pip install | pip install | pip install |
-| Qwen Code | npm install | npm install | npm install |
-| Gemini CLI | npm install | brew/npm | apt/npm |
+| Agent       | Windows     | macOS              | Linux          |
+| ----------- | ----------- | ------------------ | -------------- |
+| Claude Code | npm install | npm install / brew | npm install    |
+| Codex       | winget/npm  | brew/npm           | curl+chmod/npm |
+| Kimi        | pip install | pip install        | pip install    |
+| GLM         | pip install | pip install        | pip install    |
+| Qwen Code   | npm install | npm install        | npm install    |
+| Gemini CLI  | npm install | brew/npm           | apt/npm        |
 
 ### UI
 
@@ -214,7 +215,7 @@ apps/desktop/src/components/chat/SessionSidebar.tsx
 - Groups sessions by agent (selected agent expanded, others collapsed)
 - Each session: title, date, message count, status dot
 - Click to switch session
-- + New session button at top
+- - New session button at top
 
 Data source: `useSessions()` filtered by `session.agentId`
 
@@ -355,28 +356,33 @@ Embedded xterm.js terminal for launching external agents in their native TUI mod
 ## Implementation Phases
 
 ### Phase 1 (Current) — ChatView Redesign
+
 - AgentTopBar
 - SessionSidebar
 - ChatView/ChatPanel modifications
 - ChatContext external agent support
 
 ### Phase 2 — Discovery & Recipes
+
 - Deep config scanning
 - Install recipe system
 - Agent market UI
 - API key vault (basic)
 
 ### Phase 3 — MCP Hub & Skills
+
 - Unified MCP endpoint
 - Cross-agent skill binding
 - MCP/Skill management UI
 
 ### Phase 4 — Embedded Terminal
+
 - xterm.js integration
 - PTY session management
 - Chat + terminal integration
 
 ### Phase 5 — Polish & Scale
+
 - API key rotation / health checks
 - Agent recipe editor (user custom recipes)
 - Performance optimization
@@ -387,51 +393,51 @@ Embedded xterm.js terminal for launching external agents in their native TUI mod
 
 ### Phase 1 (ChatView Redesign)
 
-| File | Action |
-|------|--------|
-| `apps/desktop/src/components/chat/AgentTopBar.tsx` | Create |
-| `apps/desktop/src/components/chat/SessionSidebar.tsx` | Create |
-| `apps/desktop/src/components/chat/SessionGroup.tsx` | Create |
-| `apps/desktop/src/components/ChatView.tsx` | Modify |
-| `apps/desktop/src/components/ChatPanel.tsx` | Modify |
-| `apps/desktop/src/contexts/ChatContext.tsx` | Modify |
-| `apps/desktop/src/hooks/useSessions.ts` | Modify |
-| `apps/desktop/src/hooks/useEmployees.ts` | Use existing |
+| File                                                  | Action       |
+| ----------------------------------------------------- | ------------ |
+| `apps/desktop/src/components/chat/AgentTopBar.tsx`    | Create       |
+| `apps/desktop/src/components/chat/SessionSidebar.tsx` | Create       |
+| `apps/desktop/src/components/chat/SessionGroup.tsx`   | Create       |
+| `apps/desktop/src/components/ChatView.tsx`            | Modify       |
+| `apps/desktop/src/components/ChatPanel.tsx`           | Modify       |
+| `apps/desktop/src/contexts/ChatContext.tsx`           | Modify       |
+| `apps/desktop/src/hooks/useSessions.ts`               | Modify       |
+| `apps/desktop/src/hooks/useEmployees.ts`              | Use existing |
 
 ### Phase 2
 
-| File | Action |
-|------|--------|
+| File                                              | Action |
+| ------------------------------------------------- | ------ |
 | `packages/agent/src/discovery/scanner-recipes.ts` | Create |
-| `packages/agent/src/discovery/config-parser.ts` | Create |
-| `packages/agent/src/discovery/index.ts` | Create |
-| `packages/agent/src/install/install-recipe.ts` | Create |
-| `packages/agent/src/install/installer.ts` | Create |
-| `packages/agent/src/install/recipes/` | Create |
-| `apps/server/src/routes/install.ts` | Create |
-| `apps/desktop/src/pages/AgentMarketPage.tsx` | Create |
-| `apps/desktop/src/components/InstallDialog.tsx` | Create |
-| Modify `apps/server/src/routes/agents.ts` | Modify |
+| `packages/agent/src/discovery/config-parser.ts`   | Create |
+| `packages/agent/src/discovery/index.ts`           | Create |
+| `packages/agent/src/install/install-recipe.ts`    | Create |
+| `packages/agent/src/install/installer.ts`         | Create |
+| `packages/agent/src/install/recipes/`             | Create |
+| `apps/server/src/routes/install.ts`               | Create |
+| `apps/desktop/src/pages/AgentMarketPage.tsx`      | Create |
+| `apps/desktop/src/components/InstallDialog.tsx`   | Create |
+| Modify `apps/server/src/routes/agents.ts`         | Modify |
 
 ### Phase 3
 
-| File | Action |
-|------|--------|
-| `apps/server/src/mcp/mcp-hub.ts` | Create/Modify |
-| `apps/desktop/src/pages/WorkbenchPage.tsx` | Create |
-| `apps/desktop/src/components/KeyVaultPanel.tsx` | Create |
-| `apps/desktop/src/components/McpHubPanel.tsx` | Create |
-| `apps/desktop/src/components/SkillManagerPanel.tsx` | Create |
+| File                                                | Action        |
+| --------------------------------------------------- | ------------- |
+| `apps/server/src/mcp/mcp-hub.ts`                    | Create/Modify |
+| `apps/desktop/src/pages/WorkbenchPage.tsx`          | Create        |
+| `apps/desktop/src/components/KeyVaultPanel.tsx`     | Create        |
+| `apps/desktop/src/components/McpHubPanel.tsx`       | Create        |
+| `apps/desktop/src/components/SkillManagerPanel.tsx` | Create        |
 
 ### Phase 4
 
-| File | Action |
-|------|--------|
-| `apps/desktop/src/components/terminal/TerminalTab.tsx` | Create |
+| File                                                     | Action |
+| -------------------------------------------------------- | ------ |
+| `apps/desktop/src/components/terminal/TerminalTab.tsx`   | Create |
 | `apps/desktop/src/components/terminal/TerminalPanel.tsx` | Create |
-| `apps/desktop/src/components/terminal/xterm.css` | Create |
-| `apps/desktop/src/hooks/useTerminal.ts` | Create |
-| `apps/desktop/src/hooks/usePty.ts` | Create |
+| `apps/desktop/src/components/terminal/xterm.css`         | Create |
+| `apps/desktop/src/hooks/useTerminal.ts`                  | Create |
+| `apps/desktop/src/hooks/usePty.ts`                       | Create |
 
 ---
 

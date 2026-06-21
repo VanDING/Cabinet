@@ -23,7 +23,10 @@ export function mergeSlots(main: ContextSlot, forks: ContextSlot[]): ContextSlot
 
 // ── Graph Builders ──────────────────────────────────────────────
 
-export function buildAdjacencyGraph(nodes: WorkflowNodeDef[], edges: WorkflowEdge[]): Map<string, string[]> {
+export function buildAdjacencyGraph(
+  nodes: WorkflowNodeDef[],
+  edges: WorkflowEdge[],
+): Map<string, string[]> {
   const graph = new Map<string, string[]>();
   for (const n of nodes) graph.set(n.id, []);
   for (const e of edges) {
@@ -35,7 +38,11 @@ export function buildAdjacencyGraph(nodes: WorkflowNodeDef[], edges: WorkflowEdg
 
 // ── Node Input Builder ──────────────────────────────────────────
 
-export function buildNodeInput(run: WorkflowRun, nodeId: string, currentEdges: WorkflowEdge[]): StructuredInput {
+export function buildNodeInput(
+  run: WorkflowRun,
+  nodeId: string,
+  currentEdges: WorkflowEdge[],
+): StructuredInput {
   const incoming = currentEdges.filter((e) => e.to === nodeId);
   const upstreamNodeIds = new Set(incoming.map((e) => e.from));
 
@@ -95,7 +102,11 @@ export function resolveValue(field: string, run: WorkflowRun): string {
   if (parts[0] === 'steps' && parts.length >= 3) {
     const step = run.steps.find((s) => s.nodeId === parts[1]);
     if (step) {
-      try { val = JSON.parse(step.output); } catch { val = step.output; }
+      try {
+        val = JSON.parse(step.output);
+      } catch {
+        val = step.output;
+      }
       for (let i = 2; i < parts.length; i++) {
         if (val && typeof val === 'object') val = (val as any)[parts[i]!];
         else break;

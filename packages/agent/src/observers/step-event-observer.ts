@@ -34,11 +34,7 @@ export class StepEventObserver implements AgentObserver {
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private insertStmt: Database.Statement | null = null;
 
-  constructor(
-    sessionId: string,
-    config?: StepEventConfig,
-    db?: Database.Database,
-  ) {
+  constructor(sessionId: string, config?: StepEventConfig, db?: Database.Database) {
     this.sessionId = sessionId;
     this.batchSize = config?.batchSize ?? 10;
     this.flushIntervalMs = config?.flushIntervalMs ?? 5000;
@@ -69,7 +65,8 @@ export class StepEventObserver implements AgentObserver {
     ctx: AgentExecutionContext,
   ): Promise<void> {
     if (!this.db) return;
-    const success = !(result instanceof Error) && !(typeof result === 'string' && result.startsWith('Error'));
+    const success =
+      !(result instanceof Error) && !(typeof result === 'string' && result.startsWith('Error'));
     const blocked = typeof result === 'string' && result.startsWith('BLOCKED:');
     this.insertEvent(ctx.stepCount, 'tool_result', {
       tool_name: call.name,

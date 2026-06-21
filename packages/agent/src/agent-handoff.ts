@@ -43,9 +43,12 @@ export function buildSimpleHandoff(from: string, task: string, rawOutput: string
     const match = rawOutput.match(/\{[\s\S]*\}/);
     if (match) {
       const parsed = JSON.parse(match[0]);
-      if (typeof parsed.confidence === 'number') confidence = Math.max(0, Math.min(1, parsed.confidence));
+      if (typeof parsed.confidence === 'number')
+        confidence = Math.max(0, Math.min(1, parsed.confidence));
     }
-  } catch { /* ignore parse errors */ }
+  } catch {
+    /* ignore parse errors */
+  }
 
   return {
     from,

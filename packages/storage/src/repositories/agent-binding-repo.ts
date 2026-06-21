@@ -57,7 +57,9 @@ export class AgentBindingRepository {
 
   getEnabledMcpServersForAgent(agentType: string): string[] {
     const rows = this.db
-      .prepare('SELECT mcp_server_name FROM agent_mcp_bindings WHERE agent_type = ? AND enabled = 1')
+      .prepare(
+        'SELECT mcp_server_name FROM agent_mcp_bindings WHERE agent_type = ? AND enabled = 1',
+      )
       .all(agentType) as Array<{ mcp_server_name: string }>;
     return rows.map((r) => r.mcp_server_name);
   }

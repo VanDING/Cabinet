@@ -94,7 +94,11 @@ export class WSDaemonClient {
       };
 
       this.ws.onmessage = (event) => {
-        try { this.handleMessage(JSON.parse(event.data as string)); } catch { /* ignore */ }
+        try {
+          this.handleMessage(JSON.parse(event.data as string));
+        } catch {
+          /* ignore */
+        }
       };
 
       this.ws.onclose = (_code) => {
@@ -105,7 +109,11 @@ export class WSDaemonClient {
       };
 
       this.ws.onerror = () => {
-        try { this.ws?.close(); } catch { /* ignore */ }
+        try {
+          this.ws?.close();
+        } catch {
+          /* ignore */
+        }
       };
     } catch {
       this.scheduleReconnect();
@@ -115,8 +123,18 @@ export class WSDaemonClient {
   disconnect(): void {
     this.shutdownFlag = true;
     this.stopHeartbeat();
-    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
-    if (this.ws) { try { this.ws.close(); } catch { /* ignore */ } this.ws = null; }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        /* ignore */
+      }
+      this.ws = null;
+    }
   }
 
   send(msg: Record<string, unknown>): void {
@@ -126,33 +144,61 @@ export class WSDaemonClient {
   }
 
   sendProgress(taskId: string, percent: number, message: string, step = 0): void {
-    this.send({ type: 'task_progress', daemon_id: this.cfg.daemonId, task_id: taskId, percent, message, step });
+    this.send({
+      type: 'task_progress',
+      daemon_id: this.cfg.daemonId,
+      task_id: taskId,
+      percent,
+      message,
+      step,
+    });
   }
 
   sendCompleted(taskId: string, output: unknown, tokensUsed?: number, model?: string): void {
-    this.send({ type: 'task_completed', daemon_id: this.cfg.daemonId, task_id: taskId, output, tokens_used: tokensUsed, model });
+    this.send({
+      type: 'task_completed',
+      daemon_id: this.cfg.daemonId,
+      task_id: taskId,
+      output,
+      tokens_used: tokensUsed,
+      model,
+    });
   }
 
   sendFailed(taskId: string, error: string, retryRecommended = false): void {
-    this.send({ type: 'task_failed', daemon_id: this.cfg.daemonId, task_id: taskId, error, retry_recommended: retryRecommended });
+    this.send({
+      type: 'task_failed',
+      daemon_id: this.cfg.daemonId,
+      task_id: taskId,
+      error,
+      retry_recommended: retryRecommended,
+    });
   }
 
   sendHeartbeat(activeTaskCount: number): void {
-    this.send({ type: 'heartbeat', daemon_id: this.cfg.daemonId, agent_id: this.cfg.agentId, active_task_count: activeTaskCount });
+    this.send({
+      type: 'heartbeat',
+      daemon_id: this.cfg.daemonId,
+      agent_id: this.cfg.agentId,
+      active_task_count: activeTaskCount,
+    });
   }
 
   isConnected(): boolean {
     // WebSocket.OPEN === 1 in both browser and ws package
-    return this.ws !== null && (this.ws.readyState === 1);
+    return this.ws !== null && this.ws.readyState === 1;
   }
 
-  setActiveTaskIds(ids: string[]): void { this.activeTaskIds = ids; }
+  setActiveTaskIds(ids: string[]): void {
+    this.activeTaskIds = ids;
+  }
 
   // ── Internal ──
 
   private handleMessage(msg: Record<string, unknown>): void {
     switch (msg.type) {
-      case 'connected': break;
+      case 'connected':
+        break;
       case 'task_assigned':
         this.activeTaskIds.push(msg.task_id as string);
         this.onTaskAssigned?.(msg.task).catch(() => {});
@@ -176,12 +222,18 @@ export class WSDaemonClient {
   }
 
   private stopHeartbeat(): void {
-    if (this.heartbeatTimer) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   private scheduleReconnect(): void {
     if (this.shutdownFlag) return;
-    const delay = Math.min(this.cfg.reconnectBaseMs * Math.pow(2, this.reconnectAttempt), this.cfg.reconnectMaxMs);
+    const delay = Math.min(
+      this.cfg.reconnectBaseMs * Math.pow(2, this.reconnectAttempt),
+      this.cfg.reconnectMaxMs,
+    );
     this.reconnectAttempt++;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

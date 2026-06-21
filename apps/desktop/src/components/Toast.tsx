@@ -1,4 +1,12 @@
-import { useState, useEffect, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  createContext,
+  useContext,
+  type ReactNode,
+} from 'react';
 
 export interface ToastMessage {
   id: string;
@@ -32,7 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="fixed bottom-4 right-4 z-50 max-w-sm space-y-2"
+        className="fixed right-4 bottom-4 z-50 max-w-sm space-y-2"
       >
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
@@ -69,10 +77,13 @@ function ToastItem({ toast, onClose }: { toast: ToastMessage; onClose: () => voi
 
   return (
     <div
-      className={`${colors[toast.type]} ${exiting ? 'animate-slide-out' : 'animate-slide-in'} flex items-center gap-2 rounded-lg px-4 py-3 text-content-inverse shadow-lg`}
+      className={`${colors[toast.type]} ${exiting ? 'animate-slide-out' : 'animate-slide-in'} text-content-inverse flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg`}
     >
       <span className="flex-1 text-sm">{toast.message}</span>
-      <button onClick={handleClose} className="text-lg leading-none text-content-inverse/70 hover:text-content-inverse">
+      <button
+        onClick={handleClose}
+        className="text-content-inverse/70 hover:text-content-inverse text-lg leading-none"
+      >
         &times;
       </button>
     </div>

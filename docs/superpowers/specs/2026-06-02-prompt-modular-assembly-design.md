@@ -17,13 +17,13 @@ Current systemPrompt construction has six structural problems:
 
 ## 2. Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Migration path | Direct replacement — `systemPrompt: string` → `modules: { identity, workflow? }` | Clean break. No fallback logic to maintain. One-time migration of 5 roles. |
-| Module schema | 4 fixed modules: shared (imported), identity (required), tools (auto-generated), workflow (optional) + dynamicContext (runtime) | Tools are never hand-written — always generated from ToolExecutor. Identity is the only required per-role field. |
-| Shared rules location | Independent file `prompt-shared.ts` | Shared rules change rarely. Separate file means edits don't touch role definitions. Testable independently. |
-| Tools source | `assemblePrompt()` receives the same `ToolExecutor` instance used by AgentLoop | If AgentLoop uses a filtered `createView()`, pass that same view to `assemblePrompt()`. Prompt lists exactly what the agent can actually use. |
-| Constraint grading | `[HARD]` prefix on non-negotiable rules | Simple string prefix. No parser needed. Model research supports this pattern for constraint recognition. |
+| Decision              | Choice                                                                                                                          | Rationale                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migration path        | Direct replacement — `systemPrompt: string` → `modules: { identity, workflow? }`                                                | Clean break. No fallback logic to maintain. One-time migration of 5 roles.                                                                    |
+| Module schema         | 4 fixed modules: shared (imported), identity (required), tools (auto-generated), workflow (optional) + dynamicContext (runtime) | Tools are never hand-written — always generated from ToolExecutor. Identity is the only required per-role field.                              |
+| Shared rules location | Independent file `prompt-shared.ts`                                                                                             | Shared rules change rarely. Separate file means edits don't touch role definitions. Testable independently.                                   |
+| Tools source          | `assemblePrompt()` receives the same `ToolExecutor` instance used by AgentLoop                                                  | If AgentLoop uses a filtered `createView()`, pass that same view to `assemblePrompt()`. Prompt lists exactly what the agent can actually use. |
+| Constraint grading    | `[HARD]` prefix on non-negotiable rules                                                                                         | Simple string prefix. No parser needed. Model research supports this pattern for constraint recognition.                                      |
 
 ## 3. API
 
@@ -41,8 +41,8 @@ Contains: hard constraints (`[HARD]` prefix), formatting rules, soft guidelines,
 
 ```typescript
 interface PromptModules {
-  identity: string;       // required — 3-5 lines defining who this agent is
-  workflow?: string;      // optional — domain-specific workflow instructions
+  identity: string; // required — 3-5 lines defining who this agent is
+  workflow?: string; // optional — domain-specific workflow instructions
 }
 ```
 
@@ -53,14 +53,15 @@ interface PromptModules {
 
 interface AssembleOptions {
   modules: PromptModules;
-  toolExecutor: ToolExecutor;       // the same (possibly filtered) instance AgentLoop uses
-  dynamicContext?: string;          // runtime: project name, captain prefs, etc.
+  toolExecutor: ToolExecutor; // the same (possibly filtered) instance AgentLoop uses
+  dynamicContext?: string; // runtime: project name, captain prefs, etc.
 }
 
 function assemblePrompt(options: AssembleOptions): string;
 ```
 
 Assembly order:
+
 ```
 SHARED_PROMPT
 ↓
@@ -114,7 +115,7 @@ systemPrompt: [
   'You have access to file tools (read, write, edit, list, glob, grep), web tools (web_fetch), shell tools (execute_command), memory tools (remember, recall, search_memory), and project management tools.',
   // ... 100+ more lines including decision mode, routing rules, dev workflow, etc.
   'If you are unsure about system capabilities, data directories, or the responsibilities of other agents, use query_system_knowledge to look up the information.',
-].join('\n')
+].join('\n');
 ```
 
 **After** (~30 lines, ~200 tokens):
@@ -166,12 +167,13 @@ modules: {
 systemPrompt = this.buildDefaultSystemPrompt(projectContext, preferences, rules, roleSystemPrompt);
 
 // After
-const effectivePrompt = roleSystemPrompt
-  ?? assemblePrompt({
-      modules: role.modules,
-      toolExecutor: this.toolExecutor,       // NEW: ContextBuilder needs executor reference
-      dynamicContext: `${projectContext}\nCaptain preferences: ${stableStringify(preferences)}`,
-    });
+const effectivePrompt =
+  roleSystemPrompt ??
+  assemblePrompt({
+    modules: role.modules,
+    toolExecutor: this.toolExecutor, // NEW: ContextBuilder needs executor reference
+    dynamicContext: `${projectContext}\nCaptain preferences: ${stableStringify(preferences)}`,
+  });
 ```
 
 ContextBuilder gains a `toolExecutor` field, injected via constructor:

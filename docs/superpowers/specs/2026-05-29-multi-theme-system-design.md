@@ -18,6 +18,7 @@ src/themes/generate-css.ts  — 将 registry 中所有主题生成 CSS 字符串
 ```
 
 **数据流：**
+
 1. 每个主题是一个 TS 对象（57 个 token 值）
 2. `generate-css.ts`（构建时）将 registry 转换为 `[data-theme="X"] { ... }` CSS
 3. `useTheme` 管理一个 theme ID 字符串
@@ -34,30 +35,30 @@ src/themes/generate-css.ts  — 将 registry 中所有主题生成 CSS 字符串
 
 ### Color Tokens (30)
 
-| Category | Tokens | Count |
-|----------|--------|-------|
-| Surface | `--surface-primary` `--surface-elevated` `--surface-overlay` `--surface-input` `--surface-muted` | 5 |
-| Content | `--content-primary` `--content-secondary` `--content-tertiary` `--content-inverse` | 4 |
-| Border | `--border-color` `--border-subtle` | 2 |
-| Accent | `--accent` `--accent-hover` `--accent-muted` `--accent-foreground` | 4 |
-| Intent | success / danger / warning / info / purple, each: `--intent-{name}` `--intent-{name}-muted` `--intent-{name}-foreground` | 15 |
+| Category | Tokens                                                                                                                   | Count |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ | ----- |
+| Surface  | `--surface-primary` `--surface-elevated` `--surface-overlay` `--surface-input` `--surface-muted`                         | 5     |
+| Content  | `--content-primary` `--content-secondary` `--content-tertiary` `--content-inverse`                                       | 4     |
+| Border   | `--border-color` `--border-subtle`                                                                                       | 2     |
+| Accent   | `--accent` `--accent-hover` `--accent-muted` `--accent-foreground`                                                       | 4     |
+| Intent   | success / danger / warning / info / purple, each: `--intent-{name}` `--intent-{name}-muted` `--intent-{name}-foreground` | 15    |
 
 Semantic intent colors must adjust per-theme to match the accent color temperature and maintain contrast.
 
 ### Style Tokens (27)
 
-| Category | Tokens | Count |
-|----------|--------|-------|
-| Border Radius | `--radius-sm` `--radius-md` `--radius-lg` `--radius-xl` | 4 |
-| Shadow | `--shadow-sm` `--shadow-md` `--shadow-lg` (full CSS value templates) | 3 |
-| Font | `--font-family` `--font-display` `--letter-spacing` `--line-height` | 4 |
-| Border Width | `--border-width` | 1 |
-| Transition | `--duration` `--easing` (mapped to Tailwind defaults) | 2 |
-| Opacity | `--opacity-hover` `--opacity-disabled` `--opacity-overlay` | 3 |
-| Glass | `--blur-amount` `--glass-opacity` | 2 |
-| Focus Ring | `--focus-ring-width` `--focus-ring-color` `--focus-ring-offset` | 3 |
-| Selection | `--selection-bg` `--selection-fg` | 2 |
-| Scrollbar | `--scrollbar-width` `--scrollbar-thumb` `--scrollbar-track` | 3 |
+| Category      | Tokens                                                               | Count |
+| ------------- | -------------------------------------------------------------------- | ----- |
+| Border Radius | `--radius-sm` `--radius-md` `--radius-lg` `--radius-xl`              | 4     |
+| Shadow        | `--shadow-sm` `--shadow-md` `--shadow-lg` (full CSS value templates) | 3     |
+| Font          | `--font-family` `--font-display` `--letter-spacing` `--line-height`  | 4     |
+| Border Width  | `--border-width`                                                     | 1     |
+| Transition    | `--duration` `--easing` (mapped to Tailwind defaults)                | 2     |
+| Opacity       | `--opacity-hover` `--opacity-disabled` `--opacity-overlay`           | 3     |
+| Glass         | `--blur-amount` `--glass-opacity`                                    | 2     |
+| Focus Ring    | `--focus-ring-width` `--focus-ring-color` `--focus-ring-offset`      | 3     |
+| Selection     | `--selection-bg` `--selection-fg`                                    | 2     |
+| Scrollbar     | `--scrollbar-width` `--scrollbar-thumb` `--scrollbar-track`          | 3     |
 
 **Total: 57 CSS variables per theme.**
 
@@ -91,22 +92,22 @@ interface ThemeColors {
     foreground: string;
   };
   intent: {
-    success:  { color: string; muted: string; foreground: string };
-    danger:   { color: string; muted: string; foreground: string };
-    warning:  { color: string; muted: string; foreground: string };
-    info:     { color: string; muted: string; foreground: string };
-    purple:   { color: string; muted: string; foreground: string };
+    success: { color: string; muted: string; foreground: string };
+    danger: { color: string; muted: string; foreground: string };
+    warning: { color: string; muted: string; foreground: string };
+    info: { color: string; muted: string; foreground: string };
+    purple: { color: string; muted: string; foreground: string };
   };
 }
 
 interface ThemeStyle {
-  radius:  { sm: string; md: string; lg: string; xl: string };
-  shadow:  { sm: string; md: string; lg: string };
-  font:    { family: string; display: string; letterSpacing: string; lineHeight: string };
-  border:  { width: string };
+  radius: { sm: string; md: string; lg: string; xl: string };
+  shadow: { sm: string; md: string; lg: string };
+  font: { family: string; display: string; letterSpacing: string; lineHeight: string };
+  border: { width: string };
   transition: { duration: string; easing: string };
   opacity: { hover: string; disabled: string; overlay: string };
-  glass:   { blur: string; opacity: string };
+  glass: { blur: string; opacity: string };
   focusRing: { width: string; color: string; offset: string };
   selection: { bg: string; fg: string };
   scrollbar: { width: string; thumb: string; track: string };
@@ -191,15 +192,18 @@ const setTheme = (id: string) => {
 ## UI Changes
 
 ### TitleBar
+
 - **Remove** Sun/Moon icon toggle button
 - **Add** theme dropdown button showing current theme name
 - Click opens a popover/dropdown listing all available themes from registry
 - Selecting a theme calls `setTheme(id)`
 
 ### ThemeTab (Settings)
+
 - No changes required (existing dark mode toggle can be removed later if desired)
 
 ### Component Cleanup
+
 - Remove `dark:` Tailwind prefix classes from components in `packages/ui/` and `apps/desktop/`
 - Components should rely on CSS variables for dark/light adaptation, not `dark:` utilities
 - **Non-blocking**: remove what's found, but remaining `dark:` classes are harmless (they become no-ops once `darkMode: 'class'` is removed from Tailwind config)
@@ -214,20 +218,20 @@ const setTheme = (id: string) => {
 
 ## Files Summary
 
-| File | Action | Est. Lines |
-|------|--------|-----------|
-| `src/themes/types.ts` | New | ~50 |
-| `src/themes/light-default.ts` | New | ~80 |
-| `src/themes/dark-default.ts` | New | ~80 |
-| `src/themes/forest.ts` | New (placeholder) | ~80 |
-| `src/themes/registry.ts` | New | ~15 |
-| `src/themes/generate-css.ts` | New | ~40 |
-| `src/hooks/useTheme.tsx` | Rewrite | ~40 |
-| `src/components/TitleBar.tsx` | Modify | ~20 |
-| `src/index.css` | Major cleanup | ~-100 / +5 |
-| `tailwind.config.js` | Modify | ~10 / -3 |
-| `packages/ui/src/**/*.tsx` | Remove `dark:` classes | varies |
-| `apps/desktop/src/**/*.tsx` | Remove `dark:` classes | varies |
+| File                          | Action                 | Est. Lines |
+| ----------------------------- | ---------------------- | ---------- |
+| `src/themes/types.ts`         | New                    | ~50        |
+| `src/themes/light-default.ts` | New                    | ~80        |
+| `src/themes/dark-default.ts`  | New                    | ~80        |
+| `src/themes/forest.ts`        | New (placeholder)      | ~80        |
+| `src/themes/registry.ts`      | New                    | ~15        |
+| `src/themes/generate-css.ts`  | New                    | ~40        |
+| `src/hooks/useTheme.tsx`      | Rewrite                | ~40        |
+| `src/components/TitleBar.tsx` | Modify                 | ~20        |
+| `src/index.css`               | Major cleanup          | ~-100 / +5 |
+| `tailwind.config.js`          | Modify                 | ~10 / -3   |
+| `packages/ui/src/**/*.tsx`    | Remove `dark:` classes | varies     |
+| `apps/desktop/src/**/*.tsx`   | Remove `dark:` classes | varies     |
 
 ## Out of Scope
 

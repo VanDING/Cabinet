@@ -2,7 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { calculatePIS } from '../process-identity-score.js';
 import { EmbeddingService } from '../embedding-service.js';
 import type { AgentExecutionContext } from '../observer-pipeline.js';
-import type { LLMGateway, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMStreamOptions,
+  StreamChunk,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from '@cabinet/gateway';
+import { streamFromGenerate } from './helpers/mock-gateway.js';
 
 function makeCtx(partial: Partial<AgentExecutionContext> = {}): AgentExecutionContext {
   return {
@@ -157,8 +164,8 @@ describe('calculatePIS', () => {
       async generateText() {
         return { content: '', usage: { promptTokens: 0, completionTokens: 0 }, model: 'test' };
       },
-      async *streamText() {
-        yield { type: 'done' } as never;
+      async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+        yield* streamFromGenerate(this.generateText.bind(this), options);
       },
       async listModels() {
         return ['test'];

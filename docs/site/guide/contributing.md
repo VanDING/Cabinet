@@ -41,15 +41,19 @@ test(decision): add state machine boundary tests
 
 ```markdown
 ## What
+
 One-line summary of the change.
 
 ## Why
+
 The problem being solved or the capability being added.
 
 ## How
+
 Brief description of the approach. Mention any trade-offs.
 
 ## Verification
+
 - [ ] Tests pass (`pnpm test`)
 - [ ] Type checks pass (`pnpm typecheck`)
 - [ ] E2E tests pass if UI changed (`pnpm test:e2e`)
@@ -58,16 +62,16 @@ Brief description of the approach. Mention any trade-offs.
 
 ## Module Ownership
 
-| Module | Owner | Description |
-| :----- | :---- | :---------- |
-| `@cabinet/types` | Core team | Stability-critical; changes require broad review |
-| `@cabinet/agent` | Core team | Safety and loop logic; high scrutiny |
-| `@cabinet/gateway` | Core team | Cost and routing; affects all LLM calls |
-| `@cabinet/workflow` | Community welcome | Node types, blueprint validation |
-| `@cabinet/ui` | Community welcome | Components, themes, animations |
-| `@cabinet/secretary` | Community welcome | Prompts, greeting logic |
-| `@cabinet/memory` | Community welcome | Retrieval, consolidation, decay |
-| `apps/desktop` | Community welcome | Pages, hooks, utilities |
+| Module               | Owner             | Description                                      |
+| :------------------- | :---------------- | :----------------------------------------------- |
+| `@cabinet/types`     | Core team         | Stability-critical; changes require broad review |
+| `@cabinet/agent`     | Core team         | Safety and loop logic; high scrutiny             |
+| `@cabinet/gateway`   | Core team         | Cost and routing; affects all LLM calls          |
+| `@cabinet/workflow`  | Community welcome | Node types, blueprint validation                 |
+| `@cabinet/ui`        | Community welcome | Components, themes, animations                   |
+| `@cabinet/secretary` | Community welcome | Prompts, greeting logic                          |
+| `@cabinet/memory`    | Community welcome | Retrieval, consolidation, decay                  |
+| `apps/desktop`       | Community welcome | Pages, hooks, utilities                          |
 
 Changes to **Core team** modules need approval from at least one maintainer. **Community welcome** modules can be merged after CI passes and one review.
 

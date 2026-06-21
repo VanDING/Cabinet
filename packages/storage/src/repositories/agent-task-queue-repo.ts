@@ -46,11 +46,26 @@ export class AgentTaskQueueRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
-      row.id, row.agent_id, row.session_id, row.capability, row.input, row.slot_json, row.status,
-      row.priority, row.retry_count, row.max_retries, row.timeout_ms,
-      row.claimed_by, row.claimed_at, row.started_at, row.completed_at,
-      row.progress_json, row.error_message, row.output_json,
-      row.cron_expression, row.webhook_url,
+      row.id,
+      row.agent_id,
+      row.session_id,
+      row.capability,
+      row.input,
+      row.slot_json,
+      row.status,
+      row.priority,
+      row.retry_count,
+      row.max_retries,
+      row.timeout_ms,
+      row.claimed_by,
+      row.claimed_at,
+      row.started_at,
+      row.completed_at,
+      row.progress_json,
+      row.error_message,
+      row.output_json,
+      row.cron_expression,
+      row.webhook_url,
     );
     return row.id;
   }
@@ -62,20 +77,28 @@ export class AgentTaskQueueRepository {
    */
   claimNext(agentId: string, daemonId: string): TaskQueueRow | null {
     const claim = this.db.transaction((): TaskQueueRow | null => {
-      const row = this.db.prepare(`
+      const row = this.db
+        .prepare(
+          `
         SELECT id FROM agent_task_queue
         WHERE agent_id = ? AND status = 'pending'
         ORDER BY priority DESC, created_at ASC
         LIMIT 1
-      `).get(agentId) as { id: string } | undefined;
+      `,
+        )
+        .get(agentId) as { id: string } | undefined;
       if (!row) return null;
 
       const now = new Date().toISOString();
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         UPDATE agent_task_queue SET status = 'claimed', claimed_by = ?, claimed_at = ?,
           updated_at = ?
         WHERE id = ? AND status = 'pending'
-      `).run(daemonId, now, now, row.id);
+      `,
+        )
+        .run(daemonId, now, now, row.id);
 
       return this.findById(row.id);
     });
@@ -86,11 +109,15 @@ export class AgentTaskQueueRepository {
   claimSpecific(taskId: string, daemonId: string): TaskQueueRow | null {
     const claim = this.db.transaction((): TaskQueueRow | null => {
       const now = new Date().toISOString();
-      const result = this.db.prepare(`
+      const result = this.db
+        .prepare(
+          `
         UPDATE agent_task_queue SET status = 'claimed', claimed_by = ?, claimed_at = ?,
           updated_at = ?
         WHERE id = ? AND status = 'pending'
-      `).run(daemonId, now, now, taskId);
+      `,
+        )
+        .run(daemonId, now, now, taskId);
       if (result.changes === 0) return null;
       return this.findById(taskId);
     });
@@ -103,26 +130,47 @@ export class AgentTaskQueueRepository {
     status: string,
     extra?: { errorMessage?: string; output?: unknown; startedAt?: string; completedAt?: string },
   ): void {
-    const sets: string[] = ['status = ?', 'updated_at = datetime(\'now\')'];
+    const sets: string[] = ['status = ?', "updated_at = datetime('now')"];
     const params: unknown[] = [status];
-    if (extra?.errorMessage !== undefined) { sets.push('error_message = ?'); params.push(extra.errorMessage); }
-    if (extra?.output !== undefined) { sets.push('output_json = ?'); params.push(JSON.stringify(extra.output)); }
-    if (extra?.startedAt) { sets.push('started_at = ?'); params.push(extra.startedAt); }
-    if (extra?.completedAt) { sets.push('completed_at = ?'); params.push(extra.completedAt); }
+    if (extra?.errorMessage !== undefined) {
+      sets.push('error_message = ?');
+      params.push(extra.errorMessage);
+    }
+    if (extra?.output !== undefined) {
+      sets.push('output_json = ?');
+      params.push(JSON.stringify(extra.output));
+    }
+    if (extra?.startedAt) {
+      sets.push('started_at = ?');
+      params.push(extra.startedAt);
+    }
+    if (extra?.completedAt) {
+      sets.push('completed_at = ?');
+      params.push(extra.completedAt);
+    }
     params.push(taskId);
     this.db.prepare(`UPDATE agent_task_queue SET ${sets.join(', ')} WHERE id = ?`).run(...params);
   }
 
   /** Update task progress. */
-  updateProgress(taskId: string, progress: { percent: number; message: string; step: number }): void {
-    this.db.prepare(`
+  updateProgress(
+    taskId: string,
+    progress: { percent: number; message: string; step: number },
+  ): void {
+    this.db
+      .prepare(
+        `
       UPDATE agent_task_queue SET progress_json = ?, updated_at = datetime('now') WHERE id = ?
-    `).run(JSON.stringify(progress), taskId);
+    `,
+      )
+      .run(JSON.stringify(progress), taskId);
   }
 
   /** Find a task by ID. */
   findById(taskId: string): TaskQueueRow | null {
-    const row = this.db.prepare('SELECT * FROM agent_task_queue WHERE id = ?').get(taskId) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM agent_task_queue WHERE id = ?').get(taskId) as
+      | Record<string, unknown>
+      | undefined;
     return row ? this.rowToTask(row) : null;
   }
 
@@ -130,9 +178,11 @@ export class AgentTaskQueueRepository {
   findByStatus(status: string | string[], limit = 50): TaskQueueRow[] {
     const statusList = Array.isArray(status) ? status : [status];
     const placeholders = statusList.map(() => '?').join(',');
-    const rows = this.db.prepare(
-      `SELECT * FROM agent_task_queue WHERE status IN (${placeholders}) ORDER BY created_at DESC LIMIT ?`,
-    ).all(...statusList, limit) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM agent_task_queue WHERE status IN (${placeholders}) ORDER BY created_at DESC LIMIT ?`,
+      )
+      .all(...statusList, limit) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTask(r));
   }
 
@@ -140,17 +190,21 @@ export class AgentTaskQueueRepository {
   findByAgent(agentId: string, status?: string, limit = 50): TaskQueueRow[] {
     const where = status ? 'agent_id = ? AND status = ?' : 'agent_id = ?';
     const params: unknown[] = status ? [agentId, status, limit] : [agentId, limit];
-    const rows = this.db.prepare(
-      `SELECT * FROM agent_task_queue WHERE ${where} ORDER BY created_at DESC LIMIT ?`,
-    ).all(...params) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(`SELECT * FROM agent_task_queue WHERE ${where} ORDER BY created_at DESC LIMIT ?`)
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTask(r));
   }
 
   /** Count tasks by status for an agent. */
   countByStatus(agentId: string): Record<string, number> {
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT status, COUNT(*) as cnt FROM agent_task_queue WHERE agent_id = ? GROUP BY status
-    `).all(agentId) as Array<{ status: string; cnt: number }>;
+    `,
+      )
+      .all(agentId) as Array<{ status: string; cnt: number }>;
     const counts: Record<string, number> = {};
     for (const r of rows) counts[r.status] = r.cnt;
     return counts;
@@ -162,9 +216,13 @@ export class AgentTaskQueueRepository {
    */
   findStaleClaims(heartbeatTimeoutMs: number): TaskQueueRow[] {
     const cutoff = new Date(Date.now() - heartbeatTimeoutMs).toISOString();
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT * FROM agent_task_queue WHERE status = 'claimed' AND claimed_at < ?
-    `).all(cutoff) as Record<string, unknown>[];
+    `,
+      )
+      .all(cutoff) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTask(r));
   }
 
@@ -172,11 +230,15 @@ export class AgentTaskQueueRepository {
   resetStaleClaims(taskIds: string[]): number {
     if (taskIds.length === 0) return 0;
     const placeholders = taskIds.map(() => '?').join(',');
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(
+        `
       UPDATE agent_task_queue SET status = 'pending', claimed_by = NULL, claimed_at = NULL,
         updated_at = datetime('now')
       WHERE id IN (${placeholders}) AND status = 'claimed'
-    `).run(...taskIds);
+    `,
+      )
+      .run(...taskIds);
     return result.changes;
   }
 
@@ -188,11 +250,15 @@ export class AgentTaskQueueRepository {
       if (row.status !== 'failed') return null;
       const newRetryCount = row.retry_count + 1;
       if (newRetryCount > row.max_retries) return null;
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         UPDATE agent_task_queue SET status = 'pending', claimed_by = NULL, claimed_at = NULL,
           retry_count = ?, updated_at = datetime('now')
         WHERE id = ?
-      `).run(newRetryCount, taskId);
+      `,
+        )
+        .run(newRetryCount, taskId);
       return this.findById(taskId);
     });
     return retry();

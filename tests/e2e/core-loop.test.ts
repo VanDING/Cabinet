@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
 import { seedProject, resetTier } from './test-helpers';
 
-
 const headers = { 'Content-Type': 'application/json' };
 
 describe('Cabinet Core Loop (E2E)', () => {

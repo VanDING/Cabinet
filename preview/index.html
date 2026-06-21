@@ -1,216 +1,511 @@
-<!DOCTYPE html>
+<!doctype html>
 <html data-theme="light-default">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cabinet Theme Preview</title>
-<link rel="stylesheet" href="themes.css?v=2">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--body-bg, var(--surface-primary));
-    color: var(--content-primary);
-    padding: 2rem;
-    transition: background .2s, color .2s;
-  }
-  .toolbar {
-    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; padding: 1rem;
-    background: var(--surface-elevated); border: 1px solid var(--border-color);
-    border-radius: var(--radius-md, 8px);
-  }
-  .toolbar button {
-    padding: 0.4rem 0.8rem; border: 1px solid var(--border-color);
-    background: var(--surface-primary); color: var(--content-primary);
-    border-radius: var(--radius-sm, 6px); cursor: pointer;
-    font-size: 0.8rem; transition: background .15s;
-  }
-  .toolbar button:hover { background: var(--surface-muted); }
-  .toolbar button.active { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cabinet Theme Preview</title>
+    <link rel="stylesheet" href="themes.css?v=2" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--body-bg, var(--surface-primary));
+        color: var(--content-primary);
+        padding: 2rem;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .toolbar {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: var(--surface-elevated);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md, 8px);
+      }
+      .toolbar button {
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--border-color);
+        background: var(--surface-primary);
+        color: var(--content-primary);
+        border-radius: var(--radius-sm, 6px);
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s;
+      }
+      .toolbar button:hover {
+        background: var(--surface-muted);
+      }
+      .toolbar button.active {
+        background: var(--accent);
+        color: var(--accent-foreground);
+        border-color: var(--accent);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+      }
 
-  /* mock card */
-  .card {
-    background: var(--surface-primary); border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg, 12px); padding: 1.25rem;
-    box-shadow: var(--shadow-md, none); transition: background .2s, border-color .2s;
-  }
-  .card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
-  .card p { font-size: 0.85rem; color: var(--content-secondary); line-height: 1.5; }
+      /* mock card */
+      .card {
+        background: var(--surface-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg, 12px);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-md, none);
+        transition:
+          background 0.2s,
+          border-color 0.2s;
+      }
+      .card h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      .card p {
+        font-size: 0.85rem;
+        color: var(--content-secondary);
+        line-height: 1.5;
+      }
 
-  /* mock input */
-  input {
-    width: 100%; padding: 0.6rem 0.75rem;
-    background: var(--surface-input); color: var(--content-primary);
-    border: 1px solid var(--border-color); border-radius: var(--radius-md, 8px);
-    font-size: 0.85rem; outline: none;
-  }
-  input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-muted); }
+      /* mock input */
+      input {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        background: var(--surface-input);
+        color: var(--content-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md, 8px);
+        font-size: 0.85rem;
+        outline: none;
+      }
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-muted);
+      }
 
-  /* mock button */
-  .btn {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    padding: 0.5rem 1rem; border: none; border-radius: var(--radius-md, 8px);
-    background: var(--accent); color: var(--accent-foreground);
-    font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: opacity .15s;
-  }
-  .btn:hover { opacity: var(--opacity-hover, 0.9); }
-  .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+      /* mock button */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: var(--radius-md, 8px);
+        background: var(--accent);
+        color: var(--accent-foreground);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .btn:hover {
+        opacity: var(--opacity-hover, 0.9);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+      }
 
-  /* mock badge */
-  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm, 6px); font-size: 0.7rem; font-weight: 500; }
-  .badge-success { background: var(--intent-success-muted); color: var(--intent-success); }
-  .badge-danger { background: var(--intent-danger-muted); color: var(--intent-danger); }
-  .badge-warning { background: var(--intent-warning-muted); color: var(--intent-warning); }
-  .badge-info { background: var(--intent-info-muted); color: var(--intent-info); }
+      /* mock badge */
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: var(--radius-sm, 6px);
+        font-size: 0.7rem;
+        font-weight: 500;
+      }
+      .badge-success {
+        background: var(--intent-success-muted);
+        color: var(--intent-success);
+      }
+      .badge-danger {
+        background: var(--intent-danger-muted);
+        color: var(--intent-danger);
+      }
+      .badge-warning {
+        background: var(--intent-warning-muted);
+        color: var(--intent-warning);
+      }
+      .badge-info {
+        background: var(--intent-info-muted);
+        color: var(--intent-info);
+      }
 
-  /* mock sidebar */
-  .sidebar {
-    background: var(--surface-sidebar); border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg, 12px); padding: 1rem;
-  }
-  .sidebar-item {
-    padding: 0.5rem 0.75rem; border-radius: var(--radius-sm, 6px);
-    color: var(--content-secondary); font-size: 0.85rem; cursor: pointer;
-  }
-  .sidebar-item:hover { background: var(--surface-muted); color: var(--content-primary); }
-  .sidebar-item.active { background: var(--accent-muted); color: var(--accent); font-weight: 500; }
+      /* mock sidebar */
+      .sidebar {
+        background: var(--surface-sidebar);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg, 12px);
+        padding: 1rem;
+      }
+      .sidebar-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm, 6px);
+        color: var(--content-secondary);
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .sidebar-item:hover {
+        background: var(--surface-muted);
+        color: var(--content-primary);
+      }
+      .sidebar-item.active {
+        background: var(--accent-muted);
+        color: var(--accent);
+        font-weight: 500;
+      }
 
-  /* inline color swatch */
-  .swatch-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; }
-  .swatch { width: 24px; height: 24px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); }
-  .swatch-label { font-size: 0.7rem; color: var(--content-tertiary); }
+      /* inline color swatch */
+      .swatch-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.25rem 0;
+      }
+      .swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: var(--radius-sm, 4px);
+        border: 1px solid var(--border-color);
+      }
+      .swatch-label {
+        font-size: 0.7rem;
+        color: var(--content-tertiary);
+      }
 
-  .section { margin: 1.5rem 0; }
-  .section h3 { font-size: 0.85rem; color: var(--content-secondary); margin-bottom: 0.5rem; font-weight: 500; }
+      .section {
+        margin: 1.5rem 0;
+      }
+      .section h3 {
+        font-size: 0.85rem;
+        color: var(--content-secondary);
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
 
-  .flex { display: flex; }
-  .gap-2 { gap: 0.5rem; }
-  .mt-2 { margin-top: 0.5rem; }
-  .mb-2 { margin-bottom: 0.5rem; }
-</style>
-</head>
-<body>
+      .flex {
+        display: flex;
+      }
+      .gap-2 {
+        gap: 0.5rem;
+      }
+      .mt-2 {
+        margin-top: 0.5rem;
+      }
+      .mb-2 {
+        margin-bottom: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar" id="themeBar">
+      <button class="active" data-t="light-default">Light</button>
+      <button data-t="dark-default">Dark</button>
+      <button data-t="warm">Warm</button>
+      <button data-t="brutalism">Brutalism</button>
+      <button data-t="synthwave">Synthwave</button>
+      <button data-t="cyberpunk">Cyberpunk</button>
+      <button data-t="techno">Techno</button>
+      <button data-t="polar">Polar</button>
+      <button data-t="pixel-by">Pixel</button>
+      <button data-t="geek">Geek</button>
+      <button data-t="afrofuturism">Afrofuturism</button>
+      <button data-t="sumi-e">Sumi-e</button>
+    </div>
 
-<div class="toolbar" id="themeBar">
-  <button class="active" data-t="light-default">Light</button>
-  <button data-t="dark-default">Dark</button>
-  <button data-t="warm">Warm</button>
-  <button data-t="brutalism">Brutalism</button>
-  <button data-t="synthwave">Synthwave</button>
-  <button data-t="cyberpunk">Cyberpunk</button>
-  <button data-t="techno">Techno</button>
-  <button data-t="polar">Polar</button>
-  <button data-t="pixel-by">Pixel</button>
-  <button data-t="geek">Geek</button>
-  <button data-t="afrofuturism">Afrofuturism</button>
-  <button data-t="sumi-e">Sumi-e</button>
-</div>
+    <h2 id="themeName" style="font-weight: 600; margin-bottom: 0.25rem">Light</h2>
+    <p style="color: var(--content-tertiary); font-size: 0.85rem; margin-bottom: 1.5rem">
+      点击上方按钮切换主题预览
+    </p>
 
-<h2 id="themeName" style="font-weight:600;margin-bottom:0.25rem">Light</h2>
-<p style="color:var(--content-tertiary);font-size:0.85rem;margin-bottom:1.5rem">点击上方按钮切换主题预览</p>
-
-<div class="grid">
-  <!-- left: UI mockup -->
-  <div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h3>Project Dashboard</h3>
-        <span class="badge badge-success">active</span>
-      </div>
-      <div style="margin-bottom:0.75rem">
-        <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap">
-          <span class="badge badge-info">frontend</span>
-          <span class="badge badge-warning">in review</span>
-          <span class="badge badge-danger">bug</span>
+    <div class="grid">
+      <!-- left: UI mockup -->
+      <div>
+        <div class="card">
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 1rem;
+            "
+          >
+            <h3>Project Dashboard</h3>
+            <span class="badge badge-success">active</span>
+          </div>
+          <div style="margin-bottom: 0.75rem">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap">
+              <span class="badge badge-info">frontend</span>
+              <span class="badge badge-warning">in review</span>
+              <span class="badge badge-danger">bug</span>
+            </div>
+            <p>
+              This is a sample card showing how surface, content, and border tokens work together in
+              a theme.
+            </p>
+          </div>
+          <input placeholder="Type a message..." style="margin-bottom: 0.75rem" />
+          <div style="display: flex; gap: 0.5rem">
+            <button class="btn">Send</button>
+            <button class="btn btn-outline">Cancel</button>
+          </div>
         </div>
-        <p>This is a sample card showing how surface, content, and border tokens work together in a theme.</p>
+
+        <div class="section">
+          <h3>Code block</h3>
+          <div
+            style="
+              background: var(--code-block-bg);
+              border: 1px solid var(--code-block-border);
+              border-radius: var(--radius-md, 8px);
+              padding: 1rem;
+              font-family: monospace;
+              font-size: 0.8rem;
+            "
+          >
+            <div style="color: var(--syntax-keyword)">function</div>
+            <div style="color: var(--syntax-function)">hello</div>
+            <div style="color: var(--syntax-punctuation, var(--content-primary))">() {</div>
+            <div style="color: var(--syntax-string); padding-left: 1rem">return "world";</div>
+            <div style="color: var(--syntax-punctuation, var(--content-primary))">}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Chart colors</h3>
+          <div style="display: flex; gap: 4px">
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-1);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-2);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-3);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-4);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-5);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-6);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-7);
+              "
+            ></div>
+            <div
+              style="
+                flex: 1;
+                height: 20px;
+                border-radius: var(--radius-sm, 4px);
+                background: var(--chart-8);
+              "
+            ></div>
+          </div>
+        </div>
       </div>
-      <input placeholder="Type a message..." style="margin-bottom:0.75rem">
-      <div style="display:flex;gap:0.5rem">
-        <button class="btn">Send</button>
-        <button class="btn btn-outline">Cancel</button>
+
+      <!-- right: color palette -->
+      <div>
+        <div class="card" style="margin-bottom: 1rem">
+          <h3 style="margin-bottom: 0.75rem">Surface</h3>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--surface-primary)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--surface-primary</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-elevated); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--surface-elevated</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-muted); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--surface-muted</code>
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-input); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--surface-input</code>
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-overlay); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--surface-overlay</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-sidebar); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--surface-sidebar</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-2); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--surface-2</code>
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--surface-3); border-color: var(--hairline)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--surface-3</code>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 1rem">
+          <h3 style="margin-bottom: 0.75rem">Content</h3>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--content-primary)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--content-primary</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--content-secondary)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--content-secondary</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--content-tertiary)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)"
+              >--content-tertiary</code
+            >
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--accent)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--accent</code>
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--accent-hover)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--accent-hover</code>
+          </div>
+          <div class="swatch-row">
+            <span
+              class="swatch"
+              style="background: var(--accent-muted); border-color: var(--border-color)"
+            ></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">--accent-muted</code>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 0.75rem">Intent</h3>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--intent-success)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">success</code>
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--intent-danger)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">danger</code>
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--intent-warning)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">warning</code>
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--intent-info)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">info</code>
+          </div>
+          <div class="swatch-row">
+            <span class="swatch" style="background: var(--intent-purple)"></span
+            ><code style="font-size: 0.7rem; color: var(--content-tertiary)">purple</code>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="section">
-      <h3>Code block</h3>
-      <div style="background:var(--code-block-bg);border:1px solid var(--code-block-border);border-radius:var(--radius-md,8px);padding:1rem;font-family:monospace;font-size:0.8rem">
-        <div style="color:var(--syntax-keyword)">function</div>
-        <div style="color:var(--syntax-function)">  hello</div>
-        <div style="color:var(--syntax-punctuation,var(--content-primary))">() {</div>
-        <div style="color:var(--syntax-string);padding-left:1rem">  return "world";</div>
-        <div style="color:var(--syntax-punctuation,var(--content-primary))">}</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3>Chart colors</h3>
-      <div style="display:flex;gap:4px">
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-1)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-2)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-3)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-4)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-5)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-6)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-7)"></div>
-        <div style="flex:1;height:20px;border-radius:var(--radius-sm,4px);background:var(--chart-8)"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- right: color palette -->
-  <div>
-    <div class="card" style="margin-bottom:1rem">
-      <h3 style="margin-bottom:0.75rem">Surface</h3>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-primary)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-primary</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-elevated);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-elevated</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-muted);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-muted</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-input);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-input</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-overlay);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-overlay</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-sidebar);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-sidebar</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-2);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-2</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--surface-3);border-color:var(--hairline)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--surface-3</code></div>
-    </div>
-
-    <div class="card" style="margin-bottom:1rem">
-      <h3 style="margin-bottom:0.75rem">Content</h3>
-      <div class="swatch-row"><span class="swatch" style="background:var(--content-primary)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--content-primary</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--content-secondary)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--content-secondary</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--content-tertiary)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--content-tertiary</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--accent)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--accent</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--accent-hover)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--accent-hover</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--accent-muted);border-color:var(--border-color)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">--accent-muted</code></div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin-bottom:0.75rem">Intent</h3>
-      <div class="swatch-row"><span class="swatch" style="background:var(--intent-success)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">success</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--intent-danger)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">danger</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--intent-warning)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">warning</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--intent-info)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">info</code></div>
-      <div class="swatch-row"><span class="swatch" style="background:var(--intent-purple)"></span><code style="font-size:0.7rem;color:var(--content-tertiary)">purple</code></div>
-    </div>
-  </div>
-</div>
-
-<script>
-  const buttons = document.querySelectorAll('#themeBar button');
-  const themeName = document.getElementById('themeName');
-  const names = {
-    'light-default': 'Light', 'dark-default': 'Dark', 'warm': 'Warm',
-    'brutalism': 'Brutalism', 'synthwave': 'Synthwave', 'cyberpunk': 'Cyberpunk',
-    'techno': 'Techno', 'polar': 'Polar', 'pixel-by': 'Pixel',
-    'geek': 'Geek', 'afrofuturism': 'Afrofuturism', 'sumi-e': 'Sumi-e'
-  };
-  buttons.forEach(b => {
-    b.addEventListener('click', () => {
-      buttons.forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      document.documentElement.setAttribute('data-theme', b.dataset.t);
-      themeName.textContent = names[b.dataset.t] || b.dataset.t;
-    });
-  });
-</script>
-</body>
+    <script>
+      const buttons = document.querySelectorAll('#themeBar button');
+      const themeName = document.getElementById('themeName');
+      const names = {
+        'light-default': 'Light',
+        'dark-default': 'Dark',
+        warm: 'Warm',
+        brutalism: 'Brutalism',
+        synthwave: 'Synthwave',
+        cyberpunk: 'Cyberpunk',
+        techno: 'Techno',
+        polar: 'Polar',
+        'pixel-by': 'Pixel',
+        geek: 'Geek',
+        afrofuturism: 'Afrofuturism',
+        'sumi-e': 'Sumi-e',
+      };
+      buttons.forEach((b) => {
+        b.addEventListener('click', () => {
+          buttons.forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          document.documentElement.setAttribute('data-theme', b.dataset.t);
+          themeName.textContent = names[b.dataset.t] || b.dataset.t;
+        });
+      });
+    </script>
+  </body>
 </html>

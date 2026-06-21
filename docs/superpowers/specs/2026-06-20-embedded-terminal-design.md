@@ -83,6 +83,7 @@ pub fn spawn_pty(app: AppHandle, manager: &PtyManager, agent_id: String, command
 ```
 
 **New Tauri commands:**
+
 - `pty_spawn(agent_id, command, args, env) -> pty_id` — Spawns PTY + reader thread, returns ID
 - `pty_write(pty_id, data)` — Forward keystrokes
 - `pty_resize(pty_id, cols, rows)` — Handle xterm resize
@@ -90,6 +91,7 @@ pub fn spawn_pty(app: AppHandle, manager: &PtyManager, agent_id: String, command
 - `pty_list() -> Vec<PtyInfo>` — List active sessions
 
 **Events emitted:**
+
 - `pty:data` — `{ ptyId, data }` per chunk
 - `pty:exit` — `{ ptyId, exitCode? }` on process exit
 - `pty:error` — `{ ptyId, error }` on spawn/runtime errors
@@ -99,6 +101,7 @@ pub fn spawn_pty(app: AppHandle, manager: &PtyManager, agent_id: String, command
 **File:** `apps/desktop/package.json`
 
 Add:
+
 ```json
 "xterm": "^5.5.0",
 "xterm-addon-fit": "^0.10.0"
@@ -107,6 +110,7 @@ Add:
 **File:** `apps/desktop/src/index.tsx` (or main entry)
 
 Add:
+
 ```typescript
 import 'xterm/css/xterm.css';
 import 'xterm-addon-fit/css/xterm-addon-fit.css';
@@ -156,12 +160,15 @@ export function useTerminal(opts: UseTerminalOptions | null) {
           opts.onOutput?.(event.payload.data);
         }
       });
-      unlistenExit = await listen<{ ptyId: string; exitCode: number | null }>('pty:exit', (event) => {
-        if (event.payload.ptyId === ptyId) {
-          setIsRunning(false);
-          opts.onExit?.(event.payload.exitCode);
-        }
-      });
+      unlistenExit = await listen<{ ptyId: string; exitCode: number | null }>(
+        'pty:exit',
+        (event) => {
+          if (event.payload.ptyId === ptyId) {
+            setIsRunning(false);
+            opts.onExit?.(event.payload.exitCode);
+          }
+        },
+      );
     })();
 
     return () => {
@@ -340,6 +347,7 @@ Pass `terminalOpen` and `onToggleTerminal` to `<ChatView>`. The `activeAgent` (f
 ### 9. Auto-spawn logic
 
 When user clicks the terminal toggle and a CLI agent is active (`activeAgent.startsWith('external_cli:')`):
+
 - Look up agent in `useAgents()`
 - Get `external.command` and `external.args` from `ExternalAgentConfig`
 - Spawn terminal with these args
@@ -350,6 +358,7 @@ When no CLI agent is active, terminal button is disabled with tooltip "Terminal 
 ## State Management
 
 **Terminal state lives in ChatView (local state)**, not in `ChatContext`:
+
 - `terminalOpen: boolean`
 - `terminalHeight: number` (default 240px)
 - `terminalTabs: TerminalTab[]`
@@ -361,19 +370,19 @@ This is local because terminals are per-session ephemeral runtime artifacts, not
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|----------------|
-| `apps/desktop/src-tauri/src/pty.rs` | Modify | Refactor to event-push via background thread |
-| `apps/desktop/src-tauri/src/lib.rs` | Modify | Update Tauri command signatures (add `pty_list`) |
-| `apps/desktop/package.json` | Modify | Add `xterm` + `xterm-addon-fit` deps |
-| `apps/desktop/src/index.css` (or entry) | Modify | Import xterm CSS |
-| `apps/desktop/src/hooks/useTerminal.ts` | Create | Tauri event subscription + PTY lifecycle |
-| `apps/desktop/src/components/terminal/TerminalTab.tsx` | Create | xterm.js wrapper |
-| `apps/desktop/src/components/terminal/TerminalPanel.tsx` | Create | Multi-tab + resizable panel |
-| `apps/desktop/src/components/terminal/index.ts` | Create | Barrel export |
-| `apps/desktop/src/components/chat/AgentTopBar.tsx` | Modify | Add terminal toggle button |
-| `apps/desktop/src/components/ChatView.tsx` | Modify | Embed TerminalPanel, pass props |
-| `apps/desktop/src/App.tsx` | Modify | Pass terminalOpen + onToggleTerminal to ChatView |
+| File                                                     | Action | Responsibility                                   |
+| -------------------------------------------------------- | ------ | ------------------------------------------------ |
+| `apps/desktop/src-tauri/src/pty.rs`                      | Modify | Refactor to event-push via background thread     |
+| `apps/desktop/src-tauri/src/lib.rs`                      | Modify | Update Tauri command signatures (add `pty_list`) |
+| `apps/desktop/package.json`                              | Modify | Add `xterm` + `xterm-addon-fit` deps             |
+| `apps/desktop/src/index.css` (or entry)                  | Modify | Import xterm CSS                                 |
+| `apps/desktop/src/hooks/useTerminal.ts`                  | Create | Tauri event subscription + PTY lifecycle         |
+| `apps/desktop/src/components/terminal/TerminalTab.tsx`   | Create | xterm.js wrapper                                 |
+| `apps/desktop/src/components/terminal/TerminalPanel.tsx` | Create | Multi-tab + resizable panel                      |
+| `apps/desktop/src/components/terminal/index.ts`          | Create | Barrel export                                    |
+| `apps/desktop/src/components/chat/AgentTopBar.tsx`       | Modify | Add terminal toggle button                       |
+| `apps/desktop/src/components/ChatView.tsx`               | Modify | Embed TerminalPanel, pass props                  |
+| `apps/desktop/src/App.tsx`                               | Modify | Pass terminalOpen + onToggleTerminal to ChatView |
 
 ## Implementation Phases (Within Phase 4)
 

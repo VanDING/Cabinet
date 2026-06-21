@@ -5,12 +5,26 @@ import type { WorkflowNodeType } from '@cabinet/types';
 export type CanvasNodeType = WorkflowNodeType;
 
 export const CANVAS_NODE_TYPES: CanvasNodeType[] = [
-  'start', 'end',
-  'ifElse', 'loop', 'parallel', 'merge', 'pass',
-  'agentGroup', 'manager',
-  'llm', 'skill', 'tool', 'code', 'workflow',
-  'intentClassify', 'knowledgeBase',
-  'approval', 'human',
+  'start',
+  'end',
+  'ifElse',
+  'loop',
+  'parallel',
+  'merge',
+  'pass',
+  'notification',
+  'wait',
+  'agentGroup',
+  'manager',
+  'llm',
+  'skill',
+  'tool',
+  'code',
+  'workflow',
+  'intentClassify',
+  'knowledgeBase',
+  'approval',
+  'human',
   'externalAgent',
 ];
 
@@ -32,7 +46,11 @@ export interface CanvasNodeData {
   code?: string;
   codeTimeout?: number;
   workflowId?: string;
-  branches?: Array<{ label: string; conditions: Array<{ field: string; operator: string; value: string; logic: 'AND' | 'OR' }>; priority: number }>;
+  branches?: Array<{
+    label: string;
+    conditions: Array<{ field: string; operator: string; value: string; logic: 'AND' | 'OR' }>;
+    priority: number;
+  }>;
   loopType?: 'count' | 'condition';
   loopCount?: number;
   loopCondition?: string;
@@ -66,6 +84,8 @@ export const NODE_COLORS: Record<CanvasNodeType, string> = {
   parallel: 'bg-intent-info-muted border-intent-info',
   merge: 'bg-intent-purple-muted border-intent-purple',
   pass: 'bg-surface-muted border-border',
+  notification: 'bg-intent-info-muted border-intent-info',
+  wait: 'bg-surface-muted border-border',
   agentGroup: 'bg-accent-muted/20 border-accent',
   llm: 'bg-accent-muted border-accent',
   skill: 'bg-intent-purple-muted border-intent-purple',
@@ -81,14 +101,25 @@ export const NODE_COLORS: Record<CanvasNodeType, string> = {
 };
 
 export const NODE_LABELS: Record<CanvasNodeType, string> = {
-  start: 'Start', end: 'End',
-  ifElse: 'If-Else', loop: 'Loop', parallel: 'Parallel',
-  merge: 'Merge', pass: 'Pass',
+  start: 'Start',
+  end: 'End',
+  ifElse: 'If-Else',
+  loop: 'Loop',
+  parallel: 'Parallel',
+  merge: 'Merge',
+  pass: 'Pass',
+  notification: 'Notification',
+  wait: 'Wait',
   agentGroup: 'Agent Group',
   manager: 'Manager',
-  llm: 'LLM', skill: 'Skill', tool: 'Tool',
-  code: 'Code', workflow: 'Workflow',
-  intentClassify: 'Intent', knowledgeBase: 'KB',
-  approval: 'Approval', human: 'Human',
+  llm: 'LLM',
+  skill: 'Skill',
+  tool: 'Tool',
+  code: 'Code',
+  workflow: 'Workflow',
+  intentClassify: 'Intent',
+  knowledgeBase: 'KB',
+  approval: 'Approval',
+  human: 'Human',
   externalAgent: 'External Agent',
 };

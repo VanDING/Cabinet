@@ -27,7 +27,11 @@ function setupDb() {
   const db = getConnection();
   runMigration001(db);
   // model_tier column on agent_roles exists in production via manual migration gap
-  try { db.exec('ALTER TABLE agent_roles ADD COLUMN model_tier TEXT'); } catch { /* already exists */ }
+  try {
+    db.exec('ALTER TABLE agent_roles ADD COLUMN model_tier TEXT');
+  } catch {
+    /* already exists */
+  }
   runMigration005(db);
   runMigration010(db);
   runMigration016(db);
@@ -55,10 +59,10 @@ describe('WorkflowRepository', () => {
     repo = new WorkflowRepository(getConnection());
     // Insert a project so foreign key constraints pass
     getConnection()
-      .prepare("INSERT OR IGNORE INTO projects (id, name, description, status) VALUES (?, ?, ?, ?)")
+      .prepare('INSERT OR IGNORE INTO projects (id, name, description, status) VALUES (?, ?, ?, ?)')
       .run('proj_test', 'Test Project', 'For integration tests', 'active');
     getConnection()
-      .prepare("INSERT OR IGNORE INTO projects (id, name, description, status) VALUES (?, ?, ?, ?)")
+      .prepare('INSERT OR IGNORE INTO projects (id, name, description, status) VALUES (?, ?, ?, ?)')
       .run('proj_other', 'Other Project', 'For integration tests', 'active');
   });
 

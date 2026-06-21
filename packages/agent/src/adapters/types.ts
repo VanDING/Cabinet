@@ -84,7 +84,7 @@ export interface CliAgentConfig {
 export interface A2AAgentConfig {
   baseUrl: string;
   healthCheckUrl?: string;
-  cabinetWsUrl?: string;  // Cabinet WebSocket endpoint for real-time events
+  cabinetWsUrl?: string; // Cabinet WebSocket endpoint for real-time events
   authConfig?: { type: 'api_key' | 'oauth'; header?: string; envVar?: string };
   timeoutMs?: number;
   maxRetries?: number;

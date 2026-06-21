@@ -25,6 +25,7 @@ const mockSession = {
   id: 'test-session-1',
   parentId: 'parent-session-1',
   title: 'Test Session',
+  deliverable: undefined as string | undefined,
   contextSlot: {
     version: 1,
     project: { name: 'test', goals: [] },

@@ -1,31 +1,30 @@
 # Architecture
 
-Cabinet is organized into **5 strict layers**. Dependencies flow only upward — lower layers never depend on upper layers. This keeps the system predictable and makes individual modules replaceable.
+Cabinet is organized into **4 strict layers**. Dependencies flow only upward — lower layers never depend on upper layers. This keeps the system predictable and makes individual modules replaceable.
 
 ## Layer Overview
 
-| Layer              | Packages                                                                | Purpose                                                            |
-| :----------------- | :---------------------------------------------------------------------- | :----------------------------------------------------------------- |
-| **Infrastructure** | `types`, `events`, `storage`, `graph`                                   | Type system, event bus, SQLite persistence, graph execution engine |
-| **Agent Core**     | `gateway`, `agent`, `memory`                                            | LLM gateway, graph-based agent loop, 4-layer memory                |
-| **Business**       | `decision`, `secretary`, `workflow`, `harness`, `organize` (deprecated) | Core product capabilities                                          |
-| **Interface**      | `ui`, `server`, `desktop`, `cli`                                        | React components, REST API, Tauri app, CLI                         |
+| Layer              | Packages                                       | Purpose                                                                            |
+| :----------------- | :--------------------------------------------- | :--------------------------------------------------------------------------------- |
+| **Infrastructure** | `types`, `events`, `storage`                   | Type system, event bus, SQLite persistence                                         |
+| **Agent Core**     | `gateway`, `agent`, `memory`, `agent-sdk`      | LLM gateway, agent loop with observer pipeline, 4-layer memory, external agent SDK |
+| **Business**       | `decision`, `secretary`, `workflow`, `harness` | Core product capabilities                                                          |
+| **Interface**      | `ui`, `server`, `desktop`, `cli`               | React components, REST API, Tauri app, CLI                                         |
 
 ```
-┌──────────────────────────────────────────────┐
-│                    Interface                   │
-│     Desktop App / REST API / CLI              │
-├──────────────────────────────────────────────┤
-│          Business Logic                        │
-│  Secretary / Meeting / Decision / Workflow    │
-│  + Harness + Organize                         │
-├──────────────────────────────────────────────┤
-│                Agent Core                      │
-│       LLM Gateway / Agent Loop / Memory       │
-├──────────────────────────────────────────────┤
-│           Infrastructure                       │
-│  Graph Engine / Event Bus / SQLite / Types    │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│               Interface                     │
+│  Desktop App / REST API (Hono) / CLI       │
+├────────────────────────────────────────────┤
+│             Business Logic                  │
+│  Secretary / Decision / Workflow / Harness  │
+├────────────────────────────────────────────┤
+│              Agent Core                     │
+│  LLM Gateway / AgentLoop / Memory / SDK     │
+├────────────────────────────────────────────┤
+│           Infrastructure                    │
+│  Event Bus / SQLite / Shared Types          │
+└────────────────────────────────────────────┘
 ```
 
 ## Key Design Principles
@@ -42,15 +41,19 @@ The LLM gateway uses **Vercel AI SDK** (pure TypeScript) instead of Python-based
 
 Modules at the same layer communicate through the **EventBus** (`@cabinet/events`), not direct imports. Events are immutable, append-only, and stored in SQLite with full causation chains.
 
-### 4. Graph-Driven Agent Loop
+### 4. Observer-Driven Agent Loop
 
-The `AgentLoop` (`@cabinet/agent`) compiles to a **StateGraph** (`@cabinet/graph`) with 6 nodes:
+The `AgentLoop` (`@cabinet/agent`) uses an async generator (`executeGenerator`) with a pluggable **ObserverPipeline**:
 
 ```
-buildContext → callLLM → evaluate → safetyCheck → executeTools → feedback
+Context Assembly → LLM Call → Tool Execution → [repeat] → Final Response
+                          ↑
+                   ObserverPipeline
+           (safety / reflection / checkpoints / PIS /
+            content guard / blackboard / auto-replan / etc.)
 ```
 
-The framework provides the execution skeleton; the LLM drives the logic. Each node auto-saves a checkpoint to SQLite, enabling **time travel** (resume from any historical state). Tool execution passes through a **4-tier safety check** before running.
+The framework provides the execution skeleton; the LLM drives the logic. Each step is observable through 14 pluggable observers that can inspect, block, or inject into the execution without touching the core loop.
 
 ### 5. Capabilities-Gated Workflows
 
@@ -60,11 +63,11 @@ Workflow agents declare required capabilities (`files`, `web`, `shell`, `schedul
 
 Cabinet uses three distinct validation layers, each with a clear, non-overlapping responsibility:
 
-| Gate                    | Package                           | Trigger                       | Responsibility                                                                            |
-| :---------------------- | :-------------------------------- | :---------------------------- | :---------------------------------------------------------------------------------------- |
-| **Safety Check**        | `agent/safety.ts`                 | Before every tool call        | "Can we do this?" — cache rules → auto mode → whitelist → AI classifier                   |
-| **Quality Gate**        | `harness/quality-gate.ts`         | After Agent output            | "Was this done well?" — H-E-I format check; retry if needed                               |
-| **Blueprint Validator** | `workflow/blueprint-validator.ts` | Workflow blueprint definition | "Can this pass to the next node?" — node connectivity, cycle detection, schema validation |
+| Gate                    | Package                              | Trigger                       | Responsibility                                                                            |
+| :---------------------- | :----------------------------------- | :---------------------------- | :---------------------------------------------------------------------------------------- |
+| **Delegation Tier**     | `agent/safety.ts` + `mcp-manager.ts` | Before every tool call        | "Can we do this?" — T0 (CaptainReview) to T3 (FullAutonomy)                               |
+| **Quality Gate**        | `harness/quality-gate.ts`            | After Agent output            | "Was this done well?" — H-E-I format check; retry if needed                               |
+| **Blueprint Validator** | `workflow/blueprint-validator.ts`    | Workflow blueprint definition | "Can this pass to the next node?" — node connectivity, cycle detection, schema validation |
 
 **In short**: Safety says _can_, Harness says _good_, Workflow says _compatible_.
 
@@ -72,15 +75,16 @@ Cabinet uses three distinct validation layers, each with a clear, non-overlappin
 
 The desktop app (`apps/desktop`) is a React SPA running inside a Tauri shell.
 
-**Navigation pages** (defined in `Navigation` component):
+**Navigation pages**:
 
-| Page          | Route                                | Purpose                                                          |
-| :------------ | :----------------------------------- | :--------------------------------------------------------------- |
-| **Office**    | `/` or `/project/:id/office`         | Default workspace; decision cards, project explorer, file viewer |
-| **Factory**   | `/factory` or `/project/:id/factory` | Workflow canvas editor and execution monitor                     |
-| **Employees** | `/employees`                         | Agent/Employee management and configuration                      |
-| **Memory**    | `/memory`                            | Memory browser, knowledge graph, contradiction review            |
-| **Settings**  | `/settings`                          | API keys, budget, delegation tier, themes, backups               |
+| Page          | Route                                | Purpose                                                                                |
+| :------------ | :----------------------------------- | :------------------------------------------------------------------------------------- |
+| **Office**    | `/` or `/project/:id/office`         | Default workspace; dashboard, decision cards, welcome header, activity heatmap, kanban |
+| **Factory**   | `/factory` or `/project/:id/factory` | Workflow canvas editor and execution monitor                                           |
+| **Employees** | `/employees`                         | Agent/Employee management and configuration                                            |
+| **Memory**    | `/memory`                            | Memory browser, knowledge graph, contradiction review                                  |
+| **Workbench** | `/workbench`                         | Agent marketplace, install/scan, API keys, MCP servers, skills                         |
+| **Settings**  | `/settings`                          | Delegation tier, themes, backups                                                       |
 
 The chat panel is a persistent overlay accessible from any page via the sidebar or `Ctrl+N` shortcut.
 
@@ -88,17 +92,24 @@ The chat panel is a persistent overlay accessible from any page via the sidebar 
 
 The server (`apps/server`) exposes a Hono-based REST API. Key route modules:
 
-- `secretary.ts` — Chat streaming, intent routing, agent dispatch
-- `decisions.ts` — Decision CRUD, approval, analysis
-- `workflows.ts` — Workflow run orchestration with capability injection
-- `projects.ts` — Project lifecycle
-- `employees.ts` — Employee/Agent management
-- `skills.ts` — Skill registry
-- `settings.ts` — Budget, delegation, API keys
-- `audit.ts` — Audit log queries
-- `memory.ts` — Memory read/write endpoints
-- `health.ts` — System health checks
-- `observability.ts` — Metrics and reports
+- `secretary/` — Chat streaming, intent routing, agent dispatch, sub-agent management
+- `decisions/` — Decision CRUD, approval, analysis
+- `workflows/` — Workflow run orchestration with capability injection
+- `projects/` — Project lifecycle
+- `employees/` — Employee/Agent management
+- `skills/` — Skill registry
+- `agents/` — Agent card, A2A task routing, discovery
+- `workbench/` — Agent scanning, install, config projection, MCP binding
+- `install/` — Agent installation via npm/pip/brew
+- `tasks/` — Task queue management
+- `memory/` — Memory read/write, knowledge graph, cross-project migration
+- `settings/` — Delegation tier, themes, API keys
+- `dashboard/` — Real-time stats, agent health, cost history, trends
+- `evaluations/` — Harness evaluation reports
+- `deliverables/` — Deliverable CRUD
+- `external-agent/` — External agent (A2A) task and decision endpoints
+- `health/` — System health checks
+- `telemetry/` — Agent telemetry reporting and trends
 
 WebSocket real-time events broadcast state changes to connected desktop clients.
 
@@ -108,9 +119,9 @@ WebSocket real-time events broadcast state changes to connected desktop clients.
 Captain Input
      │
      ▼
-Secretary Agent (Intent Parsing)
+Secretary Agent (4-layer Intent Parsing)
      │
-     ├─► Simple query → Direct answer
+     ├─► Direct answer → Secretary handles inline
      │
      ├─► Decision needed → DecisionService (L0-L3 classification)
      │                           │
@@ -118,33 +129,34 @@ Secretary Agent (Intent Parsing)
      │              L2/L3 ───────┐ (surface to Captain)
      │                           ▼
      │                    Dashboard / Office (approve / reject / review)
+     │
+     ├─► Workflow needed → WorkflowEngine (adjacency graph traversal)
      │                           │
-     ├─► Meeting needed → MeetingService (cost estimate → parallel advisors → synthesis)
-     │                           │
-     └─► Workflow needed → WorkflowEngine (node execution → blueprint validation)
-                                   │
-                              Harness (quality gate)
-                                   │
-                              EventBus broadcast
-                                   │
-                              State receipt in chat stream
+     │                      Harness (quality gate)
+     │
+     └─► Specialist needed → AgentDispatcher
+                                │
+                          AgentLoop (observer pipeline)
+                                │
+                          EventBus broadcast
+                                │
+                          State receipt in chat stream
 ```
 
 ## Monorepo Package Boundaries
 
-| Package              | Exports                                                                                                                                                                                                                                            | Consumers                     |
-| :------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------- |
-| `@cabinet/types`     | All primitives, enums, payload types                                                                                                                                                                                                               | Every package                 |
-| `@cabinet/events`    | `EventBus`, `SqliteEventStore`, causation                                                                                                                                                                                                          | `storage`, `server`           |
-| `@cabinet/storage`   | Connection pool, repositories, migrations                                                                                                                                                                                                          | `server`                      |
-| `@cabinet/graph`     | `StateGraph`, `CompiledGraph`, `Annotation`, `CheckpointStore`, validation                                                                                                                                                                         | `agent`, `workflow`, `server` |
-| `@cabinet/gateway`   | `LLMGateway`, `ModelRouter`, `BudgetGuard`                                                                                                                                                                                                         | `agent`, `server`             |
-| `@cabinet/agent`     | `AgentLoop`, `ObserverPipeline`, `SafetyChecker`, `ToolExecutor`, `ContentFilter`, roles, `ReflectionObserver`, `JudgeObserver`, `ContentGuardObserver`, `AutoReplanObserver`, `SelfConsistencyEngine`, `createAgentNodeFactory`, `assemblePrompt` | `server`                      |
-| `@cabinet/memory`    | 4-layer memory, consolidation, knowledge graph, `chunkDocument`, `chunkDocuments`, `BM25Index`, `HybridRetriever`                                                                                                                                  | `agent`, `server`             |
-| `@cabinet/secretary` | `SecretaryAgent`, `IntentParser`, `GreetingService`                                                                                                                                                                                                | `server`                      |
-| `@cabinet/decision`  | `DecisionService`, level classifier, state machine                                                                                                                                                                                                 | `server`                      |
-| `@cabinet/workflow`  | `WorkflowEngine`, `evaluateCondition`, blueprints                                                                                                                                                                                                  | `server`                      |
-| `@cabinet/harness`   | Evaluator, QualityGate, `ObservabilityCollector`, `AutoAdjuster`, `PreferenceLearner`, `SubconsciousLoop`, `FailurePatternAnalyzer`                                                                                                                | `server`                      |
-| `@cabinet/ui`        | React components, hooks, themes                                                                                                                                                                                                                    | `desktop`                     |
-| `@cabinet/organize`  | Project organization helpers (source empty, pending removal)                                                                                                                                                                                       | `agent`, `server`             |
-| `@cabinet/cli`       | Command-line tools                                                                                                                                                                                                                                 | Standalone                    |
+| Package              | Exports                                                                                                                                                                                                                            | Consumers           |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------ |
+| `@cabinet/types`     | All primitives, enums, payload types, workbench types                                                                                                                                                                              | Every package       |
+| `@cabinet/events`    | `EventBus`, `SqliteEventStore`, causation                                                                                                                                                                                          | `storage`, `server` |
+| `@cabinet/storage`   | Connection pool, repositories, migrations, encryption                                                                                                                                                                              | `server`            |
+| `@cabinet/gateway`   | `LLMGateway`, `ModelRouter`, `BudgetGuard`, `CostTracker`                                                                                                                                                                          | `agent`, `server`   |
+| `@cabinet/agent`     | `AgentLoop`, `executeGenerator`, `ObserverPipeline`, `SafetyChecker`, `ToolExecutor`, roles, observers, `AgentDispatcher`, `AgentDaemon`, `CheckpointManager`, `ContextBuilder`, `Scanner`, `Installer`, `Projector`, ACP adapters | `server`            |
+| `@cabinet/memory`    | 4-layer memory, consolidation, knowledge graph, `HybridRetriever`, `MemoryDecay`, `CrossProjectMigrator`                                                                                                                           | `agent`, `server`   |
+| `@cabinet/agent-sdk` | `SlotClient`, `A2AHelper`, `createAgentCard`                                                                                                                                                                                       | External agents     |
+| `@cabinet/secretary` | `SecretaryAgent`, `IntentParser` (4-layer), `GreetingService`, `SessionManager`                                                                                                                                                    | `server`            |
+| `@cabinet/decision`  | `DecisionService`, level classifier (L0-L3), state machine, `PolicyEngine`                                                                                                                                                         | `server`            |
+| `@cabinet/workflow`  | `WorkflowEngine`, `evaluateCondition`, blueprints, `NodeExecutor`                                                                                                                                                                  | `server`            |
+| `@cabinet/harness`   | Evaluator, QualityGate, `ObservabilityCollector`, `AutoAdjuster`, `PreferenceLearner`, `SubconsciousLoop`, `FailureAnalyzer`, `TeachBack`                                                                                          | `server`            |
+| `@cabinet/ui`        | React components, hooks, themes                                                                                                                                                                                                    | `desktop`           |
+| `@cabinet/cli`       | Command-line tools (`cabinet start`)                                                                                                                                                                                               | Standalone          |

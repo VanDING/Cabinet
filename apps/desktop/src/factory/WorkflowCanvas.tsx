@@ -22,23 +22,46 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import {
-  StartNode, EndNode, IfElseNode, LoopNode, ParallelNode, MergeNode, PassNode,
+  StartNode,
+  EndNode,
+  IfElseNode,
+  LoopNode,
+  ParallelNode,
+  MergeNode,
+  PassNode,
   AgentGroupNode,
-  LLMNode, SkillNode, ToolNode, CodeNode, WorkflowNode,
-  IntentClassifyNode, KnowledgeBaseNode,
-  ApprovalNode, HumanNode,
+  LLMNode,
+  SkillNode,
+  ToolNode,
+  CodeNode,
+  WorkflowNode,
+  IntentClassifyNode,
+  KnowledgeBaseNode,
+  ApprovalNode,
+  HumanNode,
 } from './nodes';
 import type { CanvasNode, CanvasEdge, CanvasNodeType } from './node-types';
 import { CANVAS_NODE_TYPES, NODE_LABELS } from './node-types';
 import { CanvasContextMenu, type ContextMenuState } from './CanvasContextMenu';
 
 const nodeTypes: NodeTypes = {
-  start: StartNode, end: EndNode,
-  ifElse: IfElseNode, loop: LoopNode, parallel: ParallelNode, merge: MergeNode, pass: PassNode,
+  start: StartNode,
+  end: EndNode,
+  ifElse: IfElseNode,
+  loop: LoopNode,
+  parallel: ParallelNode,
+  merge: MergeNode,
+  pass: PassNode,
   agentGroup: AgentGroupNode,
-  llm: LLMNode, skill: SkillNode, tool: ToolNode, code: CodeNode, workflow: WorkflowNode,
-  intentClassify: IntentClassifyNode, knowledgeBase: KnowledgeBaseNode,
-  approval: ApprovalNode, human: HumanNode,
+  llm: LLMNode,
+  skill: SkillNode,
+  tool: ToolNode,
+  code: CodeNode,
+  workflow: WorkflowNode,
+  intentClassify: IntentClassifyNode,
+  knowledgeBase: KnowledgeBaseNode,
+  approval: ApprovalNode,
+  human: HumanNode,
 } as const;
 
 const defaultEdgeOptions = {
@@ -125,22 +148,23 @@ export function WorkflowCanvas({
 
   // ── Connection validation ──
 
-  const isValidConnection = useCallback((conn: Connection | Edge) => {
-    // No self-connections
-    if (conn.source === conn.target) return false;
-    // No circular source→target duplications
-    const existing = edges.some(
-      (e) => e.source === conn.source && e.target === conn.target,
-    );
-    if (existing) return false;
-    // Start nodes cannot have incoming connections
-    const targetNode = nodes.find((n) => n.id === conn.target);
-    if (targetNode?.type === 'start') return false;
-    // End nodes cannot have outgoing connections
-    const sourceNode = nodes.find((n) => n.id === conn.source);
-    if (sourceNode?.type === 'end') return false;
-    return true;
-  }, [edges, nodes]);
+  const isValidConnection = useCallback(
+    (conn: Connection | Edge) => {
+      // No self-connections
+      if (conn.source === conn.target) return false;
+      // No circular source→target duplications
+      const existing = edges.some((e) => e.source === conn.source && e.target === conn.target);
+      if (existing) return false;
+      // Start nodes cannot have incoming connections
+      const targetNode = nodes.find((n) => n.id === conn.target);
+      if (targetNode?.type === 'start') return false;
+      // End nodes cannot have outgoing connections
+      const sourceNode = nodes.find((n) => n.id === conn.source);
+      if (sourceNode?.type === 'end') return false;
+      return true;
+    },
+    [edges, nodes],
+  );
 
   // ── Connect ──
 
@@ -181,9 +205,7 @@ export function WorkflowCanvas({
       // Remove edges connected to deleted nodes
       const deletedIds = new Set(deleted.map((n) => n.id));
       setEdges((eds) => {
-        const filtered = eds.filter(
-          (e) => !deletedIds.has(e.source) && !deletedIds.has(e.target),
-        );
+        const filtered = eds.filter((e) => !deletedIds.has(e.source) && !deletedIds.has(e.target));
         syncToParent(
           nodes.filter((n) => !deletedIds.has(n.id)),
           filtered as CanvasEdge[],
@@ -312,18 +334,25 @@ export function WorkflowCanvas({
       }
       setContextMenu(null);
     },
-    [reactFlowInstance, contextMenu, nodes, edges, setNodes, setEdges, syncToParent, handleNodesDelete, onNodeAdd],
+    [
+      reactFlowInstance,
+      contextMenu,
+      nodes,
+      edges,
+      setNodes,
+      setEdges,
+      syncToParent,
+      handleNodesDelete,
+      onNodeAdd,
+    ],
   );
 
   // ── Drag & Drop from palette ──
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-    },
-    [],
-  );
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
 
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
@@ -362,7 +391,12 @@ export function WorkflowCanvas({
         const gw = (group as any).width ?? 300;
         const gh = (group as any).height ?? 140;
 
-        if (nodeCenter.x > gx && nodeCenter.x < gx + gw && nodeCenter.y > gy + 30 && nodeCenter.y < gy + gh) {
+        if (
+          nodeCenter.x > gx &&
+          nodeCenter.x < gx + gw &&
+          nodeCenter.y > gy + 30 &&
+          nodeCenter.y < gy + gh
+        ) {
           // Node is inside group
           if (node.parentId !== group.id) {
             setNodes((nds) => {
@@ -450,7 +484,7 @@ export function WorkflowCanvas({
           nodeStrokeColor="var(--border-color)"
           nodeColor="var(--surface-elevated)"
           maskColor="var(--graph-minimap-mask, rgba(0,0,0,0.1))"
-          className="!bg-surface-elevated rounded-lg border border-border"
+          className="!bg-surface-elevated border-border rounded-lg border"
           pannable
           zoomable
         />

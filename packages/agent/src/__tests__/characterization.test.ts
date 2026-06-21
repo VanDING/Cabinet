@@ -9,10 +9,13 @@ import type {
   LLMGateway,
   LLMResponse,
   LLMCallOptions,
+  LLMStreamOptions,
+  StreamChunk,
   EmbeddingOptions,
   EmbeddingResult,
 } from '@cabinet/gateway';
 import type { AgentSessionSummary } from '../agent-loop.js';
+import { streamFromGenerate } from './helpers/mock-gateway.js';
 import { MemoryEventBus } from '@cabinet/events';
 
 // ── Golden file ───────────────────────────────────────────────
@@ -264,8 +267,8 @@ class ScenarioMockGateway implements LLMGateway {
     };
   }
 
-  async *streamText(): AsyncGenerator<never> {
-    yield { type: 'done' } as never;
+  async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+    yield* streamFromGenerate(this.generateText.bind(this), options);
   }
 
   async listModels(): Promise<string[]> {

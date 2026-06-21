@@ -60,9 +60,8 @@ autopilotRouter.post('/', async (c) => {
     const repo = getRepo();
 
     // Generate webhook token for webhook triggers
-    const webhookToken = d.trigger_type === 'webhook'
-      ? `wh_${crypto.randomBytes(16).toString('hex')}`
-      : null;
+    const webhookToken =
+      d.trigger_type === 'webhook' ? `wh_${crypto.randomBytes(16).toString('hex')}` : null;
 
     const id = `at_${Date.now()}`;
     repo.create({
@@ -93,7 +92,14 @@ autopilotRouter.post('/', async (c) => {
       }
     }
 
-    return c.json({ id, webhook_token: webhookToken, webhook_url: webhookToken ? `/api/webhooks/autopilots/${webhookToken}` : null }, 201);
+    return c.json(
+      {
+        id,
+        webhook_token: webhookToken,
+        webhook_url: webhookToken ? `/api/webhooks/autopilots/${webhookToken}` : null,
+      },
+      201,
+    );
   } catch (err) {
     const { logger } = getServerContext();
     logger.error('Failed to create autopilot trigger', { error: String(err) });
@@ -120,8 +126,18 @@ autopilotRouter.patch('/:id', async (c) => {
     if (!existing) return c.json({ error: 'Trigger not found' }, 404);
 
     const updates: Record<string, unknown> = {};
-    const allowedFields = ['name', 'description', 'cron_expression', 'cron_timezone',
-      'target_agent_id', 'target_workflow_id', 'input_template', 'enabled', 'max_retries', 'timeout_ms'];
+    const allowedFields = [
+      'name',
+      'description',
+      'cron_expression',
+      'cron_timezone',
+      'target_agent_id',
+      'target_workflow_id',
+      'input_template',
+      'enabled',
+      'max_retries',
+      'timeout_ms',
+    ];
     for (const field of allowedFields) {
       if (field in body) updates[field] = body[field];
     }
@@ -214,7 +230,8 @@ webhookRouter.post('/autopilots/:token', async (c) => {
   try {
     const token = c.req.param('token');
     const body = await c.req.json().catch(() => ({}));
-    const signature = c.req.header('x-hub-signature-256') ?? c.req.header('x-signature') ?? undefined;
+    const signature =
+      c.req.header('x-hub-signature-256') ?? c.req.header('x-signature') ?? undefined;
 
     const executor = getExecutor();
     const { runId, taskId } = await executor.fireWebhook(token, body, signature);

@@ -23,14 +23,21 @@ export const SessionSidebar = memo(function SessionSidebar({
   return (
     <div className="flex w-[240px] shrink-0 flex-col border-r border-[var(--border-color)] bg-[var(--surface-primary)]">
       <div className="flex h-[40px] shrink-0 items-center justify-between border-b border-[var(--border-color)] px-3">
-        <span className="text-xs font-semibold text-content-secondary">Sessions</span>
+        <span className="text-content-secondary text-xs font-semibold">Sessions</span>
         <button
           aria-label="New session"
           onClick={onCreateSession}
-          className="flex h-[24px] w-[24px] items-center justify-center rounded text-content-tertiary transition-colors hover:bg-[var(--surface-muted)] hover:text-content-primary"
+          className="text-content-tertiary hover:text-content-primary flex h-[24px] w-[24px] items-center justify-center rounded transition-colors hover:bg-[var(--surface-muted)]"
           title="New session"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -38,7 +45,7 @@ export const SessionSidebar = memo(function SessionSidebar({
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {agentSessions.length === 0 ? (
-          <div className="px-3 py-4 text-center text-xs text-content-tertiary">
+          <div className="text-content-tertiary px-3 py-4 text-center text-xs">
             No sessions yet. Click + to start.
           </div>
         ) : (
@@ -55,7 +62,7 @@ export const SessionSidebar = memo(function SessionSidebar({
                 }`}
               >
                 <span className="truncate text-xs font-medium">{session.title}</span>
-                <span className="text-[10px] text-content-tertiary">
+                <span className="text-content-tertiary text-[10px]">
                   {session.messages.length} msgs · {session.updatedAt.toLocaleDateString()}
                 </span>
               </button>

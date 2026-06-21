@@ -47,8 +47,12 @@ export function runMigration024(db: Database.Database): void {
   // ── employees: source + external_config columns (Phase 2.8 frontend) ──
   try {
     db.exec(`ALTER TABLE employees ADD COLUMN source TEXT NOT NULL DEFAULT 'custom'`);
-  } catch { /* column exists */ }
+  } catch {
+    /* column exists */
+  }
   try {
     db.exec(`ALTER TABLE employees ADD COLUMN external_config TEXT`);
-  } catch { /* column exists */ }
+  } catch {
+    /* column exists */
+  }
 }

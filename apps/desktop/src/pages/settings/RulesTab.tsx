@@ -76,11 +76,11 @@ function TagInput({
 
   return (
     <div>
-      <div className="flex gap-1 flex-wrap mb-1">
+      <div className="mb-1 flex flex-wrap gap-1">
         {values.map((v) => (
           <span
             key={v}
-            className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary"
+            className="bg-surface-muted text-content-secondary inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs"
           >
             {v}
             <button
@@ -104,7 +104,7 @@ function TagInput({
         }}
         onBlur={add}
         placeholder={placeholder || 'Type and press Enter'}
-        className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
+        className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
       />
     </div>
   );
@@ -140,119 +140,116 @@ function RuleModal({
       onClose={onClose}
       contentClassName="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-xl border border-border bg-surface-overlay p-6 shadow-2xl"
     >
-        <h3 className="mb-5 text-lg font-semibold text-content-primary">
-          {isNew ? 'New Rule' : 'Edit Rule'}
-        </h3>
+      <h3 className="text-content-primary mb-5 text-lg font-semibold">
+        {isNew ? 'New Rule' : 'Edit Rule'}
+      </h3>
 
-        <div className="space-y-4">
-          {/* Mode */}
+      <div className="space-y-4">
+        {/* Mode */}
+        <div>
+          <label className="text-content-secondary mb-1 block text-xs font-medium">
+            Mode <span className="text-intent-danger">*</span>
+          </label>
+          <select
+            value={form.mode}
+            onChange={(e) => update({ mode: e.target.value as RuleMode })}
+            className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+          >
+            <option value="always">Always — loaded every session</option>
+            <option value="auto">Auto — loaded when files match globs</option>
+            <option value="on-demand">On Demand — loaded when agent requests</option>
+          </select>
+          <p className="text-content-tertiary mt-1 text-xs">
+            {form.mode === 'always' && 'Rule is always active for every session.'}
+            {form.mode === 'auto' && 'Rule activates when active files match the globs below.'}
+            {form.mode === 'on-demand' &&
+              'Rule is only loaded when the agent explicitly requests it.'}
+          </p>
+        </div>
+
+        {/* Filename */}
+        <div>
+          <label className="text-content-secondary mb-1 block text-xs font-medium">
+            Filename <span className="text-intent-danger">*</span>
+          </label>
+          <input
+            type="text"
+            value={form.filename}
+            onChange={(e) => update({ filename: e.target.value })}
+            disabled={!isNew}
+            placeholder="e.g. react-conventions.md"
+            className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm disabled:opacity-50"
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="text-content-secondary mb-1 block text-xs font-medium">
+            Description
+          </label>
+          <input
+            type="text"
+            value={form.description}
+            onChange={(e) => update({ description: e.target.value })}
+            placeholder="Short description of this rule"
+            className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 text-sm"
+          />
+        </div>
+
+        {/* Globs — only for auto mode */}
+        {form.mode === 'auto' && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-content-secondary">
-              Mode <span className="text-intent-danger">*</span>
-            </label>
-            <select
-              value={form.mode}
-              onChange={(e) => update({ mode: e.target.value as RuleMode })}
-              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
-            >
-              <option value="always">Always — loaded every session</option>
-              <option value="auto">Auto — loaded when files match globs</option>
-              <option value="on-demand">On Demand — loaded when agent requests</option>
-            </select>
-            <p className="mt-1 text-xs text-content-tertiary">
-              {form.mode === 'always' && 'Rule is always active for every session.'}
-              {form.mode === 'auto' && 'Rule activates when active files match the globs below.'}
-              {form.mode === 'on-demand' && 'Rule is only loaded when the agent explicitly requests it.'}
-            </p>
-          </div>
-
-          {/* Filename */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-content-secondary">
-              Filename <span className="text-intent-danger">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.filename}
-              onChange={(e) => update({ filename: e.target.value })}
-              disabled={!isNew}
-              placeholder="e.g. react-conventions.md"
-              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary disabled:opacity-50"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-content-secondary">
-              Description
-            </label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) => update({ description: e.target.value })}
-              placeholder="Short description of this rule"
-              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary"
-            />
-          </div>
-
-          {/* Globs — only for auto mode */}
-          {form.mode === 'auto' && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-content-secondary">
-                Globs <span className="text-intent-danger">*</span>
-              </label>
-              <TagInput
-                values={form.globs}
-                onChange={(globs) => update({ globs })}
-                placeholder="e.g. src/**/*.tsx"
-              />
-            </div>
-          )}
-
-          {/* Tags */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-content-secondary">
-              Tags
+            <label className="text-content-secondary mb-1 block text-xs font-medium">
+              Globs <span className="text-intent-danger">*</span>
             </label>
             <TagInput
-              values={form.tags}
-              onChange={(tags) => update({ tags })}
-              placeholder="e.g. frontend"
+              values={form.globs}
+              onChange={(globs) => update({ globs })}
+              placeholder="e.g. src/**/*.tsx"
             />
           </div>
+        )}
 
-          {/* Content */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-content-secondary">
-              Content
-            </label>
-            <textarea
-              value={form.content}
-              onChange={(e) => update({ content: e.target.value })}
-              rows={6}
-              placeholder="# Rule content in Markdown..."
-              className="w-full rounded-sm border border-border bg-surface-primary px-3 py-2 font-mono text-sm text-content-primary"
-            />
-          </div>
+        {/* Tags */}
+        <div>
+          <label className="text-content-secondary mb-1 block text-xs font-medium">Tags</label>
+          <TagInput
+            values={form.tags}
+            onChange={(tags) => update({ tags })}
+            placeholder="e.g. frontend"
+          />
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex items-center justify-between">
-          {!isNew && (
-            <Button variant="destructive" size="sm" onClick={onDelete}>
-              Delete
-            </Button>
-          )}
-          {isNew && <div />}
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={onSave}>
-              Save
-            </Button>
-          </div>
+        {/* Content */}
+        <div>
+          <label className="text-content-secondary mb-1 block text-xs font-medium">Content</label>
+          <textarea
+            value={form.content}
+            onChange={(e) => update({ content: e.target.value })}
+            rows={6}
+            placeholder="# Rule content in Markdown..."
+            className="border-border bg-surface-primary text-content-primary w-full rounded-sm border px-3 py-2 font-mono text-sm"
+          />
         </div>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-6 flex items-center justify-between">
+        {!isNew && (
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            Delete
+          </Button>
+        )}
+        {isNew && <div />}
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={onSave}>
+            Save
+          </Button>
+        </div>
+      </div>
     </ModalOverlay>
   );
 }
@@ -270,7 +267,9 @@ export function RulesTab() {
     apiFetch('/api/rules', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setRules(d.rules ?? []))
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   };
 
   useEffect(() => {
@@ -357,47 +356,51 @@ export function RulesTab() {
       </div>
 
       {status && (
-        <div className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') || status.includes('required') ? 'bg-intent-danger-muted text-intent-danger' : 'bg-intent-success-muted text-intent-success'}`}>
+        <div
+          className={`mb-3 rounded px-3 py-2 text-sm ${status.includes('fail') || status.includes('required') ? 'bg-intent-danger-muted text-intent-danger' : 'bg-intent-success-muted text-intent-success'}`}
+        >
           {status}
         </div>
       )}
 
       {rules.length === 0 ? (
-        <p className="py-4 text-sm text-content-tertiary">No rules found.</p>
+        <p className="text-content-tertiary py-4 text-sm">No rules found.</p>
       ) : (
         <div className="space-y-3">
           {rules.map((rule) => (
             <div
               key={rule.filename}
-              className="overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs"
+              className="border-border bg-surface-primary overflow-hidden rounded-lg border shadow-xs"
             >
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-content-primary">
+                    <span className="text-content-primary font-mono text-sm font-medium">
                       {rule.filename}
                     </span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${modeColor(rule.mode)}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${modeColor(rule.mode)}`}
+                    >
                       {modeLabel[rule.mode as RuleMode]}
                     </span>
                     {rule.alwaysApply && (
-                      <span className="text-xs text-intent-success">alwaysApply</span>
+                      <span className="text-intent-success text-xs">alwaysApply</span>
                     )}
                   </div>
                   {rule.description && (
-                    <p className="text-xs text-content-tertiary">{rule.description}</p>
+                    <p className="text-content-tertiary text-xs">{rule.description}</p>
                   )}
                   <div className="mt-1 flex flex-wrap gap-2">
                     {rule.globs.map((g) => (
                       <span
                         key={g}
-                        className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
+                        className="bg-surface-muted text-content-secondary rounded-sm px-1.5 py-0.5 font-mono text-xs"
                       >
                         {g}
                       </span>
                     ))}
                     {rule.tags.map((t) => (
-                      <span key={t} className="text-xs text-accent">
+                      <span key={t} className="text-accent text-xs">
                         #{t}
                       </span>
                     ))}
@@ -405,7 +408,7 @@ export function RulesTab() {
                 </div>
                 <button
                   onClick={() => openEdit(rule)}
-                  className="ml-3 shrink-0 text-xs text-accent hover:underline"
+                  className="text-accent ml-3 shrink-0 text-xs hover:underline"
                 >
                   Edit
                 </button>

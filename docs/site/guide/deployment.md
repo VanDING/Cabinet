@@ -15,6 +15,7 @@ cd apps/desktop && pnpm tauri build
 ```
 
 Outputs appear in `apps/desktop/src-tauri/target/release/bundle/`:
+
 - `.msi` (Windows)
 - `.dmg` (macOS)
 - `.AppImage` / `.deb` (Linux)
@@ -58,17 +59,17 @@ docker run -p 3000:3000 \
 
 ### Environment Variables
 
-| Variable | Default | Description |
-| :------- | :------ | :---------- |
-| `PORT` | `3000` | HTTP server port |
-| `CABINET_DATA_DIR` | `~/.cabinet` | SQLite database and log storage |
-| `CABINET_LOG_LEVEL` | `info` | Log verbosity (`debug`, `info`, `warn`, `error`) |
-| `CABINET_BACKUP_DIR` | `~/.cabinet/backups` | Automatic backup destination |
-| `CABINET_WEB_URL` | — | Allowed CORS origin for web frontend |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key |
-| `OPENAI_API_KEY` | — | OpenAI API key |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | — | Google API key |
-| `DEEPSEEK_API_KEY` | — | DeepSeek API key |
+| Variable                       | Default              | Description                                      |
+| :----------------------------- | :------------------- | :----------------------------------------------- |
+| `PORT`                         | `3000`               | HTTP server port                                 |
+| `CABINET_DATA_DIR`             | `~/.cabinet`         | SQLite database and log storage                  |
+| `CABINET_LOG_LEVEL`            | `info`               | Log verbosity (`debug`, `info`, `warn`, `error`) |
+| `CABINET_BACKUP_DIR`           | `~/.cabinet/backups` | Automatic backup destination                     |
+| `CABINET_WEB_URL`              | —                    | Allowed CORS origin for web frontend             |
+| `ANTHROPIC_API_KEY`            | —                    | Anthropic API key                                |
+| `OPENAI_API_KEY`               | —                    | OpenAI API key                                   |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | —                    | Google API key                                   |
+| `DEEPSEEK_API_KEY`             | —                    | DeepSeek API key                                 |
 
 ### Reverse Proxy (Nginx Example)
 
@@ -159,10 +160,10 @@ Database migrations run automatically on server startup. Always back up before m
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-| :---- | :---- | :------- |
-| Desktop shows "Server not found" | Backend not running | Start `apps/server` or check port conflict |
-| WebSocket disconnects repeatedly | Reverse proxy missing upgrade headers | Add `proxy_set_header Upgrade` and `Connection` |
-| High memory usage | Long-term memory index growing | Trigger consolidation via **Memory > Consolidate** |
-| Budget alerts firing too early | RMB vs USD confusion | Limits are in **RMB**; adjust in Settings |
-| Tauri build fails | Missing Rust toolchain | Install `rustup` and `cargo` |
+| Issue                            | Cause                                 | Solution                                           |
+| :------------------------------- | :------------------------------------ | :------------------------------------------------- |
+| Desktop shows "Server not found" | Backend not running                   | Start `apps/server` or check port conflict         |
+| WebSocket disconnects repeatedly | Reverse proxy missing upgrade headers | Add `proxy_set_header Upgrade` and `Connection`    |
+| High memory usage                | Long-term memory index growing        | Trigger consolidation via **Memory > Consolidate** |
+| Budget alerts firing too early   | RMB vs USD confusion                  | Limits are in **RMB**; adjust in Settings          |
+| Tauri build fails                | Missing Rust toolchain                | Install `rustup` and `cargo`                       |

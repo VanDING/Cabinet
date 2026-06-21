@@ -8,7 +8,11 @@ import type { StructuredInput } from '@cabinet/types';
  * captures stdout/stderr, and enforces a timeout. Falls back to the runCode handler
  * if spawn is not available.
  */
-export function runCodeSandboxed(code: string, input: StructuredInput, timeoutMs: number): Promise<string> {
+export function runCodeSandboxed(
+  code: string,
+  input: StructuredInput,
+  timeoutMs: number,
+): Promise<string> {
   const contextJson = JSON.stringify({
     input: input.previousOutputs,
     upstream: input.upstreamItems.map((i) => ({

@@ -8,22 +8,40 @@ export function ApprovalNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-danger">Approval</span>
+        <span className="bg-surface-overlay border-border text-intent-danger rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          Approval
+        </span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[160px] overflow-hidden shadow-xs transition-shadow wf-border-danger-40 wf-bg-danger-15 ${selected ? 'shadow-md ring-2 wf-ring-danger-50' : ''}`} style={{ borderLeft: leftStripe }}>
+      <div
+        className={`wf-border-danger-40 wf-bg-danger-15 min-w-[160px] overflow-hidden rounded-xl border-2 shadow-xs transition-shadow ${selected ? 'wf-ring-danger-50 shadow-md ring-2' : ''}`}
+        style={{ borderLeft: leftStripe }}
+      >
         <div className="flex items-center gap-1.5 px-3 py-2">
-          <span className="text-sm text-content-primary">{'||'}</span>
-          <span className="text-xs font-semibold text-content-primary">{title}</span>
+          <span className="text-content-primary text-sm">{'||'}</span>
+          <span className="text-content-primary text-xs font-semibold">{title}</span>
         </div>
         {options ? (
-          <div className="px-3 pb-2 flex gap-1">
+          <div className="flex gap-1 px-3 pb-2">
             {options.map((opt, i) => (
-              <span key={i} className="rounded-full wf-bg-danger-25 px-1.5 text-[10px] text-intent-danger">{opt}</span>
+              <span
+                key={i}
+                className="wf-bg-danger-25 text-intent-danger rounded-full px-1.5 text-[10px]"
+              >
+                {opt}
+              </span>
             ))}
           </div>
         ) : null}
-        <Handle type="target" position={Position.Top} className="!bg-intent-danger !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-intent-danger !border-2 !border-surface-primary !w-3 !h-3" />
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!bg-intent-danger !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-intent-danger !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

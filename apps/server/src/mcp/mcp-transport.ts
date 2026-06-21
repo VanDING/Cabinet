@@ -13,7 +13,9 @@ export interface MCPTransportConfig {
   headers?: Record<string, string>;
 }
 
-export function createTransport(config: MCPTransportConfig): StdioClientTransport | SSEClientTransport {
+export function createTransport(
+  config: MCPTransportConfig,
+): StdioClientTransport | SSEClientTransport {
   if (config.type === 'sse') {
     if (!config.url) {
       throw new Error('SSE transport requires a URL');

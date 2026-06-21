@@ -29,7 +29,9 @@ const createSchema = z.object({
   description: z.string().optional(),
   workspace_id: z.string().default('default'),
   leader_agent_id: z.string().min(1),
-  routing_strategy: z.enum(['auto', 'round_robin', 'leader_decision', 'skill_match']).default('auto'),
+  routing_strategy: z
+    .enum(['auto', 'round_robin', 'leader_decision', 'skill_match'])
+    .default('auto'),
   fallback_agent_id: z.string().optional(),
   enabled: z.boolean().default(true),
 });
@@ -72,7 +74,10 @@ squadRouter.get('/:id', (c) => {
   if (!squad) return c.json({ error: 'Squad not found' }, 404);
 
   const members = repo.findMembers(squad.id);
-  return c.json({ squad, members: members.map((m) => ({ ...m, skills: JSON.parse(m.skills_json) })) });
+  return c.json({
+    squad,
+    members: members.map((m) => ({ ...m, skills: JSON.parse(m.skills_json) })),
+  });
 });
 
 // ── PUT /api/squads/:id ──────────────────────────────────────────
@@ -84,7 +89,14 @@ squadRouter.put('/:id', async (c) => {
     const existing = repo.findById(c.req.param('id'));
     if (!existing) return c.json({ error: 'Squad not found' }, 404);
 
-    const allowedFields = ['name', 'description', 'leader_agent_id', 'routing_strategy', 'fallback_agent_id', 'enabled'];
+    const allowedFields = [
+      'name',
+      'description',
+      'leader_agent_id',
+      'routing_strategy',
+      'fallback_agent_id',
+      'enabled',
+    ];
     const updates: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (field in body) updates[field] = body[field];
@@ -114,7 +126,10 @@ squadRouter.delete('/:id', (c) => {
 squadRouter.get('/:id/members', (c) => {
   const repo = getRepo();
   const members = repo.findMembers(c.req.param('id'));
-  return c.json({ members: members.map((m) => ({ ...m, skills: JSON.parse(m.skills_json) })), count: members.length });
+  return c.json({
+    members: members.map((m) => ({ ...m, skills: JSON.parse(m.skills_json) })),
+    count: members.length,
+  });
 });
 
 // ── POST /api/squads/:id/members ─────────────────────────────────
@@ -168,11 +183,13 @@ squadRouter.patch('/:id/members/:memberId', async (c) => {
 
     const allowedFields = ['skills_json', 'priority', 'max_concurrent_tasks', 'active'];
     const updates: Record<string, unknown> = {};
-    if (body.skills && Array.isArray(body.skills)) updates.skills_json = JSON.stringify(body.skills);
+    if (body.skills && Array.isArray(body.skills))
+      updates.skills_json = JSON.stringify(body.skills);
     for (const field of allowedFields) {
       if (field in body && field !== 'skills_json') updates[field] = body[field];
     }
-    if (Object.keys(updates).length === 0) return c.json({ error: 'No valid fields to update' }, 400);
+    if (Object.keys(updates).length === 0)
+      return c.json({ error: 'No valid fields to update' }, 400);
 
     repo.updateMember(c.req.param('memberId'), updates as any);
     return c.json({ id: c.req.param('memberId'), updated: Object.keys(updates) });

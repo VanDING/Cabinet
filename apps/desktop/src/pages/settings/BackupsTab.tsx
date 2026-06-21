@@ -17,7 +17,9 @@ export function BackupsTab() {
     apiFetch('/api/backups', { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setBackups(d.backups ?? []))
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
   };
 
   useEffect(() => {
@@ -65,10 +67,10 @@ export function BackupsTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-content-primary">Backups</h2>
+        <h2 className="text-content-primary text-lg font-semibold">Backups</h2>
         <button
           onClick={handleCreate}
-          className="rounded-lg bg-accent px-3 py-1.5 text-sm text-content-inverse hover:bg-accent-hover"
+          className="bg-accent text-content-inverse hover:bg-accent-hover rounded-lg px-3 py-1.5 text-sm"
         >
           + Create Backup
         </button>
@@ -83,7 +85,7 @@ export function BackupsTab() {
       )}
 
       {backups.length === 0 ? (
-        <p className="py-4 text-sm text-content-tertiary">
+        <p className="text-content-tertiary py-4 text-sm">
           No backups yet. Create your first backup to protect your data.
         </p>
       ) : (
@@ -91,13 +93,11 @@ export function BackupsTab() {
           {backups.map((b, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg border border-border bg-surface-primary p-3 shadow-xs"
+              className="border-border bg-surface-primary flex items-center justify-between rounded-lg border p-3 shadow-xs"
             >
               <div>
-                <div className="font-mono text-sm font-medium text-content-primary">
-                  {b.path}
-                </div>
-                <div className="text-xs text-content-tertiary">
+                <div className="text-content-primary font-mono text-sm font-medium">{b.path}</div>
+                <div className="text-content-tertiary text-xs">
                   {formatSize(b.size)}
                   {b.createdAt && ` · ${new Date(b.createdAt).toLocaleString()}`}
                 </div>
@@ -105,7 +105,7 @@ export function BackupsTab() {
               <button
                 onClick={() => handleRestore(b.path)}
                 disabled={restoring}
-                className="rounded-sm border border-intent-warning px-2 py-1 text-xs text-intent-warning hover:text-intent-warning disabled:opacity-50"
+                className="border-intent-warning text-intent-warning hover:text-intent-warning rounded-sm border px-2 py-1 text-xs disabled:opacity-50"
               >
                 Restore
               </button>

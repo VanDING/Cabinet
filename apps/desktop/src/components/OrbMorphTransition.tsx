@@ -8,13 +8,7 @@ interface Props {
   onComplete: () => void;
 }
 
-export function OrbMorphTransition({
-  fromRect,
-  toRect,
-  phase,
-  duration = 550,
-  onComplete,
-}: Props) {
+export function OrbMorphTransition({ fromRect, toRect, phase, duration = 550, onComplete }: Props) {
   const elRef = useRef<HTMLDivElement>(null);
   const completedRef = useRef(false);
 
@@ -74,8 +68,7 @@ export function OrbMorphTransition({
         zIndex: 60,
         pointerEvents: 'none',
         opacity: 1,
-        boxShadow:
-          '0 10px 25px -5px color-mix(in srgb, var(--accent) 30%, transparent)',
+        boxShadow: '0 10px 25px -5px color-mix(in srgb, var(--accent) 30%, transparent)',
       }}
     />
   );

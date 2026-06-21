@@ -16,7 +16,10 @@ export function useWebSocket(onEvent?: WSEventHandler) {
     if (reconnecting.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : `${window.location.hostname || 'localhost'}:3000`;
+    const host =
+      window.location.hostname === 'tauri.localhost'
+        ? 'localhost:3000'
+        : `${window.location.hostname || 'localhost'}:3000`;
     const url = `${protocol}//${host}/ws/events`;
 
     try {
@@ -91,7 +94,9 @@ export function useWebSocket(onEvent?: WSEventHandler) {
         .then((fn) => {
           unlisten = fn;
         })
-        .catch((err) => { console.warn('Operation failed', err); });
+        .catch((err) => {
+          console.warn('Operation failed', err);
+        });
     }
 
     return () => {

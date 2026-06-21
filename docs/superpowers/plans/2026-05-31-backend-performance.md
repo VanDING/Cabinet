@@ -25,6 +25,7 @@ Task 5 (修复硬编码模型) ──→ 可独立并行
 **背景:** 80-90% 消息目标就是 secretary，但每条消息都走完整 embedding + LLM routing，耗时 400-1600ms。
 
 **Files:**
+
 - Modify: `packages/secretary/src/intent-parser.ts`
 - Modify: `packages/secretary/src/secretary-agent.ts`
 - Test: `packages/secretary/src/__tests__/intent-parser.test.ts`（新增/修改）
@@ -36,6 +37,7 @@ Task 5 (修复硬编码模型) ──→ 可独立并行
 Read: `packages/secretary/src/intent-parser.ts`
 Locate: `routeToAgent()` 方法
 确认其内部调用链：
+
 1. `parse()` — 关键词匹配
 2. `generateEmbeddings()` — 话题连续性
 3. `matchIntentByEmbedding()`
@@ -126,7 +128,11 @@ describe('IntentParser.routeToAgent short-circuit', () => {
 
   it('short-circuits when previous route was secretary and message is plain text', async () => {
     // 预热缓存
-    parser['routingState'] = { lastAgent: 'secretary', lastTimestamp: Date.now(), topicHash: '12345' };
+    parser['routingState'] = {
+      lastAgent: 'secretary',
+      lastTimestamp: Date.now(),
+      topicHash: '12345',
+    };
 
     const result = await parser.routeToAgent('hello world', {
       sessionId: 's1',
@@ -140,7 +146,11 @@ describe('IntentParser.routeToAgent short-circuit', () => {
   });
 
   it('does NOT short-circuit on @mention', async () => {
-    parser['routingState'] = { lastAgent: 'secretary', lastTimestamp: Date.now(), topicHash: '12345' };
+    parser['routingState'] = {
+      lastAgent: 'secretary',
+      lastTimestamp: Date.now(),
+      topicHash: '12345',
+    };
 
     await parser.routeToAgent('@specialist do this', { sessionId: 's1', history: [] } as any);
 
@@ -168,6 +178,7 @@ Expected latency reduction: 400-1600ms → <1ms for cached path."
 **背景:** `ToolExecutor` 和 `AgentLoop` 在第一条消息到达时才 `new`，应改为服务器启动时预创建。
 
 **Files:**
+
 - Modify: `apps/server/src/context.ts`
 - Modify: `apps/server/src/main.ts`
 - Modify: `packages/secretary/src/intent-parser.ts`
@@ -204,6 +215,7 @@ export function getServerContext() {
 ```
 
 如果 `AgentLoop` 构造函数参数太重，改为工厂模式：
+
 ```typescript
 ctx.createAgentLoop = (sessionId: string) => {
   let loop = agentLoopPool.get(sessionId);
@@ -234,6 +246,7 @@ async doWarmup() {
 ```
 
 在 `main.ts` 中：
+
 ```typescript
 const parser = new IntentParser(...);
 parser.warmupEmbeddings(); // 不 await，让它后台跑
@@ -244,6 +257,7 @@ parser.warmupEmbeddings(); // 不 await，让它后台跑
 ## Task 3: ContextBuilder 增量更新
 
 **Files:**
+
 - Modify: `packages/agent/src/context-builder.ts`
 - Modify: `packages/agent/src/agent-loop.ts`
 - Modify: `packages/agent/src/context-monitor.ts`
@@ -326,6 +340,7 @@ class ContextBuilder {
 ## Task 4: 消除 SessionManager 同步 I/O
 
 **Files:**
+
 - Modify: `packages/storage/src/session-manager.ts`
 - Test: `packages/storage/src/__tests__/session-manager.test.ts`
 
@@ -371,7 +386,7 @@ export class SessionManager {
       promises.push(
         writeFile(path, JSON.stringify(data, null, 2)).catch((err) => {
           logger.warn(`Session persist failed for ${sessionId}`, err);
-        })
+        }),
       );
     }
     await Promise.all(promises);
@@ -420,6 +435,7 @@ describe('SessionManager.persist', () => {
 ## Task 5: 修复 IntentParser 硬编码模型
 
 **Files:**
+
 - Modify: `packages/secretary/src/intent-parser.ts`
 - Read: `packages/gateway/src/ai-sdk-adapter.ts`（确认 tier 配置读取方式）
 
@@ -439,10 +455,10 @@ Edit: `packages/secretary/src/intent-parser.ts`
 
 ```typescript
 // Before:
-model: 'claude-sonnet-4-6'
+model: 'claude-sonnet-4-6';
 
 // After:
-model: this.modelResolver?.('routing') ?? this.modelResolver?.('default') ?? 'claude-sonnet-4-6'
+model: this.modelResolver?.('routing') ?? this.modelResolver?.('default') ?? 'claude-sonnet-4-6';
 ```
 
 `IntentParser` 构造函数接收 `modelResolver: (tier: string) => string`：
@@ -455,6 +471,7 @@ interface IntentParserOptions {
 ```
 
 在 `context.ts` 初始化时注入：
+
 ```typescript
 new IntentParser({
   ...,
@@ -467,16 +484,16 @@ new IntentParser({
 ## 最终验证
 
 - [ ] **Step 1: 全量编译**
-Run: `pnpm run build`
-Expected: 0 errors
+      Run: `pnpm run build`
+      Expected: 0 errors
 
 - [ ] **Step 2: 运行后端测试**
-Run: `pnpm --filter @cabinet/server test`
-Expected: 新增测试通过
+      Run: `pnpm --filter @cabinet/server test`
+      Expected: 新增测试通过
 
 - [ ] **Step 3: 手动验证延迟**
-启动服务器，发送一条普通消息，观察首 token 时间
-Expected: <500ms（对比之前的 3-5s）
+      启动服务器，发送一条普通消息，观察首 token 时间
+      Expected: <500ms（对比之前的 3-5s）
 
 ---
 

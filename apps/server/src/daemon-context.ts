@@ -28,7 +28,11 @@ export interface DaemonContext {
 export function createDaemonContext(
   db: Database,
   registry: AgentRoleRegistry,
-  logger: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void; error: (msg: string, ctx?: unknown) => void },
+  logger: {
+    info: (msg: string, ctx?: unknown) => void;
+    warn: (msg: string, ctx?: unknown) => void;
+    error: (msg: string, ctx?: unknown) => void;
+  },
 ): DaemonContext {
   const taskQueueRepo = new AgentTaskQueueRepository(db);
   const daemonRepo = new AgentDaemonRepository(db);

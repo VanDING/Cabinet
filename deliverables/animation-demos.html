@@ -1,285 +1,450 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cabinet 动效优化演示 — Modal / Dropdown / Page↔Chat</title>
-  <style>
-    :root {
-      --bg: #0f1117;
-      --surface: #181a21;
-      --surface-elevated: #20232d;
-      --surface-overlay: rgba(15, 17, 23, 0.75);
-      --border: #2a2d3a;
-      --accent: #6366f1;
-      --accent-light: #818cf8;
-      --text: #e2e4ea;
-      --text-secondary: #8b90a1;
-      --intent-success: #22c55e;
-      --intent-danger: #ef4444;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cabinet 动效优化演示 — Modal / Dropdown / Page↔Chat</title>
+    <style>
+      :root {
+        --bg: #0f1117;
+        --surface: #181a21;
+        --surface-elevated: #20232d;
+        --surface-overlay: rgba(15, 17, 23, 0.75);
+        --border: #2a2d3a;
+        --accent: #6366f1;
+        --accent-light: #818cf8;
+        --text: #e2e4ea;
+        --text-secondary: #8b90a1;
+        --intent-success: #22c55e;
+        --intent-danger: #ef4444;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
 
-    .app { display: flex; height: 100vh; }
-    .sidebar {
-      width: 220px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      padding: 20px;
-      flex-shrink: 0;
-    }
-    .sidebar-logo { font-weight: 700; font-size: 18px; color: var(--accent-light); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
-    .sidebar-item { padding: 10px 12px; border-radius: 8px; color: var(--text-secondary); font-size: 14px; margin-bottom: 4px; cursor: default; }
-    .sidebar-item.active { background: var(--surface-elevated); color: var(--text); }
-    .main { flex: 1; position: relative; display: flex; flex-direction: column; overflow: hidden; }
-    .content { flex: 1; padding: 32px; overflow: auto; }
-    .content h1 { font-size: 24px; margin-bottom: 8px; }
-    .content > p { color: var(--text-secondary); margin-bottom: 32px; }
+      .app {
+        display: flex;
+        height: 100vh;
+      }
+      .sidebar {
+        width: 220px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        padding: 20px;
+        flex-shrink: 0;
+      }
+      .sidebar-logo {
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--accent-light);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .sidebar-item {
+        padding: 10px 12px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-bottom: 4px;
+        cursor: default;
+      }
+      .sidebar-item.active {
+        background: var(--surface-elevated);
+        color: var(--text);
+      }
+      .main {
+        flex: 1;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .content {
+        flex: 1;
+        padding: 32px;
+        overflow: auto;
+      }
+      .content h1 {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+      .content > p {
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+      }
 
-    .demo-section { margin-bottom: 48px; }
-    .demo-section h2 { font-size: 16px; margin-bottom: 16px; color: var(--accent-light); }
-    .demo-section > p { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+      .demo-section {
+        margin-bottom: 48px;
+      }
+      .demo-section h2 {
+        font-size: 16px;
+        margin-bottom: 16px;
+        color: var(--accent-light);
+      }
+      .demo-section > p {
+        color: var(--text-secondary);
+        font-size: 13px;
+        margin-bottom: 16px;
+        line-height: 1.6;
+      }
 
-    .btn {
-      padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
-      background: var(--surface-elevated); color: var(--text);
-      font-size: 13px; cursor: pointer; transition: all 0.15s ease;
-    }
-    .btn:hover { background: var(--border); }
-    .btn:active { transform: scale(0.98); }
-    .btn-primary { background: var(--accent); border-color: var(--accent); }
-    .btn-primary:hover { background: var(--accent-light); }
+      .btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface-elevated);
+        color: var(--text);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn:hover {
+        background: var(--border);
+      }
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .btn-primary {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .btn-primary:hover {
+        background: var(--accent-light);
+      }
 
-    /* ===== DEMO 1: Modal ===== */
-    .modal-backdrop {
-      position: fixed; inset: 0; z-index: 100;
-      background: var(--surface-overlay);
-      backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-    .modal-backdrop.open {
-      opacity: 1; pointer-events: auto;
-    }
-    .modal-content {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      width: 100%; max-width: 400px;
-      margin: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      transform: scale(0.96) translateY(10px);
-      opacity: 0;
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-    }
-    .modal-backdrop.open .modal-content {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-    }
-    .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-    .modal-body { color: var(--text-secondary); font-size: 13px; line-height: 1.6; margin-bottom: 20px; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+      /* ===== DEMO 1: Modal ===== */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: var(--surface-overlay);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .modal-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .modal-content {
+        background: var(--surface-elevated);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        width: 100%;
+        max-width: 400px;
+        margin: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        transform: scale(0.96) translateY(10px);
+        opacity: 0;
+        transition:
+          transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.2s ease;
+      }
+      .modal-backdrop.open .modal-content {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      .modal-header {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .modal-body {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+      }
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
 
-    /* ===== DEMO 2: Dropdown ===== */
-    .dropdown-wrap { position: relative; display: inline-block; }
-    .dropdown-menu {
-      position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-      min-width: 180px;
-      padding: 6px;
-      opacity: 0;
-      transform-origin: top center;
-      transform: scaleY(0.95) translateY(-4px);
-      pointer-events: none;
-      transition: transform 0.15s ease-out, opacity 0.12s ease-out;
-    }
-    .dropdown-menu.open {
-      opacity: 1;
-      transform: scaleY(1) translateY(0);
-      pointer-events: auto;
-    }
-    .dropdown-item {
-      padding: 8px 12px; border-radius: 6px;
-      font-size: 13px; color: var(--text-secondary);
-      cursor: default; transition: background 0.1s;
-    }
-    .dropdown-item:hover { background: var(--surface); color: var(--text); }
-    .dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+      /* ===== DEMO 2: Dropdown ===== */
+      .dropdown-wrap {
+        position: relative;
+        display: inline-block;
+      }
+      .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 50;
+        background: var(--surface-elevated);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        min-width: 180px;
+        padding: 6px;
+        opacity: 0;
+        transform-origin: top center;
+        transform: scaleY(0.95) translateY(-4px);
+        pointer-events: none;
+        transition:
+          transform 0.15s ease-out,
+          opacity 0.12s ease-out;
+      }
+      .dropdown-menu.open {
+        opacity: 1;
+        transform: scaleY(1) translateY(0);
+        pointer-events: auto;
+      }
+      .dropdown-item {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: default;
+        transition: background 0.1s;
+      }
+      .dropdown-item:hover {
+        background: var(--surface);
+        color: var(--text);
+      }
+      .dropdown-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 4px 0;
+      }
 
-    /* ===== DEMO 3: Page ↔ Chat ===== */
-    .page-chat-wrap { position: relative; height: 320px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
-    .page-view, .chat-view {
-      position: absolute; inset: 0;
-      padding: 20px;
-      transition: transform 0.4s cubic-bezier(0.32, 0, 0.2, 1), opacity 0.35s ease;
-    }
-    .page-view {
-      opacity: 1; transform: translateY(0);
-    }
-    .chat-view {
-      opacity: 0; transform: translateY(30px);
-      pointer-events: none;
-    }
-    .page-chat-wrap.chat-open .page-view {
-      opacity: 0; transform: translateY(-20px);
-      pointer-events: none;
-    }
-    .page-chat-wrap.chat-open .chat-view {
-      opacity: 1; transform: translateY(0);
-      pointer-events: auto;
-    }
-    .chat-view-inner {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      height: 100%;
-      padding: 16px;
-    }
-    .chat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .chat-title { font-weight: 600; font-size: 14px; }
-    .chat-body { color: var(--text-secondary); font-size: 13px; }
-    .chat-msg { background: var(--surface); padding: 10px 14px; border-radius: 12px; margin-bottom: 8px; max-width: 80%; }
+      /* ===== DEMO 3: Page ↔ Chat ===== */
+      .page-chat-wrap {
+        position: relative;
+        height: 320px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .page-view,
+      .chat-view {
+        position: absolute;
+        inset: 0;
+        padding: 20px;
+        transition:
+          transform 0.4s cubic-bezier(0.32, 0, 0.2, 1),
+          opacity 0.35s ease;
+      }
+      .page-view {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .chat-view {
+        opacity: 0;
+        transform: translateY(30px);
+        pointer-events: none;
+      }
+      .page-chat-wrap.chat-open .page-view {
+        opacity: 0;
+        transform: translateY(-20px);
+        pointer-events: none;
+      }
+      .page-chat-wrap.chat-open .chat-view {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      .chat-view-inner {
+        background: var(--surface-elevated);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        height: 100%;
+        padding: 16px;
+      }
+      .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .chat-title {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .chat-body {
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+      .chat-msg {
+        background: var(--surface);
+        padding: 10px 14px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        max-width: 80%;
+      }
 
-    .demo-controls { margin-top: 12px; display: flex; gap: 8px; }
+      .demo-controls {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
 
-    .status-bar {
-      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-      background: var(--surface-elevated); border: 1px solid var(--border);
-      padding: 8px 20px; border-radius: 20px; font-size: 12px;
-      color: var(--text-secondary); z-index: 200;
-    }
-  </style>
-</head>
-<body>
+      .status-bar {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--surface-elevated);
+        border: 1px solid var(--border);
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        z-index: 200;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-logo">◈ Cabinet</div>
+        <div class="sidebar-item active">Office</div>
+        <div class="sidebar-item">Factory</div>
+        <div class="sidebar-item">Discovery</div>
+      </aside>
+      <main class="main">
+        <div class="content">
+          <h1>动效优化演示</h1>
+          <p>以下 3 组交互演示了建议的动效改进方案。点击各个按钮体验。</p>
 
-  <div class="app">
-    <aside class="sidebar">
-      <div class="sidebar-logo">◈ Cabinet</div>
-      <div class="sidebar-item active">Office</div>
-      <div class="sidebar-item">Factory</div>
-      <div class="sidebar-item">Discovery</div>
-    </aside>
-    <main class="main">
-      <div class="content">
-        <h1>动效优化演示</h1>
-        <p>以下 3 组交互演示了建议的动效改进方案。点击各个按钮体验。</p>
-
-        <!-- DEMO 1: Modal -->
-        <div class="demo-section">
-          <h2>1. Modal 进入 / 退出动画</h2>
-          <p>当前问题：Project Action Modal 和 Office 各 Modal 都是瞬间出现/消失。<br>
-          建议方案：Backdrop 淡入(200ms) + 内容 scale(0.96→1) + translateY(10px→0) (250ms, ease-out)。</p>
-          <button class="btn btn-primary" id="openModal">打开 Modal</button>
-        </div>
-
-        <!-- DEMO 2: Dropdown -->
-        <div class="demo-section">
-          <h2>2. Dropdown 菜单滑入</h2>
-          <p>当前问题：ChatPanel 里的 skill/model/tier 菜单点击后直接显示。<br>
-          建议方案：从顶部以 scaleY(0.95→1) + translateY(-4px→0) + opacity(0→1) 展开，150ms ease-out。</p>
-          <div class="dropdown-wrap">
-            <button class="btn" id="toggleDropdown">打开 Dropdown ▼</button>
-            <div class="dropdown-menu" id="dropdownMenu">
-              <div class="dropdown-item">Secretary</div>
-              <div class="dropdown-item">Meeting Chair</div>
-              <div class="dropdown-item">Organize</div>
-              <div class="dropdown-divider"></div>
-              <div class="dropdown-item">Settings</div>
-            </div>
+          <!-- DEMO 1: Modal -->
+          <div class="demo-section">
+            <h2>1. Modal 进入 / 退出动画</h2>
+            <p>
+              当前问题：Project Action Modal 和 Office 各 Modal 都是瞬间出现/消失。<br />
+              建议方案：Backdrop 淡入(200ms) + 内容 scale(0.96→1) + translateY(10px→0) (250ms,
+              ease-out)。
+            </p>
+            <button class="btn btn-primary" id="openModal">打开 Modal</button>
           </div>
-        </div>
 
-        <!-- DEMO 3: Page ↔ Chat -->
-        <div class="demo-section">
-          <h2>3. Page ↔ Chat 切换过渡</h2>
-          <p>当前问题：从页面切到 ChatView 是硬切（hidden class 瞬间切换）。<br>
-          建议方案：页面向上淡出(translateY -20px)，ChatView 从下方滑入(translateY 30px→0)，400ms。</p>
-          <div class="page-chat-wrap" id="pageChatWrap">
-            <div class="page-view">
-              <div style="font-size:14px; font-weight:600; margin-bottom:8px;">Office 页面内容</div>
-              <div style="color:var(--text-secondary); font-size:13px;">这是 Office 页面的模拟内容。点击右下角悬浮球进入 Chat。</div>
-            </div>
-            <div class="chat-view">
-              <div class="chat-view-inner">
-                <div class="chat-header">
-                  <span class="chat-title">Secretary</span>
-                  <button class="btn" id="closeChat" style="padding:4px 10px; font-size:12px;">返回</button>
-                </div>
-                <div class="chat-body">
-                  <div class="chat-msg">你好！我是 Cabinet 的 Secretary。</div>
-                </div>
+          <!-- DEMO 2: Dropdown -->
+          <div class="demo-section">
+            <h2>2. Dropdown 菜单滑入</h2>
+            <p>
+              当前问题：ChatPanel 里的 skill/model/tier 菜单点击后直接显示。<br />
+              建议方案：从顶部以 scaleY(0.95→1) + translateY(-4px→0) + opacity(0→1) 展开，150ms
+              ease-out。
+            </p>
+            <div class="dropdown-wrap">
+              <button class="btn" id="toggleDropdown">打开 Dropdown ▼</button>
+              <div class="dropdown-menu" id="dropdownMenu">
+                <div class="dropdown-item">Secretary</div>
+                <div class="dropdown-item">Meeting Chair</div>
+                <div class="dropdown-item">Organize</div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item">Settings</div>
               </div>
             </div>
           </div>
-          <div class="demo-controls">
-            <button class="btn btn-primary" id="openChat">进入 Chat</button>
-            <button class="btn" id="backToPage">返回页面</button>
+
+          <!-- DEMO 3: Page ↔ Chat -->
+          <div class="demo-section">
+            <h2>3. Page ↔ Chat 切换过渡</h2>
+            <p>
+              当前问题：从页面切到 ChatView 是硬切（hidden class 瞬间切换）。<br />
+              建议方案：页面向上淡出(translateY -20px)，ChatView 从下方滑入(translateY
+              30px→0)，400ms。
+            </p>
+            <div class="page-chat-wrap" id="pageChatWrap">
+              <div class="page-view">
+                <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px">
+                  Office 页面内容
+                </div>
+                <div style="color: var(--text-secondary); font-size: 13px">
+                  这是 Office 页面的模拟内容。点击右下角悬浮球进入 Chat。
+                </div>
+              </div>
+              <div class="chat-view">
+                <div class="chat-view-inner">
+                  <div class="chat-header">
+                    <span class="chat-title">Secretary</span>
+                    <button class="btn" id="closeChat" style="padding: 4px 10px; font-size: 12px">
+                      返回
+                    </button>
+                  </div>
+                  <div class="chat-body">
+                    <div class="chat-msg">你好！我是 Cabinet 的 Secretary。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="demo-controls">
+              <button class="btn btn-primary" id="openChat">进入 Chat</button>
+              <button class="btn" id="backToPage">返回页面</button>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
-  </div>
+      </main>
+    </div>
 
-  <!-- Modal -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal-content">
-      <div class="modal-header">Add Project</div>
-      <div class="modal-body">选择你要创建的项目类型。这个 Modal 演示了进入和退出的过渡动画。</div>
-      <div class="modal-footer">
-        <button class="btn" id="closeModal">Cancel</button>
-        <button class="btn btn-primary">Create</button>
+    <!-- Modal -->
+    <div class="modal-backdrop" id="modalBackdrop">
+      <div class="modal-content">
+        <div class="modal-header">Add Project</div>
+        <div class="modal-body">
+          选择你要创建的项目类型。这个 Modal 演示了进入和退出的过渡动画。
+        </div>
+        <div class="modal-footer">
+          <button class="btn" id="closeModal">Cancel</button>
+          <button class="btn btn-primary">Create</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="status-bar">点击上方按钮体验动效</div>
+    <div class="status-bar">点击上方按钮体验动效</div>
 
-  <script>
-    // Modal
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    document.getElementById('openModal').addEventListener('click', () => {
-      modalBackdrop.classList.add('open');
-    });
-    document.getElementById('closeModal').addEventListener('click', () => {
-      modalBackdrop.classList.remove('open');
-    });
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
-    });
+    <script>
+      // Modal
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      document.getElementById('openModal').addEventListener('click', () => {
+        modalBackdrop.classList.add('open');
+      });
+      document.getElementById('closeModal').addEventListener('click', () => {
+        modalBackdrop.classList.remove('open');
+      });
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
+      });
 
-    // Dropdown
-    const dropdownMenu = document.getElementById('dropdownMenu');
-    const dropdownBtn = document.getElementById('toggleDropdown');
-    dropdownBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdownMenu.classList.toggle('open');
-    });
-    document.addEventListener('click', () => {
-      dropdownMenu.classList.remove('open');
-    });
+      // Dropdown
+      const dropdownMenu = document.getElementById('dropdownMenu');
+      const dropdownBtn = document.getElementById('toggleDropdown');
+      dropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.classList.toggle('open');
+      });
+      document.addEventListener('click', () => {
+        dropdownMenu.classList.remove('open');
+      });
 
-    // Page ↔ Chat
-    const pageChatWrap = document.getElementById('pageChatWrap');
-    document.getElementById('openChat').addEventListener('click', () => {
-      pageChatWrap.classList.add('chat-open');
-    });
-    document.getElementById('closeChat').addEventListener('click', () => {
-      pageChatWrap.classList.remove('chat-open');
-    });
-    document.getElementById('backToPage').addEventListener('click', () => {
-      pageChatWrap.classList.remove('chat-open');
-    });
-  </script>
-</body>
+      // Page ↔ Chat
+      const pageChatWrap = document.getElementById('pageChatWrap');
+      document.getElementById('openChat').addEventListener('click', () => {
+        pageChatWrap.classList.add('chat-open');
+      });
+      document.getElementById('closeChat').addEventListener('click', () => {
+        pageChatWrap.classList.remove('chat-open');
+      });
+      document.getElementById('backToPage').addEventListener('click', () => {
+        pageChatWrap.classList.remove('chat-open');
+      });
+    </script>
+  </body>
 </html>

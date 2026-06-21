@@ -33,9 +33,7 @@ export function computeForceLayout(
   }));
 
   const nodeMap = new Map(layoutNodes.map((n) => [n.id, n]));
-  const layoutEdges: LayoutEdge[] = edges.filter(
-    (e) => nodeMap.has(e.from) && nodeMap.has(e.to),
-  );
+  const layoutEdges: LayoutEdge[] = edges.filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to));
 
   // Force simulation parameters
   const repulsion = 5000;

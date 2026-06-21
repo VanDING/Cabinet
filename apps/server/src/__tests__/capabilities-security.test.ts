@@ -40,7 +40,9 @@ describe('detectDangerousCommand', () => {
   });
 
   it('detects encoded powershell command', () => {
-    expect(detectDangerousCommand('powershell -encodedcommand d29ob2FtaQ==')).toBe('encoded powershell');
+    expect(detectDangerousCommand('powershell -encodedcommand d29ob2FtaQ==')).toBe(
+      'encoded powershell',
+    );
   });
 
   it('detects shell persistence via append', () => {
@@ -79,11 +81,35 @@ describe('detectDangerousCommand', () => {
 
 describe('command allowlist (logical)', () => {
   const ALLOWED = new Set([
-    'git', 'npm', 'npx', 'node', 'python3', 'python',
-    'rustc', 'cargo', 'go', 'javac', 'java', 'docker',
-    'ls', 'cat', 'echo', 'mkdir', 'touch', 'cp', 'mv', 'rm',
-    'grep', 'find', 'wc', 'head', 'tail', 'sort', 'uniq',
-    'chmod', 'chown',
+    'git',
+    'npm',
+    'npx',
+    'node',
+    'python3',
+    'python',
+    'rustc',
+    'cargo',
+    'go',
+    'javac',
+    'java',
+    'docker',
+    'ls',
+    'cat',
+    'echo',
+    'mkdir',
+    'touch',
+    'cp',
+    'mv',
+    'rm',
+    'grep',
+    'find',
+    'wc',
+    'head',
+    'tail',
+    'sort',
+    'uniq',
+    'chmod',
+    'chown',
   ]);
 
   it('allows common dev commands', () => {

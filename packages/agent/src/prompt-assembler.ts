@@ -15,11 +15,7 @@ export interface AssembleOptions {
 export function assemblePrompt(options: AssembleOptions): string {
   const toolsSection = buildToolsSection(options.toolExecutor);
 
-  const sections: string[] = [
-    SHARED_PROMPT,
-    '',
-    options.modules.identity,
-  ];
+  const sections: string[] = [SHARED_PROMPT, '', options.modules.identity];
 
   if (toolsSection) {
     sections.push('', toolsSection);

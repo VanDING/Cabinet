@@ -143,6 +143,7 @@ icon: 🔍
 ---
 
 # Code Reviewer
+
 ...
 ```
 
@@ -238,7 +239,12 @@ export function getSkillPreset(id: string): SkillPreset | null {
 
 ```typescript
 import { Hono } from 'hono';
-import { listMcpPresets, getMcpPreset, listSkillPresets, getSkillPreset } from '../services/preset-service.js';
+import {
+  listMcpPresets,
+  getMcpPreset,
+  listSkillPresets,
+  getSkillPreset,
+} from '../services/preset-service.js';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
 
@@ -289,7 +295,11 @@ presetsRouter.post('/mcp/:id/enable', async (c) => {
     await mcpManager.updateConfigs(updated);
     broadcast('mcp_server_changed', { action: 'added', name: preset.name });
     logger.info('MCP preset enabled', { presetId: id, name: preset.name });
-    return c.json({ status: 'enabled', name: preset.name, toolCount: mcpManager.listTools().length });
+    return c.json({
+      status: 'enabled',
+      name: preset.name,
+      toolCount: mcpManager.listTools().length,
+    });
   } catch (e) {
     logger.error('MCP preset enable failed', { presetId: id, error: String(e) });
     return c.json({ error: 'Connection failed', details: (e as Error).message }, 500);
@@ -427,8 +437,8 @@ export function DiscoverPage() {
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <h1 className="mb-4 text-2xl font-bold text-content-primary">Discover</h1>
-      <p className="mb-6 text-sm text-content-tertiary">
+      <h1 className="text-content-primary mb-4 text-2xl font-bold">Discover</h1>
+      <p className="text-content-tertiary mb-6 text-sm">
         Manage and install MCP servers and skills.
       </p>
 
@@ -467,7 +477,11 @@ function McpDiscoverSection() {
         setInstalled(
           configs.map((c: any) => {
             const s = statuses.find((st: any) => st.name === c.name);
-            return { ...c, status: s?.connected ? 'connected' : 'disconnected', toolCount: s?.toolCount ?? 0 };
+            return {
+              ...c,
+              status: s?.connected ? 'connected' : 'disconnected',
+              toolCount: s?.toolCount ?? 0,
+            };
           }),
         );
       });
@@ -477,7 +491,9 @@ function McpDiscoverSection() {
       .then((d) => setPresets(d.presets ?? []));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleEnable = async (id: string) => {
     await apiFetch(`/api/presets/mcp/${id}/enable`, { method: 'POST', headers: authHeaders() });
@@ -509,7 +525,7 @@ function McpDiscoverSection() {
       {/* 上半：已安装 */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-content-secondary">Installed Servers</h2>
+          <h2 className="text-content-secondary text-sm font-medium">Installed Servers</h2>
           <Button size="sm" variant="ghost" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : '+ Add Custom'}
           </Button>
@@ -518,24 +534,35 @@ function McpDiscoverSection() {
         {showForm && <McpAddForm onAdded={fetchData} onCancel={() => setShowForm(false)} />}
 
         {installed.length === 0 ? (
-          <p className="py-4 text-sm text-content-tertiary">No MCP servers installed.</p>
+          <p className="text-content-tertiary py-4 text-sm">No MCP servers installed.</p>
         ) : (
           <div className="space-y-2">
             {installed.map((s) => (
               <Card key={s.name} padding="sm" className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-content-primary">{s.name}</span>
-                    <Tag variant={s.enabled ? 'success' : 'default'}>{s.enabled ? 'enabled' : 'disabled'}</Tag>
-                    {s.status && <Tag variant={s.status === 'connected' ? 'info' : 'danger'}>{s.status}</Tag>}
+                    <span className="text-content-primary text-sm font-medium">{s.name}</span>
+                    <Tag variant={s.enabled ? 'success' : 'default'}>
+                      {s.enabled ? 'enabled' : 'disabled'}
+                    </Tag>
+                    {s.status && (
+                      <Tag variant={s.status === 'connected' ? 'info' : 'danger'}>{s.status}</Tag>
+                    )}
                   </div>
-                  <p className="mt-0.5 font-mono text-xs text-content-tertiary">{s.command} {s.args?.join(' ')}</p>
+                  <p className="text-content-tertiary mt-0.5 font-mono text-xs">
+                    {s.command} {s.args?.join(' ')}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="xs" onClick={() => handleToggle(s.name)}>
                     {s.enabled ? 'Disable' : 'Enable'}
                   </Button>
-                  <Button variant="ghost" size="xs" className="text-intent-danger" onClick={() => handleRemove(s.name)}>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="text-intent-danger"
+                    onClick={() => handleRemove(s.name)}
+                  >
                     Remove
                   </Button>
                 </div>
@@ -547,20 +574,26 @@ function McpDiscoverSection() {
 
       {/* 下半：推荐 */}
       <section>
-        <h2 className="mb-3 text-sm font-medium text-content-secondary">Recommended</h2>
+        <h2 className="text-content-secondary mb-3 text-sm font-medium">Recommended</h2>
         <div className="flex flex-col gap-2">
-          {presets.filter((p) => !p.installed).map((p) => (
-            <Card key={p.id} padding="sm" className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{p.icon}</span>
-                <div>
-                  <span className="text-sm font-medium text-content-primary">{p.displayName}</span>
-                  <p className="text-xs text-content-tertiary">{p.description}</p>
+          {presets
+            .filter((p) => !p.installed)
+            .map((p) => (
+              <Card key={p.id} padding="sm" className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{p.icon}</span>
+                  <div>
+                    <span className="text-content-primary text-sm font-medium">
+                      {p.displayName}
+                    </span>
+                    <p className="text-content-tertiary text-xs">{p.description}</p>
+                  </div>
                 </div>
-              </div>
-              <Button size="xs" onClick={() => handleEnable(p.id)}>Enable</Button>
-            </Card>
-          ))}
+                <Button size="xs" onClick={() => handleEnable(p.id)}>
+                  Enable
+                </Button>
+              </Card>
+            ))}
         </div>
       </section>
     </div>
@@ -584,7 +617,9 @@ function SkillDiscoverSection() {
       .then((d) => setPresets(d.presets ?? []));
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleInstall = async (id: string) => {
     await apiFetch(`/api/presets/skills/${id}/install`, { method: 'POST', headers: authHeaders() });
@@ -600,21 +635,26 @@ function SkillDiscoverSection() {
     <div className="space-y-6">
       {/* 上半：已安装 */}
       <section>
-        <h2 className="mb-3 text-sm font-medium text-content-secondary">Installed Skills</h2>
+        <h2 className="text-content-secondary mb-3 text-sm font-medium">Installed Skills</h2>
         {installed.length === 0 ? (
-          <p className="py-4 text-sm text-content-tertiary">No skills installed.</p>
+          <p className="text-content-tertiary py-4 text-sm">No skills installed.</p>
         ) : (
           <div className="space-y-2">
             {installed.map((s) => (
               <Card key={s.id} padding="sm" className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-content-primary">{s.name}</span>
+                    <span className="text-content-primary text-sm font-medium">{s.name}</span>
                     <Tag variant={s.status === 'active' ? 'success' : 'warning'}>{s.status}</Tag>
                   </div>
-                  <p className="text-xs text-content-tertiary">{s.description}</p>
+                  <p className="text-content-tertiary text-xs">{s.description}</p>
                 </div>
-                <Button variant="ghost" size="xs" className="text-intent-danger" onClick={() => handleDelete(s.id)}>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="text-intent-danger"
+                  onClick={() => handleDelete(s.id)}
+                >
                   Remove
                 </Button>
               </Card>
@@ -625,20 +665,26 @@ function SkillDiscoverSection() {
 
       {/* 下半：推荐 */}
       <section>
-        <h2 className="mb-3 text-sm font-medium text-content-secondary">Recommended</h2>
+        <h2 className="text-content-secondary mb-3 text-sm font-medium">Recommended</h2>
         <div className="flex flex-col gap-2">
-          {presets.filter((p) => !p.installed).map((p) => (
-            <Card key={p.id} padding="sm" className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{p.icon}</span>
-                <div>
-                  <span className="text-sm font-medium text-content-primary">{p.displayName}</span>
-                  <p className="text-xs text-content-tertiary">{p.description}</p>
+          {presets
+            .filter((p) => !p.installed)
+            .map((p) => (
+              <Card key={p.id} padding="sm" className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{p.icon}</span>
+                  <div>
+                    <span className="text-content-primary text-sm font-medium">
+                      {p.displayName}
+                    </span>
+                    <p className="text-content-tertiary text-xs">{p.description}</p>
+                  </div>
                 </div>
-              </div>
-              <Button size="xs" onClick={() => handleInstall(p.id)}>Install</Button>
-            </Card>
-          ))}
+                <Button size="xs" onClick={() => handleInstall(p.id)}>
+                  Install
+                </Button>
+              </Card>
+            ))}
         </div>
       </section>
     </div>
@@ -708,31 +754,35 @@ export function isFirstRun(): boolean {
 前端横幅跳转至 `/discover`：
 
 ```tsx
-{showOnboardingBanner && (
-  <div className="rounded-lg bg-accent-muted p-4">
-    <p className="text-sm font-medium">Welcome! Enable recommended tools to get started.</p>
-    <Button size="sm" onClick={() => navigate('/discover')}>Quick Setup</Button>
-  </div>
-)}
+{
+  showOnboardingBanner && (
+    <div className="bg-accent-muted rounded-lg p-4">
+      <p className="text-sm font-medium">Welcome! Enable recommended tools to get started.</p>
+      <Button size="sm" onClick={() => navigate('/discover')}>
+        Quick Setup
+      </Button>
+    </div>
+  );
+}
 ```
 
 ---
 
 ### 3.8 Phase 1 工时分解
 
-| 任务 | 工时 | 说明 |
-|------|------|------|
-| 预设 JSON / SKILL.md 文件编写 | 4h | 8 MCP + 5 Skill |
-| `preset-service.ts` + `presets.ts` 路由 | 4h | 读取服务 + 4 个 API 端点 |
-| Navigation 新增 Discover | 0.5h | NavPage + icon |
-| DiscoverPage 框架 + McpSection | 4h | 上下分区 + 管理功能 |
-| DiscoverPage SkillSection | 2h | 上下分区 + 管理功能 |
-| SettingsPage 移除 MCP/Skills tabs | 1h | 精简为 3 tabs |
-| App.tsx 路由调整 | 0.5h | + /discover, /skills 重定向 |
-| Onboarding 检测 + 横幅 | 2h | 首次运行判断 + 引导 UI |
-| 构建脚本调整 | 1h | presets 目录打包到 server-dist |
-| 测试 | 4h | API + UI 交互 |
-| **合计** | **23h** | |
+| 任务                                    | 工时    | 说明                           |
+| --------------------------------------- | ------- | ------------------------------ |
+| 预设 JSON / SKILL.md 文件编写           | 4h      | 8 MCP + 5 Skill                |
+| `preset-service.ts` + `presets.ts` 路由 | 4h      | 读取服务 + 4 个 API 端点       |
+| Navigation 新增 Discover                | 0.5h    | NavPage + icon                 |
+| DiscoverPage 框架 + McpSection          | 4h      | 上下分区 + 管理功能            |
+| DiscoverPage SkillSection               | 2h      | 上下分区 + 管理功能            |
+| SettingsPage 移除 MCP/Skills tabs       | 1h      | 精简为 3 tabs                  |
+| App.tsx 路由调整                        | 0.5h    | + /discover, /skills 重定向    |
+| Onboarding 检测 + 横幅                  | 2h      | 首次运行判断 + 引导 UI         |
+| 构建脚本调整                            | 1h      | presets 目录打包到 server-dist |
+| 测试                                    | 4h      | API + UI 交互                  |
+| **合计**                                | **23h** |                                |
 
 ---
 
@@ -751,7 +801,9 @@ export function isFirstRun(): boolean {
 ```tsx
 export function DiscoverPage() {
   const [activeTab, setActiveTab] = useState<'mcp' | 'skills'>('mcp');
-  const [category, setCategory] = useState<'all' | 'essential' | 'dev' | 'productivity' | 'communication' | 'data'>('all');
+  const [category, setCategory] = useState<
+    'all' | 'essential' | 'dev' | 'productivity' | 'communication' | 'data'
+  >('all');
   const [search, setSearch] = useState('');
   const [remoteItems, setRemoteItems] = useState<RemoteItem[]>([]);
 
@@ -771,29 +823,29 @@ export function DiscoverPage() {
 
 ### 4.2 Phase 2 工时分解
 
-| 任务 | 工时 |
-|------|------|
-| 搜索/分类过滤 UI | 3h |
-| 远程索引 API | 2h |
-| 远程 Skill 安装 | 2h |
-| 注册表 JSON 模板 | 2h |
-| 测试 | 2h |
-| **合计** | **11h** | *(精简后发现比原估少)* |
+| 任务             | 工时    |
+| ---------------- | ------- | ---------------------- |
+| 搜索/分类过滤 UI | 3h      |
+| 远程索引 API     | 2h      |
+| 远程 Skill 安装  | 2h      |
+| 注册表 JSON 模板 | 2h      |
+| 测试             | 2h      |
+| **合计**         | **11h** | _(精简后发现比原估少)_ |
 
 ---
 
 ## 五、完整 API 清单
 
-| Method | Route | 描述 | Phase |
-|--------|-------|------|-------|
-| GET | `/api/presets/mcp` | 列出 MCP 预设 | 1 |
-| POST | `/api/presets/mcp/:id/enable` | 启用 MCP 预设 | 1 |
-| GET | `/api/presets/skills` | 列出 Skill 预设 | 1 |
-| POST | `/api/presets/skills/:id/install` | 安装 Skill 预设 | 1 |
-| GET | `/api/presets/onboarding` | 检测首次运行 | 1 |
-| POST | `/api/presets/onboarding/complete` | 标记 onboarding 完成 | 1 |
-| GET | `/api/presets/remote-index` | 远程注册表索引 | 2 |
-| POST | `/api/presets/skills/install-remote` | 远程安装 Skill | 2 |
+| Method | Route                                | 描述                 | Phase |
+| ------ | ------------------------------------ | -------------------- | ----- |
+| GET    | `/api/presets/mcp`                   | 列出 MCP 预设        | 1     |
+| POST   | `/api/presets/mcp/:id/enable`        | 启用 MCP 预设        | 1     |
+| GET    | `/api/presets/skills`                | 列出 Skill 预设      | 1     |
+| POST   | `/api/presets/skills/:id/install`    | 安装 Skill 预设      | 1     |
+| GET    | `/api/presets/onboarding`            | 检测首次运行         | 1     |
+| POST   | `/api/presets/onboarding/complete`   | 标记 onboarding 完成 | 1     |
+| GET    | `/api/presets/remote-index`          | 远程注册表索引       | 2     |
+| POST   | `/api/presets/skills/install-remote` | 远程安装 Skill       | 2     |
 
 ---
 
@@ -832,4 +884,4 @@ apps/desktop/src/pages/settings/SkillsTab.tsx   # 功能内嵌到 SkillDiscoverS
 
 ---
 
-*修订版结束。核心变更：Discover 作为侧边栏独立入口，管理 + 发现统一在一个页面，Settings 仅保留纯系统配置。*
+_修订版结束。核心变更：Discover 作为侧边栏独立入口，管理 + 发现统一在一个页面，Settings 仅保留纯系统配置。_

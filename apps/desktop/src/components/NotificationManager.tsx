@@ -9,12 +9,7 @@ export function NotificationManager() {
   return (
     <>
       {notifications.map((n, i) => (
-        <SecretaryBubble
-          key={n.id}
-          notification={n}
-          onDismiss={dismissNotification}
-          index={i}
-        />
+        <SecretaryBubble key={n.id} notification={n} onDismiss={dismissNotification} index={i} />
       ))}
     </>
   );

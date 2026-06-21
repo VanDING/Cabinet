@@ -20,14 +20,12 @@ export function EventBusProvider({ children }: { children: React.ReactNode }) {
   const on = useCallback((type: string, handler: EventHandler) => {
     if (!listeners.current.has(type)) listeners.current.set(type, new Set());
     listeners.current.get(type)!.add(handler);
-    return () => { listeners.current.get(type)?.delete(handler); };
+    return () => {
+      listeners.current.get(type)?.delete(handler);
+    };
   }, []);
 
-  return (
-    <EventBusContext.Provider value={{ emit, on }}>
-      {children}
-    </EventBusContext.Provider>
-  );
+  return <EventBusContext.Provider value={{ emit, on }}>{children}</EventBusContext.Provider>;
 }
 
 export function useEventBus() {

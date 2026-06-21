@@ -114,10 +114,10 @@ describe('A2AClient', () => {
 
       expect(result).toBe('Hello from agent!');
       // First call should go to /a2a/tasks
-      expect(mockFetch.mock.calls[0][0]).toMatch(/https:\/\/agent\.example\.com\/a2a\/tasks$/);
-      expect(mockFetch.mock.calls[0][1]?.method).toBe('POST');
+      expect(mockFetch.mock.calls[0]![0]).toMatch(/https:\/\/agent\.example\.com\/a2a\/tasks$/);
+      expect(mockFetch.mock.calls[0]![1]?.method).toBe('POST');
       // Second call should poll /a2a/tasks/{taskId}
-      expect(mockFetch.mock.calls[1][0]).toMatch(
+      expect(mockFetch.mock.calls[1]![0]).toMatch(
         /https:\/\/agent\.example\.com\/a2a\/tasks\/task_\d+$/,
       );
     });

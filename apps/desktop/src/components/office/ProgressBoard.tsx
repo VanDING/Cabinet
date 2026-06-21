@@ -39,7 +39,9 @@ export function ProgressBoard({ projectId }: Props) {
       .then((d) => {
         if (!d.error) setData(d);
       })
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -77,11 +79,16 @@ export function ProgressBoard({ projectId }: Props) {
   const StatusIcon = ({ status }: { status: string }) => {
     const cls = 'h-3.5 w-3.5';
     switch (status) {
-      case 'completed': return <CheckCircle2 className={`${cls} text-intent-success`} />;
-      case 'in_progress': return <RefreshCw className={`${cls} text-accent`} />;
-      case 'blocked': return <XCircle className={`${cls} text-intent-danger`} />;
-      case 'cancelled': return <XCircle className={`${cls} text-content-tertiary`} />;
-      default: return <Clock className={`${cls} text-content-tertiary`} />;
+      case 'completed':
+        return <CheckCircle2 className={`${cls} text-intent-success`} />;
+      case 'in_progress':
+        return <RefreshCw className={`${cls} text-accent`} />;
+      case 'blocked':
+        return <XCircle className={`${cls} text-intent-danger`} />;
+      case 'cancelled':
+        return <XCircle className={`${cls} text-content-tertiary`} />;
+      default:
+        return <Clock className={`${cls} text-content-tertiary`} />;
     }
   };
 
@@ -96,20 +103,20 @@ export function ProgressBoard({ projectId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
-        <span className="text-xs text-content-tertiary">Loading progress...</span>
+      <div className="border-border bg-surface-primary flex h-full items-center justify-center rounded-lg border p-4 shadow-xs">
+        <span className="text-content-tertiary text-xs">Loading progress...</span>
       </div>
     );
   }
 
   if (!data || data.tasks.length === 0) {
     return (
-      <div className="h-full rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
-        <div className="mb-2 text-sm font-medium text-content-secondary">Task Board</div>
-        <p className="text-xs text-content-tertiary">
+      <div className="border-border bg-surface-primary h-full rounded-lg border p-4 shadow-xs">
+        <div className="text-content-secondary mb-2 text-sm font-medium">Task Board</div>
+        <p className="text-content-tertiary text-xs">
           No tasks tracked yet. Use the secretary to create tasks.
         </p>
-        <button onClick={fetchProgress} className="mt-2 text-xs text-accent hover:underline">
+        <button onClick={fetchProgress} className="text-accent mt-2 text-xs hover:underline">
           Refresh
         </button>
       </div>
@@ -117,25 +124,25 @@ export function ProgressBoard({ projectId }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs p-4">
+    <div className="border-border bg-surface-primary flex h-full flex-col overflow-hidden rounded-lg border p-4 shadow-xs">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium text-content-secondary">Task Board</div>
-        <button onClick={fetchProgress} className="text-xs text-accent hover:underline">
+        <div className="text-content-secondary text-sm font-medium">Task Board</div>
+        <button onClick={fetchProgress} className="text-accent text-xs hover:underline">
           Refresh
         </button>
       </div>
 
       {/* Progress bar */}
       <div className="mb-3">
-        <div className="mb-1 flex justify-between text-xs text-content-tertiary">
+        <div className="text-content-tertiary mb-1 flex justify-between text-xs">
           <span>
             {data.stats.completed}/{data.stats.total} done
           </span>
           <span>{data.percent}%</span>
         </div>
-        <div className="h-1.5 w-full rounded-full bg-surface-muted">
+        <div className="bg-surface-muted h-1.5 w-full rounded-full">
           <div
-            className="h-1.5 rounded-full bg-accent transition-all"
+            className="bg-accent h-1.5 rounded-full transition-all"
             style={{ width: `${data.percent}%` }}
           />
         </div>
@@ -143,11 +150,9 @@ export function ProgressBoard({ projectId }: Props) {
 
       {/* Next task */}
       {data.nextTask && (
-        <div className="mb-3 rounded-sm border border-accent bg-accent-muted p-2">
-          <div className="text-[10px] font-medium uppercase text-accent">Next Up</div>
-          <div className="text-sm font-medium text-content-primary">
-            {data.nextTask.title}
-          </div>
+        <div className="border-accent bg-accent-muted mb-3 rounded-sm border p-2">
+          <div className="text-accent text-[10px] font-medium uppercase">Next Up</div>
+          <div className="text-content-primary text-sm font-medium">{data.nextTask.title}</div>
         </div>
       )}
 
@@ -156,15 +161,13 @@ export function ProgressBoard({ projectId }: Props) {
         {data.tasks.map((task) => (
           <div
             key={task.id}
-            className="group flex items-center gap-2 rounded-sm px-1 py-1 hover:bg-surface-elevated bg-surface-input/50"
+            className="group hover:bg-surface-elevated bg-surface-input/50 flex items-center gap-2 rounded-sm px-1 py-1"
           >
             <StatusIcon status={task.status} />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-content-primary">
-                {task.title}
-              </div>
+              <div className="text-content-primary truncate text-xs font-medium">{task.title}</div>
               {task.blockedReason && (
-                <div className="text-[10px] text-intent-danger">{task.blockedReason}</div>
+                <div className="text-intent-danger text-[10px]">{task.blockedReason}</div>
               )}
             </div>
             {/* Quick actions */}
@@ -172,7 +175,7 @@ export function ProgressBoard({ projectId }: Props) {
               {task.status === 'pending' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded-sm bg-accent-muted p-0.5 text-accent hover:bg-accent"
+                  className="bg-accent-muted text-accent hover:bg-accent rounded-sm p-0.5"
                   title="Start"
                 >
                   <Play size={12} />
@@ -182,14 +185,14 @@ export function ProgressBoard({ projectId }: Props) {
                 <>
                   <button
                     onClick={() => updateStatus(task.id, 'completed')}
-                    className="rounded-sm bg-intent-success-muted p-0.5 text-intent-success hover:bg-intent-success"
+                    className="bg-intent-success-muted text-intent-success hover:bg-intent-success rounded-sm p-0.5"
                     title="Complete"
                   >
                     <Check size={12} />
                   </button>
                   <button
                     onClick={() => updateStatus(task.id, 'blocked')}
-                    className="rounded-sm bg-intent-danger-muted p-0.5 text-intent-danger hover:bg-intent-danger"
+                    className="bg-intent-danger-muted text-intent-danger hover:bg-intent-danger rounded-sm p-0.5"
                     title="Block"
                   >
                     <Ban size={12} />
@@ -199,7 +202,7 @@ export function ProgressBoard({ projectId }: Props) {
               {task.status === 'blocked' && (
                 <button
                   onClick={() => updateStatus(task.id, 'in_progress')}
-                  className="rounded-sm bg-accent-muted p-0.5 text-accent hover:bg-accent"
+                  className="bg-accent-muted text-accent hover:bg-accent rounded-sm p-0.5"
                   title="Unblock"
                 >
                   <RotateCcw size={12} />

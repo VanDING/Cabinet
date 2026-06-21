@@ -93,7 +93,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
         properties: {
           path: { type: 'string', description: 'Absolute path to the file to write' },
           content: { type: 'string', description: 'Content to write to the file' },
-          overwrite: { type: 'boolean', description: 'Whether to overwrite if file exists (default: true)' },
+          overwrite: {
+            type: 'boolean',
+            description: 'Whether to overwrite if file exists (default: true)',
+          },
         },
         required: ['path', 'content'],
       },
@@ -252,7 +255,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'Absolute path to the file or directory to inspect' },
+          path: {
+            type: 'string',
+            description: 'Absolute path to the file or directory to inspect',
+          },
         },
         required: ['path'],
       },
@@ -273,7 +279,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'Absolute path to the directory to list (default: ".")' },
+          path: {
+            type: 'string',
+            description: 'Absolute path to the directory to list (default: ".")',
+          },
         },
       },
       execute: async (args: Record<string, unknown>) => {
@@ -317,7 +326,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          pattern: { type: 'string', description: 'Regular expression to search for in file contents' },
+          pattern: {
+            type: 'string',
+            description: 'Regular expression to search for in file contents',
+          },
           path: { type: 'string', description: 'Directory to search in (default: workspace root)' },
           include: { type: 'string', description: 'Glob pattern to filter files (e.g. "*.ts")' },
           max_depth: { type: 'integer', description: 'Maximum recursion depth' },
@@ -346,7 +358,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          limit: { type: 'integer', description: 'Maximum number of recent files to return (default: 20)' },
+          limit: {
+            type: 'integer',
+            description: 'Maximum number of recent files to return (default: 20)',
+          },
         },
       },
       execute: async (args: Record<string, unknown>) => {
@@ -368,7 +383,10 @@ export function createFileTools(deps: FileToolDeps): ToolDefinition[] {
         type: 'object',
         properties: {
           path: { type: 'string', description: 'Absolute path to the file to watch for changes' },
-          timeout_ms: { type: 'integer', description: 'Maximum time to wait in milliseconds (default: 30000)' },
+          timeout_ms: {
+            type: 'integer',
+            description: 'Maximum time to wait in milliseconds (default: 30000)',
+          },
         },
         required: ['path'],
       },

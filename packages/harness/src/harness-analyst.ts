@@ -80,13 +80,20 @@ export class HarnessAnalyst {
     actions: ReturnType<AutoAdjuster['getRecentActions']>,
   ): string {
     const daily = (report.daily ?? []).slice(-7);
-    const toolRateTrend = daily.map((d) =>
-      `${d.date}: tool pass ${Math.round(d.toolSuccessRate * 100)}%, session success ${Math.round(d.successRate * 100)}%`
-    ).join('\n');
+    const toolRateTrend = daily
+      .map(
+        (d) =>
+          `${d.date}: tool pass ${Math.round(d.toolSuccessRate * 100)}%, session success ${Math.round(d.successRate * 100)}%`,
+      )
+      .join('\n');
 
-    const actionLines = actions.slice(0, 5).map((a) =>
-      `- [${a.severity}] ${a.type}: ${a.description} (${a.applied ? 'applied' : 'pending'})`
-    ).join('\n');
+    const actionLines = actions
+      .slice(0, 5)
+      .map(
+        (a) =>
+          `- [${a.severity}] ${a.type}: ${a.description} (${a.applied ? 'applied' : 'pending'})`,
+      )
+      .join('\n');
 
     return `You are analyzing the Cabinet harness layer health. Summarize in 1-3 concise sentences. Focus on: notable trends, anomalies, or actions that need attention. Write in plain English, no markdown.
 

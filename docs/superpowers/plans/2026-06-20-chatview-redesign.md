@@ -12,24 +12,25 @@
 
 ## File Structure
 
-| File | Action | Responsibility |
-|------|--------|----------------|
-| `apps/desktop/src/hooks/useAgents.ts` | Create | Fetch agent list from `/api/employees`, filter to `kind === 'ai'`, expose `{ agents, loading, refresh }` |
-| `apps/desktop/src/components/chat/AgentTopBar.tsx` | Create | Horizontal scrollable avatar row; click to select agent; shows status dots; session sidebar toggle button |
-| `apps/desktop/src/components/chat/SessionSidebar.tsx` | Create | Collapsible left panel; lists sessions grouped by agent; new-session button; click to switch |
-| `apps/desktop/src/hooks/useSessions.ts` | Modify | Add `agentId?: string` to `Session` and `SessionJSON` interfaces; persist it |
-| `apps/desktop/src/contexts/ChatContext.tsx` | Modify | Expose `agents` list and `sidebarOpen` state; wire `setActiveAgent` to create sessions with `agentId` |
-| `apps/desktop/src/components/ChatView.tsx` | Modify | Embed `AgentTopBar` at top; render `SessionSidebar` + messages in a flex row |
-| `apps/desktop/src/components/ChatPanel.tsx` | Modify | Remove session history button (clock icon + `SessionHistoryPanel`); remove hardcoded agent dropdown (replaced by `AgentTopBar`) |
-| `apps/desktop/src/App.tsx` | Modify | Pass `agents` and `sidebarOpen` props to `ChatView` |
-| `apps/desktop/src/__tests__/AgentTopBar.test.tsx` | Create | Test avatar rendering, selection callback, status dots |
-| `apps/desktop/src/__tests__/SessionSidebar.test.tsx` | Create | Test session grouping, click-to-switch, new-session button |
+| File                                                  | Action | Responsibility                                                                                                                  |
+| ----------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/desktop/src/hooks/useAgents.ts`                 | Create | Fetch agent list from `/api/employees`, filter to `kind === 'ai'`, expose `{ agents, loading, refresh }`                        |
+| `apps/desktop/src/components/chat/AgentTopBar.tsx`    | Create | Horizontal scrollable avatar row; click to select agent; shows status dots; session sidebar toggle button                       |
+| `apps/desktop/src/components/chat/SessionSidebar.tsx` | Create | Collapsible left panel; lists sessions grouped by agent; new-session button; click to switch                                    |
+| `apps/desktop/src/hooks/useSessions.ts`               | Modify | Add `agentId?: string` to `Session` and `SessionJSON` interfaces; persist it                                                    |
+| `apps/desktop/src/contexts/ChatContext.tsx`           | Modify | Expose `agents` list and `sidebarOpen` state; wire `setActiveAgent` to create sessions with `agentId`                           |
+| `apps/desktop/src/components/ChatView.tsx`            | Modify | Embed `AgentTopBar` at top; render `SessionSidebar` + messages in a flex row                                                    |
+| `apps/desktop/src/components/ChatPanel.tsx`           | Modify | Remove session history button (clock icon + `SessionHistoryPanel`); remove hardcoded agent dropdown (replaced by `AgentTopBar`) |
+| `apps/desktop/src/App.tsx`                            | Modify | Pass `agents` and `sidebarOpen` props to `ChatView`                                                                             |
+| `apps/desktop/src/__tests__/AgentTopBar.test.tsx`     | Create | Test avatar rendering, selection callback, status dots                                                                          |
+| `apps/desktop/src/__tests__/SessionSidebar.test.tsx`  | Create | Test session grouping, click-to-switch, new-session button                                                                      |
 
 ---
 
 ## Task 1: Add `agentId` to Session type
 
 **Files:**
+
 - Modify: `apps/desktop/src/hooks/useSessions.ts:63-92`
 
 - [ ] **Step 1: Add `agentId` to `Session` interface**
@@ -98,6 +99,7 @@ git commit -m "feat: add agentId field to Session type for agent-grouped session
 ## Task 2: Create `useAgents` hook
 
 **Files:**
+
 - Create: `apps/desktop/src/hooks/useAgents.ts`
 
 - [ ] **Step 1: Write the hook**
@@ -160,6 +162,7 @@ git commit -m "feat: add useAgents hook to fetch AI agent list"
 ## Task 3: Create `AgentTopBar` component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/AgentTopBar.tsx`
 - Create: `apps/desktop/src/__tests__/AgentTopBar.test.tsx`
 
@@ -351,6 +354,7 @@ git commit -m "feat: add AgentTopBar component with avatar row and sidebar toggl
 ## Task 4: Create `SessionSidebar` component
 
 **Files:**
+
 - Create: `apps/desktop/src/components/chat/SessionSidebar.tsx`
 - Create: `apps/desktop/src/__tests__/SessionSidebar.test.tsx`
 
@@ -558,6 +562,7 @@ git commit -m "feat: add SessionSidebar component with agent-filtered session li
 ## Task 5: Extend `ChatContext` with agents and sidebar state
 
 **Files:**
+
 - Modify: `apps/desktop/src/contexts/ChatContext.tsx`
 
 - [ ] **Step 1: Add `agents` and `sidebarOpen` to the context value interface**
@@ -581,29 +586,31 @@ import type { AgentInfo } from '../hooks/useAgents.js';
 Inside `ChatProvider` function (after the `activeAgent` useState around line 143), add:
 
 ```typescript
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const [agents, setAgents] = useState<AgentInfo[]>([]);
+const [sidebarOpen, setSidebarOpen] = useState(false);
 ```
 
 Then add a `useEffect` to fetch agents on mount (after the sidebarOpen state):
 
 ```typescript
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await apiFetch('/api/employees', { headers: authHeaders() });
-        const data = await res.json();
-        if (!cancelled) {
-          const all = data.employees ?? [];
-          setAgents(all.filter((e: { kind: string }) => e.kind === 'ai'));
-        }
-      } catch {
-        if (!cancelled) setAgents([]);
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    try {
+      const res = await apiFetch('/api/employees', { headers: authHeaders() });
+      const data = await res.json();
+      if (!cancelled) {
+        const all = data.employees ?? [];
+        setAgents(all.filter((e: { kind: string }) => e.kind === 'ai'));
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    } catch {
+      if (!cancelled) setAgents([]);
+    }
+  })();
+  return () => {
+    cancelled = true;
+  };
+}, []);
 ```
 
 Ensure `apiFetch` and `authHeaders` are imported (check existing imports at top of file — they should already be there from the existing `handleSend` function).
@@ -613,15 +620,15 @@ Ensure `apiFetch` and `authHeaders` are imported (check existing imports at top 
 Find the `value` object (around line 589) and add `agents`, `sidebarOpen`, `setSidebarOpen`:
 
 ```typescript
-  const value: ChatContextValue = {
-    // ... existing fields ...
-    activeAgent,
-    setActiveAgent,
-    agents,
-    sidebarOpen,
-    setSidebarOpen,
-    // ... rest of existing fields ...
-  };
+const value: ChatContextValue = {
+  // ... existing fields ...
+  activeAgent,
+  setActiveAgent,
+  agents,
+  sidebarOpen,
+  setSidebarOpen,
+  // ... rest of existing fields ...
+};
 ```
 
 - [ ] **Step 4: Run typecheck**
@@ -641,6 +648,7 @@ git commit -m "feat: expose agents list and sidebar state via ChatContext"
 ## Task 6: Modify `ChatPanel` — remove history button and hardcoded agent dropdown
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/ChatPanel.tsx`
 
 - [ ] **Step 1: Remove the session history button block**
@@ -712,6 +720,7 @@ git commit -m "refactor: remove session history button and hardcoded agent dropd
 ## Task 7: Modify `ChatView` to embed `AgentTopBar` and `SessionSidebar`
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/ChatView.tsx`
 
 - [ ] **Step 1: Add imports at the top of ChatView.tsx**
@@ -867,6 +876,7 @@ git commit -m "feat: embed AgentTopBar and SessionSidebar into ChatView layout"
 ## Task 8: Wire up `App.tsx` to pass new props
 
 **Files:**
+
 - Modify: `apps/desktop/src/App.tsx`
 
 - [ ] **Step 1: Pull new values from `useChat()`**
@@ -874,15 +884,15 @@ git commit -m "feat: embed AgentTopBar and SessionSidebar into ChatView layout"
 Find where `useChat()` is destructured (around line 82). Add `agents`, `sidebarOpen`, `setSidebarOpen`:
 
 ```typescript
-  const {
-    // ... existing destructured values ...
-    activeAgent,
-    setActiveAgent,
-    agents,
-    sidebarOpen,
-    setSidebarOpen,
-    // ... rest ...
-  } = useChat();
+const {
+  // ... existing destructured values ...
+  activeAgent,
+  setActiveAgent,
+  agents,
+  sidebarOpen,
+  setSidebarOpen,
+  // ... rest ...
+} = useChat();
 ```
 
 - [ ] **Step 2: Pass props to ChatView**
@@ -1000,6 +1010,7 @@ git commit -m "feat: wire App.tsx to pass agents and sidebar props to ChatView"
 ## Task 9: Wire `setActiveAgent` to create sessions with `agentId`
 
 **Files:**
+
 - Modify: `apps/desktop/src/contexts/ChatContext.tsx`
 
 - [ ] **Step 1: Update `setActiveAgent` to set `agentId` on new sessions**
@@ -1009,36 +1020,31 @@ Currently `setActiveAgent` is a plain useState setter. We need to wrap it so tha
 In `ChatProvider`, after the `activeAgent` state, add a wrapped handler:
 
 ```typescript
-  const [activeAgent, setActiveAgentRaw] = useState('secretary');
+const [activeAgent, setActiveAgentRaw] = useState('secretary');
 
-  const setActiveAgent = useCallback((agentId: string) => {
-    setActiveAgentRaw(agentId);
-    // If there's an active session, update its agentId
-    setActiveSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSessionIdRef.current
-          ? { ...s, agentId: agentId }
-          : s,
-      ),
-    );
-  }, []);
+const setActiveAgent = useCallback((agentId: string) => {
+  setActiveAgentRaw(agentId);
+  // If there's an active session, update its agentId
+  setActiveSessions((prev) =>
+    prev.map((s) => (s.id === activeSessionIdRef.current ? { ...s, agentId: agentId } : s)),
+  );
+}, []);
 ```
 
 Note: `activeSessionIdRef` may not exist. Check how `activeSession` is tracked. If there's no ref, use the `activeSession` state directly:
 
 ```typescript
-  const setActiveAgent = useCallback((agentId: string) => {
+const setActiveAgent = useCallback(
+  (agentId: string) => {
     setActiveAgentRaw(agentId);
     // Update current active session's agentId so it appears in the sidebar
     if (activeSession) {
       // Find and update the session in the sessions array
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSession.id ? { ...s, agentId } : s,
-        ),
-      );
+      setSessions((prev) => prev.map((s) => (s.id === activeSession.id ? { ...s, agentId } : s)));
     }
-  }, [activeSession]);
+  },
+  [activeSession],
+);
 ```
 
 Check the existing variable names — the sessions state setter might be named differently (e.g., from `useSessions` hook). Adapt the code to use the actual setter available in scope.
@@ -1048,18 +1054,14 @@ Check the existing variable names — the sessions state setter might be named d
 Find the `handleCreateSession` function (around line 200+). When creating a new session, pass the current `activeAgent` as the `agentId`:
 
 ```typescript
-  const handleCreateSession = useCallback((): string => {
-    const id = createSession({
-      // ... existing options ...
-    });
-    // Stamp the session with the current agentId
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, agentId: activeAgent } : s,
-      ),
-    );
-    return id;
-  }, [createSession, activeAgent, setSessions]);
+const handleCreateSession = useCallback((): string => {
+  const id = createSession({
+    // ... existing options ...
+  });
+  // Stamp the session with the current agentId
+  setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, agentId: activeAgent } : s)));
+  return id;
+}, [createSession, activeAgent, setSessions]);
 ```
 
 Adapt variable names to match what's actually in scope from `useSessions`.
@@ -1086,6 +1088,7 @@ git commit -m "feat: stamp sessions with agentId when agent is selected or sessi
 ## Task 10: Final integration build and manual test
 
 **Files:**
+
 - None (verification only)
 
 - [ ] **Step 1: Run full typecheck**
@@ -1112,6 +1115,7 @@ Expected: Build succeeds
 
 Run: `cd apps/desktop && pnpm dev`
 Open browser to `http://localhost:5173`. Click the Secretary Orb to enter chat mode. Verify:
+
 1. Agent top bar appears at the top of the chat area with agent avatars
 2. Clicking an avatar switches the active agent
 3. The session sidebar toggle button shows/hides the left panel

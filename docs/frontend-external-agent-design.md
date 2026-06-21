@@ -1,6 +1,8 @@
-# Cabinet 前端外部 Agent 设计方案 v1.0
+# Cabinet 前端外部 Agent 设计方案 v1.0 (已实施)
 
-> 配套方案：[external-agent-integration-v3.md](external-agent-integration-v3.md)
+> **Status**: 本设计已基本实施。Employee 模型已扩展 `source` 字段，EmployeesPage 支持外部 Agent 列表和扫描，Workbench 页面取代了 Settings 中的 Agent 管理。参阅当前实现而非本文档作为参考。
+
+> 原始配套方案：[external-agent-integration-v3.md](external-agent-integration-v3.md)
 
 ---
 
@@ -88,6 +90,7 @@ interface EmployeeItem {
 ## 四，ChatPanel — @agent 切换
 
 已有 `@secretary` 下拉框。改动：
+
 1. 数据源从硬编码 → `/api/employees?kind=ai`
 2. 移除 meeting_chair
 3. 外部 Agent 标注协议类型 + 在线状态
@@ -99,9 +102,11 @@ interface EmployeeItem {
 ## 五，SettingsPage
 
 ### API Keys Tab
+
 去掉 tier 选择器。Provider + Key + Model 三字段。保留多 provider。
 
 ### External Agents Tab
+
 列出所有 `source: 'external_*'` 的 Employee。点击编辑弹出 ExternalAgentConfigForm。和 EmployeeEditModal 共用表单组件。
 
 ---
@@ -109,9 +114,11 @@ interface EmployeeItem {
 ## 六，FactoryPage — Agent 节点
 
 ### 回退
+
 从 `WorkflowNodeType` 移除多余的 `'agent'`。`node-types.ts` 移除对应映射。
 
 ### role 下拉扩展
+
 数据源从硬编码 → 所有 `kind: 'ai'` 的 Employee。外部 Agent 标注协议类型。节点视觉上显示 CLI/A2A 标签。
 
 ---
@@ -156,13 +163,13 @@ GET  /api/telemetry/trends   — 遥测趋势数据
 
 ## 十，实施顺序
 
-| # | 任务 | 依赖 |
-|:---|:---|:---|
-| 1 | Employee 模型 + API 扩展 | — |
-| 2 | EmployeesPage 集成 + 扫描 | 1 |
-| 3 | EmployeeEditModal External Tab + 表单组件 | 1 |
-| 4 | ChatPanel @agent 下拉扩展 | 1 |
-| 5 | SettingsPage API Keys + External Agents | 1, 3 |
-| 6 | FactoryPage role 扩展 + 回退 'agent' | 1 |
-| 7 | TelemetryWidget + ActivityFeedWidget | 后端 trends API |
-| 8 | 废弃清理 | 2, 7 |
+| #   | 任务                                      | 依赖            |
+| :-- | :---------------------------------------- | :-------------- |
+| 1   | Employee 模型 + API 扩展                  | —               |
+| 2   | EmployeesPage 集成 + 扫描                 | 1               |
+| 3   | EmployeeEditModal External Tab + 表单组件 | 1               |
+| 4   | ChatPanel @agent 下拉扩展                 | 1               |
+| 5   | SettingsPage API Keys + External Agents   | 1, 3            |
+| 6   | FactoryPage role 扩展 + 回退 'agent'      | 1               |
+| 7   | TelemetryWidget + ActivityFeedWidget      | 后端 trends API |
+| 8   | 废弃清理                                  | 2, 7            |

@@ -48,13 +48,13 @@
                                                                 (实验分支)
 ```
 
-| 子项 | 依赖第三阶段的产出 | 内部依赖 |
-|------|-------------------|---------|
-| **4.0** 数据基础设施 | MemoryFacade 统一接口就绪 | 无 |
-| **4.1** ContextMonitor 自适应阈值 | 4.0 完成 | 无 |
-| **4.3** ProcessIdentityScore | 4.0 完成 | 依赖 4.1 的数据管道 |
-| **4.2** Agent Blackboard | MemoryFacade 统一接口完成 | 无（可与 4.0 并行） |
-| **4.4** MCP 完整协议 | 无 | 无（可与 4.0 并行） |
+| 子项                              | 依赖第三阶段的产出        | 内部依赖            |
+| --------------------------------- | ------------------------- | ------------------- |
+| **4.0** 数据基础设施              | MemoryFacade 统一接口就绪 | 无                  |
+| **4.1** ContextMonitor 自适应阈值 | 4.0 完成                  | 无                  |
+| **4.3** ProcessIdentityScore      | 4.0 完成                  | 依赖 4.1 的数据管道 |
+| **4.2** Agent Blackboard          | MemoryFacade 统一接口完成 | 无（可与 4.0 并行） |
+| **4.4** MCP 完整协议              | 无                        | 无（可与 4.0 并行） |
 
 **推荐执行顺序**: 4.0 → 4.1 → 4.3 → 4.2 → 4.4（4.2/4.4 可与 4.0/4.1/4.3 并行）
 
@@ -75,6 +75,7 @@ success, error_type, started_at, ended_at
 ```
 
 **缺失的数据**:
+
 - 每一步使用了什么 tool（`tool_call` 事件序列）
 - 每一步结束时的 context utilization 和 zone
 - zone crossing 发生的具体 step 和方向
@@ -232,7 +233,9 @@ class SessionMetricsRepository {
   }
 
   /** 获取指定 session 的 tool 调用序列 */
-  getToolSequence(sessionId: string): { step: number; tool: string; args: string; success: boolean }[] {
+  getToolSequence(
+    sessionId: string,
+  ): { step: number; tool: string; args: string; success: boolean }[] {
     return this.db
       .prepare(
         `SELECT step_number, json_extract(payload, '$.tool_name') as tool,
@@ -240,7 +243,7 @@ class SessionMetricsRepository {
                 json_extract(payload, '$.success') as success
          FROM step_events
          WHERE session_id = ? AND event_type IN ('tool_call', 'tool_result')
-         ORDER BY step_number`
+         ORDER BY step_number`,
       )
       .all(sessionId) as any[];
   }
@@ -253,7 +256,7 @@ class SessionMetricsRepository {
                 json_extract(payload, '$.to') as to_zone, timestamp
          FROM step_events
          WHERE session_id = ? AND event_type = 'zone_crossing'
-         ORDER BY step_number`
+         ORDER BY step_number`,
       )
       .all(sessionId) as any[];
   }
@@ -266,7 +269,7 @@ class SessionMetricsRepository {
                 json_extract(payload, '$.zone') as zone
          FROM step_events
          WHERE session_id = ? AND event_type = 'zone_snapshot'
-         ORDER BY step_number`
+         ORDER BY step_number`,
       )
       .all(sessionId) as any[];
   }
@@ -275,24 +278,24 @@ class SessionMetricsRepository {
 
 ### 2.4 实施步骤
 
-| 步骤 | 任务 | 文件 | 工时 | 验收标准 |
-|------|------|------|------|---------|
-| 4.0.1 | 新建 `step_events` 表迁移脚本 | `packages/storage/src/migrations/00X_step_events.ts` | 3h | 迁移执行成功，表结构正确 |
-| 4.0.2 | 实现 `StepEventObserver` | `packages/agent/src/observers/step-event-observer.ts` | 6h | 单元测试覆盖 tool_call/zone_snapshot/zone_crossing 记录 |
-| 4.0.3 | 实现批量 flush 策略（避免每步写 DB） | `packages/agent/src/observers/step-event-observer.ts` | 3h | 1000 步 session 的 DB 写入次数 ≤ 100（10 条批量） |
-| 4.0.4 | 扩展 `SessionMetricsRepository` 查询 API | `packages/storage/src/repositories/session-metrics-repo.ts` | 6h | 通过 mock 数据验证 4 个新增查询返回正确聚合结果 |
-| 4.0.5 | 在 `ObserverPipeline` 中注册 `StepEventObserver`（默认关闭） | `packages/agent/src/agent-loop.ts` 或配置层 | 2h | 配置 `stepEvents: { enabled: true }` 时数据正确写入 |
-| 4.0.6 | 端到端测试：完整 session → step_events 数据验证 | `packages/agent/src/__tests__/step-event-observer.test.ts` | 6h | mock AgentLoop 执行后，step_events 表内容完整且正确 |
+| 步骤  | 任务                                                         | 文件                                                        | 工时 | 验收标准                                                |
+| ----- | ------------------------------------------------------------ | ----------------------------------------------------------- | ---- | ------------------------------------------------------- |
+| 4.0.1 | 新建 `step_events` 表迁移脚本                                | `packages/storage/src/migrations/00X_step_events.ts`        | 3h   | 迁移执行成功，表结构正确                                |
+| 4.0.2 | 实现 `StepEventObserver`                                     | `packages/agent/src/observers/step-event-observer.ts`       | 6h   | 单元测试覆盖 tool_call/zone_snapshot/zone_crossing 记录 |
+| 4.0.3 | 实现批量 flush 策略（避免每步写 DB）                         | `packages/agent/src/observers/step-event-observer.ts`       | 3h   | 1000 步 session 的 DB 写入次数 ≤ 100（10 条批量）       |
+| 4.0.4 | 扩展 `SessionMetricsRepository` 查询 API                     | `packages/storage/src/repositories/session-metrics-repo.ts` | 6h   | 通过 mock 数据验证 4 个新增查询返回正确聚合结果         |
+| 4.0.5 | 在 `ObserverPipeline` 中注册 `StepEventObserver`（默认关闭） | `packages/agent/src/agent-loop.ts` 或配置层                 | 2h   | 配置 `stepEvents: { enabled: true }` 时数据正确写入     |
+| 4.0.6 | 端到端测试：完整 session → step_events 数据验证              | `packages/agent/src/__tests__/step-event-observer.test.ts`  | 6h   | mock AgentLoop 执行后，step_events 表内容完整且正确     |
 
 **合计**: ~26 小时（~3.5 个工作日）
 
 ### 2.5 风险与回滚
 
-| 风险 | 缓解措施 |
-|------|---------|
-| step_events 表数据量过大 | 配置 `maxRetentionDays`（默认 90 天），`SessionMetricsRepository.pruneOlderThan` 扩展清理 step_events |
-| 写入性能影响 AgentLoop | 批量 flush（每 10 条或每 5 秒）；使用 WAL 模式；异步写入不阻塞 onStepEnd |
-| 与现有 session_metrics 数据不一致 | `StepEventObserver` 和 `ObservabilityCollector` 独立运行，不互相依赖 |
+| 风险                              | 缓解措施                                                                                              |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| step_events 表数据量过大          | 配置 `maxRetentionDays`（默认 90 天），`SessionMetricsRepository.pruneOlderThan` 扩展清理 step_events |
+| 写入性能影响 AgentLoop            | 批量 flush（每 10 条或每 5 秒）；使用 WAL 模式；异步写入不阻塞 onStepEnd                              |
+| 与现有 session_metrics 数据不一致 | `StepEventObserver` 和 `ObservabilityCollector` 独立运行，不互相依赖                                  |
 
 **回滚**: 从 `ObserverPipeline` 中移除 `StepEventObserver`，或设置 `stepEvents: { enabled: false }`。已写入的数据保留在表中，不影响系统运行。
 
@@ -309,6 +312,7 @@ smart: 0.4  (40%)  → warning: 0.6  (60%)  → critical: 0.8  (80%)  → dumb (
 ```
 
 **问题**:
+
 - 不同模型（Claude Sonnet vs GPT-4o-mini）在相同 utilization 下的实际表现差异巨大——小模型在 50% 就开始降质，大模型到 70% 仍稳定
 - 不同任务类型（代码生成 vs 简单问答）对 context 压力的耐受度不同
 - 阈值是"拍脑袋"定的，没有数据支撑
@@ -328,11 +332,11 @@ smart: 0.4  (40%)  → warning: 0.6  (60%)  → critical: 0.8  (80%)  → dumb (
 
 interface AdaptiveThresholdConfig {
   enabled: boolean;
-  explorationRate: number;       // 0.0–1.0, default 0.1
-  lookbackDays: number;          // default 14
-  minSamplesPerZone: number;     // default 20
+  explorationRate: number; // 0.0–1.0, default 0.1
+  lookbackDays: number; // default 14
+  minSamplesPerZone: number; // default 20
   hardLimits: {
-    smartZoneMin: number;        // default 0.3
+    smartZoneMin: number; // default 0.3
     criticalThresholdMax: number; // default 0.9
   };
 }
@@ -349,7 +353,11 @@ class AdaptiveContextMonitor extends ContextMonitor {
 
   /** 每 24h 或在 session 启动时重新计算阈值 */
   async recalibrate(model: string, role: string): Promise<ContextWindowConfig> {
-    const perf = this.metricsRepo.getZonePerformance({ model, role, timeWindowDays: this.adaptiveConfig.lookbackDays });
+    const perf = this.metricsRepo.getZonePerformance({
+      model,
+      role,
+      timeWindowDays: this.adaptiveConfig.lookbackDays,
+    });
 
     if (perf.length < this.adaptiveConfig.minSamplesPerZone * 4) {
       // 样本不足 — 回退到默认值
@@ -357,22 +365,31 @@ class AdaptiveContextMonitor extends ContextMonitor {
     }
 
     // 获取 utilization 分布与成功率
-    const distribution = this.metricsRepo.getPeakUtilizationDistribution(model, this.adaptiveConfig.lookbackDays);
+    const distribution = this.metricsRepo.getPeakUtilizationDistribution(
+      model,
+      this.adaptiveConfig.lookbackDays,
+    );
 
-    const smartWarningBoundary = this.findInflectionPoint(distribution, 0.30, 0.55);
-    const warningCriticalBoundary = this.findInflectionPoint(distribution, 0.55, 0.80);
+    const smartWarningBoundary = this.findInflectionPoint(distribution, 0.3, 0.55);
+    const warningCriticalBoundary = this.findInflectionPoint(distribution, 0.55, 0.8);
     const criticalDumbBoundary = this.findInflectionPoint(distribution, 0.75, 0.92);
 
     // 应用 hard limits
     return {
       maxTokens: MODEL_CONTEXT_SIZES[model] ?? DEFAULT_WINDOW_CONFIG.maxTokens,
-      smartZoneThreshold: Math.max(this.adaptiveConfig.hardLimits.smartZoneMin, smartWarningBoundary),
+      smartZoneThreshold: Math.max(
+        this.adaptiveConfig.hardLimits.smartZoneMin,
+        smartWarningBoundary,
+      ),
       warningThreshold: warningCriticalBoundary,
-      criticalThreshold: Math.min(this.adaptiveConfig.hardLimits.criticalThresholdMax, criticalDumbBoundary),
+      criticalThreshold: Math.min(
+        this.adaptiveConfig.hardLimits.criticalThresholdMax,
+        criticalDumbBoundary,
+      ),
     };
   }
 
-  /** 
+  /**
    * 在 distribution 中寻找 successRate 显著下降的 utilization 点。
    * 算法：计算相邻 bin 的 successRate 一阶差分，找到最大负差分点。
    * 若数据不足或无明显拐点，返回 range 中点作为保守估计。
@@ -423,18 +440,18 @@ class AdaptiveContextMonitor extends ContextMonitor {
 
 interface AdaptiveThresholdConfig {
   // 探索-利用平衡
-  explorationRate: number;  // 默认 0.1 — 10% 的 session 使用探索性阈值
+  explorationRate: number; // 默认 0.1 — 10% 的 session 使用探索性阈值
 
   // 滑动窗口
-  lookbackDays: number;     // 默认 14
+  lookbackDays: number; // 默认 14
   minSamplesPerZone: number; // 默认 20 — 低于此样本量回退到默认阈值
 
   // 质量指标权重（可调）
   weights: {
-    successRate: number;      // 默认 0.4
-    toolErrorRate: number;    // 默认 0.3（负向）
-    formatFailureRate: number;// 默认 0.2（负向）
-    stepEfficiency: number;   // 默认 0.1（目标步数/实际步数）
+    successRate: number; // 默认 0.4
+    toolErrorRate: number; // 默认 0.3（负向）
+    formatFailureRate: number; // 默认 0.2（负向）
+    stepEfficiency: number; // 默认 0.1（目标步数/实际步数）
   };
 }
 
@@ -444,7 +461,11 @@ class AdaptiveContextMonitor extends ContextMonitor {
 
   /** 每 24h 或在 session 启动时重新计算阈值 */
   async recalibrate(model: string, role: string): Promise<ContextWindowConfig> {
-    const perf = this.metricsRepo.getZonePerformance({ model, role, timeWindowDays: this.adaptiveConfig.lookbackDays });
+    const perf = this.metricsRepo.getZonePerformance({
+      model,
+      role,
+      timeWindowDays: this.adaptiveConfig.lookbackDays,
+    });
 
     if (perf.length < this.adaptiveConfig.minSamplesPerZone * 4) {
       // 样本不足 — 回退到默认值
@@ -453,11 +474,14 @@ class AdaptiveContextMonitor extends ContextMonitor {
 
     // 寻找最优分界点：使每个 zone 内的质量指标最大化
     // 简化为：找到 utilization 区间，使 successRate 下降最陡的点
-    const distribution = this.metricsRepo.getPeakUtilizationDistribution(model, this.adaptiveConfig.lookbackDays);
+    const distribution = this.metricsRepo.getPeakUtilizationDistribution(
+      model,
+      this.adaptiveConfig.lookbackDays,
+    );
 
     const smartWarningBoundary = this.findInflectionPoint(distribution, 0.35, 0.55);
     const warningCriticalBoundary = this.findInflectionPoint(distribution, 0.55, 0.75);
-    const criticalDumbBoundary = this.findInflectionPoint(distribution, 0.75, 0.90);
+    const criticalDumbBoundary = this.findInflectionPoint(distribution, 0.75, 0.9);
 
     return {
       maxTokens: MODEL_CONTEXT_SIZES[model] ?? DEFAULT_WINDOW_CONFIG.maxTokens,
@@ -501,7 +525,12 @@ export class ContextMonitorObserver implements AgentObserver {
 
   constructor(
     eventBus: EventBus,
-    config: { adaptive?: boolean; metricsRepo?: SessionMetricsRepository; model: string; role: string },
+    config: {
+      adaptive?: boolean;
+      metricsRepo?: SessionMetricsRepository;
+      model: string;
+      role: string;
+    },
   ) {
     if (config.adaptive && config.metricsRepo) {
       this.monitor = new AdaptiveContextMonitor(eventBus, config.metricsRepo, {}, config.model);
@@ -517,24 +546,24 @@ export class ContextMonitorObserver implements AgentObserver {
 
 ### 3.4 实施步骤
 
-| 步骤 | 任务 | 文件 | 工时 | 验收标准 |
-|------|------|------|------|---------|
-| 4.1.1 | 实现 `AdaptiveContextMonitor` 核心算法（含 `findInflectionPoint`） | `packages/agent/src/context-monitor-adaptive.ts` | 10h | 通过模拟数据测试：能识别已知的 inflection point；无明显拐点时回退到中点 |
-| 4.1.2 | 实现探索-利用调度器 | `packages/agent/src/context-monitor-adaptive.ts` | 4h | 10% 探索概率在 1000 次调用中均匀分布；hard limit 不被突破 |
-| 4.1.3 | 改造 `ContextMonitorObserver` 支持自适应模式 | `packages/agent/src/observers/context-monitor.ts` | 4h | 配置 `adaptive: false` 时行为与当前完全一致（向后兼容） |
-| 4.1.4 | 在 `agent-factory.ts` 中接入（默认关闭） | `apps/server/src/agent-factory.ts` | 2h | 通过配置项控制，不破坏现有 session 创建流程 |
-| 4.1.5 | 集成测试：端到端验证自适应阈值生效 | `packages/agent/src/__tests__/context-monitor-adaptive.test.ts` | 8h | mock metrics repo → 验证阈值随数据变化；探索-利用比例正确 |
+| 步骤  | 任务                                                               | 文件                                                            | 工时 | 验收标准                                                                |
+| ----- | ------------------------------------------------------------------ | --------------------------------------------------------------- | ---- | ----------------------------------------------------------------------- |
+| 4.1.1 | 实现 `AdaptiveContextMonitor` 核心算法（含 `findInflectionPoint`） | `packages/agent/src/context-monitor-adaptive.ts`                | 10h  | 通过模拟数据测试：能识别已知的 inflection point；无明显拐点时回退到中点 |
+| 4.1.2 | 实现探索-利用调度器                                                | `packages/agent/src/context-monitor-adaptive.ts`                | 4h   | 10% 探索概率在 1000 次调用中均匀分布；hard limit 不被突破               |
+| 4.1.3 | 改造 `ContextMonitorObserver` 支持自适应模式                       | `packages/agent/src/observers/context-monitor.ts`               | 4h   | 配置 `adaptive: false` 时行为与当前完全一致（向后兼容）                 |
+| 4.1.4 | 在 `agent-factory.ts` 中接入（默认关闭）                           | `apps/server/src/agent-factory.ts`                              | 2h   | 通过配置项控制，不破坏现有 session 创建流程                             |
+| 4.1.5 | 集成测试：端到端验证自适应阈值生效                                 | `packages/agent/src/__tests__/context-monitor-adaptive.test.ts` | 8h   | mock metrics repo → 验证阈值随数据变化；探索-利用比例正确               |
 
 **合计**: ~28 小时（~4 个工作日）
 
 ### 3.5 风险与回滚
 
-| 风险 | 缓解措施 |
-|------|---------|
-| 探索性阈值导致 session 质量下降 | 探索仅偏移 ±10%，且不会越过 hard limit（smart 最低 0.3，critical 最高 0.9） |
-| 样本不足导致阈值震荡 | `minSamplesPerZone` 门槛 + 滑动平均平滑（ema α=0.3） |
-| 计算 inflection point 的算法不稳定 | 保留默认阈值作为 fallback，算法异常时自动回退 |
-| 数据隐私（metrics 含项目信息） | metrics 中 `projectId` 已存在，不加新项目敏感字段 |
+| 风险                               | 缓解措施                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| 探索性阈值导致 session 质量下降    | 探索仅偏移 ±10%，且不会越过 hard limit（smart 最低 0.3，critical 最高 0.9） |
+| 样本不足导致阈值震荡               | `minSamplesPerZone` 门槛 + 滑动平均平滑（ema α=0.3）                        |
+| 计算 inflection point 的算法不稳定 | 保留默认阈值作为 fallback，算法异常时自动回退                               |
+| 数据隐私（metrics 含项目信息）     | metrics 中 `projectId` 已存在，不加新项目敏感字段                           |
 
 **回滚**: 将 `adaptive: false`（默认）即可立即恢复静态阈值，无需代码回滚。
 
@@ -568,8 +597,8 @@ interface PISFactor {
 }
 
 interface ProcessIdentityScore {
-  total: number;           // 加权总分
-  factors: PISFactor[];    // 各因子明细
+  total: number; // 加权总分
+  factors: PISFactor[]; // 各因子明细
   trend: 'improving' | 'stable' | 'drifting' | 'lost';
   recommendedAction: 'continue' | 'compact' | 'handoff' | 'abort';
 }
@@ -577,12 +606,12 @@ interface ProcessIdentityScore {
 
 #### 4.3.2 四大核心因子（含具体算法）
 
-| 因子 | 计算方式 | 权重 | 说明 |
-|------|---------|------|------|
-| **Intent Alignment** | 原始任务描述 vs 最近 3 步 tool_call 目标的语义相似度 | 0.35 | **Phase 1: keyword overlap（Jaccard）**；Phase 2: embedding cosine |
-| **Tool Coherence** | 工具调用序列的熵 — 频繁切换不相关工具 = 低分 | 0.25 | `1 - (uniqueToolsInWindow / totalCallsInWindow)`，窗口 = 最近 10 步 |
-| **Goal Progress** | 已完成子目标 / 总识别子目标 | 0.25 | 从 tool result 中检测 `milestone_complete` / `subtask_done` 标记 |
-| **Context Stability** | `1 - (zoneCrossingCount / max(stepCount, 1))` | 0.15 | 频繁在 zone 间震荡 = 低分 |
+| 因子                  | 计算方式                                             | 权重 | 说明                                                                |
+| --------------------- | ---------------------------------------------------- | ---- | ------------------------------------------------------------------- |
+| **Intent Alignment**  | 原始任务描述 vs 最近 3 步 tool_call 目标的语义相似度 | 0.35 | **Phase 1: keyword overlap（Jaccard）**；Phase 2: embedding cosine  |
+| **Tool Coherence**    | 工具调用序列的熵 — 频繁切换不相关工具 = 低分         | 0.25 | `1 - (uniqueToolsInWindow / totalCallsInWindow)`，窗口 = 最近 10 步 |
+| **Goal Progress**     | 已完成子目标 / 总识别子目标                          | 0.25 | 从 tool result 中检测 `milestone_complete` / `subtask_done` 标记    |
+| **Context Stability** | `1 - (zoneCrossingCount / max(stepCount, 1))`        | 0.15 | 频繁在 zone 间震荡 = 低分                                           |
 
 **具体算法**:
 
@@ -594,7 +623,9 @@ function calculateIntentAlignment(originalTask: string, recentToolCalls: ToolCal
   if (taskWords.length === 0) return 0.5;
 
   // 2. 提取最近 tool calls 的目标描述（从 tool_name + args 中拼接）
-  const toolWords = recentToolCalls.flatMap((tc) => extractKeywords(tc.name + ' ' + JSON.stringify(tc.args)));
+  const toolWords = recentToolCalls.flatMap((tc) =>
+    extractKeywords(tc.name + ' ' + JSON.stringify(tc.args)),
+  );
   if (toolWords.length === 0) return 0.5;
 
   // 3. Jaccard similarity
@@ -609,7 +640,20 @@ function calculateIntentAlignment(originalTask: string, recentToolCalls: ToolCal
 }
 
 function extractKeywords(text: string): string[] {
-  const stopwords = new Set(['the', 'a', 'an', 'to', 'of', 'in', 'and', 'for', 'is', 'it', 'this', 'that']);
+  const stopwords = new Set([
+    'the',
+    'a',
+    'an',
+    'to',
+    'of',
+    'in',
+    'and',
+    'for',
+    'is',
+    'it',
+    'this',
+    'that',
+  ]);
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
@@ -659,7 +703,9 @@ function calculateContextStability(ctx: AgentExecutionContext): number {
 }
 
 // ── Trend Classification ──
-function classifyTrend(pisHistory: { step: number; score: number }[]): ProcessIdentityScore['trend'] {
+function classifyTrend(
+  pisHistory: { step: number; score: number }[],
+): ProcessIdentityScore['trend'] {
   if (pisHistory.length < 4) return 'stable';
   const recent = pisHistory.slice(-4);
   const first = recent[0]!.score;
@@ -707,21 +753,24 @@ function calculatePIS(ctx: AgentExecutionContext, originalTask: string): Process
   };
 }
 
-function recommendAction(score: number, stepCount: number): ProcessIdentityScore['recommendedAction'] {
-  if (stepCount < 5) return 'continue';      // 样本不足
+function recommendAction(
+  score: number,
+  stepCount: number,
+): ProcessIdentityScore['recommendedAction'] {
+  if (stepCount < 5) return 'continue'; // 样本不足
   if (score > 0.7) return 'continue';
-  if (score > 0.5) return 'compact';         // context 压缩可能恢复 focus
-  if (score > 0.3) return 'handoff';         // 需要交接给新 agent
-  return 'abort';                            // 已严重漂移，建议终止
+  if (score > 0.5) return 'compact'; // context 压缩可能恢复 focus
+  if (score > 0.3) return 'handoff'; // 需要交接给新 agent
+  return 'abort'; // 已严重漂移，建议终止
 }
 ```
 
 #### 4.3.3 Intent Alignment 的两阶段路线
 
-| 阶段 | 实现 | 质量 | 成本 |
-|------|------|------|------|
-| **Phase 1**（4.3 完成时） | Keyword Jaccard + deviation penalty | 中等（能检测明显偏离） | 零 LLM 成本 |
-| **Phase 2**（EmbeddingService 建成后） | Embedding cosine similarity | 高（语义级匹配） | 每 evaluation 1 次 embedding 调用 |
+| 阶段                                   | 实现                                | 质量                   | 成本                              |
+| -------------------------------------- | ----------------------------------- | ---------------------- | --------------------------------- |
+| **Phase 1**（4.3 完成时）              | Keyword Jaccard + deviation penalty | 中等（能检测明显偏离） | 零 LLM 成本                       |
+| **Phase 2**（EmbeddingService 建成后） | Embedding cosine similarity         | 高（语义级匹配）       | 每 evaluation 1 次 embedding 调用 |
 
 > **决策**: 4.3 验收时仅以 Phase 1（keyword）为准。Phase 2 作为后续 enhancement，独立排期。
 
@@ -746,7 +795,10 @@ export class ProcessIdentityObserver implements AgentObserver {
   private originalTask: string;
   private pisHistory: { step: number; score: number }[] = [];
 
-  constructor(private readonly eventBus: EventBus, originalTask: string) {
+  constructor(
+    private readonly eventBus: EventBus,
+    originalTask: string,
+  ) {
     this.originalTask = originalTask;
   }
 
@@ -759,19 +811,28 @@ export class ProcessIdentityObserver implements AgentObserver {
     ctx.pisHistory = this.pisHistory;
 
     // 若推荐 handoff/abort，触发 event（仅在 intervene 模式下）
-    if ((pis.recommendedAction === 'handoff' || pis.recommendedAction === 'abort') &&
-        ctx.config?.pisMode === 'intervene') {
-      this.eventBus.publish({
-        messageId: `pis_alert_${ctx.sessionId}_${ctx.stepCount}`,
-        correlationId: ctx.sessionId,
-        causationId: null,
-        timestamp: new Date(),
-        messageType: MessageType.SystemNotification,
-        payload: {
-          type: 'process_identity_alert',
-          data: { sessionId: ctx.sessionId, score: pis.total, trend: pis.trend, action: pis.recommendedAction },
-        },
-      }).catch(() => {});
+    if (
+      (pis.recommendedAction === 'handoff' || pis.recommendedAction === 'abort') &&
+      ctx.config?.pisMode === 'intervene'
+    ) {
+      this.eventBus
+        .publish({
+          messageId: `pis_alert_${ctx.sessionId}_${ctx.stepCount}`,
+          correlationId: ctx.sessionId,
+          causationId: null,
+          timestamp: new Date(),
+          messageType: MessageType.SystemNotification,
+          payload: {
+            type: 'process_identity_alert',
+            data: {
+              sessionId: ctx.sessionId,
+              score: pis.total,
+              trend: pis.trend,
+              action: pis.recommendedAction,
+            },
+          },
+        })
+        .catch(() => {});
     }
 
     ctx.lastPIS = pis;
@@ -781,24 +842,24 @@ export class ProcessIdentityObserver implements AgentObserver {
 
 ### 4.4 实施步骤
 
-| 步骤 | 任务 | 文件 | 工时 | 验收标准 |
-|------|------|------|------|---------|
-| 4.3.1 | 定义 PIS 类型和核心计算函数（含 keyword Jaccard 算法） | `packages/agent/src/process-identity-score.ts` | 8h | 通过 10 组手工构造的 context 数据，评分符合直觉 |
-| 4.3.2 | 实现 Tool Coherence、Goal Progress、Context Stability | `packages/agent/src/process-identity-score.ts` | 6h | 工具熵计算正确；milestone 标记检测覆盖现有格式 |
-| 4.3.3 | 实现 Trend Classification 和 recommendAction | `packages/agent/src/process-identity-score.ts` | 4h | 趋势判断与手工标注一致率 ≥70% |
-| 4.3.4 | 实现 `ProcessIdentityObserver` | `packages/agent/src/observers/process-identity-observer.ts` | 4h | onStepEnd 不抛异常；event 正确发布 |
-| 4.3.5 | 在 `ObserverPipeline` 中注册（默认关闭，配置控制） | `packages/agent/src/agent-loop.ts` 或配置层 | 2h | 不启用时零开销 |
-| 4.3.6 | Dashboard 展示 PIS（可选，可延后） | `apps/server/src/routes/dashboard.ts` + frontend | 4h | dashboard summary 新增 "Process Health" 卡片 |
+| 步骤  | 任务                                                   | 文件                                                        | 工时 | 验收标准                                        |
+| ----- | ------------------------------------------------------ | ----------------------------------------------------------- | ---- | ----------------------------------------------- |
+| 4.3.1 | 定义 PIS 类型和核心计算函数（含 keyword Jaccard 算法） | `packages/agent/src/process-identity-score.ts`              | 8h   | 通过 10 组手工构造的 context 数据，评分符合直觉 |
+| 4.3.2 | 实现 Tool Coherence、Goal Progress、Context Stability  | `packages/agent/src/process-identity-score.ts`              | 6h   | 工具熵计算正确；milestone 标记检测覆盖现有格式  |
+| 4.3.3 | 实现 Trend Classification 和 recommendAction           | `packages/agent/src/process-identity-score.ts`              | 4h   | 趋势判断与手工标注一致率 ≥70%                   |
+| 4.3.4 | 实现 `ProcessIdentityObserver`                         | `packages/agent/src/observers/process-identity-observer.ts` | 4h   | onStepEnd 不抛异常；event 正确发布              |
+| 4.3.5 | 在 `ObserverPipeline` 中注册（默认关闭，配置控制）     | `packages/agent/src/agent-loop.ts` 或配置层                 | 2h   | 不启用时零开销                                  |
+| 4.3.6 | Dashboard 展示 PIS（可选，可延后）                     | `apps/server/src/routes/dashboard.ts` + frontend            | 4h   | dashboard summary 新增 "Process Health" 卡片    |
 
 **合计**: ~28 小时（~3.5 个工作日）
 
 ### 4.5 风险与回滚
 
-| 风险 | 缓解措施 |
-|------|---------|
-| PIS 算法不准确，产生大量误报 | 默认 `log_only` 模式运行 2 周，评估准确率后再切 `intervene` |
-| Intent Alignment keyword 方法质量不足 | Phase 1 已明确仅做中等质量检测；明显偏离场景（工具完全无关）可检测 |
-| 与 HandoffObserver 的决策冲突 | PIS `recommendedAction` 优先级低于 HandoffObserver；PIS 仅作辅助输入 |
+| 风险                                            | 缓解措施                                                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| PIS 算法不准确，产生大量误报                    | 默认 `log_only` 模式运行 2 周，评估准确率后再切 `intervene`                                       |
+| Intent Alignment keyword 方法质量不足           | Phase 1 已明确仅做中等质量检测；明显偏离场景（工具完全无关）可检测                                |
+| 与 HandoffObserver 的决策冲突                   | PIS `recommendedAction` 优先级低于 HandoffObserver；PIS 仅作辅助输入                              |
 | Goal Progress 的 milestone 标记依赖工具输出格式 | 支持多种标记格式（`milestone_complete`、`subtask_done`、`goal_achieved`）；无标记时 neutral (0.5) |
 
 **回滚**: 从 `ObserverPipeline` 中移除 `ProcessIdentityObserver`，或设置 `processIdentity: { enabled: false }`。
@@ -810,6 +871,7 @@ export class ProcessIdentityObserver implements AgentObserver {
 ### 5.1 现状与问题
 
 当前 Agent 间通信只有 **handoff 文档**一种模式：
+
 - Agent A 完成后生成结构化 handoff 文档 → 传递给 Agent B
 - 没有实时、双向、多对多的通信机制
 - 多个 agent 同时处理同一项目时，信息不同步
@@ -914,18 +976,18 @@ class BlackboardTopicRouter {
 interface BlackboardTopic<T> {
   name: string;
   mergeStrategy: 'append' | 'replace' | 'crdt';
-  schema: z.ZodSchema<T>;        // 运行时验证
-  ttlMs?: number;               // 可选过期
-  maxEntries?: number;          // 可选容量限制
+  schema: z.ZodSchema<T>; // 运行时验证
+  ttlMs?: number; // 可选过期
+  maxEntries?: number; // 可选容量限制
 }
 
 interface BlackboardEntry<T> {
-  id: string;                   // UUID
+  id: string; // UUID
   topic: string;
-  agentId: string;              // 写入者
+  agentId: string; // 写入者
   timestamp: Date;
   payload: T;
-  causationId: string | null;   // 因果链
+  causationId: string | null; // 因果链
 }
 
 class AgentBlackboard {
@@ -1000,6 +1062,7 @@ interface ContextSlot {
 ```
 
 **迁移策略**:
+
 1. Blackboard 引入 7 个内置 topic 对应现有 ContextSlot 字段：
    | ContextSlot 字段 | Blackboard Topic | Merge Strategy | 说明 |
    |------------------|------------------|----------------|------|
@@ -1024,7 +1087,7 @@ interface ContextSlot {
 function injectBlackboardSnapshot(
   blackboard: AgentBlackboard,
   systemPrompt: string,
-  budgetTokens: number,           // 默认 2000 tokens
+  budgetTokens: number, // 默认 2000 tokens
 ): string {
   const snapshot = blackboard.snapshot();
   const estimated = estimateTokens(snapshot);
@@ -1049,27 +1112,27 @@ function compressSnapshot(snapshot: string, budget: number): string {
 
 ### 5.4 实施步骤
 
-| 步骤 | 任务 | 文件 | 工时 | 验收标准 |
-|------|------|------|------|---------|
-| 5.4.1 | 定义 Blackboard 核心类型和接口 | `packages/types/src/blackboard.ts` | 4h | 通过类型编译，schema 验证可用 |
-| 5.4.2 | 实现 `BlackboardTopicRouter`（EventBus 适配层） | `packages/agent/src/blackboard-topic-router.ts` | 6h | 单元测试：topic A 的订阅者不收到 topic B 的消息 |
-| 5.4.3 | 实现 `AgentBlackboard` 类 | `packages/agent/src/blackboard.ts` | 10h | 单元测试覆盖 write/read/subscribe/snapshot；7 个内置 topic 注册正确 |
-| 5.4.4 | 实现 snapshot 压缩策略 | `packages/agent/src/blackboard-compress.ts` | 6h | 给定 5000 token snapshot + 2000 budget → 压缩后 ≤2000 tokens |
-| 5.4.5 | 将现有 ContextSlot 迁移到 Blackboard | `packages/secretary/src/session-manager.ts` | 6h | 所有现有 ContextSlot 操作通过 Blackboard 代理；行为不变 |
-| 5.4.6 | 在 AgentLoop 中注入 Blackboard snapshot | `packages/agent/src/agent-loop.ts` | 4h | ContextBuilder 阶段包含 [Shared Context] 节 |
-| 5.4.7 | 端到端测试：多 agent 读写同一 topic | `packages/agent/src/__tests__/blackboard.test.ts` | 6h | 两个 AgentLoop 实例通过 Blackboard 共享 discoveries |
+| 步骤  | 任务                                            | 文件                                              | 工时 | 验收标准                                                            |
+| ----- | ----------------------------------------------- | ------------------------------------------------- | ---- | ------------------------------------------------------------------- |
+| 5.4.1 | 定义 Blackboard 核心类型和接口                  | `packages/types/src/blackboard.ts`                | 4h   | 通过类型编译，schema 验证可用                                       |
+| 5.4.2 | 实现 `BlackboardTopicRouter`（EventBus 适配层） | `packages/agent/src/blackboard-topic-router.ts`   | 6h   | 单元测试：topic A 的订阅者不收到 topic B 的消息                     |
+| 5.4.3 | 实现 `AgentBlackboard` 类                       | `packages/agent/src/blackboard.ts`                | 10h  | 单元测试覆盖 write/read/subscribe/snapshot；7 个内置 topic 注册正确 |
+| 5.4.4 | 实现 snapshot 压缩策略                          | `packages/agent/src/blackboard-compress.ts`       | 6h   | 给定 5000 token snapshot + 2000 budget → 压缩后 ≤2000 tokens        |
+| 5.4.5 | 将现有 ContextSlot 迁移到 Blackboard            | `packages/secretary/src/session-manager.ts`       | 6h   | 所有现有 ContextSlot 操作通过 Blackboard 代理；行为不变             |
+| 5.4.6 | 在 AgentLoop 中注入 Blackboard snapshot         | `packages/agent/src/agent-loop.ts`                | 4h   | ContextBuilder 阶段包含 [Shared Context] 节                         |
+| 5.4.7 | 端到端测试：多 agent 读写同一 topic             | `packages/agent/src/__tests__/blackboard.test.ts` | 6h   | 两个 AgentLoop 实例通过 Blackboard 共享 discoveries                 |
 
 **合计**: ~42 小时（~5.5 个工作日）
 
 ### 5.5 风险与回滚
 
-| 风险 | 缓解措施 |
-|------|---------|
-| Snapshot 注入导致 system prompt 膨胀 | 强制 budget 控制；超出时拒绝写入新条目（backpressure） |
-| 多 agent 并发写入冲突 | `append` topic 天然无冲突；`replace` topic 使用 last-write-wins；未来可升级 CRDT |
-| Blackboard 内存无限增长 | 每个 topic 配置 `maxEntries` + `ttlMs`；自动清理 |
-| 与现有 handoff 机制冲突 | Blackboard 是 handoff 的**增强**而非替代；handoff 文档仍用于跨 session 持久化 |
-| TopicRouter 误将非 Blackboard 的 SystemNotification 路由到 topic handler | payload 中强制包含 `type: 'blackboard_update'` 过滤；非 Blackboard 事件被忽略 |
+| 风险                                                                     | 缓解措施                                                                         |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Snapshot 注入导致 system prompt 膨胀                                     | 强制 budget 控制；超出时拒绝写入新条目（backpressure）                           |
+| 多 agent 并发写入冲突                                                    | `append` topic 天然无冲突；`replace` topic 使用 last-write-wins；未来可升级 CRDT |
+| Blackboard 内存无限增长                                                  | 每个 topic 配置 `maxEntries` + `ttlMs`；自动清理                                 |
+| 与现有 handoff 机制冲突                                                  | Blackboard 是 handoff 的**增强**而非替代；handoff 文档仍用于跨 session 持久化    |
+| TopicRouter 误将非 Blackboard 的 SystemNotification 路由到 topic handler | payload 中强制包含 `type: 'blackboard_update'` 过滤；非 Blackboard 事件被忽略    |
 
 **回滚**: 在 `ContextBuilder` 中跳过 Blackboard snapshot 注入，恢复原有 ContextSlot 注入逻辑。
 
@@ -1080,10 +1143,12 @@ function compressSnapshot(snapshot: string, budget: number): string {
 ### 6.1 现状与问题
 
 当前 MCP Manager 仅支持：
+
 - `stdio` transport
 - `tools` 发现与调用
 
 缺失：
+
 - `resources`（文件内容、数据库查询结果等结构化数据）
 - `prompts`（预设对话模板）
 - `sse` / HTTP transport（无法连接远程 MCP 服务）
@@ -1207,9 +1272,12 @@ class MCPManager {
     // ... 现有代码 ...
 
     // 每 5 分钟重新发现 tools/resources/prompts
-    const timer = setInterval(async () => {
-      await this.rediscover(config.name);
-    }, 5 * 60 * 1000);
+    const timer = setInterval(
+      async () => {
+        await this.rediscover(config.name);
+      },
+      5 * 60 * 1000,
+    );
     this.discoveryTimers.set(config.name, timer);
   }
 
@@ -1232,7 +1300,12 @@ class MCPManager {
     for (const tool of tools) {
       const key = `mcp__${tool.name}`;
       if (!this.tools.has(key)) {
-        this.tools.set(key, { serverName, name: tool.name, description: tool.description ?? '', inputSchema: tool.inputSchema as Record<string, unknown> });
+        this.tools.set(key, {
+          serverName,
+          name: tool.name,
+          description: tool.description ?? '',
+          inputSchema: tool.inputSchema as Record<string, unknown>,
+        });
       }
     }
 
@@ -1260,25 +1333,25 @@ AgentLoop ContextBuilder:
 
 ### 6.4 实施步骤
 
-| 步骤 | 任务 | 文件 | 工时 | 验收标准 |
-|------|------|------|------|---------|
-| 4.4.1 | 抽象 Transport 层（stdio + sse） | `apps/server/src/mcp/mcp-transport.ts` | 4h | 两种 transport 可互换，connect/disconnect 正常 |
-| 4.4.2 | 扩展 MCPManager 支持 resources/prompts 发现 | `apps/server/src/mcp/mcp-manager.ts` | 6h | 连接支持 resources 的 MCP server（如 filesystem）后，listResources 返回非空 |
-| 4.4.3 | 实现动态重新发现 | `apps/server/src/mcp/mcp-manager.ts` | 4h | 模拟 MCP server 新增 tool，5 分钟内 Cabinet 感知并可用 |
-| 4.4.4 | 集成 resources/prompts 到 ContextBuilder | `packages/agent/src/context-builder.ts` 或 server 层 | 6h | AgentLoop system prompt 包含 [Available MCP Resources] 节 |
-| 4.4.5 | Dashboard 展示 MCP server 状态 | `apps/server/src/routes/dashboard.ts` | 4h | dashboard summary 显示已连接 MCP servers 数 + resources 数 |
-| 4.4.6 | 端到端测试（使用 mock MCP server） | `apps/server/src/mcp/__tests__/mcp-manager.test.ts` | 6h | mock server 提供 tools + resources + prompts，全部正确发现与调用 |
+| 步骤  | 任务                                        | 文件                                                 | 工时 | 验收标准                                                                    |
+| ----- | ------------------------------------------- | ---------------------------------------------------- | ---- | --------------------------------------------------------------------------- |
+| 4.4.1 | 抽象 Transport 层（stdio + sse）            | `apps/server/src/mcp/mcp-transport.ts`               | 4h   | 两种 transport 可互换，connect/disconnect 正常                              |
+| 4.4.2 | 扩展 MCPManager 支持 resources/prompts 发现 | `apps/server/src/mcp/mcp-manager.ts`                 | 6h   | 连接支持 resources 的 MCP server（如 filesystem）后，listResources 返回非空 |
+| 4.4.3 | 实现动态重新发现                            | `apps/server/src/mcp/mcp-manager.ts`                 | 4h   | 模拟 MCP server 新增 tool，5 分钟内 Cabinet 感知并可用                      |
+| 4.4.4 | 集成 resources/prompts 到 ContextBuilder    | `packages/agent/src/context-builder.ts` 或 server 层 | 6h   | AgentLoop system prompt 包含 [Available MCP Resources] 节                   |
+| 4.4.5 | Dashboard 展示 MCP server 状态              | `apps/server/src/routes/dashboard.ts`                | 4h   | dashboard summary 显示已连接 MCP servers 数 + resources 数                  |
+| 4.4.6 | 端到端测试（使用 mock MCP server）          | `apps/server/src/mcp/__tests__/mcp-manager.test.ts`  | 6h   | mock server 提供 tools + resources + prompts，全部正确发现与调用            |
 
 **合计**: ~30 小时（~4 个工作日）
 
 ### 6.5 风险与回滚
 
-| 风险 | 缓解措施 |
-|------|---------|
-| SSE transport 引入网络依赖（原来只有本地 stdio） | SSE transport 默认不启用；需要显式配置；增加 URL 白名单校验 |
-| resources 内容过大导致 context 膨胀 | resource 只注入 metadata（URI/description），不注入内容；内容按需读取 |
-| prompts 与现有 skill 系统冲突 | prompts 作为 skill 的补充而非替代；命名空间隔离 (`mcp_prompt__` vs `use_skill__`) |
-| `@modelcontextprotocol/sdk` 版本升级 breaking change | 锁定 SDK 版本；升级时集中测试 |
+| 风险                                                 | 缓解措施                                                                          |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- |
+| SSE transport 引入网络依赖（原来只有本地 stdio）     | SSE transport 默认不启用；需要显式配置；增加 URL 白名单校验                       |
+| resources 内容过大导致 context 膨胀                  | resource 只注入 metadata（URI/description），不注入内容；内容按需读取             |
+| prompts 与现有 skill 系统冲突                        | prompts 作为 skill 的补充而非替代；命名空间隔离 (`mcp_prompt__` vs `use_skill__`) |
+| `@modelcontextprotocol/sdk` 版本升级 breaking change | 锁定 SDK 版本；升级时集中测试                                                     |
 
 **回滚**: 从 `MCPServerConfig` 中移除 SSE 配置；在 `ContextBuilder` 中跳过 MCP resources/prompts 注入。
 
@@ -1303,33 +1376,33 @@ main (稳定)
 
 ### 6.2 测试要求
 
-| 层级 | 要求 |
-|------|------|
-| 单元测试 | 每个新增类/函数必须有 ≥80% 分支覆盖 |
-| 集成测试 | Observer 与 AgentLoop 的集成必须通过 |
+| 层级     | 要求                                                                             |
+| -------- | -------------------------------------------------------------------------------- |
+| 单元测试 | 每个新增类/函数必须有 ≥80% 分支覆盖                                              |
+| 集成测试 | Observer 与 AgentLoop 的集成必须通过                                             |
 | 表征测试 | 4.1 改造后，AgentLoop 的 `run()` 输出行为与改造前一致（使用 Phase 0 建立的基线） |
-| 性能测试 | 4.1 的 adaptive 阈值计算延迟 < 50ms（异步，不阻塞 session 启动） |
-| 数据测试 | 4.0 的 step_events 写入不使 AgentLoop 延迟增加 > 2% |
+| 性能测试 | 4.1 的 adaptive 阈值计算延迟 < 50ms（异步，不阻塞 session 启动）                 |
+| 数据测试 | 4.0 的 step_events 写入不使 AgentLoop 延迟增加 > 2%                              |
 
 ### 6.3 文档更新
 
-| 文档 | 更新内容 |
-|------|---------|
-| `CABINET.md` | 新增配置项说明（stepEvents, adaptive threshold, PIS, blackboard） |
-| `packages/agent/README.md` | ObserverPipeline 扩展说明（含 StepEventObserver） |
-| `docs/external-agent-api.md` | MCP 完整协议支持说明（如适用） |
+| 文档                         | 更新内容                                                          |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `CABINET.md`                 | 新增配置项说明（stepEvents, adaptive threshold, PIS, blackboard） |
+| `packages/agent/README.md`   | ObserverPipeline 扩展说明（含 StepEventObserver）                 |
+| `docs/external-agent-api.md` | MCP 完整协议支持说明（如适用）                                    |
 
 ### 6.4 数据基线（启动前必须测量）
 
 在启动阶段四之前，记录以下基线：
 
-| 指标 | 测量方法 | 目标 |
-|------|---------|------|
-| Session 平均步数 | `SessionMetricsRepository` 查询 | 不劣化（±5%） |
-| Context handoff 频率 | zoneCrossings 统计 | 不劣化 |
-| 平均 session 成本 | `totalCost` 聚合 | 不劣化 |
-| AgentLoop run() 延迟 | 端到端计时 | 增加 < 5%（因新增 observer） |
-| MCP tool 调用成功率 | `toolCalls.succeeded / total` | 不劣化 |
+| 指标                 | 测量方法                        | 目标                         |
+| -------------------- | ------------------------------- | ---------------------------- |
+| Session 平均步数     | `SessionMetricsRepository` 查询 | 不劣化（±5%）                |
+| Context handoff 频率 | zoneCrossings 统计              | 不劣化                       |
+| 平均 session 成本    | `totalCost` 聚合                | 不劣化                       |
+| AgentLoop run() 延迟 | 端到端计时                      | 增加 < 5%（因新增 observer） |
+| MCP tool 调用成功率  | `toolCalls.succeeded / total`   | 不劣化                       |
 
 ---
 
@@ -1337,15 +1410,15 @@ main (稳定)
 
 > **关键修正**: 原方案 ~134h 被评审指出存在乐观偏见。修订后上浮 ~38%，反映数据基础设施新建、TopicRouter 适配层、算法细化等实际工作量。
 
-| 子项 | 修订工时 | 原工时 | 日历天数 | 备注 |
-|------|---------|--------|---------|------|
-| **4.0** 数据基础设施 | ~26h | — | 3.5d | **新增阻塞性子项**；4.1/4.3 依赖 |
-| **4.1** ContextMonitor 自适应阈值 | ~28h | ~28h | 4d | 算法细化后工时持平 |
-| **4.3** ProcessIdentityScore | ~28h | ~26h | 3.5d | 算法细化 + 两阶段路线 |
-| **4.2** Agent Blackboard | ~42h | ~34h | 5.5d | +TopicRouter 适配层 + ContextSlot 实际字段映射 |
-| **4.4** MCP 完整协议 | ~30h | ~30h | 4d | 无变化 |
-| 代码审查 + 修复 + 合并 | ~20h | ~16h | 2.5d | 增加数据层审查 |
-| **总计** | **~174h** | **~134h** | **~23d (5.5–6 周)** | **并行后实际 5.5–6 周** |
+| 子项                              | 修订工时  | 原工时    | 日历天数            | 备注                                           |
+| --------------------------------- | --------- | --------- | ------------------- | ---------------------------------------------- |
+| **4.0** 数据基础设施              | ~26h      | —         | 3.5d                | **新增阻塞性子项**；4.1/4.3 依赖               |
+| **4.1** ContextMonitor 自适应阈值 | ~28h      | ~28h      | 4d                  | 算法细化后工时持平                             |
+| **4.3** ProcessIdentityScore      | ~28h      | ~26h      | 3.5d                | 算法细化 + 两阶段路线                          |
+| **4.2** Agent Blackboard          | ~42h      | ~34h      | 5.5d                | +TopicRouter 适配层 + ContextSlot 实际字段映射 |
+| **4.4** MCP 完整协议              | ~30h      | ~30h      | 4d                  | 无变化                                         |
+| 代码审查 + 修复 + 合并            | ~20h      | ~16h      | 2.5d                | 增加数据层审查                                 |
+| **总计**                          | **~174h** | **~134h** | **~23d (5.5–6 周)** | **并行后实际 5.5–6 周**                        |
 
 ### 建议排期（修订版）
 
@@ -1401,9 +1474,9 @@ Week 6    │ 缓冲周：审查、修复、文档、合并 4.1/4.3/4.2/4.4
 
 interface StepEventsConfig {
   enabled: boolean;
-  batchSize: number;            // default 10
-  flushIntervalMs: number;      // default 5000
-  maxRetentionDays: number;     // default 90
+  batchSize: number; // default 10
+  flushIntervalMs: number; // default 5000
+  maxRetentionDays: number; // default 90
 }
 ```
 
@@ -1414,11 +1487,11 @@ interface StepEventsConfig {
 
 interface AdaptiveMonitorConfig {
   enabled: boolean;
-  explorationRate: number;      // 0.0–1.0, default 0.1
-  lookbackDays: number;         // default 14
-  minSamplesPerZone: number;    // default 20
+  explorationRate: number; // 0.0–1.0, default 0.1
+  lookbackDays: number; // default 14
+  minSamplesPerZone: number; // default 20
   hardLimits: {
-    smartZoneMin: number;       // default 0.3
+    smartZoneMin: number; // default 0.3
     criticalThresholdMax: number; // default 0.9
   };
 }
@@ -1431,9 +1504,9 @@ interface AdaptiveMonitorConfig {
 
 interface BlackboardConfig {
   enabled: boolean;
-  snapshotBudgetTokens: number;  // default 2000
-  defaultMaxEntries: number;     // default 100
-  defaultTtlMs?: number;         // default undefined = 不自动过期
+  snapshotBudgetTokens: number; // default 2000
+  defaultMaxEntries: number; // default 100
+  defaultTtlMs?: number; // default undefined = 不自动过期
   topics: Array<{
     name: string;
     mergeStrategy: 'append' | 'replace' | 'crdt';
@@ -1450,8 +1523,8 @@ interface BlackboardConfig {
 
 interface PISConfig {
   enabled: boolean;
-  mode: 'log_only' | 'intervene';  // 初期建议 log_only
-  evaluationIntervalSteps: number;  // default 3（每 3 步计算一次）
+  mode: 'log_only' | 'intervene'; // 初期建议 log_only
+  evaluationIntervalSteps: number; // default 3（每 3 步计算一次）
   weights?: {
     intentAlignment: number;
     toolCoherence: number;
@@ -1460,4 +1533,7 @@ interface PISConfig {
   };
 }
 ```
+
+```
+
 ```

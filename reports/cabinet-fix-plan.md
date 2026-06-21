@@ -46,16 +46,17 @@ Phase 2 (架构重构)
 
 ### 2.1 P0-1: 硬编码 scrypt 盐值
 
-| 属性 | 内容 |
-|------|------|
-| **文件** | `apps/server/src/auth-utils.ts` |
-| **风险** | 所有部署实例共享同一盐值，彩虹表攻击可批量破解 PIN |
-| **工时** | 2h |
-| **破坏性变更** | ⚠️ 需要迁移现有 PIN hash（自动处理） |
+| 属性           | 内容                                               |
+| -------------- | -------------------------------------------------- |
+| **文件**       | `apps/server/src/auth-utils.ts`                    |
+| **风险**       | 所有部署实例共享同一盐值，彩虹表攻击可批量破解 PIN |
+| **工时**       | 2h                                                 |
+| **破坏性变更** | ⚠️ 需要迁移现有 PIN hash（自动处理）               |
 
 #### 修复步骤
 
 1. **修改哈希格式**: 从 `scrypt:<hash>` 改为 `scrypt:<salt>:<hash>`
+
    ```typescript
    // BEFORE
    const SALT = 'cabinet-salt';
@@ -72,8 +73,12 @@ Phase 2 (架构重构)
    ```
 
 2. **修改验证逻辑**: 从存储的 hash 中提取 salt 进行验证
+
    ```typescript
-   export function verifyPin(input: string, storedHash: string): { valid: boolean; needsRehash: boolean } {
+   export function verifyPin(
+     input: string,
+     storedHash: string,
+   ): { valid: boolean; needsRehash: boolean } {
      if (storedHash.startsWith('scrypt:')) {
        // New format: scrypt:<salt>:<hash>
        const parts = storedHash.slice(7).split(':');
@@ -111,12 +116,12 @@ Phase 2 (架构重构)
 
 ### 2.2 P0-2: 认证层完全缺失
 
-| 属性 | 内容 |
-|------|------|
-| **文件** | `apps/server/src/middleware/auth.ts`, `apps/server/src/routes/auth.ts`, `apps/server/src/ws/handler.ts` |
-| **风险** | 本地任何进程（浏览器插件、恶意脚本）可无限制访问全部 API 包括 execCommand |
-| **工时** | 4h |
-| **破坏性变更** | ⚠️ 启用后所有客户端需要发送 token；desktop 端需要同步更新 |
+| 属性           | 内容                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| **文件**       | `apps/server/src/middleware/auth.ts`, `apps/server/src/routes/auth.ts`, `apps/server/src/ws/handler.ts` |
+| **风险**       | 本地任何进程（浏览器插件、恶意脚本）可无限制访问全部 API 包括 execCommand                               |
+| **工时**       | 4h                                                                                                      |
+| **破坏性变更** | ⚠️ 启用后所有客户端需要发送 token；desktop 端需要同步更新                                               |
 
 #### 修复步骤
 
@@ -187,7 +192,8 @@ authRouter.post('/verify', async (c) => {
 
 ```typescript
 wss.on('connection', (ws, req) => {
-  const clientKey = (req.headers['x-forwarded-for'] as string) ?? req.socket.remoteAddress ?? '127.0.0.1';
+  const clientKey =
+    (req.headers['x-forwarded-for'] as string) ?? req.socket.remoteAddress ?? '127.0.0.1';
 
   // Localhost check 保留
   if (clientKey === '127.0.0.1' || clientKey === '::1' || clientKey === 'localhost') {
@@ -245,12 +251,12 @@ it('should accept request with valid PIN', async () => {
 
 ### 2.3 P0-3: execCommand 命令注入
 
-| 属性 | 内容 |
-|------|------|
-| **文件** | `apps/server/src/capabilities.ts:784-801` |
-| **风险** | 黑名单极易绕过；使用 `/bin/bash` 执行，等同于 root RCE |
-| **工时** | 4h |
-| **破坏性变更** | ⚠️ 部分现有 shell 脚本命令将失效（含管道/变量的命令） |
+| 属性           | 内容                                                   |
+| -------------- | ------------------------------------------------------ |
+| **文件**       | `apps/server/src/capabilities.ts:784-801`              |
+| **风险**       | 黑名单极易绕过；使用 `/bin/bash` 执行，等同于 root RCE |
+| **工时**       | 4h                                                     |
+| **破坏性变更** | ⚠️ 部分现有 shell 脚本命令将失效（含管道/变量的命令）  |
 
 #### 修复步骤
 
@@ -285,7 +291,7 @@ execCommand: async (command: string, cwd?: string, timeout?: number) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
       cwd: workDir,
-      shell: false,          // ← 关键：禁用 shell
+      shell: false, // ← 关键：禁用 shell
       env: buildSafeEnv(),
       timeout: timeout ?? 60000,
     });
@@ -293,8 +299,12 @@ execCommand: async (command: string, cwd?: string, timeout?: number) => {
     let stdout = '';
     let stderr = '';
 
-    child.stdout?.on('data', (data) => { stdout += data; });
-    child.stderr?.on('data', (data) => { stderr += data; });
+    child.stdout?.on('data', (data) => {
+      stdout += data;
+    });
+    child.stderr?.on('data', (data) => {
+      stderr += data;
+    });
 
     child.on('close', (code) => {
       resolve({ stdout, stderr, exitCode: code ?? 0 });
@@ -304,41 +314,41 @@ execCommand: async (command: string, cwd?: string, timeout?: number) => {
       reject(new Error(`Command failed: ${err.message}`));
     });
   });
-}
+};
 ```
 
 **Step 2 — 定义命令白名单**
 
 ```typescript
 const ALLOWED_COMMANDS = new Set([
-  'git',      // git clone, git log, git diff
-  'npm',      // npm install, npm list
-  'node',     // node script.js
-  'npx',      // npx package
-  'python3',  // python3 script.py
+  'git', // git clone, git log, git diff
+  'npm', // npm install, npm list
+  'node', // node script.js
+  'npx', // npx package
+  'python3', // python3 script.py
   'python',
   'rustc',
   'cargo',
   'go',
   'javac',
   'java',
-  'docker',   // docker ps, docker logs（需要进一步限制子命令）
-  'ls',       // ls -la
-  'cat',      // cat file.txt
-  'echo',     // echo hello
+  'docker', // docker ps, docker logs（需要进一步限制子命令）
+  'ls', // ls -la
+  'cat', // cat file.txt
+  'echo', // echo hello
   'mkdir',
   'touch',
   'cp',
   'mv',
-  'rm',       // rm file.txt（但禁止 rm -rf /）
+  'rm', // rm file.txt（但禁止 rm -rf /）
 ]);
 
 // 对危险命令的额外子命令限制
 const COMMAND_RESTRICTIONS: Record<string, string[]> = {
-  'git': ['clone', 'log', 'diff', 'status', 'branch', 'show', 'blame'],
-  'docker': ['ps', 'logs', 'images', 'info', 'version'],
-  'npm': ['install', 'list', 'outdated', 'run', 'test'],
-  'rm': [], // 只允许 rm <file>，禁止 -rf
+  git: ['clone', 'log', 'diff', 'status', 'branch', 'show', 'blame'],
+  docker: ['ps', 'logs', 'images', 'info', 'version'],
+  npm: ['install', 'list', 'outdated', 'run', 'test'],
+  rm: [], // 只允许 rm <file>，禁止 -rf
 };
 ```
 
@@ -393,11 +403,11 @@ it('should allow safe git commands', async () => {
 
 ### 3.1 P1-1: 统一 detectDangerousCommand 安全策略
 
-| 属性 | 内容 |
-|------|------|
+| 属性     | 内容                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------- |
 | **文件** | `apps/server/src/capabilities.ts:260-300`, `apps/server/src/routes/secretary.ts:311-322` |
-| **风险** | 两个版本规则不一致，通过 secretary 路由调用的 execCommand 防护更弱 |
-| **工时** | 2h |
+| **风险** | 两个版本规则不一致，通过 secretary 路由调用的 execCommand 防护更弱                       |
+| **工时** | 2h                                                                                       |
 
 #### 修复步骤
 
@@ -447,11 +457,11 @@ it('should detect all dangerous patterns', () => {
 
 ### 3.2 P1-2: FallbackChain 重试逻辑修复
 
-| 属性 | 内容 |
-|------|------|
-| **文件** | `packages/gateway/src/fallback.ts:35` |
+| 属性     | 内容                                                                     |
+| -------- | ------------------------------------------------------------------------ |
+| **文件** | `packages/gateway/src/fallback.ts:35`                                    |
 | **风险** | maxRetries=0 时只尝试第一个模型；maxRetries 限制的是模型索引而非重试次数 |
-| **工时** | 1h |
+| **工时** | 1h                                                                       |
 
 #### 修复步骤
 
@@ -513,7 +523,11 @@ it('should retry the same model before falling back', async () => {
     async generateText(): Promise<LLMResponse> {
       callCount++;
       if (callCount <= 2) throw new Error('Transient error');
-      return { content: 'ok', usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 }, model: 'model-a' };
+      return {
+        content: 'ok',
+        usage: { promptTokens: 1, completionTokens: 1, cachedPromptTokens: 0 },
+        model: 'model-a',
+      };
     },
     // ...
   };
@@ -534,11 +548,11 @@ it('should retry the same model before falling back', async () => {
 
 ### 3.3 P1-3: scryptSync 改为异步执行
 
-| 属性 | 内容 |
-|------|------|
-| **文件** | `apps/server/src/auth-utils.ts:10` |
+| 属性     | 内容                                               |
+| -------- | -------------------------------------------------- |
+| **文件** | `apps/server/src/auth-utils.ts:10`                 |
 | **风险** | 计算密集型同步操作阻塞事件循环，可被恶意利用为 DoS |
-| **工时** | 1h |
+| **工时** | 1h                                                 |
 
 #### 修复步骤
 
@@ -595,11 +609,11 @@ parentPort?.on('message', ({ pin, salt, keylen }) => {
 
 ### 3.4 P1-4: 速率限制器内存泄漏 + 工具超时清理
 
-| 属性 | 内容 |
-|------|------|
+| 属性     | 内容                                                                                 |
+| -------- | ------------------------------------------------------------------------------------ |
 | **文件** | `apps/server/src/middleware/rate-limit.ts`, `packages/gateway/src/fallback.ts:59-71` |
-| **风险** | Map 无限增长 → OOM；Promise.race 中 timer 可能泄露 |
-| **工时** | 2h |
+| **风险** | Map 无限增长 → OOM；Promise.race 中 timer 可能泄露                                   |
+| **工时** | 2h                                                                                   |
 
 #### 修复步骤
 
@@ -610,8 +624,8 @@ import { LRUCache } from 'lru-cache'; // npm install lru-cache
 
 export function rateLimiter(maxRequests: number, windowMs: number) {
   const store = new LRUCache<string, RateLimitEntry>({
-    max: 10000,          // 最多保留 10000 个 IP
-    ttl: windowMs * 2,   // 2 倍窗口期后淘汰
+    max: 10000, // 最多保留 10000 个 IP
+    ttl: windowMs * 2, // 2 倍窗口期后淘汰
     updateAgeOnGet: true,
   });
 
@@ -743,9 +757,9 @@ utils/
 import Database from 'better-sqlite3';
 
 interface ConnectionPool {
-  write: Database.Database;     // 单一写连接
+  write: Database.Database; // 单一写连接
   readers: Database.Database[]; // 只读连接池
-  currentReader: number;        // round-robin 索引
+  currentReader: number; // round-robin 索引
 }
 
 let pool: ConnectionPool | null = null;
@@ -791,7 +805,9 @@ import { canonicalize } from 'canonicalize'; // npm install canonicalize
 
 function hashArgs(args: unknown): string {
   const sorted = canonicalize(args);
-  return createHash('sha256').update(sorted ?? '').digest('hex');
+  return createHash('sha256')
+    .update(sorted ?? '')
+    .digest('hex');
 }
 
 // 替换 JSON.stringify 比较
@@ -822,7 +838,9 @@ setInterval(() => {
 ```typescript
 // BEFORE: 模块顶层 process.exit(1)
 const result = envSchema.safeParse(process.env);
-if (!result.success) { process.exit(1); }
+if (!result.success) {
+  process.exit(1);
+}
 
 // AFTER: 导出验证函数，由 main.ts 调用
 export function validateEnv(): { success: boolean; issues?: string[] } {
@@ -871,23 +889,23 @@ if (!envCheck.success) {
 
 **目标**: 核心包达到 60% 行覆盖率  
 **预计工时**: 约 16 小时（可持续进行）  
-**分支建议**: `test/coverage-improvement`  
+**分支建议**: `test/coverage-improvement`
 
 ---
 
 ### 6.1 新增测试文件清单
 
-| 包 | 待测模块 | 测试文件 | 优先级 |
-|----|---------|---------|--------|
-| `@cabinet/cli` | `src/index.ts` | `packages/cli/src/__tests__/cli.test.ts` | 中 |
-| `@cabinet/decision` | 状态机 | `packages/decision/src/__tests__/state-machine.test.ts` | 高 |
-| `@cabinet/workflow` | 引擎 | `packages/workflow/src/__tests__/engine.test.ts` | 高 |
-| `apps/server` | `auth-utils.ts` | `apps/server/src/__tests__/auth-utils.test.ts` | 高 |
-| `apps/server` | `middleware/auth.ts` | `apps/server/src/__tests__/auth-middleware.test.ts` | 高 |
-| `apps/server` | `capabilities.ts` | `apps/server/src/__tests__/capabilities-security.test.ts` | 高 |
-| `apps/server` | `rate-limit.ts` | `apps/server/src/__tests__/rate-limit.test.ts` | 中 |
-| `packages/gateway` | `fallback.ts` | 扩展 `router-fallback.test.ts` | 高 |
-| `packages/agent` | `agent-loop.ts` | 扩展 `agent-loop.test.ts` | 高 |
+| 包                  | 待测模块             | 测试文件                                                  | 优先级 |
+| ------------------- | -------------------- | --------------------------------------------------------- | ------ |
+| `@cabinet/cli`      | `src/index.ts`       | `packages/cli/src/__tests__/cli.test.ts`                  | 中     |
+| `@cabinet/decision` | 状态机               | `packages/decision/src/__tests__/state-machine.test.ts`   | 高     |
+| `@cabinet/workflow` | 引擎                 | `packages/workflow/src/__tests__/engine.test.ts`          | 高     |
+| `apps/server`       | `auth-utils.ts`      | `apps/server/src/__tests__/auth-utils.test.ts`            | 高     |
+| `apps/server`       | `middleware/auth.ts` | `apps/server/src/__tests__/auth-middleware.test.ts`       | 高     |
+| `apps/server`       | `capabilities.ts`    | `apps/server/src/__tests__/capabilities-security.test.ts` | 高     |
+| `apps/server`       | `rate-limit.ts`      | `apps/server/src/__tests__/rate-limit.test.ts`            | 中     |
+| `packages/gateway`  | `fallback.ts`        | 扩展 `router-fallback.test.ts`                            | 高     |
+| `packages/agent`    | `agent-loop.ts`      | 扩展 `agent-loop.test.ts`                                 | 高     |
 
 ### 6.2 测试工厂
 
@@ -922,33 +940,33 @@ export async function createTestContext() {
 
 ### 按优先级排序
 
-| 优先级 | 问题 | 阶段 | 文件 | 工时 | 测试 |
-|--------|------|------|------|------|------|
-| P0 | 硬编码 scrypt 盐值 | Phase 0 | `auth-utils.ts` | 2h | ✅ 新增 |
-| P0 | 认证层缺失 | Phase 0 | `middleware/auth.ts`, `routes/auth.ts` | 4h | ✅ 新增 |
-| P0 | execCommand 命令注入 | Phase 0 | `capabilities.ts` | 4h | ✅ 新增 |
-| P1 | detectDangerousCommand 分裂 | Phase 1 | `capabilities.ts`, `secretary.ts` | 2h | ✅ 新增 |
-| P1 | FallbackChain 逻辑错误 | Phase 1 | `fallback.ts` | 1h | ✅ 扩展 |
-| P1 | scryptSync 同步阻塞 | Phase 1 | `auth-utils.ts` | 1h | ✅ 扩展 |
-| P1 | 速率限制器内存泄漏 | Phase 1 | `rate-limit.ts` | 1h | ✅ 新增 |
-| P1 | 工具超时 timer 未清理 | Phase 1 | `fallback.ts` | 0.5h | ✅ 扩展 |
-| P2 | secretary.ts God File | Phase 2 | `secretary.ts` | 12h | ✅ 迁移 |
-| P2 | context.ts God File | Phase 2 | `context.ts` | 4h | ✅ 迁移 |
-| P2 | config.ts 顶层副作用 | Phase 3 | `config.ts` | 2h | ✅ 扩展 |
-| P2 | CORS 缺失 Authorization | Phase 3 | `index.ts` | 0.5h | ✅ 新增 |
-| P2 | 数据库单例无连接池 | Phase 3 | `connection.ts` | 4h | ✅ 新增 |
-| P3 | any/as 泛滥 | Phase 3-4 | 全项目 | 16h | — |
-| P3 | 测试覆盖率不足 | Phase 4 | 全项目 | 16h | ✅ 新增 |
+| 优先级 | 问题                        | 阶段      | 文件                                   | 工时 | 测试    |
+| ------ | --------------------------- | --------- | -------------------------------------- | ---- | ------- |
+| P0     | 硬编码 scrypt 盐值          | Phase 0   | `auth-utils.ts`                        | 2h   | ✅ 新增 |
+| P0     | 认证层缺失                  | Phase 0   | `middleware/auth.ts`, `routes/auth.ts` | 4h   | ✅ 新增 |
+| P0     | execCommand 命令注入        | Phase 0   | `capabilities.ts`                      | 4h   | ✅ 新增 |
+| P1     | detectDangerousCommand 分裂 | Phase 1   | `capabilities.ts`, `secretary.ts`      | 2h   | ✅ 新增 |
+| P1     | FallbackChain 逻辑错误      | Phase 1   | `fallback.ts`                          | 1h   | ✅ 扩展 |
+| P1     | scryptSync 同步阻塞         | Phase 1   | `auth-utils.ts`                        | 1h   | ✅ 扩展 |
+| P1     | 速率限制器内存泄漏          | Phase 1   | `rate-limit.ts`                        | 1h   | ✅ 新增 |
+| P1     | 工具超时 timer 未清理       | Phase 1   | `fallback.ts`                          | 0.5h | ✅ 扩展 |
+| P2     | secretary.ts God File       | Phase 2   | `secretary.ts`                         | 12h  | ✅ 迁移 |
+| P2     | context.ts God File         | Phase 2   | `context.ts`                           | 4h   | ✅ 迁移 |
+| P2     | config.ts 顶层副作用        | Phase 3   | `config.ts`                            | 2h   | ✅ 扩展 |
+| P2     | CORS 缺失 Authorization     | Phase 3   | `index.ts`                             | 0.5h | ✅ 新增 |
+| P2     | 数据库单例无连接池          | Phase 3   | `connection.ts`                        | 4h   | ✅ 新增 |
+| P3     | any/as 泛滥                 | Phase 3-4 | 全项目                                 | 16h  | —       |
+| P3     | 测试覆盖率不足              | Phase 4   | 全项目                                 | 16h  | ✅ 新增 |
 
 ### 工时估算汇总
 
-| 阶段 | 安全 | 功能 | 架构 | 测试 | 文档 | 合计 |
-|------|------|------|------|------|------|------|
-| Phase 0 | 10h | — | — | 4h | — | **14h** |
-| Phase 1 | 3h | 2h | — | 3h | — | **8h** |
-| Phase 2 | — | — | 12h | 4h | — | **16h** |
-| Phase 3 | — | 4h | — | 4h | 2h | **10h** |
-| Phase 4 | — | — | — | 16h | — | **16h** |
+| 阶段     | 安全    | 功能   | 架构    | 测试    | 文档   | 合计     |
+| -------- | ------- | ------ | ------- | ------- | ------ | -------- |
+| Phase 0  | 10h     | —      | —       | 4h      | —      | **14h**  |
+| Phase 1  | 3h      | 2h     | —       | 3h      | —      | **8h**   |
+| Phase 2  | —       | —      | 12h     | 4h      | —      | **16h**  |
+| Phase 3  | —       | 4h     | —       | 4h      | 2h     | **10h**  |
+| Phase 4  | —       | —      | —       | 16h     | —      | **16h**  |
 | **总计** | **13h** | **6h** | **12h** | **31h** | **2h** | **~64h** |
 
 ---
@@ -957,12 +975,12 @@ export async function createTestContext() {
 
 ### 8.1 回滚策略
 
-| 场景 | 回滚方案 |
-|------|---------|
-| 认证启用后 desktop 崩溃 | 紧急回滚 `authMiddleware`，保留 Origin 检查作为 fallback |
-| execCommand 白名单过严 | 快速添加命令到 `ALLOWED_COMMANDS`，无需代码回滚 |
-| God File 拆分引入 bug | 用 `git revert` 回滚拆分 PR，原 secretary.ts 保留在 Git 历史 |
-| 随机盐迁移失败 | 回滚 auth-utils.ts，恢复旧格式，手动修复数据库 |
+| 场景                    | 回滚方案                                                     |
+| ----------------------- | ------------------------------------------------------------ |
+| 认证启用后 desktop 崩溃 | 紧急回滚 `authMiddleware`，保留 Origin 检查作为 fallback     |
+| execCommand 白名单过严  | 快速添加命令到 `ALLOWED_COMMANDS`，无需代码回滚              |
+| God File 拆分引入 bug   | 用 `git revert` 回滚拆分 PR，原 secretary.ts 保留在 Git 历史 |
+| 随机盐迁移失败          | 回滚 auth-utils.ts，恢复旧格式，手动修复数据库               |
 
 ### 8.2 兼容性矩阵
 
@@ -1044,4 +1062,4 @@ describe('Security Hardening', () => {
 
 ---
 
-*计划结束。建议按 Phase 顺序执行，每个 Phase 完成后运行完整测试套件确认无 regress。*
+_计划结束。建议按 Phase 顺序执行，每个 Phase 完成后运行完整测试套件确认无 regress。_

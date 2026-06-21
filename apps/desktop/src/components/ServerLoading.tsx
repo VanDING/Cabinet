@@ -79,7 +79,9 @@ export function ServerLoading({ children }: { children: ReactNode }) {
       .then((fn) => {
         unlisten = fn;
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
 
     return () => {
       unlisten?.();
@@ -95,21 +97,21 @@ export function ServerLoading({ children }: { children: ReactNode }) {
     status === 'restarting';
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-surface-elevated">
-      <div className="flex flex-col items-center gap-4 text-content-tertiary">
+    <div className="bg-surface-elevated flex h-screen w-screen items-center justify-center">
+      <div className="text-content-tertiary flex flex-col items-center gap-4">
         {isSpinning ? (
-          <Loader2 className="h-10 w-10 animate-spin text-accent" />
+          <Loader2 className="text-accent h-10 w-10 animate-spin" />
         ) : (
-          <AlertTriangle className="h-10 w-10 text-intent-warning" />
+          <AlertTriangle className="text-intent-warning h-10 w-10" />
         )}
 
-        <span className="text-lg font-medium text-content-tertiary">Cabinet</span>
+        <span className="text-content-tertiary text-lg font-medium">Cabinet</span>
 
-        <span className="text-sm max-w-xs text-center">{message}</span>
+        <span className="max-w-xs text-center text-sm">{message}</span>
 
         {(status === 'timeout' || status === 'fatal') && (
           <button
-            className="mt-2 inline-flex items-center gap-2 rounded-sm bg-surface-primary px-4 py-2 text-sm text-content-tertiary hover:bg-surface-input"
+            className="bg-surface-primary text-content-tertiary hover:bg-surface-input mt-2 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm"
             onClick={() => {
               setStatus('starting');
               setMessage('Retrying...');

@@ -11,9 +11,12 @@ import type {
   LLMGateway,
   LLMResponse,
   LLMCallOptions,
+  LLMStreamOptions,
+  StreamChunk,
   EmbeddingOptions,
   EmbeddingResult,
 } from '@cabinet/gateway';
+import { streamFromGenerate } from './helpers/mock-gateway.js';
 
 function createTestDb(): Database.Database {
   const db = new Database(':memory:');
@@ -64,8 +67,8 @@ class MultiStepMockGateway implements LLMGateway {
     };
   }
 
-  async *streamText(): AsyncGenerator<never> {
-    yield { type: 'done' } as never;
+  async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+    yield* streamFromGenerate(this.generateText.bind(this), options);
   }
 
   async listModels(): Promise<string[]> {
@@ -91,25 +94,26 @@ describe('Blackboard Mid-Session Sync', () => {
 
     // Create AgentLoop B with a gateway that stays alive for 2+ steps
     let bCallCount = 0;
-    const gatewayB: LLMGateway = {
-      async generateText(): Promise<LLMResponse> {
-        bCallCount++;
-        if (bCallCount === 1) {
-          return {
-            content: 'Step 1: reading files.',
-            toolCalls: [{ id: 'tc1', name: 'read_file', arguments: { path: 'a.ts' } }],
-            usage: { promptTokens: 50, completionTokens: 20 },
-            model: 'test-model',
-          };
-        }
+    const gatewayBGenerate = async (): Promise<LLMResponse> => {
+      bCallCount++;
+      if (bCallCount === 1) {
         return {
-          content: 'Step 2: done.',
-          usage: { promptTokens: 30, completionTokens: 10 },
+          content: 'Step 1: reading files.',
+          toolCalls: [{ id: 'tc1', name: 'read_file', arguments: { path: 'a.ts' } }],
+          usage: { promptTokens: 50, completionTokens: 20 },
           model: 'test-model',
         };
-      },
-      async *streamText() {
-        yield { type: 'done' } as never;
+      }
+      return {
+        content: 'Step 2: done.',
+        usage: { promptTokens: 30, completionTokens: 10 },
+        model: 'test-model',
+      };
+    };
+    const gatewayB: LLMGateway = {
+      generateText: gatewayBGenerate,
+      async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+        yield* streamFromGenerate(gatewayBGenerate, options);
       },
       async listModels() {
         return ['test-model'];
@@ -189,8 +193,8 @@ describe('Blackboard Mid-Session Sync', () => {
         };
       }
 
-      async *streamText(): AsyncGenerator<never> {
-        yield { type: 'done' } as never;
+      async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+        yield* streamFromGenerate(this.generateText.bind(this), options);
       }
 
       async listModels(): Promise<string[]> {
@@ -263,8 +267,8 @@ describe('Blackboard Mid-Session Sync', () => {
         }
       }
 
-      async *streamText(): AsyncGenerator<never> {
-        yield { type: 'done' } as never;
+      async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+        yield* streamFromGenerate(this.generateText.bind(this), options);
       }
 
       async listModels(): Promise<string[]> {

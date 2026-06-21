@@ -121,21 +121,23 @@ export async function approvalCallbackWithRetry(
 
   // All retries exhausted — mark as stale
   if (eventBus) {
-    eventBus.publish({
-      messageId: `stale_decision_${payload.decision_id}`,
-      correlationId: payload.task_id,
-      causationId: null,
-      timestamp: new Date(),
-      messageType: MessageType.SystemNotification,
-      payload: {
-        type: 'decision_callback_stale',
-        decisionId: payload.decision_id,
-        taskId: payload.task_id,
-        callbackUrl,
-        attempts: maxRetries,
-        lastError,
-      } as any,
-    }).catch(() => {});
+    eventBus
+      .publish({
+        messageId: `stale_decision_${payload.decision_id}`,
+        correlationId: payload.task_id,
+        causationId: null,
+        timestamp: new Date(),
+        messageType: MessageType.SystemNotification,
+        payload: {
+          type: 'decision_callback_stale',
+          decisionId: payload.decision_id,
+          taskId: payload.task_id,
+          callbackUrl,
+          attempts: maxRetries,
+          lastError,
+        } as any,
+      })
+      .catch(() => {});
   }
 
   return { success: false, attempts: maxRetries, lastError };
@@ -168,19 +170,21 @@ export function transitionTask(
   record.status = newStatus;
 
   if (eventBus) {
-    eventBus.publish({
-      messageId: `task_status_${record.task_id}_${Date.now()}`,
-      correlationId: record.task_id,
-      causationId: null,
-      timestamp: new Date(),
-      messageType: MessageType.SystemNotification,
-      payload: {
-        type: 'task_updated',
-        taskId: record.task_id,
-        agentId: record.agent_id,
-        status: newStatus,
-      } as any,
-    }).catch(() => {});
+    eventBus
+      .publish({
+        messageId: `task_status_${record.task_id}_${Date.now()}`,
+        correlationId: record.task_id,
+        causationId: null,
+        timestamp: new Date(),
+        messageType: MessageType.SystemNotification,
+        payload: {
+          type: 'task_updated',
+          taskId: record.task_id,
+          agentId: record.agent_id,
+          status: newStatus,
+        } as any,
+      })
+      .catch(() => {});
   }
 
   return record;

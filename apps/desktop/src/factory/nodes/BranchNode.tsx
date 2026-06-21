@@ -7,31 +7,33 @@ export function BranchNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <div className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-warning">
+        <div className="bg-surface-overlay border-border text-intent-warning rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
           Branch
         </div>
       </NodeToolbar>
       <div
-        className={`rounded-lg border-2 px-3 py-2 min-w-[160px] max-w-[200px] rotate-[2deg]
-          bg-surface-primary shadow-xs
-          ${selected ? 'border-intent-warning shadow-md' : 'border-border'}`}
+        className={`bg-surface-primary max-w-[200px] min-w-[160px] rotate-[2deg] rounded-lg border-2 px-3 py-2 shadow-xs ${selected ? 'border-intent-warning shadow-md' : 'border-border'}`}
       >
         <Handle type="target" position={Position.Top} className="!bg-intent-warning" />
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-semibold text-intent-warning">◇</span>
-          <span className="text-xs font-medium text-content-primary">Branch</span>
+          <span className="text-intent-warning text-xs font-semibold">◇</span>
+          <span className="text-content-primary text-xs font-medium">Branch</span>
         </div>
-        <p className="mt-1 text-[11px] text-content-tertiary truncate max-w-[180px]">{expr}</p>
+        <p className="text-content-tertiary mt-1 max-w-[180px] truncate text-[11px]">{expr}</p>
         <div className="mt-1 flex gap-2 text-[10px]">
           <Handle
-            type="source" position={Position.Bottom} id="true"
-            className="!relative !left-auto !right-auto !top-auto !bottom-auto !scale-none !bg-intent-success"
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            className="!bg-intent-success !relative !top-auto !right-auto !bottom-auto !left-auto !scale-none"
             title="True"
           />
           <span className="text-intent-success">T</span>
           <Handle
-            type="source" position={Position.Bottom} id="false"
-            className="!relative !left-auto !right-auto !top-auto !bottom-auto !scale-none !bg-intent-danger"
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            className="!bg-intent-danger !relative !top-auto !right-auto !bottom-auto !left-auto !scale-none"
             title="False"
           />
           <span className="text-intent-danger">F</span>

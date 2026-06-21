@@ -7,7 +7,8 @@ import https from 'node:https';
 export const healthRouter = new Hono();
 
 // CPU sampling state for utilization calculation
-let prevCpuSnapshot: { idle: number; total: number; usage: number; timestamp: number } | null = null;
+let prevCpuSnapshot: { idle: number; total: number; usage: number; timestamp: number } | null =
+  null;
 
 function getCpuUsage(): number | null {
   const now = Date.now();
@@ -53,10 +54,11 @@ function getNetworkStatus(): 'connected' | 'disconnected' {
   return 'disconnected';
 }
 
-let cachedLlmStatus: { status: 'connected' | 'disconnected' | 'unconfigured'; checkedAt: number } = {
-  status: 'unconfigured',
-  checkedAt: 0,
-};
+let cachedLlmStatus: { status: 'connected' | 'disconnected' | 'unconfigured'; checkedAt: number } =
+  {
+    status: 'unconfigured',
+    checkedAt: 0,
+  };
 
 async function checkLlmConnectivity(
   hasKey: boolean,

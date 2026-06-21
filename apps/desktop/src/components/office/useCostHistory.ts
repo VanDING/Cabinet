@@ -29,11 +29,15 @@ export function useCostHistory() {
       .then((data) => {
         if (data.history) setHistory(data.history);
       })
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const costSubtotal = useMemo(() => {
     if (history.length === 0) return 0;

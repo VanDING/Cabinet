@@ -37,7 +37,7 @@ export function SystemHealth() {
 
   if (!health) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-xs text-xs text-content-tertiary">
+      <div className="border-border bg-surface-primary text-content-tertiary flex h-full items-center justify-center rounded-lg border p-4 text-xs shadow-xs">
         {loading ? 'Loading...' : 'No data'}
       </div>
     );
@@ -58,13 +58,12 @@ export function SystemHealth() {
   };
 
   const uptimeMin = Math.floor(s.uptime.process / 60);
-  const uptimeStr = uptimeMin < 60
-    ? `${uptimeMin}m`
-    : `${Math.floor(uptimeMin / 60)}h ${uptimeMin % 60}m`;
+  const uptimeStr =
+    uptimeMin < 60 ? `${uptimeMin}m` : `${Math.floor(uptimeMin / 60)}h ${uptimeMin % 60}m`;
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface-primary p-4 shadow-xs">
-      <div className="mb-3 text-sm font-medium text-content-secondary">System Health</div>
+    <div className="border-border bg-surface-primary flex h-full flex-col rounded-lg border p-4 shadow-xs">
+      <div className="text-content-secondary mb-3 text-sm font-medium">System Health</div>
       <div className="flex-1 space-y-2.5 text-xs">
         {/* CPU */}
         <div className="flex items-center justify-between">
@@ -72,13 +71,13 @@ export function SystemHealth() {
           <div className="flex items-center gap-2">
             {s.cpu.usage !== null && s.cpu.usage !== undefined ? (
               <>
-                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-muted">
+                <div className="bg-surface-muted h-1.5 w-20 overflow-hidden rounded-full">
                   <div
-                    className="h-full rounded-full bg-accent transition-all"
+                    className="bg-accent h-full rounded-full transition-all"
                     style={{ width: `${s.cpu.usage}%` }}
                   />
                 </div>
-                <span className="w-9 text-right tabular-nums text-content-secondary">
+                <span className="text-content-secondary w-9 text-right tabular-nums">
                   {s.cpu.usage}%
                 </span>
               </>
@@ -109,7 +108,7 @@ export function SystemHealth() {
         <div className="flex items-center justify-between">
           <span className="text-content-tertiary">Server</span>
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-intent-success" />
+            <span className="bg-intent-success h-1.5 w-1.5 rounded-full" />
             <span className="text-content-secondary">Connected</span>
           </div>
         </div>

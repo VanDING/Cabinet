@@ -1,14 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { LLMGateway } from '@cabinet/gateway';
-import {
-  parseJSONIntent,
-  parseRouteResult,
-} from '../intent-llm-router.js';
+import { parseJSONIntent, parseRouteResult } from '../intent-llm-router.js';
 import type { ParsedIntent } from '../intent-parser.js';
 
 describe('parseJSONIntent', () => {
   it('parses a valid decision_request JSON', () => {
-    const json = '{"kind": "decision_request", "topic": "投资决策", "context": "是否投资", "suggestedDimensions": ["成本", "风险"]}';
+    const json =
+      '{"kind": "decision_request", "topic": "投资决策", "context": "是否投资", "suggestedDimensions": ["成本", "风险"]}';
     const result = parseJSONIntent(json);
     expect(result.kind).toBe('decision_request');
     expect((result as any).topic).toBe('投资决策');
@@ -68,7 +66,12 @@ describe('parseJSONIntent', () => {
 describe('parseRouteResult', () => {
   const sampleIntent: ParsedIntent = { kind: 'unknown', raw: 'test' };
   const validAgents = new Set(['secretary', 'organize']);
-  const fallback = { targetAgent: 'secretary' as const, confidence: 0.5, reasoning: 'default', intent: sampleIntent };
+  const fallback = {
+    targetAgent: 'secretary' as const,
+    confidence: 0.5,
+    reasoning: 'default',
+    intent: sampleIntent,
+  };
 
   it('parses a valid routing JSON', () => {
     const json = '{"targetAgent": "secretary", "confidence": 0.9, "reasoning": "Best match"}';
@@ -97,7 +100,8 @@ describe('parseRouteResult', () => {
   });
 
   it('detects topicContinuity field', () => {
-    const json = '{"targetAgent": "organize", "confidence": 0.7, "reasoning": "x", "topicContinuity": true}';
+    const json =
+      '{"targetAgent": "organize", "confidence": 0.7, "reasoning": "x", "topicContinuity": true}';
     const result = parseRouteResult(json, sampleIntent, validAgents, () => fallback);
     expect(result.topicContinuity).toBe(true);
   });

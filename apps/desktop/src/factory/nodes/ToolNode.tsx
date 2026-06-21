@@ -6,13 +6,25 @@ export function ToolNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-content-secondary">Tool</span>
+        <span className="bg-surface-overlay border-border text-content-secondary rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          Tool
+        </span>
       </NodeToolbar>
-      <div className={`flex items-center gap-1.5 rounded-md border px-3 py-2 min-w-[120px] max-w-[180px] shadow-xs transition-shadow border-border wf-bg-surface-25 ${selected ? 'shadow-md ring-2 ring-border/40' : ''}`}>
-        <span className="text-sm text-content-secondary">{'*'}</span>
-        <span className="text-xs font-medium text-content-primary truncate font-mono">{name}</span>
-        <Handle type="target" position={Position.Top} className="!bg-content-secondary !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-content-secondary !border-2 !border-surface-primary !w-3 !h-3" />
+      <div
+        className={`border-border wf-bg-surface-25 flex max-w-[180px] min-w-[120px] items-center gap-1.5 rounded-md border px-3 py-2 shadow-xs transition-shadow ${selected ? 'ring-border/40 shadow-md ring-2' : ''}`}
+      >
+        <span className="text-content-secondary text-sm">{'*'}</span>
+        <span className="text-content-primary truncate font-mono text-xs font-medium">{name}</span>
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!bg-content-secondary !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-content-secondary !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

@@ -14,7 +14,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
 
-
 const h = { 'Content-Type': 'application/json' };
 
 describe('Performance Benchmarks', () => {

@@ -117,7 +117,7 @@ export interface SkillDefinition {
 // ── Workflow (Unified node types — engine = canvas) ──
 
 export type WorkflowNodeType =
-  // Flow control (7)
+  // Flow control (9)
   | 'start'
   | 'end'
   | 'ifElse'
@@ -125,6 +125,8 @@ export type WorkflowNodeType =
   | 'parallel'
   | 'merge'
   | 'pass'
+  | 'notification'
+  | 'wait'
   // Container (2)
   | 'agentGroup'
   | 'manager'

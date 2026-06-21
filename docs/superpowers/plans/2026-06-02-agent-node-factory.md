@@ -13,6 +13,7 @@
 ### Task 1: AgentHandoff type
 
 **Files:**
+
 - Create: `packages/agent/src/agent-handoff.ts`
 
 - [ ] **Step 1: Create agent-handoff.ts**
@@ -68,9 +69,12 @@ export function buildSimpleHandoff(from: string, task: string, rawOutput: string
     const match = rawOutput.match(/\{[\s\S]*\}/);
     if (match) {
       const parsed = JSON.parse(match[0]);
-      if (typeof parsed.confidence === 'number') confidence = Math.max(0, Math.min(1, parsed.confidence));
+      if (typeof parsed.confidence === 'number')
+        confidence = Math.max(0, Math.min(1, parsed.confidence));
     }
-  } catch { /* ignore parse errors */ }
+  } catch {
+    /* ignore parse errors */
+  }
 
   return {
     from,
@@ -97,6 +101,7 @@ git commit -m "feat(agent): add AgentHandoff type with build helpers"
 ### Task 2: createAgentNodeFactory
 
 **Files:**
+
 - Create: `packages/agent/src/agent-node.ts`
 - Create: `packages/agent/src/__tests__/agent-node.test.ts`
 
@@ -112,7 +117,13 @@ import { SafetyChecker } from '../safety.js';
 import { CheckpointManager } from '../checkpoint.js';
 import { SECRETARY_ROLE, REVIEWER_ROLE } from '../agent-roles.js';
 import type { MemoryProvider } from '../context-builder.js';
-import type { LLMGateway, LLMResponse, LLMCallOptions, EmbeddingOptions, EmbeddingResult } from '@cabinet/gateway';
+import type {
+  LLMGateway,
+  LLMResponse,
+  LLMCallOptions,
+  EmbeddingOptions,
+  EmbeddingResult,
+} from '@cabinet/gateway';
 
 function createDb(): Database.Database {
   const db = new Database(':memory:');
@@ -121,10 +132,18 @@ function createDb(): Database.Database {
 }
 
 class MockMemory implements MemoryProvider {
-  async getShortTerm() { return []; }
-  async getProjectContext() { return 'test'; }
-  async getEntityPreferences() { return {}; }
-  async searchLongTerm() { return []; }
+  async getShortTerm() {
+    return [];
+  }
+  async getProjectContext() {
+    return 'test';
+  }
+  async getEntityPreferences() {
+    return {};
+  }
+  async searchLongTerm() {
+    return [];
+  }
 }
 
 interface TestState {
@@ -153,8 +172,12 @@ describe('createAgentNodeFactory', () => {
           model: 'test-model',
         };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test-model']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test-model'];
+      },
       async generateEmbeddings(_opts: EmbeddingOptions): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test', usage: { tokens: 0 } };
       },
@@ -220,8 +243,12 @@ describe('createAgentNodeFactory', () => {
         capturedSystemPrompt = opts.systemPrompt ?? '';
         return { content: 'ok', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' };
       },
-      async *streamText() { yield { type: 'done' }; },
-      async listModels() { return ['test']; },
+      async *streamText() {
+        yield { type: 'done' };
+      },
+      async listModels() {
+        return ['test'];
+      },
       async generateEmbeddings(): Promise<EmbeddingResult> {
         return { embeddings: [], model: 'test', usage: { tokens: 0 } };
       },
@@ -399,6 +426,7 @@ git commit -m "feat(agent): add createAgentNodeFactory + createSelector"
 ### Task 3: createSelector with state reading
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-node.ts`
 - Modify: `packages/agent/src/__tests__/agent-node.test.ts`
 
@@ -409,50 +437,50 @@ git commit -m "feat(agent): add createAgentNodeFactory + createSelector"
 ```typescript
 // Append to existing agent-node.test.ts
 
-  it('selector routes based on decide function', async () => {
-    const selectorFn = createSelector<TestState>({
-      targets: ['chair', 'advisor'],
-      decide: (s) => {
-        if (!(s.agentHandoffs as any)['chair']) return 'chair';
-        return END;
-      },
-      maxRounds: 5,
-    });
-
-    // First call: no chair handoff → route to 'chair'
-    const state1: TestState = { topic: 'x', agentHandoffs: {}, agentId: '' };
-    const update1 = await selectorFn(state1);
-    expect((update1 as any).nextSpeaker).toBe('chair');
-
-    // Second call: chair handoff exists → route to END
-    const state2: TestState = {
-      topic: 'x',
-      agentHandoffs: { chair: { from: 'chair', confidence: 0.8 } },
-      agentId: '',
-    };
-    const update2 = await selectorFn(state2);
-    expect((update2 as any).nextSpeaker).toBe('__END__');
+it('selector routes based on decide function', async () => {
+  const selectorFn = createSelector<TestState>({
+    targets: ['chair', 'advisor'],
+    decide: (s) => {
+      if (!(s.agentHandoffs as any)['chair']) return 'chair';
+      return END;
+    },
+    maxRounds: 5,
   });
 
-  it('selector terminates after maxRounds', async () => {
-    const selectorFn = createSelector<TestState>({
-      targets: ['chair'],
-      decide: () => 'chair',
-      maxRounds: 2,
-    });
+  // First call: no chair handoff → route to 'chair'
+  const state1: TestState = { topic: 'x', agentHandoffs: {}, agentId: '' };
+  const update1 = await selectorFn(state1);
+  expect((update1 as any).nextSpeaker).toBe('chair');
 
-    // Round 1
-    const u1 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
-    expect((u1 as any).nextSpeaker).toBe('chair');
+  // Second call: chair handoff exists → route to END
+  const state2: TestState = {
+    topic: 'x',
+    agentHandoffs: { chair: { from: 'chair', confidence: 0.8 } },
+    agentId: '',
+  };
+  const update2 = await selectorFn(state2);
+  expect((update2 as any).nextSpeaker).toBe('__END__');
+});
 
-    // Round 2 (not exceeded yet — maxRounds = 2, so round 2 is still allowed)
-    const u2 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
-    expect((u2 as any).nextSpeaker).toBe('chair');
-
-    // Round 3 — exceeded
-    const u3 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
-    expect((u3 as any).nextSpeaker).toBe('__END__');
+it('selector terminates after maxRounds', async () => {
+  const selectorFn = createSelector<TestState>({
+    targets: ['chair'],
+    decide: () => 'chair',
+    maxRounds: 2,
   });
+
+  // Round 1
+  const u1 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+  expect((u1 as any).nextSpeaker).toBe('chair');
+
+  // Round 2 (not exceeded yet — maxRounds = 2, so round 2 is still allowed)
+  const u2 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+  expect((u2 as any).nextSpeaker).toBe('chair');
+
+  // Round 3 — exceeded
+  const u3 = await selectorFn({ topic: 'x', agentHandoffs: {}, agentId: '' });
+  expect((u3 as any).nextSpeaker).toBe('__END__');
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -504,6 +532,7 @@ git commit -m "fix(agent): createSelector accepts real state and tracks rounds"
 ### Task 4: Export from index + full verification
 
 **Files:**
+
 - Modify: `packages/agent/src/index.ts`
 
 - [ ] **Step 1: Add exports to index.ts**
@@ -557,6 +586,7 @@ git commit -m "chore(agent): export agent-node API from index"
 ## Self-Review
 
 **1. Spec coverage:**
+
 - AgentHandoff type + build helpers → Task 1 ✓
 - createAgentNodeFactory → Task 2 ✓
 - Default handoff output → Task 2 test "writes handoff by default" ✓
@@ -569,6 +599,7 @@ git commit -m "chore(agent): export agent-node API from index"
 **2. Placeholder scan:** No TBD/TODO. All code concrete.
 
 **3. Type consistency:**
+
 - `AgentHandoff` defined in Task 1, used as `AgentHandoff` in Task 2 — consistent
 - `AgentNodeDeps` defined in Task 2, imported in test — consistent
 - `createSelector` updated in Task 3 — accepts `(state: S)` not `{}` — consistent

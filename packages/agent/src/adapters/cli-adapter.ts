@@ -31,7 +31,10 @@ export class CliAdapter implements ExternalAgentAdapter {
     readonly agentId: string,
     private config: CliAgentConfig,
     private capabilities: AgentCapability[] = [],
-    private logger?: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void },
+    private logger?: {
+      info: (msg: string, ctx?: unknown) => void;
+      warn: (msg: string, ctx?: unknown) => void;
+    },
   ) {
     // Auto-detect harness from command name and create the appropriate runtime
     const harnessConfig: HarnessConfig = {

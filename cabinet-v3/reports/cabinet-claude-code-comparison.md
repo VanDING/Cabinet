@@ -318,7 +318,7 @@ Cabinet 工具系统:
 | **调度**       | CronCreateTool, CronDeleteTool, CronListTool, RemoteTriggerTool                                                             | ❌ 无内置调度工具（通过 Daemon/Autopilot 外部）                                                                                         |
 | **团队**       | TeamCreateTool, TeamDeleteTool                                                                                              | ❌ 无（通过 Squad 间接）                                                                                                                |
 | **Sandbox**    | EnterWorktreeTool, ExitWorktreeTool                                                                                         | ❌ 无 Sandbox                                                                                                                           |
-| **其他**       | LSPTool, ReviewArtifactTool, SnipTool, TerminalCaptureTool, SleepTool, MonitorTool, ConfigTool                              | decision*\*, project*_, employee\__, LSP tools, browser tools, email tools, archive tools                                               |
+| **其他**       | LSPTool, ReviewArtifactTool, SnipTool, TerminalCaptureTool, SleepTool, MonitorTool, ConfigTool                              | decision*\*, project*\_, employee\_\_, LSP tools, browser tools, email tools, archive tools                                             |
 
 ### 4.3 建议
 

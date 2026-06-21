@@ -74,7 +74,7 @@ describe('DecisionAnalysisService', () => {
       expect(call.messages[0].content).toContain('Test Decision');
       expect(call.messages[0].content).toContain('Should we do X?');
       expect(call.messages[0].content).toContain('- Yes: Do it');
-      expect(call.messages[0].content).toContain('- No: Don\'t');
+      expect(call.messages[0].content).toContain("- No: Don't");
       expect(call.messages[0].content).toContain('risks, trade-offs, recommendation rationale');
     });
   });

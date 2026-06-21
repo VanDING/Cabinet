@@ -20,11 +20,15 @@ export function useInsights() {
       .then((data) => {
         if (data.insights) setInsights(data.insights);
       })
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchInsights(); }, [fetchInsights]);
+  useEffect(() => {
+    fetchInsights();
+  }, [fetchInsights]);
 
   const latest = insights.slice(0, 3);
 

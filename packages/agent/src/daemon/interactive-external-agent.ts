@@ -54,7 +54,9 @@ export interface SquadRouterLike {
     taskDescription: string,
     loadMap: Map<string, number>,
   ): { targetAgentId: string; strategy: string } | null;
-  getSquadStatus?(squadId: string): { members: Array<{ agentId: string; active: boolean; load: number }> };
+  getSquadStatus?(squadId: string): {
+    members: Array<{ agentId: string; active: boolean; load: number }>;
+  };
 }
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -79,7 +81,10 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
   private status: 'running' | 'waiting_for_user' | 'completed' | 'error' = 'waiting_for_user';
   private turnCount = 0;
   private currentTargetAgentId: string; // may change if Squad reroutes
-  private logger: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void };
+  private logger: {
+    info: (msg: string, ctx?: unknown) => void;
+    warn: (msg: string, ctx?: unknown) => void;
+  };
 
   constructor(options: InteractiveExternalAgentOptions) {
     this.agentId = options.agentId;
@@ -155,9 +160,7 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
     this.emitStatus('completed');
 
     // Compile full conversation as deliverable
-    const transcript = this.chatHistory
-      .map((t) => `[${t.role}] ${t.content}`)
-      .join('\n\n');
+    const transcript = this.chatHistory.map((t) => `[${t.role}] ${t.content}`).join('\n\n');
 
     const deliverable: Deliverable = {
       type: 'external_agent_chat',
@@ -236,7 +239,9 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
     if (squadRoute && squadRoute.targetAgentId !== this.currentTargetAgentId) {
       this.currentTargetAgentId = squadRoute.targetAgentId;
       // Emit routing as a thinking event since AgentEvent has no 'routing' type
-      this.emitThinking(`Routed to ${squadRoute.targetAgentId} via Squad ${squadRoute.squadName} (${squadRoute.strategy})`);
+      this.emitThinking(
+        `Routed to ${squadRoute.targetAgentId} via Squad ${squadRoute.squadName} (${squadRoute.strategy})`,
+      );
     }
 
     // Step 2: Build the task for this turn
@@ -249,9 +254,8 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
 
     // Step 4: Process the result
     if (result.status === 'completed') {
-      const agentResponse = typeof result.output === 'string'
-        ? result.output
-        : JSON.stringify(result.output, null, 2);
+      const agentResponse =
+        typeof result.output === 'string' ? result.output : JSON.stringify(result.output, null, 2);
 
       this.chatHistory.push({
         role: 'agent',
@@ -278,12 +282,13 @@ export class InteractiveExternalAgent implements InteractiveSubAgent {
     const taskId = `ext_chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     // Build conversation context
-    const conversationContext = this.chatHistory.length > 0
-      ? `\n\n## Conversation History\n${this.chatHistory
-          .slice(-6) // Last 6 turns for context
-          .map((t) => `[${t.role}]: ${t.content.slice(0, 300)}`)
-          .join('\n')}`
-      : '';
+    const conversationContext =
+      this.chatHistory.length > 0
+        ? `\n\n## Conversation History\n${this.chatHistory
+            .slice(-6) // Last 6 turns for context
+            .map((t) => `[${t.role}]: ${t.content.slice(0, 300)}`)
+            .join('\n')}`
+        : '';
 
     const fullInput = `${userInput}${conversationContext}`;
 

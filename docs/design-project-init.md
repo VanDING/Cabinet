@@ -1,6 +1,7 @@
 # 项目导入与渐进初始化机制设计
 
 ## 目标
+
 解决"导入后 .cabinet/ 未创建、系统对项目一无所知"的问题，建立"显式导入 + 渐进初始化"的混合机制。
 
 ---
@@ -21,12 +22,15 @@
    - `.cabinet/sessions/`
    - 任意目录创建失败返回 `500`，并回滚已创建的数据库记录
 3. **生成 CABINET.md stub**
+
    ```markdown
    # CABINET.md
 
    This file provides guidance to Cabinet when working with code in this repository.
+
    <!-- Run /init to fill this file -->
    ```
+
    - 写入项目根目录（仅当不存在时）
 
 ---
@@ -110,6 +114,7 @@
    - 将生成的 summary、tech_stack、goals 写回 `project_context`
 
 ### 进度通知
+
 - 通过 WebSocket broadcast `project_init_progress` 事件
 - 前端显示进度条或日志
 
@@ -117,12 +122,12 @@
 
 ## 关键决策点（需确认）
 
-| # | 问题 | 选项 |
-|---|------|------|
-| 1 | **Skill 冲突策略** | A. 项目级完全覆盖全局同名 skill<br>B. 项目级优先，但合并 dependencies/tools |
-| 2 | **CABINET.md 注入位置** | A. System Prompt 末尾（影响最大）<br>B. User Context 开头（更像 Claude Code） |
-| 3 | **初始化触发方式** | A. 完全自动（首次对话自动启动 init agent）<br>B. 自动提议（secretary 提示"建议运行 /init"）<br>C. 纯手动（用户必须输入 /init） |
-| 4 | **项目级 skill 是否入库** | A. 仅文件系统，不入库（和 Claude Code 一致）<br>B. 同步写入 skillRepo（和现有全局 skill 统一） |
+| #   | 问题                      | 选项                                                                                                                           |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Skill 冲突策略**        | A. 项目级完全覆盖全局同名 skill<br>B. 项目级优先，但合并 dependencies/tools                                                    |
+| 2   | **CABINET.md 注入位置**   | A. System Prompt 末尾（影响最大）<br>B. User Context 开头（更像 Claude Code）                                                  |
+| 3   | **初始化触发方式**        | A. 完全自动（首次对话自动启动 init agent）<br>B. 自动提议（secretary 提示"建议运行 /init"）<br>C. 纯手动（用户必须输入 /init） |
+| 4   | **项目级 skill 是否入库** | A. 仅文件系统，不入库（和 Claude Code 一致）<br>B. 同步写入 skillRepo（和现有全局 skill 统一）                                 |
 
 ---
 

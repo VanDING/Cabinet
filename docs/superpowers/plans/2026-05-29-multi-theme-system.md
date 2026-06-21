@@ -13,6 +13,7 @@
 ### Task 1: Create theme TypeScript types
 
 **Files:**
+
 - Create: `apps/desktop/src/themes/types.ts`
 
 - [ ] **Step 1: Write the types file**
@@ -79,6 +80,7 @@ export interface Theme {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/themes/types.ts
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -93,6 +95,7 @@ git commit -m "feat(theme): add Theme, ThemeColors, ThemeStyle type definitions"
 ### Task 2: Create light-default theme
 
 **Files:**
+
 - Create: `apps/desktop/src/themes/light-default.ts`
 
 - [ ] **Step 1: Write the light-default theme**
@@ -129,16 +132,16 @@ export const lightDefault: Theme = {
       foreground: '#ffffff',
     },
     intent: {
-      success:  { color: '#16a34a', muted: 'rgba(22, 163, 74, 0.12)', foreground: '#ffffff' },
-      danger:   { color: '#dc2626', muted: 'rgba(220, 38, 38, 0.12)', foreground: '#ffffff' },
-      warning:  { color: '#d97706', muted: 'rgba(217, 119, 6, 0.12)', foreground: '#ffffff' },
-      info:     { color: '#2563eb', muted: 'rgba(37, 99, 235, 0.12)', foreground: '#ffffff' },
-      purple:   { color: '#9333ea', muted: 'rgba(147, 51, 234, 0.12)', foreground: '#ffffff' },
+      success: { color: '#16a34a', muted: 'rgba(22, 163, 74, 0.12)', foreground: '#ffffff' },
+      danger: { color: '#dc2626', muted: 'rgba(220, 38, 38, 0.12)', foreground: '#ffffff' },
+      warning: { color: '#d97706', muted: 'rgba(217, 119, 6, 0.12)', foreground: '#ffffff' },
+      info: { color: '#2563eb', muted: 'rgba(37, 99, 235, 0.12)', foreground: '#ffffff' },
+      purple: { color: '#9333ea', muted: 'rgba(147, 51, 234, 0.12)', foreground: '#ffffff' },
     },
   },
   style: {
-    radius:  { sm: '4px', md: '8px', lg: '12px', xl: '16px' },
-    shadow:  {
+    radius: { sm: '4px', md: '8px', lg: '12px', xl: '16px' },
+    shadow: {
       sm: '0 1px 3px rgba(0,0,0,0.06)',
       md: '0 4px 12px rgba(0,0,0,0.08)',
       lg: '0 16px 48px rgba(0,0,0,0.15)',
@@ -165,6 +168,7 @@ export const lightDefault: Theme = {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/themes/light-default.ts
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -179,6 +183,7 @@ git commit -m "feat(theme): add light-default theme definition"
 ### Task 3: Create dark-default theme
 
 **Files:**
+
 - Create: `apps/desktop/src/themes/dark-default.ts`
 
 - [ ] **Step 1: Write the dark-default theme**
@@ -215,16 +220,16 @@ export const darkDefault: Theme = {
       foreground: '#ffffff',
     },
     intent: {
-      success:  { color: '#22c55e', muted: 'rgba(34, 197, 94, 0.2)', foreground: '#ffffff' },
-      danger:   { color: '#ef4444', muted: 'rgba(239, 68, 68, 0.2)', foreground: '#ffffff' },
-      warning:  { color: '#f59e0b', muted: 'rgba(245, 158, 11, 0.2)', foreground: '#111827' },
-      info:     { color: '#3b82f6', muted: 'rgba(59, 130, 246, 0.25)', foreground: '#ffffff' },
-      purple:   { color: '#a855f7', muted: 'rgba(168, 85, 247, 0.25)', foreground: '#ffffff' },
+      success: { color: '#22c55e', muted: 'rgba(34, 197, 94, 0.2)', foreground: '#ffffff' },
+      danger: { color: '#ef4444', muted: 'rgba(239, 68, 68, 0.2)', foreground: '#ffffff' },
+      warning: { color: '#f59e0b', muted: 'rgba(245, 158, 11, 0.2)', foreground: '#111827' },
+      info: { color: '#3b82f6', muted: 'rgba(59, 130, 246, 0.25)', foreground: '#ffffff' },
+      purple: { color: '#a855f7', muted: 'rgba(168, 85, 247, 0.25)', foreground: '#ffffff' },
     },
   },
   style: {
-    radius:  { sm: '4px', md: '8px', lg: '12px', xl: '16px' },
-    shadow:  {
+    radius: { sm: '4px', md: '8px', lg: '12px', xl: '16px' },
+    shadow: {
       sm: '0 1px 3px rgba(0,0,0,0.2)',
       md: '0 4px 12px rgba(0,0,0,0.3)',
       lg: '0 16px 48px rgba(0,0,0,0.4)',
@@ -251,6 +256,7 @@ export const darkDefault: Theme = {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/themes/dark-default.ts
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -265,6 +271,7 @@ git commit -m "feat(theme): add dark-default theme definition"
 ### Task 4: Create theme registry
 
 **Files:**
+
 - Create: `apps/desktop/src/themes/registry.ts`
 
 - [ ] **Step 1: Write the registry**
@@ -289,6 +296,7 @@ export function getTheme(id: string): Theme | undefined {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/themes/registry.ts
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -303,6 +311,7 @@ git commit -m "feat(theme): add theme registry"
 ### Task 5: Create CSS generator
 
 **Files:**
+
 - Create: `apps/desktop/src/themes/generate-css.ts`
 
 - [ ] **Step 1: Write the generator**
@@ -425,6 +434,7 @@ console.log(`Generated ${outPath}`);
 ```bash
 cd apps/desktop && npx tsx src/themes/generate-css.ts
 ```
+
 Expected: `Generated .../apps/desktop/src/themes/generated.css`
 
 - [ ] **Step 3: Inspect generated output**
@@ -432,6 +442,7 @@ Expected: `Generated .../apps/desktop/src/themes/generated.css`
 ```bash
 head -20 apps/desktop/src/themes/generated.css
 ```
+
 Expected: `/* Auto-generated... */` followed by `[data-theme="light-default"] {` with CSS variables.
 
 - [ ] **Step 4: Commit**
@@ -446,6 +457,7 @@ git commit -m "feat(theme): add CSS generator and generated output"
 ### Task 6: Add CSS generation to package.json scripts
 
 **Files:**
+
 - Modify: `apps/desktop/package.json`
 
 - [ ] **Step 1: Read current scripts**
@@ -472,6 +484,7 @@ If the existing scripts use `&&` chains, adjust accordingly. The key is `gen:the
 ```bash
 cd apps/desktop && npm run gen:theme
 ```
+
 Expected: runs without error, outputs `Generated ...`
 
 - [ ] **Step 4: Commit**
@@ -486,6 +499,7 @@ git commit -m "build(theme): add gen:theme script, run before dev and build"
 ### Task 7: Rewrite index.css
 
 **Files:**
+
 - Modify: `apps/desktop/src/index.css`
 
 - [ ] **Step 1: Replace index.css**
@@ -559,8 +573,13 @@ body {
 
 /* Pulse animation for active session indicator */
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 .animate-pulse-dot {
   animation: pulse-dot 1.5s ease-in-out infinite;
@@ -568,8 +587,14 @@ body {
 
 /* Toast slide-in */
 @keyframes slide-in {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
@@ -583,128 +608,292 @@ body {
 }
 
 /* Markdown content */
-.markdown-body h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.5rem; }
-.markdown-body h2 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-body h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
-.markdown-body p { margin: 0.25rem 0; }
-.markdown-body ul, .markdown-body ol { padding-left: 1.25rem; margin: 0.25rem 0; }
-.markdown-body li { margin: 0.125rem 0; }
-.markdown-body a { color: var(--accent); text-decoration: underline; }
+.markdown-body h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+}
+.markdown-body h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.markdown-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.markdown-body p {
+  margin: 0.25rem 0;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.markdown-body li {
+  margin: 0.125rem 0;
+}
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
 .markdown-body blockquote {
   border-left: 3px solid var(--border-color);
-  padding-left: 0.75rem; margin: 0.25rem 0;
+  padding-left: 0.75rem;
+  margin: 0.25rem 0;
   color: var(--content-secondary);
 }
-.markdown-body table { border-collapse: collapse; width: 100%; margin: 0.25rem 0; }
-.markdown-body th, .markdown-body td {
-  border: 1px solid var(--border-color);
-  padding: 0.25rem 0.5rem; text-align: left; font-size: 0.75rem;
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.25rem 0;
 }
-.markdown-body th { background: var(--surface-muted); font-weight: 600; }
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--border-color);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+}
+.markdown-body th {
+  background: var(--surface-muted);
+  font-weight: 600;
+}
 .markdown-body .code-block {
-  margin: 0.5rem 0; padding: 0.75rem; border-radius: 0.375rem;
-  background: var(--surface-muted); border: 1px solid var(--border-color);
-  overflow-x: auto; font-size: 0.75rem; line-height: 1.5;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 .markdown-body .code-block code {
   font-family: 'Fira Code', 'Cascadia Code', monospace;
 }
 .markdown-body .code-block.bash {
-  background: #1a1a2e; color: #4ade80; border-color: #334155;
+  background: #1a1a2e;
+  color: #4ade80;
+  border-color: #334155;
 }
 .markdown-body .code-block.bash code::before {
-  content: '$ '; color: var(--content-secondary);
+  content: '$ ';
+  color: var(--content-secondary);
 }
 
 /* Syntax highlighting — keep light defaults, .dark prefixed rules are no-ops now */
-.hljs-keyword { color: #d73a49; font-weight: 600; }
-.hljs-string { color: #032f62; }
-.hljs-number { color: #005cc5; }
-.hljs-comment { color: #6a737d; font-style: italic; }
-.hljs-function { color: #6f42c1; }
-.hljs-class { color: #6f42c1; font-weight: 600; }
-.hljs-variable { color: #24292e; }
-.hljs-operator { color: #d73a49; }
-.hljs-punctuation { color: #24292e; }
-.hljs-property { color: #005cc5; }
-.hljs-tag { color: #22863a; }
-.hljs-attr { color: #6f42c1; }
-.hljs-built_in { color: #005cc5; }
-.hljs-literal { color: #005cc5; }
-.hljs-params { color: #24292e; }
+.hljs-keyword {
+  color: #d73a49;
+  font-weight: 600;
+}
+.hljs-string {
+  color: #032f62;
+}
+.hljs-number {
+  color: #005cc5;
+}
+.hljs-comment {
+  color: #6a737d;
+  font-style: italic;
+}
+.hljs-function {
+  color: #6f42c1;
+}
+.hljs-class {
+  color: #6f42c1;
+  font-weight: 600;
+}
+.hljs-variable {
+  color: #24292e;
+}
+.hljs-operator {
+  color: #d73a49;
+}
+.hljs-punctuation {
+  color: #24292e;
+}
+.hljs-property {
+  color: #005cc5;
+}
+.hljs-tag {
+  color: #22863a;
+}
+.hljs-attr {
+  color: #6f42c1;
+}
+.hljs-built_in {
+  color: #005cc5;
+}
+.hljs-literal {
+  color: #005cc5;
+}
+.hljs-params {
+  color: #24292e;
+}
 
 /* Skill tag */
 .skill-tag {
-  display: inline-block; padding: 0 4px; border-radius: 3px;
-  background: var(--accent-muted); color: var(--accent);
-  font-weight: 500; font-size: 0.75rem;
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 0.75rem;
 }
 
 /* Thinking block */
 .thinking-block {
-  margin-bottom: 0.5rem; border-left: 3px solid var(--accent);
-  padding-left: 0.75rem; color: var(--content-secondary); font-size: 0.8125rem;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  color: var(--content-secondary);
+  font-size: 0.8125rem;
 }
 .thinking-summary {
-  cursor: pointer; font-size: 0.6875rem; font-weight: 500;
-  text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--content-tertiary); margin-bottom: 0.25rem; user-select: none;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--content-tertiary);
+  margin-bottom: 0.25rem;
+  user-select: none;
 }
-.thinking-content { white-space: pre-wrap; line-height: 1.5; }
+.thinking-content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
 
 /* Tool call indicators */
-.tool-summary { margin-bottom: 0.5rem; font-size: 0.75rem; }
+.tool-summary {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+}
 .tool-summary.streaming {
-  padding: 4px 8px; border-radius: 6px;
-  background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 .tool-summary-indicator {
-  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-  color: var(--accent); font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-weight: 500;
 }
 .tool-summary-spinner {
-  display: inline-block; width: 12px; height: 12px;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
   border: 2px solid rgba(59, 130, 246, 0.3);
-  border-top-color: var(--accent); border-radius: 50%;
+  border-top-color: var(--accent);
+  border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.tool-summary.done { color: var(--content-secondary); }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.tool-summary.done {
+  color: var(--content-secondary);
+}
 .tool-summary-toggle {
-  cursor: pointer; font-size: 0.6875rem; font-weight: 500;
-  text-transform: uppercase; letter-spacing: 0.03em;
-  color: var(--content-tertiary); user-select: none;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--content-tertiary);
+  user-select: none;
 }
-.tool-summary-toggle:hover { color: var(--content-secondary); }
-.tool-summary-inline { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.tool-summary-toggle:hover {
+  color: var(--content-secondary);
+}
+.tool-summary-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
 .tool-chip {
-  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px;
-  border-radius: 10px; background: var(--surface-muted);
-  font-size: 0.6875rem; color: var(--content-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-size: 0.6875rem;
+  color: var(--content-secondary);
 }
-.tool-chip-icon { font-size: 0.625rem; }
-.tool-chip-name { font-weight: 500; }
-.tool-chip-count { color: var(--content-tertiary); }
-.tool-chip-more { font-size: 0.625rem; color: var(--content-tertiary); padding: 1px 4px; }
-.tool-summary-list { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+.tool-chip-icon {
+  font-size: 0.625rem;
+}
+.tool-chip-name {
+  font-weight: 500;
+}
+.tool-chip-count {
+  color: var(--content-tertiary);
+}
+.tool-chip-more {
+  font-size: 0.625rem;
+  color: var(--content-tertiary);
+  padding: 1px 4px;
+}
+.tool-summary-list {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .tool-summary-badge.chip {
-  display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
-  border-radius: 10px; background: var(--surface-muted); font-size: 0.6875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-size: 0.6875rem;
 }
 .tool-group-row {
-  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
-  border-radius: 10px; background: var(--surface-muted);
-  font-size: 0.6875rem; color: var(--content-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-size: 0.6875rem;
+  color: var(--content-secondary);
 }
-.tool-group-icon { font-size: 0.625rem; }
-.tool-group-name { font-weight: 500; }
-.tool-group-count { color: var(--content-tertiary); font-size: 0.625rem; }
-.tool-group-errors { color: var(--intent-danger); font-size: 0.625rem; }
+.tool-group-icon {
+  font-size: 0.625rem;
+}
+.tool-group-name {
+  font-weight: 500;
+}
+.tool-group-count {
+  color: var(--content-tertiary);
+  font-size: 0.625rem;
+}
+.tool-group-errors {
+  color: var(--intent-danger);
+  font-size: 0.625rem;
+}
 
 /* Responsive */
 @media (max-width: 768px) {
-  .page-container { padding: 0.75rem; }
-  .card-grid { grid-template-columns: repeat(1, 1fr); }
+  .page-container {
+    padding: 0.75rem;
+  }
+  .card-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 ```
 
@@ -713,6 +902,7 @@ body {
 ```bash
 cd apps/desktop && npx tailwindcss --input src/index.css --output /dev/null --dry-run 2>&1 || echo "Check output manually — Tailwind may not have --dry-run"
 ```
+
 Alternative: check that Vite dev server starts without CSS errors in a later task.
 
 - [ ] **Step 3: Commit**
@@ -727,6 +917,7 @@ git commit -m "refactor(theme): replace :root/.dark blocks with generated theme 
 ### Task 8: Update tailwind.config.js
 
 **Files:**
+
 - Modify: `apps/desktop/tailwind.config.js`
 
 - [ ] **Step 1: Apply changes**
@@ -825,6 +1016,7 @@ git commit -m "refactor(theme): remove darkMode class, map radius/transition to 
 ### Task 9: Rewrite useTheme hook
 
 **Files:**
+
 - Modify: `apps/desktop/src/hooks/useTheme.tsx`
 
 - [ ] **Step 1: Write the new hook**
@@ -884,6 +1076,7 @@ export function useTheme() {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/hooks/useTheme.tsx
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -898,6 +1091,7 @@ git commit -m "refactor(theme): rewrite useTheme from boolean toggle to theme ID
 ### Task 10: Update TitleBar with theme dropdown
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/TitleBar.tsx`
 
 - [ ] **Step 1: Replace the theme button**
@@ -907,12 +1101,14 @@ Change the props interface from `onToggleTheme` to `onSetTheme` + `themes` + `cu
 Apply this edit to `apps/desktop/src/components/TitleBar.tsx`:
 
 Change the import (line 2):
+
 ```typescript
 - import { Sun, Moon, Minus, Maximize2, RectangleHorizontal, X } from 'lucide-react';
 + import { Palette, Minus, Maximize2, RectangleHorizontal, X, ChevronDown } from 'lucide-react';
 ```
 
 Change the props (line 36):
+
 ```typescript
 - export function TitleBar({ onToggleTheme }: { onToggleTheme?: () => void }) {
 + interface ThemeInfo { id: string; name: string; }
@@ -928,12 +1124,14 @@ Change the props (line 36):
 ```
 
 Add dropdown state (after `const { available } = useTauriWindow();`):
+
 ```typescript
-  const [themeOpen, setThemeOpen] = useState(false);
-  const currentThemeName = themes.find((t) => t.id === currentTheme)?.name ?? 'Theme';
+const [themeOpen, setThemeOpen] = useState(false);
+const currentThemeName = themes.find((t) => t.id === currentTheme)?.name ?? 'Theme';
 ```
 
 Replace the theme button (lines 92-99):
+
 ```typescript
 -        <button
 -          onClick={onToggleTheme}
@@ -988,17 +1186,20 @@ git commit -m "feat(theme): replace Sun/Moon button with theme dropdown in Title
 ### Task 11: Update App.tsx to pass new theme props
 
 **Files:**
+
 - Modify: `apps/desktop/src/App.tsx`
 
 - [ ] **Step 1: Change App.tsx to use new useTheme API**
 
 Replace line 72:
+
 ```typescript
 - const { toggle } = useTheme();
 + const { theme, themes, setTheme } = useTheme();
 ```
 
 Replace line 680 (the TitleBar prop):
+
 ```typescript
 - <TitleBar onToggleTheme={toggle} />
 + <TitleBar themes={themes} currentTheme={theme} onSetTheme={setTheme} />
@@ -1009,6 +1210,7 @@ Replace line 680 (the TitleBar prop):
 ```bash
 cd apps/desktop && npx tsc --noEmit src/App.tsx
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -1023,6 +1225,7 @@ git commit -m "refactor(theme): update App to pass theme list instead of toggle"
 ### Task 12: Fix ThemeTab for new useTheme API
 
 **Files:**
+
 - Modify: `apps/desktop/src/pages/settings/ThemeTab.tsx`
 
 - [ ] **Step 1: Update to new API**
@@ -1073,6 +1276,7 @@ export function ThemeTab() {
 ```bash
 cd apps/desktop && npx tsc --noEmit src/pages/settings/ThemeTab.tsx
 ```
+
 Expected: no errors.
 
 - [ ] **Step 3: Commit**
@@ -1101,6 +1305,7 @@ Expected: no errors. The app should render with the light-default theme.
 - [ ] **Step 3: Test theme switching**
 
 Click the palette icon in the TitleBar. Select "暗色默认". Verify:
+
 - The UI switches to dark colors immediately
 - The `data-theme` attribute on `<html>` changes to `"dark-default"`
 - localStorage `cabinet-theme` is set to `"dark-default"`
@@ -1123,6 +1328,7 @@ If verification reveals issues, fix them and commit.
 ### Task 14 (Optional): Remove dark: classes from components
 
 **Files:**
+
 - Modify: `packages/ui/src/**/*.tsx` (11 files)
 - Modify: `apps/desktop/src/**/*.tsx` (56 files)
 
@@ -1131,6 +1337,7 @@ This is a non-blocking cleanup. `dark:` prefix classes are no-ops now that `dark
 - [ ] **Step 1: Remove `dark:` classes from packages/ui**
 
 For each file in packages/ui that uses `dark:`:
+
 - Remove the `dark:` variant from className strings
 - Example: `"text-gray-700 dark:text-gray-300"` → `"text-gray-700"`
 

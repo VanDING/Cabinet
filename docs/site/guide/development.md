@@ -50,11 +50,11 @@ Runs the React app in the browser. Native APIs (system dialog, auto-updater) are
 
 ## Testing Strategy
 
-| Level | Target | Tool | Location |
-| :---- | :----- | :--- | :------- |
-| **Unit** | Individual functions, pure logic | Vitest | `packages/*/src/__tests__/` |
-| **Integration** | Cross-package core flows | Vitest | `apps/server/src/__tests__/` |
-| **E2E** | Full user flows | Playwright | `tests/e2e/` |
+| Level           | Target                           | Tool       | Location                     |
+| :-------------- | :------------------------------- | :--------- | :--------------------------- |
+| **Unit**        | Individual functions, pure logic | Vitest     | `packages/*/src/__tests__/`  |
+| **Integration** | Cross-package core flows         | Vitest     | `apps/server/src/__tests__/` |
+| **E2E**         | Full user flows                  | Playwright | `tests/e2e/`                 |
 
 ### Running Specific Test Suites
 
@@ -151,6 +151,7 @@ console.log(snapshot.zone); // 'smart' | 'warning' | 'critical' | 'dumb'
 ### Budget Alerts
 
 During development, budget limits are checked per-call. If you hit a limit, either:
+
 - Adjust the cap in `Settings > Budget`
 - Temporarily switch to `T3 FullAutonomy` delegation tier
 
@@ -171,10 +172,10 @@ Migrations live in `packages/storage/src/migrations/`. They use better-sqlite3 a
 
 ## Common Pitfalls
 
-| Pitfall | Prevention |
-| :------ | :--------- |
-| Bypassing `LLMGateway` | Always route LLM calls through the gateway; never import Anthropic/OpenAI SDKs in business code |
-| Scattered type definitions | If two packages need the same type, it belongs in `@cabinet/types` |
-| Missing error context | Every `catch` block must log the operation name, input summary, and error message |
-| Implicit cross-module coupling | Use the EventBus or explicit interfaces; no global variables |
-| Skipping safety checks | The `SafetyChecker` runs automatically inside `AgentLoop`; do not short-circuit it |
+| Pitfall                        | Prevention                                                                                      |
+| :----------------------------- | :---------------------------------------------------------------------------------------------- |
+| Bypassing `LLMGateway`         | Always route LLM calls through the gateway; never import Anthropic/OpenAI SDKs in business code |
+| Scattered type definitions     | If two packages need the same type, it belongs in `@cabinet/types`                              |
+| Missing error context          | Every `catch` block must log the operation name, input summary, and error message               |
+| Implicit cross-module coupling | Use the EventBus or explicit interfaces; no global variables                                    |
+| Skipping safety checks         | The `SafetyChecker` runs automatically inside `AgentLoop`; do not short-circuit it              |

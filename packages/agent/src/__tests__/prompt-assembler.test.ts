@@ -57,9 +57,7 @@ describe('assemblePrompt', () => {
         identity: 'IDENTITY_MARKER',
         workflow: 'WORKFLOW_MARKER',
       },
-      toolExecutor: makeExecutor([
-        { name: 'test', description: 'Test tool' },
-      ]),
+      toolExecutor: makeExecutor([{ name: 'test', description: 'Test tool' }]),
       dynamicContext: 'CONTEXT_MARKER',
     });
 

@@ -8,7 +8,10 @@ export const DANGEROUS_PATTERNS = [
   { pattern: /~\/\.ssh|\/root\/\.ssh/, name: 'SSH key access' },
   { pattern: /(curl|wget|fetch).*\|.*(sh|bash|zsh|fish)/, name: 'pipe to shell' },
   { pattern: /\bpowershell\b.*-encodedcommand/, name: 'encoded powershell' },
-  { pattern: />>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/, name: 'shell persistence' },
+  {
+    pattern: />>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile|~\/\.bash_profile)/,
+    name: 'shell persistence',
+  },
   { pattern: /\becho\b.*>>?\s*(~\/\.bashrc|~\/\.zshrc|~\/\.profile)/, name: 'shell persistence' },
   { pattern: /\bcat\b.*(id_rsa|id_ed25519|id_ecdsa)/, name: 'SSH key exfil' },
   { pattern: /\bfind\b.*-name\s*id_rsa/, name: 'SSH key search' },

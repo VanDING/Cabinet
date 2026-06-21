@@ -19,23 +19,20 @@ function ThemePreviewCard({
     <button
       onClick={onSelect}
       className={`group relative w-full rounded-xl border-2 p-2.5 text-left transition-all ${
-        isActive ? 'border-accent shadow-md' : 'border-transparent hover:border-border'
+        isActive ? 'border-accent shadow-md' : 'hover:border-border border-transparent'
       }`}
       style={{ background: c.surface.elevated }}
     >
       {/* Active indicator */}
       {isActive && (
         <div
-          className="absolute right-2 top-2 h-2 w-2 rounded-full"
+          className="absolute top-2 right-2 h-2 w-2 rounded-full"
           style={{ background: c.accent.base }}
         />
       )}
 
       {/* Theme name */}
-      <div
-        className="mb-1.5 text-xs font-semibold"
-        style={{ color: c.content.primary }}
-      >
+      <div className="mb-1.5 text-xs font-semibold" style={{ color: c.content.primary }}>
         {theme.name}
       </div>
 
@@ -99,10 +96,7 @@ function ThemePreviewCard({
             border: `1px solid ${c.border.color}`,
           }}
         >
-          <div
-            className="text-[8px] font-semibold"
-            style={{ color: c.content.primary }}
-          >
+          <div className="text-[8px] font-semibold" style={{ color: c.content.primary }}>
             Project Files
           </div>
           <div className="text-[7px]" style={{ color: c.content.tertiary }}>
@@ -144,7 +138,7 @@ export function ThemeTab() {
 
   return (
     <div>
-      <div className="mb-5 text-xs text-content-tertiary">
+      <div className="text-content-tertiary mb-5 text-xs">
         Click a theme to preview and apply it instantly.
       </div>
 

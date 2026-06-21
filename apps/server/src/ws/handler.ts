@@ -1,7 +1,10 @@
 import type { Server, IncomingMessage } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 
-interface AugmentedWebSocket extends WebSocket { _agentId?: string; _daemonId?: string; }
+interface AugmentedWebSocket extends WebSocket {
+  _agentId?: string;
+  _daemonId?: string;
+}
 
 let wss: WebSocketServer | null = null;
 const clients = new Set<WebSocket>();
@@ -9,7 +12,7 @@ const clients = new Set<WebSocket>();
 export interface WSServers {
   wss: WebSocketServer;
   agentWss: WebSocketServer;
-  handleUpgrade: (request: IncomingMessage, socket: import("stream").Duplex, head: Buffer) => void;
+  handleUpgrade: (request: IncomingMessage, socket: import('stream').Duplex, head: Buffer) => void;
 }
 
 export function createWSServers(): WSServers {
@@ -21,7 +24,7 @@ export function createWSServers(): WSServers {
   const agentWss = new WebSocketServer({ noServer: true });
   setupWSS(agentWss);
 
-  function handleUpgrade(request: IncomingMessage, socket: import("stream").Duplex, head: Buffer) {
+  function handleUpgrade(request: IncomingMessage, socket: import('stream').Duplex, head: Buffer) {
     const pathname = request.url?.split('?')[0] ?? '';
     if (pathname === '/ws/events') {
       wss!.handleUpgrade(request, socket, head, (ws) => {
@@ -145,7 +148,14 @@ class DaemonConnectionManager {
   sendTask(daemonId: string, task: unknown): boolean {
     const ws = this.daemons.get(daemonId);
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify({ type: 'task_assigned', task, task_id: (task as { id: string }).id, timestamp: new Date().toISOString() }));
+    ws.send(
+      JSON.stringify({
+        type: 'task_assigned',
+        task,
+        task_id: (task as { id: string }).id,
+        timestamp: new Date().toISOString(),
+      }),
+    );
     return true;
   }
 
@@ -153,7 +163,13 @@ class DaemonConnectionManager {
   cancelTask(daemonId: string, taskId: string): boolean {
     const ws = this.daemons.get(daemonId);
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify({ type: 'task_cancelled', task_id: taskId, timestamp: new Date().toISOString() }));
+    ws.send(
+      JSON.stringify({
+        type: 'task_cancelled',
+        task_id: taskId,
+        timestamp: new Date().toISOString(),
+      }),
+    );
     return true;
   }
 
@@ -161,7 +177,9 @@ class DaemonConnectionManager {
   sendConfigUpdate(daemonId: string, config: Record<string, unknown>): boolean {
     const ws = this.daemons.get(daemonId);
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify({ type: 'config_updated', config, timestamp: new Date().toISOString() }));
+    ws.send(
+      JSON.stringify({ type: 'config_updated', config, timestamp: new Date().toISOString() }),
+    );
     return true;
   }
 
@@ -239,10 +257,12 @@ export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown
         (ws as AugmentedWebSocket)._daemonId = daemonId;
         daemonConnections.register(daemonId, ws);
         // Reconcile: return list of tasks still claimed by this daemon
-        ws.send(JSON.stringify({
-          type: 'reconnect_ack',
-          reconciled_tasks: msg.active_task_ids ?? [],
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'reconnect_ack',
+            reconciled_tasks: msg.active_task_ids ?? [],
+          }),
+        );
       }
       return true;
     }

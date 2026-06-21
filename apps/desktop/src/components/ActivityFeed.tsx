@@ -32,7 +32,8 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
+    const host =
+      window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
     const wsUrl = `${protocol}//${host}/ws/events`;
 
     let ws: WebSocket;
@@ -66,7 +67,9 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
             };
             setEvents((prev) => [event, ...prev].slice(0, maxItems));
           }
-        } catch { /* ignore malformed messages */ }
+        } catch {
+          /* ignore malformed messages */
+        }
       };
 
       ws.onclose = () => {
@@ -97,7 +100,9 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
     try {
       const resp = await apiFetch('/api/external/decisions?status=all&limit=20');
       if (resp.ok) {
-        const data = await resp.json() as { decisions?: Array<{ id: string; title: string; createdAt: string }> };
+        const data = (await resp.json()) as {
+          decisions?: Array<{ id: string; title: string; createdAt: string }>;
+        };
         const decisionEvents: ActivityEvent[] = (data.decisions ?? []).map((d) => ({
           id: d.id,
           type: 'decision' as const,
@@ -110,21 +115,31 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
           return [...prev, ...decisionEvents.filter((e) => !existing.has(e.id))].slice(0, maxItems);
         });
       }
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   }, [maxItems]);
 
-  useEffect(() => { fetchInitialEvents(); }, [fetchInitialEvents]);
+  useEffect(() => {
+    fetchInitialEvents();
+  }, [fetchInitialEvents]);
 
   // ── Render helpers ────────────────────────────────────────────
 
   const eventIcon = (type: string) => {
     switch (type) {
-      case 'task_completed': return '✅';
-      case 'discovery': return '🔍';
-      case 'decision': return '⚠️';
-      case 'telemetry': return '📊';
-      case 'error': return '❌';
-      default: return '📌';
+      case 'task_completed':
+        return '✅';
+      case 'discovery':
+        return '🔍';
+      case 'decision':
+        return '⚠️';
+      case 'telemetry':
+        return '📊';
+      case 'error':
+        return '❌';
+      default:
+        return '📌';
     }
   };
 
@@ -141,50 +156,50 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
   // ── Render ────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col bg-surface-dark border-l border-divider">
+    <div className="bg-surface-dark border-divider flex h-full flex-col border-l">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-divider">
-        <h3 className="text-sm font-semibold text-content-primary">Activity Feed</h3>
-        <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+      <div className="border-divider flex items-center justify-between border-b px-3 py-2">
+        <h3 className="text-content-primary text-sm font-semibold">Activity Feed</h3>
+        <span className={`h-2 w-2 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
       </div>
 
       {/* Event list */}
       <div className="flex-1 overflow-y-auto">
         {events.length === 0 && (
-          <div className="p-4 text-center text-content-tertiary text-sm">
+          <div className="text-content-tertiary p-4 text-center text-sm">
             No activity yet. Events will appear here as agents work.
           </div>
         )}
         {events.map((event) => (
           <div
             key={event.id}
-            className="px-3 py-2 border-b border-divider/50 hover:bg-surface-elevated/50 transition-colors"
+            className="border-divider/50 hover:bg-surface-elevated/50 border-b px-3 py-2 transition-colors"
           >
             <div className="flex items-start gap-2">
-              <span className="text-sm mt-0.5">{eventIcon(event.type)}</span>
-              <div className="flex-1 min-w-0">
+              <span className="mt-0.5 text-sm">{eventIcon(event.type)}</span>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-content-secondary truncate">
+                  <span className="text-content-secondary truncate text-xs font-medium">
                     {event.summary}
                   </span>
-                  <span className="text-xs text-content-tertiary whitespace-nowrap ml-auto">
+                  <span className="text-content-tertiary ml-auto text-xs whitespace-nowrap">
                     {timeAgo(event.timestamp)}
                   </span>
                 </div>
                 {event.detail && (
-                  <p className="text-xs text-content-tertiary mt-0.5 truncate">{event.detail}</p>
+                  <p className="text-content-tertiary mt-0.5 truncate text-xs">{event.detail}</p>
                 )}
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="mt-0.5 flex items-center gap-2">
                   {event.agentName && (
-                    <span className="text-xs text-content-tertiary">{event.agentName}</span>
+                    <span className="text-content-tertiary text-xs">{event.agentName}</span>
                   )}
                   {(event.metadata?.tokens as number) > 0 && (
-                    <span className="text-xs text-content-tertiary">
+                    <span className="text-content-tertiary text-xs">
                       🪙 {((event.metadata!.tokens as number) / 1000).toFixed(1)}k tokens
                     </span>
                   )}
                   {(event.metadata?.duration as number) > 0 && (
-                    <span className="text-xs text-content-tertiary">
+                    <span className="text-content-tertiary text-xs">
                       ⚡ {(event.metadata!.duration as number) / 1000}s
                     </span>
                   )}
@@ -196,12 +211,9 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-1.5 border-t border-divider text-xs text-content-tertiary flex justify-between">
+      <div className="border-divider text-content-tertiary flex justify-between border-t px-3 py-1.5 text-xs">
         <span>{events.length} events</span>
-        <button
-          className="hover:text-content-secondary"
-          onClick={() => setEvents([])}
-        >
+        <button className="hover:text-content-secondary" onClick={() => setEvents([])}>
           Clear
         </button>
       </div>

@@ -108,17 +108,15 @@ export function WorkflowRunCard({ data }: Props) {
   };
 
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-intent-purple bg-surface-primary shadow-xs">
+    <div className="border-intent-purple bg-surface-primary my-3 overflow-hidden rounded-lg border shadow-xs">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2.5 bg-intent-purple-muted transition-colors"
+        className="bg-intent-purple-muted flex w-full items-center justify-between px-4 py-2.5 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-intent-purple">
-            Workflow
-          </span>
-          <span className="font-mono text-xs text-content-tertiary">{runId}</span>
+          <span className="text-intent-purple text-sm font-semibold">Workflow</span>
+          <span className="text-content-tertiary font-mono text-xs">{runId}</span>
         </div>
         <div className="flex items-center gap-3">
           <span
@@ -127,7 +125,7 @@ export function WorkflowRunCard({ data }: Props) {
             {status}
           </span>
           <span
-            className={`text-xs text-content-tertiary transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`text-content-tertiary text-xs transition-transform ${expanded ? 'rotate-180' : ''}`}
           >
             &#9660;
           </span>
@@ -152,18 +150,18 @@ export function WorkflowRunCard({ data }: Props) {
                   >
                     {nodeTypeIcon(step.type)}
                   </div>
-                  {i < steps.length - 1 && (
-                    <div className="w-px flex-1 bg-surface-muted" />
-                  )}
+                  {i < steps.length - 1 && <div className="bg-surface-muted w-px flex-1" />}
                 </div>
                 <div className="pb-3">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium text-content-primary`}>
+                    <span className={`text-content-primary text-xs font-medium`}>
                       {nodeTypeLabel(step.type)}
                     </span>
-                    <span className={`font-mono text-[10px] text-content-tertiary`}>{step.nodeId}</span>
+                    <span className={`text-content-tertiary font-mono text-[10px]`}>
+                      {step.nodeId}
+                    </span>
                   </div>
-                  <p className={`text-xs text-content-tertiary mt-0.5`}>{step.output}</p>
+                  <p className={`text-content-tertiary mt-0.5 text-xs`}>{step.output}</p>
                 </div>
               </div>
             ))}

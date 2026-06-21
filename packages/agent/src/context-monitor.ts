@@ -196,7 +196,9 @@ export class ContextMonitor {
             },
           },
         })
-        .catch((err) => { console.warn('Operation failed', err); });
+        .catch((err) => {
+          console.warn('Operation failed', err);
+        });
     }
 
     return snap;

@@ -57,10 +57,21 @@ describe('buildToolDependencies (structural characterization)', () => {
 
     it('includes file system tools', () => {
       const fileTools = [
-        'read_file', 'write_file', 'edit_file', 'apply_patch',
-        'move_file', 'copy_file', 'make_directory', 'file_info',
-        'list_directory', 'search_files', 'search_content',
-        'delete_file', 'recent_files', 'watch_file', 'index_project',
+        'read_file',
+        'write_file',
+        'edit_file',
+        'apply_patch',
+        'move_file',
+        'copy_file',
+        'make_directory',
+        'file_info',
+        'list_directory',
+        'search_files',
+        'search_content',
+        'delete_file',
+        'recent_files',
+        'watch_file',
+        'index_project',
       ];
       expect(fileTools.length).toBeGreaterThan(0);
     });
@@ -71,31 +82,25 @@ describe('buildToolDependencies (structural characterization)', () => {
     });
 
     it('includes decision tools', () => {
-      const decisionTools = [
-        'create_decision', 'approve_decision', 'reject_decision',
-      ];
+      const decisionTools = ['create_decision', 'approve_decision', 'reject_decision'];
       expect(decisionTools.length).toBeGreaterThan(0);
     });
 
     it('includes memory tools', () => {
-      const memoryTools = [
-        'write_memory', 'search_memory', 'remember',
-        'write_long_term_memory',
-      ];
+      const memoryTools = ['write_memory', 'search_memory', 'remember', 'write_long_term_memory'];
       expect(memoryTools.length).toBeGreaterThan(0);
     });
 
     it('includes LSP tools', () => {
-      const lspTools = [
-        'workspace_symbols', 'go_to_definition',
-        'find_references', 'diagnostics',
-      ];
+      const lspTools = ['workspace_symbols', 'go_to_definition', 'find_references', 'diagnostics'];
       expect(lspTools.length).toBeGreaterThan(0);
     });
 
     it('includes execution tools', () => {
       const execTools = [
-        'exec_command', 'schedule_task', 'list_scheduled_tasks',
+        'exec_command',
+        'schedule_task',
+        'list_scheduled_tasks',
         'cancel_scheduled_task',
       ];
       expect(execTools.length).toBeGreaterThan(0);
@@ -103,16 +108,22 @@ describe('buildToolDependencies (structural characterization)', () => {
 
     it('includes agent management tools', () => {
       const agentTools = [
-        'register_agent', 'update_agent', 'delete_agent',
-        'invoke_agent', 'list_agents',
+        'register_agent',
+        'update_agent',
+        'delete_agent',
+        'invoke_agent',
+        'list_agents',
       ];
       expect(agentTools.length).toBeGreaterThan(0);
     });
 
     it('includes project tools', () => {
       const projectTools = [
-        'set_project_context', 'create_project', 'list_projects',
-        'get_project_context', 'get_dashboard_stats',
+        'set_project_context',
+        'create_project',
+        'list_projects',
+        'get_project_context',
+        'get_dashboard_stats',
       ];
       expect(projectTools.length).toBeGreaterThan(0);
     });

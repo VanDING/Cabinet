@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createApp } from '../../apps/server/src/index';
 
-
 const headers = { 'Content-Type': 'application/json' };
 
 describe('Security Checks', () => {
@@ -38,7 +37,6 @@ describe('Security Checks', () => {
       expect([200, 429]).toContain(res.status);
     }
   });
-
 
   // Invalid JSON body
   it('handles malformed JSON gracefully', async () => {

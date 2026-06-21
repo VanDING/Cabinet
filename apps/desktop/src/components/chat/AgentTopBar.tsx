@@ -57,10 +57,10 @@ export const AgentTopBar = memo(function AgentTopBar({
                 {agent.name.charAt(0).toUpperCase()}
               </span>
               <span
-                className={`status-dot absolute bottom-0 right-0 h-[10px] w-[10px] rounded-full border-2 border-[var(--surface-elevated)] ${statusColor[agent.status] ?? 'bg-content-tertiary'}`}
+                className={`status-dot absolute right-0 bottom-0 h-[10px] w-[10px] rounded-full border-2 border-[var(--surface-elevated)] ${statusColor[agent.status] ?? 'bg-content-tertiary'}`}
               />
               {isActive && (
-                <span className="absolute -bottom-[2px] left-1/2 h-[3px] w-[20px] -translate-x-1/2 rounded-full bg-accent" />
+                <span className="bg-accent absolute -bottom-[2px] left-1/2 h-[3px] w-[20px] -translate-x-1/2 rounded-full" />
               )}
             </button>
           );
@@ -90,12 +90,19 @@ export const AgentTopBar = memo(function AgentTopBar({
         <button
           aria-label="Toggle session list"
           onClick={onToggleSidebar}
-          className={`flex h-[32px] w-[32px] items-center justify-center rounded-md border border-[var(--border-color)] text-content-secondary transition-colors hover:bg-[var(--surface-muted)] ${
+          className={`text-content-secondary flex h-[32px] w-[32px] items-center justify-center rounded-md border border-[var(--border-color)] transition-colors hover:bg-[var(--surface-muted)] ${
             sidebarOpen ? 'bg-[var(--surface-muted)]' : ''
           }`}
           title="Session list"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="18" x2="21" y2="18" />
@@ -110,7 +117,14 @@ export const AgentTopBar = memo(function AgentTopBar({
           }`}
           title={terminalEnabled ? 'Terminal' : 'Terminal requires a CLI agent'}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <polyline points="4 17 10 11 4 5" />
             <line x1="12" y1="19" x2="20" y2="19" />
           </svg>

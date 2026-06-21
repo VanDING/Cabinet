@@ -122,7 +122,14 @@ describe('executeDispatchGraph', () => {
   it('executes pipeline mode — stops on first failure', async () => {
     const failingStep: AgentStepFn = async (role) => {
       if (role === 'reviewer') {
-        return { role: 'reviewer' as AgentRoleType, status: 'failed', input: '', error: 'review failed', durationMs: 10, steps: 0 };
+        return {
+          role: 'reviewer' as AgentRoleType,
+          status: 'failed',
+          input: '',
+          error: 'review failed',
+          durationMs: 10,
+          steps: 0,
+        };
       }
       return makeStep(role);
     };

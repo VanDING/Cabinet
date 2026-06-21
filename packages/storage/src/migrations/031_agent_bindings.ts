@@ -1,7 +1,8 @@
 import type Database from 'better-sqlite3';
 
 export function runMigration031(db: Database.Database): void {
-  db.prepare(`
+  db.prepare(
+    `
     CREATE TABLE IF NOT EXISTS agent_mcp_bindings (
       id TEXT PRIMARY KEY,
       agent_type TEXT NOT NULL,
@@ -10,14 +11,18 @@ export function runMigration031(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(agent_type, mcp_server_name)
     )
-  `).run();
+  `,
+  ).run();
 
-  db.prepare(`
+  db.prepare(
+    `
     CREATE INDEX IF NOT EXISTS idx_agent_mcp_bindings_agent
     ON agent_mcp_bindings(agent_type)
-  `).run();
+  `,
+  ).run();
 
-  db.prepare(`
+  db.prepare(
+    `
     CREATE TABLE IF NOT EXISTS agent_skill_bindings (
       id TEXT PRIMARY KEY,
       agent_type TEXT NOT NULL,
@@ -26,10 +31,13 @@ export function runMigration031(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(agent_type, skill_name)
     )
-  `).run();
+  `,
+  ).run();
 
-  db.prepare(`
+  db.prepare(
+    `
     CREATE INDEX IF NOT EXISTS idx_agent_skill_bindings_agent
     ON agent_skill_bindings(agent_type)
-  `).run();
+  `,
+  ).run();
 }

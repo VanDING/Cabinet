@@ -51,12 +51,12 @@ export function CanvasContextMenu({ state, onAction, onClose }: Props) {
     <div
       ref={ref}
       style={style}
-      className="rounded-lg border border-border bg-surface-overlay shadow-lg py-1 min-w-[160px]"
+      className="border-border bg-surface-overlay min-w-[160px] rounded-lg border py-1 shadow-lg"
     >
       {/* On node */}
       {state.nodeId && (
         <>
-          <div className="px-3 py-1 text-[10px] text-content-tertiary uppercase">
+          <div className="text-content-tertiary px-3 py-1 text-[10px] uppercase">
             Node: {state.nodeId.slice(0, 12)}…
           </div>
           <div className={separatorClass} />
@@ -80,9 +80,7 @@ export function CanvasContextMenu({ state, onAction, onClose }: Props) {
       {/* On edge */}
       {state.edgeId && !state.nodeId && (
         <>
-          <div className="px-3 py-1 text-[10px] text-content-tertiary uppercase">
-            Edge
-          </div>
+          <div className="text-content-tertiary px-3 py-1 text-[10px] uppercase">Edge</div>
           <div className={separatorClass} />
           <div className={itemClass} onClick={() => sendAction('delete-edge')}>
             Delete Edge
@@ -93,9 +91,7 @@ export function CanvasContextMenu({ state, onAction, onClose }: Props) {
       {/* On pane (no node or edge) */}
       {!state.nodeId && !state.edgeId && (
         <>
-          <div className="px-3 py-1 text-[10px] text-content-tertiary uppercase">
-            Add Node
-          </div>
+          <div className="text-content-tertiary px-3 py-1 text-[10px] uppercase">Add Node</div>
           <div className={separatorClass} />
           {CANVAS_NODE_TYPES.map((type) => (
             <div

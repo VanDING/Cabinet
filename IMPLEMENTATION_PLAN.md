@@ -1,6 +1,7 @@
 # Cabinet V2.0 — 全面优化实施方案
 
 **基准**: [AUDIT_REPORT_V3.md](./AUDIT_REPORT_V3.md) (2026-06-12, HEAD `67c716a`)
+**当前状态**: 多项任务已在后续 commits 中完成。详见各节标记。
 **目标**: 从 A- (89/100) → A (93+/100)，彻底消除已知技术债务
 **方法论**: 按架构关切分 4 条并行轨道，每条内部串行，轨道间独立
 
@@ -58,9 +59,9 @@
 
 ---
 
-### A.1 MCP 安全沙盒 T0-T3 原生集成
+### A.1 MCP 安全沙盒 T0-T3 原生集成 ✅ **已完成**
 
-**问题**: MCP manager 有两层风险分类（`classifyToolRisk()` + `resolveEffectiveCategory()`），但 T0-T3 信任级别检查在外部 SafetyGuard 中。MCP manager 自身对所有 trust level 的调用方一视同仁，存在架构绕过路径。
+**状态**: `mcp-manager.ts` 的 `callTool()` 已接收 `trustLevel` 参数，`resolveMcpDecision()` 内部直接执行 T0-T3 规则。T0 阻止所有非只读，T1 阻止 moderate+destructive，T2 阻止 destructive，T3 全部放行。审计日志已添加。
 
 **涉及文件**:
 
@@ -90,9 +91,9 @@
 
 ---
 
-### A.2 LevelClassifier L0 守卫顺序修复
+### A.2 LevelClassifier L0 守卫顺序修复 ✅ **已完成**
 
-**问题**: `level-classifier.ts` 中 L0 守卫 (`!isCrossSession && optionCount <= 2 && totalCost === 0`) 在 L1 守卫 (`optionCount <= 3 && totalCost <= 0.1`) 之后检查。任何满足 L0 的输入也满足 L1，导致 L0 在实践中不可达。
+**状态**: L0 检查已移到 L1 之前，守卫顺序从最严格到最宽松排列。
 
 **涉及文件**:
 
@@ -472,7 +473,7 @@ if (/* L3 conditions */) {
 
 ---
 
-### D.1 `@cabinet/graph` 包删除 ✅
+### D.1 `@cabinet/graph` 包删除 ✅ **已完成**
 
 **问题**: `@cabinet/graph` (753 行) 仍存在，但 agent-loop.ts 已不使用。当前仅 3 个消费者，其中 1 个是 type-only。
 
@@ -582,7 +583,7 @@ consolidateSession(sessionId):
 
 ---
 
-### D.4 Workflow StateGraph 双路径简化 ✅
+### D.4 Workflow StateGraph 双路径简化 ✅ **已完成**
 
 **问题**: `engine.ts` 的 `startRun()` 仍先尝试 StateGraph 编译 → 失败回退邻接图遍历。双路径增加维护成本。
 
@@ -612,7 +613,7 @@ consolidateSession(sessionId):
 
 ---
 
-### D.5 ManagerExecutor 内联 ✅
+### D.5 ManagerExecutor 内联 ✅ **已完成**
 
 **问题**: `manager-executor.ts` (233 行) 不公共导出但作为独立文件存在。仅被 `engine.ts` 和 `node-executor.ts` 内部使用。
 
@@ -730,13 +731,13 @@ consolidateSession(sessionId):
 
 ### 6.1 总工时估算
 
-| 轨道              | 任务数 | 预计工时     | 关键交付物                                                                                                                        |
-| ----------------- | ------ | ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| **A: 安全边界**   | 3      | 5-6 天       | MCP T0-T3 集成, L0 修复, ContextSlot/Blackboard 统一                                                                              |
-| **B: 代码质量**   | 4      | 10-12 天     | agent-loop 拆分, tools 拆分, 14+ server 文件拆分, 7 次级文件拆分                                                                  |
-| **C: 自适应激活** | 5      | 5-6 天       | Observer preset 重设计, SelfConsistency→Observer, SubconsciousLoop 集成, Skill 按需加载, AdaptiveContextMonitor 激活              |
-| **D: 架构整合**   | 8      | 6-7 天       | @cabinet/graph 删除, 管道统一, LTM 拆分, StateGraph 简化, ManagerExecutor 合并, WriteGate 分析, Dashboard 趋势, ToolPruner 自适应 |
-| **总计**          | **20** | **26-31 天** |                                                                                                                                   |
+| 轨道              | 任务数 | 预计工时     | 当前执行状态                                                                                                                                      |
+| ----------------- | ------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A: 安全边界**   | 3      | 5-6 天       | A.1 ✅ (MCP T0-T3 已集成), A.2 ✅ (L0 已修复), A.3 ❌ (ContextSlot/Blackboard 统一未完成)                                                         |
+| **B: 代码质量**   | 4      | 10-12 天     | 服务端文件拆分基本完成（context.ts、capabilities.ts、workflows.ts、tool-dependencies.ts、agent-daemon.ts 均已 ≤20 行）。剩余 desktop 前端文件超行 |
+| **C: 自适应激活** | 5      | 5-6 天       | C.2 ✅ (SelfConsistencyObserver), C.3 ✅ (SubconsciousInsightObserver via EventBus), C.1/C.4/C.5 待验证                                           |
+| **D: 架构整合**   | 8      | 6-7 天       | D.1 ✅, D.4 ✅, D.5 ✅ 已完成。D.2/D.3/D.6/D.7/D.8 需验证                                                                                         |
+| **总计**          | **20** | **26-31 天** | 约 40-50% 已完成                                                                                                                                  |
 
 ### 6.2 轨道间依赖
 
@@ -751,14 +752,14 @@ consolidateSession(sessionId):
 
 ### 6.3 里程碑
 
-| 里程碑                     | 完成标准                                                                  | 累计工作日  |
-| -------------------------- | ------------------------------------------------------------------------- | ----------- |
-| **M1: 安全边界闭环**       | A.1-A.3 完成                                                              | 第 5-6 天   |
-| **M2: 核心模块拆分**       | B.1-B.2 完成, agent-loop.ts ≤ 500 行, tools/index.ts ≤ 50 行              | 第 10-12 天 |
-| **M3: 自适应激活**         | C.1-C.5 完成, ≥5 个自适应 Observer 默认激活                               | 第 15-18 天 |
-| **M4: 全栈模块化**         | B.3-B.4 完成, 无 >500 行核心文件                                          | 第 22-24 天 |
-| **M5: 架构 Consolidation** | D.1-D.8 完成, @cabinet/graph 删除, 管道统一                               | 第 28-31 天 |
-| **M6: 最终验证**           | 全轨道回归: `pnpm build && pnpm typecheck && pnpm lint:arch && pnpm test` | 第 29-31 天 |
+| 里程碑                     | 完成标准                                    | 状态                            |
+| -------------------------- | ------------------------------------------- | ------------------------------- |
+| **M1: 安全边界闭环**       | A.1-A.3 完成                                | ⚠️ 部分完成（A.3 未完成）       |
+| **M2: 核心模块拆分**       | B.1-B.2 完成, agent-loop.ts ≤ 500 行        | ✅ 基本完成                     |
+| **M3: 自适应激活**         | C.1-C.5 完成, ≥5 个自适应 Observer 默认激活 | ⚠️ C.2/C.3 完成，其余待验证     |
+| **M4: 全栈模块化**         | B.3-B.4 完成                                | ✅ 服务端完成                   |
+| **M5: 架构 Consolidation** | D.1-D.8 完成                                | ⚠️ D.1/D.4/D.5 完成，其余待验证 |
+| **M6: 最终验证**           | 全轨道回归                                  | ⏳                              |
 
 ### 6.4 评分提升预期
 

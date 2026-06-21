@@ -96,7 +96,10 @@ export function parseTask(body: unknown): A2ATask {
     capability: data.capability as string,
     input: data.input,
     slot: (data.slot ?? {}) as ContextSlot,
-    configuration: (data.configuration ?? { max_retries: 2, timeout_ms: 120_000 }) as A2ATask['configuration'],
+    configuration: (data.configuration ?? {
+      max_retries: 2,
+      timeout_ms: 120_000,
+    }) as A2ATask['configuration'],
   };
 }
 
@@ -112,7 +115,15 @@ export function taskResultResponse(result: A2ATaskResult): Response {
 
 export interface CabinetWSClient {
   sendStatus(taskId: string, status: string, progress?: number, message?: string): void;
-  sendTelemetry(taskId: string, data: { tokens: { prompt: number; completion: number }; timing: { ttft_ms: number; total_ms: number; tool_latency_ms: number[] }; steps: number; model: string }): void;
+  sendTelemetry(
+    taskId: string,
+    data: {
+      tokens: { prompt: number; completion: number };
+      timing: { ttft_ms: number; total_ms: number; tool_latency_ms: number[] };
+      steps: number;
+      model: string;
+    },
+  ): void;
   close(): void;
 }
 
@@ -127,25 +138,29 @@ export function connectToCabinet(wsUrl: string, agentId: string): CabinetWSClien
   return {
     sendStatus(taskId, status, progress, message) {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'task_status',
-          task_id: taskId,
-          status,
-          progress,
-          message,
-          timestamp: new Date().toISOString(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'task_status',
+            task_id: taskId,
+            status,
+            progress,
+            message,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
     },
     sendTelemetry(taskId, data) {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'telemetry',
-          task_id: taskId,
-          agent_id: agentId,
-          ...data,
-          status: 'completed',
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'telemetry',
+            task_id: taskId,
+            agent_id: agentId,
+            ...data,
+            status: 'completed',
+          }),
+        );
       }
     },
     close() {

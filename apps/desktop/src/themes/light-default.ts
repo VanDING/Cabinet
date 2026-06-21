@@ -102,8 +102,10 @@ export const lightDefault: Theme = {
       sm: '0px 1px 2px rgba(0,0,0,0.03), 0px 1px 1px rgba(0,0,0,0.02), 0px 0px 0px 1px rgba(0,0,0,0.02)',
       md: '0px 2px 4px rgba(0,0,0,0.04), 0px 1px 1px rgba(0,0,0,0.02), 0px 0px 0px 1px rgba(0,0,0,0.02)',
       lg: '0px 4px 8px rgba(0,0,0,0.04), 0px 8px 16px -6px rgba(0,0,0,0.06), 0px 0px 0px 1px rgba(0,0,0,0.02)',
-      popover: '0px 8px 24px rgba(0,0,0,0.08), 0px 2px 4px rgba(0,0,0,0.04), 0px 0px 0px 1px rgba(0,0,0,0.04)',
-      modal: '0px 16px 48px rgba(0,0,0,0.12), 0px 4px 8px rgba(0,0,0,0.06), 0px 0px 0px 1px rgba(0,0,0,0.04)',
+      popover:
+        '0px 8px 24px rgba(0,0,0,0.08), 0px 2px 4px rgba(0,0,0,0.04), 0px 0px 0px 1px rgba(0,0,0,0.04)',
+      modal:
+        '0px 16px 48px rgba(0,0,0,0.12), 0px 4px 8px rgba(0,0,0,0.06), 0px 0px 0px 1px rgba(0,0,0,0.04)',
     },
     font: {
       family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",

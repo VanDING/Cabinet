@@ -106,7 +106,7 @@ Query current budget status and spend.
   "budgetStatus": {
     "daily": { "spent": 1.23, "limit": 5.0, "remaining": 3.77, "percentage": 0.246 },
     "weekly": { "spent": 4.56, "limit": 25.0, "remaining": 20.44, "percentage": 0.182 },
-    "monthly": { "spent": 12.30, "limit": 100.0, "remaining": 87.70, "percentage": 0.123 }
+    "monthly": { "spent": 12.3, "limit": 100.0, "remaining": 87.7, "percentage": 0.123 }
   }
 }
 ```
@@ -137,7 +137,16 @@ System health check including gateway status.
 {
   "status": "healthy",
   "gateway": {
-    "providers": ["anthropic", "openai", "google", "deepseek", "qwen", "moonshot", "zhipu", "baichuan"],
+    "providers": [
+      "anthropic",
+      "openai",
+      "google",
+      "deepseek",
+      "qwen",
+      "moonshot",
+      "zhipu",
+      "baichuan"
+    ],
     "activeModel": "anthropic/claude-sonnet-4-6"
   },
   "timestamp": "2026-05-20T10:00:00Z"
@@ -146,26 +155,26 @@ System health check including gateway status.
 
 ## Supported Providers
 
-| Provider | Models | Notes |
-| :------- | :----- | :---- |
-| **Anthropic** | `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5` | Primary recommended provider |
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` | Good fallback |
-| **Google** | `gemini-2.0-flash`, `gemini-2.0-pro` | Multimodal capable |
-| **DeepSeek** | `deepseek-v4-flash`, `deepseek-v4-pro`, `deepseek-v3`, `deepseek-r1` | Cost-effective |
-| **Qwen** | `qwen-turbo`, `qwen-plus`, `qwen-max` | Alibaba Cloud |
-| **Moonshot** | `moonshot-v1-8k`, `moonshot-v1-32k`, `moonshot-v1-128k` | Chinese context optimized |
-| **Zhipu** | `glm-4`, `glm-4-flash` | Zhipu AI |
-| **Baichuan** | `baichuan4`, `baichuan3-turbo` | Baichuan AI |
+| Provider      | Models                                                               | Notes                        |
+| :------------ | :------------------------------------------------------------------- | :--------------------------- |
+| **Anthropic** | `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-haiku-4-5`           | Primary recommended provider |
+| **OpenAI**    | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`                               | Good fallback                |
+| **Google**    | `gemini-2.0-flash`, `gemini-2.0-pro`                                 | Multimodal capable           |
+| **DeepSeek**  | `deepseek-v4-flash`, `deepseek-v4-pro`, `deepseek-v3`, `deepseek-r1` | Cost-effective               |
+| **Qwen**      | `qwen-turbo`, `qwen-plus`, `qwen-max`                                | Alibaba Cloud                |
+| **Moonshot**  | `moonshot-v1-8k`, `moonshot-v1-32k`, `moonshot-v1-128k`              | Chinese context optimized    |
+| **Zhipu**     | `glm-4`, `glm-4-flash`                                               | Zhipu AI                     |
+| **Baichuan**  | `baichuan4`, `baichuan3-turbo`                                       | Baichuan AI                  |
 
 ## Model Router
 
 The `ModelRouter` maps roles to model chains:
 
-| Role | Primary | Fallbacks |
-| :--- | :------ | :-------- |
-| `deep_reasoning` | `anthropic/claude-opus-4-7` | `anthropic/claude-sonnet-4-6` |
-| `fast_execution` | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` |
-| `default` | `anthropic/claude-sonnet-4-6` | `openai/gpt-4o` |
+| Role             | Primary                       | Fallbacks                     |
+| :--------------- | :---------------------------- | :---------------------------- |
+| `deep_reasoning` | `anthropic/claude-opus-4-7`   | `anthropic/claude-sonnet-4-6` |
+| `fast_execution` | `anthropic/claude-haiku-4-5`  | `openai/gpt-4o-mini`          |
+| `default`        | `anthropic/claude-sonnet-4-6` | `openai/gpt-4o`               |
 
 You can override these mappings via settings or per-request `model` parameter.
 
@@ -194,11 +203,11 @@ Aggregates are available per session, day, week, and month.
 
 The `BudgetGuard` enforces hard caps:
 
-| Threshold | Behavior |
-| :-------- | :------- |
-| 80% | Dashboard warning + toast notification |
-| 100% | Block non-L3 LLM calls |
-| L3 exceeded | Require explicit Captain override |
+| Threshold   | Behavior                               |
+| :---------- | :------------------------------------- |
+| 80%         | Dashboard warning + toast notification |
+| 100%        | Block non-L3 LLM calls                 |
+| L3 exceeded | Require explicit Captain override      |
 
 Budget alerts are broadcast via WebSocket (`budget_alert`) and shown in the UI.
 

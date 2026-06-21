@@ -35,25 +35,25 @@ Success responses use HTTP 200-201 with a JSON body. Errors follow this shape:
 
 Common status codes:
 
-| Code | Meaning |
-| :--- | :------ |
-| 400 | Validation error (Zod schema mismatch) |
-| 401 | Authentication required |
-| 403 | Permission denied (delegation tier or safety check) |
-| 404 | Resource not found |
-| 429 | Rate limited (LLM provider or budget cap) |
-| 500 | Internal server error |
+| Code | Meaning                                             |
+| :--- | :-------------------------------------------------- |
+| 400  | Validation error (Zod schema mismatch)              |
+| 401  | Authentication required                             |
+| 403  | Permission denied (delegation tier or safety check) |
+| 404  | Resource not found                                  |
+| 429  | Rate limited (LLM provider or budget cap)           |
+| 500  | Internal server error                               |
 
 ## API Modules
 
-| Module | Endpoints | Description |
-| :----- | :-------- | :---------- |
-| [Secretary](./secretary) | `POST /secretary/chat` | Natural language entry point, streaming |
-| [Decisions](./decisions) | `GET/POST /decisions`, `POST /decisions/:id/approve` | Decision lifecycle |
-| [Workflows](./workflows) | `GET/POST /workflows`, `POST /workflows/:id/run` | Workflow CRUD and execution |
-| [Meetings](./meetings) | `GET/POST /meetings` | Meeting reports and synthesis |
-| [Memory](./memory) | `GET /memory`, `POST /memory/consolidate` | 4-layer memory access |
-| [Gateway](./gateway) | `GET/POST /settings/api-keys` | LLM provider keys and routing |
+| Module                   | Endpoints                                            | Description                             |
+| :----------------------- | :--------------------------------------------------- | :-------------------------------------- |
+| [Secretary](./secretary) | `POST /secretary/chat`                               | Natural language entry point, streaming |
+| [Decisions](./decisions) | `GET/POST /decisions`, `POST /decisions/:id/approve` | Decision lifecycle                      |
+| [Workflows](./workflows) | `GET/POST /workflows`, `POST /workflows/:id/run`     | Workflow CRUD and execution             |
+| [Meetings](./meetings)   | `GET/POST /meetings`                                 | Meeting reports and synthesis           |
+| [Memory](./memory)       | `GET /memory`, `POST /memory/consolidate`            | 4-layer memory access                   |
+| [Gateway](./gateway)     | `GET/POST /settings/api-keys`                        | LLM provider keys and routing           |
 
 ## Real-Time Events
 

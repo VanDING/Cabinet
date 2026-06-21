@@ -64,19 +64,27 @@ describe('SkillExtractor', () => {
     // Clean test dirs
     try {
       rmSync(TEST_AUTO_DIR, { recursive: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       rmSync(TEST_REVIEW_DIR, { recursive: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   });
 
   afterEach(() => {
     try {
       rmSync(TEST_AUTO_DIR, { recursive: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     try {
       rmSync(TEST_REVIEW_DIR, { recursive: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   });
 
   describe('config', () => {
@@ -105,12 +113,20 @@ describe('SkillExtractor', () => {
         kindOverrides: { workflow: { minToolCalls: 2, minTotalSteps: 3 } },
       });
       // Default kind should use base config
-      const defaultResult = await withOverride.extract(makeSummary({ toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 }, totalSteps: 4 }));
+      const defaultResult = await withOverride.extract(
+        makeSummary({
+          toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 },
+          totalSteps: 4,
+        }),
+      );
       expect(defaultResult).toBeNull(); // 3 < 5
 
       // 'workflow' kind should use override
       const workflowResult = await withOverride.extract(
-        makeSummary({ toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 }, totalSteps: 4 }),
+        makeSummary({
+          toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 },
+          totalSteps: 4,
+        }),
         'workflow',
       );
       expect(workflowResult).toBeNull(); // still null because no gateway
@@ -119,7 +135,9 @@ describe('SkillExtractor', () => {
 
   describe('threshold filtering', () => {
     it('returns null when toolCalls < minToolCalls', async () => {
-      const result = await extractor.extract(makeSummary({ toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 } }));
+      const result = await extractor.extract(
+        makeSummary({ toolCalls: { total: 3, succeeded: 3, failed: 0, blocked: 0 } }),
+      );
       expect(result).toBeNull();
     });
 

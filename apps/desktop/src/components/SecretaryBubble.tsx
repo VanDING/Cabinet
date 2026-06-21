@@ -81,23 +81,18 @@ export function SecretaryBubble({ notification, onDismiss, index }: Props) {
 
   return (
     <div
-      className={`fixed z-[60] transition-all duration-300 ease-out
-        ${isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}
-      `}
+      className={`fixed z-[60] transition-all duration-300 ease-out ${isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-95 opacity-0'} `}
       style={{ bottom: `${bottomOffset}px`, right: '24px', maxWidth: '280px' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Bubble body */}
       <div
-        className={`relative rounded-xl border px-3.5 py-2.5 shadow-lg backdrop-blur-sm
-          ${TYPE_COLORS[notification.type]}
-        `}
+        className={`relative rounded-xl border px-3.5 py-2.5 shadow-lg backdrop-blur-sm ${TYPE_COLORS[notification.type]} `}
       >
         {/* Tail */}
         <div
-          className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 border-b border-r
-            bg-inherit"
+          className="absolute right-5 -bottom-1.5 h-3 w-3 rotate-45 border-r border-b bg-inherit"
           style={{ borderColor: 'inherit' }}
         />
 
@@ -105,18 +100,18 @@ export function SecretaryBubble({ notification, onDismiss, index }: Props) {
         <div className="flex items-start gap-2">
           <Icon size={16} className={`mt-0.5 shrink-0 ${TYPE_ICON_COLORS[notification.type]}`} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-content-primary leading-snug">
+            <p className="text-content-primary text-sm leading-snug font-medium">
               {notification.title}
             </p>
             {notification.body && (
-              <p className="mt-0.5 text-xs text-content-secondary leading-relaxed line-clamp-3">
+              <p className="text-content-secondary mt-0.5 line-clamp-3 text-xs leading-relaxed">
                 {notification.body}
               </p>
             )}
           </div>
           <button
             onClick={dismiss}
-            className="shrink-0 -mr-1 -mt-0.5 flex h-5 w-5 items-center justify-center rounded text-content-tertiary transition-colors hover:text-content-secondary hover:bg-surface-muted"
+            className="text-content-tertiary hover:text-content-secondary hover:bg-surface-muted -mt-0.5 -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors"
             aria-label="Dismiss"
           >
             <X size={12} />
@@ -133,7 +128,7 @@ export function SecretaryBubble({ notification, onDismiss, index }: Props) {
                   action.onClick();
                   dismiss();
                 }}
-                className="rounded-md bg-surface-overlay/80 px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-elevated hover:text-content-primary"
+                className="bg-surface-overlay/80 text-content-secondary hover:bg-surface-elevated hover:text-content-primary rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
               >
                 {action.label}
               </button>

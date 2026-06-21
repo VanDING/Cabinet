@@ -32,6 +32,7 @@ Phase 1 与 Phase 2 可并行，Phase 3 依赖 Phase 2（widget 不再直接 lis
 ### Task 1: ChatContext
 
 **Files:**
+
 - Create: `apps/desktop/src/contexts/ChatContext.tsx`
 - Read: `apps/desktop/src/App.tsx`（提取聊天相关状态）
 - Modify: `apps/desktop/src/App.tsx`
@@ -40,6 +41,7 @@ Phase 1 与 Phase 2 可并行，Phase 3 依赖 Phase 2（widget 不再直接 lis
 
 Read: `apps/desktop/src/App.tsx`
 提取以下状态和回调到 ChatContext：
+
 - `sessions`, `activeSession`
 - `processingSessions`
 - `chatMode`, `activeAgent`
@@ -130,6 +132,7 @@ Expected: ChatContext.tsx 无类型错误
 ### Task 2: ProjectContext
 
 **Files:**
+
 - Create: `apps/desktop/src/contexts/ProjectContext.tsx`
 - Modify: `apps/desktop/src/App.tsx`
 
@@ -202,6 +205,7 @@ export function useProject() {
 ### Task 3: LayoutContext
 
 **Files:**
+
 - Create: `apps/desktop/src/contexts/LayoutContext.tsx`
 
 - [ ] **Step 1: 创建 LayoutContext.tsx**
@@ -250,6 +254,7 @@ export function useLayout() {
 ### Task 4: App.tsx 简化与迁移
 
 **Files:**
+
 - Modify: `apps/desktop/src/App.tsx`
 - Modify: `apps/desktop/src/main.tsx`（包裹 Providers）
 
@@ -324,6 +329,7 @@ Expected: 0 errors, 0 warnings
 ### Task 5: 引入 TanStack Query 并配置
 
 **Files:**
+
 - Modify: `apps/desktop/package.json`
 - Modify: `apps/desktop/src/main.tsx`
 - Create: `apps/desktop/src/hooks/useDashboardStats.ts`
@@ -333,6 +339,7 @@ Expected: 0 errors, 0 warnings
 - [ ] **Step 1: 安装依赖**
 
 Run:
+
 ```bash
 cd apps/desktop
 pnpm add @tanstack/react-query
@@ -359,7 +366,7 @@ const queryClient = new QueryClient({
 // 包裹在 Provider 树外层
 <QueryClientProvider client={queryClient}>
   <ChatProvider>...</ChatProvider>
-</QueryClientProvider>
+</QueryClientProvider>;
 ```
 
 ---
@@ -425,6 +432,7 @@ export function useDeliverables(projectId?: string | null) {
 ### Task 6: 重构 Widget 使用共享 Hooks
 
 **Files:**
+
 - Modify: `apps/desktop/src/components/office/today-cost.tsx`
 - Modify: `apps/desktop/src/components/office/active-workflows.tsx`
 - Modify: `apps/desktop/src/components/office/decision-list.tsx`
@@ -480,6 +488,7 @@ Run: `rg "DashboardSummary" apps/desktop/src --type ts -n`
 ### Task 7: 修复 usePolling 缺陷
 
 **Files:**
+
 - Modify: `apps/desktop/src/hooks/usePolling.ts`
 
 - [ ] **Step 1: 读取现有实现**
@@ -491,6 +500,7 @@ Read: `apps/desktop/src/hooks/usePolling.ts`
 - [ ] **Step 2: 增强实现**
 
 修改要点：
+
 1. 增加 `AbortController` 请求取消
 2. 暴露错误（不静默 `.catch(() => {})`）
 3. 增加 `document.visibilitychange` 暂停机制
@@ -555,6 +565,7 @@ export function usePolling<T>(fetcher: () => Promise<T>, interval: number) {
 ### Task 8: 建立 EventBusContext
 
 **Files:**
+
 - Create: `apps/desktop/src/contexts/EventBusContext.tsx`
 - Create: `apps/desktop/src/hooks/useEvent.ts`
 - Modify: `apps/desktop/src/utils/eventBuffer.ts`
@@ -657,6 +668,7 @@ export function consumeBufferedEvents<T>(type: string): T[] {
 ### Task 9: 接入 WebSocket 到 EventBus
 
 **Files:**
+
 - Modify: `apps/desktop/src/App.tsx`（或 useWebSocket hook）
 
 - [ ] **Step 1: 替换 window.dispatchEvent**
@@ -680,6 +692,7 @@ emit(type, data);
 
 对 `DecisionList`、`Deliverables`、`EventTimeline` 等组件：
 删除：
+
 ```typescript
 useEffect(() => {
   const handler = () => fetchData();
@@ -687,7 +700,9 @@ useEffect(() => {
   return () => window.removeEventListener('ws:decision_created', handler);
 }, []);
 ```
+
 替换为：
+
 ```typescript
 import { useEvent } from '../../hooks/useEvent';
 
@@ -701,16 +716,16 @@ useEvent('decision_created', () => {
 ## 最终验证
 
 - [ ] **Step 1: 全量编译**
-Run: `pnpm run build`
-Expected: 0 errors
+      Run: `pnpm run build`
+      Expected: 0 errors
 
 - [ ] **Step 2: 运行前端测试**
-Run: `pnpm --filter @cabinet/desktop test`
-Expected: 全部通过
+      Run: `pnpm --filter @cabinet/desktop test`
+      Expected: 全部通过
 
 - [ ] **Step 3: 运行 E2E（如可用）**
-Run: `pnpm exec playwright test`（或项目定义的 E2E 命令）
-Expected: OfficePage 相关用例通过
+      Run: `pnpm exec playwright test`（或项目定义的 E2E 命令）
+      Expected: OfficePage 相关用例通过
 
 ---
 

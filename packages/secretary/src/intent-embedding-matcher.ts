@@ -81,7 +81,11 @@ export function buildIntentFromMatch(match: EmbeddingMatch, message: string): Pa
   const base = { topic: message.slice(0, 100), context: message };
   switch (match.intent) {
     case 'decision_request':
-      return { kind: 'decision_request', ...base, suggestedDimensions: ['成本', '风险', '时间', '收益'] };
+      return {
+        kind: 'decision_request',
+        ...base,
+        suggestedDimensions: ['成本', '风险', '时间', '收益'],
+      };
     case 'meeting_request':
       return { kind: 'meeting_request', topic: message, requiredPerspectives: ['general'] };
     case 'status_query':

@@ -33,9 +33,7 @@ function EntityNodeComp({ data, selected }: NodeProps<EntityNode>) {
             height: radius * 2,
             backgroundColor: color,
             opacity: selected ? 1 : 0.85,
-            boxShadow: selected
-              ? `0 0 0 3px ${color}, 0 0 12px ${color}`
-              : `0 1px 3px ${color}`,
+            boxShadow: selected ? `0 0 0 3px ${color}, 0 0 12px ${color}` : `0 1px 3px ${color}`,
           }}
           title={data.label}
         />

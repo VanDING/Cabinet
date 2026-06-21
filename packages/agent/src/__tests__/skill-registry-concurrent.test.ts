@@ -18,9 +18,7 @@ describe('SkillRegistry concurrency', () => {
     }));
 
     const writers = skills.map((s) => registry.registerAsync(s));
-    const readers = Array.from({ length: 50 }, () =>
-      Promise.resolve(registry.discover()),
-    );
+    const readers = Array.from({ length: 50 }, () => Promise.resolve(registry.discover()));
 
     await Promise.all([...writers, ...readers]);
 
@@ -35,16 +33,43 @@ describe('SkillRegistry concurrency', () => {
 
     // Seed with project-scoped skills via sync API
     registry.register({
-      id: 'p1', name: 'project_skill_1', description: 'd', kind: 'prompt', exposure: 'prompt',
-      promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'project',
+      id: 'p1',
+      name: 'project_skill_1',
+      description: 'd',
+      kind: 'prompt',
+      exposure: 'prompt',
+      promptTemplate: 't',
+      inputSchema: {},
+      outputSchema: {},
+      version: 1,
+      status: 'active',
+      scope: 'project',
     });
     registry.register({
-      id: 'p2', name: 'project_skill_2', description: 'd', kind: 'prompt', exposure: 'prompt',
-      promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'project',
+      id: 'p2',
+      name: 'project_skill_2',
+      description: 'd',
+      kind: 'prompt',
+      exposure: 'prompt',
+      promptTemplate: 't',
+      inputSchema: {},
+      outputSchema: {},
+      version: 1,
+      status: 'active',
+      scope: 'project',
     });
     registry.register({
-      id: 'g1', name: 'global_skill_1', description: 'd', kind: 'prompt', exposure: 'prompt',
-      promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active', scope: 'global',
+      id: 'g1',
+      name: 'global_skill_1',
+      description: 'd',
+      kind: 'prompt',
+      exposure: 'prompt',
+      promptTemplate: 't',
+      inputSchema: {},
+      outputSchema: {},
+      version: 1,
+      status: 'active',
+      scope: 'global',
     });
 
     // Run clear + discover concurrently
@@ -62,16 +87,32 @@ describe('SkillRegistry concurrency', () => {
   it('getToolDefinitions uses snapshot and does not corrupt during registration', () => {
     const registry = new SkillRegistry();
     registry.register({
-      id: 's1', name: 'skill_a', description: 'd', kind: 'tool', exposure: 'tool',
-      promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active',
+      id: 's1',
+      name: 'skill_a',
+      description: 'd',
+      kind: 'tool',
+      exposure: 'tool',
+      promptTemplate: 't',
+      inputSchema: {},
+      outputSchema: {},
+      version: 1,
+      status: 'active',
     });
 
     const toolsBefore = registry.getToolDefinitions();
     expect(toolsBefore).toHaveLength(1);
 
     registry.register({
-      id: 's2', name: 'skill_b', description: 'd', kind: 'tool', exposure: 'tool',
-      promptTemplate: 't', inputSchema: {}, outputSchema: {}, version: 1, status: 'active',
+      id: 's2',
+      name: 'skill_b',
+      description: 'd',
+      kind: 'tool',
+      exposure: 'tool',
+      promptTemplate: 't',
+      inputSchema: {},
+      outputSchema: {},
+      version: 1,
+      status: 'active',
     });
 
     const toolsAfter = registry.getToolDefinitions();

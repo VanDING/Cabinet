@@ -42,6 +42,7 @@ tsconfig.json                             # MODIFY — add packages/graph refere
 ### Task 0: Scaffold the new @cabinet/graph package
 
 **Files:**
+
 - Create: `packages/graph/package.json`
 - Create: `packages/graph/tsconfig.json`
 - Create: `packages/graph/vitest.config.ts`
@@ -84,9 +85,7 @@ tsconfig.json                             # MODIFY — add packages/graph refere
   },
   "include": ["src"],
   "exclude": ["src/**/__tests__/**"],
-  "references": [
-    { "path": "../storage" }
-  ]
+  "references": [{ "path": "../storage" }]
 }
 ```
 
@@ -127,6 +126,7 @@ git commit -m "feat(graph): scaffold @cabinet/graph package"
 ### Task 1: Annotation type builder
 
 **Files:**
+
 - Create: `packages/graph/src/annotation.ts`
 - Create: `packages/graph/src/__tests__/annotation.test.ts`
 - Modify: `packages/graph/src/index.ts`
@@ -172,7 +172,10 @@ describe('Annotation', () => {
 
     const result = ann.reducer(
       [{ id: '1', value: 'a' }],
-      [{ id: '1', value: 'b' }, { id: '2', value: 'c' }],
+      [
+        { id: '1', value: 'b' },
+        { id: '2', value: 'c' },
+      ],
     );
     expect(result).toEqual([
       { id: '1', value: 'a' },
@@ -232,6 +235,7 @@ git commit -m "feat(graph): add Annotation state schema builder"
 ### Task 2: StreamEvent types
 
 **Files:**
+
 - Create: `packages/graph/src/events.ts`
 
 - [ ] **Step 1: Create events.ts**
@@ -261,6 +265,7 @@ git commit -m "feat(graph): add StreamEvent type definitions"
 ### Task 3: CheckpointStore — linked-list persistence
 
 **Files:**
+
 - Create: `packages/graph/src/checkpoint-store.ts`
 - Create: `packages/graph/src/__tests__/checkpoint-store.test.ts`
 
@@ -313,19 +318,34 @@ describe('CheckpointStore', () => {
 
   it('forms a linked list via parentId', () => {
     store.save({
-      id: 'ckpt_run1_0', runId: 'run1', parentId: null,
-      nodeId: 'nodeA', state: '{}', pendingTasks: null,
-      metadata: '{}', createdAt: new Date().toISOString(),
+      id: 'ckpt_run1_0',
+      runId: 'run1',
+      parentId: null,
+      nodeId: 'nodeA',
+      state: '{}',
+      pendingTasks: null,
+      metadata: '{}',
+      createdAt: new Date().toISOString(),
     });
     store.save({
-      id: 'ckpt_run1_1', runId: 'run1', parentId: 'ckpt_run1_0',
-      nodeId: 'nodeB', state: '{}', pendingTasks: null,
-      metadata: '{}', createdAt: new Date().toISOString(),
+      id: 'ckpt_run1_1',
+      runId: 'run1',
+      parentId: 'ckpt_run1_0',
+      nodeId: 'nodeB',
+      state: '{}',
+      pendingTasks: null,
+      metadata: '{}',
+      createdAt: new Date().toISOString(),
     });
     store.save({
-      id: 'ckpt_run1_2', runId: 'run1', parentId: 'ckpt_run1_1',
-      nodeId: 'nodeC', state: '{}', pendingTasks: null,
-      metadata: '{}', createdAt: new Date().toISOString(),
+      id: 'ckpt_run1_2',
+      runId: 'run1',
+      parentId: 'ckpt_run1_1',
+      nodeId: 'nodeC',
+      state: '{}',
+      pendingTasks: null,
+      metadata: '{}',
+      createdAt: new Date().toISOString(),
     });
 
     expect(store.getPrior('ckpt_run1_2')?.id).toBe('ckpt_run1_1');
@@ -335,14 +355,24 @@ describe('CheckpointStore', () => {
 
   it('lists all checkpoints for a run', () => {
     store.save({
-      id: 'ckpt_run1_0', runId: 'run1', parentId: null,
-      nodeId: 'nodeA', state: '{}', pendingTasks: null,
-      metadata: '{}', createdAt: new Date().toISOString(),
+      id: 'ckpt_run1_0',
+      runId: 'run1',
+      parentId: null,
+      nodeId: 'nodeA',
+      state: '{}',
+      pendingTasks: null,
+      metadata: '{}',
+      createdAt: new Date().toISOString(),
     });
     store.save({
-      id: 'ckpt_run1_1', runId: 'run1', parentId: 'ckpt_run1_0',
-      nodeId: 'nodeB', state: '{}', pendingTasks: null,
-      metadata: '{}', createdAt: new Date().toISOString(),
+      id: 'ckpt_run1_1',
+      runId: 'run1',
+      parentId: 'ckpt_run1_0',
+      nodeId: 'nodeB',
+      state: '{}',
+      pendingTasks: null,
+      metadata: '{}',
+      createdAt: new Date().toISOString(),
     });
 
     const list = store.listRun('run1');
@@ -354,9 +384,14 @@ describe('CheckpointStore', () => {
     let parentId: string | null = null;
     for (const id of ids) {
       store.save({
-        id, runId: 'run1', parentId,
-        nodeId: 'node', state: '{}', pendingTasks: null,
-        metadata: '{}', createdAt: new Date().toISOString(),
+        id,
+        runId: 'run1',
+        parentId,
+        nodeId: 'node',
+        state: '{}',
+        pendingTasks: null,
+        metadata: '{}',
+        createdAt: new Date().toISOString(),
       });
       parentId = id;
     }
@@ -427,15 +462,21 @@ export class CheckpointStore {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        record.id, record.runId, record.parentId, record.nodeId,
-        record.state, record.pendingTasks, record.metadata, record.createdAt,
+        record.id,
+        record.runId,
+        record.parentId,
+        record.nodeId,
+        record.state,
+        record.pendingTasks,
+        record.metadata,
+        record.createdAt,
       );
   }
 
   load(id: string): CheckpointRecord | null {
-    const row = this.db
-      .prepare('SELECT * FROM graph_checkpoints WHERE id = ?')
-      .get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM graph_checkpoints WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
     return this.rowToRecord(row);
   }
@@ -448,27 +489,21 @@ export class CheckpointStore {
 
   listRun(runId: string): CheckpointRecord[] {
     const rows = this.db
-      .prepare(
-        'SELECT * FROM graph_checkpoints WHERE run_id = ? ORDER BY created_at ASC',
-      )
+      .prepare('SELECT * FROM graph_checkpoints WHERE run_id = ? ORDER BY created_at ASC')
       .all(runId) as Record<string, unknown>[];
     return rows.map((r) => this.rowToRecord(r));
   }
 
   gc(runId: string, keepLast: number): void {
     const rows = this.db
-      .prepare(
-        'SELECT id FROM graph_checkpoints WHERE run_id = ? ORDER BY created_at DESC',
-      )
+      .prepare('SELECT id FROM graph_checkpoints WHERE run_id = ? ORDER BY created_at DESC')
       .all(runId) as { id: string }[];
 
     if (rows.length <= keepLast) return;
 
     const toDelete = rows.slice(keepLast).map((r) => r.id);
     const placeholders = toDelete.map(() => '?').join(',');
-    this.db
-      .prepare(`DELETE FROM graph_checkpoints WHERE id IN (${placeholders})`)
-      .run(...toDelete);
+    this.db.prepare(`DELETE FROM graph_checkpoints WHERE id IN (${placeholders})`).run(...toDelete);
   }
 
   private rowToRecord(row: Record<string, unknown>): CheckpointRecord {
@@ -506,6 +541,7 @@ git commit -m "feat(graph): add CheckpointStore with linked-list persistence"
 ### Task 4: Compile-time validation
 
 **Files:**
+
 - Create: `packages/graph/src/validation.ts`
 - Create: `packages/graph/src/__tests__/validation.test.ts`
 
@@ -530,9 +566,7 @@ describe('validateGraph', () => {
   });
 
   it('fails when edge references unknown target', () => {
-    const edges: EdgeDef[] = [
-      { type: 'static', from: 'a', to: 'nonexistent' },
-    ];
+    const edges: EdgeDef[] = [{ type: 'static', from: 'a', to: 'nonexistent' }];
     const result = validateGraph(nodeIds, edges, entry);
     expect(result.ok).toBe(false);
     expect(result.errors).toHaveLength(1);
@@ -581,9 +615,7 @@ describe('validateGraph', () => {
   });
 
   it('fails when conditional edge has no default target', () => {
-    const edges: EdgeDef[] = [
-      { type: 'conditional', from: 'a', to: 'b', conditionValue: 'tools' },
-    ];
+    const edges: EdgeDef[] = [{ type: 'conditional', from: 'a', to: 'b', conditionValue: 'tools' }];
     const result = validateGraph(nodeIds, edges, entry);
     expect(result.ok).toBe(false);
     expect(result.errors![0]!.message).toContain('default');
@@ -726,7 +758,9 @@ export function validateGraph(
 /** Find strongly connected components (simple DFS-based for small graphs). */
 function findCycles(nodeIds: Set<string>, edges: EdgeDef[]): Set<string>[] {
   const cycles: Set<string>[] = [];
-  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const WHITE = 0,
+    GRAY = 1,
+    BLACK = 2;
   const color = new Map<string, number>();
 
   for (const id of nodeIds) color.set(id, WHITE);
@@ -788,6 +822,7 @@ git commit -m "feat(graph): add compile-time graph validation (6 passes)"
 ### Task 5: StateGraph builder + CompiledGraph
 
 **Files:**
+
 - Create: `packages/graph/src/state-graph.ts`
 - Create: `packages/graph/src/__tests__/state-graph.test.ts`
 
@@ -832,13 +867,17 @@ describe('StateGraph', () => {
       .addNode('path_b', () => ({ value: 'b' }))
       .addEdge('start', 'branch')
       .addNode('branch', (s) => s) // pass-through
-      .addConditionalEdges('branch', (s) => {
-        return s.counter > 0 ? 'path_a' : 'path_b';
-      }, {
-        'path_a': 'path_a',
-        'path_b': 'path_b',
-        '__default__': END,
-      });
+      .addConditionalEdges(
+        'branch',
+        (s) => {
+          return s.counter > 0 ? 'path_a' : 'path_b';
+        },
+        {
+          path_a: 'path_a',
+          path_b: 'path_b',
+          __default__: END,
+        },
+      );
 
     const result = graph.compile({ entry: 'start' });
     expect(result.ok).toBe(true);
@@ -851,7 +890,7 @@ describe('StateGraph', () => {
     const graph = new StateGraph(TestState)
       .addNode('start', () => ({ value: 'done' }))
       .addConditionalEdges('start', () => 'unknown_key', {
-        '__default__': END,
+        __default__: END,
       });
 
     const result = graph.compile({ entry: 'start' });
@@ -875,7 +914,10 @@ describe('StateGraph', () => {
   it('stops on maxSteps to prevent infinite loops', async () => {
     let calls = 0;
     const graph = new StateGraph(TestState)
-      .addNode('loop', () => { calls++; return {}; })
+      .addNode('loop', () => {
+        calls++;
+        return {};
+      })
       .addEdge('loop', 'loop');
 
     const result = graph.compile({ entry: 'loop' });
@@ -886,11 +928,15 @@ describe('StateGraph', () => {
   it('retries node on failure up to maxRetries', async () => {
     let attempts = 0;
     const graph = new StateGraph(TestState)
-      .addNode('flaky', () => {
-        attempts++;
-        if (attempts < 2) throw new Error('transient error');
-        return { value: 'ok' };
-      }, { maxRetries: 3 })
+      .addNode(
+        'flaky',
+        () => {
+          attempts++;
+          if (attempts < 2) throw new Error('transient error');
+          return { value: 'ok' };
+        },
+        { maxRetries: 3 },
+      )
       .addEdge('flaky', END);
 
     const result = graph.compile({ entry: 'flaky' });
@@ -901,7 +947,13 @@ describe('StateGraph', () => {
 
   it('routes to error edge when retries exhausted', async () => {
     const graph = new StateGraph(TestState)
-      .addNode('failing', () => { throw new Error('persistent error'); }, { maxRetries: 1 })
+      .addNode(
+        'failing',
+        () => {
+          throw new Error('persistent error');
+        },
+        { maxRetries: 1 },
+      )
       .addNode('errorHandler', () => ({ value: 'recovered' }))
       .addErrorEdge('failing', 'errorHandler')
       .addEdge('errorHandler', END);
@@ -912,14 +964,12 @@ describe('StateGraph', () => {
   });
 
   it('default state values are applied', async () => {
-    const graph = new StateGraph(TestState)
-      .addNode('nop', () => ({}))
-      .addEdge('nop', END);
+    const graph = new StateGraph(TestState).addNode('nop', () => ({})).addEdge('nop', END);
 
     const result = graph.compile({ entry: 'nop' });
     const state = await result.graph!.invoke({});
-    expect(state.value).toBe('');      // default from annotation
-    expect(state.counter).toBe(0);      // default from annotation
+    expect(state.value).toBe(''); // default from annotation
+    expect(state.counter).toBe(0); // default from annotation
   });
 });
 ```
@@ -1071,13 +1121,12 @@ export class CompiledGraph<S extends Record<string, unknown>> {
 export class StateGraph<S extends StateSchema> {
   private nodes = new Map<string, NodeEntry<StateFromSchema<S>>>();
   private edges: EdgeDef[] = [];
-  private routableEdges: Map<string, { router: RouterFn<StateFromSchema<S>>; targets: Record<string, string | typeof END> }> = new Map();
+  private routableEdges: Map<
+    string,
+    { router: RouterFn<StateFromSchema<S>>; targets: Record<string, string | typeof END> }
+  > = new Map();
 
-  addNode(
-    id: string,
-    fn: NodeFn<StateFromSchema<S>>,
-    opts?: { maxRetries?: number },
-  ): this {
+  addNode(id: string, fn: NodeFn<StateFromSchema<S>>, opts?: { maxRetries?: number }): this {
     this.nodes.set(id, { fn, maxRetries: opts?.maxRetries ?? 0, errorEdge: null });
     return this;
   }
@@ -1176,9 +1225,20 @@ Expected: no errors.
 ```typescript
 // packages/graph/src/index.ts
 export { Annotation, type AnnotationConfig } from './annotation.js';
-export { StateGraph, CompiledGraph, END, type CompileResult, type InvokeConfig } from './state-graph.js';
+export {
+  StateGraph,
+  CompiledGraph,
+  END,
+  type CompileResult,
+  type InvokeConfig,
+} from './state-graph.js';
 export { CheckpointStore, type CheckpointRecord } from './checkpoint-store.js';
-export { validateGraph, type EdgeDef, type CompileError, type ValidationResult } from './validation.js';
+export {
+  validateGraph,
+  type EdgeDef,
+  type CompileError,
+  type ValidationResult,
+} from './validation.js';
 export type { StreamEvent } from './events.js';
 ```
 
@@ -1194,6 +1254,7 @@ git commit -m "feat(graph): add StateGraph builder and CompiledGraph executor"
 ### Task 6: AgentLoop internal rewrite using StateGraph
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-loop.ts`
 - Modify: `packages/agent/package.json`
 - Modify: `packages/agent/tsconfig.json`
@@ -1223,21 +1284,25 @@ In `packages/agent/src/agent-loop.ts`, replace the internal `run()` method's `wh
 The key principle: **keep the public API identical, replace only the internal execution loop**.
 
 Add this import at the top:
+
 ```typescript
 import { StateGraph, CompiledGraph, END, Annotation } from '@cabinet/graph';
 ```
 
 Define the AgentState schema inside the file (not exported):
+
 ```typescript
 const AgentStateSchema = {
   messages: Annotation<{ role: 'user' | 'assistant'; content: string }[]>({
     reducer: (a, b) => [...a, ...b],
     default: () => [] as { role: 'user' | 'assistant'; content: string }[],
   }),
-  executedToolCalls: Annotation<{ name: string; args: Record<string, unknown>; result: unknown }[]>({
-    reducer: (a, b) => [...a, ...b],
-    default: () => [] as { name: string; args: Record<string, unknown>; result: unknown }[],
-  }),
+  executedToolCalls: Annotation<{ name: string; args: Record<string, unknown>; result: unknown }[]>(
+    {
+      reducer: (a, b) => [...a, ...b],
+      default: () => [] as { name: string; args: Record<string, unknown>; result: unknown }[],
+    },
+  ),
   systemPrompt: Annotation<string>({
     reducer: (_a, b) => b,
     default: () => '',
@@ -1658,6 +1723,7 @@ git commit -m "refactor(agent): replace AgentLoop while-loop with StateGraph-bas
 ### Task 7: WorkflowEngine internal rewrite using StateGraph
 
 **Files:**
+
 - Modify: `packages/workflow/src/engine.ts`
 - Modify: `packages/workflow/package.json`
 - Modify: `packages/workflow/tsconfig.json`
@@ -1683,11 +1749,13 @@ Expected: All existing tests pass. Note the exact test count.
 - [ ] **Step 3: Rewrite WorkflowEngine to use StateGraph internally**
 
 In `packages/workflow/src/engine.ts`, import from graph package:
+
 ```typescript
 import { StateGraph, END, Annotation } from '@cabinet/graph';
 ```
 
 Define WorkflowState:
+
 ```typescript
 const WorkflowState = {
   _nodeId: Annotation<string>({ reducer: (_a, b) => b, default: () => '' }),
@@ -1898,6 +1966,7 @@ private async executeSingleNode(
 ```
 
 Rewrite `startRun()` to use the graph:
+
 ```typescript
 async startRun(
   workflowId: string, nodes: WorkflowNodeDef[], edges: WorkflowEdge[], entryNodeId: string,
@@ -1993,6 +2062,7 @@ git commit -m "chore: verify full test suite passes after graph engine migration
 ## Self-Review
 
 **1. Spec coverage:**
+
 - Annotation type builder → Task 1 ✓
 - StateGraph builder + CompiledGraph → Task 5 ✓
 - Checkpoint linked-list model → Task 3 ✓
@@ -2005,6 +2075,7 @@ git commit -m "chore: verify full test suite passes after graph engine migration
 **2. Placeholder scan:** No TBD, TODO, "implement later", "add error handling" without code. Every task has concrete code.
 
 **3. Type consistency:**
+
 - `Annotation<T>` defined in Task 1, used in Tasks 5, 6, 7 — consistent
 - `StateGraph` + `CompiledGraph` defined in Task 5, used in Tasks 6, 7 — consistent
 - `EdgeDef` defined in Task 4, used in Task 4 tests — consistent

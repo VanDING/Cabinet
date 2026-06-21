@@ -4,18 +4,12 @@ export interface SystemToolDeps {
   readClipboard: () => Promise<{ text: string }>;
   writeClipboard: (text: string) => Promise<{ written: boolean }>;
   sendNotification: (title: string, message: string) => Promise<{ sent: boolean }>;
-  startProcess: (
-    command: string,
-    args?: string[],
-    cwd?: string,
-  ) => Promise<{ pid: number }>;
+  startProcess: (command: string, args?: string[], cwd?: string) => Promise<{ pid: number }>;
   killProcess: (pid: number) => Promise<{ killed: boolean; error?: string }>;
-  showOpenDialog: (
-    options?: {
-      multiple?: boolean;
-      filters?: { name: string; extensions: string[] }[];
-    },
-  ) => Promise<{ paths: string[]; error?: string }>;
+  showOpenDialog: (options?: {
+    multiple?: boolean;
+    filters?: { name: string; extensions: string[] }[];
+  }) => Promise<{ paths: string[]; error?: string }>;
 }
 
 export function createSystemTools(deps: SystemToolDeps): ToolDefinition[] {

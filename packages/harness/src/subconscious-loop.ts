@@ -115,7 +115,11 @@ export class SubconsciousLoop {
     return related.map((e) => e.name);
   }
 
-  private generateInsight(content: string, related: string[], sourceMemoryId: string): SubconsciousInsight {
+  private generateInsight(
+    content: string,
+    related: string[],
+    sourceMemoryId: string,
+  ): SubconsciousInsight {
     // Simple heuristic: if there are related entities and the memory contains
     // a question or open topic, boost relevance.
     let relevance = 0.5;

@@ -62,7 +62,10 @@ export class TriggerExecutor {
     // Verify HMAC signature if secret is configured
     if (trigger.webhook_secret && signature) {
       const body = JSON.stringify(payload);
-      const expected = crypto.createHmac('sha256', trigger.webhook_secret).update(body).digest('hex');
+      const expected = crypto
+        .createHmac('sha256', trigger.webhook_secret)
+        .update(body)
+        .digest('hex');
       if (signature !== `sha256=${expected}`) {
         throw new Error('Invalid webhook signature');
       }

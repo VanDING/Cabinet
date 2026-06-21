@@ -27,7 +27,11 @@ export class TriggerScheduler {
     private readonly repo: AutopilotRepository,
     private readonly executor: TriggerExecutor,
     private readonly cron: CronAdapter,
-    private readonly log: { info: (msg: string, ctx?: unknown) => void; warn: (msg: string, ctx?: unknown) => void; error: (msg: string, ctx?: unknown) => void },
+    private readonly log: {
+      info: (msg: string, ctx?: unknown) => void;
+      warn: (msg: string, ctx?: unknown) => void;
+      error: (msg: string, ctx?: unknown) => void;
+    },
   ) {}
 
   /** Load and schedule all enabled cron triggers from the database. */
@@ -54,7 +58,10 @@ export class TriggerScheduler {
   scheduleCron(trigger: AutopilotTriggerRow): boolean {
     if (!trigger.cron_expression) return false;
     if (!this.cron.validate(trigger.cron_expression)) {
-      this.log.warn('Invalid cron expression', { triggerId: trigger.id, cron: trigger.cron_expression });
+      this.log.warn('Invalid cron expression', {
+        triggerId: trigger.id,
+        cron: trigger.cron_expression,
+      });
       return false;
     }
 
@@ -72,7 +79,10 @@ export class TriggerScheduler {
     );
 
     this.jobs.set(trigger.id, handle);
-    this.log.info('Cron trigger scheduled', { triggerId: trigger.id, cron: trigger.cron_expression });
+    this.log.info('Cron trigger scheduled', {
+      triggerId: trigger.id,
+      cron: trigger.cron_expression,
+    });
     return true;
   }
 

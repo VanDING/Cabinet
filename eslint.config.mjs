@@ -19,6 +19,7 @@ export default tseslint.config(
       '**/coverage/**',
       'apps/desktop/src-tauri/target/**',
       'apps/desktop/src-tauri/resources/server-dist/**',
+      'apps/desktop/src-tauri/resources/frontend/**',
       'apps/server/bundle/**',
     ],
   },

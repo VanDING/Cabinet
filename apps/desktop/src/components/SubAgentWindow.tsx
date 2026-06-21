@@ -59,13 +59,7 @@ function eventsToTurns(events: AgentEvent[]): Turn[] {
   return turns;
 }
 
-export function SubAgentWindow({
-  agentType,
-  status,
-  events,
-  onClick,
-  onApprove,
-}: Props) {
+export function SubAgentWindow({ agentType, status, events, onClick, onApprove }: Props) {
   const [expanded, setExpanded] = useState(status === 'active' || status === 'waiting_for_user');
   const [showThinking, setShowThinking] = useState<Record<number, boolean>>({});
 
@@ -99,17 +93,15 @@ export function SubAgentWindow({
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2">
         <span className={`h-2 w-2 rounded-full ${statusDot}`} />
-        <span className="text-xs font-medium text-content-secondary">
-          Sub-Agent: {agentType}
-        </span>
-        <span className="text-[10px] text-content-tertiary">{statusLabel}</span>
+        <span className="text-content-secondary text-xs font-medium">Sub-Agent: {agentType}</span>
+        <span className="text-content-tertiary text-[10px]">{statusLabel}</span>
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
-            className="rounded px-1 text-[10px] text-content-tertiary hover:bg-surface-muted"
+            className="text-content-tertiary hover:bg-surface-muted rounded px-1 text-[10px]"
           >
             {expanded ? '−' : '+'}
           </button>
@@ -118,16 +110,16 @@ export function SubAgentWindow({
 
       {/* Body */}
       {expanded && (
-        <div className="space-y-3 border-t border-border px-3 py-2">
+        <div className="border-border space-y-3 border-t px-3 py-2">
           {turns.length === 0 && events.length === 0 && (
-            <div className="text-xs italic text-content-tertiary">Waiting for events...</div>
+            <div className="text-content-tertiary text-xs italic">Waiting for events...</div>
           )}
 
           {turns.map((turn, idx) => (
             <div key={idx} className="space-y-2">
               {turn.user && (
                 <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-lg bg-accent-muted px-3 py-2 text-xs text-accent">
+                  <div className="bg-accent-muted text-accent max-w-[85%] rounded-lg px-3 py-2 text-xs">
                     {turn.user}
                   </div>
                 </div>
@@ -136,7 +128,7 @@ export function SubAgentWindow({
               {turn.assistant && (
                 <div className="flex justify-start">
                   <div className="max-w-[85%] space-y-1">
-                    <div className="rounded-lg border border-border bg-surface-primary px-3 py-2 text-xs text-content-secondary whitespace-pre-wrap">
+                    <div className="border-border bg-surface-primary text-content-secondary rounded-lg border px-3 py-2 text-xs whitespace-pre-wrap">
                       {turn.assistant}
                     </div>
 
@@ -150,7 +142,7 @@ export function SubAgentWindow({
                               [idx]: !prev[idx],
                             }));
                           }}
-                          className="text-[10px] text-content-tertiary hover:text-content-secondary"
+                          className="text-content-tertiary hover:text-content-secondary text-[10px]"
                         >
                           {showThinking[idx] ? '▼' : '▶'}{' '}
                           {turn.thinking.length > 0 && `${turn.thinking.length} thinking`}
@@ -159,21 +151,18 @@ export function SubAgentWindow({
                         </button>
 
                         {showThinking[idx] && (
-                          <div className="mt-1 space-y-1 rounded border border-border bg-surface-muted p-2">
+                          <div className="border-border bg-surface-muted mt-1 space-y-1 rounded border p-2">
                             {turn.thinking.map((t, i) => (
                               <div
                                 key={`th-${i}`}
-                                className="text-[10px] text-content-tertiary whitespace-pre-wrap"
+                                className="text-content-tertiary text-[10px] whitespace-pre-wrap"
                               >
                                 {t}
                               </div>
                             ))}
                             {turn.toolCalls.map((tc, i) => (
-                              <div
-                                key={`tc-${i}`}
-                                className="flex items-start gap-1.5 text-[10px]"
-                              >
-                                <span className="font-mono text-content-secondary">{tc.name}</span>
+                              <div key={`tc-${i}`} className="flex items-start gap-1.5 text-[10px]">
+                                <span className="text-content-secondary font-mono">{tc.name}</span>
                                 <span className="text-content-tertiary">
                                   {Object.entries(tc.args)
                                     .map(([k, v]) => `${k}=${String(v).slice(0, 30)}`)
@@ -181,7 +170,10 @@ export function SubAgentWindow({
                                 </span>
                                 {tc.result !== undefined && (
                                   <span className="text-intent-success">
-                                    → {typeof tc.result === 'string' ? tc.result.slice(0, 30) : JSON.stringify(tc.result).slice(0, 30)}
+                                    →{' '}
+                                    {typeof tc.result === 'string'
+                                      ? tc.result.slice(0, 30)
+                                      : JSON.stringify(tc.result).slice(0, 30)}
                                   </span>
                                 )}
                               </div>
@@ -200,18 +192,29 @@ export function SubAgentWindow({
           {events.length > 0 && turns.length === 0 && (
             <div className="space-y-1">
               {events.map((event, idx) => {
-                if (event.type === 'user_input_received' || event.type === 'output' || event.type === 'stream_chunk') return null;
+                if (
+                  event.type === 'user_input_received' ||
+                  event.type === 'output' ||
+                  event.type === 'stream_chunk'
+                )
+                  return null;
                 return (
                   <div key={`raw-${idx}`} className="flex items-start gap-1.5 text-xs">
                     <span className="mt-0.5 select-none">
-                      {event.type === 'thinking' ? '💭' : event.type === 'tool_call' ? '🔧' : event.type === 'tool_result' ? '✓' : '•'}
+                      {event.type === 'thinking'
+                        ? '💭'
+                        : event.type === 'tool_call'
+                          ? '🔧'
+                          : event.type === 'tool_result'
+                            ? '✓'
+                            : '•'}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <span className="font-mono text-[10px] text-content-tertiary">
+                      <span className="text-content-tertiary font-mono text-[10px]">
                         {event.type}
                       </span>
                       {'content' in event && event.content && (
-                        <div className="mt-0.5 break-words text-content-secondary">
+                        <div className="text-content-secondary mt-0.5 break-words">
                           {event.content.slice(0, 200)}
                           {event.content.length > 200 ? '…' : ''}
                         </div>
@@ -231,7 +234,7 @@ export function SubAgentWindow({
                   e.stopPropagation();
                   onApprove();
                 }}
-                className="rounded bg-accent px-3 py-1 text-[10px] text-content-inverse hover:bg-accent-hover"
+                className="bg-accent text-content-inverse hover:bg-accent-hover rounded px-3 py-1 text-[10px]"
               >
                 Approve &amp; Deploy
               </button>

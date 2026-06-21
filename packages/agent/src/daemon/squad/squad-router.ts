@@ -37,14 +37,22 @@ export class SquadRouter {
     const members = this.repo.findActiveMembers(squadId);
     if (members.length === 0) {
       if (squad.fallback_agent_id) {
-        return { targetAgentId: squad.fallback_agent_id, strategy: 'fallback', reason: 'No active members' };
+        return {
+          targetAgentId: squad.fallback_agent_id,
+          strategy: 'fallback',
+          reason: 'No active members',
+        };
       }
       return null;
     }
 
     switch (squad.routing_strategy) {
       case 'leader_decision':
-        return { targetAgentId: squad.leader_agent_id, strategy: 'leader_decision', reason: 'Delegated to leader' };
+        return {
+          targetAgentId: squad.leader_agent_id,
+          strategy: 'leader_decision',
+          reason: 'Delegated to leader',
+        };
       case 'round_robin':
         return this.routeRoundRobin(squad, members);
       case 'skill_match':
@@ -76,7 +84,11 @@ export class SquadRouter {
   private routeRoundRobin(squad: SquadRow, members: SquadMemberRow[]): SquadRouteResult {
     const nextIdx = this.repo.advanceRoundRobin(squad.id, members.length);
     const member = members[nextIdx]!;
-    return { targetAgentId: member.agent_id, strategy: 'round_robin', reason: `Round-robin index ${nextIdx}` };
+    return {
+      targetAgentId: member.agent_id,
+      strategy: 'round_robin',
+      reason: `Round-robin index ${nextIdx}`,
+    };
   }
 
   private routeBySkill(members: SquadMemberRow[], task: string): SquadRouteResult {
@@ -102,7 +114,11 @@ export class SquadRouter {
       }
     }
 
-    return { targetAgentId: bestMember.agent_id, strategy: 'skill_match', reason: `Score ${bestScore}` };
+    return {
+      targetAgentId: bestMember.agent_id,
+      strategy: 'skill_match',
+      reason: `Score ${bestScore}`,
+    };
   }
 
   private routeAuto(
@@ -132,6 +148,10 @@ export class SquadRouter {
       }
     }
 
-    return { targetAgentId: bestMember.agent_id, strategy: 'auto', reason: `Score ${bestScore} (skill+priority-load)` };
+    return {
+      targetAgentId: bestMember.agent_id,
+      strategy: 'auto',
+      reason: `Score ${bestScore} (skill+priority-load)`,
+    };
   }
 }

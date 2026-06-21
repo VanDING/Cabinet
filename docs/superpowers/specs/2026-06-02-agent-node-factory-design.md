@@ -14,15 +14,15 @@ StateGraph nodes are pure functions. AgentLoop is a stateful class. To compose m
 
 ## 2. Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Factory API | `createAgentNodeFactory(deps)` → `(config) → NodeFn` | One deps injection, many nodes |
-| Input mapping | `{ message: string, systemPrompt?: string }` | message for task text; optional systemPrompt appended to role's default |
-| Default output | `output` **is now optional**. Omitted → writes `AgentHandoff` to `state.agentHandoffs[agentId]` | Convention over configuration. Explicit output overrides default. |
-| Handoff format | `AgentHandoff` type: `{ from, task, findings, decisions, confidence, openQuestions }` | Matches the structured fields AgentResult already has via `structuredOutput` |
-| Selector | `createSelector(targets, fn, maxRounds)` — a pure graph node + conditional edges | No new abstraction. Selector is just a node that returns `{ nextSpeaker }`, and conditional edges route based on that. `maxRounds` enforces termination. |
-| Multi-round | No new mechanism. Selector's conditional edge back to an agent node = revisit | Graph's existing cycle support with conditional exit |
-| Layer placement | All in `packages/agent/` | Agent primitives only. graph package stays agent-agnostic |
+| Decision        | Choice                                                                                          | Rationale                                                                                                                                                |
+| --------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Factory API     | `createAgentNodeFactory(deps)` → `(config) → NodeFn`                                            | One deps injection, many nodes                                                                                                                           |
+| Input mapping   | `{ message: string, systemPrompt?: string }`                                                    | message for task text; optional systemPrompt appended to role's default                                                                                  |
+| Default output  | `output` **is now optional**. Omitted → writes `AgentHandoff` to `state.agentHandoffs[agentId]` | Convention over configuration. Explicit output overrides default.                                                                                        |
+| Handoff format  | `AgentHandoff` type: `{ from, task, findings, decisions, confidence, openQuestions }`           | Matches the structured fields AgentResult already has via `structuredOutput`                                                                             |
+| Selector        | `createSelector(targets, fn, maxRounds)` — a pure graph node + conditional edges                | No new abstraction. Selector is just a node that returns `{ nextSpeaker }`, and conditional edges route based on that. `maxRounds` enforces termination. |
+| Multi-round     | No new mechanism. Selector's conditional edge back to an agent node = revisit                   | Graph's existing cycle support with conditional exit                                                                                                     |
+| Layer placement | All in `packages/agent/`                                                                        | Agent primitives only. graph package stays agent-agnostic                                                                                                |
 
 ## 3. Types
 
@@ -32,14 +32,14 @@ StateGraph nodes are pure functions. AgentLoop is a stateful class. To compose m
 // packages/agent/src/agent-handoff.ts
 
 interface AgentHandoff {
-  from: string;               // agent ID (e.g. "chair", "reviewer")
-  task: string;                // what this agent was asked to do
-  summary: string;             // 1-2 sentence summary of output
+  from: string; // agent ID (e.g. "chair", "reviewer")
+  task: string; // what this agent was asked to do
+  summary: string; // 1-2 sentence summary of output
   findings: Array<{ type: string; detail: string; severity?: 'high' | 'medium' | 'low' }>;
   decisions: Array<{ decision: string; rationale: string }>;
   openQuestions: string[];
-  confidence: number;          // 0.0–1.0
-  rawOutput: string;            // full AgentResult.content
+  confidence: number; // 0.0–1.0
+  rawOutput: string; // full AgentResult.content
 }
 ```
 
@@ -49,7 +49,7 @@ interface AgentHandoff {
 // Users add this to their graph's state:
 const MyState = {
   agentHandoffs: Annotation<Record<string, AgentHandoff>>({
-    reducer: (a, b) => ({ ...a, ...b }),     // merge, latest wins per agentId
+    reducer: (a, b) => ({ ...a, ...b }), // merge, latest wins per agentId
     default: () => ({}),
   }),
   nextSpeaker: Annotation<string>({
@@ -76,11 +76,11 @@ interface AgentNodeDeps {
 ```typescript
 interface AgentNodeConfig<S> {
   role: AgentRole;
-  agentId: string;              // unique within this graph (e.g. "advisor_main").
-                                 // NOT the same as role.type ("advisor").
-                                 // Allows multiple instances of the same role in one graph.
+  agentId: string; // unique within this graph (e.g. "advisor_main").
+  // NOT the same as role.type ("advisor").
+  // Allows multiple instances of the same role in one graph.
   input: (state: S) => { message: string; systemPrompt?: string };
-  output?: (state: S, result: AgentResult) => Partial<S>;  // optional — defaults to writing handoff
+  output?: (state: S, result: AgentResult) => Partial<S>; // optional — defaults to writing handoff
 }
 ```
 
@@ -89,20 +89,21 @@ interface AgentNodeConfig<S> {
 ```typescript
 type AgentNodeFn<S> = (state: S) => Promise<Partial<S>>;
 
-function createAgentNodeFactory<S>(deps: AgentNodeDeps):
-  (config: AgentNodeConfig<S>) => AgentNodeFn<S>
+function createAgentNodeFactory<S>(
+  deps: AgentNodeDeps,
+): (config: AgentNodeConfig<S>) => AgentNodeFn<S>;
 ```
 
 ### 3.6 Selector
 
 ```typescript
 interface SelectorConfig<S> {
-  targets: string[];                          // agent node IDs this selector can route to
-  decide: (state: S) => string | typeof END;  // pure function: state → next agent ID (or END)
-  maxRounds: number;                          // safety limit — after this many, routes to END
+  targets: string[]; // agent node IDs this selector can route to
+  decide: (state: S) => string | typeof END; // pure function: state → next agent ID (or END)
+  maxRounds: number; // safety limit — after this many, routes to END
 }
 
-function createSelector<S>(config: SelectorConfig<S>): (state: S) => { nextSpeaker: string }
+function createSelector<S>(config: SelectorConfig<S>): (state: S) => { nextSpeaker: string };
 ```
 
 The selector node writes `{ nextSpeaker }` to state. The caller adds conditional edges from the selector node mapping each target + `__default__` (END).
@@ -145,27 +146,36 @@ const selector = createSelector<MeetingState>({
 
 const graph = new StateGraph(MeetingState)
   .addNode('selector', selector)
-  .addNode('chair', node({
-    role: MEETING_CHAIR_ROLE,
-    agentId: 'chair',
-    input: (s) => ({ message: s.topic }),
-  }))
-  .addNode('advisor', node({
-    role: ADVISOR_ROLE,
-    agentId: 'advisor',
-    input: (s) => ({ message: buildAdvisorPrompt(s.agentHandoffs['chair']?.rawOutput) }),
-  }))
-  .addNode('reviewer', node({
-    role: REVIEWER_ROLE,
-    agentId: 'reviewer',
-    input: (s) => ({ message: buildReviewTask(s.agentHandoffs['advisor']?.rawOutput) }),
-  }))
+  .addNode(
+    'chair',
+    node({
+      role: MEETING_CHAIR_ROLE,
+      agentId: 'chair',
+      input: (s) => ({ message: s.topic }),
+    }),
+  )
+  .addNode(
+    'advisor',
+    node({
+      role: ADVISOR_ROLE,
+      agentId: 'advisor',
+      input: (s) => ({ message: buildAdvisorPrompt(s.agentHandoffs['chair']?.rawOutput) }),
+    }),
+  )
+  .addNode(
+    'reviewer',
+    node({
+      role: REVIEWER_ROLE,
+      agentId: 'reviewer',
+      input: (s) => ({ message: buildReviewTask(s.agentHandoffs['advisor']?.rawOutput) }),
+    }),
+  )
   // selector → agents
   .addConditionalEdges('selector', (s) => s.nextSpeaker, {
-    'chair': 'chair',
-    'advisor': 'advisor',
-    'reviewer': 'reviewer',
-    '__default__': END,
+    chair: 'chair',
+    advisor: 'advisor',
+    reviewer: 'reviewer',
+    __default__: END,
   })
   // agents → back to selector
   .addEdge('chair', 'selector')
@@ -177,11 +187,14 @@ const graph = new StateGraph(MeetingState)
 
 ```typescript
 // In buildStateGraph(), replacing the current agentGroup case:
-sg.addNode(nodeId, node({
-  role: registry.get(workflowNode.role),
-  agentId: nodeId,
-  input: () => ({ message: previousStepsOutput }),
-}));
+sg.addNode(
+  nodeId,
+  node({
+    role: registry.get(workflowNode.role),
+    agentId: nodeId,
+    input: () => ({ message: previousStepsOutput }),
+  }),
+);
 // Edges from/to the agent node handled by existing graph edge construction
 ```
 

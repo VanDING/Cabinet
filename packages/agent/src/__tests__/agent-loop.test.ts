@@ -5,13 +5,7 @@ import { ToolExecutor } from '../tool-executor.js';
 import { SafetyChecker } from '../safety.js';
 import { CheckpointManager } from '../checkpoint.js';
 import type { MemoryProvider } from '../context-builder.js';
-import type {
-  LLMGateway,
-  LLMResponse,
-  LLMCallOptions,
-  EmbeddingOptions,
-  EmbeddingResult,
-} from '@cabinet/gateway';
+import { createMockGateway } from './helpers/mock-gateway.js';
 
 // In-memory SQLite for tests
 function createTestDb(): Database.Database {
@@ -44,24 +38,11 @@ describe('AgentLoop', () => {
   });
 
   it('completes simple task without tool calls', async () => {
-    const mockGateway: LLMGateway = {
-      async generateText(_options: LLMCallOptions): Promise<LLMResponse> {
-        return {
-          content: 'Hello Captain! How can I help?',
-          usage: { promptTokens: 10, completionTokens: 5 },
-          model: 'test-model',
-        };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test-model'];
-      },
-      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
-      },
-    };
+    const mockGateway = createMockGateway(async () => ({
+      content: 'Hello Captain! How can I help?',
+      usage: { promptTokens: 10, completionTokens: 5 },
+      model: 'test-model',
+    }));
 
     const loop = new AgentLoop({
       gateway: mockGateway,
@@ -83,33 +64,22 @@ describe('AgentLoop', () => {
 
   it('executes tool calls and returns final response', async () => {
     let callCount = 0;
-    const mockGateway: LLMGateway = {
-      async generateText(_options: LLMCallOptions): Promise<LLMResponse> {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            content: '',
-            toolCalls: [{ id: 'tc1', name: 'echo', arguments: { message: 'test' } }],
-            usage: { promptTokens: 10, completionTokens: 5 },
-            model: 'test-model',
-          };
-        }
+    const mockGateway = createMockGateway(async () => {
+      callCount++;
+      if (callCount === 1) {
         return {
-          content: 'Tool executed successfully.',
+          content: '',
+          toolCalls: [{ id: 'tc1', name: 'echo', arguments: { message: 'test' } }],
           usage: { promptTokens: 10, completionTokens: 5 },
           model: 'test-model',
         };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test-model'];
-      },
-      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
-      },
-    };
+      }
+      return {
+        content: 'Tool executed successfully.',
+        usage: { promptTokens: 10, completionTokens: 5 },
+        model: 'test-model',
+      };
+    });
 
     const toolExecutor = new ToolExecutor();
     toolExecutor.register({
@@ -136,25 +106,12 @@ describe('AgentLoop', () => {
   });
 
   it('blocks dangerous tools', async () => {
-    const mockGateway: LLMGateway = {
-      async generateText(_options: LLMCallOptions): Promise<LLMResponse> {
-        return {
-          content: '',
-          toolCalls: [{ id: 'tc1', name: 'delete_file', arguments: { path: '/etc/hosts' } }],
-          usage: { promptTokens: 10, completionTokens: 5 },
-          model: 'test-model',
-        };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test-model'];
-      },
-      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
-      },
-    };
+    const mockGateway = createMockGateway(async () => ({
+      content: '',
+      toolCalls: [{ id: 'tc1', name: 'delete_file', arguments: { path: '/etc/hosts' } }],
+      usage: { promptTokens: 10, completionTokens: 5 },
+      model: 'test-model',
+    }));
 
     const loop = new AgentLoop({
       gateway: mockGateway,
@@ -216,33 +173,22 @@ describe('AgentLoop RAG step optimization', () => {
   it('calls searchLongTerm only on step 0, not on tool-result steps', async () => {
     let callCount = 0;
     const memory = new CountingMemoryProvider();
-    const mockGateway: LLMGateway = {
-      async generateText(_options: LLMCallOptions): Promise<LLMResponse> {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            content: '',
-            toolCalls: [{ id: 'tc1', name: 'echo', arguments: { message: 'test' } }],
-            usage: { promptTokens: 10, completionTokens: 5 },
-            model: 'test-model',
-          };
-        }
+    const mockGateway = createMockGateway(async () => {
+      callCount++;
+      if (callCount === 1) {
         return {
-          content: 'Done.',
+          content: '',
+          toolCalls: [{ id: 'tc1', name: 'echo', arguments: { message: 'test' } }],
           usage: { promptTokens: 10, completionTokens: 5 },
           model: 'test-model',
         };
-      },
-      async *streamText() {
-        yield { type: 'done' };
-      },
-      async listModels() {
-        return ['test-model'];
-      },
-      async generateEmbeddings(_options: EmbeddingOptions): Promise<EmbeddingResult> {
-        return { embeddings: [], model: 'test-model', usage: { tokens: 0 } };
-      },
-    };
+      }
+      return {
+        content: 'Done.',
+        usage: { promptTokens: 10, completionTokens: 5 },
+        model: 'test-model',
+      };
+    });
 
     const toolExecutor = new ToolExecutor();
     toolExecutor.register({

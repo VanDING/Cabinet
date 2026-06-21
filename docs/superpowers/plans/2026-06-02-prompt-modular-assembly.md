@@ -13,6 +13,7 @@
 ### Task 1: Shared rules extraction
 
 **Files:**
+
 - Create: `packages/agent/src/prompt-shared.ts`
 
 - [ ] **Step 1: Create prompt-shared.ts**
@@ -46,6 +47,7 @@ git commit -m "feat(agent): extract shared prompt rules from role definitions"
 ### Task 2: Prompt assembler + tests
 
 **Files:**
+
 - Create: `packages/agent/src/prompt-assembler.ts`
 - Create: `packages/agent/src/__tests__/prompt-assembler.test.ts`
 
@@ -180,11 +182,7 @@ export interface AssembleOptions {
 export function assemblePrompt(options: AssembleOptions): string {
   const toolsSection = buildToolsSection(options.toolExecutor);
 
-  const sections: string[] = [
-    SHARED_PROMPT,
-    '',
-    options.modules.identity,
-  ];
+  const sections: string[] = [SHARED_PROMPT, '', options.modules.identity];
 
   if (toolsSection) {
     sections.push('', toolsSection);
@@ -237,6 +235,7 @@ git commit -m "feat(agent): add prompt assembler with auto-generated tool sectio
 ### Task 3: Migrate 5 AgentRoles from systemPrompt to modules
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-roles.ts`
 
 - [ ] **Step 1: Update AgentRole type**
@@ -305,6 +304,7 @@ Replace the `systemPrompt: [...]` block (lines 62-126) with:
 Same pattern: `systemPrompt` → `modules: { identity, workflow }`. Extract identity (who you are + core role) into `identity`. Everything procedural (routing rules, step-by-step methods, checklists) into `workflow`.
 
 For **CURATOR_ROLE** (lines 263-317):
+
 ```typescript
   modules: {
     identity: [
@@ -330,6 +330,7 @@ For **CURATOR_ROLE** (lines 263-317):
 ```
 
 For **REVIEWER_ROLE** (lines 319-384):
+
 ```typescript
   modules: {
     identity: [
@@ -362,6 +363,7 @@ For **REVIEWER_ROLE** (lines 319-384):
 ```
 
 For **MEETING_CHAIR_ROLE** (lines 213-261):
+
 ```typescript
   modules: {
     identity: [
@@ -474,6 +476,7 @@ git commit -m "refactor(agent): migrate 5 AgentRoles from systemPrompt to module
 ### Task 4: Update ContextBuilder
 
 **Files:**
+
 - Modify: `packages/agent/src/context-builder.ts`
 - Modify: `packages/agent/src/agent-loop.ts` (ContextBuilder construction sites)
 
@@ -492,6 +495,7 @@ git commit -m "refactor(agent): migrate 5 AgentRoles from systemPrompt to module
 ```
 
 Add import at top:
+
 ```typescript
 import type { ToolExecutor } from './tool-executor.js';
 ```
@@ -518,13 +522,13 @@ import { assemblePrompt, type PromptModules } from './prompt-assembler.js';
 // Add to ContextBuilderOptions:
 export interface ContextBuilderOptions {
   // ... existing fields ...
-  roleModules?: PromptModules;       // NEW — for modular prompt assembly
+  roleModules?: PromptModules; // NEW — for modular prompt assembly
 }
 
 // In build():
 let systemPrompt: string;
 if (options.systemPrompt && !options.roleSystemPrompt) {
-  systemPrompt = options.systemPrompt;  // legacy full-override
+  systemPrompt = options.systemPrompt; // legacy full-override
 } else if (options.roleModules) {
   // Modular path
   systemPrompt = assemblePrompt({
@@ -536,12 +540,15 @@ if (options.systemPrompt && !options.roleSystemPrompt) {
   });
   // Inject rules
   if (rules.length > 0) {
-    const rulesText = rules.map(r => `<!-- rule: ${r.path} -->\n${r.content}`).join('\n\n');
+    const rulesText = rules.map((r) => `<!-- rule: ${r.path} -->\n${r.content}`).join('\n\n');
     systemPrompt = `${systemPrompt}\n\n## Project Rules\n${rulesText}`;
   }
 } else {
   systemPrompt = this.buildDefaultSystemPrompt(
-    projectContext, preferences, rules, options.roleSystemPrompt,
+    projectContext,
+    preferences,
+    rules,
+    options.roleSystemPrompt,
   );
 }
 ```
@@ -560,11 +567,12 @@ this.contextBuilder = new ContextBuilder(options.memoryProvider, options.toolExe
 // Add roleModules if available:
 const ctx = await this.contextBuilder.build({
   // ... existing fields
-  roleModules: this.options.roleModules,  // NEW
+  roleModules: this.options.roleModules, // NEW
 });
 ```
 
 Add to AgentLoopOptions:
+
 ```typescript
 // packages/agent/src/agent-loop.ts — line ~76 (AgentLoopOptions)
 roleModules?: import('./prompt-assembler.js').PromptModules;  // NEW
@@ -590,6 +598,7 @@ git commit -m "refactor(agent): integrate prompt assembler into ContextBuilder"
 ### Task 5: Update agent-node.ts
 
 **Files:**
+
 - Modify: `packages/agent/src/agent-node.ts`
 - Modify: `packages/agent/src/__tests__/agent-node.test.ts`
 
@@ -598,22 +607,22 @@ git commit -m "refactor(agent): integrate prompt assembler into ContextBuilder"
 ```typescript
 // packages/agent/src/agent-node.ts — lines 34-38
 // Before:
-      const { message, systemPrompt: override } = config.input(state);
-      const systemPrompt = override
-        ? `${config.role.systemPrompt}\n\n${override}`
-        : config.role.systemPrompt;
+const { message, systemPrompt: override } = config.input(state);
+const systemPrompt = override
+  ? `${config.role.systemPrompt}\n\n${override}`
+  : config.role.systemPrompt;
 
 // After:
-      import { assemblePrompt } from './prompt-assembler.js';  // add at top
+import { assemblePrompt } from './prompt-assembler.js'; // add at top
 
-      const { message, systemPrompt: override } = config.input(state);
-      let systemPrompt = assemblePrompt({
-        modules: config.role.modules,
-        toolExecutor: toolView,
-      });
-      if (override) {
-        systemPrompt = `${systemPrompt}\n\n${override}`;
-      }
+const { message, systemPrompt: override } = config.input(state);
+let systemPrompt = assemblePrompt({
+  modules: config.role.modules,
+  toolExecutor: toolView,
+});
+if (override) {
+  systemPrompt = `${systemPrompt}\n\n${override}`;
+}
 ```
 
 - [ ] **Step 2: Update test references**
@@ -621,10 +630,10 @@ git commit -m "refactor(agent): integrate prompt assembler into ContextBuilder"
 ```typescript
 // packages/agent/src/__tests__/agent-node.test.ts — line ~131
 // Before:
-    expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.systemPrompt);
+expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.systemPrompt);
 
 // After:
-    expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.modules.identity);
+expect(capturedSystemPrompt).toContain(REVIEWER_ROLE.modules.identity);
 ```
 
 - [ ] **Step 3: Run agent-node tests**
@@ -647,6 +656,7 @@ git commit -m "refactor(agent): use prompt assembler in createAgentNodeFactory"
 ### Task 6: Update dispatcher.ts
 
 **Files:**
+
 - Modify: `packages/agent/src/dispatcher.ts`
 
 - [ ] **Step 1: Replace role.systemPrompt with assemblePrompt in runAgentStep**
@@ -663,6 +673,7 @@ import { assemblePrompt } from './prompt-assembler.js';
 ```
 
 Add private helper method to AgentDispatcher:
+
 ```typescript
   private assembleRolePrompt(role: AgentRole): string {
     return assemblePrompt({
@@ -731,6 +742,7 @@ git commit -m "chore: full verification after prompt modular assembly migration"
 ## Self-Review
 
 **1. Spec coverage:**
+
 - SHARED_PROMPT extraction → Task 1 ✓
 - assemblePrompt() with tool auto-generation → Task 2 ✓
 - AgentRole systemPrompt → modules migration → Task 3 ✓
@@ -742,6 +754,7 @@ git commit -m "chore: full verification after prompt modular assembly migration"
 **2. Placeholder scan:** No TBD/TODO. All code concrete.
 
 **3. Type consistency:**
+
 - `PromptModules` defined in Task 2, used in Tasks 3-6 — consistent
 - `assemblePrompt` signature: `(options: AssembleOptions) => string` — consistent across all tasks
 - `AgentRole.modules` — `{ identity: string; workflow?: string }` per Task 3 — consistent

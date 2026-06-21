@@ -165,15 +165,29 @@ export class SkillExtractor {
     const fullText = `${skill.name} ${skill.description} ${stepsLower.join(' ')}`;
 
     // Steps contain specific tool call names? (+20%)
-    const hasToolNames = skill.requiredTools.length > 0 &&
+    const hasToolNames =
+      skill.requiredTools.length > 0 &&
       skill.requiredTools.some((t) => stepsLower.some((s) => s.includes(t.toLowerCase())))
-      ? 0.2
-      : 0;
+        ? 0.2
+        : 0;
 
     // Steps contain validation/check words? (+15%)
     const checkWords = [
-      'check', 'verify', 'validate', 'test', 'review', 'confirm', 'ensure',
-      '检查', '验证', '测试', '审查', '确认', '确保', '核对', '校验',
+      'check',
+      'verify',
+      'validate',
+      'test',
+      'review',
+      'confirm',
+      'ensure',
+      '检查',
+      '验证',
+      '测试',
+      '审查',
+      '确认',
+      '确保',
+      '核对',
+      '校验',
     ];
     const hasValidationStep = stepsLower.some((s) => checkWords.some((w) => s.includes(w)))
       ? 0.15

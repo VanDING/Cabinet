@@ -16,7 +16,9 @@ export function AuditTab() {
     apiFetch(`/api/audit?${params}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setEntries(d.entries ?? []))
-      .catch((err) => { console.warn('Operation failed', err); })
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -26,7 +28,7 @@ export function AuditTab() {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-content-primary">Audit Log</h2>
+      <h2 className="text-content-primary mb-4 text-lg font-semibold">Audit Log</h2>
 
       {/* Filters */}
       <div className="mb-4 flex gap-2">
@@ -35,7 +37,7 @@ export function AuditTab() {
           onChange={(e) => {
             setFilter((p) => ({ ...p, entityType: e.target.value }));
           }}
-          className="rounded-sm border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
+          className="border-border bg-surface-primary text-content-primary rounded-sm border px-3 py-1.5 text-sm"
         >
           <option value="">All types</option>
           <option value="decision">Decision</option>
@@ -50,27 +52,24 @@ export function AuditTab() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-content-tertiary">Loading...</p>
+        <p className="text-content-tertiary text-sm">Loading...</p>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-content-tertiary">No audit entries found.</p>
+        <p className="text-content-tertiary text-sm">No audit entries found.</p>
       ) : (
         <div className="max-h-[60vh] space-y-1 overflow-y-auto">
           {entries.map((e: any, i: number) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 border-b border-border py-2 text-xs"
-            >
-              <span className="w-14 shrink-0 text-content-tertiary">
+            <div key={i} className="border-border flex items-center gap-3 border-b py-2 text-xs">
+              <span className="text-content-tertiary w-14 shrink-0">
                 {new Date(e.timestamp).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </span>
-              <span className="w-16 shrink-0 rounded-sm bg-surface-muted px-1.5 py-0.5 text-center font-medium capitalize text-content-secondary">
+              <span className="bg-surface-muted text-content-secondary w-16 shrink-0 rounded-sm px-1.5 py-0.5 text-center font-medium capitalize">
                 {e.action}
               </span>
-              <span className="w-12 shrink-0 text-content-tertiary">{e.entityType}</span>
-              <span className="flex-1 truncate font-mono text-content-tertiary">{e.entityId}</span>
+              <span className="text-content-tertiary w-12 shrink-0">{e.entityType}</span>
+              <span className="text-content-tertiary flex-1 truncate font-mono">{e.entityId}</span>
               <span className="text-content-tertiary">{e.actor}</span>
             </div>
           ))}

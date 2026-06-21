@@ -7,19 +7,35 @@ export function SkillNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-intent-purple">Skill</span>
+        <span className="bg-surface-overlay border-border text-intent-purple rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          Skill
+        </span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[160px] max-w-[220px] overflow-hidden shadow-xs transition-shadow wf-border-purple-35 wf-bg-purple-15 ${selected ? 'shadow-md ring-2 wf-ring-purple-50' : ''}`}>
-        <div className="flex items-center gap-1.5 wf-bg-purple-35 px-3 py-1.5">
-          <span className="text-sm text-content-primary">◇</span>
-          <span className="text-xs font-semibold text-content-primary">Skill</span>
+      <div
+        className={`wf-border-purple-35 wf-bg-purple-15 max-w-[220px] min-w-[160px] overflow-hidden rounded-xl border-2 shadow-xs transition-shadow ${selected ? 'wf-ring-purple-50 shadow-md ring-2' : ''}`}
+      >
+        <div className="wf-bg-purple-35 flex items-center gap-1.5 px-3 py-1.5">
+          <span className="text-content-primary text-sm">◇</span>
+          <span className="text-content-primary text-xs font-semibold">Skill</span>
         </div>
         <div className="px-3 py-2">
-          <p className="text-xs font-medium text-content-primary truncate">{name}</p>
-          {mapping ? <p className="mt-0.5 text-[11px] text-content-tertiary">{Object.keys(mapping as object).length} params</p> : null}
+          <p className="text-content-primary truncate text-xs font-medium">{name}</p>
+          {mapping ? (
+            <p className="text-content-tertiary mt-0.5 text-[11px]">
+              {Object.keys(mapping as object).length} params
+            </p>
+          ) : null}
         </div>
-        <Handle type="target" position={Position.Top} className="!bg-intent-purple !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-intent-purple !border-2 !border-surface-primary !w-3 !h-3" />
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!bg-intent-purple !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-intent-purple !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

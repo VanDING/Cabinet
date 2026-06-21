@@ -32,11 +32,11 @@ interface ChatContextValue {
 }
 ```
 
-| 状态 | 显示内容 | 场景 |
-|------|---------|------|
-| `collapsed` | 只显示 `SecretaryOrb`（右下角悬浮球） | 日常浏览 Office/Factory/Settings 等页面 |
-| `overlay` | 悬浮球 + 浮层面板 `OverlayChatPanel` | 用户点击悬浮球，临时对话 |
-| `chat` | 主内容区 `ChatView` + 底部 `ChatPanel` | 沉浸式深度对话，复用现有 `chatMode` 逻辑 |
+| 状态        | 显示内容                               | 场景                                     |
+| ----------- | -------------------------------------- | ---------------------------------------- |
+| `collapsed` | 只显示 `SecretaryOrb`（右下角悬浮球）  | 日常浏览 Office/Factory/Settings 等页面  |
+| `overlay`   | 悬浮球 + 浮层面板 `OverlayChatPanel`   | 用户点击悬浮球，临时对话                 |
+| `chat`      | 主内容区 `ChatView` + 底部 `ChatPanel` | 沉浸式深度对话，复用现有 `chatMode` 逻辑 |
 
 ### 状态流转
 
@@ -77,30 +77,30 @@ Dark 主题：
 
 **状态反馈**：
 
-| 状态 | 视觉表现 |
-|------|---------|
-| 空闲 | `orb-breathe` 呼吸动画（轻微缩放 + 透明度变化） |
-| 有新消息 | 红点角标 + `float-gentle` 上下浮动 2 次 |
-| 处理中 | 外圈 SVG 旋转进度环（`stroke-dashoffset`） |
-| 被 Hover | `scale(1.1)`，显示 Tooltip "Secretary" |
+| 状态     | 视觉表现                                        |
+| -------- | ----------------------------------------------- |
+| 空闲     | `orb-breathe` 呼吸动画（轻微缩放 + 透明度变化） |
+| 有新消息 | 红点角标 + `float-gentle` 上下浮动 2 次         |
+| 处理中   | 外圈 SVG 旋转进度环（`stroke-dashoffset`）      |
+| 被 Hover | `scale(1.1)`，显示 Tooltip "Secretary"          |
 
 **情绪状态（桌面宠物感）**：
 
-| 情绪 | 触发条件 | 视觉表现 |
-|------|---------|---------|
-| `idle` | 默认 | 正常呼吸 |
-| `thinking` | AI 处理中 | 进度环旋转 |
-| `happy` | 任务完成 | 轻微弹跳 + 颜色偏亮 |
-| `surprised` | 收到重要通知 | 快速放大再缩回 |
-| `sleepy` | 深夜时段 | 呼吸变慢，眨眼动画 |
+| 情绪        | 触发条件     | 视觉表现            |
+| ----------- | ------------ | ------------------- |
+| `idle`      | 默认         | 正常呼吸            |
+| `thinking`  | AI 处理中    | 进度环旋转          |
+| `happy`     | 任务完成     | 轻微弹跳 + 颜色偏亮 |
+| `surprised` | 收到重要通知 | 快速放大再缩回      |
+| `sleepy`    | 深夜时段     | 呼吸变慢，眨眼动画  |
 
 情绪通过 CSS class 切换实现，V1 实现 `idle/thinking/happy` 三种。
 
 **交互**：
 
-| 操作 | 行为 |
-|------|------|
-| 左键单击 | `setUIMode('overlay')` |
+| 操作     | 行为                                 |
+| -------- | ------------------------------------ |
+| 左键单击 | `setUIMode('overlay')`               |
 | 右键单击 | 快捷菜单：展开对话 / 清空会话 / 设置 |
 
 ---
@@ -176,12 +176,12 @@ Dark 主题：
 
 **通知类型与样式**：
 
-| 类型 | 边框/图标色 | 场景 |
-|------|------------|------|
-| `info` | blue | 普通通知、状态更新 |
-| `success` | green | 任务完成、操作成功 |
-| `warning` | amber | 需要注意、即将到期 |
-| `interactive` | cyan | 需要用户决策、确认操作 |
+| 类型          | 边框/图标色 | 场景                   |
+| ------------- | ----------- | ---------------------- |
+| `info`        | blue        | 普通通知、状态更新     |
+| `success`     | green       | 任务完成、操作成功     |
+| `warning`     | amber       | 需要注意、即将到期     |
+| `interactive` | cyan        | 需要用户决策、确认操作 |
 
 **气泡动作（桌面宠物感）**：
 
@@ -211,39 +211,83 @@ Dark 主题：
 /* index.css 新增 */
 
 @keyframes orb-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.05); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
 }
 
 @keyframes float-gentle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes bubble-pop {
-  0% { transform: scale(0) translateY(10px); opacity: 0; }
-  70% { transform: scale(1.05) translateY(-4px); opacity: 1; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
+  0% {
+    transform: scale(0) translateY(10px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05) translateY(-4px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes panel-rise {
-  0% { transform: translateY(20px) scale(0.95); opacity: 0; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
+  0% {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes panel-sink {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(20px) scale(0.95); opacity: 0; }
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+  }
 }
 
 @keyframes tail-wag {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
 }
 
 @keyframes fade-out-up {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-10px) scale(0.9); opacity: 0; }
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px) scale(0.9);
+    opacity: 0;
+  }
 }
 ```
 
@@ -269,28 +313,20 @@ Dark 主题：
 使用 Tailwind v4 的 `dark:` 变体：
 
 ```tsx
-<div className={`
-  w-14 h-14 rounded-full
-  bg-gradient-to-br
-  from-cyan-400 to-blue-500
-  dark:from-cyan-600 dark:to-blue-800
-  border-2 border-white dark:border-gray-800
-  shadow-lg shadow-blue-500/20 dark:shadow-cyan-500/20
-  transition-all duration-300
-  ${mood === 'thinking' ? 'animate-[spin_3s_linear_infinite]' : ''}
-  ${mood === 'happy' ? 'animate-[orb-breathe_1s_ease-in-out_infinite]' : ''}
-`}>
+<div
+  className={`h-14 w-14 rounded-full border-2 border-white bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-blue-500/20 transition-all duration-300 dark:border-gray-800 dark:from-cyan-600 dark:to-blue-800 dark:shadow-cyan-500/20 ${mood === 'thinking' ? 'animate-[spin_3s_linear_infinite]' : ''} ${mood === 'happy' ? 'animate-[orb-breathe_1s_ease-in-out_infinite]' : ''} `}
+>
   <SecretaryAvatar mood={mood} />
 </div>
 ```
 
 ### 情绪配色映射
 
-| 情绪 | Light 渐变 | Dark 渐变 | 备注 |
-|------|-----------|-----------|------|
-| `idle` | cyan-400 → blue-500 | cyan-600 → blue-800 | 默认 |
-| `thinking` | blue-400 → indigo-500 | blue-600 → indigo-800 | 偏冷色 |
-| `happy` | cyan-300 → sky-400 | cyan-500 → sky-600 | 偏亮色 |
+| 情绪        | Light 渐变             | Dark 渐变              | 备注   |
+| ----------- | ---------------------- | ---------------------- | ------ |
+| `idle`      | cyan-400 → blue-500    | cyan-600 → blue-800    | 默认   |
+| `thinking`  | blue-400 → indigo-500  | blue-600 → indigo-800  | 偏冷色 |
+| `happy`     | cyan-300 → sky-400     | cyan-500 → sky-600     | 偏亮色 |
 | `surprised` | amber-300 → orange-400 | amber-500 → orange-600 | 偏暖色 |
 
 ---
@@ -299,28 +335,28 @@ Dark 主题：
 
 ### 6.1 路由与默认状态
 
-| 路由 | 默认 `uiMode` | 说明 |
-|------|--------------|------|
-| `/` (Office) | `collapsed` | 显示悬浮球 |
-| `/factory` | `collapsed` | 显示悬浮球 |
-| `/discovery` | `collapsed` | 显示悬浮球 |
-| `/settings` | `collapsed` | 显示悬浮球 |
-| `/memory` | `collapsed` | 显示悬浮球 |
-| `/employees` | `collapsed` | 显示悬浮球 |
-| `/chat` | `chat` | 沉浸式对话，无悬浮球 |
+| 路由         | 默认 `uiMode` | 说明                 |
+| ------------ | ------------- | -------------------- |
+| `/` (Office) | `collapsed`   | 显示悬浮球           |
+| `/factory`   | `collapsed`   | 显示悬浮球           |
+| `/discovery` | `collapsed`   | 显示悬浮球           |
+| `/settings`  | `collapsed`   | 显示悬浮球           |
+| `/memory`    | `collapsed`   | 显示悬浮球           |
+| `/employees` | `collapsed`   | 显示悬浮球           |
+| `/chat`      | `chat`        | 沉浸式对话，无悬浮球 |
 
 从 `chat` 返回时，恢复为 `collapsed`。
 
 ### 6.2 快捷操作
 
-| 场景 | 操作 | 行为 |
-|------|------|------|
-| 任意页面 | 点击 Orb | 进入 `overlay` |
-| `overlay` 状态 | 按 ESC | 回到 `collapsed` |
-| `overlay` 状态 | 点击外部 | 回到 `collapsed` |
-| `overlay` 状态 | 点击"展开对话" | 进入 `chat`（全屏） |
-| `chat` 状态 | 点击返回按钮 | 回到 `collapsed`，恢复之前页面 |
-| 全局 | Secretary 主动通知 | 气泡弹出，Orb 变为 `happy` 或 `surprised` |
+| 场景           | 操作               | 行为                                      |
+| -------------- | ------------------ | ----------------------------------------- |
+| 任意页面       | 点击 Orb           | 进入 `overlay`                            |
+| `overlay` 状态 | 按 ESC             | 回到 `collapsed`                          |
+| `overlay` 状态 | 点击外部           | 回到 `collapsed`                          |
+| `overlay` 状态 | 点击"展开对话"     | 进入 `chat`（全屏）                       |
+| `chat` 状态    | 点击返回按钮       | 回到 `collapsed`，恢复之前页面            |
+| 全局           | Secretary 主动通知 | 气泡弹出，Orb 变为 `happy` 或 `surprised` |
 
 ### 6.3 智能行为
 
@@ -393,29 +429,29 @@ sendNotification({
 
 ## 8. 文件变更清单
 
-| 文件 | 操作 | 说明 |
-|------|------|------|
-| `apps/desktop/src/components/SecretaryOrb.tsx` | **新建** | 悬浮球组件 |
-| `apps/desktop/src/components/OverlayChatPanel.tsx` | **新建** | 浮层对话面板外壳 |
-| `apps/desktop/src/components/SecretaryBubble.tsx` | **新建** | 单个气泡组件 |
-| `apps/desktop/src/components/NotificationManager.tsx` | **新建** | 气泡队列管理器 |
-| `apps/desktop/src/contexts/ChatContext.tsx` | **修改** | 添加 `uiMode`、`orbMood`、通知 API |
-| `apps/desktop/src/App.tsx` | **修改** | 条件渲染 Orb/Overlay/ChatView，移除无条件 ChatPanel |
-| `apps/desktop/src/components/ChatPanel.tsx` | **修改** | 抽离核心输入区为可复用组件 |
-| `apps/desktop/src/index.css` | **修改** | 新增 orb、bubble、panel 动画 keyframes |
-| `apps/desktop/src/pages/ChatPage.tsx` | **可选新建** | 若需要 `/chat` 独立路由时创建 |
+| 文件                                                  | 操作         | 说明                                                |
+| ----------------------------------------------------- | ------------ | --------------------------------------------------- |
+| `apps/desktop/src/components/SecretaryOrb.tsx`        | **新建**     | 悬浮球组件                                          |
+| `apps/desktop/src/components/OverlayChatPanel.tsx`    | **新建**     | 浮层对话面板外壳                                    |
+| `apps/desktop/src/components/SecretaryBubble.tsx`     | **新建**     | 单个气泡组件                                        |
+| `apps/desktop/src/components/NotificationManager.tsx` | **新建**     | 气泡队列管理器                                      |
+| `apps/desktop/src/contexts/ChatContext.tsx`           | **修改**     | 添加 `uiMode`、`orbMood`、通知 API                  |
+| `apps/desktop/src/App.tsx`                            | **修改**     | 条件渲染 Orb/Overlay/ChatView，移除无条件 ChatPanel |
+| `apps/desktop/src/components/ChatPanel.tsx`           | **修改**     | 抽离核心输入区为可复用组件                          |
+| `apps/desktop/src/index.css`                          | **修改**     | 新增 orb、bubble、panel 动画 keyframes              |
+| `apps/desktop/src/pages/ChatPage.tsx`                 | **可选新建** | 若需要 `/chat` 独立路由时创建                       |
 
 ---
 
 ## 9. 实施顺序
 
-| 阶段 | 内容 | 目标 |
-|------|------|------|
-| **P0** | `uiMode` 状态机、`App.tsx` 条件渲染、`SecretaryOrb` 基础形态 | 悬浮球可见，能切换展开/收起 |
-| **P1** | `OverlayChatPanel` 外壳、整合现有 `ChatPanel` + `ChatView`、展开收起动画 | 浮层面板可正常对话 |
-| **P2** | `SecretaryBubble` + `NotificationManager`、通知 API、气泡动画 | Secretary 能主动汇报 |
-| **P3** | `chat` 模式路由衔接、返回逻辑、状态持久化 | 沉浸式对话与浮层无缝切换 |
-| **P4** | 主题切换、情绪动画、深夜模式、未读红点 | 桌面宠物感 |
+| 阶段   | 内容                                                                     | 目标                        |
+| ------ | ------------------------------------------------------------------------ | --------------------------- |
+| **P0** | `uiMode` 状态机、`App.tsx` 条件渲染、`SecretaryOrb` 基础形态             | 悬浮球可见，能切换展开/收起 |
+| **P1** | `OverlayChatPanel` 外壳、整合现有 `ChatPanel` + `ChatView`、展开收起动画 | 浮层面板可正常对话          |
+| **P2** | `SecretaryBubble` + `NotificationManager`、通知 API、气泡动画            | Secretary 能主动汇报        |
+| **P3** | `chat` 模式路由衔接、返回逻辑、状态持久化                                | 沉浸式对话与浮层无缝切换    |
+| **P4** | 主题切换、情绪动画、深夜模式、未读红点                                   | 桌面宠物感                  |
 
 ---
 

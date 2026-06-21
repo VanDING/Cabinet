@@ -72,27 +72,27 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-intent-success text-xs font-bold text-content-inverse">
+        <span className="bg-intent-success text-content-inverse inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold">
           {name.slice(0, 1).toUpperCase()}
         </span>
-        <span className="text-sm font-semibold text-content-primary">{name}</span>
+        <span className="text-content-primary text-sm font-semibold">{name}</span>
       </div>
       {total > 0 && (
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-content-secondary">
+          <div className="text-content-secondary flex items-center gap-2 text-xs">
             <span>Total: {total}</span>
             <span className="text-intent-success">Approved: {approved}</span>
             <span className="text-intent-danger">Rejected: {rejected}</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
-            <div className="h-full rounded-full bg-intent-success" style={{ width: `${rate}%` }} />
+          <div className="bg-surface-muted h-2 w-full overflow-hidden rounded-full">
+            <div className="bg-intent-success h-full rounded-full" style={{ width: `${rate}%` }} />
           </div>
-          <div className="text-[10px] text-content-tertiary">Approval rate: {rate}%</div>
+          <div className="text-content-tertiary text-[10px]">Approval rate: {rate}%</div>
         </div>
       )}
       {decisions.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-content-secondary">Decision History</p>
+          <p className="text-content-secondary text-xs font-medium">Decision History</p>
           <div className="max-h-40 space-y-1 overflow-y-auto">
             {decisions.slice(0, 20).map((d, i) => {
               const rd = isRecord(d) ? d : {};
@@ -108,17 +108,14 @@ function EntityCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-sm border border-border px-2 py-1"
+                  className="border-border flex items-center justify-between rounded-sm border px-2 py-1"
                 >
-                  <span
-                    className="truncate text-[11px] text-content-secondary"
-                    title={title}
-                  >
+                  <span className="text-content-secondary truncate text-[11px]" title={title}>
                     {title}
                   </span>
                   <div className="flex shrink-0 items-center gap-2">
                     {date && (
-                      <span className="text-[10px] text-content-tertiary">
+                      <span className="text-content-tertiary text-[10px]">
                         {new Date(date).toLocaleDateString()}
                       </span>
                     )}
@@ -141,22 +138,23 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
   const goals = getArr(data, 'goals') as string[];
   const milestones = getArr(data, 'milestones') as unknown[];
   const rawDecisions = getArr(data, 'key_decisions') as string[];
-  const keyDecisions = rawDecisions.length > 0 ? rawDecisions : (getArr(data, 'keyDecisions') as string[]);
+  const keyDecisions =
+    rawDecisions.length > 0 ? rawDecisions : (getArr(data, 'keyDecisions') as string[]);
 
   return (
     <div className="space-y-3">
       {summary && (
         <div>
-          <p className="mb-1 text-xs font-medium text-content-secondary">Summary</p>
-          <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-content-secondary">
+          <p className="text-content-secondary mb-1 text-xs font-medium">Summary</p>
+          <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
             {summary}
           </p>
         </div>
       )}
       {goals.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-content-secondary">Goals</p>
-          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-content-secondary">
+          <p className="text-content-secondary mb-1 text-xs font-medium">Goals</p>
+          <ul className="text-content-secondary list-disc space-y-0.5 pl-4 text-[11px]">
             {goals.map((g, i) => (
               <li key={i}>{typeof g === 'string' ? g : JSON.stringify(g)}</li>
             ))}
@@ -165,12 +163,12 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
       )}
       {milestones.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-content-secondary">Milestones</p>
+          <p className="text-content-secondary mb-1 text-xs font-medium">Milestones</p>
           <div className="space-y-1">
             {milestones.map((m, i) => {
               if (typeof m === 'string') {
                 return (
-                  <div key={i} className="text-[11px] text-content-secondary">
+                  <div key={i} className="text-content-secondary text-[11px]">
                     {m}
                   </div>
                 );
@@ -187,9 +185,9 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
               return (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-sm border border-border px-2 py-1"
+                  className="border-border flex items-center justify-between rounded-sm border px-2 py-1"
                 >
-                  <span className="text-[11px] text-content-secondary">{title}</span>
+                  <span className="text-content-secondary text-[11px]">{title}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeColor}`}>
                     {status}
                   </span>
@@ -201,8 +199,8 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
       )}
       {keyDecisions.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-content-secondary">Key Decisions</p>
-          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-content-secondary">
+          <p className="text-content-secondary mb-1 text-xs font-medium">Key Decisions</p>
+          <ul className="text-content-secondary list-disc space-y-0.5 pl-4 text-[11px]">
             {keyDecisions.map((d, i) => (
               <li key={i}>{typeof d === 'string' ? d : JSON.stringify(d)}</li>
             ))}
@@ -210,8 +208,9 @@ function ProjectCard({ data }: { data: Record<string, unknown> }) {
         </div>
       )}
       {!summary && goals.length === 0 && milestones.length === 0 && keyDecisions.length === 0 && (
-        <p className="text-xs italic text-content-tertiary">
-          No project context yet. Use chat to update the project summary, add milestones, or create decisions.
+        <p className="text-content-tertiary text-xs italic">
+          No project context yet. Use chat to update the project summary, add milestones, or create
+          decisions.
         </p>
       )}
     </div>
@@ -240,19 +239,19 @@ function LongTermRenderer({ content }: { content: string }) {
             const val = parsed[key];
             return (
               <div key={key}>
-                <p className="mb-0.5 text-xs font-medium text-content-secondary">{key}</p>
+                <p className="text-content-secondary mb-0.5 text-xs font-medium">{key}</p>
                 {typeof val === 'string' ? (
-                  <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-content-secondary">
+                  <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
                     {val}
                   </p>
                 ) : Array.isArray(val) ? (
-                  <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-content-secondary">
+                  <ul className="text-content-secondary list-disc space-y-0.5 pl-4 text-[11px]">
                     {val.map((v, i) => (
                       <li key={i}>{typeof v === 'string' ? v : JSON.stringify(v)}</li>
                     ))}
                   </ul>
                 ) : (
-                  <pre className="whitespace-pre-wrap font-mono text-[11px] text-content-secondary">
+                  <pre className="text-content-secondary font-mono text-[11px] whitespace-pre-wrap">
                     {JSON.stringify(val, null, 2)}
                   </pre>
                 )}
@@ -272,7 +271,7 @@ function LongTermRenderer({ content }: { content: string }) {
     const line = lines[i] ?? '';
     if (/^#{1,2}\s/.test(line)) {
       elements.push(
-        <p key={i} className="mt-2 text-sm font-semibold text-content-primary">
+        <p key={i} className="text-content-primary mt-2 text-sm font-semibold">
           {line.replace(/^#+\s/, '')}
         </p>,
       );
@@ -283,10 +282,7 @@ function LongTermRenderer({ content }: { content: string }) {
         i++;
       }
       elements.push(
-        <ul
-          key={i}
-          className="list-disc space-y-0.5 pl-4 text-[11px] text-content-secondary"
-        >
+        <ul key={i} className="text-content-secondary list-disc space-y-0.5 pl-4 text-[11px]">
           {items.map((it, idx) => (
             <li key={idx}>{it}</li>
           ))}
@@ -300,10 +296,7 @@ function LongTermRenderer({ content }: { content: string }) {
         i++;
       }
       elements.push(
-        <ol
-          key={i}
-          className="list-decimal space-y-0.5 pl-4 text-[11px] text-content-secondary"
-        >
+        <ol key={i} className="text-content-secondary list-decimal space-y-0.5 pl-4 text-[11px]">
           {items.map((it, idx) => (
             <li key={idx}>{it}</li>
           ))}
@@ -313,7 +306,7 @@ function LongTermRenderer({ content }: { content: string }) {
     } else if (/\*\*.+?\*\*/.test(line)) {
       // Simple bold inline — render as paragraph preserving some formatting
       elements.push(
-        <p key={i} className="text-[11px] leading-relaxed text-content-secondary">
+        <p key={i} className="text-content-secondary text-[11px] leading-relaxed">
           {line}
         </p>,
       );
@@ -321,7 +314,7 @@ function LongTermRenderer({ content }: { content: string }) {
       // Skip blank lines, but add spacing via className when needed
     } else {
       elements.push(
-        <p key={i} className="text-[11px] leading-relaxed text-content-secondary">
+        <p key={i} className="text-content-secondary text-[11px] leading-relaxed">
           {line}
         </p>,
       );
@@ -336,28 +329,24 @@ function ShortTermRenderer({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-1">
       {Object.entries(data).map(([k, v]) => (
         <div key={k} className="flex items-start gap-2">
-          <span className="shrink-0 text-[11px] font-medium text-content-secondary">
-            {k}:
-          </span>
+          <span className="text-content-secondary shrink-0 text-[11px] font-medium">{k}:</span>
           {typeof v === 'string' ? (
-            <span className="whitespace-pre-wrap text-[11px] text-content-secondary">
-              {v}
-            </span>
+            <span className="text-content-secondary text-[11px] whitespace-pre-wrap">{v}</span>
           ) : typeof v === 'number' || typeof v === 'boolean' ? (
-            <span className="text-[11px] text-content-secondary">{String(v)}</span>
+            <span className="text-content-secondary text-[11px]">{String(v)}</span>
           ) : isRecord(v) ? (
             <div className="space-y-0.5 pl-2">
               {Object.entries(v).map(([sk, sv]) => (
                 <div key={sk} className="flex items-start gap-1">
-                  <span className="text-[10px] text-content-tertiary">{sk}:</span>
-                  <span className="whitespace-pre-wrap text-[10px] text-content-secondary">
+                  <span className="text-content-tertiary text-[10px]">{sk}:</span>
+                  <span className="text-content-secondary text-[10px] whitespace-pre-wrap">
                     {typeof sv === 'string' ? sv : JSON.stringify(sv)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <span className="whitespace-pre-wrap font-mono text-[11px] text-content-secondary">
+            <span className="text-content-secondary font-mono text-[11px] whitespace-pre-wrap">
               {JSON.stringify(v, null, 2)}
             </span>
           )}
@@ -372,7 +361,7 @@ function LayerContent({ layer, content }: { layer: string; content: string }) {
   if (!isRecord(parsed)) {
     if (layer === 'long_term') return <LongTermRenderer content={content} />;
     return (
-      <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-content-secondary">
+      <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
         {content}
       </p>
     );
@@ -389,7 +378,7 @@ function LayerContent({ layer, content }: { layer: string; content: string }) {
       return <LongTermRenderer content={content} />;
     default:
       return (
-        <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-content-secondary">
+        <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
           {content}
         </p>
       );
@@ -490,8 +479,8 @@ export function MemoryPage() {
   return (
     <div className="h-full overflow-y-auto p-6 pb-40">
       <div className="mb-6 flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold text-content-primary">Memory</h1>
-        <span className="text-sm text-content-tertiary">
+        <h1 className="text-content-primary text-2xl font-bold">Memory</h1>
+        <span className="text-content-tertiary text-sm">
           Browse, search, and manage system memory
         </span>
       </div>
@@ -517,7 +506,7 @@ export function MemoryPage() {
               <button
                 key={layer}
                 onClick={() => setFilter(layer)}
-                className={`rounded-full border border-border px-3 py-1.5 text-xs transition-colors ${
+                className={`border-border rounded-full border px-3 py-1.5 text-xs transition-colors ${
                   filter === layer
                     ? 'border-accent bg-accent text-content-inverse'
                     : 'border-border text-content-secondary hover:bg-surface-elevated bg-surface-input'
@@ -531,20 +520,16 @@ export function MemoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search memories..."
-              className="ml-auto w-48 rounded-lg border border-border bg-surface-primary px-3 py-1.5 text-sm text-content-primary"
+              className="border-border bg-surface-primary text-content-primary ml-auto w-48 rounded-lg border px-3 py-1.5 text-sm"
             />
             <Button variant="ghost" size="xs" onClick={fetchMemories}>
               Refresh
             </Button>
-            <Button
-              size="xs"
-              onClick={handleConsolidate}
-              disabled={consolidating}
-            >
+            <Button size="xs" onClick={handleConsolidate} disabled={consolidating}>
               {consolidating ? 'Consolidating...' : 'Consolidate Now'}
             </Button>
             {consolidateResult && (
-              <span className="text-xs text-content-tertiary">{consolidateResult}</span>
+              <span className="text-content-tertiary text-xs">{consolidateResult}</span>
             )}
           </div>
 
@@ -552,28 +537,24 @@ export function MemoryPage() {
           <div className="mb-6 grid grid-cols-4 gap-3">
             {['short_term', 'long_term', 'entity', 'project'].map((layer) => (
               <Card key={layer} padding="sm" className="text-center">
-                <div className="text-2xl font-bold text-content-primary">
+                <div className="text-content-primary text-2xl font-bold">
                   {loading ? '-' : (layerCounts[layer] ?? 0)}
                 </div>
-                <div className="text-xs capitalize text-content-tertiary">
+                <div className="text-content-tertiary text-xs capitalize">
                   {layer.replace('_', ' ')}
                 </div>
               </Card>
             ))}
           </div>
 
-          <div className="mb-3 text-xs text-content-tertiary">{total} total entries</div>
+          <div className="text-content-tertiary mb-3 text-xs">{total} total entries</div>
 
           {/* Memory list */}
           <div className="space-y-2">
             {entries.map((m) => {
               const isExpanded = expanded.has(m.id);
               return (
-                <Card
-                  key={m.id}
-                  padding="none"
-                  className="group transition-shadow hover:shadow-xs"
-                >
+                <Card key={m.id} padding="none" className="group transition-shadow hover:shadow-xs">
                   <div
                     className="flex cursor-pointer items-start gap-2 p-3"
                     onClick={() => toggleExpand(m.id)}
@@ -590,7 +571,7 @@ export function MemoryPage() {
                         {isExpanded ? (
                           <LayerContent layer={m.layer} content={m.content} />
                         ) : (
-                          <span className="text-[11px] text-content-secondary">
+                          <span className="text-content-secondary text-[11px]">
                             {(() => {
                               const parsed = tryParseJson(m.content);
                               if (isRecord(parsed)) {
@@ -601,8 +582,10 @@ export function MemoryPage() {
                                 const pid = getStr(parsed, 'projectId');
                                 if (pid) {
                                   const goalsLen = (getArr(parsed, 'goals') as unknown[]).length;
-                                  const milestonesLen = (getArr(parsed, 'milestones') as unknown[]).length;
-                                  const decisionsLen = (getArr(parsed, 'keyDecisions') as unknown[]).length;
+                                  const milestonesLen = (getArr(parsed, 'milestones') as unknown[])
+                                    .length;
+                                  const decisionsLen = (getArr(parsed, 'keyDecisions') as unknown[])
+                                    .length;
                                   if (goalsLen + milestonesLen + decisionsLen > 0) {
                                     return `Project ${pid.slice(0, 8)} — ${goalsLen} goals, ${milestonesLen} milestones, ${decisionsLen} decisions`;
                                   }
@@ -617,10 +600,10 @@ export function MemoryPage() {
                         )}
                       </span>
                       {!isExpanded && m.content.length > 150 && (
-                        <span className="text-xs text-content-tertiary">Click to expand</span>
+                        <span className="text-content-tertiary text-xs">Click to expand</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-xs text-content-tertiary">
+                    <span className="text-content-tertiary shrink-0 text-xs">
                       {new Date(m.timestamp).toLocaleString([], {
                         month: 'short',
                         day: 'numeric',
@@ -633,7 +616,7 @@ export function MemoryPage() {
                         e.stopPropagation();
                         handleDelete(m.id);
                       }}
-                      className="shrink-0 text-xs text-content-tertiary opacity-0 transition-opacity hover:text-intent-danger group-hover:opacity-100"
+                      className="text-content-tertiary hover:text-intent-danger shrink-0 text-xs opacity-0 transition-opacity group-hover:opacity-100"
                       aria-label="Delete"
                     >
                       &times;
@@ -642,8 +625,8 @@ export function MemoryPage() {
 
                   {/* Expanded detail */}
                   {isExpanded && (
-                    <div className="border-t border-border px-3 py-2">
-                      <div className="mb-2 text-xs text-content-tertiary">ID: {m.id}</div>
+                    <div className="border-border border-t px-3 py-2">
+                      <div className="text-content-tertiary mb-2 text-xs">ID: {m.id}</div>
                       {/* Visualized metadata fields */}
                       <div className="mb-2 flex flex-wrap items-center gap-3">
                         {(() => {
@@ -656,44 +639,44 @@ export function MemoryPage() {
                             <>
                               {confidence !== undefined && (
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-content-tertiary">Confidence</span>
-                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-surface-muted">
+                                  <span className="text-content-tertiary text-xs">Confidence</span>
+                                  <div className="bg-surface-muted h-2 w-20 overflow-hidden rounded-full">
                                     <div
-                                      className="h-full rounded-full bg-accent"
+                                      className="bg-accent h-full rounded-full"
                                       style={{ width: `${Math.round(confidence * 100)}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs text-content-tertiary">
+                                  <span className="text-content-tertiary text-xs">
                                     {Math.round(confidence * 100)}%
                                   </span>
                                 </div>
                               )}
                               {importance !== undefined && (
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-content-tertiary">Importance</span>
-                                  <div className="h-2 w-20 overflow-hidden rounded-full bg-surface-muted">
+                                  <span className="text-content-tertiary text-xs">Importance</span>
+                                  <div className="bg-surface-muted h-2 w-20 overflow-hidden rounded-full">
                                     <div
-                                      className="h-full rounded-full bg-intent-purple"
+                                      className="bg-intent-purple h-full rounded-full"
                                       style={{ width: `${Math.round(importance * 100)}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs text-content-tertiary">
+                                  <span className="text-content-tertiary text-xs">
                                     {Math.round(importance * 100)}%
                                   </span>
                                 </div>
                               )}
                               {accessCount !== undefined && (
-                                <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
+                                <span className="bg-surface-muted text-content-secondary rounded-sm px-1.5 py-0.5 text-xs">
                                   Accessed {accessCount} times
                                 </span>
                               )}
                               {validUntil && (
-                                <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-content-secondary">
+                                <span className="bg-surface-muted text-content-secondary rounded-sm px-1.5 py-0.5 text-xs">
                                   Valid until: {new Date(validUntil).toLocaleDateString()}
                                 </span>
                               )}
                               {supersededBy && (
-                                <span className="rounded-sm bg-intent-warning-muted px-1.5 py-0.5 text-xs text-intent-warning">
+                                <span className="bg-intent-warning-muted text-intent-warning rounded-sm px-1.5 py-0.5 text-xs">
                                   Superseded by: {String(supersededBy).slice(0, 20)}
                                 </span>
                               )}
@@ -719,7 +702,7 @@ export function MemoryPage() {
                             .map(([k, v]) => (
                               <span
                                 key={k}
-                                className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-secondary"
+                                className="bg-surface-muted text-content-secondary rounded-sm px-1.5 py-0.5 font-mono text-xs"
                               >
                                 {k}:{' '}
                                 {typeof v === 'object'
@@ -730,7 +713,7 @@ export function MemoryPage() {
                         </div>
                       )}
                       {!Object.keys(m.metadata || {}).length && (
-                        <span className="text-xs text-content-tertiary">No metadata</span>
+                        <span className="text-content-tertiary text-xs">No metadata</span>
                       )}
                     </div>
                   )}
@@ -738,14 +721,16 @@ export function MemoryPage() {
               );
             })}
             {entries.length === 0 && !loading && (
-              <div className="py-12 text-center text-content-tertiary">
+              <div className="text-content-tertiary py-12 text-center">
                 <p>No memories found.</p>
                 <p className="mt-1 text-xs">
                   Chat with the secretary or create decisions to populate memory layers.
                 </p>
               </div>
             )}
-            {loading && <div className="py-8 text-center text-content-tertiary">Loading memories...</div>}
+            {loading && (
+              <div className="text-content-tertiary py-8 text-center">Loading memories...</div>
+            )}
           </div>
         </>
       )}

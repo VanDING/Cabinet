@@ -77,10 +77,7 @@ export function EvaluationTab({ activeProjectId }: Props) {
       ) : (
         <div className="space-y-2">
           {evaluations.map((ev) => (
-            <div
-              key={ev.id}
-              className={`rounded-lg border ${borderClasses} bg-surface-primary`}
-            >
+            <div key={ev.id} className={`rounded-lg border ${borderClasses} bg-surface-primary`}>
               <div
                 onClick={() => setExpandedId(expandedId === ev.id ? null : ev.id)}
                 className="flex cursor-pointer items-center justify-between p-3"
@@ -114,9 +111,7 @@ export function EvaluationTab({ activeProjectId }: Props) {
                       </div>
                     ))}
                   </div>
-                  {ev.feedback && (
-                    <p className={`mt-2 text-sm ${textClasses}`}>{ev.feedback}</p>
-                  )}
+                  {ev.feedback && <p className={`mt-2 text-sm ${textClasses}`}>{ev.feedback}</p>}
                 </div>
               )}
             </div>

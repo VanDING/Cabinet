@@ -10,12 +10,12 @@ List decisions with optional filtering.
 
 **Query params**:
 
-| Param | Type | Default | Description |
-| :---- | :--- | :------ | :---------- |
-| `status` | string | `pending` | `pending`, `approved`, `rejected`, `expired`, `archived`, or `all` |
-| `projectId` | string | — | Filter to a specific project |
-| `limit` | number | 20 | Max results |
-| `offset` | number | 0 | Pagination offset |
+| Param       | Type   | Default   | Description                                                        |
+| :---------- | :----- | :-------- | :----------------------------------------------------------------- |
+| `status`    | string | `pending` | `pending`, `approved`, `rejected`, `expired`, `archived`, or `all` |
+| `projectId` | string | —         | Filter to a specific project                                       |
+| `limit`     | number | 20        | Max results                                                        |
+| `offset`    | number | 0         | Pagination offset                                                  |
 
 **Response**:
 
@@ -89,15 +89,15 @@ Create a new decision.
 }
 ```
 
-| Field | Type | Required | Description |
-| :---- | :--- | :------- | :---------- |
-| `projectId` | string | Yes | Owning project |
-| `type` | enum | Yes | `strategic`, `action`, `execution`, `anomaly`, `evolution` |
-| `title` | string | Yes | Decision title |
-| `description` | string | No | Detailed context |
-| `options` | array | No | Decision options (default: approve/reject) |
-| `classification` | object | No | Features for automatic level classification |
-| `captainId` | string | No | Defaults to `captain-1` |
+| Field            | Type   | Required | Description                                                |
+| :--------------- | :----- | :------- | :--------------------------------------------------------- |
+| `projectId`      | string | Yes      | Owning project                                             |
+| `type`           | enum   | Yes      | `strategic`, `action`, `execution`, `anomaly`, `evolution` |
+| `title`          | string | Yes      | Decision title                                             |
+| `description`    | string | No       | Detailed context                                           |
+| `options`        | array  | No       | Decision options (default: approve/reject)                 |
+| `classification` | object | No       | Features for automatic level classification                |
+| `captainId`      | string | No       | Defaults to `captain-1`                                    |
 
 **Response** (201 Created):
 

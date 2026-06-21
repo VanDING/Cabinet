@@ -87,7 +87,13 @@ export function compileDispatchGraph(options: DispatchGraphOptions): GraphNode[]
         });
       }
       // Synthetic join node — not executed directly, marks where synthesis happens
-      nodes.push({ id: 'synthesize', execute: () => { throw new Error('Synthesize node should not be executed directly'); }, isJoin: true });
+      nodes.push({
+        id: 'synthesize',
+        execute: () => {
+          throw new Error('Synthesize node should not be executed directly');
+        },
+        isJoin: true,
+      });
       break;
     }
   }
@@ -177,9 +183,7 @@ export async function executeDispatchGraph(
   }
 
   const totalSteps = steps.reduce((sum, s) => sum + s.steps, 0);
-  const structuredOutputs = steps
-    .map((s) => s.structuredOutput)
-    .filter(Boolean) as AgentOutput[];
+  const structuredOutputs = steps.map((s) => s.structuredOutput).filter(Boolean) as AgentOutput[];
 
   let finalOutput: string;
   let synthesized: AgentOutput | undefined;

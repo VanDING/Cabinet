@@ -27,8 +27,22 @@ export class MemoryDecayService {
     const results = allRows.map((r) => ({
       id: r.id,
       content: r.content,
-      embedding: r.embedding ? (() => { try { return JSON.parse(r.embedding); } catch { return undefined; } })() : undefined,
-      metadata: (() => { try { return JSON.parse(r.metadata ?? '{}') as Record<string, unknown>; } catch { return {} as Record<string, unknown>; } })(),
+      embedding: r.embedding
+        ? (() => {
+            try {
+              return JSON.parse(r.embedding);
+            } catch {
+              return undefined;
+            }
+          })()
+        : undefined,
+      metadata: (() => {
+        try {
+          return JSON.parse(r.metadata ?? '{}') as Record<string, unknown>;
+        } catch {
+          return {} as Record<string, unknown>;
+        }
+      })(),
       timestamp: new Date(r.timestamp),
     }));
     let expired = 0;
@@ -72,7 +86,8 @@ export class MemoryDecayService {
       }
 
       // Persist adaptive half-life for next retrieval
-      const accessHistory = (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
+      const accessHistory =
+        (meta.accessHistory as Array<{ at: string; source: string }> | undefined) ?? [];
       if (accessHistory.length > 0 || (meta.accessCount as number) > 0) {
         const halfLife = MemoryDecayService.computeAdaptiveHalfLife(meta);
         if (halfLife !== (meta.halfLifeDays as number | undefined)) {

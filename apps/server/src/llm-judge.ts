@@ -83,9 +83,14 @@ function parseJudgeResponse(raw: string): LlmJudgeResult {
   } catch {
     // Fallback: heuristic parse from raw text
     const lower = trimmed.toLowerCase();
-    const isContradiction = lower.includes('contradiction": true') || lower.includes('iscontradiction": true');
+    const isContradiction =
+      lower.includes('contradiction": true') || lower.includes('iscontradiction": true');
     const confidenceMatch = trimmed.match(/confidence["\s:]+([0-9.]+)/);
-    const confidence = confidenceMatch ? clampNumber(Number(confidenceMatch[1]), 0, 1) : isContradiction ? 0.6 : 0.3;
+    const confidence = confidenceMatch
+      ? clampNumber(Number(confidenceMatch[1]), 0, 1)
+      : isContradiction
+        ? 0.6
+        : 0.3;
     return {
       isContradiction,
       confidence,

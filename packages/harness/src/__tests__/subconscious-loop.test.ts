@@ -3,7 +3,14 @@ import { SubconsciousLoop, type SubconsciousInsight } from '../subconscious-loop
 import { MessageType } from '@cabinet/types';
 
 describe('SubconsciousLoop', () => {
-  const makeMockLongTerm = (memories: Array<{ id: string; content: string; metadata: Record<string, unknown>; timestamp: Date }>) => ({
+  const makeMockLongTerm = (
+    memories: Array<{
+      id: string;
+      content: string;
+      metadata: Record<string, unknown>;
+      timestamp: Date;
+    }>,
+  ) => ({
     search: vi.fn(async (_q: string, _limit: number) => memories),
   });
 

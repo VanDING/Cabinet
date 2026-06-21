@@ -74,7 +74,11 @@ export function validateManifest(data: unknown): ValidationResult {
   }
 
   // Config source
-  if (m.configSource !== undefined && m.configSource !== 'cabinet_managed' && m.configSource !== 'agent_native') {
+  if (
+    m.configSource !== undefined &&
+    m.configSource !== 'cabinet_managed' &&
+    m.configSource !== 'agent_native'
+  ) {
     errors.push('configSource must be "cabinet_managed" or "agent_native"');
   }
 
@@ -116,7 +120,10 @@ export function validateManifest(data: unknown): ValidationResult {
 }
 
 /** Parse and validate, returning a typed manifest if valid. */
-export function parseManifest(data: unknown): { manifest?: ValidatedManifest; result: ValidationResult } {
+export function parseManifest(data: unknown): {
+  manifest?: ValidatedManifest;
+  result: ValidationResult;
+} {
   const result = validateManifest(data);
   if (!result.ok) return { result };
 

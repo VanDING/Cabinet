@@ -19,19 +19,33 @@ export interface ConditionContext {
 /** Compare two string values using a simple operator (== != > < >= <= contains startsWith endsWith matches). */
 export function compareValues(val: string, op: string, expected: string): boolean {
   switch (op) {
-    case '==': return val === expected;
-    case '!=': return val !== expected;
-    case '>': return parseFloat(val) > parseFloat(expected);
-    case '<': return parseFloat(val) < parseFloat(expected);
-    case '>=': return parseFloat(val) >= parseFloat(expected);
-    case '<=': return parseFloat(val) <= parseFloat(expected);
-    case 'contains': return val.includes(expected);
-    case 'startsWith': return val.startsWith(expected);
-    case 'endsWith': return val.endsWith(expected);
+    case '==':
+      return val === expected;
+    case '!=':
+      return val !== expected;
+    case '>':
+      return parseFloat(val) > parseFloat(expected);
+    case '<':
+      return parseFloat(val) < parseFloat(expected);
+    case '>=':
+      return parseFloat(val) >= parseFloat(expected);
+    case '<=':
+      return parseFloat(val) <= parseFloat(expected);
+    case 'contains':
+      return val.includes(expected);
+    case 'startsWith':
+      return val.startsWith(expected);
+    case 'endsWith':
+      return val.endsWith(expected);
     case 'matches': {
-      try { return new RegExp(expected).test(val); } catch { return false; }
+      try {
+        return new RegExp(expected).test(val);
+      } catch {
+        return false;
+      }
     }
-    default: return val === expected;
+    default:
+      return val === expected;
   }
 }
 

@@ -44,47 +44,64 @@ export class AutopilotRepository {
   // ── Triggers ──
 
   create(row: Omit<AutopilotTriggerRow, 'created_at' | 'updated_at'>): string {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO autopilot_triggers (id, name, description, workspace_id, trigger_type,
         cron_expression, cron_timezone, webhook_token, webhook_secret,
         target_agent_id, target_workflow_id, input_template, enabled, max_retries, timeout_ms)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      row.id, row.name, row.description, row.workspace_id, row.trigger_type,
-      row.cron_expression, row.cron_timezone, row.webhook_token, row.webhook_secret,
-      row.target_agent_id, row.target_workflow_id, row.input_template, row.enabled,
-      row.max_retries, row.timeout_ms,
-    );
+    `,
+      )
+      .run(
+        row.id,
+        row.name,
+        row.description,
+        row.workspace_id,
+        row.trigger_type,
+        row.cron_expression,
+        row.cron_timezone,
+        row.webhook_token,
+        row.webhook_secret,
+        row.target_agent_id,
+        row.target_workflow_id,
+        row.input_template,
+        row.enabled,
+        row.max_retries,
+        row.timeout_ms,
+      );
     return row.id;
   }
 
   findAllEnabled(workspaceId?: string): AutopilotTriggerRow[] {
     const where = workspaceId ? 'workspace_id = ? AND enabled = 1' : 'enabled = 1';
     const params = workspaceId ? [workspaceId] : [];
-    const rows = this.db.prepare(
-      `SELECT * FROM autopilot_triggers WHERE ${where} ORDER BY created_at DESC`,
-    ).all(...params) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(`SELECT * FROM autopilot_triggers WHERE ${where} ORDER BY created_at DESC`)
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTrigger(r));
   }
 
   findAll(workspaceId?: string): AutopilotTriggerRow[] {
     const where = workspaceId ? 'WHERE workspace_id = ?' : '';
     const params = workspaceId ? [workspaceId] : [];
-    const rows = this.db.prepare(
-      `SELECT * FROM autopilot_triggers ${where} ORDER BY created_at DESC`,
-    ).all(...params) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(`SELECT * FROM autopilot_triggers ${where} ORDER BY created_at DESC`)
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTrigger(r));
   }
 
   findById(id: string): AutopilotTriggerRow | null {
-    const row = this.db.prepare('SELECT * FROM autopilot_triggers WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM autopilot_triggers WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     return row ? this.rowToTrigger(row) : null;
   }
 
   findByWebhookToken(token: string): AutopilotTriggerRow | null {
-    const row = this.db.prepare(
-      'SELECT * FROM autopilot_triggers WHERE webhook_token = ? AND enabled = 1',
-    ).get(token) as Record<string, unknown> | undefined;
+    const row = this.db
+      .prepare('SELECT * FROM autopilot_triggers WHERE webhook_token = ? AND enabled = 1')
+      .get(token) as Record<string, unknown> | undefined;
     return row ? this.rowToTrigger(row) : null;
   }
 
@@ -107,33 +124,59 @@ export class AutopilotRepository {
   // ── Runs ──
 
   createRun(row: AutopilotRunCreate): string {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO autopilot_runs (id, trigger_id, task_id, trigger_type, status, started_at, error_message)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(row.id, row.trigger_id, row.task_id, row.trigger_type, row.status, row.started_at, row.error_message);
+    `,
+      )
+      .run(
+        row.id,
+        row.trigger_id,
+        row.task_id,
+        row.trigger_type,
+        row.status,
+        row.started_at,
+        row.error_message,
+      );
     return row.id;
   }
 
-  updateRun(id: string, updates: { status?: string; completed_at?: string; error_message?: string }): void {
+  updateRun(
+    id: string,
+    updates: { status?: string; completed_at?: string; error_message?: string },
+  ): void {
     const sets: string[] = [];
     const params: unknown[] = [];
-    if (updates.status) { sets.push('status = ?'); params.push(updates.status); }
-    if (updates.completed_at) { sets.push('completed_at = ?'); params.push(updates.completed_at); }
-    if (updates.error_message !== undefined) { sets.push('error_message = ?'); params.push(updates.error_message); }
+    if (updates.status) {
+      sets.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.completed_at) {
+      sets.push('completed_at = ?');
+      params.push(updates.completed_at);
+    }
+    if (updates.error_message !== undefined) {
+      sets.push('error_message = ?');
+      params.push(updates.error_message);
+    }
     if (sets.length === 0) return;
     params.push(id);
     this.db.prepare(`UPDATE autopilot_runs SET ${sets.join(', ')} WHERE id = ?`).run(...params);
   }
 
   findRunsByTrigger(triggerId: string, limit = 50): AutopilotRunRow[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM autopilot_runs WHERE trigger_id = ? ORDER BY started_at DESC LIMIT ?',
-    ).all(triggerId, limit) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare('SELECT * FROM autopilot_runs WHERE trigger_id = ? ORDER BY started_at DESC LIMIT ?')
+      .all(triggerId, limit) as Record<string, unknown>[];
     return rows.map((r) => this.rowToRun(r));
   }
 
   findRunById(id: string): AutopilotRunRow | null {
-    const row = this.db.prepare('SELECT * FROM autopilot_runs WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM autopilot_runs WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     return row ? this.rowToRun(row) : null;
   }
 

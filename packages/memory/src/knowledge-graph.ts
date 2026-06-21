@@ -279,8 +279,6 @@ export class KnowledgeGraph {
     });
   }
 
-
-
   private rowToEntity(row: Record<string, unknown>): Entity {
     return {
       id: row.id as string,

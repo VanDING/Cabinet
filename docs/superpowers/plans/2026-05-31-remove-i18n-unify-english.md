@@ -24,6 +24,7 @@ Task 3 (验证构建和运行) ──→ 依赖 Task 1 + Task 2
 ## Task 1: 删除 i18n 依赖和配置
 
 **Files:**
+
 - Delete: `apps/desktop/src/i18n.ts`（或 `packages/ui/src/i18n.ts`，按实际路径）
 - Delete: `apps/desktop/src/locales/`（或 `packages/ui/src/locales/`）
 - Modify: `apps/desktop/src/main.tsx`（移除 `i18n` 导入和 `I18nextProvider`）
@@ -36,6 +37,7 @@ Task 3 (验证构建和运行) ──→ 依赖 Task 1 + Task 2
 - [ ] **Step 1: 定位 i18n 文件**
 
 Run:
+
 ```bash
 rg "i18n.ts" apps/desktop packages/ui --type ts -l
 rg "locales" apps/desktop packages/ui -l
@@ -50,6 +52,7 @@ rg "i18next" package.json apps/desktop/package.json packages/ui/package.json -n
 - [ ] **Step 2: 删除 i18n 配置文件**
 
 Run:
+
 ```bash
 git rm apps/desktop/src/i18n.ts
 # 或实际路径：git rm packages/ui/src/i18n.ts
@@ -63,15 +66,19 @@ git rm -r apps/desktop/src/locales
 
 Read: `apps/desktop/src/main.tsx`
 找到：
+
 ```tsx
 import './i18n';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
 ```
+
 以及：
+
 ```tsx
 <I18nextProvider i18n={i18n}>
 ```
+
 全部删除。
 
 ---
@@ -81,6 +88,7 @@ import i18n from './i18n';
 Read: `apps/desktop/package.json`
 Read: `packages/ui/package.json`
 从 `dependencies` 中删除：
+
 - `react-i18next`
 - `i18next`
 - `i18next-browser-languagedetector`（如存在）
@@ -93,12 +101,14 @@ Expected: lockfile 更新，无报错
 - [ ] **Step 5: 搜索残留导入**
 
 Run:
+
 ```bash
 rg "from 'react-i18next'" apps/desktop packages/ui --type ts -n
 rg "from 'i18next'" apps/desktop packages/ui --type ts -n
 rg "useTranslation" apps/desktop packages/ui --type ts -n
 rg "t\(" apps/desktop packages/ui --type ts -n | head -20
 ```
+
 Expected: 无命中（除了可能的历史注释）
 
 ---
@@ -120,6 +130,7 @@ and build complexity."
 **背景:** 审计报告发现 `packages/ui/src/sub-agent-card.tsx`、App.tsx、ApiKeysTab.tsx 等处有硬编码中文，与 95% 英文界面混杂。
 
 **Files:**
+
 - Modify: `packages/ui/src/sub-agent-card.tsx`
 - Modify: `apps/desktop/src/App.tsx`
 - Modify: `apps/desktop/src/pages/settings/ApiKeysTab.tsx`
@@ -130,6 +141,7 @@ and build complexity."
 - [ ] **Step 1: 扫描全库硬编码中文**
 
 Run:
+
 ```bash
 rg "[一-鿿]+" apps/desktop/src packages/ui/src --type ts -n | grep -v "node_modules" > /tmp/chinese-strings.txt
 cat /tmp/chinese-strings.txt
@@ -144,13 +156,13 @@ cat /tmp/chinese-strings.txt
 Read: `packages/ui/src/sub-agent-card.tsx`
 将以下字符串替换：
 
-| 中文 | 英文 |
-|------|------|
-| 运行中 | Running |
+| 中文   | 英文      |
+| ------ | --------- |
+| 运行中 | Running   |
 | 已完成 | Completed |
-| 出错 | Error |
-| 收起 | Collapse |
-| 展开 | Expand |
+| 出错   | Error     |
+| 收起   | Collapse  |
+| 展开   | Expand    |
 
 编辑文件，确保替换后语法正确（如 `status === 'Running'` 等）。
 
@@ -160,12 +172,15 @@ Read: `packages/ui/src/sub-agent-card.tsx`
 
 Read: `apps/desktop/src/App.tsx`
 找到：
+
 ```tsx
-"请继续完成上述任务"
+'请继续完成上述任务';
 ```
+
 替换为：
+
 ```tsx
-"Please continue to complete the tasks above"
+'Please continue to complete the tasks above';
 ```
 
 ---
@@ -174,12 +189,14 @@ Read: `apps/desktop/src/App.tsx`
 
 Read: `apps/desktop/src/pages/settings/ApiKeysTab.tsx`
 找到中文标签如：
+
 - 通义千问 → Tongyi Qianwen
 - 月之暗面 → Moonshot AI
 - 智谱GLM → Zhipu GLM
 - 百川 → Baichuan
 
 **注意:** 这些是品牌/产品名称，替换策略：
+
 - 如果是 UI 标签（用户可见的选项文字），改为英文 + 保留中文括号，如 `Tongyi Qianwen (通义千问)`
 - 如果是内部代码值（如 provider key），保持原样
 
@@ -190,6 +207,7 @@ Read: `apps/desktop/src/pages/settings/ApiKeysTab.tsx`
 - [ ] **Step 5: 处理其他命中文件**
 
 对 `/tmp/chinese-strings.txt` 中列出的每个文件：
+
 1. 判断该中文字符串是否在注释中 → 如 `// 这是一个注释`，可保留或改为英文注释
 2. 判断是否在用户可见 UI 中 → 必须替换
 3. 判断是否是测试数据 / fixture → 可保留
@@ -201,9 +219,11 @@ Read: `apps/desktop/src/pages/settings/ApiKeysTab.tsx`
 - [ ] **Step 6: 再次扫描确认**
 
 Run:
+
 ```bash
 rg "[一-鿿]+" apps/desktop/src packages/ui/src --type ts -n | grep -v "node_modules" | grep -v "//" | wc -l
 ```
+
 Expected: 用户可见中文数量为 0（或仅剩注释/测试数据，需人工确认）
 
 ---
@@ -241,6 +261,7 @@ Expected: 0 errors
 
 Run: `pnpm --filter @cabinet/desktop dev`
 打开应用，检查：
+
 - Settings → ApiKeysTab： provider 名称为英文
 - Factory / Office 页面： sub-agent 状态标签为英文
 - Chat 页面：无 "请继续完成上述任务" 等中文提示

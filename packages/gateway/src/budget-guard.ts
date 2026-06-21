@@ -36,7 +36,11 @@ export class BudgetGuard {
   }
 
   /** Check if a call should be allowed based on budget. Blocks non-L3 calls when at critical or blocked. */
-  canProceed(decisionLevel?: string): { allowed: boolean; reason?: string; degradationHint?: string } {
+  canProceed(decisionLevel?: string): {
+    allowed: boolean;
+    reason?: string;
+    degradationHint?: string;
+  } {
     const statuses = this.checkAll();
     const blocked = statuses.find((s) => s.level === 'blocked');
     const critical = statuses.find((s) => s.level === 'critical');
@@ -46,14 +50,16 @@ export class BudgetGuard {
       return {
         allowed: false,
         reason: `${blocked.period} budget exceeded: ¥{blocked.currentSpend.toFixed(2)} / $${blocked.limit.toFixed(2)}`,
-        degradationHint: 'Budget exhausted. Consider switching to a cheaper model (e.g., haiku instead of sonnet) for non-critical tasks.',
+        degradationHint:
+          'Budget exhausted. Consider switching to a cheaper model (e.g., haiku instead of sonnet) for non-critical tasks.',
       };
     }
     if (critical && decisionLevel !== 'L3') {
       return {
         allowed: false,
         reason: `${critical.period} budget nearly exhausted: ¥{critical.currentSpend.toFixed(2)} / $${critical.limit.toFixed(2)}`,
-        degradationHint: 'Budget critical. Switch to cheaper models (haiku-4-5) for routine tasks to preserve budget for critical decisions.',
+        degradationHint:
+          'Budget critical. Switch to cheaper models (haiku-4-5) for routine tasks to preserve budget for critical decisions.',
       };
     }
     if (warn) {

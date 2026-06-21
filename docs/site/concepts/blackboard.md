@@ -156,4 +156,7 @@ new AgentLoop({
 ## 与现有机制的关系
 
 - **Handoff 文档** — Blackboard 是 handoff 的增强而非替代。Handoff 用于跨 session 持久化；Blackboard 用于同 session 内实时同步。
-- **ContextSlot** — Blackboard 的 7 个内置 topic 对应原有 ContextSlot 字段。`ContextSlot` 类型仍作为兼容层存在，但新代码应直接使用 Blackboard API。
+- **ContextSlot** — Blackboard 的 7 个内置 topic 与 ContextSlot 字段概念对应。两者目前是独立并行的机制：
+  - `ContextSlot`（`packages/types/src/primitives.ts`）用于 TaskQueueEntry 的持久化数据总线（序列化格式）
+  - `AgentBlackboard`（`packages/agent/src/blackboard.ts`）用于多 Agent 运行时的实时协作
+  - 两者职责有重叠但无自动同步桥接。Blackboard 是运行时推荐路径；ContextSlot 仅用于任务排队场景的序列化快照。

@@ -109,7 +109,7 @@ describe('Benchmark: Retrieval Performance', () => {
         timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
       });
     }
-  });
+  }, 60000);
 
   afterEach(() => {
     mem.close();

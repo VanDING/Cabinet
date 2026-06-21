@@ -54,10 +54,7 @@
     },
     "connection": {
       "type": "object",
-      "oneOf": [
-        { "$ref": "#/$defs/a2aConnection" },
-        { "$ref": "#/$defs/cliConnection" }
-      ]
+      "oneOf": [{ "$ref": "#/$defs/a2aConnection" }, { "$ref": "#/$defs/cliConnection" }]
     }
   },
   "$defs": {

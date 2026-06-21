@@ -10,10 +10,10 @@ The system does not ask "Should I do this?" for every action. Instead, it classi
 
 ## Organization & Project
 
-| Primitive | Description |
-| :-------- | :---------- |
-| **Organization** | Your "one-person company" instance. Top-level namespace. |
-| **Project** | A container around a specific business goal. All work — decisions, meetings, workflows, memory — is scoped to a project. |
+| Primitive        | Description                                                                                                    |
+| :--------------- | :------------------------------------------------------------------------------------------------------------- |
+| **Organization** | Your "one-person company" instance. Top-level namespace.                                                       |
+| **Project**      | A container around a specific business goal. All work — decisions, workflows, memory — is scoped to a project. |
 
 Projects have a `rootPath` that points to a folder on disk. This enables file-system-aware operations: reading code, writing output, indexing documents.
 
@@ -65,12 +65,12 @@ Decisions are the bridge between AI execution and human judgment. See [Decision 
 
 Cabinet uses a **4-layer memory system** that separates hot data from cold knowledge:
 
-| Layer | Purpose | Storage |
-| :---- | :------ | :------ |
-| **Short-term** | Current session context | In-memory + SQLite |
-| **Long-term** | Cross-session semantic retrieval | SQLite + HNSW (hnswlib-node) |
-| **Entity** | Captain preferences, employee configs | SQLite |
-| **Project** | Project goals, milestones, key decisions | SQLite |
+| Layer          | Purpose                                  | Storage                      |
+| :------------- | :--------------------------------------- | :--------------------------- |
+| **Short-term** | Current session context                  | In-memory + SQLite           |
+| **Long-term**  | Cross-session semantic retrieval         | SQLite + HNSW (hnswlib-node) |
+| **Entity**     | Captain preferences, employee configs    | SQLite                       |
+| **Project**    | Project goals, milestones, key decisions | SQLite                       |
 
 A background **ConsolidationService** periodically migrates information from short-term to long-term, removes duplicates, and extracts structured knowledge into the **KnowledgeGraph**.
 
@@ -80,15 +80,13 @@ Cabinet's agents follow a **TAOR** loop: **T**hink (build context) → **A**ct (
 
 The framework is model-driven: the LLM decides what to do next; the framework provides execution, safety checks, and memory. See [Agent System](./agents) for roles, routing, and safety architecture.
 
-## Meeting
+## External Agents
 
-A **Meeting** is a structured multi-agent deliberation with a four-phase protocol:
+Cabinet integrates third-party AI coding agents as first-class employees. External agents (Claude Code, Codex, OpenCode, Aider, etc.) can be:
 
-1. **Chair** — receives the topic, parses intent, selects advisors, constructs a structured Brief
-2. **Advisor** — advisors perform parallel reasoning on their domain based on the Brief
-3. **Reviewer** — independent quality review of all Advisor outputs for logic, evidence, and risks
-4. **Extraction** — consensus, minority report, and unresolved分歧 are extracted into a final deliverable
+- **Discovered** — auto-detected on system PATH via `Scanner` recipes
+- **Installed** — via `Installer` with platform-specific methods (npm, pip, brew)
+- **Projected** — Cabinet pushes API keys, MCP configs, and skills to their native config
+- **Orchestrated** — routed through `AgentDaemon` pull-mode task queue or ACP protocol
 
-A **cost estimate** is produced before phase 2; if it exceeds the threshold, Captain confirmation is required.
-
-Meetings are not chat rooms. They are bounded, cost-transparent reasoning sessions.
+See [Agent System](./agents) for the full external agent architecture.

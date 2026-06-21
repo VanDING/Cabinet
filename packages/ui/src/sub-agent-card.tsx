@@ -61,32 +61,26 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
   };
 
   return (
-    <div
-      className={`mt-2 rounded-lg border ${config.border} ${config.bg} p-3 transition-all`}
-    >
+    <div className={`mt-2 rounded-lg border ${config.border} ${config.bg} p-3 transition-all`}>
       {/* Header */}
       <button onClick={handleToggle} className="flex w-full items-center justify-between text-left">
         <div className="flex items-center gap-2">
           <span
-            className={`text-sm ${isRunning ? 'animate-pulse text-accent' : activity.status === 'error' ? 'text-intent-danger' : 'text-intent-success'}`}
+            className={`text-sm ${isRunning ? 'text-accent animate-pulse' : activity.status === 'error' ? 'text-intent-danger' : 'text-intent-success'}`}
           >
             {config.icon}
           </span>
-          <span className="text-sm font-medium text-content-primary">
-            {activity.agentName}
-          </span>
-          <span className="rounded-sm px-1.5 py-0.5 text-xs text-content-tertiary">
+          <span className="text-content-primary text-sm font-medium">{activity.agentName}</span>
+          <span className="text-content-tertiary rounded-sm px-1.5 py-0.5 text-xs">
             {config.label}
           </span>
         </div>
-        <span className="text-xs text-content-tertiary">
-          {expanded ? 'Collapse' : 'Expand'}
-        </span>
+        <span className="text-content-tertiary text-xs">{expanded ? 'Collapse' : 'Expand'}</span>
       </button>
 
       {/* Summary line */}
       {!expanded && activity.result && visibility !== 'summary' && (
-        <p className="mt-1 line-clamp-2 text-xs text-content-tertiary">
+        <p className="text-content-tertiary mt-1 line-clamp-2 text-xs">
           {activity.result.slice(0, 200)}
           {activity.result.length > 200 ? '…' : ''}
         </p>
@@ -97,21 +91,19 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
         <div className="mt-2 space-y-2">
           {activity.thinking && activity.thinking.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-content-tertiary">Thinking process</div>
-              <div className="mt-1 max-h-40 overflow-y-auto rounded-sm border border-border bg-surface-primary p-2 whitespace-pre-wrap">
-                <p className="text-xs text-content-secondary">
-                  {activity.thinking.join('')}
-                </p>
+              <div className="text-content-tertiary text-xs font-medium">Thinking process</div>
+              <div className="border-border bg-surface-primary mt-1 max-h-40 overflow-y-auto rounded-sm border p-2 whitespace-pre-wrap">
+                <p className="text-content-secondary text-xs">{activity.thinking.join('')}</p>
               </div>
             </div>
           )}
 
           {activity.toolCalls && activity.toolCalls.length > 0 && (
             <div className="mt-2">
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-content-tertiary">
+              <div className="text-content-tertiary flex flex-wrap items-center gap-1.5 text-[10px]">
                 <button
                   onClick={() => setToolCallsExpanded(!toolCallsExpanded)}
-                  className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:bg-surface-muted"
+                  className="hover:bg-surface-muted inline-flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors"
                 >
                   <span>{toolCallsExpanded ? '▼' : '▶'}</span>
                   Tool calls ({activity.toolCalls.length})
@@ -120,9 +112,9 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                   activity.toolCalls.slice(0, 4).map((tc, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 rounded-sm bg-surface-muted px-1.5 py-0.5"
+                      className="bg-surface-muted inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5"
                     >
-                      <span className="font-mono text-content-secondary">{tc.name}</span>
+                      <span className="text-content-secondary font-mono">{tc.name}</span>
                     </span>
                   ))}
                 {!toolCallsExpanded && activity.toolCalls.length > 4 && (
@@ -130,13 +122,11 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
                 )}
               </div>
               {toolCallsExpanded && (
-                <div className="mt-1 space-y-1 rounded-sm border border-border bg-surface-elevated p-2">
+                <div className="border-border bg-surface-elevated mt-1 space-y-1 rounded-sm border p-2">
                   {activity.toolCalls.map((tc, i) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
-                      <span className="mt-0.5 font-mono text-content-secondary">
-                        {tc.name}
-                      </span>
-                      <span className="truncate text-content-tertiary">
+                      <span className="text-content-secondary mt-0.5 font-mono">{tc.name}</span>
+                      <span className="text-content-tertiary truncate">
                         {Object.entries(tc.args)
                           .map(([k, v]) => `${k}=${String(v).slice(0, 40)}`)
                           .join(', ')}
@@ -150,8 +140,8 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.result && (
             <div>
-              <div className="text-xs font-medium text-content-tertiary">Result</div>
-              <p className="mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap text-content-secondary">
+              <div className="text-content-tertiary text-xs font-medium">Result</div>
+              <p className="text-content-secondary mt-1 max-h-40 overflow-y-auto text-xs whitespace-pre-wrap">
                 {activity.result}
               </p>
             </div>
@@ -159,8 +149,8 @@ export function SubAgentCard({ activity, visibility = 'detailed', onToggle }: Su
 
           {activity.error && (
             <div>
-              <div className="text-xs font-medium text-intent-danger">Error</div>
-              <p className="mt-1 text-xs text-intent-danger">{activity.error}</p>
+              <div className="text-intent-danger text-xs font-medium">Error</div>
+              <p className="text-intent-danger mt-1 text-xs">{activity.error}</p>
             </div>
           )}
         </div>

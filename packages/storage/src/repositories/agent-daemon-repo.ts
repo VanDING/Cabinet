@@ -32,74 +32,102 @@ export class AgentDaemonRepository {
   // ── Heartbeats ──
 
   upsertHeartbeat(daemonId: string, agentId: string, status = 'online'): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO agent_daemon_heartbeats (daemon_id, agent_id, status, last_heartbeat_at)
       VALUES (?, ?, ?, datetime('now'))
       ON CONFLICT(daemon_id) DO UPDATE SET
         agent_id = excluded.agent_id,
         status = excluded.status,
         last_heartbeat_at = excluded.last_heartbeat_at
-    `).run(daemonId, agentId, status);
+    `,
+      )
+      .run(daemonId, agentId, status);
   }
 
   /** Find daemons whose last heartbeat is within the given timeout (ms). */
   findOnlineDaemons(heartbeatTimeoutMs: number): HeartbeatRow[] {
     const cutoff = new Date(Date.now() - heartbeatTimeoutMs).toISOString();
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT * FROM agent_daemon_heartbeats WHERE last_heartbeat_at >= ? AND status != 'offline'
-    `).all(cutoff) as Record<string, unknown>[];
+    `,
+      )
+      .all(cutoff) as Record<string, unknown>[];
     return rows.map((r) => this.rowToHeartbeat(r));
   }
 
   markOffline(daemonId: string): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE agent_daemon_heartbeats SET status = 'offline' WHERE daemon_id = ?
-    `).run(daemonId);
+    `,
+      )
+      .run(daemonId);
   }
 
   findByAgent(agentId: string): HeartbeatRow | null {
-    const row = this.db.prepare(
-      'SELECT * FROM agent_daemon_heartbeats WHERE agent_id = ?',
-    ).get(agentId) as Record<string, unknown> | undefined;
+    const row = this.db
+      .prepare('SELECT * FROM agent_daemon_heartbeats WHERE agent_id = ?')
+      .get(agentId) as Record<string, unknown> | undefined;
     return row ? this.rowToHeartbeat(row) : null;
   }
 
   // ── Workspaces ──
 
   createWorkspace(row: WorkspaceRow): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO agent_workspaces (id, agent_id, task_id, path, size_bytes, status, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(row.id, row.agent_id, row.task_id, row.path, row.size_bytes, row.status, row.expires_at);
+    `,
+      )
+      .run(row.id, row.agent_id, row.task_id, row.path, row.size_bytes, row.status, row.expires_at);
   }
 
   findExpiredWorkspaces(): WorkspaceRow[] {
     const now = new Date().toISOString();
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT * FROM agent_workspaces WHERE expires_at IS NOT NULL AND expires_at < ?
-    `).all(now) as Record<string, unknown>[];
+    `,
+      )
+      .all(now) as Record<string, unknown>[];
     return rows.map((r) => this.rowToWorkspace(r));
   }
 
   findWorkspacesByAgent(agentId: string, status?: string): WorkspaceRow[] {
     const where = status ? 'agent_id = ? AND status = ?' : 'agent_id = ?';
     const params: unknown[] = status ? [agentId, status] : [agentId];
-    const rows = this.db.prepare(
-      `SELECT * FROM agent_workspaces WHERE ${where} ORDER BY last_used_at DESC`,
-    ).all(...params) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare(`SELECT * FROM agent_workspaces WHERE ${where} ORDER BY last_used_at DESC`)
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => this.rowToWorkspace(r));
   }
 
   updateWorkspaceLastUsed(id: string): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE agent_workspaces SET last_used_at = datetime('now') WHERE id = ?
-    `).run(id);
+    `,
+      )
+      .run(id);
   }
 
   updateWorkspaceStatus(id: string, status: string): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       UPDATE agent_workspaces SET status = ? WHERE id = ?
-    `).run(status, id);
+    `,
+      )
+      .run(status, id);
   }
 
   deleteWorkspace(id: string): void {

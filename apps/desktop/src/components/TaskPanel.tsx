@@ -48,7 +48,7 @@ export const TaskPanel = memo(function TaskPanel({ tasks, semanticTasks }: Props
   return (
     <div className={cardClasses}>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${subtextClasses}`}>
+        <span className={`text-[10px] font-semibold tracking-wider uppercase ${subtextClasses}`}>
           {displaySemantic ? 'Task Progress' : 'Tasks'}
         </span>
         <span className={`text-[10px] ${subtextClasses}`}>

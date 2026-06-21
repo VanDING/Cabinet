@@ -16,7 +16,9 @@ function useTauriWindow() {
         .then(() => {
           if (!cancelled) setAvailable(true);
         })
-        .catch((err) => { console.warn('Operation failed', err); });
+        .catch((err) => {
+          console.warn('Operation failed', err);
+        });
     } catch {
       /* Tauri API not available */
     }
@@ -33,7 +35,10 @@ async function invoke(name: string): Promise<any> {
   return tauriInvoke(name);
 }
 
-interface ThemeInfo { id: string; name: string; }
+interface ThemeInfo {
+  id: string;
+  name: string;
+}
 export function TitleBar({
   themes,
   currentTheme,
@@ -55,7 +60,9 @@ export function TitleBar({
       .then((v) => {
         if (!cancelled) setIsMaximized(Boolean(v));
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
 
     import('@tauri-apps/api/event')
       .then(({ listen }) => {
@@ -63,22 +70,44 @@ export function TitleBar({
         const unlisten = listen('tauri://resize', () => {
           invoke('is_maximized')
             .then((v) => setIsMaximized(Boolean(v)))
-            .catch((err) => { console.warn('Operation failed', err); });
+            .catch((err) => {
+              console.warn('Operation failed', err);
+            });
         });
         return () => {
           unlisten.then((fn: () => void) => fn());
         };
       })
-      .catch((err) => { console.warn('Operation failed', err); });
+      .catch((err) => {
+        console.warn('Operation failed', err);
+      });
 
     return () => {
       cancelled = true;
     };
   }, [available]);
 
-  const handleMinimize = useCallback(() => invoke('minimize').catch((err) => { console.warn('Operation failed', err); }), []);
-  const handleMaximize = useCallback(() => invoke('maximize').catch((err) => { console.warn('Operation failed', err); }), []);
-  const handleClose = useCallback(() => invoke('close').catch((err) => { console.warn('Operation failed', err); }), []);
+  const handleMinimize = useCallback(
+    () =>
+      invoke('minimize').catch((err) => {
+        console.warn('Operation failed', err);
+      }),
+    [],
+  );
+  const handleMaximize = useCallback(
+    () =>
+      invoke('maximize').catch((err) => {
+        console.warn('Operation failed', err);
+      }),
+    [],
+  );
+  const handleClose = useCallback(
+    () =>
+      invoke('close').catch((err) => {
+        console.warn('Operation failed', err);
+      }),
+    [],
+  );
 
   const btnHover =
     'text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary';
@@ -86,12 +115,10 @@ export function TitleBar({
   return (
     <div
       data-tauri-drag-region
-      className="flex h-8 shrink-0 select-none items-center justify-between border-b border-border bg-transparent"
+      className="border-border flex h-8 shrink-0 items-center justify-between border-b bg-transparent select-none"
     >
       <div data-tauri-drag-region className="flex items-center pl-4">
-        <span className="text-xs font-semibold tracking-wide text-content-secondary">
-          Cabinet
-        </span>
+        <span className="text-content-secondary text-xs font-semibold tracking-wide">Cabinet</span>
       </div>
 
       <div data-tauri-drag-region className="flex-1" />
@@ -110,15 +137,16 @@ export function TitleBar({
           {themeOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setThemeOpen(false)} />
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-md border border-border bg-surface-primary py-1 shadow-lg">
+              <div className="border-border bg-surface-primary absolute top-full right-0 z-50 mt-1 min-w-[120px] rounded-md border py-1 shadow-lg">
                 {themes.map((t) => (
                   <button
                     key={t.id}
-                    onClick={() => { onSetTheme?.(t.id); setThemeOpen(false); }}
-                    className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-surface-muted ${
-                      t.id === currentTheme
-                        ? 'font-semibold text-accent'
-                        : 'text-content-secondary'
+                    onClick={() => {
+                      onSetTheme?.(t.id);
+                      setThemeOpen(false);
+                    }}
+                    className={`hover:bg-surface-muted block w-full px-3 py-1.5 text-left text-xs ${
+                      t.id === currentTheme ? 'text-accent font-semibold' : 'text-content-secondary'
                     }`}
                   >
                     {t.name}
@@ -147,7 +175,7 @@ export function TitleBar({
             </button>
             <button
               onClick={handleClose}
-              className="flex h-full w-10 items-center justify-center text-content-tertiary transition-colors hover:bg-intent-danger hover:text-content-inverse"
+              className="text-content-tertiary hover:bg-intent-danger hover:text-content-inverse flex h-full w-10 items-center justify-center transition-colors"
               aria-label="Close"
             >
               <X size={14} />

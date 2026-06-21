@@ -15,7 +15,10 @@ interface TerminalTabProps {
 export function TerminalTab({ label, command, args, env, onClose }: TerminalTabProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
-  const termRef = useRef<{ write: (d: string) => Promise<void>; resize: (c: number, r: number) => Promise<void> } | null>(null);
+  const termRef = useRef<{
+    write: (d: string) => Promise<void>;
+    resize: (c: number, r: number) => Promise<void>;
+  } | null>(null);
   const [ready, setReady] = useState(false);
 
   const { write, resize, isRunning } = useTerminal({

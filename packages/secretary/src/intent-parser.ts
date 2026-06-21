@@ -10,10 +10,7 @@
 import type { LLMGateway } from '@cabinet/gateway';
 import type { AgentRoleType } from '@cabinet/agent';
 import { cosineSimilarity } from '@cabinet/types';
-import {
-  computeTopicHash,
-  matchIntentByPattern,
-} from './intent-pattern-matcher.js';
+import { computeTopicHash, matchIntentByPattern } from './intent-pattern-matcher.js';
 import type { EmbeddingMatch } from './intent-pattern-matcher.js';
 import {
   warmupEmbeddings,
@@ -21,10 +18,7 @@ import {
   matchIntentByEmbedding,
   buildIntentFromMatch,
 } from './intent-embedding-matcher.js';
-import {
-  parseWithLLM,
-  routeWithLLM as llmRouteWithLLM,
-} from './intent-llm-router.js';
+import { parseWithLLM, routeWithLLM as llmRouteWithLLM } from './intent-llm-router.js';
 
 // ── Re-export types for backward compatibility ──
 
@@ -74,8 +68,10 @@ function escapeRegex(s: string): string {
 export class IntentParser {
   private availableAgentsDesc = '';
   private validAgentTypes: Set<string> = new Set(['secretary', 'organize']);
-  private customAgents: Map<string, { description: string; keywords?: string[]; aliases?: string[] }> =
-    new Map();
+  private customAgents: Map<
+    string,
+    { description: string; keywords?: string[]; aliases?: string[] }
+  > = new Map();
   private sessionRoutingCache = new Map<
     string,
     { lastAgent: string; lastTimestamp: number; topicHash: string }
@@ -100,11 +96,19 @@ export class IntentParser {
     this.validAgentTypes = types;
   }
 
-  setCustomAgents(agents: Map<string, string | { description: string; keywords?: string[]; aliases?: string[] }>): void {
-    const normalized = new Map<string, { description: string; keywords?: string[]; aliases?: string[] }>();
+  setCustomAgents(
+    agents: Map<string, string | { description: string; keywords?: string[]; aliases?: string[] }>,
+  ): void {
+    const normalized = new Map<
+      string,
+      { description: string; keywords?: string[]; aliases?: string[] }
+    >();
     for (const [name, info] of agents) {
       if (typeof info === 'string') {
-        const defaultKeywords = name.toLowerCase().split(/[\s\-_]+/).filter((k) => k.length > 1);
+        const defaultKeywords = name
+          .toLowerCase()
+          .split(/[\s\-_]+/)
+          .filter((k) => k.length > 1);
         normalized.set(name, { description: info, keywords: defaultKeywords, aliases: [] });
       } else {
         normalized.set(name, info);
@@ -156,7 +160,8 @@ export class IntentParser {
           return {
             targetAgent: 'secretary',
             confidence: 0.95,
-            reasoning: 'Short-circuit: continuing with Secretary (no agent mention, no skill prefix, topic stable).',
+            reasoning:
+              'Short-circuit: continuing with Secretary (no agent mention, no skill prefix, topic stable).',
             intent: {
               kind: 'follow_up',
               previousKind: conversationContext?.lastIntent ?? 'unknown',
@@ -206,7 +211,10 @@ export class IntentParser {
 
     // Fast path: high-confidence explicit action intents
     const highConfidenceIntents = new Set([
-      'decision_request', 'meeting_request', 'organize_request', 'review_request',
+      'decision_request',
+      'meeting_request',
+      'organize_request',
+      'review_request',
     ]);
     if (highConfidenceIntents.has(fastIntent.kind)) {
       return this.fallbackRoute(fastIntent, message);
@@ -391,11 +399,12 @@ export class IntentParser {
       case 'review_request':
       case 'follow_up':
         targetAgent = 'secretary';
-        reasoning = intent.kind === 'meeting_request'
-          ? 'Meeting/discussion request routed to Secretary (Meeting Chair removed — Secretary handles multi-agent coordination).'
-          : intent.kind === 'review_request'
-            ? 'Review requests handled by Secretary (Reviewer is meeting-only quality gate).'
-            : `${intent.kind} handled by Secretary.`;
+        reasoning =
+          intent.kind === 'meeting_request'
+            ? 'Meeting/discussion request routed to Secretary (Meeting Chair removed — Secretary handles multi-agent coordination).'
+            : intent.kind === 'review_request'
+              ? 'Review requests handled by Secretary (Reviewer is meeting-only quality gate).'
+              : `${intent.kind} handled by Secretary.`;
         break;
       case 'organize_request':
       case 'skill_request':

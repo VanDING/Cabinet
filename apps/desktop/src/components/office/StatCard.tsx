@@ -17,10 +17,10 @@ export const StatCard = memo(function StatCard({
   return (
     <div
       onClick={onClick}
-      className={`flex h-full flex-col justify-center rounded-lg border border-border bg-surface-primary p-4 shadow-xs ${onClick ? 'cursor-pointer' : ''}`}
+      className={`border-border bg-surface-primary flex h-full flex-col justify-center rounded-lg border p-4 shadow-xs ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="mt-1 text-sm text-content-tertiary">{label}</div>
+      <div className="text-content-tertiary mt-1 text-sm">{label}</div>
     </div>
   );
 });

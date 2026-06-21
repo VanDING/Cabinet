@@ -14,7 +14,7 @@ export interface TabsProps {
 
 export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
   return (
-    <div className={cn('flex gap-4 border-b border-border', className)}>
+    <div className={cn('border-border flex gap-4 border-b', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -23,7 +23,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className }: TabsProps) {
             'border-b-2 pb-2 text-sm font-medium capitalize transition-colors',
             activeTab === tab.id
               ? 'border-accent text-accent'
-              : 'border-transparent text-content-tertiary hover:text-content-secondary',
+              : 'text-content-tertiary hover:text-content-secondary border-transparent',
           )}
         >
           {tab.label}

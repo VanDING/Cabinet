@@ -319,15 +319,14 @@ export function getEngine(): WorkflowEngine {
       return { status: 'completed', output: result.output };
     },
 
-    tool: async (node: WorkflowNodeDef, _prev: string) => {
-      const d = node.data ?? {};
-      const toolId = (d.toolId as string) ?? node.id;
-      const { agentRegistry, agentRoleRepo } = getServerContext();
+    tool: async (toolId: string, _params: Record<string, unknown>) => {
+      const { agentRegistry } = getServerContext();
       return `Tool ${toolId} executed (stub)`;
     },
 
     runSubWorkflow: async (workflowId: string, _input: unknown) => {
       try {
+        const { runWorkflowById } = await import('./routes.js');
         const result = await runWorkflowById(workflowId);
         return `Sub-workflow completed: ${result.runId}`;
       } catch (e: any) {
@@ -335,15 +334,16 @@ export function getEngine(): WorkflowEngine {
       }
     },
 
-    knowledgeBase: async (node: WorkflowNodeDef, _prev: string) => {
+    knowledgeBase: async (node: WorkflowNodeDef, _input: unknown) => {
       const d = node.data ?? {};
-      const query = (d.query as string) ?? (d.prompt as string) ?? _prev;
+      const query =
+        (d.query as string) ?? (d.prompt as string) ?? (typeof _input === 'string' ? _input : '');
       try {
         const ctx = getServerContext();
         const results = await ctx.longTerm.search(query, 5);
-        return results.map((r: any) => r.content).join('\n\n');
+        return results.map((r: any) => ({ content: r.content, score: r.score ?? 0 }));
       } catch {
-        return 'Knowledge base search failed';
+        return [{ content: 'Knowledge base search failed', score: 0 }];
       }
     },
 
@@ -381,7 +381,7 @@ export function getEngine(): WorkflowEngine {
         title: `Human Task: ${(d.label as string) ?? node.id}`,
         level: 'L1',
       });
-      return { status: 'pending' as const, decisionId };
+      return { taskId: decisionId, status: 'submitted' as const };
     },
   });
 

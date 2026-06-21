@@ -13,10 +13,16 @@ for (const file of files) {
   const original = content;
 
   // Pattern 1: Single-line empty .catch(() => {})
-  content = content.replace(/\.catch\(\(\)\s*=>\s*\{\s*\}\)/g, '.catch((err) => { console.warn(\'Operation failed\', err); })');
+  content = content.replace(
+    /\.catch\(\(\)\s*=>\s*\{\s*\}\)/g,
+    ".catch((err) => { console.warn('Operation failed', err); })",
+  );
 
   // Pattern 2: Single-line with inline comment .catch(() => { /* ... */ })
-  content = content.replace(/\.catch\(\(\)\s*=>\s*\{\s*\/\*[\s\S]*?\*\/\s*\}\)/g, '.catch((err) => { console.warn(\'Operation failed\', err); })');
+  content = content.replace(
+    /\.catch\(\(\)\s*=>\s*\{\s*\/\*[\s\S]*?\*\/\s*\}\)/g,
+    ".catch((err) => { console.warn('Operation failed', err); })",
+  );
 
   // Pattern 3: Multi-line empty bodies - find .catch(() => { ... })
   // We scan for the pattern and check if body is only whitespace/comments
@@ -64,9 +70,9 @@ for (const file of files) {
     if (!foundNonComment && depth === 0) {
       const before = content.slice(0, matchStart);
       const after = content.slice(pos + 1);
-      content = before + '.catch((err) => { console.warn(\'Operation failed\', err); })' + after;
+      content = before + ".catch((err) => { console.warn('Operation failed', err); })" + after;
       totalReplacements++;
-      idx = matchStart + '.catch((err) => { console.warn(\'Operation failed\', err); })'.length;
+      idx = matchStart + ".catch((err) => { console.warn('Operation failed', err); })".length;
     } else {
       idx = bodyStart + 1;
     }

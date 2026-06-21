@@ -1,5 +1,12 @@
 import { Hono } from 'hono';
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, unlinkSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  mkdirSync,
+  unlinkSync,
+} from 'node:fs';
 import { join, relative } from 'node:path';
 import { getServerContext } from '../context.js';
 import { CABINET_DIR } from '@cabinet/storage';

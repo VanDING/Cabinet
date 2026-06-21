@@ -190,7 +190,12 @@ export class BrowserPool {
   }
 
   /** Convenience: type into an input. */
-  async type(sessionId: string, selector: string, text: string, submit?: boolean): Promise<boolean> {
+  async type(
+    sessionId: string,
+    selector: string,
+    text: string,
+    submit?: boolean,
+  ): Promise<boolean> {
     const page = await this.acquire(sessionId);
     try {
       await page.fill(selector, text);
@@ -210,7 +215,7 @@ export class BrowserPool {
     let text = '';
     if (selector) {
       const el = await page.$(selector);
-      text = el ? (await el.textContent()) ?? '' : '';
+      text = el ? ((await el.textContent()) ?? '') : '';
     } else {
       text = (await page.textContent('body')) ?? '';
     }
@@ -221,7 +226,10 @@ export class BrowserPool {
   }
 
   /** Convenience: take a screenshot (base64). */
-  async screenshot(sessionId: string, selector?: string): Promise<{ base64: string; mimeType: string }> {
+  async screenshot(
+    sessionId: string,
+    selector?: string,
+  ): Promise<{ base64: string; mimeType: string }> {
     const page = await this.acquire(sessionId);
     let buf: Buffer;
     if (selector) {
@@ -238,7 +246,6 @@ export class BrowserPool {
   async evaluate(sessionId: string, script: string): Promise<unknown> {
     const page = await this.acquire(sessionId);
     return page.evaluate((s) => {
-       
       return eval(s);
     }, script);
   }

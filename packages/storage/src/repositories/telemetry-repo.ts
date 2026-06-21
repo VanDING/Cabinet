@@ -35,36 +35,48 @@ export class TelemetryRepository {
   constructor(private readonly db: Database.Database) {}
 
   insert(row: TelemetryRow): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO agent_telemetry (task_id, agent_id, model, prompt_tokens, completion_tokens,
         ttft_ms, total_ms, tool_latency_json, steps, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      row.task_id, row.agent_id, row.model,
-      row.prompt_tokens, row.completion_tokens,
-      row.ttft_ms, row.total_ms,
-      row.tool_latency_json, row.steps, row.status,
-    );
+    `,
+      )
+      .run(
+        row.task_id,
+        row.agent_id,
+        row.model,
+        row.prompt_tokens,
+        row.completion_tokens,
+        row.ttft_ms,
+        row.total_ms,
+        row.tool_latency_json,
+        row.steps,
+        row.status,
+      );
   }
 
   findByAgent(agentId: string, limit = 50): TelemetryRow[] {
-    const rows = this.db.prepare(
-      'SELECT * FROM agent_telemetry WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?',
-    ).all(agentId, limit) as Record<string, unknown>[];
+    const rows = this.db
+      .prepare('SELECT * FROM agent_telemetry WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?')
+      .all(agentId, limit) as Record<string, unknown>[];
     return rows.map((r) => this.rowToTelemetry(r));
   }
 
   findByTask(taskId: string): TelemetryRow | null {
-    const row = this.db.prepare(
-      'SELECT * FROM agent_telemetry WHERE task_id = ?',
-    ).get(taskId) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM agent_telemetry WHERE task_id = ?').get(taskId) as
+      | Record<string, unknown>
+      | undefined;
     return row ? this.rowToTelemetry(row) : null;
   }
 
   getStats(agentId?: string): AgentStats[] {
     const where = agentId ? 'WHERE agent_id = ?' : '';
     const params = agentId ? [agentId] : [];
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT
         agent_id,
         COUNT(*) as total_tasks,
@@ -79,7 +91,9 @@ export class TelemetryRepository {
       ${where}
       GROUP BY agent_id
       ORDER BY last_active DESC
-    `).all(...params) as Record<string, unknown>[];
+    `,
+      )
+      .all(...params) as Record<string, unknown>[];
     return rows.map((r) => ({
       agent_id: r.agent_id as string,
       total_tasks: r.total_tasks as number,

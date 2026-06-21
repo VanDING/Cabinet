@@ -7,7 +7,10 @@ function renderTitleBar(props: Partial<React.ComponentProps<typeof TitleBar>> = 
   return render(
     <NotificationProvider>
       <TitleBar
-        themes={[{ id: 'light', name: 'Light' }, { id: 'dark', name: 'Dark' }]}
+        themes={[
+          { id: 'light', name: 'Light' },
+          { id: 'dark', name: 'Dark' },
+        ]}
         currentTheme="light"
         {...props}
       />

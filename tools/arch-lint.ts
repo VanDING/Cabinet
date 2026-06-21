@@ -23,10 +23,10 @@ const APPS_DIR = join(ROOT, 'apps');
 // ── Layer definitions ──────────────────────────────────────────
 
 const LAYERS: Record<number, string[]> = {
-  1: ['@cabinet/types', '@cabinet/events', '@cabinet/storage'],
+  1: ['@cabinet/types', '@cabinet/events', '@cabinet/storage', '@cabinet/agent-sdk'],
   2: ['@cabinet/gateway', '@cabinet/agent', '@cabinet/memory'],
   3: ['@cabinet/decision', '@cabinet/secretary', '@cabinet/workflow', '@cabinet/harness'],
-  4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop'],
+  4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop', '@cabinet/cli'],
 };
 
 // Specific packages that are banned from importing certain packages

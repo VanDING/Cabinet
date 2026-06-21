@@ -10,11 +10,11 @@ Query memory entries across layers.
 
 **Query params**:
 
-| Param | Type | Default | Description |
-| :---- | :--- | :------ | :---------- |
-| `layer` | string | `all` | `short_term`, `long_term`, `entity`, `project`, or `all` |
-| `query` | string | — | Search text (substring match for SQLite layers, semantic for long_term) |
-| `limit` | number | 20 | Max results |
+| Param   | Type   | Default | Description                                                             |
+| :------ | :----- | :------ | :---------------------------------------------------------------------- |
+| `layer` | string | `all`   | `short_term`, `long_term`, `entity`, `project`, or `all`                |
+| `query` | string | —       | Search text (substring match for SQLite layers, semantic for long_term) |
+| `limit` | number | 20      | Max results                                                             |
 
 **Response**:
 
@@ -52,13 +52,13 @@ Delete a memory entry.
 
 ID prefixes determine the layer:
 
-| Prefix | Layer | Example |
-| :----- | :---- | :------ |
-| `st_` | Short-term | `st_sess_123_key` |
-| `lt_` | Long-term | `lt_abc123` |
-| `ent_` | Entity (preferences) | `ent_captain-1` |
-| `emp_` | Entity (employee) | `emp_advisor_1` |
-| `proj_` | Project | `proj_proj-1` |
+| Prefix  | Layer                | Example           |
+| :------ | :------------------- | :---------------- |
+| `st_`   | Short-term           | `st_sess_123_key` |
+| `lt_`   | Long-term            | `lt_abc123`       |
+| `ent_`  | Entity (preferences) | `ent_captain-1`   |
+| `emp_`  | Entity (employee)    | `emp_advisor_1`   |
+| `proj_` | Project              | `proj_proj-1`     |
 
 **Response**:
 
@@ -92,7 +92,12 @@ Retrieve the Knowledge Graph entities and relations.
     { "id": 2, "name": "Q3 Revenue", "type": "metric", "frequency": 8 }
   ],
   "relations": [
-    { "source": "Customer Segment A", "target": "Q3 Revenue", "type": "related_to", "strength": 0.85 }
+    {
+      "source": "Customer Segment A",
+      "target": "Q3 Revenue",
+      "type": "related_to",
+      "strength": 0.85
+    }
   ]
 }
 ```
@@ -116,12 +121,12 @@ Memory statistics across layers.
 
 See [Memory Layers](../concepts/memory-layers) for a full conceptual overview.
 
-| Layer | Storage | Query Method | TTL |
-| :---- | :------ | :----------- | :-- |
-| **Short-term** | In-memory + SQLite | Substring search | Session |
-| **Long-term** | SQLite + HNSW (hnswlib-node) | Semantic similarity | Permanent |
-| **Entity** | SQLite | Key lookup | Permanent |
-| **Project** | SQLite | Scoped query | Project lifetime |
+| Layer          | Storage                      | Query Method        | TTL              |
+| :------------- | :--------------------------- | :------------------ | :--------------- |
+| **Short-term** | In-memory + SQLite           | Substring search    | Session          |
+| **Long-term**  | SQLite + HNSW (hnswlib-node) | Semantic similarity | Permanent        |
+| **Entity**     | SQLite                       | Key lookup          | Permanent        |
+| **Project**    | SQLite                       | Scoped query        | Project lifetime |
 
 ## Project Isolation
 

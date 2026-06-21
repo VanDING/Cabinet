@@ -93,13 +93,13 @@ Cabinet does not try to fill everything with AI. It precisely maps the boundary 
 
 ## Architecture
 
-Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Fifteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
+Cabinet V2.0 is a **TypeScript monorepo** built on a strict 4-layer architecture. Thirteen packages and two applications are organized by dependency direction—lower layers never depend on upper layers.
 
 ```
 Layer 4 (Interface):   ui, server, desktop, cli       ← user/network boundary
-Layer 3 (Business):    decision, secretary, workflow, harness, organize  ← business logic
+Layer 3 (Business):    decision, secretary, workflow, harness  ← business logic
 Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI interaction core
-Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
+Layer 1 (Infra):       types, events, storage          ← infrastructure
 ```
 
 | Layer | Package              | Role                                                                                    |
@@ -112,15 +112,14 @@ Layer 1 (Infra):       graph, types, events, storage      ← infrastructure
 | 3     | `@cabinet/secretary` | Natural-language entry point, session management, multi-agent routing                   |
 | 3     | `@cabinet/workflow`  | Workflow engine (18 node types incl. Agent, LLM, Skill, Human, External)                |
 | 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability                               |
-| 3     | `@cabinet/organize`  | Organization architecture and system design                                             |
 | 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                                              |
 | 2     | `@cabinet/agent`     | ObserverPipeline agent loop, adapters, daemon runtime, Blackboard, ProcessIdentityScore |
 | 2     | `@cabinet/memory`    | Multi-tier memory (STM→WriteGate→CascadeBuffer→LTM+KG+Decay)                            |
 | 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)                                            |
-| 1     | `@cabinet/graph`     | StateGraph engine, Annotation, CheckpointStore, validation                              |
-| 1     | `@cabinet/events`    | Event bus with causation-chain tracking                                                 |
-| 1     | `@cabinet/storage`   | SQLite persistence (better-sqlite3, AES-256)                                            |
-| 1     | `@cabinet/types`     | Shared TypeScript types—universal dependency                                            |
+
+| 1 | `@cabinet/events` | Event bus with causation-chain tracking |
+| 1 | `@cabinet/storage` | SQLite persistence (better-sqlite3, AES-256) |
+| 1 | `@cabinet/types` | Shared TypeScript types—universal dependency |
 
 ---
 
@@ -413,7 +412,7 @@ Cabinet's design is informed by cybernetic principles — recursive viable syste
 Key control layers:
 
 - **S1 (Operations)**: Agent loop, tool execution, memory I/O
-- **S2 (Coordination)**: Workflow engine, meeting protocol, decision state machine
+- **S2 (Coordination)**: Workflow engine, AgentDispatcher, decision state machine
 - **S3 (Control)**: Harness quality gates, observability, auto-adjustment
 - **S4 (Intelligence)**: Curator pattern extraction, preference learning, knowledge graph
 - **S5 (Policy)**: Decision authorization (L0–L3), safety checker, budget guard

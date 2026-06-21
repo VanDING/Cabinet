@@ -56,11 +56,16 @@ telemetryRouter.post('/report', async (c) => {
          ttft_ms, total_ms, tool_latency_json, steps, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       ).run(
-        d.task_id, d.agent_id, d.model,
-        d.tokens.prompt, d.tokens.completion,
-        d.timing.ttft_ms, d.timing.total_ms,
+        d.task_id,
+        d.agent_id,
+        d.model,
+        d.tokens.prompt,
+        d.tokens.completion,
+        d.timing.ttft_ms,
+        d.timing.total_ms,
         JSON.stringify(d.timing.tool_latency_ms),
-        d.steps, d.status,
+        d.steps,
+        d.status,
       );
     } catch {
       // Telemetry table may not exist yet — non-fatal
@@ -115,7 +120,9 @@ telemetryRouter.get('/trends', (c) => {
     // Query buckets
     const agentFilter = agentId !== 'all' ? 'AND agent_id = ?' : '';
     const params: (string | number)[] = agentId !== 'all' ? [cutoff, agentId] : [cutoff];
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT
         strftime('%Y-%m-%dT%H:00:00', created_at) as ts,
         COUNT(*) as task_count,
@@ -127,10 +134,14 @@ telemetryRouter.get('/trends', (c) => {
       WHERE created_at >= ? ${agentFilter}
       GROUP BY ts
       ORDER BY ts ASC
-    `).all(...params) as Array<Record<string, unknown>>;
+    `,
+      )
+      .all(...params) as Array<Record<string, unknown>>;
 
     // Summary stats
-    const summaryRow = db.prepare(`
+    const summaryRow = db
+      .prepare(
+        `
       SELECT
         COUNT(*) as total_tasks,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
@@ -138,15 +149,21 @@ telemetryRouter.get('/trends', (c) => {
         COUNT(DISTINCT agent_id) as active_agents
       FROM agent_telemetry
       WHERE created_at >= ? ${agentFilter}
-    `).get(...params) as Record<string, unknown> | undefined;
+    `,
+      )
+      .get(...params) as Record<string, unknown> | undefined;
 
     // Agent latency
-    const agentRows = db.prepare(`
+    const agentRows = db
+      .prepare(
+        `
       SELECT agent_id, AVG(total_ms) as avg_total_ms, AVG(ttft_ms) as avg_ttft_ms, COUNT(*) as total_tasks
       FROM agent_telemetry
       WHERE created_at >= ? ${agentFilter}
       GROUP BY agent_id ORDER BY avg_total_ms DESC
-    `).all(...params) as Array<Record<string, unknown>>;
+    `,
+      )
+      .all(...params) as Array<Record<string, unknown>>;
 
     const total = (summaryRow?.total_tasks as number) ?? 0;
     const completed = (summaryRow?.completed as number) ?? 0;
@@ -175,6 +192,13 @@ telemetryRouter.get('/trends', (c) => {
   } catch (err) {
     const { logger } = getServerContext();
     logger.error('Telemetry trends failed', { error: String(err) });
-    return c.json({ summary: { total_tasks: 0, success_rate: 100, total_tokens: 0, active_agents: 0 }, buckets: [], agents: [] }, 500);
+    return c.json(
+      {
+        summary: { total_tasks: 0, success_rate: 100, total_tokens: 0, active_agents: 0 },
+        buckets: [],
+        agents: [],
+      },
+      500,
+    );
   }
 });

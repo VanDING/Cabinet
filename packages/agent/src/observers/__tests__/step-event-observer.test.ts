@@ -33,7 +33,9 @@ describe('StepEventObserver', () => {
     await observer.onToolCall({ id: 'tc2', name: 'write_file', args: { path: 'y.ts' } }, ctx);
     observer.dispose();
 
-    const rows = db.prepare('SELECT * FROM step_events WHERE session_id = ?').all('sess-1') as any[];
+    const rows = db
+      .prepare('SELECT * FROM step_events WHERE session_id = ?')
+      .all('sess-1') as any[];
     expect(rows.length).toBe(2);
     expect(rows[0]!.event_type).toBe('tool_call');
     expect(JSON.parse(rows[0]!.payload).tool_name).toBe('read_file');
@@ -46,7 +48,9 @@ describe('StepEventObserver', () => {
     await observer.onToolResult({ id: 'tc2', name: 'exec', args: {} }, new Error('fail'), ctx);
     observer.dispose();
 
-    const rows = db.prepare("SELECT * FROM step_events WHERE event_type = 'tool_result'").all() as any[];
+    const rows = db
+      .prepare("SELECT * FROM step_events WHERE event_type = 'tool_result'")
+      .all() as any[];
     expect(rows.length).toBe(2);
     expect(JSON.parse(rows[0]!.payload).success).toBe(true);
     expect(JSON.parse(rows[1]!.payload).success).toBe(false);
@@ -68,7 +72,9 @@ describe('StepEventObserver', () => {
     await observer.onStepEnd(ctx);
     observer.dispose();
 
-    const row = db.prepare("SELECT * FROM step_events WHERE event_type = 'zone_snapshot'").get() as any;
+    const row = db
+      .prepare("SELECT * FROM step_events WHERE event_type = 'zone_snapshot'")
+      .get() as any;
     expect(row).toBeTruthy();
     const payload = JSON.parse(row.payload);
     expect(payload.utilization).toBe(0.55);

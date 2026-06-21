@@ -7,9 +7,12 @@ import type {
   LLMGateway,
   LLMResponse,
   LLMCallOptions,
+  LLMStreamOptions,
+  StreamChunk,
   EmbeddingOptions,
   EmbeddingResult,
 } from '@cabinet/gateway';
+import { streamFromGenerate } from './helpers/mock-gateway.js';
 
 // ── Golden file ───────────────────────────────────────────────
 
@@ -100,8 +103,8 @@ class DeterministicGateway implements LLMGateway {
     };
   }
 
-  async *streamText(): AsyncGenerator<never> {
-    yield { type: 'done' } as never;
+  async *streamText(options: LLMStreamOptions): AsyncGenerator<StreamChunk> {
+    yield* streamFromGenerate(this.generateText.bind(this), options);
   }
 
   async listModels(): Promise<string[]> {

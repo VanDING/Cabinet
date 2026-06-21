@@ -73,9 +73,7 @@ export class CrossProjectMigrator {
     const globals = this.longTerm.findByMetadataFilter({ scope: 'global' }, limit * 2);
     if (!query) return globals.slice(0, limit);
     const q = query.toLowerCase();
-    return globals
-      .filter((m) => m.content.toLowerCase().includes(q))
-      .slice(0, limit);
+    return globals.filter((m) => m.content.toLowerCase().includes(q)).slice(0, limit);
   }
 
   /**
@@ -132,8 +130,18 @@ export class CrossProjectMigrator {
   }
 
   private jaccardSimilarity(a: string, b: string): number {
-    const wordsA = new Set(a.toLowerCase().split(/\W+/).filter((w) => w.length > 2));
-    const wordsB = new Set(b.toLowerCase().split(/\W+/).filter((w) => w.length > 2));
+    const wordsA = new Set(
+      a
+        .toLowerCase()
+        .split(/\W+/)
+        .filter((w) => w.length > 2),
+    );
+    const wordsB = new Set(
+      b
+        .toLowerCase()
+        .split(/\W+/)
+        .filter((w) => w.length > 2),
+    );
     if (wordsA.size === 0 || wordsB.size === 0) return 0;
     const intersection = new Set([...wordsA].filter((w) => wordsB.has(w)));
     const union = new Set([...wordsA, ...wordsB]);

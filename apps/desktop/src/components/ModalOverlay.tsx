@@ -8,7 +8,13 @@ interface Props {
   backdropClassName?: string;
 }
 
-export function ModalOverlay({ isOpen, onClose, children, contentClassName, backdropClassName }: Props) {
+export function ModalOverlay({
+  isOpen,
+  onClose,
+  children,
+  contentClassName,
+  backdropClassName,
+}: Props) {
   const [visible, setVisible] = useState(isOpen);
   const [phase, setPhase] = useState<'enter' | 'enter-active' | 'exit' | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

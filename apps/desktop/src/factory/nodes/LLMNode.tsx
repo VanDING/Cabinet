@@ -8,20 +8,41 @@ export function LLMNode({ data, selected }: NodeProps) {
   return (
     <>
       <NodeToolbar isVisible={selected} position={Position.Top}>
-        <span className="rounded-sm bg-surface-overlay border border-border shadow-md px-2 py-0.5 text-[10px] text-accent">LLM</span>
+        <span className="bg-surface-overlay border-border text-accent rounded-sm border px-2 py-0.5 text-[10px] shadow-md">
+          LLM
+        </span>
       </NodeToolbar>
-      <div className={`rounded-xl border-2 min-w-[180px] max-w-[240px] overflow-hidden shadow-xs transition-shadow wf-border-accent-50 wf-bg-accent-15 ${selected ? 'shadow-md ring-2 wf-ring-accent-50' : ''}`}>
-        <div className="flex items-center gap-1.5 wf-bg-accent-35 px-3 py-1.5">
-          <span className="text-sm text-content-primary">✦</span>
-          <span className="text-xs font-semibold text-content-primary">LLM</span>
-          {model ? <span className="ml-auto rounded-full wf-bg-accent-50 px-1.5 text-[10px] text-accent">{String(model)}</span> : null}
+      <div
+        className={`wf-border-accent-50 wf-bg-accent-15 max-w-[240px] min-w-[180px] overflow-hidden rounded-xl border-2 shadow-xs transition-shadow ${selected ? 'wf-ring-accent-50 shadow-md ring-2' : ''}`}
+      >
+        <div className="wf-bg-accent-35 flex items-center gap-1.5 px-3 py-1.5">
+          <span className="text-content-primary text-sm">✦</span>
+          <span className="text-content-primary text-xs font-semibold">LLM</span>
+          {model ? (
+            <span className="wf-bg-accent-50 text-accent ml-auto rounded-full px-1.5 text-[10px]">
+              {String(model)}
+            </span>
+          ) : null}
         </div>
         <div className="px-3 py-2">
-          <p className="text-xs font-medium text-content-primary truncate">{title}</p>
-          {prompt ? <p className="mt-1 text-[11px] text-content-tertiary truncate max-w-[200px] leading-snug">{prompt.slice(0, 80)}{prompt.length > 80 ? '…' : ''}</p> : null}
+          <p className="text-content-primary truncate text-xs font-medium">{title}</p>
+          {prompt ? (
+            <p className="text-content-tertiary mt-1 max-w-[200px] truncate text-[11px] leading-snug">
+              {prompt.slice(0, 80)}
+              {prompt.length > 80 ? '…' : ''}
+            </p>
+          ) : null}
         </div>
-        <Handle type="target" position={Position.Top} className="!bg-accent !border-2 !border-surface-primary !w-3 !h-3" />
-        <Handle type="source" position={Position.Bottom} className="!bg-accent !border-2 !border-surface-primary !w-3 !h-3" />
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="!bg-accent !border-surface-primary !h-3 !w-3 !border-2"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!bg-accent !border-surface-primary !h-3 !w-3 !border-2"
+        />
       </div>
     </>
   );

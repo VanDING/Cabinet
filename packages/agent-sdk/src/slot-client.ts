@@ -47,7 +47,7 @@ export class SlotClient {
   private get headers(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.taskToken}`,
+      Authorization: `Bearer ${this.taskToken}`,
     };
   }
 
@@ -58,7 +58,9 @@ export class SlotClient {
   }
 
   /** Write discoveries to the Slot (append). */
-  async writeDiscoveries(discoveries: Array<{ type: string; summary: string; [key: string]: unknown }>): Promise<void> {
+  async writeDiscoveries(
+    discoveries: Array<{ type: string; summary: string; [key: string]: unknown }>,
+  ): Promise<void> {
     await this.fetchOrThrow(`/api/slot/${this.taskId}/write`, {
       method: 'POST',
       body: JSON.stringify({ discoveries }),
@@ -74,7 +76,12 @@ export class SlotClient {
   }
 
   /** Submit a deliverable to Cabinet. */
-  async submitDeliverable(title: string, content: string, type = 'code', metadata?: Record<string, unknown>): Promise<string> {
+  async submitDeliverable(
+    title: string,
+    content: string,
+    type = 'code',
+    metadata?: Record<string, unknown>,
+  ): Promise<string> {
     const resp = await this.fetchOrThrow('/api/external/deliverables', {
       method: 'POST',
       body: JSON.stringify({
@@ -86,7 +93,7 @@ export class SlotClient {
         metadata,
       }),
     });
-    const result = await resp.json() as { deliverable_id: string };
+    const result = (await resp.json()) as { deliverable_id: string };
     return result.deliverable_id;
   }
 
@@ -125,7 +132,10 @@ export class SlotClient {
   }
 
   private async fetchOrThrow(url: string, init: RequestInit): Promise<Response> {
-    const resp = await fetch(`${this.baseUrl}${url}`, { ...init, headers: { ...this.headers, ...(init.headers as Record<string, string> ?? {}) } });
+    const resp = await fetch(`${this.baseUrl}${url}`, {
+      ...init,
+      headers: { ...this.headers, ...((init.headers as Record<string, string>) ?? {}) },
+    });
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
       throw new Error(`SlotClient HTTP ${resp.status}: ${body.slice(0, 200)}`);

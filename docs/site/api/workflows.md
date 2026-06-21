@@ -84,12 +84,12 @@ Create a new workflow.
 }
 ```
 
-| Field | Type | Required | Description |
-| :---- | :--- | :------- | :---------- |
-| `projectId` | string | Yes | Owning project |
-| `name` | string | Yes | Workflow name |
-| `definition` | object | Yes | Node and edge graph |
-| `cronExpression` | string | No | Schedule for recurring execution |
+| Field            | Type   | Required | Description                      |
+| :--------------- | :----- | :------- | :------------------------------- |
+| `projectId`      | string | Yes      | Owning project                   |
+| `name`           | string | Yes      | Workflow name                    |
+| `definition`     | object | Yes      | Node and edge graph              |
+| `cronExpression` | string | No       | Schedule for recurring execution |
 
 **Response** (201 Created):
 
@@ -179,26 +179,26 @@ Get a single run's status and step outputs.
 
 Workflow definitions support 17 node types:
 
-| Category | Types | Purpose |
-| :------- | :---- | :------ |
-| **Flow control** | `start`, `end`, `ifElse`, `loop`, `parallel`, `merge`, `pass` | Control execution flow |
-| **Execution** | `llm`, `skill`, `tool`, `code`, `workflow` | Perform work |
-| **AI** | `intentClassify`, `knowledgeBase` | LLM-powered classification and retrieval |
-| **Human** | `approval`, `human` | Pause for human input |
-| **Container** | `agentGroup` | Group nodes under a single agent context |
+| Category         | Types                                                         | Purpose                                  |
+| :--------------- | :------------------------------------------------------------ | :--------------------------------------- |
+| **Flow control** | `start`, `end`, `ifElse`, `loop`, `parallel`, `merge`, `pass` | Control execution flow                   |
+| **Execution**    | `llm`, `skill`, `tool`, `code`, `workflow`                    | Perform work                             |
+| **AI**           | `intentClassify`, `knowledgeBase`                             | LLM-powered classification and retrieval |
+| **Human**        | `approval`, `human`                                           | Pause for human input                    |
+| **Container**    | `agentGroup`                                                  | Group nodes under a single agent context |
 
 ## Capability Gates
 
 Workflow agents only receive the capabilities declared in `definition.capabilities`:
 
-| Capability | Grants |
-| :--------- | :----- |
-| `files.read` / `files.write` | File system access |
-| `web.fetch` / `web.http` | HTTP requests |
-| `shell` | Subprocess execution |
-| `scheduler` | Task scheduling |
+| Capability                             | Grants                     |
+| :------------------------------------- | :------------------------- |
+| `files.read` / `files.write`           | File system access         |
+| `web.fetch` / `web.http`               | HTTP requests              |
+| `shell`                                | Subprocess execution       |
+| `scheduler`                            | Task scheduling            |
 | `knowledge.search` / `knowledge.index` | Memory search and indexing |
-| `evaluation` | Harness evaluation |
+| `evaluation`                           | Harness evaluation         |
 
 If a node attempts to use an undeclared capability, the tool executor returns a gated error.
 

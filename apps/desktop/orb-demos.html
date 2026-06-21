@@ -1,572 +1,780 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>纯眼睛表情 — Secretary Orb</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>纯眼睛表情 — Secretary Orb</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    body {
-      background: #0a0a0f;
-      color: #e2e8f0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+      body {
+        background: #0a0a0f;
+        color: #e2e8f0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-    header {
-      text-align: center;
-      padding: 40px 20px 10px;
-    }
+      header {
+        text-align: center;
+        padding: 40px 20px 10px;
+      }
 
-    h1 {
-      font-size: 26px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      background: linear-gradient(135deg, #a78bfa, #60a5fa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        background: linear-gradient(135deg, #a78bfa, #60a5fa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
 
-    .subtitle { color: #64748b; font-size: 14px; }
-    .subtitle2 { color: #475569; font-size: 12px; margin-top: 4px; }
+      .subtitle {
+        color: #64748b;
+        font-size: 14px;
+      }
+      .subtitle2 {
+        color: #475569;
+        font-size: 12px;
+        margin-top: 4px;
+      }
 
-    /* ===== 主演示区 ===== */
-    .hero {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 28px;
-      padding: 30px 20px;
-    }
+      /* ===== 主演示区 ===== */
+      .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 28px;
+        padding: 30px 20px;
+      }
 
-    /* Magnet */
-    .magnet-wrap {
-      position: relative;
-      display: inline-block;
-      padding: 80px;
-    }
+      /* Magnet */
+      .magnet-wrap {
+        position: relative;
+        display: inline-block;
+        padding: 80px;
+      }
 
-    .magnet-inner {
-      transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      will-change: transform;
-    }
+      .magnet-inner {
+        transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        will-change: transform;
+      }
 
-    /* ===== Orb ===== */
-    .orb {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #8b5cf6, #6366f1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 6px 24px rgba(139, 92, 246, 0.35);
-      position: relative;
-      border: 2px solid rgba(255,255,255,0.08);
-      transition: box-shadow 0.3s, opacity 0.4s;
-    }
+      /* ===== Orb ===== */
+      .orb {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 6px 24px rgba(139, 92, 246, 0.35);
+        position: relative;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        transition:
+          box-shadow 0.3s,
+          opacity 0.4s;
+      }
 
-    .orb:hover {
-      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5);
-    }
+      .orb:hover {
+        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5);
+      }
 
-    /* ===== 双眼容器 — 新增 gap 参数 ===== */
-    .face {
-      display: flex;
-      align-items: center;
-      position: relative;
-      /* 眼睛间距也成为变量 */
-      gap: var(--face-gap, 6px);
-      transition: gap 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
+      /* ===== 双眼容器 — 新增 gap 参数 ===== */
+      .face {
+        display: flex;
+        align-items: center;
+        position: relative;
+        /* 眼睛间距也成为变量 */
+        gap: var(--face-gap, 6px);
+        transition: gap 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
 
-    /* ===== 单眼 — 7 参数系统 ===== */
-    .eye {
-      --eye-w: 13px;
-      --eye-h: 13px;
-      /* 四个角独立圆角 — 可做出眼睑效果 */
-      --eye-rtl: 50%;   /* 左上 */
-      --eye-rtr: 50%;   /* 右上 */
-      --eye-rbl: 50%;   /* 左下 */
-      --eye-rbr: 50%;   /* 右下 */
-      --eye-rot: 0deg;
-      --eye-y: 0px;
-      --eye-x: 0px;
+      /* ===== 单眼 — 7 参数系统 ===== */
+      .eye {
+        --eye-w: 13px;
+        --eye-h: 13px;
+        /* 四个角独立圆角 — 可做出眼睑效果 */
+        --eye-rtl: 50%; /* 左上 */
+        --eye-rtr: 50%; /* 右上 */
+        --eye-rbl: 50%; /* 左下 */
+        --eye-rbr: 50%; /* 右下 */
+        --eye-rot: 0deg;
+        --eye-y: 0px;
+        --eye-x: 0px;
 
-      width: var(--eye-w);
-      height: var(--eye-h);
-      background: white;
-      border-radius: var(--eye-rtl) var(--eye-rtr) var(--eye-rbr) var(--eye-rbl);
-      transform: rotate(var(--eye-rot)) translate(var(--eye-x), var(--eye-y));
-      transition:
-        width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-        height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-        border-radius 0.35s ease,
-        transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-      will-change: transform, width, height;
-    }
+        width: var(--eye-w);
+        height: var(--eye-h);
+        background: white;
+        border-radius: var(--eye-rtl) var(--eye-rtr) var(--eye-rbr) var(--eye-rbl);
+        transform: rotate(var(--eye-rot)) translate(var(--eye-x), var(--eye-y));
+        transition:
+          width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+          height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+          border-radius 0.35s ease,
+          transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        will-change: transform, width, height;
+      }
 
-    /* ===== 18 种表情（纯眼睛） ===== */
+      /* ===== 18 种表情（纯眼睛） ===== */
 
-    /* 1. Normal */
-    [data-expression="normal"] { --face-gap: 6px; }
-    [data-expression="normal"] .eye {
-      --eye-w: 12px; --eye-h: 12px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 0deg; --eye-y: 0; --eye-x: 0;
-    }
+      /* 1. Normal */
+      [data-expression='normal'] {
+        --face-gap: 6px;
+      }
+      [data-expression='normal'] .eye {
+        --eye-w: 12px;
+        --eye-h: 12px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 0deg;
+        --eye-y: 0;
+        --eye-x: 0;
+      }
 
-    /* 2. Happy — 弯弯的笑眼，上圆下平 */
-    [data-expression="happy"] { --face-gap: 6px; }
-    [data-expression="happy"] .eye {
-      --eye-w: 15px; --eye-h: 8px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 2px; --eye-rbr: 2px;
-      --eye-rot: 0deg; --eye-y: -1px; --eye-x: 0;
-    }
+      /* 2. Happy — 弯弯的笑眼，上圆下平 */
+      [data-expression='happy'] {
+        --face-gap: 6px;
+      }
+      [data-expression='happy'] .eye {
+        --eye-w: 15px;
+        --eye-h: 8px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 2px;
+        --eye-rbr: 2px;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+        --eye-x: 0;
+      }
 
-    /* 3. Glee — 更扁的笑眼 */
-    [data-expression="glee"] { --face-gap: 5px; }
-    [data-expression="glee"] .eye {
-      --eye-w: 16px; --eye-h: 5px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 0px; --eye-rbr: 0px;
-      --eye-rot: 0deg; --eye-y: -1px;
-    }
+      /* 3. Glee — 更扁的笑眼 */
+      [data-expression='glee'] {
+        --face-gap: 5px;
+      }
+      [data-expression='glee'] .eye {
+        --eye-w: 16px;
+        --eye-h: 5px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 0px;
+        --eye-rbr: 0px;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+      }
 
-    /* 4. Sad — 眼角下垂（圆角翻转+旋转） */
-    [data-expression="sad"] { --face-gap: 6px; }
-    [data-expression="sad"] .eye {
-      --eye-w: 13px; --eye-h: 10px;
-      --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: -10deg; --eye-y: 1px;
-    }
-    [data-expression="sad"] .eye + .eye { --eye-rot: 10deg; }
+      /* 4. Sad — 眼角下垂（圆角翻转+旋转） */
+      [data-expression='sad'] {
+        --face-gap: 6px;
+      }
+      [data-expression='sad'] .eye {
+        --eye-w: 13px;
+        --eye-h: 10px;
+        --eye-rtl: 30%;
+        --eye-rtr: 30%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: -10deg;
+        --eye-y: 1px;
+      }
+      [data-expression='sad'] .eye + .eye {
+        --eye-rot: 10deg;
+      }
 
-    /* 5. Worried — 微下垂 */
-    [data-expression="worried"] { --face-gap: 5px; }
-    [data-expression="worried"] .eye {
-      --eye-w: 12px; --eye-h: 11px;
-      --eye-rtl: 40%; --eye-rtr: 40%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: -5deg; --eye-y: 0;
-    }
-    [data-expression="worried"] .eye + .eye { --eye-rot: 5deg; }
+      /* 5. Worried — 微下垂 */
+      [data-expression='worried'] {
+        --face-gap: 5px;
+      }
+      [data-expression='worried'] .eye {
+        --eye-w: 12px;
+        --eye-h: 11px;
+        --eye-rtl: 40%;
+        --eye-rtr: 40%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: -5deg;
+        --eye-y: 0;
+      }
+      [data-expression='worried'] .eye + .eye {
+        --eye-rot: 5deg;
+      }
 
-    /* 6. Focused — 眯眼，锐利的横线 */
-    [data-expression="focused"] { --face-gap: 7px; }
-    [data-expression="focused"] .eye {
-      --eye-w: 14px; --eye-h: 3px;
-      --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 30%; --eye-rbr: 30%;
-      --eye-rot: 0deg; --eye-y: 0;
-    }
+      /* 6. Focused — 眯眼，锐利的横线 */
+      [data-expression='focused'] {
+        --face-gap: 7px;
+      }
+      [data-expression='focused'] .eye {
+        --eye-w: 14px;
+        --eye-h: 3px;
+        --eye-rtl: 30%;
+        --eye-rtr: 30%;
+        --eye-rbl: 30%;
+        --eye-rbr: 30%;
+        --eye-rot: 0deg;
+        --eye-y: 0;
+      }
 
-    /* 7. Annoyed — 上眼睑压下来（上平下圆） */
-    [data-expression="annoyed"] { --face-gap: 6px; }
-    [data-expression="annoyed"] .eye {
-      --eye-w: 14px; --eye-h: 5px;
-      --eye-rtl: 2px; --eye-rtr: 2px; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 6deg; --eye-y: 0;
-    }
-    [data-expression="annoyed"] .eye + .eye { --eye-rot: -6deg; }
+      /* 7. Annoyed — 上眼睑压下来（上平下圆） */
+      [data-expression='annoyed'] {
+        --face-gap: 6px;
+      }
+      [data-expression='annoyed'] .eye {
+        --eye-w: 14px;
+        --eye-h: 5px;
+        --eye-rtl: 2px;
+        --eye-rtr: 2px;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 6deg;
+        --eye-y: 0;
+      }
+      [data-expression='annoyed'] .eye + .eye {
+        --eye-rot: -6deg;
+      }
 
-    /* 8. Surprised — 瞪大圆眼，间距拉宽 */
-    [data-expression="surprised"] { --face-gap: 8px; }
-    [data-expression="surprised"] .eye {
-      --eye-w: 16px; --eye-h: 16px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 0deg; --eye-y: -1px;
-    }
+      /* 8. Surprised — 瞪大圆眼，间距拉宽 */
+      [data-expression='surprised'] {
+        --face-gap: 8px;
+      }
+      [data-expression='surprised'] .eye {
+        --eye-w: 16px;
+        --eye-h: 16px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+      }
 
-    /* 9. Skeptic — 一只眯眼+偏移（不对称） */
-    [data-expression="skeptic"] { --face-gap: 6px; }
-    [data-expression="skeptic"] .eye:first-child {
-      --eye-w: 14px; --eye-h: 5px;
-      --eye-rtl: 20%; --eye-rtr: 50%; --eye-rbl: 2px; --eye-rbr: 50%;
-      --eye-rot: 8deg; --eye-y: -2px;
-    }
-    [data-expression="skeptic"] .eye:last-child {
-      --eye-w: 13px; --eye-h: 11px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: -2deg; --eye-y: 0;
-    }
+      /* 9. Skeptic — 一只眯眼+偏移（不对称） */
+      [data-expression='skeptic'] {
+        --face-gap: 6px;
+      }
+      [data-expression='skeptic'] .eye:first-child {
+        --eye-w: 14px;
+        --eye-h: 5px;
+        --eye-rtl: 20%;
+        --eye-rtr: 50%;
+        --eye-rbl: 2px;
+        --eye-rbr: 50%;
+        --eye-rot: 8deg;
+        --eye-y: -2px;
+      }
+      [data-expression='skeptic'] .eye:last-child {
+        --eye-w: 13px;
+        --eye-h: 11px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: -2deg;
+        --eye-y: 0;
+      }
 
-    /* 10. Frustrated — 极度压缩 */
-    [data-expression="frustrated"] { --face-gap: 5px; }
-    [data-expression="frustrated"] .eye {
-      --eye-w: 13px; --eye-h: 3px;
-      --eye-rtl: 10%; --eye-rtr: 10%; --eye-rbl: 40%; --eye-rbr: 40%;
-      --eye-rot: 0deg; --eye-y: -1px;
-    }
+      /* 10. Frustrated — 极度压缩 */
+      [data-expression='frustrated'] {
+        --face-gap: 5px;
+      }
+      [data-expression='frustrated'] .eye {
+        --eye-w: 13px;
+        --eye-h: 3px;
+        --eye-rtl: 10%;
+        --eye-rtr: 10%;
+        --eye-rbl: 40%;
+        --eye-rbr: 40%;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+      }
 
-    /* 11. Unimpressed — 死鱼眼（很扁+轻微不对称） */
-    [data-expression="unimpressed"] { --face-gap: 6px; }
-    [data-expression="unimpressed"] .eye {
-      --eye-w: 13px; --eye-h: 2.5px;
-      --eye-rtl: 10%; --eye-rtr: 10%; --eye-rbl: 10%; --eye-rbr: 10%;
-      --eye-rot: 0deg; --eye-y: 0;
-    }
+      /* 11. Unimpressed — 死鱼眼（很扁+轻微不对称） */
+      [data-expression='unimpressed'] {
+        --face-gap: 6px;
+      }
+      [data-expression='unimpressed'] .eye {
+        --eye-w: 13px;
+        --eye-h: 2.5px;
+        --eye-rtl: 10%;
+        --eye-rtr: 10%;
+        --eye-rbl: 10%;
+        --eye-rbr: 10%;
+        --eye-rot: 0deg;
+        --eye-y: 0;
+      }
 
-    /* 12. Sleepy — 半闭，下弧 */
-    [data-expression="sleepy"] { --face-gap: 5px; }
-    [data-expression="sleepy"] .eye {
-      --eye-w: 14px; --eye-h: 4px;
-      --eye-rtl: 30%; --eye-rtr: 30%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: -4deg; --eye-y: 0;
-    }
-    [data-expression="sleepy"] .eye + .eye { --eye-rot: 4deg; }
+      /* 12. Sleepy — 半闭，下弧 */
+      [data-expression='sleepy'] {
+        --face-gap: 5px;
+      }
+      [data-expression='sleepy'] .eye {
+        --eye-w: 14px;
+        --eye-h: 4px;
+        --eye-rtl: 30%;
+        --eye-rtr: 30%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: -4deg;
+        --eye-y: 0;
+      }
+      [data-expression='sleepy'] .eye + .eye {
+        --eye-rot: 4deg;
+      }
 
-    /* 13. Suspicious — 眯眼+偏移 */
-    [data-expression="suspicious"] { --face-gap: 5px; }
-    [data-expression="suspicious"] .eye {
-      --eye-w: 12px; --eye-h: 6px;
-      --eye-rtl: 40%; --eye-rtr: 40%; --eye-rbl: 20%; --eye-rbr: 20%;
-      --eye-rot: 0deg; --eye-y: -1px;
-    }
+      /* 13. Suspicious — 眯眼+偏移 */
+      [data-expression='suspicious'] {
+        --face-gap: 5px;
+      }
+      [data-expression='suspicious'] .eye {
+        --eye-w: 12px;
+        --eye-h: 6px;
+        --eye-rtl: 40%;
+        --eye-rtr: 40%;
+        --eye-rbl: 20%;
+        --eye-rbr: 20%;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+      }
 
-    /* 14. Squint — 用力眯眼 */
-    [data-expression="squint"] { --face-gap: 4px; }
-    [data-expression="squint"] .eye {
-      --eye-w: 11px; --eye-h: 3px;
-      --eye-rtl: 20%; --eye-rtr: 20%; --eye-rbl: 20%; --eye-rbr: 20%;
-      --eye-rot: 0deg; --eye-y: 0;
-    }
+      /* 14. Squint — 用力眯眼 */
+      [data-expression='squint'] {
+        --face-gap: 4px;
+      }
+      [data-expression='squint'] .eye {
+        --eye-w: 11px;
+        --eye-h: 3px;
+        --eye-rtl: 20%;
+        --eye-rtr: 20%;
+        --eye-rbl: 20%;
+        --eye-rbr: 20%;
+        --eye-rot: 0deg;
+        --eye-y: 0;
+      }
 
-    /* 15. Angry — 倒竖（上尖下圆+大幅旋转） */
-    [data-expression="angry"] { --face-gap: 5px; }
-    [data-expression="angry"] .eye {
-      --eye-w: 13px; --eye-h: 9px;
-      --eye-rtl: 20%; --eye-rtr: 20%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 20deg; --eye-y: 1px;
-    }
-    [data-expression="angry"] .eye + .eye { --eye-rot: -20deg; }
+      /* 15. Angry — 倒竖（上尖下圆+大幅旋转） */
+      [data-expression='angry'] {
+        --face-gap: 5px;
+      }
+      [data-expression='angry'] .eye {
+        --eye-w: 13px;
+        --eye-h: 9px;
+        --eye-rtl: 20%;
+        --eye-rtr: 20%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 20deg;
+        --eye-y: 1px;
+      }
+      [data-expression='angry'] .eye + .eye {
+        --eye-rot: -20deg;
+      }
 
-    /* 16. Furious — 更尖锐 */
-    [data-expression="furious"] { --face-gap: 4px; }
-    [data-expression="furious"] .eye {
-      --eye-w: 12px; --eye-h: 6px;
-      --eye-rtl: 5px; --eye-rtr: 5px; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 24deg; --eye-y: 1px;
-    }
-    [data-expression="furious"] .eye + .eye { --eye-rot: -24deg; }
+      /* 16. Furious — 更尖锐 */
+      [data-expression='furious'] {
+        --face-gap: 4px;
+      }
+      [data-expression='furious'] .eye {
+        --eye-w: 12px;
+        --eye-h: 6px;
+        --eye-rtl: 5px;
+        --eye-rtr: 5px;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 24deg;
+        --eye-y: 1px;
+      }
+      [data-expression='furious'] .eye + .eye {
+        --eye-rot: -24deg;
+      }
 
-    /* 17. Scared — 瞪圆+间距大 */
-    [data-expression="scared"] { --face-gap: 9px; }
-    [data-expression="scared"] .eye {
-      --eye-w: 15px; --eye-h: 15px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 0deg; --eye-y: -1px;
-    }
+      /* 17. Scared — 瞪圆+间距大 */
+      [data-expression='scared'] {
+        --face-gap: 9px;
+      }
+      [data-expression='scared'] .eye {
+        --eye-w: 15px;
+        --eye-h: 15px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 0deg;
+        --eye-y: -1px;
+      }
 
-    /* 18. Awe — 惊叹（圆+微上移） */
-    [data-expression="awe"] { --face-gap: 7px; }
-    [data-expression="awe"] .eye {
-      --eye-w: 15px; --eye-h: 15px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 0deg; --eye-y: -2px;
-    }
+      /* 18. Awe — 惊叹（圆+微上移） */
+      [data-expression='awe'] {
+        --face-gap: 7px;
+      }
+      [data-expression='awe'] .eye {
+        --eye-w: 15px;
+        --eye-h: 15px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 0deg;
+        --eye-y: -2px;
+      }
 
-    /* ===== 动画 ===== */
-    @keyframes breathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04); }
-    }
+      /* ===== 动画 ===== */
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.04);
+        }
+      }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
+      }
 
-    @keyframes blink {
-      0%, 48%, 52%, 100% { transform: scaleY(1); }
-      50% { transform: scaleY(0.06); }
-    }
+      @keyframes blink {
+        0%,
+        48%,
+        52%,
+        100% {
+          transform: scaleY(1);
+        }
+        50% {
+          transform: scaleY(0.06);
+        }
+      }
 
-    .anim-breathe { animation: breathe 3s ease-in-out infinite; }
-    .anim-float   { animation: float 3s ease-in-out infinite; }
+      .anim-breathe {
+        animation: breathe 3s ease-in-out infinite;
+      }
+      .anim-float {
+        animation: float 3s ease-in-out infinite;
+      }
 
-    .blink .eye {
-      animation: blink 5s ease-in-out infinite;
-      transform-origin: center;
-    }
-    /* 左右眼眨眼错开一点点更自然 */
-    .blink .eye + .eye {
-      animation-delay: 0.05s;
-    }
+      .blink .eye {
+        animation: blink 5s ease-in-out infinite;
+        transform-origin: center;
+      }
+      /* 左右眼眨眼错开一点点更自然 */
+      .blink .eye + .eye {
+        animation-delay: 0.05s;
+      }
 
-    /* ===== 思考环 ===== */
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+      /* ===== 思考环 ===== */
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-    .thinking-ring {
-      position: absolute;
-      inset: -5px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      border-top-color: rgba(255,255,255,0.5);
-      animation: spin 1s linear infinite;
-      pointer-events: none;
-    }
+      .thinking-ring {
+        position: absolute;
+        inset: -5px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: rgba(255, 255, 255, 0.5);
+        animation: spin 1s linear infinite;
+        pointer-events: none;
+      }
 
-    /* ===== 未读徽章 ===== */
-    .badge {
-      position: absolute;
-      top: -3px;
-      right: -3px;
-      min-width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #ef4444;
-      color: white;
-      font-size: 9px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 3px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      z-index: 5;
-    }
+      /* ===== 未读徽章 ===== */
+      .badge {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        min-width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #ef4444;
+        color: white;
+        font-size: 9px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        z-index: 5;
+      }
 
-    /* ===== 表情选择器 ===== */
-    .picker {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      max-width: 560px;
-      padding: 0 20px;
-    }
+      /* ===== 表情选择器 ===== */
+      .picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+        max-width: 560px;
+        padding: 0 20px;
+      }
 
-    .expr-btn {
-      padding: 5px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.08);
-      background: rgba(255,255,255,0.04);
-      color: #94a3b8;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
+      .expr-btn {
+        padding: 5px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        color: #94a3b8;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
 
-    .expr-btn:hover {
-      background: rgba(255,255,255,0.08);
-      border-color: rgba(255,255,255,0.15);
-    }
+      .expr-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
 
-    .expr-btn.active {
-      background: rgba(139, 92, 246, 0.2);
-      border-color: rgba(139, 92, 246, 0.4);
-      color: #c4b5fd;
-    }
+      .expr-btn.active {
+        background: rgba(139, 92, 246, 0.2);
+        border-color: rgba(139, 92, 246, 0.4);
+        color: #c4b5fd;
+      }
 
-    /* ===== 静态展示 ===== */
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-      gap: 10px;
-      padding: 20px 40px 40px;
-      max-width: 900px;
-      margin: 0 auto;
-      width: 100%;
-    }
+      /* ===== 静态展示 ===== */
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 10px;
+        padding: 20px 40px 40px;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+      }
 
-    .mini-card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 12px;
-      padding: 14px 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
+      .mini-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 14px 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
 
-    .mini-card:hover {
-      border-color: rgba(139, 92, 246, 0.3);
-    }
+      .mini-card:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+      }
 
-    .mini-orb {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #8b5cf6, #6366f1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
+      .mini-orb {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
 
-    .mini-orb .face { --face-gap: 3px; }
+      .mini-orb .face {
+        --face-gap: 3px;
+      }
 
-    .mini-orb .eye {
-      --eye-w: 8px; --eye-h: 8px;
-      --eye-rtl: 50%; --eye-rtr: 50%; --eye-rbl: 50%; --eye-rbr: 50%;
-      --eye-rot: 0deg; --eye-y: 0; --eye-x: 0;
-      transition: all 0.3s ease;
-    }
+      .mini-orb .eye {
+        --eye-w: 8px;
+        --eye-h: 8px;
+        --eye-rtl: 50%;
+        --eye-rtr: 50%;
+        --eye-rbl: 50%;
+        --eye-rbr: 50%;
+        --eye-rot: 0deg;
+        --eye-y: 0;
+        --eye-x: 0;
+        transition: all 0.3s ease;
+      }
 
-    .mini-label {
-      font-size: 10px;
-      color: #64748b;
-    }
+      .mini-label {
+        font-size: 10px;
+        color: #64748b;
+      }
 
-    .section-title {
-      text-align: center;
-      color: #475569;
-      font-size: 12px;
-      margin-top: 10px;
-    }
+      .section-title {
+        text-align: center;
+        color: #475569;
+        font-size: 12px;
+        margin-top: 10px;
+      }
 
-    .hint {
-      text-align: center;
-      color: #475569;
-      font-size: 12px;
-      padding: 10px 20px 30px;
-    }
+      .hint {
+        text-align: center;
+        color: #475569;
+        font-size: 12px;
+        padding: 10px 20px 30px;
+      }
 
-    .param-note {
-      text-align: center;
-      color: #475569;
-      font-size: 11px;
-      padding: 0 20px 10px;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>纯眼睛表情</h1>
-    <p class="subtitle">去掉嘴巴，7 个几何参数驱动 18 种表情</p>
-    <p class="subtitle2">width / height / 4-corner-radius / rotate / offset / gap</p>
-  </header>
+      .param-note {
+        text-align: center;
+        color: #475569;
+        font-size: 11px;
+        padding: 0 20px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>纯眼睛表情</h1>
+      <p class="subtitle">去掉嘴巴，7 个几何参数驱动 18 种表情</p>
+      <p class="subtitle2">width / height / 4-corner-radius / rotate / offset / gap</p>
+    </header>
 
-  <div class="hero">
-    <div class="magnet-wrap" id="magnet-wrap">
-      <div class="magnet-inner">
-        <div class="orb anim-breathe anim-float" id="main-orb" data-expression="normal">
-          <div class="face blink" id="main-face">
-            <div class="eye"></div>
-            <div class="eye"></div>
+    <div class="hero">
+      <div class="magnet-wrap" id="magnet-wrap">
+        <div class="magnet-inner">
+          <div class="orb anim-breathe anim-float" id="main-orb" data-expression="normal">
+            <div class="face blink" id="main-face">
+              <div class="eye"></div>
+              <div class="eye"></div>
+            </div>
+            <span class="badge">3</span>
           </div>
-          <span class="badge">3</span>
         </div>
+      </div>
+
+      <div class="picker" id="picker">
+        <button class="expr-btn active" onclick="setExpr('normal')">😐 Normal</button>
+        <button class="expr-btn" onclick="setExpr('happy')">😊 Happy</button>
+        <button class="expr-btn" onclick="setExpr('glee')">😁 Glee</button>
+        <button class="expr-btn" onclick="setExpr('sad')">😢 Sad</button>
+        <button class="expr-btn" onclick="setExpr('worried')">😟 Worried</button>
+        <button class="expr-btn" onclick="setExpr('focused')">🧐 Focused</button>
+        <button class="expr-btn" onclick="setExpr('annoyed')">😒 Annoyed</button>
+        <button class="expr-btn" onclick="setExpr('surprised')">😲 Surprised</button>
+        <button class="expr-btn" onclick="setExpr('skeptic')">🤨 Skeptic</button>
+        <button class="expr-btn" onclick="setExpr('frustrated')">😤 Frustrated</button>
+        <button class="expr-btn" onclick="setExpr('unimpressed')">😑 Unimpressed</button>
+        <button class="expr-btn" onclick="setExpr('sleepy')">😴 Sleepy</button>
+        <button class="expr-btn" onclick="setExpr('suspicious')">🧐 Suspicious</button>
+        <button class="expr-btn" onclick="setExpr('squint')">😑 Squint</button>
+        <button class="expr-btn" onclick="setExpr('angry')">😠 Angry</button>
+        <button class="expr-btn" onclick="setExpr('furious')">😡 Furious</button>
+        <button class="expr-btn" onclick="setExpr('scared')">😨 Scared</button>
+        <button class="expr-btn" onclick="setExpr('awe')">🤩 Awe</button>
       </div>
     </div>
 
-    <div class="picker" id="picker">
-      <button class="expr-btn active" onclick="setExpr('normal')">😐 Normal</button>
-      <button class="expr-btn" onclick="setExpr('happy')">😊 Happy</button>
-      <button class="expr-btn" onclick="setExpr('glee')">😁 Glee</button>
-      <button class="expr-btn" onclick="setExpr('sad')">😢 Sad</button>
-      <button class="expr-btn" onclick="setExpr('worried')">😟 Worried</button>
-      <button class="expr-btn" onclick="setExpr('focused')">🧐 Focused</button>
-      <button class="expr-btn" onclick="setExpr('annoyed')">😒 Annoyed</button>
-      <button class="expr-btn" onclick="setExpr('surprised')">😲 Surprised</button>
-      <button class="expr-btn" onclick="setExpr('skeptic')">🤨 Skeptic</button>
-      <button class="expr-btn" onclick="setExpr('frustrated')">😤 Frustrated</button>
-      <button class="expr-btn" onclick="setExpr('unimpressed')">😑 Unimpressed</button>
-      <button class="expr-btn" onclick="setExpr('sleepy')">😴 Sleepy</button>
-      <button class="expr-btn" onclick="setExpr('suspicious')">🧐 Suspicious</button>
-      <button class="expr-btn" onclick="setExpr('squint')">😑 Squint</button>
-      <button class="expr-btn" onclick="setExpr('angry')">😠 Angry</button>
-      <button class="expr-btn" onclick="setExpr('furious')">😡 Furious</button>
-      <button class="expr-btn" onclick="setExpr('scared')">😨 Scared</button>
-      <button class="expr-btn" onclick="setExpr('awe')">🤩 Awe</button>
-    </div>
-  </div>
+    <p class="section-title">点击按钮切换表情，鼠标靠近体验磁性吸附</p>
+    <p class="param-note">
+      四个角独立 border-radius 可模拟上眼睑/下眼睑 — 比如 angry 上尖下圆 = 倒竖的眉毛
+    </p>
 
-  <p class="section-title">点击按钮切换表情，鼠标靠近体验磁性吸附</p>
-  <p class="param-note">四个角独立 border-radius 可模拟上眼睑/下眼睑 — 比如 angry 上尖下圆 = 倒竖的眉毛</p>
+    <div class="gallery" id="gallery"></div>
 
-  <div class="gallery" id="gallery"></div>
+    <p class="hint">左右眼眨眼错开 50ms，更自然</p>
 
-  <p class="hint">左右眼眨眼错开 50ms，更自然</p>
+    <script>
+      const expressions = [
+        'normal',
+        'happy',
+        'glee',
+        'sad',
+        'worried',
+        'focused',
+        'annoyed',
+        'surprised',
+        'skeptic',
+        'frustrated',
+        'unimpressed',
+        'sleepy',
+        'suspicious',
+        'squint',
+        'angry',
+        'furious',
+        'scared',
+        'awe',
+      ];
 
-  <script>
-    const expressions = [
-      'normal','happy','glee','sad','worried','focused','annoyed','surprised',
-      'skeptic','frustrated','unimpressed','sleepy','suspicious','squint',
-      'angry','furious','scared','awe'
-    ];
-
-    // 生成静态展示
-    const gallery = document.getElementById('gallery');
-    expressions.forEach(expr => {
-      const card = document.createElement('div');
-      card.className = 'mini-card';
-      card.innerHTML = `
+      // 生成静态展示
+      const gallery = document.getElementById('gallery');
+      expressions.forEach((expr) => {
+        const card = document.createElement('div');
+        card.className = 'mini-card';
+        card.innerHTML = `
         <div class="mini-orb" data-expression="${expr}">
           <div class="face"><div class="eye"></div><div class="eye"></div></div>
         </div>
         <span class="mini-label">${expr}</span>
       `;
-      card.onclick = () => setExpr(expr);
-      gallery.appendChild(card);
-    });
-
-    // Magnet
-    (function() {
-      const wrap = document.getElementById('magnet-wrap');
-      const inner = wrap.querySelector('.magnet-inner');
-      const padding = 80;
-      const strength = 3;
-
-      document.addEventListener('mousemove', (e) => {
-        const rect = wrap.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const distX = Math.abs(centerX - e.clientX);
-        const distY = Math.abs(centerY - e.clientY);
-
-        if (distX < rect.width / 2 + padding && distY < rect.height / 2 + padding) {
-          const offsetX = (e.clientX - centerX) / strength;
-          const offsetY = (e.clientY - centerY) / strength;
-          inner.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
-        } else {
-          inner.style.transform = 'translate3d(0, 0, 0)';
-        }
+        card.onclick = () => setExpr(expr);
+        gallery.appendChild(card);
       });
-    })();
 
-    // 切换表情
-    function setExpr(expr) {
-      document.querySelectorAll('.expr-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
+      // Magnet
+      (function () {
+        const wrap = document.getElementById('magnet-wrap');
+        const inner = wrap.querySelector('.magnet-inner');
+        const padding = 80;
+        const strength = 3;
 
-      const orb = document.getElementById('main-orb');
+        document.addEventListener('mousemove', (e) => {
+          const rect = wrap.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const distX = Math.abs(centerX - e.clientX);
+          const distY = Math.abs(centerY - e.clientY);
 
-      // 移除旧思考环
-      const oldRing = orb.querySelector('.thinking-ring');
-      if (oldRing) oldRing.remove();
+          if (distX < rect.width / 2 + padding && distY < rect.height / 2 + padding) {
+            const offsetX = (e.clientX - centerX) / strength;
+            const offsetY = (e.clientY - centerY) / strength;
+            inner.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+          } else {
+            inner.style.transform = 'translate3d(0, 0, 0)';
+          }
+        });
+      })();
 
-      orb.setAttribute('data-expression', expr);
+      // 切换表情
+      function setExpr(expr) {
+        document.querySelectorAll('.expr-btn').forEach((btn) => btn.classList.remove('active'));
+        event.target.classList.add('active');
 
-      // 小弹跳
-      orb.classList.remove('anim-breathe', 'anim-float');
-      orb.style.transform = 'scale(0.92)';
-      setTimeout(() => {
-        orb.style.transform = '';
-        orb.classList.add('anim-breathe', 'anim-float');
-      }, 120);
+        const orb = document.getElementById('main-orb');
 
-      // focused / suspicious 加思考环
-      if (expr === 'focused' || expr === 'suspicious') {
-        const ring = document.createElement('div');
-        ring.className = 'thinking-ring';
-        orb.appendChild(ring);
+        // 移除旧思考环
+        const oldRing = orb.querySelector('.thinking-ring');
+        if (oldRing) oldRing.remove();
+
+        orb.setAttribute('data-expression', expr);
+
+        // 小弹跳
+        orb.classList.remove('anim-breathe', 'anim-float');
+        orb.style.transform = 'scale(0.92)';
+        setTimeout(() => {
+          orb.style.transform = '';
+          orb.classList.add('anim-breathe', 'anim-float');
+        }, 120);
+
+        // focused / suspicious 加思考环
+        if (expr === 'focused' || expr === 'suspicious') {
+          const ring = document.createElement('div');
+          ring.className = 'thinking-ring';
+          orb.appendChild(ring);
+        }
+
+        // sleepy 变暗
+        orb.style.opacity = expr === 'sleepy' ? '0.7' : '1';
       }
-
-      // sleepy 变暗
-      orb.style.opacity = expr === 'sleepy' ? '0.7' : '1';
-    }
-  </script>
-</body>
+    </script>
+  </body>
 </html>

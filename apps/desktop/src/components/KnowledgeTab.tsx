@@ -30,7 +30,9 @@ export function KnowledgeTab({ activeProjectId }: Props) {
 
   const fetchDocs = async () => {
     try {
-      const res = await apiFetch(`/api/projects/${projectId}/documents`, { headers: authHeaders() });
+      const res = await apiFetch(`/api/projects/${projectId}/documents`, {
+        headers: authHeaders(),
+      });
       if (res.ok) setDocs((await res.json()).documents ?? []);
     } catch {
       /* ignore */
@@ -75,8 +77,8 @@ export function KnowledgeTab({ activeProjectId }: Props) {
   return (
     <div className="flex h-full">
       {/* Left: Document list */}
-      <div className="flex w-64 shrink-0 flex-col border-r border-border">
-        <div className="border-b border-border p-3">
+      <div className="border-border flex w-64 shrink-0 flex-col border-r">
+        <div className="border-border border-b p-3">
           <input
             className={`w-full ${inputClasses}`}
             placeholder="Search query..."
@@ -95,9 +97,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
                 key={d.path}
                 onClick={() => fetchChunks(d.path)}
                 className={`flex cursor-pointer items-center justify-between px-3 py-2 text-xs ${
-                  selectedDoc === d.path
-                    ? 'bg-accent-muted'
-                    : ''
+                  selectedDoc === d.path ? 'bg-accent-muted' : ''
                 } hover:bg-surface-muted bg-surface-input`}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -141,7 +141,7 @@ export function KnowledgeTab({ activeProjectId }: Props) {
                 className={`rounded border ${borderClasses} bg-surface-primary p-3`}
               >
                 <div className={`mb-1 text-xs ${subClasses}`}>Chunk {chunk.index}</div>
-                <pre className={`whitespace-pre-wrap font-sans text-xs ${textClasses}`}>
+                <pre className={`font-sans text-xs whitespace-pre-wrap ${textClasses}`}>
                   {chunk.content.slice(0, 1000)}
                 </pre>
               </div>

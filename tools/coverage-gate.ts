@@ -70,9 +70,15 @@ function parseSummary(path: string): { total: CoverageMetrics } | null {
   }
 }
 
-function aggregateSummaries(paths: string[]): { total: CoverageMetrics; perPackage: Map<string, CoverageMetrics> } {
+function aggregateSummaries(paths: string[]): {
+  total: CoverageMetrics;
+  perPackage: Map<string, CoverageMetrics>;
+} {
   const perPackage = new Map<string, CoverageMetrics>();
-  let totalLines = 0, totalFunctions = 0, totalBranches = 0, totalStatements = 0;
+  let totalLines = 0,
+    totalFunctions = 0,
+    totalBranches = 0,
+    totalStatements = 0;
   let count = 0;
 
   for (const p of paths) {
@@ -138,9 +144,11 @@ function checkBaseline(current: CoverageMetrics, baseline: CoverageMetrics): str
 
 // ── Main ──
 
-const mode = argv.includes('--update') ? 'update'
-  : argv.includes('--summary') ? 'summary'
-  : 'check';
+const mode = argv.includes('--update')
+  ? 'update'
+  : argv.includes('--summary')
+    ? 'summary'
+    : 'check';
 
 if (mode === 'update') {
   // Generate baseline from current coverage
@@ -183,7 +191,9 @@ if (mode === 'summary') {
 
   // Also show per-package
   for (const [name, m] of [...perPackage].sort((a, b) => a[0].localeCompare(b[0]))) {
-    console.log(`  ${name}: lines=${m.lines}% funcs=${m.functions}% branches=${m.branches}% stmts=${m.statements}%`);
+    console.log(
+      `  ${name}: lines=${m.lines}% funcs=${m.functions}% branches=${m.branches}% stmts=${m.statements}%`,
+    );
   }
 
   const thresholdFailures = checkThresholds(total);

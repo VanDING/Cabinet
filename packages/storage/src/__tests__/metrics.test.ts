@@ -131,7 +131,7 @@ describe('MetricsCollector', () => {
       collector.record('error', 1);
 
       const summary = collector.getSummary();
-      expect(summary.totalLLMCalls).toBe(8);   // 5 + 3
+      expect(summary.totalLLMCalls).toBe(8); // 5 + 3
       expect(summary.totalTokens).toBe(5000);
       expect(summary.totalDecisions).toBe(2);
       expect(summary.errors).toBe(1);

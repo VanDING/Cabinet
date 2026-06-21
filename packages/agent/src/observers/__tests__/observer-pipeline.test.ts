@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import Database from 'better-sqlite3';
-import { ObserverPipeline, type AgentObserver, type AgentExecutionContext } from '../../observer-pipeline.js';
+import {
+  ObserverPipeline,
+  type AgentObserver,
+  type AgentExecutionContext,
+} from '../../observer-pipeline.js';
 import { SafetyCheckObserver } from '../safety.js';
 import { ToolExecuteObserver } from '../tool-execute.js';
 import { CheckpointObserver } from '../checkpoint.js';
@@ -40,8 +44,18 @@ function makeCtx(overrides: Partial<AgentExecutionContext> = {}): AgentExecution
 describe('ObserverPipeline', () => {
   it('notifies all observers for a lifecycle event', async () => {
     const calls: string[] = [];
-    const obs1: AgentObserver = { name: 'o1', async onStepEnd() { calls.push('o1'); } };
-    const obs2: AgentObserver = { name: 'o2', async onStepEnd() { calls.push('o2'); } };
+    const obs1: AgentObserver = {
+      name: 'o1',
+      async onStepEnd() {
+        calls.push('o1');
+      },
+    };
+    const obs2: AgentObserver = {
+      name: 'o2',
+      async onStepEnd() {
+        calls.push('o2');
+      },
+    };
     const pipeline = new ObserverPipeline([obs1, obs2]);
 
     await pipeline.notify('onStepEnd', makeCtx());
@@ -52,9 +66,16 @@ describe('ObserverPipeline', () => {
     const calls: string[] = [];
     const bad: AgentObserver = {
       name: 'bad',
-      async onStepEnd() { throw new Error('boom'); },
+      async onStepEnd() {
+        throw new Error('boom');
+      },
     };
-    const good: AgentObserver = { name: 'good', async onStepEnd() { calls.push('good'); } };
+    const good: AgentObserver = {
+      name: 'good',
+      async onStepEnd() {
+        calls.push('good');
+      },
+    };
     const pipeline = new ObserverPipeline([bad, good]);
 
     await pipeline.notify('onStepEnd', makeCtx());
@@ -63,7 +84,12 @@ describe('ObserverPipeline', () => {
 
   it('skips observers that do not implement the event', async () => {
     const calls: string[] = [];
-    const obs: AgentObserver = { name: 'onlyStreamStart', async onStreamStart() { calls.push('start'); } };
+    const obs: AgentObserver = {
+      name: 'onlyStreamStart',
+      async onStreamStart() {
+        calls.push('start');
+      },
+    };
     const pipeline = new ObserverPipeline([obs]);
 
     await pipeline.notify('onStepEnd', makeCtx());
@@ -73,11 +99,15 @@ describe('ObserverPipeline', () => {
   it('collects results from multiple observers', async () => {
     const obs1: AgentObserver = {
       name: 'o1',
-      async onToolCall() { return { blocked: false }; },
+      async onToolCall() {
+        return { blocked: false };
+      },
     };
     const obs2: AgentObserver = {
       name: 'o2',
-      async onToolCall() { return { blocked: false }; },
+      async onToolCall() {
+        return { blocked: false };
+      },
     };
     const pipeline = new ObserverPipeline([obs1, obs2]);
 
@@ -95,12 +125,20 @@ describe('ContextMonitorObserver (via inline mock)', () => {
     // Inline mock avoiding ContextMonitor import (which transitively
     // depends on js-tiktoken / @cabinet/types that hang vitest).
     const mockMonitor = {
-      estimateTokens(_text: string) { return 0; },
+      estimateTokens(_text: string) {
+        return 0;
+      },
       snapshot(breakdown: Record<string, number>) {
         const estimated = Object.values(breakdown).reduce((s, v) => s + v, 0);
         const util = Math.min(estimated / 200_000, 1.0);
-        const zone = util < 0.4 ? 'smart' : util < 0.6 ? 'warning' : util < 0.8 ? 'critical' : 'dumb';
-        return { zone: zone as AgentExecutionContext['zone'], utilization: util, tokenCount: estimated, maxTokens: 200_000 };
+        const zone =
+          util < 0.4 ? 'smart' : util < 0.6 ? 'warning' : util < 0.8 ? 'critical' : 'dumb';
+        return {
+          zone: zone as AgentExecutionContext['zone'],
+          utilization: util,
+          tokenCount: estimated,
+          maxTokens: 200_000,
+        };
       },
     };
 
@@ -119,7 +157,8 @@ describe('ContextMonitorObserver (via inline mock)', () => {
 
     expect(['smart', 'warning', 'critical', 'dumb']).toContain(ctx.zone);
     expect(ctx.lastSnapshot).toBeDefined();
-    const total = ctx.zoneCounts.smart + ctx.zoneCounts.warning + ctx.zoneCounts.critical + ctx.zoneCounts.dumb;
+    const total =
+      ctx.zoneCounts.smart + ctx.zoneCounts.warning + ctx.zoneCounts.critical + ctx.zoneCounts.dumb;
     expect(total).toBe(1);
   });
 });
@@ -141,7 +180,12 @@ describe('HandoffObserver (via inline mock)', () => {
     // Replicate core HandoffObserver logic inline
     const ctx = makeCtx({
       handoffCount: 0,
-      lastSnapshot: { zone: 'critical', utilization: 0.85, tokenCount: 170_000, maxTokens: 200_000 },
+      lastSnapshot: {
+        zone: 'critical',
+        utilization: 0.85,
+        tokenCount: 170_000,
+        maxTokens: 200_000,
+      },
     });
     const messages = [
       { role: 'user' as const, content: 'msg1' },

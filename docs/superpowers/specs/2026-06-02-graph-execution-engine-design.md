@@ -29,14 +29,14 @@ Introduce a shared **StateGraph** primitive (~400 lines) as the single execution
 
 ## 2. Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Architecture | Full replacement — WorkflowEngine's execution core rewritten to use StateGraph | Eliminates dual control flow; both AgentLoop and WorkflowEngine benefit from the same improvements |
-| Checkpoint model | Linked-list (LangGraph-style) — each superstep creates a new row with `parent_checkpoint_id` | Enables time-travel (Phase 2); marginal cost over single-row overwrite |
-| State schema API | Annotation pattern — `Annotation<T>({ reducer, default })` per field | Aligns with LangGraph mental model; TypeScript type inference friendly; explicit reducer per field enables parallel branch merging |
-| AgentLoop granularity | Fine-grained — LLM and Tools as separate graph nodes with conditional edges | Enables skipping LLM for mechanical routing decisions, saves tokens |
-| Streaming model | Node events + LLM token stream — `node:start`, `node:end`, `llm:chunk`, `tool:call`, `tool:result`, `checkpoint:saved` | Frontend can show task progress ("searching..." → "analyzing..." → "editing...") |
-| Error handling | Error edges + per-node retry policies — `addErrorEdge(from, to)` + `maxRetries/backoff` on node options | Retries handle transient failures; error edges handle failures requiring logic (permission denied → notify user) |
+| Decision              | Choice                                                                                                                 | Rationale                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture          | Full replacement — WorkflowEngine's execution core rewritten to use StateGraph                                         | Eliminates dual control flow; both AgentLoop and WorkflowEngine benefit from the same improvements                                 |
+| Checkpoint model      | Linked-list (LangGraph-style) — each superstep creates a new row with `parent_checkpoint_id`                           | Enables time-travel (Phase 2); marginal cost over single-row overwrite                                                             |
+| State schema API      | Annotation pattern — `Annotation<T>({ reducer, default })` per field                                                   | Aligns with LangGraph mental model; TypeScript type inference friendly; explicit reducer per field enables parallel branch merging |
+| AgentLoop granularity | Fine-grained — LLM and Tools as separate graph nodes with conditional edges                                            | Enables skipping LLM for mechanical routing decisions, saves tokens                                                                |
+| Streaming model       | Node events + LLM token stream — `node:start`, `node:end`, `llm:chunk`, `tool:call`, `tool:result`, `checkpoint:saved` | Frontend can show task progress ("searching..." → "analyzing..." → "editing...")                                                   |
+| Error handling        | Error edges + per-node retry policies — `addErrorEdge(from, to)` + `maxRetries/backoff` on node options                | Retries handle transient failures; error edges handle failures requiring logic (permission denied → notify user)                   |
 
 ## 3. Core API
 
@@ -58,7 +58,7 @@ const AgentState = {
     default: () => [],
   }),
   budget: Annotation<number>({
-    reducer: (_, b) => b,  // last-write-wins
+    reducer: (_, b) => b, // last-write-wins
     default: () => 0,
   }),
   systemPrompt: Annotation<string>({
@@ -79,9 +79,17 @@ type NodeFn<S> = (state: S) => Promise<Partial<S>> | Partial<S>;
 type RouterFn<S> = (state: S) => Promise<string> | string;
 
 class StateGraph<S extends Record<string, any>> {
-  addNode(id: string, fn: NodeFn<S>, opts?: { maxRetries?: number; backoff?: 'linear' | 'exponential'; retryDelay?: number }): this;
+  addNode(
+    id: string,
+    fn: NodeFn<S>,
+    opts?: { maxRetries?: number; backoff?: 'linear' | 'exponential'; retryDelay?: number },
+  ): this;
   addEdge(from: string, to: string | typeof END): this;
-  addConditionalEdges(from: string, router: RouterFn<S>, targets: Record<string, string | typeof END>): this;
+  addConditionalEdges(
+    from: string,
+    router: RouterFn<S>,
+    targets: Record<string, string | typeof END>,
+  ): this;
   // Router must return a key in targets. Unrecognized return values terminate the graph (END).
   addErrorEdge(from: string, to: string): this;
   compile(opts: { entry: string }): CompileResult<S>;
@@ -112,22 +120,22 @@ type StreamEvent =
 
 ```typescript
 interface CheckpointRecord {
-  id: string;           // "checkpoint_<runId>_<seq>"
+  id: string; // "checkpoint_<runId>_<seq>"
   runId: string;
-  parentId: string | null;  // linked list
+  parentId: string | null; // linked list
   nodeId: string;
-  state: string;        // JSON serialized S
-  pendingTasks: string | null;  // JSON for interrupted async tasks
-  metadata: string;     // JSON { source, step, timestamp }
+  state: string; // JSON serialized S
+  pendingTasks: string | null; // JSON for interrupted async tasks
+  metadata: string; // JSON { source, step, timestamp }
   createdAt: string;
 }
 
 class CheckpointStore {
   save(record: CheckpointRecord): void;
   load(checkpointId: string): CheckpointRecord | null;
-  getPrior(checkpointId: string): CheckpointRecord | null;  // follows parent_id chain
+  getPrior(checkpointId: string): CheckpointRecord | null; // follows parent_id chain
   listRun(runId: string): CheckpointRecord[];
-  gc(runId: string, keepLast: number): void;  // retain last N checkpoints from head of chain, delete older ancestors
+  gc(runId: string, keepLast: number): void; // retain last N checkpoints from head of chain, delete older ancestors
 }
 ```
 
@@ -266,14 +274,14 @@ knowledgeBase → handlers.knowledgeBase
 
 Six validation passes run during `StateGraph.compile()`:
 
-| Pass | Name | What It Checks | Severity |
-|------|------|---------------|----------|
-| 1 | Node existence | All edge targets refer to registered nodes | Error |
-| 2 | Entry reachability | All nodes are reachable from entry; entry node exists | Error/Warning |
-| 3 | Cycle detection | Cycles exist and have conditional exits (no infinite loops without escape) | Warning |
-| 4 | Conditional completeness | Router return value maps to a declared target; default/fallback exists | Error |
-| 5 | Error edge coverage | Nodes with maxRetries > 0 should have error edges defined | Warning |
-| 6 | State compatibility | Node return types are compatible with state schema | Warning |
+| Pass | Name                     | What It Checks                                                             | Severity      |
+| ---- | ------------------------ | -------------------------------------------------------------------------- | ------------- |
+| 1    | Node existence           | All edge targets refer to registered nodes                                 | Error         |
+| 2    | Entry reachability       | All nodes are reachable from entry; entry node exists                      | Error/Warning |
+| 3    | Cycle detection          | Cycles exist and have conditional exits (no infinite loops without escape) | Warning       |
+| 4    | Conditional completeness | Router return value maps to a declared target; default/fallback exists     | Error         |
+| 5    | Error edge coverage      | Nodes with maxRetries > 0 should have error edges defined                  | Warning       |
+| 6    | State compatibility      | Node return types are compatible with state schema                         | Warning       |
 
 `compile()` returns either `{ ok: true, graph, warnings }` or `{ ok: false, errors }`.
 
@@ -294,12 +302,14 @@ packages/graph/
 ## 8. Migration Phases
 
 ### Phase 1a — New Package + Unit Tests
+
 - Write all 6 source files in `packages/graph/`
 - Write unit tests: annotation, state-graph, checkpoint-store, validation
 - No changes to existing packages
 - Verify: all tests pass
 
 ### Phase 1b — AgentLoop Internal Rewrite
+
 - Modify `packages/agent/src/agent-loop.ts` — replace inline `while` loop with CompiledGraph
 - Keep external API identical: `run()`, `runStreaming()`, `continueWithUserInput()`, `getConversationHistory()`, `setDelegationTier()`, `setSkillContext()`
 - Remove ~200 lines of inline control flow
@@ -307,6 +317,7 @@ packages/graph/
 - Verify: existing `agent-loop.test.ts` all pass; manual smoke test with secretary agent
 
 ### Phase 1c — WorkflowEngine Internal Rewrite
+
 - Modify `packages/workflow/src/engine.ts` — replace `executeNode()` switch-case with CompiledGraph
 - Keep external API identical: `startRun()`, `continueRun()`, `setHandlers()`, `WorkflowRun` type
 - Keep: handler registration, AgentLoop pool, declarative step conversion

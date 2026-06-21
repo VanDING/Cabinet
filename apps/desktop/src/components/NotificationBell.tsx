@@ -54,12 +54,12 @@ export function NotificationBell() {
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
-        className="relative flex h-full w-8 items-center justify-center text-content-tertiary transition-colors hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary"
+        className="text-content-tertiary hover:bg-surface-muted hover:text-content-secondary:bg-surface-input:text-content-tertiary relative flex h-full w-8 items-center justify-center transition-colors"
         aria-label="Notifications"
       >
         <Bell size={14} />
         {unreadCount > 0 && (
-          <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent ring-1 ring-surface-primary" />
+          <span className="bg-accent ring-surface-primary absolute top-0.5 right-0.5 h-2 w-2 rounded-full ring-1" />
         )}
       </button>
 
@@ -108,7 +108,7 @@ export function NotificationBell() {
                     className={`flex w-full items-start gap-2.5 border-b px-3 py-2.5 text-left transition-colors ${itemHoverClasses} ${borderClasses} ${n.read ? 'opacity-60' : ''}`}
                   >
                     <span
-                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-content-inverse ${icon.color}`}
+                      className={`text-content-inverse mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${icon.color}`}
                     >
                       {icon.label}
                     </span>
@@ -130,9 +130,7 @@ export function NotificationBell() {
                         </p>
                       )}
                     </div>
-                    {!n.read && (
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
-                    )}
+                    {!n.read && <span className="bg-accent mt-1.5 h-2 w-2 shrink-0 rounded-full" />}
                   </button>
                 );
               })

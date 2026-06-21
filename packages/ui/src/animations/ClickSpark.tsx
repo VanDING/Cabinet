@@ -116,10 +116,7 @@ export function ClickSpark({
 
   return (
     <div className="relative inline-flex" onClick={handleClick}>
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute inset-0 z-10"
-      />
+      <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-10" />
       {children}
     </div>
   );

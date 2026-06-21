@@ -76,24 +76,22 @@ export function ContextButton({
       </button>
       {open && (
         <div
-          className={`absolute bottom-full right-0 z-50 mb-1 w-56 rounded-lg border border-border p-3 shadow-xl ${dropdownBgClass} text-xs`}
+          className={`border-border absolute right-0 bottom-full z-50 mb-1 w-56 rounded-lg border p-3 shadow-xl ${dropdownBgClass} text-xs`}
         >
-          <div className="mb-2 font-medium text-content-secondary">Context Usage</div>
+          <div className="text-content-secondary mb-2 font-medium">Context Usage</div>
           {data ? (
             <div className="space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-content-tertiary">Messages</span>
-                <span className="font-mono text-content-secondary">
-                  {data.messageCount}
-                </span>
+                <span className="text-content-secondary font-mono">{data.messageCount}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-content-tertiary">Est. Tokens</span>
-                <span className="font-mono text-content-secondary">
+                <span className="text-content-secondary font-mono">
                   {tokens.toLocaleString()} / {max.toLocaleString()}
                 </span>
               </div>
-              <div className="mt-1 h-1.5 w-full rounded-full bg-surface-muted">
+              <div className="bg-surface-muted mt-1 h-1.5 w-full rounded-full">
                 <div
                   className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-intent-danger' : pct > 50 ? 'bg-intent-warning' : 'bg-accent'}`}
                   style={{ width: `${Math.min(pct, 100)}%` }}
@@ -102,13 +100,13 @@ export function ContextButton({
               <button
                 onClick={handleCompact}
                 disabled={compacting}
-                className="mt-2 w-full rounded-sm bg-accent py-1 text-xs text-content-inverse hover:bg-accent-hover disabled:opacity-50"
+                className="bg-accent text-content-inverse hover:bg-accent-hover mt-2 w-full rounded-sm py-1 text-xs disabled:opacity-50"
               >
                 {compacting ? 'Compacting...' : 'Compact Context'}
               </button>
             </div>
           ) : (
-            <p className="italic text-content-tertiary">Loading...</p>
+            <p className="text-content-tertiary italic">Loading...</p>
           )}
         </div>
       )}

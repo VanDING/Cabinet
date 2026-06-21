@@ -10,9 +10,7 @@ describe('parseYamlBlueprint', () => {
         { id: 'start', type: 'start' },
         { id: 'end', type: 'end' },
       ],
-      edges: [
-        { from: 'start', to: 'end' },
-      ],
+      edges: [{ from: 'start', to: 'end' }],
     });
     expect(result.ok).toBe(true);
     expect(result.name).toBe('test');
@@ -166,11 +164,13 @@ describe('parseYamlBlueprint', () => {
     const result = parseYamlBlueprint({
       name: 'test',
       entry: 'a',
-      nodes: [{
-        id: 'a',
-        type: 'start',
-        allowedTools: ['tool1', 123, true, 'tool2'],
-      }],
+      nodes: [
+        {
+          id: 'a',
+          type: 'start',
+          allowedTools: ['tool1', 123, true, 'tool2'],
+        },
+      ],
       edges: [],
     });
     expect(result.ok).toBe(true);
@@ -182,11 +182,13 @@ describe('parseYamlBlueprint', () => {
     const result = parseYamlBlueprint({
       name: 'test',
       entry: 'a',
-      nodes: [{
-        id: 'a',
-        type: 'approval',
-        options: ['yes', 123, 'no'],
-      }],
+      nodes: [
+        {
+          id: 'a',
+          type: 'approval',
+          options: ['yes', 123, 'no'],
+        },
+      ],
       edges: [],
     });
     expect(result.ok).toBe(true);

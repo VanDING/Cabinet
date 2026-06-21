@@ -19,12 +19,26 @@ const AGENT = 'external_cli:claude';
 
 function makeTask(id: string) {
   return {
-    id, agent_id: AGENT, session_id: 'test_session', capability: 'default',
-    input: 'Test task', slot_json: '{"project":{"name":"test","goals":[]},"security":{"level":"L1","maxRetries":3}}',
-    status: 'pending' as const, priority: 0, retry_count: 0, max_retries: 3,
-    timeout_ms: 120000, claimed_by: null, claimed_at: null,
-    started_at: null, completed_at: null, progress_json: '{}',
-    error_message: null, output_json: null, cron_expression: null, webhook_url: null,
+    id,
+    agent_id: AGENT,
+    session_id: 'test_session',
+    capability: 'default',
+    input: 'Test task',
+    slot_json: '{"project":{"name":"test","goals":[]},"security":{"level":"L1","maxRetries":3}}',
+    status: 'pending' as const,
+    priority: 0,
+    retry_count: 0,
+    max_retries: 3,
+    timeout_ms: 120000,
+    claimed_by: null,
+    claimed_at: null,
+    started_at: null,
+    completed_at: null,
+    progress_json: '{}',
+    error_message: null,
+    output_json: null,
+    cron_expression: null,
+    webhook_url: null,
   };
 }
 
@@ -92,7 +106,9 @@ describe('AgentTaskQueueRepository', () => {
     repo.claimSpecific('t6', DAEMON_A);
 
     // Force the claimed_at to be old by directly updating
-    getConnection().prepare("UPDATE agent_task_queue SET claimed_at = '2020-01-01T00:00:00' WHERE id = 't6'").run();
+    getConnection()
+      .prepare("UPDATE agent_task_queue SET claimed_at = '2020-01-01T00:00:00' WHERE id = 't6'")
+      .run();
 
     const stale = repo.findStaleClaims(60_000);
     expect(stale.length).toBeGreaterThanOrEqual(1);
@@ -164,9 +180,14 @@ describe('AgentDaemonRepository', () => {
 
   it('creates and finds workspaces', () => {
     repo.createWorkspace({
-      id: 'ws_1', agent_id: AGENT, task_id: 't1',
-      path: '/tmp/ws', size_bytes: 0, status: 'active',
-      created_at: new Date().toISOString(), last_used_at: new Date().toISOString(),
+      id: 'ws_1',
+      agent_id: AGENT,
+      task_id: 't1',
+      path: '/tmp/ws',
+      size_bytes: 0,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      last_used_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     });
     const wss = repo.findWorkspacesByAgent(AGENT);

@@ -37,11 +37,7 @@ export class RouteFeedbackRepository {
       .all() as RouteFeedbackRow[];
   }
 
-  queryByRoute(
-    previousRoute: string,
-    correct: boolean,
-    limit = 10,
-  ): RouteFeedbackRow[] {
+  queryByRoute(previousRoute: string, correct: boolean, limit = 10): RouteFeedbackRow[] {
     return this.db
       .prepare(
         `SELECT * FROM route_feedback
@@ -53,9 +49,9 @@ export class RouteFeedbackRepository {
   }
 
   count(): number {
-    const row = this.db
-      .prepare('SELECT COUNT(*) as cnt FROM route_feedback')
-      .get() as { cnt: number };
+    const row = this.db.prepare('SELECT COUNT(*) as cnt FROM route_feedback').get() as {
+      cnt: number;
+    };
     return row.cnt;
   }
 

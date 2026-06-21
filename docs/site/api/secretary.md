@@ -1,12 +1,12 @@
 # Secretary API
 
-The Secretary is the front-door agent. It parses natural language input, routes to specialist agents, and returns streamed responses.
+The Secretary is the front-door agent. It parses natural language input through a 4-layer intent pipeline, routes to specialist agents (organize) or external agents (daemon), and returns streamed responses.
 
 ## Endpoints
 
 ### `POST /api/secretary/chat`
 
-Send a message to the Secretary and receive a streamed response.
+Send a message to the Secretary and receive a streamed or JSON response.
 
 **Request**:
 
@@ -17,26 +17,39 @@ Send a message to the Secretary and receive a streamed response.
   "projectId": "proj-1",
   "stream": true,
   "files": [
-    { "name": "market_research.pdf", "path": "/docs/market_research.pdf", "type": "application/pdf" }
+    {
+      "name": "market_research.pdf",
+      "path": "/docs/market_research.pdf",
+      "type": "application/pdf"
+    }
   ],
   "model": "anthropic/claude-sonnet-4-6",
-  "targetAgent": "secretary"
+  "targetAgent": "secretary",
+  "dispatchMode": "single",
+  "thinkingBudget": 4096
 }
 ```
 
-| Field | Type | Required | Description |
-| :---- | :--- | :------- | :---------- |
-| `sessionId` | string | Yes | Session identifier for context continuity |
-| `message` | string | Yes | User message |
-| `projectId` | string | No | Scope the conversation to a project |
-| `stream` | boolean | No | Enable SSE streaming (default: true) |
-| `files` | array | No | Attached files for context |
-| `model` | string | No | Override the default model |
-| `targetAgent` | string | No | Route directly to a specific agent role |
+| Field            | Type    | Required | Description                                               |
+| :--------------- | :------ | :------- | :-------------------------------------------------------- |
+| `sessionId`      | string  | Yes      | Session identifier for context continuity                 |
+| `message`        | string  | Yes      | User message                                              |
+| `captainId`      | string  | No       | Captain identifier (defaults to default)                  |
+| `projectId`      | string  | No       | Scope the conversation to a project (default: `'global'`) |
+| `model`          | string  | No       | Override the default model                                |
+| `stream`         | boolean | No       | Enable SSE streaming (default: false)                     |
+| `files`          | array   | No       | Attached files for context: `{ name, path, type? }`       |
+| `dispatchMode`   | string  | No       | `'single'` (default), `'pipeline'`, or `'parallel'`       |
+| `targetAgent`    | string  | No       | Route directly to a specific agent role by name           |
+| `thinkingBudget` | number  | No       | 1024–128000, extended thinking token budget               |
+| `type`           | string  | No       | `'chat'` (default) or `'skill_invoke'`                    |
+| `skillName`      | string  | No       | Skill name when `type: 'skill_invoke'`                    |
+| `skillArgs`      | string  | No       | JSON string of skill arguments                            |
+| `interactive`    | boolean | No       | Enable interactive mode for Organize agent                |
 
 **Response (SSE when `stream: true`)**:
 
-Event stream fragments include:
+Event stream fragments:
 
 - `routing_start` — Agent handoff notification
 - `thinking_start` / `thinking_end` — Reasoning blocks
@@ -49,44 +62,16 @@ Event stream fragments include:
 
 ```json
 {
-  "content": "Based on the research...",
+  "response": "Based on the research...",
   "agentName": "secretary",
   "toolCalls": [],
   "cost": 0.023
 }
 ```
 
-### `GET /api/secretary/history`
+### `GET /api/secretary/greeting`
 
-Retrieve conversation history for a session.
-
-**Query params**:
-
-- `sessionId` — Session identifier
-- `limit` — Max messages (default: 50)
-
-**Response**:
-
-```json
-{
-  "messages": [
-    { "id": "u_1", "role": "user", "content": "...", "timestamp": "2026-05-20T10:00:00Z" },
-    { "id": "a_1", "role": "assistant", "content": "...", "agentName": "secretary" }
-  ]
-}
-```
-
-### `POST /api/secretary/greeting`
-
-Generate a daily greeting and summary.
-
-**Request**:
-
-```json
-{
-  "captainId": "captain-1"
-}
-```
+Generate a daily greeting with pending decisions, active workflows, and today's cost.
 
 **Response**:
 
@@ -98,20 +83,59 @@ Generate a daily greeting and summary.
 }
 ```
 
+### `GET /api/secretary/sessions`
+
+List all active sessions.
+
+### `POST /api/secretary/sessions/:id/close`
+
+Close a session and trigger memory consolidation.
+
+### `GET /api/secretary/context`
+
+Get token usage and zone classification for a session.
+
+### `POST /api/secretary/compact`
+
+Compress a session's message history by summarizing older messages.
+
+### `GET /api/secretary/verify`
+
+Test that the LLM API key is working correctly.
+
+### `POST /api/secretary/subagent/input`
+
+Send user input to a running sub-agent session.
+
+### `POST /api/secretary/subagent/finalize`
+
+Confirm sub-agent completion and merge results back.
+
+### `GET /api/secretary/sessions/:id/children`
+
+List sub-agent sessions for a parent session.
+
+### `GET /api/secretary/subagent/:id/status`
+
+Get the status of a running sub-agent.
+
 ## Intent Routing
 
-The Secretary uses `IntentParser` to classify requests before routing:
+The Secretary uses a 4-layer intent parser (keyword → regex → embedding → LLM) to classify requests:
 
-| Intent | Routed To | Example Trigger |
-| :----- | :-------- | :-------------- |
-| `decision_request` | DecisionService | "Should we...", "Analyze whether..." |
-| `meeting_request` | MeetingService | "Get advisors to discuss...", "Meeting on..." |
-| `skill_request` | SkillRegistry / Organize | "Design a workflow...", "Create an agent...", "Write a skill..." |
-| `workflow_request` | WorkflowEngine | "Create a workflow that...", "Automate..." |
-| `task_request` | AgentDispatcher | "Write a script to...", "Generate..." |
-| `query` | Secretary (direct) | "What is...", "Show me..." |
+| Intent             | Routed To      | Example Trigger                              |
+| :----------------- | :------------- | :------------------------------------------- |
+| `decision_request` | Secretary      | "Should we...", "Analyze whether..."         |
+| `organize_request` | Organize Agent | "Design a workflow...", "Create an agent..." |
+| `skill_request`    | Organize Agent | "Write a skill for..."                       |
+| `invoke_skill`     | Secretary      | Use `/skillName` syntax in message           |
+| `mcp_request`      | Organize Agent | "Set up an MCP server for..."                |
+| `status_query`     | Secretary      | "What is...", "Show me..."                   |
+| `knowledge_query`  | Secretary      | "What do we know about..."                   |
+| `schedule_request` | Secretary      | "Remind me to...", "Schedule..."             |
+| `follow_up`        | Secretary      | Contextual continuation of previous turn     |
 
-If confidence is below 0.5, the Secretary suggests creating or importing a specialist agent.
+If confidence is below threshold, the Secretary handles the request directly.
 
 ## Streaming Protocol
 
@@ -127,13 +151,9 @@ data: {"type":"done"}
 
 The desktop app's `readSSEStream` utility parses this into incremental UI updates.
 
-## Safety Integration
+## Sub-Agent Interaction
 
-All tool calls triggered by the Secretary pass through the `SafetyChecker` before execution. If a call is blocked:
-
-1. The tool error is returned to the agent loop
-2. The agent may retry with a safer approach
-3. If blocked at L2/L3, a decision card is surfaced to the Captain
+Conversations can spawn sub-agents (via `create_sub_agent` tool) for parallel or long-running tasks. Sub-agents have isolated session state and support mid-flight user input via `POST /api/secretary/subagent/input`.
 
 ## Cost Transparency
 

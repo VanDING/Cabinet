@@ -210,7 +210,11 @@ describe('Migration safety properties', () => {
     // ALTER TABLE ADD COLUMN is NOT idempotent in SQLite (no IF NOT EXISTS syntax).
     // We wrap ALTER TABLE migrations in try/catch.
     const safeRun = (fn: (db: Database.Database) => void) => {
-      try { fn(db); } catch { /* column/table already exists — safe to skip on re-run */ }
+      try {
+        fn(db);
+      } catch {
+        /* column/table already exists — safe to skip on re-run */
+      }
     };
 
     safeRun(runMigration003);
@@ -240,8 +244,13 @@ describe('Migration safety properties', () => {
   it('all expected tables exist after full migration run', () => {
     const expectedTables = [
       // 001
-      'projects', 'employees', 'decisions', 'event_log',
-      'api_keys', 'agent_roles', 'skills',
+      'projects',
+      'employees',
+      'decisions',
+      'event_log',
+      'api_keys',
+      'agent_roles',
+      'skills',
       // 002
       'workflows',
       // 003
@@ -249,7 +258,8 @@ describe('Migration safety properties', () => {
       // 004
       'scheduled_tasks',
       // 005
-      'workflow_runs', 'session_metrics',
+      'workflow_runs',
+      'session_metrics',
       // 006
       'document_chunks',
       // 007
@@ -257,23 +267,32 @@ describe('Migration safety properties', () => {
       // 009
       'agent_checkpoints',
       // 010
-      'short_term', 'memory_embeddings',
+      'short_term',
+      'memory_embeddings',
       // 015
-      'memory_entities', 'memory_relations',
+      'memory_entities',
+      'memory_relations',
       // 016
-      'workflow_run_steps', 'workflow_run_results',
+      'workflow_run_steps',
+      'workflow_run_results',
       // 020
       'route_feedback',
       // 022
-      'agent_events', 'sub_agent_deliverables',
+      'agent_events',
+      'sub_agent_deliverables',
       // 024
       'agent_telemetry',
       // 025
-      'agent_task_queue', 'agent_daemon_heartbeats', 'agent_workspaces',
+      'agent_task_queue',
+      'agent_daemon_heartbeats',
+      'agent_workspaces',
       // 026
-      'autopilot_triggers', 'autopilot_runs',
+      'autopilot_triggers',
+      'autopilot_runs',
       // 027
-      'agent_squads', 'agent_squad_members', 'agent_squad_round_robin',
+      'agent_squads',
+      'agent_squad_members',
+      'agent_squad_round_robin',
     ];
 
     for (const table of expectedTables) {

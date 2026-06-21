@@ -235,15 +235,7 @@ export async function* executeGenerator(
       }
 
       ctx.stepCount++;
-      const stepResults = await pipeline.notify('onStepEnd', ctx);
-      const shouldContinue = stepResults.some(
-        (r) => r !== null && typeof r === 'object' && (r as any).handoff === true,
-      );
-      if (shouldContinue) {
-        ctx.currentStepText = '';
-        ctx.currentStepToolCalls = [];
-        continue;
-      }
+      await pipeline.notify('onStepEnd', ctx);
       break;
     }
 

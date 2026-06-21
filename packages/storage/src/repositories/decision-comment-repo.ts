@@ -49,22 +49,22 @@ export class DecisionCommentRepository {
   /** Get all comments for a decision, ordered by creation time. */
   getComments(decisionId: string): DecisionCommentRow[] {
     return this.db
-      .prepare(
-        'SELECT * FROM decision_comments WHERE decision_id = ? ORDER BY created_at ASC',
-      )
+      .prepare('SELECT * FROM decision_comments WHERE decision_id = ? ORDER BY created_at ASC')
       .all(decisionId) as DecisionCommentRow[];
   }
 
   /** Get a single comment by ID. */
   getComment(id: string): DecisionCommentRow | null {
-    const row = this.db
-      .prepare('SELECT * FROM decision_comments WHERE id = ?')
-      .get(id) as DecisionCommentRow | undefined;
+    const row = this.db.prepare('SELECT * FROM decision_comments WHERE id = ?').get(id) as
+      | DecisionCommentRow
+      | undefined;
     return row ?? null;
   }
 
   /** Get threaded comments: top-level first, then replies nested. */
-  getThreadedComments(decisionId: string): Array<DecisionCommentRow & { replies: DecisionCommentRow[] }> {
+  getThreadedComments(
+    decisionId: string,
+  ): Array<DecisionCommentRow & { replies: DecisionCommentRow[] }> {
     const all = this.getComments(decisionId);
     const topLevel = all.filter((c) => !c.parent_comment_id);
     return topLevel.map((comment) => ({
@@ -87,9 +87,7 @@ export class DecisionCommentRepository {
     this.db
       .prepare('UPDATE decision_comments SET parent_comment_id = NULL WHERE parent_comment_id = ?')
       .run(id);
-    const result = this.db
-      .prepare('DELETE FROM decision_comments WHERE id = ?')
-      .run(id);
+    const result = this.db.prepare('DELETE FROM decision_comments WHERE id = ?').run(id);
     return result.changes > 0;
   }
 
@@ -103,8 +101,6 @@ export class DecisionCommentRepository {
 
   /** Delete all comments for a decision. */
   deleteByDecision(decisionId: string): void {
-    this.db
-      .prepare('DELETE FROM decision_comments WHERE decision_id = ?')
-      .run(decisionId);
+    this.db.prepare('DELETE FROM decision_comments WHERE decision_id = ?').run(decisionId);
   }
 }

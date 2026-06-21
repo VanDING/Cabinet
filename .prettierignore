@@ -8,3 +8,6 @@ pnpm-lock.yaml
 apps/desktop/src-tauri/target
 **/*.rs
 **/*.toml
+**/generated*.css
+**/generated*.ts
+apps/desktop/src-tauri/resources/frontend/**
