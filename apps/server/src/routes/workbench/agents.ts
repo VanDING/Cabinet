@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { getServerContext } from '../../context.js';
 import { Scanner, RECIPES, getProjector } from '@cabinet/agent';
 import type { McpServerRow } from '@cabinet/storage';
+import { decryptApiKey } from '../../crypto.js';
+import { MASTER_PW } from '../settings/persistence.js';
 
 export const workbenchAgentsRouter = new Hono();
 
@@ -62,7 +64,11 @@ workbenchAgentsRouter.get('/:agentId/env', (c) => {
   }
   for (const key of apiKeyRepo.findAll()) {
     const upper = key.provider.toUpperCase();
-    env[`${upper}_API_KEY`] = key.encrypted_key;
+    try {
+      env[`${upper}_API_KEY`] = decryptApiKey(key.encrypted_key, MASTER_PW);
+    } catch {
+      env[`${upper}_API_KEY`] = key.encrypted_key;
+    }
   }
   return c.json({ env });
 });
@@ -96,7 +102,16 @@ workbenchAgentsRouter.post('/:agentId/project', async (c) => {
     }
   }
 
-  const apiKeys = apiKeyRepo.findAll().map((k) => ({ provider: k.provider, key: k.encrypted_key }));
+  const apiKeys = apiKeyRepo.findAll().map((k) => ({
+    provider: k.provider,
+    key: (() => {
+      try {
+        return decryptApiKey(k.encrypted_key, MASTER_PW);
+      } catch {
+        return k.encrypted_key;
+      }
+    })(),
+  }));
   const boundMcp = agentBindingRepo.getMcpBindingsForAgent(agentId).filter((b) => b.enabled);
   const mcpServers = mcpServerRepo
     .findAll()

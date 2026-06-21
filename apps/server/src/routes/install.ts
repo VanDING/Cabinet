@@ -104,10 +104,9 @@ installRouter.post('/cancel/:taskId', (c) => {
 });
 
 installRouter.post('/deep-scan', async (c) => {
-  const results = await new Scanner(
-    (await import('../../context.js')).getServerContext().agentRegistry,
-    (await import('../../context.js')).getServerContext().agentRoleRepo,
-  ).scanAll();
+  const { getServerContext } = await import('../context.js');
+  const { agentRegistry, agentRoleRepo } = getServerContext();
+  const results = await new Scanner(agentRegistry, agentRoleRepo).scanAll();
   return c.json({
     agents: results.map((r) => ({
       id: r.recipe.id,
