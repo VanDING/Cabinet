@@ -221,15 +221,6 @@ export {
   type PISFactor,
 } from './process-identity-score.js';
 
-// Agent discovery & config scanning
-export {
-  AGENT_DEFINITIONS,
-  getAgentDefinition,
-  getAgentDefinitionByCommand,
-  getCurrentPlatform,
-  type AgentDefinition,
-  type InstallMethod,
-} from './discovery/agent-definitions.js';
 // New scanner + recipes
 export { Scanner } from './discovery/scanner.js';
 export { RECIPES } from './discovery/scanner-recipe.js';

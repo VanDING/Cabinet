@@ -1,10 +1,7 @@
-export { SkillsTab } from './SkillsTab.js';
-export { ApiKeysTab } from './ApiKeysTab.js';
 export { BackupsTab } from './BackupsTab.js';
 export { MaintenanceTab } from './MaintenanceTab.js';
 export { AuditTab } from './AuditTab.js';
 export { RulesTab } from './RulesTab.js';
-export { McpTab } from './McpTab.js';
 export { OthersTab } from './OthersTab.js';
 export { ThemeTab } from './ThemeTab.js';
 export { MonitorTab } from './MonitorTab.js';
