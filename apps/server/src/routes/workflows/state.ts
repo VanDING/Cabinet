@@ -1,12 +1,11 @@
 import type { WorkflowCapabilities } from '@cabinet/types';
-import { AgentLoop, ToolExecutor } from '@cabinet/agent';
 
 // ── ToolExecutor cache (keyed by capability JSON hash) ──
-export const toolExecutorCache = new Map<string, ToolExecutor>();
+export const toolExecutorCache = new Map<string, any>();
 
-// ── AgentLoop instance pool (keyed by runId:agentId, LRU eviction, max 10) ──
+// ── Agent instance pool (keyed by runId:agentId, LRU eviction, max 10) ──
 export const AGENT_LOOP_POOL_MAX = 10;
-export const agentLoopPool = new Map<string, AgentLoop>();
+export const agentLoopPool = new Map<string, any>();
 
 // ── Capabilities cache (workflowId → capabilities declared in definition) ──
 export const capabilityCache = new Map<string, WorkflowCapabilities>();

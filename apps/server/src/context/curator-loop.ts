@@ -6,9 +6,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Database } from '@cabinet/storage';
 import type { LLMGateway, CostTracker } from '@cabinet/gateway';
-import { AgentLoop, SafetyChecker, CheckpointManager } from '@cabinet/agent';
-import type { ToolDependencies, AgentRoleRegistry } from '@cabinet/agent';
-import { createStandardToolExecutor } from '../agent-factory.js';
+import { SdkAgentLoopAdapter } from '@cabinet/agent';
+import type { AgentRoleRegistry, ToolDependencies } from '@cabinet/agent';
 import { createFileCapabilities, createKnowledgeCapabilities } from '../capabilities.js';
 import type {
   ShortTermMemory,
@@ -21,7 +20,7 @@ import type { DecisionService } from '@cabinet/decision';
 import type { DecisionRepository } from '@cabinet/storage';
 import type { EventBus } from '@cabinet/events';
 import type { SessionManager } from '@cabinet/secretary';
-import { DEFAULT_CAPTAIN_ID, DelegationTier } from '@cabinet/types';
+import { DelegationTier } from '@cabinet/types';
 
 const RAG_CURATOR_TOP_K = 10;
 
@@ -49,7 +48,7 @@ export interface CuratorLoopDeps {
   ctx: Record<string, unknown>;
 }
 
-export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
+export function createCuratorLoop(deps: CuratorLoopDeps): any {
   const gateway = deps.gateway;
   if (!gateway) return null;
 
@@ -195,6 +194,27 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     },
     searchFiles: fileCaps.searchFiles,
     searchContent: fileCaps.searchContent,
+    writeFile: async () => {
+      throw new Error('File write not available');
+    },
+    editFile: async () => {
+      throw new Error('File edit not available');
+    },
+    applyPatch: async () => {
+      throw new Error('Patch not available');
+    },
+    moveFile: async () => {
+      throw new Error('File move not available');
+    },
+    copyFile: async () => {
+      throw new Error('File copy not available');
+    },
+    makeDirectory: async () => {
+      throw new Error('Directory create not available');
+    },
+    fileInfo: async () => {
+      throw new Error('File info not available');
+    },
     deleteFile: async () => {
       throw new Error('File deletion not available');
     },
@@ -336,35 +356,13 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
     },
   };
 
-  const executor = createStandardToolExecutor(
-    deps.ctx as unknown as Parameters<typeof createStandardToolExecutor>[0],
-    curatorDeps,
-    role.allowedTools,
-  );
-  const checkpointManager = new CheckpointManager(deps.db);
-
-  return new AgentLoop({
-    costTracker: deps.costTracker,
-    gateway,
-    toolExecutor: executor,
-    safetyChecker: (() => {
-      const s = new SafetyChecker(deps.currentTier);
-      const mcpMgr = (deps.ctx as any).mcpManager;
-      if (mcpMgr?.getToolRisk) {
-        s.setMcpRiskResolver((name: string) => mcpMgr.getToolRisk(name));
-      }
-      return s;
-    })(),
-    checkpointManager,
-    memoryProvider: deps.memoryFacade,
-    sessionId: `curator_bg_${Date.now()}`,
-    projectId: 'default',
-    captainId: DEFAULT_CAPTAIN_ID,
-    roleModules: role.modules,
+  return new SdkAgentLoopAdapter(curatorDeps, {
+    instructions:
+      role.modules?.identity ?? 'You are the Curator — a background consolidation agent.',
     model: ((gateway as any)?.resolveModelString?.(role.modelTier) as string) ?? role.modelTier,
-    maxSteps: role.maxSteps ?? 50,
-    maxResponseTokens: role.maxResponseTokens,
     temperature: role.temperature,
-    contextBudget: role.contextBudget,
+    maxResponseTokens: role.maxResponseTokens,
+    maxSteps: role.maxSteps ?? 50,
+    allowedTools: role.allowedTools,
   });
 }

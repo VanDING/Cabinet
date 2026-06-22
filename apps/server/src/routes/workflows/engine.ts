@@ -6,18 +6,7 @@ import {
   type WorkflowRun,
   type AgentLoopHandle,
 } from '@cabinet/workflow';
-import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
-import {
-  AgentLoop,
-  ToolExecutor,
-  SafetyChecker,
-  CheckpointManager,
-  registerCabinetTools,
-  registerSkillTools,
-  registerMCPTools,
-  CliAdapter,
-  A2AConnector,
-} from '@cabinet/agent';
+import { SdkAgentLoopAdapter, CliAdapter, A2AConnector } from '@cabinet/agent';
 import { buildEnvironmentSection } from '../../capabilities.js';
 import {
   toolExecutorCache,
@@ -26,38 +15,6 @@ import {
   pendingCapabilities,
 } from './state.js';
 import { buildToolDependencies } from './tool-deps.js';
-
-// ── Workflow memory provider (per-run isolation) ──
-export function buildWorkflowMemoryProvider(runId: string) {
-  const ctx = getServerContext();
-  return {
-    async getShortTerm(_sid: string) {
-      return [];
-    },
-    async getProjectContext(_pid: string) {
-      const projCtx = ctx.project.get(_pid);
-      if (!projCtx) return `Cabinet v2.0 project. ${_pid}`;
-      return `Project: ${projCtx.summary}\nGoals: ${projCtx.goals.join(', ')}`;
-    },
-    async getEntityPreferences(_captainId: string) {
-      const prefs = ctx.entity.getPreferences(_captainId);
-      return prefs?.preferences ?? {};
-    },
-    async searchLongTerm(query: string, _pid: string) {
-      let queryEmbedding: number[] | undefined;
-      if (ctx.gateway) {
-        try {
-          const er = await ctx.gateway.generateEmbeddings({ texts: [query] });
-          queryEmbedding = er.embeddings[0];
-        } catch {
-          /* fall back to text search */
-        }
-      }
-      const results = await ctx.longTerm.search(query, 5, queryEmbedding);
-      return results.map((r) => `[Memory] ${r.content}`);
-    },
-  };
-}
 
 // ── Shared engine instance ──
 let engine: WorkflowEngine | null = null;
@@ -101,81 +58,44 @@ export function getEngine(): WorkflowEngine {
         }
       }
 
-      // Reuse a cached ToolExecutor for the same capabilities (avoid re-registering all tools)
-      const capsKey = JSON.stringify(pendingCapabilities);
-      let baseExecutor = toolExecutorCache.get(capsKey);
-      if (!baseExecutor) {
-        baseExecutor = new ToolExecutor();
-        registerCabinetTools(baseExecutor, buildToolDependencies(pendingCapabilities));
-        registerSkillTools(baseExecutor);
-        const mcpCtx = getServerContext();
-        registerMCPTools(
-          baseExecutor,
-          (name, args, trustLevel) => mcpCtx.mcpManager.callTool(name, args, trustLevel),
-          () => mcpCtx.mcpManager.listTools(),
-        );
-        baseExecutor.setToolCallCallback((toolName, success, blocked, durationMs) => {
-          ctx.observability.recordToolCall(toolName, success, blocked, durationMs);
-        });
-        toolExecutorCache.set(capsKey, baseExecutor);
-      }
+      const toolDeps = buildToolDependencies(pendingCapabilities);
+      const instructions = buildEnvironmentSection() + '\n\n' + role.modules.identity;
+      const model = (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier;
 
-      // Create a filtered view instead of rebuilding the tool registry
-      const executor =
-        role.allowedTools.length > 0 ? baseExecutor.createView(role.allowedTools) : baseExecutor;
-
-      const checkpointManager = new CheckpointManager(ctx.db);
-      const loop = new AgentLoop({
-        gateway: ctx.gateway,
-        toolExecutor: executor,
-        safetyChecker: (() => {
-          const s = new SafetyChecker(ctx.delegationTier);
-          s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
-          return s;
-        })(),
-        checkpointManager,
-        memoryProvider: buildWorkflowMemoryProvider(runId),
-        sessionId: cacheKey,
-        projectId: 'default',
-        captainId: DEFAULT_CAPTAIN_ID,
-        systemPrompt: buildEnvironmentSection() + '\n\n' + role.modules.identity,
-        model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
-        maxSteps: options.persistent !== false ? 20 : 50,
-        maxResponseTokens: role.maxResponseTokens,
+      const adapter = new SdkAgentLoopAdapter(toolDeps, {
+        instructions,
+        model,
         temperature: role.temperature,
-        contextBudget: role.contextBudget,
-        toolPruner: undefined, // removed from ServerContext — fixed small tool set
+        maxResponseTokens: role.maxResponseTokens,
+        maxSteps: options.persistent !== false ? 20 : 50,
+        allowedTools: role.allowedTools,
       });
 
-      // Add to pool with LRU eviction
+      // Add to pool with LRU eviction (cache by config)
       if (options.persistent !== false) {
         if (agentLoopPool.size >= AGENT_LOOP_POOL_MAX) {
           const firstKey = agentLoopPool.keys().next().value;
-          if (firstKey) {
-            agentLoopPool.get(firstKey)?.resetHandoff();
-            agentLoopPool.delete(firstKey);
-          }
+          if (firstKey) agentLoopPool.delete(firstKey);
         }
-        agentLoopPool.set(cacheKey, loop);
+        agentLoopPool.set(cacheKey, adapter);
       }
 
       return {
         async run(message: string) {
-          const result = await loop.run(message);
+          const result = await adapter.run(message);
           ctx.metrics.increment('llm_call', {
-            model: (ctx.gateway as any).resolveModelString?.(role.modelTier) ?? role.modelTier,
+            model,
             purpose: 'workflow_segment',
           });
           return result.content;
         },
         async dispose() {
-          loop.resetHandoff();
           if (options.persistent === false) {
             agentLoopPool.delete(cacheKey);
           }
         },
         async handoff() {
-          return loop.generateHandoff();
+          return ''; // handoff replaced by subagent context passing
         },
       };
     },
