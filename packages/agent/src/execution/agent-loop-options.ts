@@ -114,8 +114,6 @@ export interface AgentLoopOptions {
   autoReplan?: AutoReplanConfig;
   /** Self-consistency config (P1-6). Engine exposed via getSelfConsistencyEngine(). */
   selfConsistency?: SelfConsistencyConfig;
-  /** Observer pipeline preset: minimal | standard | enhanced | full (default: standard). */
-  observerPreset?: import('./observer-presets.js').ObserverPresetName;
 }
 
 export interface AgentResult {
