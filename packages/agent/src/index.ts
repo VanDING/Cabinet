@@ -1,4 +1,6 @@
 // ── SDK v7 Agent Exports ────────────────────────────────────────
+export { initTelemetry } from './telemetry.js';
+
 export { createSecretaryAgent, createCuratorAgent } from './agents.js';
 export { createSdkTools } from './tools-wrapper.js';
 export { buildInstructions, prepareStep } from './context.js';
