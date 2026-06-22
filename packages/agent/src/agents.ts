@@ -15,6 +15,12 @@ export function createSecretaryAgent(deps: ToolDependencies): ToolLoopAgent<any,
     stopWhen: isStepCount(50),
     prepareStep,
 
+    toolApproval: {
+      execCommand: 'user-approval',
+      deleteFile: 'user-approval',
+      writeFile: 'user-approval',
+    },
+
     onStepEnd: async ({ stepNumber, usage, finishReason, toolCalls }) => {
       // TODO: checkpoint save, observability
     },
