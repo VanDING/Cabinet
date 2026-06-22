@@ -1,3 +1,8 @@
+// ── SDK v7 Agent Exports ────────────────────────────────────────
+export { createSecretaryAgent, createCuratorAgent } from './agents.js';
+export { createSdkTools } from './tools-wrapper.js';
+export { buildInstructions } from './context.js';
+
 export {
   ToolExecutor,
   type ToolResult,

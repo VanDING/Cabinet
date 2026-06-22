@@ -20,9 +20,10 @@
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",
-    "ai": "^6.0.188",
+    "ai": "7.0.0-beta.182",
     "js-tiktoken": "^1.0.21",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",

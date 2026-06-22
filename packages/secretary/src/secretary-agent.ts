@@ -12,6 +12,20 @@ export interface AgentRunner {
   ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }>;
 }
 
+/** Minimal interface for SDK ToolLoopAgent to avoid direct ai dependency. */
+export interface SdkAgent {
+  generate(opts: {
+    prompt: string;
+    runtimeContext?: Record<string, unknown>;
+    toolsContext?: Record<string, unknown>;
+  }): Promise<{ text: string; steps: unknown[] }>;
+  stream(opts: {
+    prompt: string;
+    runtimeContext?: Record<string, unknown>;
+    toolsContext?: Record<string, unknown>;
+  }): Promise<{ textStream: AsyncIterable<string> }>;
+}
+
 export interface RouteFeedback {
   message: string;
   routedAgent: string;
@@ -47,6 +61,12 @@ export class SecretaryAgent {
     private readonly feedbackStore?: FeedbackStore,
     private readonly runner?: AgentRunner,
     private readonly systemPrompt?: string,
+    /** SDK ToolLoopAgent — when set, takes precedence over agentLoop */
+    private readonly sdkAgent?: SdkAgent,
+    private readonly buildSdkContext?: () => {
+      runtimeContext?: Record<string, unknown>;
+      toolsContext?: Record<string, unknown>;
+    },
   ) {
     this.intentParser = intentParser;
   }
@@ -141,7 +161,15 @@ export class SecretaryAgent {
     let response: string;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
-      if (this.runner) {
+      if (this.sdkAgent) {
+        const ctx = this.buildSdkContext?.();
+        const result = await this.sdkAgent.generate({
+          prompt: message,
+          runtimeContext: ctx?.runtimeContext,
+          toolsContext: ctx?.toolsContext,
+        });
+        response = result.text;
+      } else if (this.runner) {
         const result = await this.runner.run(this.buildSystemPrompt(), this.buildMessages(message));
         response = result.content;
         usage = result.usage;
@@ -181,7 +209,16 @@ export class SecretaryAgent {
       }
 
       // Synthesize through secretary
-      if (this.runner) {
+      if (this.sdkAgent) {
+        const synthesis = this.buildSynthesisPrompt(targetAgent, message, response);
+        const ctx = this.buildSdkContext?.();
+        const result = await this.sdkAgent.generate({
+          prompt: synthesis,
+          runtimeContext: ctx?.runtimeContext,
+          toolsContext: ctx?.toolsContext,
+        });
+        response = result.text;
+      } else if (this.runner) {
         const synthPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
         const result = await this.runner.run(this.buildSystemPrompt(), [
           { role: 'user', content: synthPrompt },
@@ -250,7 +287,21 @@ export class SecretaryAgent {
 
     let response: string;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
-      if (this.runner) {
+      if (this.sdkAgent) {
+        const ctx = this.buildSdkContext?.();
+        let collected = '';
+        const result = await this.sdkAgent.stream({
+          prompt: message,
+          runtimeContext: ctx?.runtimeContext,
+          toolsContext: ctx?.toolsContext,
+        });
+        for await (const chunk of result.textStream) {
+          collected += chunk;
+          callback.onChunk(chunk);
+        }
+        response = collected;
+        callback.onDone(response);
+      } else if (this.runner) {
         const result = await this.runner.run(this.buildSystemPrompt(), this.buildMessages(message));
         response = result.content;
         callback.onChunk(response);
@@ -301,7 +352,22 @@ export class SecretaryAgent {
       if (feedback === 'positive') {
         await this.storeRouteFeedback(message, targetAgent, true, routingState?.lastRoute);
       }
-      if (this.runner) {
+      if (this.sdkAgent) {
+        const synthesisPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
+        const ctx = this.buildSdkContext?.();
+        let collected = '';
+        const streamResult = await this.sdkAgent.stream({
+          prompt: synthesisPrompt,
+          runtimeContext: ctx?.runtimeContext,
+          toolsContext: ctx?.toolsContext,
+        });
+        for await (const chunk of streamResult.textStream) {
+          collected += chunk;
+          callback.onChunk(chunk);
+        }
+        response = collected;
+        callback.onDone(response);
+      } else if (this.runner) {
         const synthPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
         const synthResult = await this.runner.run(this.buildSystemPrompt(), [
           { role: 'user', content: synthPrompt },
