@@ -1,8 +1,14 @@
 // ── SDK v7 Agent Exports ────────────────────────────────────────
 export { createSecretaryAgent, createCuratorAgent } from './agents.js';
 export { createSdkTools } from './tools-wrapper.js';
-export { buildInstructions } from './context.js';
+export { buildInstructions, prepareStep } from './context.js';
 export { dagToSubagentTools, dagToFlowDescription } from './subagent-orchestrator.js';
+export {
+  connectMCPServer,
+  disconnectMCPServer,
+  disconnectAllMCP,
+  getConnectedMCPServers,
+} from './mcp-integration.js';
 
 export {
   ToolExecutor,
