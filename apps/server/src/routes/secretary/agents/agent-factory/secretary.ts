@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { generateText } from 'ai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { AgentLoop, SafetyChecker, CheckpointManager } from '@cabinet/agent';
-import type { AgentRoleType } from '@cabinet/agent';
-import { SecretaryAgent, IntentParser } from '@cabinet/secretary';
+import type { AgentRoleType, ToolResult } from '@cabinet/agent';
+import { SecretaryAgent, type AgentRunner, IntentParser } from '@cabinet/secretary';
 import { getServerContext } from '../../../../context.js';
 import {
   createStandardToolExecutor,

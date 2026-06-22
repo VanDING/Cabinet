@@ -1,9 +1,16 @@
-import type { AgentLoop, StreamingCallback } from '@cabinet/agent';
+import type { AgentLoop, StreamingCallback, AgentResult } from '@cabinet/agent';
 import type { AgentRoleType } from '@cabinet/agent';
 import type { LLMGateway } from '@cabinet/gateway';
 import type { DelegationTier } from '@cabinet/types';
 import { IntentParser, type ParsedIntent, type AgentRouteResult } from './intent-parser.js';
 import { SessionManager } from './session-manager.js';
+
+export interface AgentRunner {
+  run(
+    systemPrompt: string,
+    messages: { role: string; content: string }[],
+  ): Promise<{ content: string; usage?: { promptTokens: number; completionTokens: number } }>;
+}
 
 export interface RouteFeedback {
   message: string;
@@ -27,26 +34,34 @@ export class SecretaryAgent {
   private lastRoutedAgent: string | null = null;
 
   constructor(
-    private readonly agentLoop: AgentLoop,
+    private readonly agentLoop: AgentLoop | null,
     intentParser: IntentParser,
     private readonly sessionManager: SessionManager,
     private readonly gateway?: LLMGateway,
-    /** Callback to dispatch a message to a specialist agent with streaming. */
     private readonly dispatchToRole?: (
       roleType: AgentRoleType,
       message: string,
       sessionId: string,
       callback: StreamingCallback,
     ) => Promise<void>,
-    /** Feedback store for route learning (store + query). */
     private readonly feedbackStore?: FeedbackStore,
+    private readonly runner?: AgentRunner,
+    private readonly systemPrompt?: string,
   ) {
     this.intentParser = intentParser;
   }
 
+  private buildSystemPrompt(): string {
+    return this.systemPrompt ?? 'You are a helpful assistant.';
+  }
+
+  private buildMessages(message: string): { role: string; content: string }[] {
+    return [{ role: 'user', content: message }];
+  }
+
   /** Update delegation tier on the underlying AgentLoop (called when user changes tier in UI). */
   setDelegationTier(tier: DelegationTier): void {
-    this.agentLoop.setDelegationTier(tier);
+    this.agentLoop?.setDelegationTier(tier);
   }
 
   private detectInterrupt(message: string): boolean {
@@ -126,21 +141,16 @@ export class SecretaryAgent {
     let response: string;
     let usage: { promptTokens: number; completionTokens: number } | undefined;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
-      if (this.agentLoop) {
+      if (this.runner) {
+        const result = await this.runner.run(this.buildSystemPrompt(), this.buildMessages(message));
+        response = result.content;
+        usage = result.usage;
+      } else if (this.agentLoop) {
         const result = await this.agentLoop.run(message);
         response = result.content;
         usage = result.usage;
       } else {
-        response = [
-          `[No LLM available]`,
-          `Intent: ${routeResult.intent.kind}`,
-          `Would route to: ${targetAgent}`,
-          routeResult.confidence < 0.5
-            ? `\nNote: low confidence (${(routeResult.confidence * 100).toFixed(0)}%). ${routeResult.suggestion ?? ''}`
-            : '',
-        ]
-          .filter(Boolean)
-          .join('\n');
+        response = `[No LLM available]`;
       }
     } else {
       // Orchestrator mode: run specialist first, then secretary synthesizes
@@ -171,7 +181,14 @@ export class SecretaryAgent {
       }
 
       // Synthesize through secretary
-      if (this.agentLoop) {
+      if (this.runner) {
+        const synthPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
+        const result = await this.runner.run(this.buildSystemPrompt(), [
+          { role: 'user', content: synthPrompt },
+        ]);
+        response = result.content;
+        usage = result.usage;
+      } else if (this.agentLoop) {
         const synthesis = this.buildSynthesisPrompt(targetAgent, message, response);
         const result = await this.agentLoop.run(synthesis);
         response = result.content;
@@ -233,22 +250,20 @@ export class SecretaryAgent {
 
     let response: string;
     if (targetAgent === 'secretary' || !this.dispatchToRole) {
-      if (this.agentLoop) {
+      if (this.runner) {
+        const result = await this.runner.run(this.buildSystemPrompt(), this.buildMessages(message));
+        response = result.content;
+        callback.onChunk(response);
+        callback.onDone(response);
+      } else if (this.agentLoop) {
         const result = await this.agentLoop.runStreaming(message, callback);
         response = result.content;
       } else {
-        response = [
-          `[No LLM available]`,
-          `Intent: ${routeResult.intent.kind}`,
-          `Would route to: ${targetAgent}`,
-        ]
-          .filter(Boolean)
-          .join('\n');
+        response = `[No LLM available]`;
         callback.onChunk(response);
         callback.onDone(response);
       }
     } else {
-      // Orchestrator mode: track specialist activity, then secretary synthesizes
       callback.onSubAgentStart?.(targetAgent, message);
       let streamedContent = '';
       const toolCalls: { name: string; args: Record<string, unknown> }[] = [];
@@ -283,13 +298,18 @@ export class SecretaryAgent {
         },
       });
       response = streamedContent;
-
       if (feedback === 'positive') {
         await this.storeRouteFeedback(message, targetAgent, true, routingState?.lastRoute);
       }
-
-      // Secretary synthesizes specialist output for the Captain
-      if (this.agentLoop) {
+      if (this.runner) {
+        const synthPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
+        const synthResult = await this.runner.run(this.buildSystemPrompt(), [
+          { role: 'user', content: synthPrompt },
+        ]);
+        response = synthResult.content;
+        callback.onChunk(response);
+        callback.onDone(response);
+      } else if (this.agentLoop) {
         const synthesisPrompt = this.buildSynthesisPrompt(targetAgent, message, response);
         const result = await this.agentLoop.runStreaming(synthesisPrompt, callback);
         response = result.content;
