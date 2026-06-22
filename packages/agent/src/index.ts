@@ -11,6 +11,7 @@ export {
   disconnectAllMCP,
   getConnectedMCPServers,
 } from './mcp-integration.js';
+export { SdkAgentLoopAdapter } from './sdk-adapter.js';
 
 export {
   ToolExecutor,

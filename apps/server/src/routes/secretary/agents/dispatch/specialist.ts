@@ -81,7 +81,7 @@ export async function dispatchToSpecialist(
 
       const toolCallSummary =
         result.toolCalls.length > 0
-          ? `\nTool calls made by ${roleType} during execution:\n${result.toolCalls.map((t) => `- ${t.name}(${JSON.stringify(t.args).slice(0, 100)}): ${JSON.stringify(t.result).slice(0, 100)}`).join('\n')}`
+          ? `\nTool calls made by ${roleType} during execution:\n${result.toolCalls.map((t: any) => `- ${t.name}(${JSON.stringify(t.args).slice(0, 100)}): ${JSON.stringify(t.result).slice(0, 100)}`).join('\n')}`
           : '';
 
       const reviewTask = [

@@ -234,7 +234,7 @@ export async function dispatchToSpecialistStreaming(
         ].join('\n');
         reviewerLoop
           .run(reviewTask)
-          .then((reviewResult) => {
+          .then((reviewResult: any) => {
             const reviewMatch = reviewResult.content.match(/\{[\s\S]*\}/);
             const review = reviewMatch
               ? JSON.parse(reviewMatch[0])
@@ -271,7 +271,7 @@ export async function dispatchToSpecialistStreaming(
               });
             }
           })
-          .catch((err) => {
+          .catch((err: any) => {
             console.warn('Operation failed', err);
           });
       }

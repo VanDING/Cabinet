@@ -1,16 +1,15 @@
-import type { AgentLoop } from '@cabinet/agent';
 import type { SecretaryAgent } from '@cabinet/secretary';
 
-// ── Multi-agent cache (keyed by sessionId:roleType) ──
-export const agentLoopCache = new Map<string, AgentLoop>();
+// ── Multi-agent cache (keyed by sessionId:roleType) — stores AgentLoop or SdkAgentLoopAdapter
+export const agentLoopCache = new Map<string, any>();
 export const MAX_CACHE_SIZE = 100;
 
 // Per-session secretary agents (keyed by sessionId)
 export const secretaryAgentCache = new Map<string, SecretaryAgent>();
-export const secretaryAgentLoopCache = new Map<string, AgentLoop>();
+export const secretaryAgentLoopCache = new Map<string, any>();
 
-// Reviewer AgentLoop cache (keyed by delegation tier)
-export const reviewerLoopCache = new Map<string, AgentLoop>();
+// Reviewer cache (keyed by delegation tier)
+export const reviewerLoopCache = new Map<string, any>();
 export const REVIEWER_CACHE_SIZE = 20;
 
 // Per-session trust level overrides (detected from natural language)

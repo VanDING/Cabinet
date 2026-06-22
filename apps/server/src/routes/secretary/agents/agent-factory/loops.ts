@@ -1,6 +1,12 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { AgentLoop, SafetyChecker, CheckpointManager, AgentRoleRegistry } from '@cabinet/agent';
+import {
+  AgentLoop,
+  SafetyChecker,
+  CheckpointManager,
+  AgentRoleRegistry,
+  SdkAgentLoopAdapter,
+} from '@cabinet/agent';
 import type { AgentRoleType } from '@cabinet/agent';
 import { DEFAULT_CAPTAIN_ID, type DelegationTier } from '@cabinet/types';
 import { getServerContext, onTierChange } from '../../../../context.js';
@@ -25,7 +31,7 @@ import {
 onTierChange((tier: DelegationTier) => {
   for (const loop of agentLoopCache.values()) {
     try {
-      loop.setDelegationTier(tier);
+      (loop as any).setDelegationTier?.(tier);
     } catch {
       /* non-fatal */
     }
@@ -39,7 +45,7 @@ onTierChange((tier: DelegationTier) => {
   }
 });
 
-/** Get or create an AgentLoop for a specific role. */
+/** Get or create an agent (SDK adapter or legacy AgentLoop) for a specific role. */
 export function getAgentLoopForRole(
   roleType: AgentRoleType,
   sessionId: string,
@@ -48,7 +54,7 @@ export function getAgentLoopForRole(
   thinkingBudget?: number,
   model?: string,
   memorySessionId?: string,
-): AgentLoop | null {
+): any {
   const ctx = getServerContext();
   if (!ctx.gateway) return null;
 
@@ -135,144 +141,111 @@ export function getAgentLoopForRole(
     }
   }
 
-  const checkpointManager = new CheckpointManager(ctx.db);
-  const rulesLoader = buildRulesLoader(projectRootPath);
-  const loop = new AgentLoop({
-    costTracker: ctx.costTracker,
-    gateway: ctx.gateway,
-    toolExecutor: executor,
-    safetyChecker: (() => {
-      const s = new SafetyChecker(ctx.delegationTier);
-      s.setMcpRiskResolver((name: string) => ctx.mcpManager.getToolRisk(name));
-      return s;
-    })(),
-    checkpointManager,
-    memoryProvider: createStandardMemoryProvider(ctx, projectId),
-    rulesLoader,
-    sessionId: `${sessionId}-${role.type}`,
-    memorySessionId: memorySessionId ?? sessionId,
-    projectId,
-    captainId,
-    roleModules: { identity: buildSystemPrompt(role.type, effectiveSystemPrompt, projectRootPath) },
-    model: effectiveModel ?? resolveModel(role),
-    maxSteps: role.maxSteps ?? 50,
-    maxResponseTokens: effectiveMaxResponseTokens,
-    temperature: effectiveTemperature,
-    contextBudget: role.contextBudget,
-    thinkingBudget,
-    trustLevel: sessionTrustLevel.get(sessionId) ?? undefined,
-    blackboard: ctx.blackboard,
-    mcpResources: ctx.mcpManager
-      .listResources()
-      .map((r: any) => ({ uri: r.uri, name: r.name, description: r.description })),
-    mcpPrompts: ctx.mcpManager
-      .listPrompts()
-      .map((p: any) => ({ name: p.name, description: p.description })),
-    // toolPruner removed from ServerContext — fixed small tool set
+  // Build tool dependencies for the SDK adapter
+  const toolDeps = buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
+    getAgentLoopForRole: ((
+      roleType: any,
+      sessionId: any,
+      projectId: any,
+      captainId: any,
+      thinkingBudget?: number,
+      model?: string,
+      memorySessionId?: string,
+    ) =>
+      getAgentLoopForRole(
+        roleType,
+        sessionId,
+        projectId,
+        captainId,
+        thinkingBudget,
+        model,
+        memorySessionId,
+      )) as any,
+    resolveModel,
   });
 
-  // FIFO eviction
+  const instructions = buildSystemPrompt(role.type, effectiveSystemPrompt, projectRootPath);
+
+  // Add MCP resource/prompt context to instructions
+  const mcpResources = ctx.mcpManager.listResources() as any[];
+  const mcpPrompts = ctx.mcpManager.listPrompts() as any[];
+  const mcpContext = [
+    ...(mcpResources.length > 0
+      ? ['Available MCP resources:', ...mcpResources.map((r: any) => `- ${r.name}: ${r.uri}`)]
+      : []),
+    ...(mcpPrompts.length > 0
+      ? ['Available MCP prompts:', ...mcpPrompts.map((p: any) => `- ${p.name}: ${p.description}`)]
+      : []),
+  ].join('\n');
+  const fullInstructions = mcpContext ? `${instructions}\n\n${mcpContext}` : instructions;
+
+  const loop = new SdkAgentLoopAdapter(toolDeps, {
+    instructions: fullInstructions,
+    model: effectiveModel ?? resolveModel(role),
+    temperature: effectiveTemperature,
+    maxResponseTokens: effectiveMaxResponseTokens,
+    maxSteps: role.maxSteps ?? 50,
+    allowedTools: effectiveAllowedTools,
+  });
+
+  // Cache for reuse
   if (agentLoopCache.size >= MAX_CACHE_SIZE) {
     const firstKey = agentLoopCache.keys().next().value;
     if (firstKey) agentLoopCache.delete(firstKey);
   }
-  // Wire observability + skill extraction on session completion
-  loop.onSessionComplete = (summary: any) => {
-    const ctx = getServerContext();
-    ctx.observability.recordSession({
-      sessionId: summary.sessionId,
-      projectId: summary.projectId,
-      captainId: summary.captainId,
-      role: role.type,
-      model: summary.model,
-      startTime: summary.startTime,
-      totalSteps: summary.totalSteps,
-      totalTokens: summary.totalTokens,
-      totalCost: 0,
-      toolCalls: summary.toolCalls,
-      contextZoneDistribution: summary.contextZones,
-      contextHandoffs: summary.contextHandoffs,
-      qualityChecks: { total: 0, passed: 0 },
-      errors: summary.errors,
-      durationMs: summary.durationMs,
-      success: summary.success,
-    });
-
-    // Auto-extract skill from successful complex sessions
-    ctx.skillExtractor
-      .extract(summary)
-      .then((skill: any) => {
-        if (skill) {
-          const quality = ctx.skillExtractor.scoreSkillQuality(skill);
-          const path = ctx.skillExtractor.save(skill, quality);
-          ctx.logger.info('Auto-skill extracted', { name: skill.name, path });
-        }
-      })
-      .catch((err: any) => {
-        console.warn('Operation failed', err);
-      });
-
-    // Subconscious loop tick — write insights to blackboard for next session context
-    if (ctx.subconsciousLoop && ctx.blackboard) {
-      ctx.subconsciousLoop
-        .tick()
-        .then((insights: any[]) => {
-          for (const insight of insights) {
-            ctx.blackboard!.write('insights', insight, summary.sessionId).catch(() => {});
-          }
-        })
-        .catch(() => {});
-    }
-  };
-
   agentLoopCache.set(cacheKey, loop);
   return loop;
 }
 
-/** Create a fresh (non-cached) Reviewer AgentLoop for quality review tasks. */
-export function createReviewerLoop(
-  ctx: import('../../../../context.js').ServerContext,
-): AgentLoop | null {
+/** Create a fresh (non-cached) Reviewer agent for quality review tasks. */
+export function createReviewerLoop(ctx: import('../../../../context.js').ServerContext): any {
   if (!ctx.gateway) return null;
 
   const registry = ctx.agentRegistry;
   const role = registry.get('reviewer');
   if (!role) return null;
 
-  // Check cache first
   const cacheKey = `reviewer_${ctx.delegationTier}`;
   const cached = reviewerLoopCache.get(cacheKey);
   if (cached) return cached;
 
-  const executor = createStandardToolExecutor(ctx, buildToolDependencies(ctx), role.allowedTools);
-
-  const checkpointManager = new CheckpointManager(ctx.db);
-  const rulesLoader = buildRulesLoader();
-  const loop = new AgentLoop({
-    costTracker: ctx.costTracker,
-    gateway: ctx.gateway,
-    toolExecutor: executor,
-    safetyChecker: (() => {
-      const s = new SafetyChecker(ctx.delegationTier);
-      s.setMcpRiskResolver((name) => ctx.mcpManager.getToolRisk(name));
-      return s;
-    })(),
-    checkpointManager,
-    memoryProvider: createStandardMemoryProvider(ctx, 'default'),
-    rulesLoader,
-    sessionId: `reviewer_${Date.now()}`,
-    projectId: 'default',
-    captainId: DEFAULT_CAPTAIN_ID,
-    roleModules: { identity: buildSystemPrompt(role.type, role.modules.identity) },
-    model: resolveModel(role),
-    maxSteps: role.maxSteps ?? 50,
-    maxResponseTokens: role.maxResponseTokens,
-    temperature: role.temperature,
-    contextBudget: role.contextBudget,
-    // toolPruner removed from ServerContext — fixed small tool set
+  const toolDeps = buildToolDependencies(ctx, undefined, {
+    getAgentLoopForRole: ((
+      roleType: any,
+      sessionId: any,
+      projectId: any,
+      captainId: any,
+      thinkingBudget?: number,
+      model?: string,
+      memorySessionId?: string,
+    ) => {
+      try {
+        return getAgentLoopForRole(
+          roleType,
+          sessionId,
+          projectId,
+          captainId,
+          thinkingBudget,
+          model,
+          memorySessionId,
+        );
+      } catch {
+        return null;
+      }
+    }) as any,
+    resolveModel,
   });
 
-  // FIFO eviction
+  const instructions = buildSystemPrompt(role.type, role.modules.identity);
+
+  const loop = new SdkAgentLoopAdapter(toolDeps, {
+    instructions,
+    model: resolveModel(role),
+    temperature: role.temperature,
+    maxResponseTokens: role.maxResponseTokens,
+    maxSteps: role.maxSteps ?? 50,
+  });
+
   if (reviewerLoopCache.size >= REVIEWER_CACHE_SIZE) {
     const firstKey = reviewerLoopCache.keys().next().value;
     if (firstKey) reviewerLoopCache.delete(firstKey);
