@@ -5,5 +5,6 @@ export {
   type AgentRunner,
   type FeedbackStore,
   type RouteFeedback,
+  type SdkAgent,
 } from './secretary-agent.js';
 export { GreetingService } from './greeting.js';

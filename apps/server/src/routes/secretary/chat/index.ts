@@ -58,7 +58,7 @@ export function registerChatRoute(router: Hono): void {
     }
 
     try {
-      const { agent, agentLoop } = getOrCreateAgent(
+      const { agent, agentLoop, sdkAgent } = getOrCreateAgent(
         sessionId,
         projectId || 'global',
         captainId,
@@ -184,12 +184,15 @@ export function registerChatRoute(router: Hono): void {
           routeResult?: import('@cabinet/secretary').AgentRouteResult;
           usage?: { promptTokens: number; completionTokens: number };
         };
-        if (skillInvokeContext && agentLoop) {
+        if (skillInvokeContext && (sdkAgent || agentLoop)) {
           ctx.sessionManager.addMessage(sessionId, 'user', message);
-          const loopResult = await agentLoop.run(skillInvokeContext.args);
-          ctx.sessionManager.addMessage(sessionId, 'assistant', loopResult.content);
+          const loopResult = sdkAgent
+            ? await (sdkAgent as any).generate({ prompt: skillInvokeContext.args })
+            : await agentLoop!.run(skillInvokeContext.args);
+          const content = loopResult.text ?? loopResult.content;
+          ctx.sessionManager.addMessage(sessionId, 'assistant', content);
           result = {
-            response: loopResult.content,
+            response: content,
             intent: {
               kind: 'invoke_skill',
               skillName: skillInvokeContext.skillName,

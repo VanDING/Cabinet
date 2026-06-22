@@ -2,9 +2,9 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { generateText } from 'ai';
 import { createDeepSeek } from '@ai-sdk/deepseek';
-import { AgentLoop, SafetyChecker, CheckpointManager } from '@cabinet/agent';
-import type { AgentRoleType, ToolResult } from '@cabinet/agent';
-import { SecretaryAgent, type AgentRunner, IntentParser } from '@cabinet/secretary';
+import { AgentLoop, SafetyChecker, CheckpointManager, createSecretaryAgent } from '@cabinet/agent';
+import type { AgentRoleType } from '@cabinet/agent';
+import { SecretaryAgent, type SdkAgent, type AgentRunner, IntentParser } from '@cabinet/secretary';
 import { getServerContext } from '../../../../context.js';
 import {
   createStandardToolExecutor,
@@ -50,14 +50,14 @@ export function getOrCreateAgent(
     return { agent: cached, agentLoop: secretaryAgentLoopCache.get(cacheKey) ?? null };
   }
 
-  // Secretary's own executor (all tools)
-  const executor = createStandardToolExecutor(
-    ctx,
-    buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
-      getAgentLoopForRole,
-      resolveModel,
-    }),
-  );
+  // Build tool dependencies (shared between old AgentLoop and new SDK agent)
+  const toolDeps = buildToolDependencies(ctx, projectId === 'global' ? undefined : projectId, {
+    getAgentLoopForRole,
+    resolveModel,
+  });
+
+  // Secretary's own executor (old path)
+  const executor = createStandardToolExecutor(ctx, toolDeps);
   const memoryProvider = createStandardMemoryProvider(ctx, projectId);
 
   // Load secretary role for temperature and system prompt
@@ -198,6 +198,18 @@ export function getOrCreateAgent(
     /* preferences not available — routing works without */
   }
 
+  // Create SDK v7 ToolLoopAgent (takes precedence over old AgentLoop)
+  let sdkSecretary: SdkAgent | undefined;
+  if (hasGateway) {
+    try {
+      sdkSecretary = createSecretaryAgent(toolDeps) as any;
+    } catch (err) {
+      ctx.logger.warn('SDK agent creation failed, falling back to old path', {
+        error: (err as Error).message,
+      });
+    }
+  }
+
   // Warm up embeddings eagerly so the first request doesn't pay the latency cost
   if (hasGateway) {
     intentParser.warmupEmbeddings().catch((err: any) => {
@@ -229,6 +241,18 @@ export function getOrCreateAgent(
       );
     },
     feedbackStore,
+    undefined, // runner (not used with SDK path)
+    undefined, // systemPrompt (built by instructions)
+    sdkSecretary, // sdkAgent — SDK ToolLoopAgent
+    () => ({
+      // buildSdkContext
+      runtimeContext: {
+        sessionId,
+        projectId,
+        captainId,
+      },
+      toolsContext: {},
+    }),
   );
 
   // FIFO eviction for secretary cache
@@ -241,5 +265,5 @@ export function getOrCreateAgent(
     secretaryAgentLoopCache.set(cacheKey, secretaryLoop);
   }
 
-  return { agent, agentLoop: secretaryLoop };
+  return { agent, agentLoop: secretaryLoop, sdkAgent: sdkSecretary };
 }
