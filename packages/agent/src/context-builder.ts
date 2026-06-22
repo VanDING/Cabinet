@@ -147,12 +147,23 @@ export class ContextBuilder {
       // Legacy full-override mode: skip all tiered assembly
       systemPrompt = options.systemPrompt;
     } else if (options.roleModules) {
+      let dynamicContext = '';
+      const ctxParts: string[] = [];
+      if (projectContext) {
+        ctxParts.push(`## Project Context\n${projectContext}`);
+      }
+      ctxParts.push(`Captain preferences: ${this.stableStringify(preferences)}`);
+      if (rules.length > 0) {
+        ctxParts.push('\n## Project Rules');
+        for (const rule of rules) {
+          ctxParts.push(`<!-- rule: ${rule.path} -->\n${rule.content}`);
+        }
+      }
+      dynamicContext = ctxParts.join('\n\n');
       systemPrompt = assemblePrompt({
         modules: options.roleModules,
         toolExecutor: this.toolExecutor,
-        dynamicContext: projectContext
-          ? `## Project Context\n${projectContext}\n\nCaptain preferences: ${this.stableStringify(preferences)}`
-          : undefined,
+        dynamicContext: dynamicContext || undefined,
       });
     } else {
       systemPrompt = this.buildDefaultSystemPrompt(

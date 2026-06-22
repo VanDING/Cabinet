@@ -1,44 +1,10 @@
 import type { ShortTermMemory } from './short-term.js';
 import type { LongTermMemory } from './long-term.js';
 import { WriteGate, type EmbeddingProvider } from './write-gate.js';
-import { CascadeBuffer, type CascadeEntry, type SealResult } from './cascade-buffer.js';
-
-/**
- * Result of an LLM-powered consolidation pass.
- */
-export interface ConsolidationResult {
-  sessionId: string;
-  /** Generated session summary. */
-  summary: string;
-  /** Key topics extracted. */
-  topics: string[];
-  /** Important knowledge to persist (with importance 0–1). */
-  memories: { content: string; importance: number }[];
-  /** Decisions made or referenced in this session. */
-  decisions: { title: string; outcome: string }[];
-  /** Suggested follow-up actions. */
-  suggestions: string[];
-}
-
-/**
- * Consolidation callback — provided by the server layer to invoke the Curator Agent.
- * Takes the full session transcript and returns a structured consolidation result.
- */
-export type ConsolidationCallBack = (
-  sessionId: string,
-  transcript: string,
-) => Promise<ConsolidationResult>;
+import { CascadeBuffer, type SealResult } from './cascade-buffer.js';
 
 export interface ConsolidationServiceOptions {
-  /** Optional embedding provider for WriteGate slow-path sampling. */
   embeddingProvider?: EmbeddingProvider;
-  /**
-   * Optional Curator-powered summarizer for CascadeBuffer seal.
-   * When provided, daily-tier buffers are summarized by the Curator agent
-   * instead of the default concatenation, unifying the Cascade and Curator
-   * pipelines.
-   */
-  curatorSummarizer?: (entries: CascadeEntry[]) => Promise<string>;
 }
 
 export class ConsolidationService {
@@ -60,7 +26,6 @@ export class ConsolidationService {
    */
   private writeGate = new WriteGate();
   private cascade = new CascadeBuffer();
-  private curatorSummarizer?: (entries: CascadeEntry[]) => Promise<string>;
 
   constructor(
     private readonly shortTerm: ShortTermMemory,
@@ -73,7 +38,6 @@ export class ConsolidationService {
         useEmbeddingSlowPath: true,
       });
     }
-    this.curatorSummarizer = options?.curatorSummarizer;
   }
 
   /**
@@ -277,7 +241,7 @@ export class ConsolidationService {
   async flushSession(sessionId: string): Promise<number> {
     let sealedCount = 0;
     for (const topic of this.cascade.getTopics(sessionId)) {
-      const result = await this.sealWithCurator(sessionId, topic);
+      const result = await this.cascade.seal(sessionId, topic);
       if (result.summaryContent.length === 0) continue;
       await this.longTerm.store({
         content: result.summaryContent,
@@ -302,65 +266,8 @@ export class ConsolidationService {
    * When a Curator callback is provided it becomes the single source of truth
    * for L1 compression, unifying the Cascade and Curator consolidation paths.
    */
-  private async sealWithCurator(sessionId: string, topic: string): Promise<SealResult> {
-    const entries = this.cascade.getBuffer(sessionId, topic);
-    if (entries.length === 0) {
-      return { sealed: [], summaryContent: '' };
-    }
-    if (this.curatorSummarizer) {
-      const summaryContent = await this.curatorSummarizer(entries);
-      // `seal` removes the buffer; the summarizer ignores entries and returns
-      // the pre-computed Curator summary.
-      return this.cascade.seal(sessionId, topic, () => summaryContent);
-    }
+  private async sealTopic(sessionId: string, topic: string): Promise<SealResult> {
     return this.cascade.seal(sessionId, topic);
-  }
-
-  /**
-   * Semantic consolidation using the Curator Agent (via callback).
-   * The LLM reads the session transcript and extracts structured knowledge.
-   */
-  async consolidateWithLLM(
-    sessionId: string,
-    transcript: string,
-    curatorCallback: ConsolidationCallBack,
-  ): Promise<ConsolidationResult> {
-    // Flush any pending daily-tier buffers first
-    await this.flushSession(sessionId);
-
-    const result = await curatorCallback(sessionId, transcript);
-
-    // Store extracted memories with importance scores
-    for (const mem of result.memories) {
-      await this.longTerm.store({
-        content: mem.content,
-        metadata: {
-          sessionId,
-          source: 'curator_consolidation',
-          importance: mem.importance,
-          topics: result.topics,
-        },
-        timestamp: new Date(),
-      });
-    }
-
-    // Store the summary itself as a high-importance memory
-    if (result.summary) {
-      await this.longTerm.store({
-        content: `[Session Summary] ${result.summary}`,
-        metadata: {
-          sessionId,
-          source: 'curator_summary',
-          importance: 1.0,
-          topics: result.topics,
-        },
-        timestamp: new Date(),
-      });
-    }
-
-    // Clean up short-term memory after consolidation
-    this.shortTerm.clear(sessionId);
-    return result;
   }
 
   private async autoSeal(sessionId: string): Promise<number> {
@@ -412,7 +319,7 @@ export class ConsolidationService {
 
       if (!shouldSeal) continue;
 
-      const result = await this.sealWithCurator(sessionId, topic);
+      const result = await this.sealTopic(sessionId, topic);
       if (result.summaryContent.length === 0) continue;
       await this.longTerm.store({
         content: result.summaryContent,

@@ -102,16 +102,14 @@ export function getOrCreateAgent(
       sessionId,
       projectId,
       captainId,
-      systemPrompt: (() => {
-        const base = buildSystemPrompt(
+      roleModules: {
+        identity: buildSystemPrompt(
           'secretary',
           secretaryRole?.modules.identity ?? '',
           projectRootPath,
-        );
-        const skillList = ctx.skillRegistry.describeForRouting();
-        if (!skillList) return base;
-        return `${base}\n\n## Available Skills\nYou can invoke any of the following skills using the /skillName command or the use_skill tool:\n${skillList}`;
-      })(),
+        ),
+        workflow: secretaryRole?.modules.workflow,
+      },
       model: model ?? resolveModel(secretaryRole ?? { modelTier: 'default' }),
       maxSteps: secretaryRole?.maxSteps ?? 50,
       maxResponseTokens: secretaryRole?.maxResponseTokens,

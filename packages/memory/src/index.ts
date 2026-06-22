@@ -35,11 +35,7 @@ export { CascadeBuffer } from './cascade-buffer.js';
 export type { CascadeEntry, SealResult } from './cascade-buffer.js';
 
 // ── Consolidation ──
-export {
-  ConsolidationService,
-  type ConsolidationResult,
-  type ConsolidationCallBack,
-} from './consolidation.js';
+export { ConsolidationService } from './consolidation.js';
 
 // ── Knowledge Graph ──
 export { KnowledgeGraph } from './knowledge-graph.js';

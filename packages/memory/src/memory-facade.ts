@@ -15,7 +15,7 @@ import type { ShortTermMemory } from './short-term.js';
 import type { LongTermMemory, LongTermEntry } from './long-term.js';
 import type { EntityMemory } from './entity.js';
 import type { ProjectMemory, ProjectContext } from './project.js';
-import type { ConsolidationService, ConsolidationCallBack } from './consolidation.js';
+import type { ConsolidationService } from './consolidation.js';
 
 /** Legacy MemoryProvider interface from @cabinet/agent — re-declared here to avoid circular dependency. */
 export interface MemoryProvider {
@@ -307,21 +307,8 @@ export class MemoryFacade implements MemoryProvider {
    * optionally runs LLM-based extraction when a transcript + callback are
    * supplied. Without a consolidation service this is a no-op.
    */
-  async consolidateSession(
-    sessionId: string,
-    options?: {
-      transcript?: string;
-      callback?: ConsolidationCallBack;
-    },
-  ): Promise<void> {
+  async consolidateSession(sessionId: string): Promise<void> {
     if (!this.deps.consolidation) return;
     await this.deps.consolidation.consolidateBasic(sessionId);
-    if (options?.transcript && options.callback) {
-      await this.deps.consolidation.consolidateWithLLM(
-        sessionId,
-        options.transcript,
-        options.callback,
-      );
-    }
   }
 }
