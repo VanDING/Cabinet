@@ -20,7 +20,7 @@
     "@cabinet/memory": "workspace:*",
     "@cabinet/storage": "workspace:*",
     "@cabinet/types": "workspace:*",
-    "ai": "7.0.0-canary.176",
+    "ai": "^6.0.188",
     "js-tiktoken": "^1.0.21",
     "js-yaml": "^4.1.1"
   },
