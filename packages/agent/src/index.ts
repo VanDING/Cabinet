@@ -2,6 +2,7 @@
 export { createSecretaryAgent, createCuratorAgent } from './agents.js';
 export { createSdkTools } from './tools-wrapper.js';
 export { buildInstructions } from './context.js';
+export { dagToSubagentTools, dagToFlowDescription } from './subagent-orchestrator.js';
 
 export {
   ToolExecutor,
