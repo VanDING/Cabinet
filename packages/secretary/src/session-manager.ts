@@ -453,6 +453,13 @@ export class SessionManager {
     }
   }
 
+  clearCurrentTask(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.routingState = undefined;
+    }
+  }
+
   getRoutingState(sessionId: string): RoutingState | null {
     const session = this.sessions.get(sessionId);
     return session?.routingState ?? null;

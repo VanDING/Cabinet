@@ -48,14 +48,7 @@ import type {
 } from '@cabinet/agent';
 import type { TaskScheduler } from '../scheduler.js';
 import type { MCPManager } from '../mcp/mcp-manager.js';
-import type {
-  ObservabilityCollector,
-  PreferenceLearner,
-  AutoAdjuster,
-  QualityResponseService,
-  SubconsciousLoop,
-  HarnessAnalyst,
-} from '@cabinet/harness';
+import type { ObservabilityCollector, SubconsciousLoop } from '@cabinet/harness';
 import type { SkillExtractor } from '@cabinet/agent';
 import type { DelegationTier } from '@cabinet/types';
 import type { getLogger } from '@cabinet/storage';
@@ -131,7 +124,6 @@ export interface ServerContext {
   taskScheduler: TaskScheduler;
   // Feedback loop
   observability: ObservabilityCollector;
-  autoAdjuster: AutoAdjuster;
   // Skill extraction
   skillExtractor: SkillExtractor;
   // Knowledge graph

@@ -87,7 +87,6 @@ export function assembleContext(state: BuildState): ServerContext {
     mcpManager: state.mcpManager!,
     taskScheduler: state.taskScheduler!,
     observability: state.observability!,
-    autoAdjuster: state.autoAdjuster!,
     skillExtractor: state.skillExtractor!,
     knowledgeGraph: state.knowledgeGraph!,
     memoryDecay: state.memoryDecay!,

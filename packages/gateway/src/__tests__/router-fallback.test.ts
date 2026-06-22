@@ -11,28 +11,28 @@ describe('ModelRouter', () => {
   });
 
   it('returns primary model for deep_think role', () => {
-    expect(router.getModel('deep_think')).toBe('anthropic/claude-opus-4-7');
+    expect(router.getModel('deep_think')).toBe('deepseek/deepseek-r1');
   });
 
   it('returns primary model for fast_execute role', () => {
-    expect(router.getModel('fast_execute')).toBe('anthropic/claude-haiku-4-5');
+    expect(router.getModel('fast_execute')).toBe('deepseek/deepseek-chat');
   });
 
   it('returns primary model for default role', () => {
-    expect(router.getModel('default')).toBe('anthropic/claude-sonnet-4-6');
+    expect(router.getModel('default')).toBe('deepseek/deepseek-chat');
   });
 
   it('returns fallbacks excluding primary', () => {
     const fallbacks = router.getFallbacks('deep_think');
     expect(fallbacks).toHaveLength(1);
-    expect(fallbacks[0]).toBe('anthropic/claude-sonnet-4-6');
+    expect(fallbacks[0]).toBe('anthropic/claude-opus-4-7');
   });
 
   it('returns full model chain', () => {
     const chain = router.getModelChain('deep_think');
     expect(chain).toHaveLength(2);
-    expect(chain[0]).toBe('anthropic/claude-opus-4-7');
-    expect(chain[1]).toBe('anthropic/claude-sonnet-4-6');
+    expect(chain[0]).toBe('deepseek/deepseek-r1');
+    expect(chain[1]).toBe('anthropic/claude-opus-4-7');
   });
 
   it('allows custom configuration', () => {
@@ -80,7 +80,7 @@ describe('FallbackChain', () => {
       messages: [{ role: 'user', content: 'Hi' }],
     });
 
-    expect(response.model).toBe('anthropic/claude-sonnet-4-6');
+    expect(response.model).toBe('deepseek/deepseek-chat');
   });
 
   it('falls back when first model times out', async () => {

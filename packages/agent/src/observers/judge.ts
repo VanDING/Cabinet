@@ -32,6 +32,7 @@ export class JudgeObserver implements AgentObserver {
     private config: JudgeConfig,
     private gateway: LLMGateway,
     taskType?: string,
+    private model?: string,
   ) {
     this.taskType = taskType ?? 'general';
   }
@@ -80,7 +81,7 @@ Rules:
 - verdict: pass >= 70, review 50-69, fail < 50`;
 
     const result = await this.gateway.generateText({
-      model: this.config.judgeModel ?? 'anthropic/claude-haiku-4-5',
+      model: this.config.judgeModel ?? this.model ?? 'deepseek/deepseek-chat',
       messages: [{ role: 'user', content: prompt }],
       maxTokens: this.config.maxTokens ?? 300,
       temperature: 0,

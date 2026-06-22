@@ -9,9 +9,6 @@ import type { RulesLoader } from '../rules-loader.js';
 import type { ToolPruner } from '../tool-pruner.js';
 import type { PromptModules } from '../prompt-assembler.js';
 import type { StepEventConfig } from '../observers/step-event-observer.js';
-import type { PISObserverConfig } from '../observers/process-identity-observer.js';
-import type { AdaptiveThresholdConfig } from '../context-monitor-adaptive.js';
-import type { SessionMetricsRepository } from '@cabinet/storage';
 import type Database from 'better-sqlite3';
 import type { AgentBlackboard } from '../blackboard.js';
 import type { ContentFilterConfig } from '../guard/content-filter.js';
@@ -101,10 +98,6 @@ export interface AgentLoopOptions {
   db?: Database.Database;
   /** Step event observer config (4.0). */
   stepEvents?: StepEventConfig;
-  /** Adaptive threshold monitor config (4.1). */
-  adaptiveMonitor?: AdaptiveThresholdConfig & { metricsRepo?: SessionMetricsRepository };
-  /** Process Identity Score config (4.3). */
-  pis?: PISObserverConfig;
   /** Agent Blackboard for shared state injection (4.2). */
   blackboard?: AgentBlackboard;
   /** MCP resource metadata for system prompt injection (4.4). */

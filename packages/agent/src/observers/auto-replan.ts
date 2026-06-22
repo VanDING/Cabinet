@@ -27,6 +27,7 @@ export class AutoReplanObserver implements AgentObserver {
   constructor(
     private config: AutoReplanConfig,
     private gateway: LLMGateway,
+    private model?: string,
   ) {}
 
   async onToolResult(
@@ -99,7 +100,7 @@ Respond in 1-2 sentences with concrete advice.`;
 
     try {
       const result = await this.gateway.generateText({
-        model: this.config.analysisModel ?? 'anthropic/claude-haiku-4-5',
+        model: this.config.analysisModel ?? this.model ?? 'deepseek/deepseek-chat',
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 200,
         temperature: 0,

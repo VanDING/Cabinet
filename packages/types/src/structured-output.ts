@@ -7,11 +7,6 @@ export type StructuredOutputType =
   | 'task_list'
   | 'workflow_result';
 
-export interface DecisionProposalOption {
-  label: string;
-  scores: Record<string, number>;
-}
-
 export interface DecisionProposalData {
   title: string;
   priority: 'high' | 'medium' | 'low';
@@ -25,15 +20,13 @@ export interface DecisionProposalData {
   }>;
 }
 
-export type DeliverableStatus = 'pending_review' | 'approved' | 'rejected';
-
 export interface DeliverableData {
   title: string;
   summary: string;
   fullContent: string;
   generationTimeMs?: number;
   sources?: string[];
-  status: DeliverableStatus;
+  status: 'pending_review' | 'approved' | 'rejected';
 }
 
 export interface StatusReportData {

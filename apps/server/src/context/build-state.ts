@@ -1,15 +1,8 @@
 import type { ModelMapping, ProviderEntry } from '@cabinet/gateway';
 import type { LlmJudge } from '@cabinet/memory';
 import type { ConsolidationService } from '@cabinet/memory';
-import type {
-  ObservabilityCollector,
-  PreferenceLearner,
-  AutoAdjuster,
-  QualityResponseService,
-  HarnessAnalyst,
-} from '@cabinet/harness';
+import type { ObservabilityCollector, SubconsciousLoop } from '@cabinet/harness';
 import type { KnowledgeGraph, MemoryDecayService } from '@cabinet/memory';
-import type { SubconsciousLoop } from '@cabinet/harness';
 import type { CuratorSubsystem, CuratorTimers } from './curator.js';
 import type { createDaemonContext } from '../daemon-context.js';
 import type { ServerContext } from './types.js';
@@ -23,10 +16,6 @@ export interface BuildState extends Partial<ServerContext> {
   llmJudge?: LlmJudge;
   consolidation?: ConsolidationService;
   observability?: ObservabilityCollector;
-  preferenceLearner?: PreferenceLearner;
-  autoAdjuster?: AutoAdjuster;
-  harnessAnalyst?: HarnessAnalyst;
-  qualityResponse?: QualityResponseService;
   curatorSubsystem?: CuratorSubsystem;
   curatorTimers?: CuratorTimers;
   daemonContext?: ReturnType<typeof createDaemonContext>;

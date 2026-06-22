@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { Tabs, type Tab } from '@cabinet/ui';
-import { RulesTab, OthersTab, ThemeTab, MonitorTab, PisTab } from './settings/index.js';
+import { RulesTab, OthersTab, ThemeTab } from './settings/index.js';
 
-type SettingsTab = 'rules' | 'theme' | 'others' | 'monitor' | 'pis';
+type SettingsTab = 'rules' | 'theme' | 'others';
 
 const tabLabels: Record<SettingsTab, string> = {
   rules: 'Rules',
   theme: 'Theme',
   others: 'Others',
-  monitor: 'Monitor',
-  pis: 'PIS',
 };
 
 export function SettingsPage() {
@@ -35,8 +33,6 @@ export function SettingsPage() {
       {activeTab === 'rules' && <RulesTab />}
       {activeTab === 'theme' && <ThemeTab />}
       {activeTab === 'others' && <OthersTab />}
-      {activeTab === 'monitor' && <MonitorTab />}
-      {activeTab === 'pis' && <PisTab />}
     </div>
   );
 }

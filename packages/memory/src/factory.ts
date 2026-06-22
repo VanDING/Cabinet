@@ -54,7 +54,7 @@ export function createMemorySystem(config: MemorySystemConfig): MemorySystem {
   const entity = new EntityMemory(db);
   const project = new ProjectMemory(db);
   const writeGate = new WriteGate();
-  const decay = new MemoryDecayService(longTerm);
+  const decay = new MemoryDecayService();
 
   const consolidation = new ConsolidationService(
     shortTerm,

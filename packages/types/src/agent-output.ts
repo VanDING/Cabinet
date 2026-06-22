@@ -19,14 +19,6 @@ export interface AgentOutput {
   suggestedNextSteps: string[];
 }
 
-export interface AgentResultStructured {
-  content: string;
-  structuredOutput?: AgentOutput;
-  steps: number;
-  toolCalls: { name: string; args: Record<string, unknown>; result: unknown }[];
-  usage?: { promptTokens: number; completionTokens: number };
-}
-
 export interface PipelineStepContext {
   role: string;
   summary: string;

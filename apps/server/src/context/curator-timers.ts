@@ -71,31 +71,6 @@ export function createTimerSetup(
     subconscious.unref();
     logger.info('Curator: subconscious loop scheduled (1h)');
 
-    // Harness analysis: via Curator queue every 3 hours
-    const harnessAnalyst = setInterval(
-      () => {
-        enqueue(
-          async () => {
-            const insight = await deps.harnessAnalyst.analyze();
-            if (insight) {
-              logger.info('Curator: harness analysis generated insight');
-              broadcast('subconscious_insight', {
-                text: insight,
-                relevance: 0.9,
-                relatedEntities: [],
-                timestamp: new Date().toISOString(),
-              });
-            }
-          },
-          'harness_analysis',
-          'low',
-        );
-      },
-      3 * 60 * 60 * 1000,
-    );
-    harnessAnalyst.unref();
-    logger.info('Curator: harness analyst scheduled (3h)');
-
-    return { curatorNudge, curatorPattern, subconscious, harnessAnalyst };
+    return { curatorNudge, curatorPattern, subconscious };
   };
 }

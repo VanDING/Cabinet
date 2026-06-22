@@ -1,5 +1,3 @@
-export type DispatchProtocol = 'acp' | 'headless' | 'terminal-only';
-
 export interface InstallMethod {
   type: 'npm' | 'pip' | 'brew' | 'winget' | 'choco' | 'scoop' | 'cargo' | 'binary' | 'manual';
   label: string;
@@ -33,7 +31,7 @@ export interface ScannerRecipe {
   };
   projectorId: string;
   dispatch: {
-    protocol: DispatchProtocol;
+    protocol: 'acp' | 'headless' | 'terminal-only';
     headlessArgs?: string[];
     supportsJsonStream?: boolean;
     sdkPackage?: string;

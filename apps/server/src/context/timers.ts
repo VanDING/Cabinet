@@ -16,7 +16,6 @@ import type { BuildState } from './build-state.js';
 export interface Timers {
   consolidationTimer: ReturnType<typeof setInterval>;
   observabilityTimer: ReturnType<typeof setInterval>;
-  autoAdjustTimer: ReturnType<typeof setInterval>;
   sessionCleanupTimer: ReturnType<typeof setInterval>;
   browserPoolCleanupTimer: ReturnType<typeof setInterval>;
   externalAgentDetectTimer: ReturnType<typeof setInterval>;
@@ -41,7 +40,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
     sessionManager,
     consolidation,
     observability,
-    autoAdjuster,
     costTracker,
     budgetGuard,
     curatorSubsystem,
@@ -67,7 +65,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
     !sessionManager ||
     !consolidation ||
     !observability ||
-    !autoAdjuster ||
     !costTracker ||
     !budgetGuard ||
     !memoryDecay ||
@@ -148,15 +145,8 @@ export function initTimersAndWatchers(state: BuildState): Timers {
   observabilityTimer.unref();
   logger.info('Observability persistence scheduled (30 min)');
 
-  const autoAdjustTimer = setInterval(
+  const budgetCheckTimer = setInterval(
     async () => {
-      try {
-        await autoAdjuster.runHealthCheck(state.delegationTier!);
-      } catch (e: unknown) {
-        logger.warn('Auto-adjustment health check failed', { error: (e as Error).message });
-        broadcast('background_error', { task: 'auto_adjust', error: (e as Error).message });
-      }
-
       try {
         const budget = budgetGuard.canProceed();
         if (!budget.allowed && eventBus) {
@@ -187,8 +177,8 @@ export function initTimersAndWatchers(state: BuildState): Timers {
     },
     60 * 60 * 1000,
   );
-  autoAdjustTimer.unref();
-  logger.info('Auto-adjustment health check + budget enforcement scheduled (1h)');
+  budgetCheckTimer.unref();
+  logger.info('Budget enforcement scheduled (1h)');
 
   const sessionCleanupTimer = setInterval(
     () => {
@@ -325,9 +315,8 @@ export function initTimersAndWatchers(state: BuildState): Timers {
       clearInterval(curatorTimers.curatorNudge);
       clearInterval(curatorTimers.curatorPattern);
       clearInterval(curatorTimers.subconscious);
-      clearInterval(curatorTimers.harnessAnalyst);
     }
-    clearInterval(autoAdjustTimer);
+    clearInterval(budgetCheckTimer);
     clearInterval(sessionCleanupTimer);
     clearInterval(memoryMaintenanceTimer);
     clearInterval(browserPoolCleanupTimer);
@@ -366,7 +355,7 @@ export function initTimersAndWatchers(state: BuildState): Timers {
   return {
     consolidationTimer,
     observabilityTimer,
-    autoAdjustTimer,
+    budgetCheckTimer,
     sessionCleanupTimer,
     browserPoolCleanupTimer,
     externalAgentDetectTimer,

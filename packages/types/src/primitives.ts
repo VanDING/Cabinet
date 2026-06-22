@@ -19,101 +19,6 @@ export interface Project {
   createdAt: Date;
 }
 
-export interface RiskItem {
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  mitigation?: string;
-}
-
-export interface KeyDecisionItem {
-  title: string;
-  outcome: string;
-  date?: string;
-}
-
-export interface ProjectContext {
-  projectId: string;
-  summary: string;
-  goals: string[];
-  constraints: Record<string, unknown>;
-  techSummary: string;
-  riskMap: RiskItem[];
-  keyDecisions: KeyDecisionItem[];
-}
-
-// ── Employee ──
-
-export const EmployeeKind = {
-  AI: 'ai',
-  Human: 'human',
-} as const;
-
-export type EmployeeKind = (typeof EmployeeKind)[keyof typeof EmployeeKind];
-
-export const PermissionLevel = {
-  Read: 'read',
-  Write: 'write',
-  Admin: 'admin',
-} as const;
-
-export type PermissionLevel = (typeof PermissionLevel)[keyof typeof PermissionLevel];
-
-export interface AIPipelineConfig {
-  model: string;
-  systemPrompt: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
-export interface PersonaConfig {
-  name: string;
-  tone: string;
-  expertise: string[];
-}
-
-export interface Employee {
-  readonly id: string;
-  projectId: string;
-  name: string;
-  role: string;
-  kind: EmployeeKind;
-  pipelineConfig?: AIPipelineConfig;
-  persona?: PersonaConfig;
-  permissionLevel: PermissionLevel;
-}
-
-// ── Skill ──
-
-export const SkillKind = {
-  Tool: 'tool',
-  Prompt: 'prompt',
-  Composite: 'composite',
-} as const;
-
-export type SkillKind = (typeof SkillKind)[keyof typeof SkillKind];
-
-export const SkillStatus = {
-  Draft: 'draft',
-  Active: 'active',
-  Deprecated: 'deprecated',
-} as const;
-
-export type SkillStatus = (typeof SkillStatus)[keyof typeof SkillStatus];
-
-export interface SkillDefinition {
-  readonly id: string;
-  name: string;
-  description: string;
-  kind: SkillKind;
-  inputSchema: Record<string, unknown>;
-  outputSchema: Record<string, unknown>;
-  promptTemplate: string;
-  version: number;
-  status: SkillStatus;
-  /** Names of other skills this skill depends on. */
-  dependencies?: string[];
-}
-
 // ── Workflow (Unified node types — engine = canvas) ──
 
 export type WorkflowNodeType =
@@ -144,9 +49,6 @@ export type WorkflowNodeType =
   | 'human'
   // External agent dispatch
   | 'externalAgent';
-
-/** @deprecated Use WorkflowNodeType directly. Kept for backward compat. */
-export type WorkflowStepType = WorkflowNodeType;
 
 export interface WorkflowNodeDef {
   id: string;
@@ -275,39 +177,6 @@ export interface WorkflowNodeDef {
   data?: Record<string, unknown>;
 }
 
-/** @deprecated Use WorkflowNodeDef. Kept for backward compat. */
-export interface WorkflowStep {
-  id: string;
-  title: string;
-  description?: string;
-  type: WorkflowNodeType;
-  agent?: string;
-  input?: { from: 'trigger' | string };
-  prompt?: string;
-  template?: Record<string, string>;
-  constraints?: {
-    maxTokens?: number;
-    temperature?: number;
-    maxRetries?: number;
-    persistent?: boolean;
-    segmentId?: string;
-    model?: string;
-  };
-  condition?: {
-    expression: string;
-    trueBranch: string;
-    falseBranch: string;
-  };
-  approvalOptions?: {
-    retryTarget?: string;
-    actions: Array<'continue' | 'retry' | 'halt'>;
-  };
-  parallel?: {
-    children: string[];
-    aggregation?: 'all' | 'first' | 'merge';
-  };
-}
-
 // ── Context Slot ──
 
 /** Task-level shared data bus — Agent nodes read from & write to this. */
@@ -425,16 +294,6 @@ export interface StructuredInput {
   }[];
 }
 
-export interface WorkflowDefinition {
-  name: string;
-  description?: string;
-  steps: WorkflowStep[];
-  capabilities?: WorkflowCapabilities;
-}
-
-/** Lifecycle status for a workflow definition. */
-export type WorkflowDefinitionStatus = 'draft' | 'active' | 'paused' | 'completed' | 'failed';
-
 // ── Daemon / Task Queue ──
 
 export type TaskQueueStatus =
@@ -476,40 +335,6 @@ export interface TaskQueueEntry {
   updatedAt: string;
 }
 
-export interface AgentDaemonConfig {
-  daemonId: string;
-  pollIntervalMs: number;
-  heartbeatIntervalMs: number;
-  heartbeatTimeoutMs: number;
-  workspaceTtlMs: number;
-  maxConcurrentTasks: number;
-  taskTimeoutMs: number;
-  autoDiscoverOnStart: boolean;
-  discoveryPaths: string[];
-}
-
-export interface DaemonHeartbeat {
-  daemonId: string;
-  agentId: string;
-  status: 'online' | 'degraded' | 'offline';
-  lastHeartbeatAt: string;
-  startedAt: string;
-  version: string;
-  metadata: Record<string, unknown>;
-}
-
-export interface AgentWorkspace {
-  id: string;
-  agentId: string;
-  taskId: string | null;
-  path: string;
-  sizeBytes: number;
-  status: 'active' | 'archived' | 'cleaned';
-  createdAt: string;
-  lastUsedAt: string;
-  expiresAt: string | null;
-}
-
 export interface DaemonStatus {
   daemonId: string;
   status: 'online' | 'degraded' | 'offline';
@@ -533,20 +358,3 @@ export interface DaemonAgentInfo {
   openPorts?: number[];
   pid?: number;
 }
-
-export interface ClaimResult {
-  success: boolean;
-  task: TaskQueueEntry | null;
-  reason?: string;
-}
-
-// ── Memory ──
-
-export const MemoryLayer = {
-  ShortTerm: 'short_term',
-  LongTerm: 'long_term',
-  Entity: 'entity',
-  Project: 'project',
-} as const;
-
-export type MemoryLayer = (typeof MemoryLayer)[keyof typeof MemoryLayer];

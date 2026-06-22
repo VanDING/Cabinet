@@ -13,8 +13,8 @@ export function initKnowledgeAndSubconscious(state: BuildState): void {
   const knowledgeGraph = new KnowledgeGraph(db);
   knowledgeGraph.ensureTables();
 
-  const memoryDecay = new MemoryDecayService(longTerm);
-  const subconsciousLoop = new SubconsciousLoop(longTerm, knowledgeGraph, eventBus);
+  const memoryDecay = new MemoryDecayService();
+  const subconsciousLoop = new SubconsciousLoop(longTerm, eventBus);
 
   longTerm.setKnowledgeGraph(knowledgeGraph);
   longTerm.setContradictionHandler((contradiction) => {
@@ -72,19 +72,6 @@ export function initKnowledgeAndSubconscious(state: BuildState): void {
           text,
           relevance,
           relatedEntities,
-          timestamp: msg.timestamp.toISOString(),
-        });
-      }
-    }
-
-    if (payload.type === 'process_identity_alert') {
-      const data = payload.data as Record<string, unknown> | undefined;
-      if (data) {
-        broadcast('pis_alert', {
-          sessionId: data.sessionId,
-          score: data.score,
-          trend: data.trend,
-          action: data.action,
           timestamp: msg.timestamp.toISOString(),
         });
       }

@@ -21,30 +21,3 @@ export interface BlackboardEntry<T = unknown> {
   payload: T;
   causationId: string | null;
 }
-
-// ── Runtime schemas for built-in topics (type-only, no runtime validation library) ──
-
-export interface DiscoveryPayload {
-  type: string;
-  summary: string;
-  [key: string]: unknown;
-}
-
-export interface ProjectPayload {
-  name: string;
-  tech_stack?: string;
-  goals: string[];
-  constraints?: Record<string, unknown>;
-}
-
-export interface PreferencesPayload {
-  riskTolerance?: 'low' | 'medium' | 'high';
-  preferredDecisionStyle?: 'consensus' | 'directive' | 'analytical';
-  [key: string]: unknown;
-}
-
-export interface SecurityPayload {
-  level: string;
-  tier?: string;
-  maxRetries: number;
-}

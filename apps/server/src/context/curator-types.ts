@@ -12,7 +12,7 @@ import type { DecisionService } from '@cabinet/decision';
 import type { EventBus } from '@cabinet/events';
 import type { Database, DecisionRepository } from '@cabinet/storage';
 import type { SessionManager } from '@cabinet/secretary';
-import type { SubconsciousLoop, HarnessAnalyst } from '@cabinet/harness';
+import type { SubconsciousLoop } from '@cabinet/harness';
 import type { DelegationTier } from '@cabinet/types';
 
 export interface CuratorDeps {
@@ -36,7 +36,6 @@ export interface CuratorDeps {
   currentTier: DelegationTier;
   costTracker: CostTracker;
   subconsciousLoop: SubconsciousLoop;
-  harnessAnalyst: HarnessAnalyst;
   /** Full ServerContext (for capCtx fallback) — use sparingly */
   ctx: Record<string, unknown>;
 }
@@ -58,7 +57,6 @@ export interface CuratorTimers {
   curatorNudge: NodeJS.Timeout;
   curatorPattern: NodeJS.Timeout;
   subconscious: NodeJS.Timeout;
-  harnessAnalyst: NodeJS.Timeout;
 }
 
 export type CreateCuratorLoop = () => AgentLoop | null;

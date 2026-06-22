@@ -4,7 +4,6 @@ import {
   LevelClassifier,
   AuditLogger,
   EscalationService,
-  PolicyEngine,
 } from '@cabinet/decision';
 import { SqliteEventStore } from '@cabinet/events';
 import { DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME } from '@cabinet/types';
@@ -23,7 +22,6 @@ export function initDecisionService(state: BuildState): void {
   const eventBus = new SqliteEventStore(eventRepo);
   eventBus.deadLetterQueue.setDb(db);
   const escalation = new EscalationService(eventBus);
-  const policyEngine = new PolicyEngine();
 
   let _triggerCuratorDecisionUpdate:
     | ((
@@ -133,7 +131,6 @@ export function initDecisionService(state: BuildState): void {
       }
     },
     getCurrentTier,
-    policyEngine,
   );
 
   state.eventBus = eventBus as any;

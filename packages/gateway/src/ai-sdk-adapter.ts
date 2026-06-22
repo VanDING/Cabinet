@@ -449,47 +449,61 @@ export class AISDKAdapter implements LLMGateway {
   /** Find the first provider that has an API key configured */
   private firstConfiguredProvider(): string {
     const order = [
-      'anthropic',
+      'deepseek',
       'openai',
       'google',
-      'deepseek',
       'qwen',
       'moonshot',
       'zhipu',
       'baichuan',
+      'anthropic',
     ];
-    // Check explicitly configured providers first
     for (const p of order) {
       if (this.config[p]?.apiKey) return p;
     }
-    // Fall back to environment variables (only if no config was passed)
     for (const p of order) {
       if (process.env[`${p.toUpperCase()}_API_KEY`]) return p;
     }
-    return 'anthropic';
+    return 'deepseek';
+  }
+
+  /**
+   * If the given provider is not configured, fall back to the first configured provider
+   * and use that provider's default model. Returns { provider, name }.
+   */
+  private resolveProvider(provider: string, name: string): { provider: string; name: string } {
+    const key = this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
+    if (key) return { provider, name };
+    // Provider not configured — fall back to first configured provider
+    const fallback = this.firstConfiguredProvider();
+    const defaultModel = this.PROVIDER_DEFAULTS[fallback] ?? name;
+    return { provider: fallback, name: defaultModel };
   }
 
   private async resolveModelObj(modelName: string): Promise<any> {
-    const provider = modelName.includes('/')
+    const rawProvider = modelName.includes('/')
       ? modelName.split('/')[0]!
       : this.firstConfiguredProvider();
     let name = modelName.includes('/') ? modelName.split('/').slice(1).join('/') : modelName;
+    const { provider } = this.resolveProvider(rawProvider, name);
 
     // If the model name doesn't look like it belongs to this provider, use the provider's default
-    if (!modelName.includes('/') && provider !== 'anthropic' && name.startsWith('claude')) {
+    if (!modelName.includes('/') && !name.startsWith('deepseek') && !name.startsWith('gpt')) {
       name = this.PROVIDER_DEFAULTS[provider] ?? name;
     }
 
     switch (provider) {
       case 'anthropic': {
         const key = this.config.anthropic?.apiKey ?? process.env.ANTHROPIC_API_KEY;
-        if (!key) throw new Error('ANTHROPIC_API_KEY not configured');
+        if (!key)
+          return this.resolveModelObj(this.PROVIDER_DEFAULTS[this.firstConfiguredProvider()]!);
         const factory = createAnthropic({ apiKey: key });
         return factory(name);
       }
       case 'openai': {
         const key = this.config.openai?.apiKey ?? process.env.OPENAI_API_KEY;
-        if (!key) throw new Error('OPENAI_API_KEY not configured');
+        if (!key)
+          return this.resolveModelObj(this.PROVIDER_DEFAULTS[this.firstConfiguredProvider()]!);
         const baseURL = this.config.openai?.baseUrl;
         const factory = baseURL
           ? createOpenAI({ apiKey: key, baseURL })
@@ -498,14 +512,16 @@ export class AISDKAdapter implements LLMGateway {
       }
       case 'google': {
         const key = this.config.google?.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-        if (!key) throw new Error('GOOGLE_GENERATIVE_AI_API_KEY not configured');
+        if (!key)
+          return this.resolveModelObj(this.PROVIDER_DEFAULTS[this.firstConfiguredProvider()]!);
         const { google } = await this.loadProvider('google');
         const factory = google({ apiKey: key });
         return factory(name);
       }
       case 'deepseek': {
         const key = this.config.deepseek?.apiKey ?? process.env.DEEPSEEK_API_KEY;
-        if (!key) throw new Error('DEEPSEEK_API_KEY not configured');
+        if (!key)
+          return this.resolveModelObj(this.PROVIDER_DEFAULTS[this.firstConfiguredProvider()]!);
         const baseURL = this.config.deepseek?.baseUrl;
         const deepseek = createDeepSeek({
           apiKey: key,
@@ -520,7 +536,8 @@ export class AISDKAdapter implements LLMGateway {
         const defaultBaseURL = OPENAI_COMPATIBLE_BASE_URLS[provider]!;
         const key =
           this.config[provider]?.apiKey ?? process.env[`${provider.toUpperCase()}_API_KEY`];
-        if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY not configured`);
+        if (!key)
+          return this.resolveModelObj(this.PROVIDER_DEFAULTS[this.firstConfiguredProvider()]!);
         const baseURL = this.config[provider]?.baseUrl ?? defaultBaseURL;
         const client = createOpenAICompatible({ name: provider, apiKey: key, baseURL });
         return client(name);

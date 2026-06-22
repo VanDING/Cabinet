@@ -47,8 +47,6 @@ export const ALLOWED_TRANSITIONS: Record<DecisionStatus, DecisionStatus[]> = {
   [DecisionStatus.Archived]: [],
 };
 
-export const TERMINAL_STATUSES: DecisionStatus[] = [DecisionStatus.Archived];
-
 export function isValidTransition(from: DecisionStatus, to: DecisionStatus): boolean {
   const allowed = ALLOWED_TRANSITIONS[from];
   return allowed !== undefined && allowed.includes(to);

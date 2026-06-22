@@ -22,7 +22,6 @@ export function initCuratorSubsystem(
     eventBus,
     costTracker,
     subconsciousLoop,
-    harnessAnalyst,
   } = state;
 
   if (
@@ -39,8 +38,7 @@ export function initCuratorSubsystem(
     !decisionService ||
     !eventBus ||
     !costTracker ||
-    !subconsciousLoop ||
-    !harnessAnalyst
+    !subconsciousLoop
   ) {
     throw new Error('Missing required state for curator subsystem');
   }
@@ -63,7 +61,6 @@ export function initCuratorSubsystem(
     currentTier: getCurrentTier(),
     costTracker,
     subconsciousLoop,
-    harnessAnalyst,
     ctx: state as unknown as Record<string, unknown>,
   };
 

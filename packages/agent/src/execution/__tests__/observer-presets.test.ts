@@ -13,24 +13,22 @@ describe('resolveObserverActivation', () => {
     expect(result.reflection).toBe(true);
     expect(result.judge).toBe(false);
     expect(result.autoReplan).toBe(false);
-    expect(result.pis).toBe(false);
     expect(result.selfConsistency).toBe(false);
   });
 
   it.each<[import('../observer-presets.js').ObserverPresetName, boolean[]]>([
-    ['minimal', [false, false, false, false, false]],
-    ['standard', [true, false, false, false, false]],
-    ['enhanced', [true, true, true, false, false]],
-    ['full', [true, true, true, true, true]],
+    ['minimal', [false, false, false, false]],
+    ['standard', [true, false, false, false]],
+    ['enhanced', [true, true, true, false]],
+    ['full', [true, true, true, true]],
   ])(
     'preset %s has expected defaults',
-    (preset, [reflection, judge, autoReplan, pis, selfConsistency]) => {
+    (preset, [reflection, judge, autoReplan, selfConsistency]) => {
       const result = resolveObserverActivation({ preset });
       expect(result.preset).toBe(preset);
       expect(result.reflection).toBe(reflection);
       expect(result.judge).toBe(judge);
       expect(result.autoReplan).toBe(autoReplan);
-      expect(result.pis).toBe(pis);
       expect(result.selfConsistency).toBe(selfConsistency);
     },
   );
@@ -50,22 +48,11 @@ describe('resolveObserverActivation', () => {
       preset: 'minimal',
       judge: { sampleRate: 0.2 },
       autoReplan: { errorThreshold: 1 },
-      pis: { sampleRate: 0.5 },
       selfConsistency: { samples: 5 },
     });
     expect(result.judge).toBe(true);
     expect(result.autoReplan).toBe(true);
-    expect(result.pis).toBe(true);
     expect(result.selfConsistency).toBe(true);
-  });
-
-  it('explicit enabled=true overrides default-off preset', () => {
-    const result = resolveObserverActivation({
-      preset: 'standard',
-      pis: { enabled: true },
-    });
-    expect(result.pis).toBe(true);
-    expect(result.reflection).toBe(true);
   });
 });
 
@@ -75,14 +62,12 @@ describe('getObserverPresetDefaults', () => {
       reflection: false,
       judge: false,
       autoReplan: false,
-      pis: false,
       selfConsistency: false,
     });
     expect(getObserverPresetDefaults('full')).toEqual({
       reflection: true,
       judge: true,
       autoReplan: true,
-      pis: true,
       selfConsistency: true,
     });
   });

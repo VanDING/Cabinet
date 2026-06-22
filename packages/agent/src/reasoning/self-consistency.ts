@@ -34,7 +34,7 @@ export class SelfConsistencyEngine {
     systemPrompt?: string,
   ): Promise<{ content: string; confidence: number; samples: string[] }> {
     const samples: string[] = [];
-    const model = this.config.sampleModel ?? 'anthropic/claude-haiku-4-5';
+    const model = this.config.sampleModel ?? 'deepseek/deepseek-chat';
 
     for (let i = 0; i < this.config.samples; i++) {
       try {

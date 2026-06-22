@@ -41,12 +41,27 @@ export type ToolCallCallback = (
   durationMs: number,
 ) => void;
 
+/**
+ * Called BEFORE a tool executes. Return `{ ok: false, message }` to reject.
+ * Useful for parameter completeness checks that don't need an observer.
+ */
+export type BeforeExecuteHook = (
+  name: string,
+  args: Record<string, unknown>,
+) => Promise<{ ok: boolean; message?: string } | void>;
+
 export class ToolExecutor {
   private tools = new Map<string, ToolDefinition>();
   private onToolCall: ToolCallCallback | null = null;
+  private beforeHooks: BeforeExecuteHook[] = [];
 
   setToolCallCallback(callback: ToolCallCallback): void {
     this.onToolCall = callback;
+  }
+
+  /** Register a pre-execution hook for parameter validation or blocking checks. */
+  addBeforeExecuteHook(hook: BeforeExecuteHook): void {
+    this.beforeHooks.push(hook);
   }
 
   register(tool: ToolDefinition): void {
@@ -64,6 +79,22 @@ export class ToolExecutor {
     context?: ToolContext,
   ): Promise<ToolResult> {
     const startTime = Date.now();
+    for (const hook of this.beforeHooks) {
+      try {
+        const result = await hook(name, args);
+        if (result && !result.ok) {
+          this.onToolCall?.(name, false, false, Date.now() - startTime);
+          return {
+            toolCallId,
+            output: null,
+            error: result.message ?? 'Blocked by pre-check',
+            errorType: 'invalid_input',
+          };
+        }
+      } catch {
+        // hooks should not break tool execution
+      }
+    }
     const tool = this.tools.get(name);
     if (!tool) {
       this.onToolCall?.(name, false, false, Date.now() - startTime);
@@ -166,6 +197,9 @@ export class ToolExecutor {
     }
     if (this.onToolCall) {
       view.setToolCallCallback(this.onToolCall);
+    }
+    for (const hook of this.beforeHooks) {
+      view.addBeforeExecuteHook(hook);
     }
     return view;
   }

@@ -1,4 +1,3 @@
-import { DEFAULT_PIS_CONFIG } from '@cabinet/types';
 import { ObserverPipeline, type AgentObserver } from '../observer-pipeline.js';
 import { ContextMonitor, type ContextMonitor as ContextMonitorType } from '../context-monitor.js';
 import { SafetyCheckObserver } from '../observers/safety.js';
@@ -6,7 +5,6 @@ import { ToolExecuteObserver } from '../observers/tool-execute.js';
 import { StepEventObserver } from '../observers/step-event-observer.js';
 import { ContextMonitorObserver } from '../observers/context-monitor.js';
 import { HandoffObserver } from '../observers/handoff.js';
-import { ProcessIdentityObserver } from '../observers/process-identity-observer.js';
 import { BlackboardObserver } from '../observers/blackboard-observer.js';
 import { ContentGuardObserver } from '../observers/content-guard.js';
 import { ReflectionObserver } from '../observers/reflection.js';
@@ -15,7 +13,6 @@ import { AutoReplanObserver } from '../observers/auto-replan.js';
 import { CheckpointObserver } from '../observers/checkpoint.js';
 import { SelfConsistencyObserver } from '../observers/self-consistency.js';
 import { SubconsciousInsightObserver } from '../observers/subconscious-insight.js';
-import { EmbeddingService } from '../embedding-service.js';
 import { resolveObserverActivation } from './observer-presets.js';
 import type { AgentLoopOptions } from './agent-loop-options.js';
 import type { LLMGateway } from '@cabinet/gateway';
@@ -36,7 +33,6 @@ export function createObserverPipeline(
 ): ObserverFactoryResult {
   const activation = resolveObserverActivation({
     preset: options.observerPreset,
-    pis: options.pis,
     reflection: options.reflection,
     judge: options.judge,
     autoReplan: options.autoReplan,
@@ -57,18 +53,6 @@ export function createObserverPipeline(
   if (contextMonitor) {
     observers.push(new ContextMonitorObserver(contextMonitor));
     observers.push(new HandoffObserver());
-  }
-
-  // Process Identity Score observer (4.3)
-  if (activation.pis && options.eventBus) {
-    observers.push(
-      new ProcessIdentityObserver(
-        options.taskDescription ?? '',
-        { ...DEFAULT_PIS_CONFIG, ...options.pis },
-        options.eventBus,
-        new EmbeddingService(gateway),
-      ),
-    );
   }
 
   // Blackboard mid-session sync observer (B.1)
@@ -92,6 +76,7 @@ export function createObserverPipeline(
       new ReflectionObserver(
         options.reflection ?? { enabled: false, maxRounds: 2, qualityThreshold: 0.7 },
         gateway,
+        options.model,
       ),
     );
   }
@@ -103,6 +88,7 @@ export function createObserverPipeline(
         options.judge ?? { enabled: false, sampleRate: 0.1, taskFilter: [] },
         gateway,
         options.taskDescription,
+        options.model,
       ),
     );
   }
@@ -113,6 +99,7 @@ export function createObserverPipeline(
       new AutoReplanObserver(
         options.autoReplan ?? { enabled: false, errorThreshold: 2, maxReplanRounds: 3 },
         gateway,
+        options.model,
       ),
     );
   }

@@ -46,6 +46,7 @@ export type ParsedIntent =
   | { kind: 'mcp_request'; topic: string; context: string }
   | { kind: 'schedule_request'; topic: string; context: string }
   | { kind: 'follow_up'; previousKind: string; raw: string }
+  | { kind: 'interrupt'; raw: string }
   | { kind: 'unknown'; raw: string };
 
 export interface AgentRouteResult {

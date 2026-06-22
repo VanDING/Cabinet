@@ -28,10 +28,10 @@ export class RateLimitTracker {
 
 const DEFAULT_CONFIG: RouterConfig = {
   roles: {
-    deep_think: ['anthropic/claude-opus-4-7', 'anthropic/claude-sonnet-4-6'],
-    fast_execute: ['anthropic/claude-haiku-4-5', 'openai/gpt-4o-mini'],
-    default: ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'],
-    reasoning: ['anthropic/claude-opus-4-8', 'openai/o4-mini'],
+    deep_think: ['deepseek/deepseek-r1', 'anthropic/claude-opus-4-7'],
+    fast_execute: ['deepseek/deepseek-chat', 'anthropic/claude-haiku-4-5'],
+    default: ['deepseek/deepseek-chat', 'anthropic/claude-sonnet-4-6'],
+    reasoning: ['deepseek/deepseek-r1', 'anthropic/claude-sonnet-4-6'],
   },
 };
 

@@ -204,19 +204,6 @@ export { AgentBlackboard } from './blackboard.js';
 export { BlackboardTopicRouter } from './blackboard-topic-router.js';
 export { compressSnapshot, injectBlackboardSnapshot } from './blackboard-compress.js';
 export { StepEventObserver, type StepEventConfig } from './observers/step-event-observer.js';
-export {
-  ProcessIdentityObserver,
-  type PISObserverConfig,
-} from './observers/process-identity-observer.js';
-export {
-  AdaptiveContextMonitor,
-  type AdaptiveThresholdConfig,
-} from './context-monitor-adaptive.js';
-export {
-  calculatePIS,
-  type ProcessIdentityScore,
-  type PISFactor,
-} from './process-identity-score.js';
 
 // New scanner + recipes
 export { Scanner, type DiscoveryResult } from './discovery/scanner.js';

@@ -18,37 +18,63 @@ export interface ReflectionConfig {
 export class ReflectionObserver implements AgentObserver {
   name = 'Reflection';
   private roundCounts = new Map<string, number>();
+  private previousOutputs = new Map<string, string>();
 
   constructor(
     private config: ReflectionConfig,
     private gateway: LLMGateway,
+    private model?: string,
   ) {}
+
+  /** Rough text similarity based on shared word n-grams (0-1). */
+  private textSimilarity(a: string, b: string): number {
+    const tokenize = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[^\w\u4e00-\u9fff]/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+    const ta = tokenize(a).slice(0, 100);
+    const tb = new Set(tokenize(b).slice(0, 100));
+    if (ta.length === 0 || tb.size === 0) return 0;
+    const intersection = ta.filter((w) => tb.has(w)).length;
+    return intersection / Math.max(ta.length, tb.size);
+  }
 
   async onStepEnd(ctx: AgentExecutionContext): Promise<{ handoff?: boolean }> {
     if (!this.config.enabled) return {};
 
-    // 只处理 final answer 步骤
     const isFinalAnswer = ctx.currentStepToolCalls.length === 0 && ctx.finalContent.length > 0;
     if (!isFinalAnswer) return {};
 
     const currentRound = this.roundCounts.get(ctx.sessionId) ?? 0;
     if (currentRound >= this.config.maxRounds) {
       this.roundCounts.delete(ctx.sessionId);
+      this.previousOutputs.delete(ctx.sessionId);
       return {};
     }
 
     const score = await this.critique(ctx.finalContent, ctx.messages);
     if (score >= this.config.qualityThreshold) {
       this.roundCounts.delete(ctx.sessionId);
+      this.previousOutputs.delete(ctx.sessionId);
       return {};
     }
 
-    // 质量不够：注入 critique 并触发 handoff
-    const critiqueMessage = this.buildCritiqueMessage(score, ctx.finalContent);
+    const previousOutput = this.previousOutputs.get(ctx.sessionId) ?? '';
+    const similarity = previousOutput ? this.textSimilarity(ctx.finalContent, previousOutput) : 0;
+    this.previousOutputs.set(ctx.sessionId, ctx.finalContent);
+
+    let critiqueMessage: string;
+    if (currentRound >= 1 && similarity > 0.7) {
+      critiqueMessage = `[System] 你的回答与上一轮模式相同，都是分析和解释。现在直接输出最终答案，不要解释，不要分析原因。一句话说完。`;
+    } else {
+      critiqueMessage = this.buildCritiqueMessage(score, ctx.finalContent);
+    }
+
     ctx.messages.push({ role: 'user', content: critiqueMessage });
     this.roundCounts.set(ctx.sessionId, currentRound + 1);
 
-    // 重置当前步骤状态，让循环继续
     ctx.currentStepText = '';
     ctx.currentStepToolCalls = [];
     return { handoff: true };
@@ -65,7 +91,7 @@ export class ReflectionObserver implements AgentObserver {
 
     try {
       const result = await this.gateway.generateText({
-        model: this.config.critiqueModel ?? 'anthropic/claude-haiku-4-5',
+        model: this.config.critiqueModel ?? this.model ?? 'deepseek/deepseek-chat',
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 400,
         temperature: 0,
@@ -73,8 +99,8 @@ export class ReflectionObserver implements AgentObserver {
 
       return this.extractScore(result.content);
     } catch {
-      // 如果 critique 失败，保守地返回 0（触发 revise）
-      return 0;
+      // critique API 调用失败（如 provider 不可用），返回满分跳过本轮 revise
+      return this.config.qualityThreshold + 1;
     }
   }
 

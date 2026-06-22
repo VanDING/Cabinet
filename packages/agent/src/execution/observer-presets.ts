@@ -1,4 +1,3 @@
-import type { PISObserverConfig } from '../observers/process-identity-observer.js';
 import type { ReflectionConfig } from '../observers/reflection.js';
 import type { JudgeConfig } from '../observers/judge.js';
 import type { AutoReplanConfig } from '../observers/auto-replan.js';
@@ -16,7 +15,6 @@ export interface ObserverPresetDefaults {
   reflection: boolean;
   judge: boolean;
   autoReplan: boolean;
-  pis: boolean;
   selfConsistency: boolean;
 }
 
@@ -27,35 +25,30 @@ const PRESET_DEFAULTS: Record<ObserverPresetName, ObserverPresetDefaults> = {
     reflection: false,
     judge: false,
     autoReplan: false,
-    pis: false,
     selfConsistency: false,
   },
   standard: {
     reflection: true,
     judge: false,
     autoReplan: false,
-    pis: false,
     selfConsistency: false,
   },
   enhanced: {
     reflection: true,
     judge: true,
     autoReplan: true,
-    pis: false,
     selfConsistency: false,
   },
   full: {
     reflection: true,
     judge: true,
     autoReplan: true,
-    pis: true,
     selfConsistency: true,
   },
 };
 
 export interface ObserverActivationInput {
   preset?: ObserverPresetName;
-  pis?: PISObserverConfig;
   reflection?: ReflectionConfig;
   judge?: JudgeConfig;
   autoReplan?: AutoReplanConfig;
@@ -86,7 +79,6 @@ export function resolveObserverActivation(
     reflection: configured(input.reflection) ?? defaults.reflection,
     judge: configured(input.judge) ?? defaults.judge,
     autoReplan: configured(input.autoReplan) ?? defaults.autoReplan,
-    pis: configured(input.pis) ?? defaults.pis,
     selfConsistency: configured(input.selfConsistency) ?? defaults.selfConsistency,
   };
 }

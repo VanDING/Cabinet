@@ -10,7 +10,6 @@ import { DecisionStateMachine } from './state-machine.js';
 import { LevelClassifier, type ClassificationInput } from './level-classifier.js';
 import { AuditLogger } from './audit-log.js';
 import { EscalationService } from './escalation.js';
-import type { PolicyEngine } from './policy-engine.js';
 
 export interface CreateDecisionInput {
   id: string;
@@ -40,7 +39,6 @@ export class DecisionService {
     private readonly store: DecisionStore,
     private readonly onResolved?: DecisionResolvedCallback,
     private readonly getCurrentTier?: () => DelegationTier,
-    private readonly policyEngine?: PolicyEngine,
   ) {}
 
   /** Map current delegation tier to the maximum decision level that can be auto-approved. */
@@ -85,21 +83,8 @@ export class DecisionService {
       changes: { level, title: input.title },
     });
 
-    // Policy check: override auto-approval if it violates mission constraints
-    const policyCheck = this.policyEngine?.checkDecision(decision);
-    if (policyCheck && !policyCheck.allowed) {
-      decision.status = DecisionStatus.Pending;
-      this.auditLog.log({
-        entityType: 'decision',
-        entityId: decision.id,
-        action: 'policy_blocked',
-        actor: 'system',
-        changes: { reason: policyCheck.reason },
-      });
-    }
-
     // Auto-process based on delegation tier (through state machine for audit trail)
-    if (this.shouldAutoApprove(level as DecisionLevel) && (!policyCheck || policyCheck.allowed)) {
+    if (this.shouldAutoApprove(level as DecisionLevel)) {
       const approvedStatus = this.stateMachine.transition(decision.status, 'approve');
       decision.status = approvedStatus as typeof decision.status;
       decision.resolvedAt = new Date();

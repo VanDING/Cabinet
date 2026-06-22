@@ -4,5 +4,3 @@ export { AuditTab } from './AuditTab.js';
 export { RulesTab } from './RulesTab.js';
 export { OthersTab } from './OthersTab.js';
 export { ThemeTab } from './ThemeTab.js';
-export { MonitorTab } from './MonitorTab.js';
-export { PisTab } from './PisTab.js';

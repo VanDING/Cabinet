@@ -49,6 +49,21 @@ export class SecretaryAgent {
     this.agentLoop.setDelegationTier(tier);
   }
 
+  private detectInterrupt(message: string): boolean {
+    const signals = [
+      '停',
+      '先别',
+      '打断',
+      '等一下',
+      '换任务',
+      '不要继续',
+      'stop',
+      'wait',
+      'hold on',
+    ];
+    return signals.some((s) => message.toLowerCase().includes(s));
+  }
+
   async handleMessage(
     sessionId: string,
     message: string,
@@ -59,6 +74,14 @@ export class SecretaryAgent {
     usage?: { promptTokens: number; completionTokens: number };
   }> {
     this.sessionManager.addMessage(sessionId, 'user', message);
+
+    if (this.detectInterrupt(message)) {
+      this.sessionManager.clearCurrentTask(sessionId);
+      return {
+        intent: { kind: 'interrupt', raw: message },
+        response: '已中断当前任务，请告诉我接下来做什么。',
+      };
+    }
 
     // Detect user feedback signals
     const feedback = this.detectFeedback(message);

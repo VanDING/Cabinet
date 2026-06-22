@@ -10,12 +10,6 @@ import { ToolPruner } from './tool-pruner.js';
 import { ObserverPipeline } from './observer-pipeline.js';
 import { AgentBlackboard } from './blackboard.js';
 import { SelfConsistencyEngine } from './reasoning/self-consistency.js';
-import {
-  AdaptiveContextMonitor,
-  classifyTaskCategory,
-  type AdaptiveThresholdConfig,
-} from './context-monitor-adaptive.js';
-import type { SessionMetricsRepository } from '@cabinet/storage';
 import { parseStructuredOutput } from './execution/parse-output.js';
 import { StreamingCallbackAdapter } from './execution/streaming-adapter.js';
 import type { StreamingCallback } from './execution/types.js';
@@ -68,34 +62,13 @@ export class AgentLoop {
     if (options.rulesLoader) {
       this.contextBuilder.withRules(options.rulesLoader);
     }
-    // Adaptive monitor (4.1) — enabled by default when metricsRepo + eventBus are provided
-    const adaptiveEnabled =
-      options.adaptiveMonitor?.enabled ??
-      Boolean(options.adaptiveMonitor?.metricsRepo && options.eventBus);
-    if (adaptiveEnabled && options.adaptiveMonitor?.metricsRepo && options.eventBus) {
-      const adaptive = new AdaptiveContextMonitor(
-        options.eventBus,
-        options.adaptiveMonitor.metricsRepo,
-        options.adaptiveMonitor,
-        options.model,
-      );
-      adaptive
-        .recalibrate(
+    this.contextMonitor = options.eventBus
+      ? ContextMonitor.forModel(
           options.model ?? 'claude-sonnet-4-6',
-          undefined,
-          classifyTaskCategory(options.taskDescription ?? ''),
+          options.eventBus,
+          options.contextBudget,
         )
-        .catch(() => {});
-      this.contextMonitor = adaptive;
-    } else {
-      this.contextMonitor = options.eventBus
-        ? ContextMonitor.forModel(
-            options.model ?? 'claude-sonnet-4-6',
-            options.eventBus,
-            options.contextBudget,
-          )
-        : null;
-    }
+      : null;
     this.options = options;
 
     const observerResult = createObserverPipeline(

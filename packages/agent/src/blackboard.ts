@@ -1,10 +1,5 @@
 import type { EventBus } from '@cabinet/events';
-import type {
-  BlackboardTopic,
-  BlackboardEntry,
-  BlackboardConfig,
-  ContextSlot,
-} from '@cabinet/types';
+import type { BlackboardTopic, BlackboardEntry, BlackboardConfig } from '@cabinet/types';
 import { DEFAULT_BLACKBOARD_CONFIG } from '@cabinet/types';
 import { BlackboardTopicRouter } from './blackboard-topic-router.js';
 
@@ -129,99 +124,6 @@ export class AgentBlackboard {
     });
   }
 
-  /**
-   * Import a ContextSlot persistence snapshot into the Blackboard runtime surface.
-   *
-   * ContextSlot = serialized persistent snapshot; Blackboard = live runtime data surface.
-   * Array fields become append entries; object fields become replace/merge entries.
-   */
-  async importFromContextSlot(slot: ContextSlot, agentId = 'system'): Promise<void> {
-    // Ensure all required topics exist (default config may not include 'security' or 'deliverable')
-    const requiredTopics: Array<{ name: string; mergeStrategy: BlackboardTopic['mergeStrategy'] }> =
-      [
-        { name: 'project', mergeStrategy: 'replace' },
-        { name: 'memories', mergeStrategy: 'append' },
-        { name: 'preferences', mergeStrategy: 'merge' },
-        { name: 'files', mergeStrategy: 'replace' },
-        { name: 'discoveries', mergeStrategy: 'append' },
-        { name: 'outputs', mergeStrategy: 'append' },
-        { name: 'security', mergeStrategy: 'replace' },
-        { name: 'deliverable', mergeStrategy: 'replace' },
-      ];
-    for (const t of requiredTopics) {
-      if (!this.topics.has(t.name)) {
-        this.registerTopic({
-          name: t.name,
-          mergeStrategy: t.mergeStrategy,
-          maxEntries: this.config.defaultMaxEntries,
-        });
-      }
-    }
-
-    // Seed topic versions from the snapshot version
-    const baseVersion = slot.version ?? 0;
-    for (const name of this.topics.keys()) {
-      this.topicVersions.set(name, baseVersion);
-    }
-
-    if (slot.project) {
-      await this.write('project', slot.project, agentId);
-    }
-    this.seedEntries('memories', slot.memories ?? [], agentId);
-    if (slot.preferences && Object.keys(slot.preferences).length > 0) {
-      await this.write('preferences', slot.preferences, agentId);
-    }
-    this.seedEntries('files', slot.files ?? [], agentId);
-    this.seedEntries('discoveries', slot.discoveries ?? [], agentId);
-    this.seedEntries('outputs', slot.previous_outputs ?? [], agentId);
-    if (slot.security) {
-      await this.write('security', slot.security, agentId);
-    }
-    if (slot.deliverable !== undefined) {
-      await this.write('deliverable', slot.deliverable, agentId);
-    }
-  }
-
-  /**
-   * Export the current Blackboard state to a ContextSlot persistence snapshot.
-   *
-   * ContextSlot.version is mapped from the maximum per-topic version counter.
-   */
-  exportToContextSlot(): ContextSlot {
-    const readLatest = <T>(topicName: string): T | undefined => {
-      const list = this.entries.get(topicName);
-      if (!list || list.length === 0) return undefined;
-      return list[list.length - 1]!.payload as T;
-    };
-
-    const readAll = <T>(topicName: string): T[] => {
-      const list = this.entries.get(topicName) ?? [];
-      return list.map((e) => e.payload as T);
-    };
-
-    const project = readLatest<ContextSlot['project']>('project');
-    const preferences = readLatest<ContextSlot['preferences']>('preferences');
-    const security = readLatest<ContextSlot['security']>('security');
-    const deliverable = readLatest<unknown>('deliverable');
-
-    let version = 0;
-    for (const v of this.topicVersions.values()) {
-      if (v > version) version = v;
-    }
-
-    return {
-      version,
-      project: project ?? { name: 'default', goals: [] },
-      memories: readAll<string>('memories'),
-      preferences: preferences ?? {},
-      files: readAll<string>('files'),
-      discoveries: readAll<ContextSlot['discoveries'][number]>('discoveries'),
-      previous_outputs: readAll<string>('outputs'),
-      security: security ?? { level: 'L1', maxRetries: 2 },
-      ...(deliverable !== undefined ? { deliverable } : {}),
-    };
-  }
-
   /** Generate a text snapshot of selected topics (for system prompt injection). */
   snapshot(topics?: string[]): string {
     const targetTopics = topics ?? Array.from(this.entries.keys());
@@ -240,25 +142,6 @@ export class AgentBlackboard {
     }
 
     return parts.join('\n');
-  }
-
-  /** Directly append multiple entries to a topic (used for ContextSlot import). */
-  private seedEntries<T>(topicName: string, payloads: T[], agentId: string): void {
-    const topic = this.topics.get(topicName);
-    if (!topic) throw new Error(`Unknown blackboard topic: ${topicName}`);
-    const list = this.entries.get(topicName) ?? [];
-    const now = new Date();
-    for (const payload of payloads) {
-      list.push({
-        id: `${topicName}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        topic: topicName,
-        agentId,
-        timestamp: now,
-        payload,
-        causationId: null,
-      });
-    }
-    this.entries.set(topicName, list);
   }
 
   private mergeObject(

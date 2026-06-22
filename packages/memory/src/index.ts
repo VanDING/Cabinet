@@ -47,7 +47,6 @@ export type { Entity, Relation } from './knowledge-graph.js';
 
 // ── Memory Decay ──
 export { MemoryDecayService } from './memory-decay.js';
-export type { DecayResult } from './memory-decay.js';
 
 // ── Memory Facade ──
 export { MemoryFacade } from './memory-facade.js';

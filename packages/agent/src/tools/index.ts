@@ -157,5 +157,13 @@ export function registerCabinetTools(executor: ToolExecutor, deps: ToolDependenc
   for (const tool of tools) {
     executor.register(tool);
   }
+
+  // Hook: 创建 workflow 时确认 cronExpression 已传入
+  executor.addBeforeExecuteHook(async (name, args) => {
+    if (name === 'create_workflow' && args.cronExpression === undefined) {
+      return { ok: false, message: 'cronExpression is not set — workflow will not be scheduled' };
+    }
+  });
+
   return executor;
 }
