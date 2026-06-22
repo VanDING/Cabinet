@@ -181,27 +181,6 @@ export function createCuratorLoop(deps: CuratorLoopDeps): AgentLoop | null {
         throw new Error(String(e));
       }
     },
-    writeFile: async () => {
-      throw new Error('File write not available');
-    },
-    editFile: async () => {
-      throw new Error('File edit not available');
-    },
-    applyPatch: async () => {
-      throw new Error('Patch not available');
-    },
-    moveFile: async () => {
-      throw new Error('File move not available');
-    },
-    copyFile: async () => {
-      throw new Error('File copy not available');
-    },
-    makeDirectory: async () => {
-      throw new Error('Directory creation not available');
-    },
-    fileInfo: async () => {
-      throw new Error('File info not available');
-    },
     listDirectory: async (path) => {
       try {
         const entries = readdirSync(path, { withFileTypes: true });

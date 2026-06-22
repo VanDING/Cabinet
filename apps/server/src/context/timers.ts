@@ -14,7 +14,6 @@ import { startApprovalPolling, stopApprovalPolling } from '../routes/workflows.j
 import type { BuildState } from './build-state.js';
 
 export interface Timers {
-  consolidationTimer: ReturnType<typeof setInterval>;
   observabilityTimer: ReturnType<typeof setInterval>;
   sessionCleanupTimer: ReturnType<typeof setInterval>;
   browserPoolCleanupTimer: ReturnType<typeof setInterval>;
@@ -38,7 +37,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
     metricRepo,
     sessionMetricsRepo,
     sessionManager,
-    consolidation,
     observability,
     costTracker,
     budgetGuard,
@@ -63,7 +61,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
     !metricRepo ||
     !sessionMetricsRepo ||
     !sessionManager ||
-    !consolidation ||
     !observability ||
     !costTracker ||
     !budgetGuard ||
@@ -75,22 +72,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
   }
 
   const logger = loggerRaw!;
-
-  const consolidationTimer = setInterval(
-    async () => {
-      try {
-        for (const sid of shortTerm.getAllSessionIds()) {
-          await consolidation.consolidateBasic(sid);
-        }
-      } catch (e: unknown) {
-        logger.warn('Basic consolidation failed', { error: (e as Error).message });
-        broadcast('background_error', { task: 'consolidation', error: (e as Error).message });
-      }
-    },
-    30 * 60 * 1000,
-  );
-  consolidationTimer.unref();
-  logger.info('Basic memory consolidation scheduled (30min)');
 
   const observabilityTimer = setInterval(
     () => {
@@ -309,7 +290,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
 
   state.shutdown = () => {
     logger.info('Shutting down server context...');
-    clearInterval(consolidationTimer);
     clearInterval(observabilityTimer);
     if (curatorTimers) {
       clearInterval(curatorTimers.curatorNudge);
@@ -353,7 +333,6 @@ export function initTimersAndWatchers(state: BuildState): Timers {
   };
 
   return {
-    consolidationTimer,
     observabilityTimer,
     budgetCheckTimer,
     sessionCleanupTimer,

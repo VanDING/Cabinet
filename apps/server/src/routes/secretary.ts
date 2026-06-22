@@ -84,8 +84,6 @@ import { promisify } from 'node:util';
 import {
   execAsync,
   ROLES_NEEDING_ENV,
-  cabinetMdCache,
-  loadCabinetMd,
   buildSystemPrompt,
   readTextFile,
   MIME_MAP,

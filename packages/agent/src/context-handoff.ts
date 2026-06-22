@@ -46,7 +46,7 @@ export class ContextHandoff {
   }
 
   shouldHandoff(snapshot: ContextSnapshot): boolean {
-    return snapshot.zone === 'critical' || snapshot.zone === 'dumb';
+    return snapshot.zone === 'dumb';
   }
 
   performHandoff(snapshot: ContextSnapshot): HandoffResult {

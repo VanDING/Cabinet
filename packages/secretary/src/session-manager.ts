@@ -258,7 +258,7 @@ export class SessionManager {
       if (totalTokens > this.hardLimit) {
         // Layer 1 — Virtual-view: compress oversized tool results in the middle band
         const keepOldestTokens = Math.floor(this.maxTokens * 0.2);
-        const keepRecentTokens = Math.floor(this.maxTokens * 0.3);
+        const keepRecentTokens = Math.floor(this.maxTokens * 0.5);
         let oldestTokenCount = 0;
         let oldestIndex = 0;
         for (let i = 0; i < session.messages.length; i++) {
@@ -292,7 +292,7 @@ export class SessionManager {
           }
         }
 
-        // Layer 2 — If still over limit, aggressive token-based truncation
+        // Layer 2 — If still over limit, token-based truncation
         const newTotalTokens = estimateMessagesTokens(session.messages);
         if (newTotalTokens > this.hardLimit) {
           const oldest = session.messages.slice(0, oldestIndex);

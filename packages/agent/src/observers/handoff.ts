@@ -11,9 +11,20 @@ export class HandoffObserver implements AgentObserver {
     const result = ctx.handoff.performHandoff(ctx.lastSnapshot);
     ctx.handoffCount++;
 
-    const keepRecent = 4;
+    const keepRecent = 8;
+    const lastUserIndex = [...ctx.messages].reverse().findIndex((m) => m.role === 'user');
     const recentMessages = ctx.messages.slice(-keepRecent);
-    const middleMessages = ctx.messages.slice(0, -keepRecent);
+    const allKeep = new Set(recentMessages);
+    let lastUserMessage: (typeof ctx.messages)[0] | null = null;
+    if (lastUserIndex >= 0) {
+      const lastUser = ctx.messages[ctx.messages.length - 1 - lastUserIndex]!;
+      if (!allKeep.has(lastUser)) {
+        lastUserMessage = lastUser;
+      }
+    }
+    const middleMessages = lastUserMessage
+      ? ctx.messages.filter((m) => m !== lastUserMessage && !allKeep.has(m))
+      : ctx.messages.slice(0, -keepRecent);
     const middleSummary =
       middleMessages.length > 0 ? `${middleMessages.length} prior messages summarized.` : '';
 
@@ -22,6 +33,7 @@ export class HandoffObserver implements AgentObserver {
       ...(middleMessages.length > 0
         ? [{ role: 'assistant' as const, content: `[context_compact] ${middleSummary}` }]
         : []),
+      ...(lastUserMessage ? [lastUserMessage] : []),
       ...recentMessages,
     ];
     ctx.handoff.reset();

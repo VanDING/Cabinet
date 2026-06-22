@@ -89,7 +89,7 @@ export const SECRETARY_ROLE: AgentRole = {
       'Edit code → Run tests → Read errors → Fix → Report summary when tests pass.',
       '',
       '## Session Start',
-      '- Check short-term memory for recent session context. If prior conversation exists, summarize it briefly.',
+      '- Check short-term memory for recent session context (key: "session_brief"). If prior conversation exists, summarize it briefly.',
       '',
       '## Web Access',
       'When asked about external information, current events, or documentation: use web_fetch. Do not guess or hallucinate.',
