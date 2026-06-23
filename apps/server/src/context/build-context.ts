@@ -20,6 +20,7 @@ import { initCuratorSubsystem } from './curator-integration.js';
 import { initScheduler } from './scheduler.js';
 import { initTimersAndWatchers } from './timers.js';
 import { assembleContext } from './assembly.js';
+import { mastra as mastraInstance } from '../mastra/index.js';
 
 function buildServerContextImpl(): ServerContext {
   const state: BuildState = {
@@ -54,6 +55,7 @@ function buildServerContextImpl(): ServerContext {
   initTimersAndWatchers(state);
 
   const ctx = assembleContext(state);
+  ctx.mastra = mastraInstance;
 
   // Update curator deps with fully-populated ctx
   (state.curatorSubsystem as any).ctx = ctx;

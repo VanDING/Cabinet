@@ -134,6 +134,8 @@ export interface ServerContext {
   subconsciousLoop: SubconsciousLoop;
   // Intent parser (pre-created for fast routing)
   intentParser?: import('@cabinet/secretary').IntentParser;
+  // Mastra instance (SDK v7 integration)
+  mastra?: import('@mastra/core').Mastra;
   // Infrastructure
   eventBus: EventBus;
   metrics: MetricsCollector;

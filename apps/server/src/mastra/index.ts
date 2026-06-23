@@ -1,9 +1,13 @@
 import { Mastra } from '@mastra/core';
-import { Memory } from '@mastra/memory';
+import { secretaryAgent } from './agents/secretary.js';
+import { curatorAgent } from './agents/curator.js';
 
 export const mastra = new Mastra({
-  agents: {},
+  agents: {
+    secretary: secretaryAgent,
+    curator: curatorAgent,
+  },
   workflows: {},
 });
 
-export { mastra as default };
+export { secretaryAgent, curatorAgent };
