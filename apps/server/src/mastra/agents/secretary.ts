@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core/agent';
+import { readFileTool, writeFileTool, execCommandTool } from '../tools/filesystem.js';
 
 const instructions = [
   `## Hard Constraints
@@ -23,5 +24,9 @@ export const secretaryAgent = new Agent({
   name: 'Secretary',
   instructions,
   model: 'deepseek/deepseek-chat',
-  tools: {},
+  tools: {
+    readFile: readFileTool,
+    writeFile: writeFileTool,
+    execCommand: execCommandTool,
+  },
 });
