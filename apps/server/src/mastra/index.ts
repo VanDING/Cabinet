@@ -8,6 +8,13 @@ import {
   SensitiveDataFilter,
   SamplingStrategyType,
 } from '@mastra/observability';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { existsSync, mkdirSync } from 'node:fs';
+
+const CABINET_DATA = join(homedir(), '.cabinet');
+if (!existsSync(CABINET_DATA)) mkdirSync(CABINET_DATA, { recursive: true });
+
 import { secretaryAgent } from './agents/secretary.js';
 import { curatorAgent } from './agents/curator.js';
 import { writerAgent } from './agents/specialist-writer.js';
@@ -24,12 +31,12 @@ import { bgTaskManager } from './background-tasks.js';
 
 const storage = new LibSQLStore({
   id: 'cabinet-storage',
-  url: 'file:./data/cabinet.db',
+  url: `file:${join(CABINET_DATA, 'mastra.db')}`,
 });
 
 const vector = new LibSQLVector({
   id: 'cabinet-vector',
-  url: 'file:./data/cabinet-vector.db',
+  url: `file:${join(CABINET_DATA, 'mastra-vector.db')}`,
 });
 
 const embedder = (() => {
