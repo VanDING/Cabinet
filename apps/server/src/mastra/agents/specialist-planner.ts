@@ -1,5 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { resolveModel } from '../model-config.js';
+import { blockWriteOps } from '../hooks.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
 
@@ -32,13 +33,6 @@ export const plannerAgent = new Agent({
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
   hooks: {
-    beforeToolCall: ({ toolName }) => {
-      if (['writeFile', 'deleteFile', 'executeCommand', 'makeDirectory'].includes(toolName)) {
-        return {
-          proceed: false,
-          output: 'Planner is read-only. Use Secretary for write operations.',
-        };
-      }
-    },
+    beforeToolCall: ({ toolName }) => blockWriteOps(toolName, 'Planner'),
   },
 });

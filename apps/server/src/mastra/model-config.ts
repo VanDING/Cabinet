@@ -9,7 +9,11 @@ export function resolveModel(tier: 'default' | 'reasoning' = 'default'): string 
   try {
     const settings = loadSettings();
     const mapping = settings.modelMapping as Record<string, string> | undefined;
-    if (mapping?.[tier]) return mapping[tier]!;
+    if (mapping) {
+      if (tier === 'reasoning')
+        return mapping['deep_reasoning'] ?? mapping['reasoning'] ?? DEFAULT_TIERS[tier];
+      return mapping[tier] ?? DEFAULT_TIERS[tier];
+    }
   } catch {
     /* settings not available */
   }
