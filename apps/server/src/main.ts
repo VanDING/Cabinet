@@ -6,6 +6,8 @@ import { createApp } from './index.js';
 import { config, validateEnv } from './config.js';
 import { createWSServers } from './ws/handler.js';
 import { getServerContext } from './context.js';
+import { decryptApiKey } from './crypto.js';
+import { MASTER_PW } from './routes/settings/persistence.js';
 
 const envCheck = validateEnv();
 if (!envCheck.success) {
@@ -21,6 +23,22 @@ async function start() {
   // Initialize shared server context (DB, repos, services, backup)
   const ctx = getServerContext();
   ctx.logger.info('Server context initialized');
+
+  // Export API keys from settings to process.env for Mastra model routing
+  try {
+    const keys = ctx.apiKeyRepo.findAll();
+    for (const k of keys) {
+      try {
+        const decrypted = decryptApiKey(k.encrypted_key, MASTER_PW);
+        process.env[`${k.provider}_API_KEY`] = decrypted;
+        ctx.logger.info(`API key loaded for ${k.provider}`);
+      } catch {
+        /* skip key that can't be decrypted */
+      }
+    }
+  } catch (err) {
+    ctx.logger.warn('Failed to load API keys', { error: String(err) });
+  }
 
   // Integrate Mastra Hono Adapter (auto-registers agent/workflow/memory API routes)
   const mastraServer = new MastraServer({

@@ -32,12 +32,19 @@ const vector = new LibSQLVector({
   url: 'file:./data/cabinet-vector.db',
 });
 
-const embedder = new ModelRouterEmbeddingModel('openai/text-embedding-3-small');
+const embedder = (() => {
+  try {
+    return new ModelRouterEmbeddingModel('openai/text-embedding-3-small');
+  } catch {
+    console.warn('[Mastra] No embedding model configured. Vector search disabled.');
+    return undefined;
+  }
+})();
 
 const memory = new Memory({
   storage,
   vector,
-  embedder,
+  ...(embedder ? { embedder } : {}),
   options: {
     lastMessages: 20,
     observationalMemory: {
@@ -58,11 +65,13 @@ const memory = new Memory({
 - Important Decisions:
 `,
     },
-    semanticRecall: {
-      topK: 5,
-      messageRange: 2,
-      scope: 'thread',
-    },
+    semanticRecall: embedder
+      ? {
+          topK: 5,
+          messageRange: 2,
+          scope: 'thread',
+        }
+      : undefined,
   },
 });
 

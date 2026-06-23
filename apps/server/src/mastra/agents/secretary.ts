@@ -1,5 +1,4 @@
 import { Agent } from '@mastra/core/agent';
-import { TaskSignalProvider } from '@mastra/core/signals';
 import { CabinetDecisionSignalProvider } from '../signals/decision-signal.js';
 import { resolveModel } from '../model-config.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
@@ -39,7 +38,7 @@ export const secretaryAgent = new Agent({
     analyst: analystAgent,
     researcher: researcherAgent,
   },
-  signals: [new TaskSignalProvider(), new CabinetDecisionSignalProvider()],
+  signals: [new CabinetDecisionSignalProvider()],
   hooks: {
     beforeToolCall: ({ toolName, input }) => {
       if (toolName === 'executeCommand') {
