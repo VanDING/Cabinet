@@ -69,17 +69,10 @@ scheduledTasksRouter.delete('/:id', (c) => {
 });
 
 // POST /api/scheduled-tasks/:id/run — manual trigger
+// TODO: Mastra workflows run via /api/workflows/:workflowId/start
 scheduledTasksRouter.post('/:id/run', async (c) => {
-  const ctx = getServerContext();
-  const id = c.req.param('id');
-  try {
-    const wf = ctx.workflowRepo.findById(id);
-    if (!wf) return c.json({ error: 'Workflow not found' }, 404);
-    if (!ctx.gateway) return c.json({ error: 'No LLM gateway available' }, 503);
-    const { runWorkflowById } = await import('./workflows.js');
-    const result = await runWorkflowById(id);
-    return c.json({ executed: true, id, status: result.status });
-  } catch (e) {
-    return c.json({ error: (e as Error).message }, 500);
-  }
+  return c.json(
+    { error: 'Workflow execution migrated to Mastra. Use /api/workflows/:workflowId/start' },
+    410,
+  );
 });

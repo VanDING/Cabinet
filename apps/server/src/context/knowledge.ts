@@ -1,8 +1,7 @@
 import { MessageType } from '@cabinet/types';
 import { broadcast } from '../ws/handler.js';
 import { KnowledgeGraph, MemoryDecayService } from '@cabinet/memory';
-import { SubconsciousLoop } from '@cabinet/harness';
-import type { BuildState } from './build-state.js';
+import type { BuildState } from './types.js';
 
 export function initKnowledgeAndSubconscious(state: BuildState): void {
   const { db, longTerm, eventBus } = state;
@@ -13,8 +12,7 @@ export function initKnowledgeAndSubconscious(state: BuildState): void {
   const knowledgeGraph = new KnowledgeGraph(db);
   knowledgeGraph.ensureTables();
 
-  const memoryDecay = new MemoryDecayService();
-  const subconsciousLoop = new SubconsciousLoop(longTerm, eventBus);
+  const memoryDecay = new MemoryDecayService(longTerm);
 
   longTerm.setKnowledgeGraph(knowledgeGraph);
   longTerm.setContradictionHandler((contradiction) => {
@@ -44,55 +42,6 @@ export function initKnowledgeAndSubconscious(state: BuildState): void {
       });
   });
 
-  eventBus.subscribe(MessageType.SystemNotification, (msg) => {
-    const payload = msg.payload as unknown as Record<string, unknown> | undefined;
-    if (!payload) return;
-
-    if (payload.type === 'subconscious_insight') {
-      const insight = payload.insight as Record<string, unknown> | undefined;
-      const relevance = (insight?.relevance as number) ?? 0;
-      if (relevance > 0.5) {
-        const text = (insight?.text as string) ?? '';
-        const relatedEntities = (insight?.relatedEntities as string[]) ?? [];
-        longTerm
-          .store({
-            content: text,
-            metadata: {
-              type: 'insight',
-              relevance,
-              relatedEntities,
-              sourceMemoryId: insight?.sourceMemoryId ?? '',
-            },
-            timestamp: msg.timestamp,
-          })
-          .catch((err) => {
-            console.warn('Operation failed', err);
-          });
-        broadcast('subconscious_insight', {
-          text,
-          relevance,
-          relatedEntities,
-          timestamp: msg.timestamp.toISOString(),
-        });
-      }
-    }
-
-    if (payload.type === 'tool_variety') {
-      const data = payload.data as Record<string, unknown> | undefined;
-      if (data) {
-        broadcast('tool_variety', {
-          sessionId: data.sessionId,
-          exposedTools: data.exposedTools,
-          usedTools: data.usedTools,
-          gapRatio: data.gapRatio,
-          topTools: data.topTools,
-          timestamp: msg.timestamp.toISOString(),
-        });
-      }
-    }
-  });
-
   state.knowledgeGraph = knowledgeGraph;
   state.memoryDecay = memoryDecay;
-  state.subconsciousLoop = subconsciousLoop;
 }

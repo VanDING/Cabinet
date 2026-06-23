@@ -4,7 +4,7 @@ import type { AgentRoleRepository } from '@cabinet/storage';
 import type { ScannerRecipe, ScanResult, ExtractedConfig } from '@cabinet/types';
 import { RECIPES } from './scanner-recipe.js';
 import { extractConfig } from './config-extractor.js';
-import { buildCliExternalConfig, buildA2AExternalConfig } from '../daemon/build-external-config.js';
+import { buildCliExternalConfig } from '../external-config.js';
 
 export interface DiscoveryResult {
   agentId: string;

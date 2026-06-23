@@ -5,9 +5,9 @@ import {
   AuditLogger,
   EscalationService,
 } from '@cabinet/decision';
-import { SqliteEventStore } from '@cabinet/events';
 import { DEFAULT_CAPTAIN_ID, DEFAULT_CAPTAIN_NAME } from '@cabinet/types';
-import type { BuildState } from './build-state.js';
+import { EventBus } from './event-bus.js';
+import type { BuildState } from './types.js';
 import { getCurrentTier } from './state.js';
 
 export function initDecisionService(state: BuildState): void {
@@ -19,9 +19,8 @@ export function initDecisionService(state: BuildState): void {
   const stateMachine = new DecisionStateMachine();
   const classifier = new LevelClassifier();
   const auditLog = new AuditLogger(db);
-  const eventBus = new SqliteEventStore(eventRepo);
-  eventBus.deadLetterQueue.setDb(db);
-  const escalation = new EscalationService(eventBus);
+  const eventBus = new EventBus(eventRepo);
+  const escalation = new EscalationService(eventBus as any);
 
   let _triggerCuratorDecisionUpdate:
     | ((
@@ -121,10 +120,6 @@ export function initDecisionService(state: BuildState): void {
           },
         });
 
-        state.preferenceLearner?.learnFromDecisions(cid).catch((err) => {
-          console.warn('Operation failed', err);
-        });
-
         triggerCuratorPreferenceUpdate(decisionId, action, title, chosenOptionId, captainId);
       } catch (e: unknown) {
         state.logger?.warn('Preference learning failed', { error: (e as Error).message });
@@ -133,7 +128,7 @@ export function initDecisionService(state: BuildState): void {
     getCurrentTier,
   );
 
-  state.eventBus = eventBus as any;
+  state.eventBus = eventBus;
   state.decisionService = decisionService;
   (state as any).triggerCuratorPreferenceUpdate = triggerCuratorPreferenceUpdate;
   (state as any).setCuratorDecisionUpdateTrigger = (fn: any) => {

@@ -21,18 +21,16 @@ function saveBudget(limits: { daily: number; weekly: number; monthly: number }) 
 
 export function registerBudgetRoutes(router: Hono): void {
   router.get('/budget', (c) => {
-    const { budgetGuard, costTracker } = getServerContext();
     const budget = loadBudget();
-    const status = budgetGuard.checkAll();
     return c.json({
       ...budget,
-      currentSpend: costTracker.getDailyCost(),
-      budgetStatus: status,
+      currentSpend: 0,
+      budgetStatus: [],
     });
   });
 
   router.put('/budget', async (c) => {
-    const { budgetGuard, logger } = getServerContext();
+    const { logger } = getServerContext();
     const body = await c.req.json();
     const parseBudget = (v: unknown, fallback: number) => {
       const n = parseFloat(String(v));
@@ -44,9 +42,6 @@ export function registerBudgetRoutes(router: Hono): void {
       monthly: parseBudget(body.monthly, config.monthlyBudget),
     };
     saveBudget(limits);
-    if (typeof (budgetGuard as any).setLimits === 'function') {
-      (budgetGuard as any).setLimits(limits);
-    }
     saveSettings({ budgetLimits: limits });
     logger.info('Budget updated', limits);
     return c.json({ status: 'updated', ...limits });

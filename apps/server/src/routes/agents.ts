@@ -289,25 +289,16 @@ agentsRouter.post('/message', async (c) => {
   logger.info('A2A inbound task', { taskId, capability, targetAgent: target.name });
   a2aTasks.set(taskId, { status: 'in_progress', timestamp: new Date().toISOString() });
 
-  try {
-    const { dispatchToSpecialist } = await import('./secretary/agents.js');
-    const output = await dispatchToSpecialist(
-      target.type,
-      typeof task.input === 'string' ? task.input : JSON.stringify(task.input),
-      task.session_id ?? `a2a_${taskId}`,
-      'default',
-      'system',
-    );
-    a2aTasks.set(taskId, { status: 'completed', output, timestamp: new Date().toISOString() });
-    return c.json({ task_id: taskId, status: 'accepted' });
-  } catch (err) {
-    a2aTasks.set(taskId, {
-      status: 'failed',
-      message: String(err),
-      timestamp: new Date().toISOString(),
-    });
-    return c.json({ task_id: taskId, status: 'rejected', error: String(err) }, 500);
-  }
+  // A2A dispatch migrated to Mastra agent execution
+  a2aTasks.set(taskId, {
+    status: 'failed',
+    message: 'A2A dispatch migrated to Mastra. Use Mastra agent API for task execution.',
+    timestamp: new Date().toISOString(),
+  });
+  return c.json(
+    { task_id: taskId, status: 'rejected', error: 'A2A dispatch migrated to Mastra' },
+    503,
+  );
 });
 
 agentsRouter.post('/message/stream', async (c) => {
@@ -346,41 +337,13 @@ agentsRouter.post('/message/stream', async (c) => {
           return;
         }
 
-        const { dispatchToSpecialistStreaming } = await import('./secretary/agents.js');
-
-        await dispatchToSpecialistStreaming(
-          target.type,
-          input,
-          task.session_id ?? `a2a_${taskId}`,
-          'default',
-          'system',
-          {
-            onChunk: (content: string) => {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'chunk', content })}\n\n`),
-              );
-            },
-            onThinking: (content: string) => {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'thinking', content })}\n\n`),
-              );
-            },
-            onDone: (content: string) => {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'done', content })}\n\n`),
-              );
-              controller.close();
-            },
-            onError: (error: string) => {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'error', error })}\n\n`),
-              );
-              controller.close();
-            },
-            onToolCall: (_name: string, _args: Record<string, unknown>) => {},
-            onToolResult: (_name: string, _result: unknown) => {},
-          },
+        // A2A streaming dispatch migrated to Mastra
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: 'error', error: 'A2A streaming dispatch migrated to Mastra' })}\n\n`,
+          ),
         );
+        controller.close();
       } catch (err) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', error: String(err) })}\n\n`),

@@ -1,7 +1,6 @@
 import { TaskScheduler, setSchedulerBroadcast } from '../scheduler.js';
 import { ScheduledTaskRepository } from '@cabinet/storage';
 import { broadcast } from '../ws/handler.js';
-import { runWorkflowById } from '../routes/workflows.js';
 import type { BuildState } from './build-state.js';
 
 export function initScheduler(state: BuildState): void {
@@ -43,42 +42,10 @@ export function initScheduler(state: BuildState): void {
       logger.info('Migrated legacy scheduled tasks to workflows', { count: oldTasks.length });
     }
   } catch {
-    /* scheduled_tasks table may not exist — safe to ignore */
+    /* scheduled_tasks table may not exist */
   }
 
   taskScheduler.start();
-
-  taskScheduler.setExecutor(async (task) => {
-    if (!state.gateway) {
-      logger.warn('Scheduled task skipped — no LLM gateway available', {
-        workflowId: task.workflowId,
-        name: task.name,
-      });
-      return;
-    }
-    try {
-      logger.info('Executing scheduled workflow', { workflowId: task.workflowId, name: task.name });
-      const result = await runWorkflowById(task.workflowId);
-      logger.info('Scheduled workflow completed', {
-        workflowId: task.workflowId,
-        name: task.name,
-        status: result.status,
-        steps: result.steps.length,
-      });
-      broadcast('task_completed', {
-        taskId: task.workflowId,
-        name: task.name,
-        status: result.status,
-        executedAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      logger.error('Scheduled workflow failed', {
-        workflowId: task.workflowId,
-        name: task.name,
-        error: (err as Error).message,
-      });
-    }
-  });
 
   state.taskScheduler = taskScheduler;
 }

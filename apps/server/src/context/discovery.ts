@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import type { ModelTier } from '@cabinet/gateway';
 import type { BuildState } from './build-state.js';
+
+type ModelTier = 'default' | 'fast_execution' | 'deep_reasoning';
 
 export function scanAgentDirectory(state: BuildState): void {
   const { dataDir, agentRegistry, agentRoleRepo } = state;

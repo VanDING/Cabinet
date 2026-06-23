@@ -1,10 +1,10 @@
-import { AgentEventRepository, AgentEventBus } from '@cabinet/events';
 import { RouteFeedbackRepository, TelemetryRepository } from '@cabinet/storage';
-import type { BuildState } from './build-state.js';
+import type { BuildState } from './types.js';
 import type { ServerContext } from './types.js';
 import { broadcast } from '../ws/handler.js';
 import { IntentParser } from '@cabinet/secretary';
 import { FileAccessTracker, TaskTracker } from './trackers.js';
+import { AgentEventRepository, AgentEventBus } from './event-bus.js';
 
 export function assembleContext(state: BuildState): ServerContext {
   const { db } = state;
@@ -18,7 +18,7 @@ export function assembleContext(state: BuildState): ServerContext {
   const agentEventBus = new AgentEventBus(
     broadcast,
     agentEventRepo,
-    (parentSessionId, deliverable) => {
+    (parentSessionId: string, deliverable: unknown) => {
       try {
         const deliverableText =
           typeof deliverable === 'string' ? deliverable : JSON.stringify(deliverable);
@@ -35,15 +35,6 @@ export function assembleContext(state: BuildState): ServerContext {
 
   const fileTracker = new FileAccessTracker();
   const taskTracker = new TaskTracker();
-
-  // Extend CostTracker to accept external agent reports
-  (state.costTracker as any).recordExternal = (entry: {
-    model: string;
-    promptTokens: number;
-    completionTokens: number;
-  }) => {
-    state.costTracker!.record(entry.model, entry.promptTokens, entry.completionTokens, 0);
-  };
 
   const ctx: ServerContext = {
     db,
@@ -74,10 +65,6 @@ export function assembleContext(state: BuildState): ServerContext {
     entity: state.entity!,
     project: state.project!,
     memoryFacade: state.memoryFacade!,
-    gateway: state.gateway!,
-    refreshGateway: state.refreshGateway!,
-    costTracker: state.costTracker!,
-    budgetGuard: state.budgetGuard!,
     sessionManager: state.sessionManager!,
     fileTracker,
     taskTracker,
@@ -86,28 +73,22 @@ export function assembleContext(state: BuildState): ServerContext {
     skillRegistry: state.skillRegistry!,
     mcpManager: state.mcpManager!,
     taskScheduler: state.taskScheduler!,
-    observability: state.observability!,
-    skillExtractor: state.skillExtractor!,
     knowledgeGraph: state.knowledgeGraph!,
     memoryDecay: state.memoryDecay!,
-    subconsciousLoop: state.subconsciousLoop!,
     eventBus: state.eventBus!,
     metrics: state.metrics!,
     logger: state.logger!,
     backupManager: state.backupManager ?? null,
-    daemon: state.daemon!,
     taskQueueRepo: state.taskQueueRepo!,
     daemonRepo: state.daemonRepo!,
     autopilotRepo: state.autopilotRepo!,
-    triggerScheduler: state.triggerScheduler ?? null,
     a2aClient: state.a2aClient!,
-    blackboard: state.blackboard,
     agentBindingRepo: state.agentBindingRepo!,
     mcpServerRepo: state.mcpServerRepo!,
     shutdown: state.shutdown!,
   };
 
-  const parser = new IntentParser(ctx.gateway ?? undefined);
+  const parser = new IntentParser();
   ctx.intentParser = parser;
   void parser.warmupEmbeddings();
 

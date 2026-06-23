@@ -76,51 +76,19 @@ export function WorkflowPanel({
     onWorkflowSave?.({ name: editName, cronExpression: editCron || null });
   };
 
-  // ── Import/Export (M4) ──
-  const handleExport = async () => {
-    if (!workflow?.id) return;
-    try {
-      const res = await apiFetch('/api/workflows/export', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ workflowId: workflow.id }),
-      });
-      const blueprint = await res.json();
-      const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${workflow.name ?? 'workflow'}.cabinet.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      addToast('success', `Exported: ${workflow.name}.cabinet.json`);
-    } catch {
-      /* non-fatal */
-    }
+  // Import/Export migrated to Mastra workflow system
+  const handleExport = () => {
+    addToast(
+      'info',
+      'Workflow export migrated to Mastra. Use Mastra Studio for workflow management.',
+    );
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const blueprint = JSON.parse(text);
-      const res = await apiFetch('/api/workflows/import', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ blueprint, projectId: 'default' }),
-      });
-      const data = await res.json();
-      if (data.id) {
-        onWorkflowSave?.({ name: data.name });
-        addToast(
-          'success',
-          `Imported: ${data.nodes} nodes${data.missingAgents?.length ? `, ${data.missingAgents.length} missing agents` : ''}`,
-        );
-      }
-    } catch {
-      addToast('error', 'Import failed: invalid blueprint');
-    }
+  const handleImport = () => {
+    addToast(
+      'info',
+      'Workflow import migrated to Mastra. Use Mastra Studio for workflow management.',
+    );
   };
 
   const inputClasses =

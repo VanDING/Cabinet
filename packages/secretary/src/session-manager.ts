@@ -9,9 +9,7 @@ import {
   readdirSync,
 } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import type { AgentEvent } from '@cabinet/events';
 import type { ContextSlot } from '@cabinet/types';
-import type { AgentBlackboard } from '@cabinet/agent';
 
 const SESSIONS_DIR = join(homedir(), '.cabinet', 'sessions');
 
@@ -65,7 +63,7 @@ export interface Session {
   parentId?: string;
   agentType?: string;
   status?: 'active' | 'waiting_for_user' | 'completed' | 'error';
-  events?: AgentEvent[];
+  events?: unknown[];
   deliverable?: unknown;
   /** Task-level shared data bus — agents read from & write to this. */
   contextSlot?: ContextSlot;
@@ -88,9 +86,6 @@ export class SessionManager {
   private pendingWrites = new Map<string, Session>();
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Optional Blackboard for multi-agent shared state (4.2). */
-  private blackboard: AgentBlackboard | null = null;
-
   constructor(maxTokens = 200_000) {
     this.maxTokens = maxTokens;
     this.softLimit = Math.floor(maxTokens * 0.6);
@@ -99,8 +94,8 @@ export class SessionManager {
   }
 
   /** Attach a Blackboard instance for shared state (4.2). */
-  useBlackboard(bb: AgentBlackboard): void {
-    this.blackboard = bb;
+  useBlackboard(_bb: unknown): void {
+    /* no-op in Mastra mode */
   }
 
   /** Flush pending writes and stop the background timer. */
@@ -195,9 +190,6 @@ export class SessionManager {
     }
     session.contextSlot.discoveries.push(discovery);
     this.persist(session);
-    if (this.blackboard) {
-      await this.blackboard.write('discoveries', discovery, sessionId);
-    }
   }
 
   /** Append a previous_output to the session's ContextSlot and Blackboard (4.2). */
@@ -209,9 +201,6 @@ export class SessionManager {
     }
     session.contextSlot.previous_outputs.push(output);
     this.persist(session);
-    if (this.blackboard) {
-      await this.blackboard.write('outputs', output, sessionId);
-    }
   }
 
   private createDefaultSlot(): ContextSlot {
@@ -424,7 +413,7 @@ export class SessionManager {
   }
 
   /** Append an event to a sub-agent session. */
-  addEvent(sessionId: string, event: AgentEvent): void {
+  addEvent(sessionId: string, event: unknown): void {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.events = [...(session.events ?? []), event];

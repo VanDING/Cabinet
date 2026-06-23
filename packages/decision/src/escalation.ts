@@ -1,5 +1,15 @@
-import type { EventBus } from '@cabinet/events';
 import { MessageType } from '@cabinet/types';
+
+interface EventBus {
+  publish(msg: {
+    messageId: string;
+    correlationId: string;
+    causationId: string | null;
+    timestamp: Date;
+    messageType: string;
+    payload: unknown;
+  }): Promise<void>;
+}
 
 export class EscalationService {
   constructor(private readonly eventBus: EventBus) {}

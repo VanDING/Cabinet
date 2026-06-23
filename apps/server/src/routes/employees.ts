@@ -249,17 +249,69 @@ employeesRouter.post('/:id/test', async (c) => {
     return c.json({ status: 'error', message: 'No model configured for this employee' }, 400);
   }
 
-  const { AISDKAdapter } = await import('@cabinet/gateway');
-  const adapter = new AISDKAdapter({}, {});
+  const { apiKeyRepo } = getServerContext();
+  const [provider, modelName] = model.includes('/') ? model.split('/') : ['openai', model];
+
+  const keys = apiKeyRepo.findAll();
+  const keyRow = keys.find((k) => k.provider === provider);
+  if (!keyRow) {
+    return c.json(
+      { status: 'error', message: `No API key configured for provider: ${provider}` },
+      400,
+    );
+  }
+
+  let apiKey: string;
+  try {
+    const { decryptApiKey } = await import('../crypto.js');
+    const { MASTER_PW } = await import('./settings/persistence.js');
+    apiKey = decryptApiKey(keyRow.encrypted_key, MASTER_PW);
+  } catch {
+    return c.json({ status: 'error', message: 'Failed to decrypt API key' }, 500);
+  }
+
+  const PROVIDER_URLS: Record<string, string> = {
+    anthropic: 'https://api.anthropic.com/v1/messages',
+    openai: 'https://api.openai.com/v1/chat/completions',
+    deepseek: 'https://api.deepseek.com/v1/chat/completions',
+    google: 'https://generativelanguage.googleapis.com/v1beta/models',
+    qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    moonshot: 'https://api.moonshot.cn/v1/chat/completions',
+    zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    baichuan: 'https://api.baichuan-ai.com/v1/chat/completions',
+  };
+  const url = PROVIDER_URLS[provider];
+  if (!url) {
+    return c.json({ status: 'error', message: `Unknown provider: ${provider}` }, 400);
+  }
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (provider === 'anthropic') {
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+  } else if (provider === 'google') {
+    headers['x-goog-api-key'] = apiKey;
+  } else {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
   const start = Date.now();
   try {
-    const result = await adapter.generateText({
-      model,
-      messages: [{ role: 'user', content: 'Reply with just "OK".' }],
-      maxTokens: 10,
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelName,
+        messages: [{ role: 'user', content: 'OK' }],
+        max_tokens: 10,
+        maxTokens: 10,
+      }),
+      signal: AbortSignal.timeout(15000),
     });
     const latency = Date.now() - start;
-    return c.json({ status: 'ok', latency_ms: latency, model: result.model });
+    if (res.ok) return c.json({ status: 'ok', latency_ms: latency, model });
+    const text = await res.text().catch(() => '');
+    return c.json({ status: 'error', message: `HTTP ${res.status}: ${text.slice(0, 200)}` }, 503);
   } catch (e) {
     return c.json({ status: 'error', message: (e as Error).message ?? 'Connection failed' }, 503);
   }

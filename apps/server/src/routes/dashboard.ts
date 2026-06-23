@@ -8,11 +8,9 @@ import {
   type DashboardSummary,
   type DashboardCostHistory,
   type DashboardAgentStatus,
-  type DashboardBudgetStatus,
 } from '@cabinet/types';
 import { broadcast } from '../ws/handler.js';
 
-// Static EVENT_LABELS — new types fall back to humanized string (5.4)
 const EVENT_LABELS: Record<string, string> = {
   [MessageType.DecisionRequest]: 'Decision requested',
   [MessageType.DecisionResolved]: 'Decision resolved',
@@ -31,7 +29,6 @@ const EVENT_LABELS: Record<string, string> = {
   [MessageType.AuditEvent]: 'Audit event',
 };
 
-/** Humanize an unknown event type: snake_case / camelCase → Title Case. */
 function humanizeEventType(type: string): string {
   if (EVENT_LABELS[type]) return EVENT_LABELS[type]!;
   return type
@@ -40,9 +37,8 @@ function humanizeEventType(type: string): string {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
-// ── Simple in-memory cache for dashboard summary (5.5) ──
 let summaryCache: { data: DashboardSummary; timestamp: number } | null = null;
-const SUMMARY_CACHE_TTL_MS = 10_000; // 10 seconds
+const SUMMARY_CACHE_TTL_MS = 10_000;
 
 function getCachedSummary(factory: () => DashboardSummary): DashboardSummary {
   const now = Date.now();
@@ -57,17 +53,8 @@ function getCachedSummary(factory: () => DashboardSummary): DashboardSummary {
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
-  const {
-    decisionRepo,
-    costTracker,
-    budgetGuard,
-    projectRepo,
-    workflowRepo,
-    eventRepo,
-    auditLogRepo,
-    metrics,
-    logger,
-  } = getServerContext();
+  const { decisionRepo, projectRepo, workflowRepo, eventRepo, auditLogRepo, metrics, logger } =
+    getServerContext();
   const projectId = c.req.query('projectId');
 
   const result = getCachedSummary(() => {
@@ -106,7 +93,6 @@ dashboardRouter.get('/summary', (c) => {
       logger.warn('Failed to load events', { error: (err as Error).message });
     }
 
-    // Fallback: if event_log is empty, synthesise from audit_log
     if (recentEvents.length === 0) {
       try {
         const audits = auditLogRepo.findAll({ limit: 20 });
@@ -123,24 +109,16 @@ dashboardRouter.get('/summary', (c) => {
       }
     }
 
-    const budgets = budgetGuard.checkAll();
-    const budgetStatus: DashboardBudgetStatus = {
-      daily: budgets.find((b) => b.period === 'daily')?.percentage ?? 0,
-      weekly: budgets.find((b) => b.period === 'weekly')?.percentage ?? 0,
-      monthly: budgets.find((b) => b.period === 'monthly')?.percentage ?? 0,
-    };
-
     const summary: DashboardSummary = {
       pendingDecisions,
-      todayCost: costTracker.getDailyCost(),
+      todayCost: 0,
       activeProjects,
       activeWorkflows,
       recentEvents,
-      budgetStatus,
+      budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
       summary: metrics.getSummary(),
     };
 
-    // WebSocket broadcast (5.1)
     broadcast('dashboard:summary', summary as unknown as Record<string, unknown>);
 
     return summary;
@@ -150,7 +128,7 @@ dashboardRouter.get('/summary', (c) => {
 });
 
 dashboardRouter.get('/cost-history', (c) => {
-  const { costTracker, db } = getServerContext();
+  const { db, logger } = getServerContext();
   const days = parseInt(c.req.query('days') ?? '7', 10);
   const history: DashboardCostHistory['history'] = [];
 
@@ -191,32 +169,21 @@ dashboardRouter.get('/cost-history', (c) => {
     /* cost_history table may be empty */
   }
 
-  const budgetStatus = costTracker
-    ? {
-        daily: costTracker.getDailyCost(),
-        weekly: costTracker.getWeeklyCost?.() ?? 0,
-        monthly: costTracker.getMonthlyCost?.() ?? 0,
-      }
-    : { daily: 0, weekly: 0, monthly: 0 };
-
   const result: DashboardCostHistory = {
     history,
-    dailyCost: costTracker.getDailyCost(),
-    budgetStatus,
+    dailyCost: 0,
+    budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
     limits: { daily: DAILY_BUDGET, weekly: WEEKLY_BUDGET, monthly: MONTHLY_BUDGET },
   };
 
   return c.json(result);
 });
 
-// ── Agent Health Status (5.2) ──
-
 dashboardRouter.get('/agent-status', (c) => {
-  const { agentRegistry, daemon, logger } = getServerContext();
+  const { agentRegistry, logger } = getServerContext();
   const agents: DashboardAgentStatus[] = [];
 
   try {
-    // Agents from registry — distinguish internal vs external
     const roles = agentRegistry.list?.() ?? [];
     for (const role of roles) {
       const isExternal = role.type === 'external_a2a' || role.type === 'external_cli';
@@ -242,31 +209,8 @@ dashboardRouter.get('/agent-status', (c) => {
     logger.warn('Failed to load agent roles', { error: (err as Error).message });
   }
 
-  try {
-    // Daemon status
-    if (daemon) {
-      const status = daemon.getStatus?.();
-      if (status) {
-        for (const d of status.agents ?? []) {
-          agents.push({
-            id: d.agentId,
-            name: d.agentId,
-            type: 'daemon',
-            status: d.status,
-            lastHeartbeatAt: d.lastHeartbeatAt ? new Date(d.lastHeartbeatAt) : undefined,
-            activeTasks: d.activeTaskCount ?? 0,
-          });
-        }
-      }
-    }
-  } catch (err) {
-    logger.warn('Failed to load daemon status', { error: (err as Error).message });
-  }
-
   return c.json({ agents });
 });
-
-// ── Operational Trends (D.7) ──
 
 dashboardRouter.get('/trends', (c) => {
   const { db, logger } = getServerContext();

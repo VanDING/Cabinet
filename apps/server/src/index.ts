@@ -13,8 +13,6 @@ import { agentsRouter } from './routes/agents.js';
 import { projectsRouter } from './routes/projects.js';
 import { deliverablesRouter } from './routes/deliverables.js';
 import { externalAgentRouter } from './routes/external-agent.js';
-import { daemonRouter } from './routes/daemon.js';
-import { autopilotRouter, webhookRouter } from './routes/autopilot.js';
 import { squadRouter } from './routes/squads.js';
 import { tasksRouter } from './routes/tasks.js';
 import { installRouter } from './routes/install.js';
@@ -22,6 +20,10 @@ import { workbenchRouter } from './routes/workbench.js';
 import { workbenchAgentsRouter } from './routes/workbench/agents.js';
 import { mcpRegistryRouter } from './routes/workbench/mcp-reg.js';
 import { documentsRouter } from './routes/documents.js';
+import { memoryRouter } from './routes/memory.js';
+import { dashboardRouter } from './routes/dashboard.js';
+import { meetingsRouter } from './routes/meetings.js';
+import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rate-limit.js';
 import { openapiRouter } from './openapi.js';
@@ -51,8 +53,7 @@ export function createApp() {
   app.use('/api/*', rateLimiter(100, 60_000));
   app.use('/api/*', authMiddleware);
 
-  // Webhook & health
-  app.route('/webhooks', webhookRouter);
+  // Health
   app.route('/health', healthRouter);
   app.route('/.well-known', agentsRouter);
 
@@ -71,14 +72,16 @@ export function createApp() {
   app.route('/api/projects', documentsRouter);
   app.route('/api/slot', externalAgentRouter);
   app.route('/api/external', externalAgentRouter);
-  app.route('/api/daemon', daemonRouter);
-  app.route('/api/autopilots', autopilotRouter);
   app.route('/api/squads', squadRouter);
   app.route('/api/tasks', tasksRouter);
   app.route('/api/install', installRouter);
   app.route('/api/workbench', workbenchRouter);
   app.route('/api/workbench/agents', workbenchAgentsRouter);
   app.route('/api/workbench/mcp/registry', mcpRegistryRouter);
+  app.route('/api/memory', memoryRouter);
+  app.route('/api/dashboard', dashboardRouter);
+  app.route('/api/meetings', meetingsRouter);
+  app.route('/api/scheduled-tasks', scheduledTasksRouter);
 
   // GeoIP proxy
   app.get('/api/geoip', async (c) => {

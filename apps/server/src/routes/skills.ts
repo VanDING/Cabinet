@@ -269,44 +269,10 @@ skillsRouter.delete('/:id', (c) => {
 
 // ── POST /api/skills/:id/test ──
 skillsRouter.post('/:id/test', async (c) => {
-  const { gateway, skillRepo, metrics, logger } = getServerContext();
-  const id = c.req.param('id');
-  const body = await c.req.json();
-  const input = (body.input as string) ?? '';
-
-  const skill = skillRepo.findById(id);
-  if (!skill) return c.json({ error: 'Skill not found' }, 404);
-
-  if (!gateway) {
-    return c.json({
-      skillId: id,
-      output: 'No LLM available. Configure API keys to test skills.',
-      mode: 'fallback',
-    });
-  }
-
-  try {
-    const prompt = skill.prompt_template
-      ? `${skill.prompt_template}\n\nInput: ${input}`
-      : `Execute the "${skill.name}" skill. Input: ${input}`;
-
-    const testModel = (gateway as any).resolveModelString?.('default') ?? 'claude-haiku-4-5';
-    const response = await gateway.generateText({
-      model: testModel,
-      messages: [{ role: 'user', content: prompt }],
-      maxTokens: 300,
-    });
-    metrics.increment('llm_call', { model: response.model ?? testModel, purpose: 'skill_test' });
-    logger.info('Skill test completed', { id, name: skill.name });
-    return c.json({
-      skillId: id,
-      output: response.content,
-      model: response.model,
-      tokens: response.usage,
-    });
-  } catch (e) {
-    return c.json({ error: (e as Error).message }, 500);
-  }
+  return c.json(
+    { error: 'Skill testing migrated to Mastra. Use Mastra agent API to test skills.' },
+    503,
+  );
 });
 
 // ── POST /api/skills/import — import SKILL.md text ──

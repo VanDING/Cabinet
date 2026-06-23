@@ -28,7 +28,6 @@ import type {
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import type { DecisionService } from '@cabinet/decision';
-import type { CostTracker, BudgetGuard, LLMGateway } from '@cabinet/gateway';
 import type {
   ShortTermMemory,
   LongTermMemory,
@@ -38,23 +37,14 @@ import type {
   KnowledgeGraph,
   MemoryDecayService,
 } from '@cabinet/memory';
-import type { SqliteEventStore, AgentEventBus, AgentEventRepository } from '@cabinet/events';
 import type { SessionManager } from '@cabinet/secretary';
-import type {
-  AgentRoleRegistry,
-  SkillRegistry,
-  AgentBlackboard,
-  AgentDaemon,
-} from '@cabinet/agent';
+import type { AgentRoleRegistry, SkillRegistry } from '@cabinet/agent';
 import type { TaskScheduler } from '../scheduler.js';
 import type { MCPManager } from '../mcp/mcp-manager.js';
-import type { ObservabilityCollector, SubconsciousLoop } from '@cabinet/harness';
-import type { SkillExtractor } from '@cabinet/agent';
 import type { DelegationTier } from '@cabinet/types';
 import type { getLogger } from '@cabinet/storage';
-import type { EventBus } from '@cabinet/events';
-import type { TriggerScheduler } from '@cabinet/agent';
 import type { A2AClient } from '../a2a/a2a-client.js';
+import type { EventBus, AgentEventBus, AgentEventRepository } from './event-bus.js';
 
 export type SystemMode = 'normal' | 'maintenance' | 'readonly' | 'emergency';
 
@@ -93,48 +83,33 @@ export interface ServerContext {
   entity: EntityMemory;
   project: ProjectMemory;
   memoryFacade: MemoryFacade;
-  // Gateway
-  gateway: LLMGateway | null;
-  refreshGateway: () => void;
-  costTracker: CostTracker;
-  budgetGuard: BudgetGuard;
   // Session
   sessionManager: SessionManager;
-  // Blackboard (4.2)
-  blackboard?: AgentBlackboard;
-  // File tracking (per-session, auto-populated by tool callbacks)
+  // File tracking
   fileTracker: import('./trackers.js').FileAccessTracker;
   // Task tracking
   taskTracker: import('./trackers.js').TaskTracker;
   // Permissions
   delegationTier: DelegationTier;
-  // Agent registry (shared across all requests — custom roles persist here)
+  // Agent registry
   agentRegistry: AgentRoleRegistry;
-  // Skill registry (shared — loaded from DB on startup)
+  // Skill registry
   skillRegistry: SkillRegistry;
   mcpManager: MCPManager;
-  // Daemon (pull-mode agent task queue + runtime)
-  daemon: AgentDaemon;
+  // Task queues
   taskQueueRepo: AgentTaskQueueRepository;
   daemonRepo: AgentDaemonRepository;
-  // Autopilot (cron/webhook/manual triggers)
+  // Autopilot
   autopilotRepo: AutopilotRepository;
-  triggerScheduler: TriggerScheduler | null;
   // Scheduler
   taskScheduler: TaskScheduler;
-  // Feedback loop
-  observability: ObservabilityCollector;
-  // Skill extraction
-  skillExtractor: SkillExtractor;
   // Knowledge graph
   knowledgeGraph: KnowledgeGraph;
   // Memory decay
   memoryDecay: MemoryDecayService;
-  // Subconscious loop
-  subconsciousLoop: SubconsciousLoop;
-  // Intent parser (pre-created for fast routing)
+  // Intent parser
   intentParser?: import('@cabinet/secretary').IntentParser;
-  // Mastra instance (SDK v7 integration)
+  // Mastra instance
   mastra?: import('@mastra/core').Mastra;
   // Infrastructure
   eventBus: EventBus;
@@ -143,6 +118,14 @@ export interface ServerContext {
   backupManager: BackupManager | null;
   // A2A client
   a2aClient: A2AClient;
-  /** Clean up all timers, close DB, stop backup. Call on process exit. */
   shutdown: () => void;
+}
+
+export interface BuildState extends Partial<ServerContext> {
+  dataDir: string;
+  dbPath: string;
+  dbMode: 'file' | 'memory';
+  knowledgeGraph?: KnowledgeGraph;
+  memoryDecay?: MemoryDecayService;
+  memoryMaintenanceTimer?: ReturnType<typeof setInterval>;
 }

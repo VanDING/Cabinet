@@ -5,17 +5,11 @@ import { loadSettings, saveSettings } from './persistence.js';
 export function registerModelConfigRoutes(router: Hono): void {
   router.get('/model-config', (c) => {
     const settings = loadSettings();
-    // Reflect the actual runtime modelMapping from the gateway if available,
-    // otherwise fall back to settings.json, then to a reasonable default.
-    const ctx = getServerContext();
-    const gateway = ctx.gateway as any;
-    const runtimeMapping = gateway?.modelMapping as Record<string, string> | undefined;
-    const effectiveMapping = settings.modelMapping ??
-      runtimeMapping ?? {
-        deep_reasoning: 'anthropic/claude-opus-4-7',
-        default: 'anthropic/claude-sonnet-4-6',
-        fast_execution: 'anthropic/claude-haiku-4-5',
-      };
+    const effectiveMapping = settings.modelMapping ?? {
+      deep_reasoning: 'deepseek/deepseek-chat',
+      default: 'deepseek/deepseek-chat',
+      fast_execution: 'deepseek/deepseek-chat',
+    };
     return c.json({
       providers: settings.providers ?? {},
       modelMapping: effectiveMapping,
@@ -23,7 +17,7 @@ export function registerModelConfigRoutes(router: Hono): void {
   });
 
   router.put('/model-config', async (c) => {
-    const { refreshGateway, logger } = getServerContext();
+    const { logger } = getServerContext();
     const body = await c.req.json();
 
     if (body.providers !== undefined && typeof body.providers !== 'object') {
@@ -37,8 +31,7 @@ export function registerModelConfigRoutes(router: Hono): void {
     if (body.providers !== undefined) updates.providers = body.providers;
     if (body.modelMapping !== undefined) updates.modelMapping = body.modelMapping;
     saveSettings(updates);
-    refreshGateway();
-    logger.info('Model config updated', {
+    logger.info('Model config saved', {
       providers: Object.keys(body.providers ?? {}),
       tiers: Object.keys(body.modelMapping ?? {}),
     });

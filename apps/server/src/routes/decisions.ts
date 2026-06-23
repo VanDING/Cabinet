@@ -3,8 +3,6 @@ import { z } from 'zod';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
 import { DEFAULT_CAPTAIN_ID } from '@cabinet/types';
-import { DecisionAnalysisService } from '../services/decision-analysis.js';
-
 export const decisionsRouter = new Hono();
 
 decisionsRouter.get('/', (c) => {
@@ -33,12 +31,6 @@ decisionsRouter.get('/:id', async (c) => {
   const { decisionService } = getServerContext();
   const decision = decisionService.getById(c.req.param('id'));
   if (!decision) return c.json({ error: 'Decision not found' }, 404);
-
-  // Trigger background analysis if missing (non-blocking)
-  const analysisService = new DecisionAnalysisService(getServerContext());
-  analysisService.ensureAnalysis(decision.id).catch((err) => {
-    console.warn('Operation failed', err);
-  });
 
   return c.json({ decision });
 });

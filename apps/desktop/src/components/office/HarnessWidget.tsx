@@ -89,14 +89,6 @@ export function HarnessWidget({ onExpand }: Props) {
               </ResponsiveContainer>
             </div>
           )}
-          {data.lastEscalation && (
-            <div className="border-border bg-surface-muted rounded-sm border p-1.5">
-              <div className="text-content-tertiary text-[10px]">Last escalation</div>
-              <div className="text-content-secondary truncate text-xs">
-                {data.lastEscalation.description}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

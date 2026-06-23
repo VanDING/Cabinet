@@ -144,22 +144,15 @@ externalAgentRouter.post('/:taskId/write', async (c) => {
     const childSession = sessionManager.getSessionByTaskId(taskId) ?? sessionManager.get(taskId);
 
     if (childSession?.contextSlot) {
-      const serverCtx = getServerContext();
       if (parsed.data.discoveries) {
         childSession.contextSlot.discoveries.push(...parsed.data.discoveries);
-        for (const d of parsed.data.discoveries) {
-          serverCtx.blackboard?.write('discoveries', d, childSession.id).catch(() => {});
-        }
       }
       if (parsed.data.previous_outputs) {
         childSession.contextSlot.previous_outputs.push(...parsed.data.previous_outputs);
-        for (const o of parsed.data.previous_outputs) {
-          serverCtx.blackboard?.write('outputs', o, childSession.id).catch(() => {});
-        }
       }
       sessionManager.setContextSlot(childSession.id, childSession.contextSlot);
 
-      agentEventBus.publish(childSession.id, childSession.parentId, {
+      agentEventBus.publish(childSession.id, childSession.parentId ?? '', {
         type: 'tool_result',
         name: 'slot_write',
         result: {
@@ -308,7 +301,7 @@ externalAgentRouter.post('/deliverables', async (c) => {
       sessionManager.get(parsed.data.task_id);
     if (childSession) {
       childSession.deliverable = parsed.data.content;
-      agentEventBus.publish(childSession.id, childSession.parentId, {
+      agentEventBus.publish(childSession.id, childSession.parentId ?? '', {
         type: 'completed',
         deliverable: { id: deliverableId, title: parsed.data.title, content: parsed.data.content },
         timestamp: Date.now(),

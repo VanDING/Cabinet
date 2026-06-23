@@ -1,7 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ToolDefinition } from './tool-executor.js';
 import { parseSkillMarkdown } from './skill-loader.js';
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  execute: (params: Record<string, unknown>) => Promise<unknown>;
+}
 
 // ── Skill Metadata (L1 — always loaded, ~50 tokens each) ──
 

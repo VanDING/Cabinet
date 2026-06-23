@@ -1,23 +1,12 @@
 import { ModalOverlay } from '../ModalOverlay';
 import { useEffect } from 'react';
-import { X, Shield, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Shield, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useHarnessData } from './useHarnessData.js';
 
 interface Props {
   onClose: () => void;
 }
-const SEVERITY_ICONS: Record<string, typeof AlertTriangle> = {
-  critical: AlertCircle,
-  warning: AlertTriangle,
-  info: CheckCircle2,
-};
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: 'text-intent-danger',
-  warning: 'text-intent-warning',
-  info: 'text-intent-success',
-};
-
 export function HarnessModal({ onClose }: Props) {
   const { data, loading } = useHarnessData();
 
@@ -123,36 +112,6 @@ export function HarnessModal({ onClose }: Props) {
                     />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-          {(data.recentActions?.length ?? 0) > 0 && (
-            <section>
-              <h4 className="text-content-secondary mb-2 text-xs font-medium">Recent Actions</h4>
-              <div className="space-y-1.5">
-                {(data.recentActions ?? []).map((a, i) => {
-                  const Icon = SEVERITY_ICONS[a.severity] ?? CheckCircle2;
-                  const color = SEVERITY_COLORS[a.severity] ?? 'text-intent-success';
-                  return (
-                    <div
-                      key={i}
-                      className="border-border bg-surface-muted flex items-start gap-2 rounded-sm border p-2.5"
-                    >
-                      <Icon size={14} className={`mt-0.5 shrink-0 ${color}`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-content-secondary text-xs">{a.description}</div>
-                        <div className="text-content-tertiary mt-1 flex items-center gap-2 text-[10px]">
-                          <span className="capitalize">{a.severity}</span>
-                          <span>{a.applied ? 'Applied' : 'Pending'}</span>
-                          {a.requiresApproval && <span>Needs approval</span>}
-                          <span className="ml-auto">
-                            {new Date(a.timestamp).toLocaleTimeString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </section>
           )}

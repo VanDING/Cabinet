@@ -12,7 +12,8 @@
 //   - context budget (how much context this role typically needs)
 //
 
-import { buildCliExternalConfig, buildA2AExternalConfig } from './daemon/build-external-config.js';
+import type { ExternalAgentConfig } from '@cabinet/types';
+import { buildCliExternalConfig, buildA2AExternalConfig } from './external-config.js';
 
 // ── Role Definition ────────────────────────────────────────────
 

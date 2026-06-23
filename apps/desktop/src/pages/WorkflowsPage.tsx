@@ -115,52 +115,18 @@ export function WorkflowsPage() {
     }
   };
 
-  const handleExport = async (workflowId: string) => {
-    const wf = workflows.find((w) => w.id === workflowId);
-    try {
-      const res = await apiFetch('/api/workflows/export', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ workflowId }),
-      });
-      const blueprint = await res.json();
-      const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${wf?.name ?? 'workflow'}.cabinet.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      addToast('success', `Workflow "${wf?.name ?? workflowId}" exported`);
-    } catch {
-      addToast('error', 'Failed to export workflow');
-    }
+  const handleExport = (workflowId: string) => {
+    addToast(
+      'info',
+      'Workflow export migrated to Mastra. Use Mastra Studio for workflow management.',
+    );
   };
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const blueprint = JSON.parse(text);
-      const projRes = await apiFetch('/api/projects', { headers: authHeaders() });
-      const projData = await projRes.json();
-      const pid = (projData.projects?.[0]?.id as string) ?? 'default';
-      const res = await apiFetch('/api/workflows/import', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-        body: JSON.stringify({ blueprint, projectId: pid }),
-      });
-      const data = await res.json();
-      const nodeCount = data.nodes?.length ?? 0;
-      const missing = data.missingAgents?.length ?? 0;
-      const summary = `Imported workflow with ${nodeCount} nodes${missing ? ` (${missing} missing agents)` : ''}`;
-      addToast('success', summary);
-      fetchWorkflows();
-    } catch {
-      addToast('error', 'Failed to import workflow');
-    }
-    e.target.value = '';
+  const handleImportFile = () => {
+    addToast(
+      'info',
+      'Workflow import migrated to Mastra. Use Mastra Studio for workflow management.',
+    );
   };
 
   return (

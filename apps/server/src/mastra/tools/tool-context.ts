@@ -35,26 +35,11 @@ export const toolServices = {
   get agentEventBus() {
     return ctx().agentEventBus;
   },
-  get gateway() {
-    return ctx().gateway;
-  },
-  get costTracker() {
-    return ctx().costTracker;
-  },
-  get budgetGuard() {
-    return ctx().budgetGuard;
-  },
   get agentRegistry() {
     return ctx().agentRegistry;
   },
   get skillRegistry() {
     return ctx().skillRegistry;
-  },
-  get observability() {
-    return ctx().observability;
-  },
-  get daemon() {
-    return ctx().daemon;
   },
   get sessionManager() {
     return ctx().sessionManager;

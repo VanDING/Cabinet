@@ -74,12 +74,6 @@ export function loadSettingsAndTemplate(state: BuildState): void {
       if (settings.delegationTier) {
         setCurrentTier(settings.delegationTier as DelegationTier);
       }
-      if (settings.modelMapping) {
-        state.setModelMapping?.(settings.modelMapping);
-      }
-      if (settings.providers) {
-        state.setProviderConfigsFromSettings?.(settings.providers);
-      }
       state.logger?.info('Settings loaded from file', { path: settingsPath });
     }
   } catch {
