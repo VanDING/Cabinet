@@ -16,6 +16,7 @@ import { researcherAgent } from './agents/specialist-researcher.js';
 import { processFilesWorkflow } from './workflows/file-process.js';
 import { codeReviewWorkflow } from './workflows/code-review.js';
 import { cabinetWorkspace } from './workspace.js';
+import { bgTaskManager } from './background-tasks.js';
 
 const storage = new LibSQLStore({
   id: 'cabinet-storage',
@@ -93,6 +94,8 @@ export const mastra = new Mastra({
   }),
 });
 
+bgTaskManager.__registerMastra(mastra as any);
+
 export {
   secretaryAgent,
   curatorAgent,
@@ -102,4 +105,5 @@ export {
   processFilesWorkflow,
   codeReviewWorkflow,
   memory,
+  bgTaskManager,
 };

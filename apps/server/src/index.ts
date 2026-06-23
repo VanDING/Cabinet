@@ -35,6 +35,7 @@ import { insightsRouter } from './routes/insights.js';
 import { harnessRouter } from './routes/harness.js';
 import { telemetryRouter } from './routes/telemetry.js';
 import { gcRouter } from './routes/gc.js';
+import { signalsRouter } from './routes/signals.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rate-limit.js';
 import { openapiRouter } from './openapi.js';
@@ -104,6 +105,7 @@ export function createApp() {
   app.route('/api/harness', harnessRouter);
   app.route('/api/telemetry', telemetryRouter);
   app.route('/api/gc', gcRouter);
+  app.route('/api/signals', signalsRouter);
 
   // GeoIP proxy
   app.get('/api/geoip', async (c) => {
