@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
+import { resolveModel } from '../mastra/model-config.js';
 
 const secretaryRouter = new Hono();
 
@@ -40,7 +41,10 @@ secretaryRouter.post('/chat', async (c) => {
   const input = fileContext ? `${message}\n\nAttached files:\n${fileContext}` : message;
 
   try {
-    const result = await agent.stream(input, { memory: { thread: { id: sessionId } } });
+    const result = await agent.stream(input, {
+      model: resolveModel('default'),
+      memory: { thread: { id: sessionId } },
+    });
     const textStream = result.textStream.getReader();
     const encoder = new TextEncoder();
     let fullText = '';

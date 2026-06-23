@@ -1,33 +1,40 @@
 import { Agent } from '@mastra/core/agent';
 import { TaskSignalProvider } from '@mastra/core/signals';
 import { CabinetDecisionSignalProvider } from '../signals/decision-signal.js';
+import { resolveModel } from '../model-config.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { secretaryIdentity } from '../prompts/identities.js';
 import { writerAgent } from './specialist-writer.js';
 import { analystAgent } from './specialist-analyst.js';
 import { researcherAgent } from './specialist-researcher.js';
+import { plannerAgent } from './specialist-planner.js';
+import { reviewerAgent } from './specialist-reviewer.js';
+import { testerAgent } from './specialist-tester.js';
 import { cabinetTools } from '../tools/index.js';
 
 export const secretaryAgent = new Agent({
   id: 'secretary',
   name: 'Secretary',
-  description: '首席助理，理解用户意图并协调 specialist 完成任务',
+  description: '首席助理，理解用户意图，先规划后执行，协调 specialist 完成任务',
   instructions: [
     SHARED_PROMPT,
     '',
     secretaryIdentity,
     '',
     '## Delegation',
-    'You have specialist agents available: writer, analyst, researcher.',
-    'Delegate specialized work to them. Synthesize their results into a cohesive response.',
+    'You have specialist agents: planner (explore+design), reviewer (code review), tester (test gen+run), writer (documentation), analyst (code analysis), researcher (search).',
+    'For complex tasks: first delegate to planner, then execute, then have reviewer verify the result.',
     'For simple tasks, handle directly using your tools.',
   ].join('\n'),
-  model: 'deepseek/deepseek-chat',
+  model: resolveModel('default'),
   defaultOptions: {
     maxSteps: 50,
   },
   tools: { ...cabinetTools },
   agents: {
+    planner: plannerAgent,
+    reviewer: reviewerAgent,
+    tester: testerAgent,
     writer: writerAgent,
     analyst: analystAgent,
     researcher: researcherAgent,

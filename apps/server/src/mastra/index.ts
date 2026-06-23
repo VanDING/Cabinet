@@ -13,6 +13,9 @@ import { curatorAgent } from './agents/curator.js';
 import { writerAgent } from './agents/specialist-writer.js';
 import { analystAgent } from './agents/specialist-analyst.js';
 import { researcherAgent } from './agents/specialist-researcher.js';
+import { plannerAgent } from './agents/specialist-planner.js';
+import { reviewerAgent } from './agents/specialist-reviewer.js';
+import { testerAgent } from './agents/specialist-tester.js';
 import { processFilesWorkflow } from './workflows/file-process.js';
 import { codeReviewWorkflow } from './workflows/code-review.js';
 import { cabinetWorkspace } from './workspace.js';
@@ -66,6 +69,9 @@ const memory = new Memory({
 (curatorAgent as any).memory = memory;
 (writerAgent as any).memory = memory;
 (analystAgent as any).memory = memory;
+(plannerAgent as any).memory = memory;
+(reviewerAgent as any).memory = memory;
+(testerAgent as any).memory = memory;
 (researcherAgent as any).memory = memory;
 
 export const mastra = new Mastra({
@@ -77,6 +83,9 @@ export const mastra = new Mastra({
     writer: writerAgent,
     analyst: analystAgent,
     researcher: researcherAgent,
+    planner: plannerAgent,
+    reviewer: reviewerAgent,
+    tester: testerAgent,
   },
   workflows: {
     processFiles: processFilesWorkflow,
@@ -99,6 +108,9 @@ bgTaskManager.__registerMastra(mastra as any);
 export {
   secretaryAgent,
   curatorAgent,
+  plannerAgent,
+  reviewerAgent,
+  testerAgent,
   writerAgent,
   analystAgent,
   researcherAgent,
