@@ -99,9 +99,9 @@ export function registerApiKeyRoutes(router: Hono): void {
         model: k.model || '',
         createdAt: (k as any).created_at ?? '',
       }));
-      return c.json(keys);
+      return c.json({ keys });
     } catch {
-      return c.json([]);
+      return c.json({ keys: [] });
     }
   });
 
