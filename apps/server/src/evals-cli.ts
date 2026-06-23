@@ -44,7 +44,7 @@ async function main() {
   }
 
   if (cmd === 'gate') {
-    const datasets = args.filter((a) => !a.startsWith('--'));
+    const datasets = args.slice(1).filter((a) => !a.startsWith('--'));
     const targets = datasets.length > 0 ? datasets : ['secretary', 'analyst', 'guardrails'];
     let allPassed = true;
     for (const ds of targets) {

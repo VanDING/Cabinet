@@ -47,7 +47,6 @@ secretaryRouter.post('/chat', async (c) => {
     });
     const fullStream = result.fullStream.getReader();
     const encoder = new TextEncoder();
-    let fullText = '';
 
     c.header('Content-Type', 'text/event-stream');
     c.header('Cache-Control', 'no-cache');
@@ -56,6 +55,7 @@ secretaryRouter.post('/chat', async (c) => {
     const responseStream = new ReadableStream({
       async start(controller) {
         try {
+          let text = '';
           while (true) {
             const { done, value } = await fullStream.read();
             if (done) break;
@@ -63,7 +63,7 @@ secretaryRouter.post('/chat', async (c) => {
 
             switch (chunk.type) {
               case 'text-delta':
-                fullText += chunk.payload?.text ?? '';
+                text += chunk.payload?.text ?? '';
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ content: chunk.payload?.text })}\n\n`),
                 );
@@ -128,6 +128,7 @@ secretaryRouter.post('/chat', async (c) => {
           }
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
+          sessionManager.addMessage(sessionId, 'assistant', text);
         } catch (err) {
           controller.enqueue(
             encoder.encode(JSON.stringify({ type: 'error', message: String(err) }) + '\n'),
@@ -136,8 +137,6 @@ secretaryRouter.post('/chat', async (c) => {
         }
       },
     });
-
-    sessionManager.addMessage(sessionId, 'assistant', fullText);
 
     return c.newResponse(responseStream);
   } catch (err) {
