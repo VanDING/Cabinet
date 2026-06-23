@@ -309,12 +309,6 @@ export function App() {
         );
       if (type === 'subconscious_insight')
         addNotification('system', 'Insight', data.data?.text ?? 'A new insight surfaced');
-      if (type === 'memory_contradiction')
-        addNotification(
-          'system',
-          'Memory contradiction',
-          data.data?.message ?? 'A memory conflict was detected',
-        );
       if (type === 'skill_created')
         addNotification('system', 'Skill imported', data.data?.name ?? 'New skill');
       if (type === 'skill_updated')

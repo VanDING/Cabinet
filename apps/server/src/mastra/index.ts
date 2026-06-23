@@ -18,6 +18,7 @@ import { reviewerAgent } from './agents/specialist-reviewer.js';
 import { testerAgent } from './agents/specialist-tester.js';
 import { processFilesWorkflow } from './workflows/file-process.js';
 import { codeReviewWorkflow } from './workflows/code-review.js';
+import { parallelWorkflow } from './workflows/parallel-example.js';
 import { cabinetWorkspace } from './workspace.js';
 import { bgTaskManager } from './background-tasks.js';
 
@@ -90,6 +91,7 @@ export const mastra = new Mastra({
   workflows: {
     processFiles: processFilesWorkflow,
     codeReview: codeReviewWorkflow,
+    parallelExample: parallelWorkflow,
   },
   observability: new Observability({
     configs: {
@@ -116,6 +118,7 @@ export {
   researcherAgent,
   processFilesWorkflow,
   codeReviewWorkflow,
+  parallelWorkflow,
   memory,
   bgTaskManager,
 };

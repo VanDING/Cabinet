@@ -3,7 +3,6 @@ import { Button, Card, Tabs } from '@cabinet/ui';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
 import { KnowledgeTab } from '../components/KnowledgeTab';
 import { EvaluationTab } from '../components/EvaluationTab';
-import { GraphTab } from '../components/graph/GraphTab';
 
 interface MemoryEntry {
   id: string;
@@ -357,39 +356,15 @@ function ShortTermRenderer({ data }: { data: Record<string, unknown> }) {
 }
 
 function LayerContent({ layer, content }: { layer: string; content: string }) {
-  const parsed = tryParseJson(content);
-  if (!isRecord(parsed)) {
-    if (layer === 'long_term') return <LongTermRenderer content={content} />;
-    return (
-      <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
-        {content}
-      </p>
-    );
-  }
-
-  switch (layer) {
-    case 'entity':
-      return <EntityCard data={parsed} />;
-    case 'project':
-      return <ProjectCard data={parsed} />;
-    case 'short_term':
-      return <ShortTermRenderer data={parsed} />;
-    case 'long_term':
-      return <LongTermRenderer content={content} />;
-    default:
-      return (
-        <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
-          {content}
-        </p>
-      );
-  }
+  return (
+    <p className="text-content-secondary text-[11px] leading-relaxed whitespace-pre-wrap">
+      {content}
+    </p>
+  );
 }
 
 const layerColors: Record<string, string> = {
-  short_term: 'bg-accent-muted text-accent',
-  long_term: 'bg-intent-purple-muted text-intent-purple',
-  entity: 'bg-intent-success-muted text-intent-success',
-  project: 'bg-intent-warning-muted text-intent-warning',
+  thread: 'bg-accent-muted text-accent',
 };
 
 function getNumericMeta(meta: Record<string, unknown>, key: string): number | undefined {
@@ -412,9 +387,7 @@ export function MemoryPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [consolidating, setConsolidating] = useState(false);
   const [consolidateResult, setConsolidateResult] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation' | 'graph'>(
-    'memory',
-  );
+  const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation'>('memory');
   const fetchMemories = useCallback(async () => {
     setLoading(true);
     try {
@@ -487,22 +460,20 @@ export function MemoryPage() {
 
       <Tabs
         className="mb-4"
-        tabs={['memory', 'knowledge', 'evaluation', 'graph'].map((id) => ({ id, label: id }))}
+        tabs={['memory', 'knowledge', 'evaluation'].map((id) => ({ id, label: id }))}
         activeTab={activeTab}
-        onTabChange={(id) => setActiveTab(id as 'memory' | 'knowledge' | 'evaluation' | 'graph')}
+        onTabChange={(id) => setActiveTab(id as 'memory' | 'knowledge' | 'evaluation')}
       />
 
       {activeTab === 'knowledge' ? (
         <KnowledgeTab />
       ) : activeTab === 'evaluation' ? (
         <EvaluationTab />
-      ) : activeTab === 'graph' ? (
-        <GraphTab />
       ) : (
         <>
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            {['all', 'short_term', 'long_term', 'entity', 'project'].map((layer) => (
+            {['all', 'thread'].map((layer) => (
               <button
                 key={layer}
                 onClick={() => setFilter(layer)}
