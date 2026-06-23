@@ -1,5 +1,7 @@
 import { serve } from '@hono/node-server';
 import type { Server } from 'node:http';
+import { MastraServer } from '@mastra/hono';
+import { mastra } from './mastra/index.js';
 import { createApp } from './index.js';
 import { config, validateEnv } from './config.js';
 import { createWSServers } from './ws/handler.js';
@@ -18,6 +20,18 @@ const port = config.port;
 // Initialize shared server context (DB, repos, services, backup)
 const ctx = getServerContext();
 ctx.logger.info('Server context initialized');
+
+// Integrate Mastra Hono Adapter (auto-registers agent/workflow/memory API routes)
+const mastraServer = new MastraServer({
+  app,
+  mastra,
+  prefix: '/api',
+  openapiPath: '/openapi.json',
+});
+// Manual init to control ordering: context middleware first, then routes
+mastraServer.registerContextMiddleware();
+await mastraServer.registerRoutes();
+ctx.logger.info('Mastra adapter initialized');
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   ctx.logger.info('Cabinet server started', {

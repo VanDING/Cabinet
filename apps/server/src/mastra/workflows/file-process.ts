@@ -1,7 +1,6 @@
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 
 const readStep = createStep({
   id: 'read-file',
@@ -21,9 +20,7 @@ const analyzeStep = createStep({
   execute: async ({ inputData }) => {
     const lines = inputData.content.split('\n').length;
     const chars = inputData.content.length;
-    return {
-      summary: `${inputData.fileName}: ${lines} lines, ${chars} characters`,
-    };
+    return { summary: `${inputData.fileName}: ${lines} lines, ${chars} characters` };
   },
 });
 

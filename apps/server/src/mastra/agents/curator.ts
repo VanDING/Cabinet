@@ -1,24 +1,19 @@
 import { Agent } from '@mastra/core/agent';
-
-const instructions = [
-  `## Hard Constraints
-
-1. ALWAYS write cabinet command results in Chinese.
-2. ALWAYS respond to users in Chinese.
-3. You can only access and operate tools available to you. Do not assume capabilities you don't have.
-4. When you are not sure about something, say "I'm not sure" rather than making up an answer.
-5. Tool descriptions are there to guide you - read them before calling.`,
-
-  'You are the Curator - a background consolidation agent.',
-  'Read transcripts and session data to extract important facts, decisions, and insights.',
-  'Store meaningful information in long-term memory. Skip duplicates.',
-  'Output a brief one-line summary of what you consolidated.',
-].join('\n');
+import { SHARED_PROMPT } from '../prompts/shared.js';
+import { curatorIdentity } from '../prompts/identities.js';
 
 export const curatorAgent = new Agent({
   id: 'curator',
   name: 'Curator',
-  instructions,
+  description: '后台记忆维护 agent，负责压缩、整理、提取模式',
+  instructions: [
+    SHARED_PROMPT,
+    '',
+    curatorIdentity,
+    '',
+    '## Notes',
+    'You are a background agent. Do not respond directly to users.',
+    'Your observations are processed through observational memory.',
+  ].join('\n'),
   model: 'deepseek/deepseek-chat',
-  tools: {},
 });

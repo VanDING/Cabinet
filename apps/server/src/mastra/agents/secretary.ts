@@ -1,32 +1,49 @@
 import { Agent } from '@mastra/core/agent';
-import { readFileTool, writeFileTool, execCommandTool } from '../tools/filesystem.js';
-
-const instructions = [
-  `## Hard Constraints
-
-1. ALWAYS write cabinet command results in Chinese.
-2. ALWAYS respond to users in Chinese.
-3. You can only access and operate tools available to you. Do not assume capabilities you don't have.
-4. When you are not sure about something, say "I'm not sure" rather than making up an answer.
-5. Tool descriptions are there to guide you - read them before calling.`,
-
-  'You are the Secretary of Cabinet - the entry point for all interactions.',
-  '',
-  'Core responsibilities:',
-  "1. Understand the user's intent and handle tasks directly.",
-  '2. Use tools to accomplish file operations, web research, and coding tasks.',
-  '3. When uncertain, say so - do not fabricate.',
-  '4. Complete multi-step tasks autonomously. Report results concisely.',
-].join('\n');
+import { SHARED_PROMPT } from '../prompts/shared.js';
+import { secretaryIdentity } from '../prompts/identities.js';
+import { writerAgent } from './specialist-writer.js';
+import { analystAgent } from './specialist-analyst.js';
+import { researcherAgent } from './specialist-researcher.js';
+import { cabinetTools } from '../tools/index.js';
 
 export const secretaryAgent = new Agent({
   id: 'secretary',
   name: 'Secretary',
-  instructions,
+  description: '首席助理，理解用户意图并协调 specialist 完成任务',
+  instructions: [
+    SHARED_PROMPT,
+    '',
+    secretaryIdentity,
+    '',
+    '## Delegation',
+    'You have specialist agents available: writer, analyst, researcher.',
+    'Delegate specialized work to them. Synthesize their results into a cohesive response.',
+    'For simple tasks, handle directly using your tools.',
+  ].join('\n'),
   model: 'deepseek/deepseek-chat',
-  tools: {
-    readFile: readFileTool,
-    writeFile: writeFileTool,
-    execCommand: execCommandTool,
+  defaultOptions: {
+    maxSteps: 50,
+  },
+  tools: { ...cabinetTools },
+  agents: {
+    writer: writerAgent,
+    analyst: analystAgent,
+    researcher: researcherAgent,
+  },
+  hooks: {
+    beforeToolCall: ({ toolName, input }) => {
+      if (toolName === 'executeCommand') {
+        const command = (input as { command?: string }).command ?? '';
+        if (command.includes('rm -rf /') || command.includes('del /f')) {
+          return { proceed: false, output: '命令被安全策略阻止。' };
+        }
+      }
+      if (toolName === 'writeFile' || toolName === 'deleteFile') {
+        const path = (input as { path?: string }).path ?? '';
+        if (path.includes('.env') || path.includes('.secret') || path.includes('.master_key')) {
+          return { proceed: false, output: '保护敏感文件操作被拒绝。' };
+        }
+      }
+    },
   },
 });
