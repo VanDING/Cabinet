@@ -131,7 +131,7 @@ secretaryRouter.post('/chat', async (c) => {
           sessionManager.addMessage(sessionId, 'assistant', text);
         } catch (err) {
           controller.enqueue(
-            encoder.encode(JSON.stringify({ type: 'error', message: String(err) }) + '\n'),
+            encoder.encode(`data: ${JSON.stringify({ type: 'error', message: String(err) })}\n\n`),
           );
           controller.close();
         }

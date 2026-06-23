@@ -26,17 +26,27 @@ function defaultModelForProvider(provider: string): string {
   return models[provider] ?? `openai/gpt-4o`;
 }
 
+/** Auto-prepend provider prefix if the model name doesn't already have one. */
+function ensureProviderPrefix(modelId: string, provider: string): string {
+  if (modelId.includes('/')) return modelId;
+  return `${provider}/${modelId}`;
+}
+
 export function resolveModel(tier: 'default' | 'reasoning' = 'default'): string {
   try {
     const settings = loadSettings();
     const mapping = settings.modelMapping as Record<string, string> | undefined;
+    const provider = detectProviderFromSettings();
+
     if (mapping) {
       const key = tier === 'reasoning' ? 'deep_reasoning' : tier;
-      if (mapping[key]) return mapping[key]!;
-      if (tier === 'reasoning' && mapping['reasoning']) return mapping['reasoning']!;
+      const modelId = mapping[key] || (tier === 'reasoning' && mapping['reasoning']);
+
+      if (modelId) {
+        return provider ? ensureProviderPrefix(modelId, provider) : modelId;
+      }
     }
-    // Auto-detect from user's configured API keys
-    const provider = detectProviderFromSettings();
+
     if (provider) return defaultModelForProvider(provider);
   } catch {
     /* settings not available */
