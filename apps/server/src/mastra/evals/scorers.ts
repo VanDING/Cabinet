@@ -6,7 +6,7 @@ import { createHallucinationScorer } from '@mastra/evals/scorers/prebuilt';
 import { createBiasScorer } from '@mastra/evals/scorers/prebuilt';
 import { createPromptAlignmentScorerLLM } from '@mastra/evals/scorers/prebuilt';
 
-const evalModel = { provider: 'DEEPSEEK', model: 'deepseek/deepseek-chat' };
+const evalModel = { provider: 'deepseek', model: 'deepseek/deepseek-chat' };
 
 type Scorer = {
   score: (input: {

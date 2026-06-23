@@ -12,7 +12,7 @@ function isTauri(): boolean {
 /** Returns the API base URL. Empty string in Vite dev (proxied), absolute in Tauri production. */
 export function apiUrl(path: string): string {
   if (isTauri()) {
-    return `http://localhost:3000${path}`;
+    return `http://localhost:${(globalThis as any).__CABINET_PORT__ ?? 3000}${path}`;
   }
   return path;
 }

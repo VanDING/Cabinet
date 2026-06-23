@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import { readdir, readFile, rename, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import { join, relative, resolve, dirname, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getServerContext } from '../context.js';
 
 export const filesRouter = new Hono();
 
-const PROJECT_ROOT = join(process.cwd(), '..', '..', '..');
+const INFERRED_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+const PROJECT_ROOT = process.env.CABINET_PROJECT_ROOT ?? INFERRED_ROOT;
 const VALID_DIRS = ['apps', 'packages', 'tools', 'tests'];
 
 // Sensitive files and patterns that must not be readable via the API

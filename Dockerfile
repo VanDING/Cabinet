@@ -41,8 +41,9 @@ COPY --from=builder /app/apps/server/package.json /app/apps/server/
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/server/dist /app/apps/server/dist
-EXPOSE 3000
-ENV PORT=3000
+ARG PORT=3000
+ENV PORT=$PORT
+EXPOSE $PORT
 ENV NODE_ENV=production
 USER node
 CMD ["node", "apps/server/dist/main.js"]

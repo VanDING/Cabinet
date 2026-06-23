@@ -242,35 +242,6 @@ agentsRouter.post('/discover', async (c) => {
   return c.json({ discovered: true, agentCard: card });
 });
 
-// ── A2A Inbound Task Routing (migrated to Mastra) ──
-
-agentsRouter.post('/message', async (c) => {
-  return c.json(
-    { error: 'A2A dispatch migrated to Mastra. Use Mastra agent API for task execution.' },
-    503,
-  );
-});
-
-agentsRouter.post('/message/stream', async (c) => {
-  c.header('Content-Type', 'text/event-stream');
-  c.header('Cache-Control', 'no-cache');
-  c.header('Connection', 'keep-alive');
-
-  const stream = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder();
-      controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ type: 'error', error: 'A2A streaming dispatch migrated to Mastra' })}\n\n`,
-        ),
-      );
-      controller.close();
-    },
-  });
-
-  return c.newResponse(stream);
-});
-
 // ── POST /api/agents/scan ──────────────────────────────────────
 
 agentsRouter.post('/scan', async (c) => {

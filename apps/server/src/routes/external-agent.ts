@@ -14,6 +14,7 @@ import { z } from 'zod';
 import crypto from 'node:crypto';
 import { getServerContext } from '../context.js';
 import { broadcast } from '../ws/handler.js';
+import { config } from '../config.js';
 
 export const externalAgentRouter = new Hono();
 
@@ -43,7 +44,7 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
   const taskId = parts.slice(1).join('_');
 
   // Verify HMAC
-  const secret = process.env.CABINET_SECRET;
+  const secret = config.cabinetSecret;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
       return { valid: false };
@@ -60,7 +61,7 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
 
 /** Generate a task token for external agent dispatch. */
 export function generateTaskToken(taskId: string): string {
-  const secret = process.env.CABINET_SECRET;
+  const secret = config.cabinetSecret;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('CABINET_SECRET is required in production');

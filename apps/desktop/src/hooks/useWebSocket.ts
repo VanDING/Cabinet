@@ -16,10 +16,11 @@ export function useWebSocket(onEvent?: WSEventHandler) {
     if (reconnecting.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const port = (globalThis as any).__CABINET_PORT__ ?? 3000;
     const host =
       window.location.hostname === 'tauri.localhost'
-        ? 'localhost:3000'
-        : `${window.location.hostname || 'localhost'}:3000`;
+        ? `localhost:${port}`
+        : `${window.location.hostname || 'localhost'}:${port}`;
     const url = `${protocol}//${host}/ws/events`;
 
     try {

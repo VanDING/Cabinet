@@ -102,44 +102,63 @@ function shortId(id: string): string {
   return id.slice(-6);
 }
 
-function loadSessions(): Session[] {
+const TTL = 30 * 60 * 1000;
+
+function loadTTL<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem('cabinet-sessions');
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return data.map((s: SessionJSON) => ({
-      ...s,
-      messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
-      createdAt: new Date(s.createdAt),
-      updatedAt: new Date(s.updatedAt),
-    }));
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const wrapped = JSON.parse(raw);
+    if (
+      !wrapped ||
+      typeof wrapped !== 'object' ||
+      !('data' in wrapped) ||
+      !('timestamp' in wrapped)
+    ) {
+      return wrapped as T;
+    }
+    if (Date.now() - wrapped.timestamp > TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return wrapped.data as T;
   } catch {
-    return [];
+    return null;
   }
+}
+
+function saveTTL<T>(key: string, data: T) {
+  localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+}
+
+function loadSessions(): Session[] {
+  const data = loadTTL<SessionJSON[]>('cabinet-sessions');
+  if (!data) return [];
+  return data.map((s: SessionJSON) => ({
+    ...s,
+    messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
+    createdAt: new Date(s.createdAt),
+    updatedAt: new Date(s.updatedAt),
+  })) as Session[];
 }
 
 function saveSessions(sessions: Session[]) {
-  localStorage.setItem('cabinet-sessions', JSON.stringify(sessions));
+  saveTTL('cabinet-sessions', sessions);
 }
 
 function loadHistory(): Session[] {
-  try {
-    const raw = localStorage.getItem('cabinet-session-history');
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return data.map((s: SessionJSON) => ({
-      ...s,
-      messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
-      createdAt: new Date(s.createdAt),
-      updatedAt: new Date(s.updatedAt),
-    }));
-  } catch {
-    return [];
-  }
+  const data = loadTTL<SessionJSON[]>('cabinet-session-history');
+  if (!data) return [];
+  return data.map((s: SessionJSON) => ({
+    ...s,
+    messages: s.messages?.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })) ?? [],
+    createdAt: new Date(s.createdAt),
+    updatedAt: new Date(s.updatedAt),
+  })) as Session[];
 }
 
 function saveHistory(history: Session[]) {
-  localStorage.setItem('cabinet-session-history', JSON.stringify(history));
+  saveTTL('cabinet-session-history', history);
 }
 
 export function useSessions() {

@@ -1,12 +1,11 @@
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { DAILY_BUDGET, WEEKLY_BUDGET, MONTHLY_BUDGET } from '@cabinet/types';
 
 function loadEnvFile(): void {
-  const paths = [join(homedir(), '.cabinet', '.env'), join(process.cwd(), '.env')];
+  const paths = [join(CABINET_DIR, '.env'), join(process.cwd(), '.env')];
   for (const envPath of paths) {
     if (!existsSync(envPath)) continue;
     try {
@@ -30,7 +29,7 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
-const CABINET_DIR = join(homedir(), '.cabinet');
+import { CABINET_DIR } from '@cabinet/storage';
 const MASTER_KEY_FILE = join(CABINET_DIR, '.master_key');
 
 function resolveMasterPassword(): string {
@@ -68,6 +67,7 @@ const envSchema = z.object({
   MOONSHOT_API_KEY: z.string().optional(),
   ZHIPU_API_KEY: z.string().optional(),
   BAICHUAN_API_KEY: z.string().optional(),
+  CABINET_SECRET: z.string().optional(),
   CABINET_DAILY_BUDGET: z.coerce.number().default(DAILY_BUDGET),
   CABINET_WEEKLY_BUDGET: z.coerce.number().default(WEEKLY_BUDGET),
   CABINET_MONTHLY_BUDGET: z.coerce.number().default(MONTHLY_BUDGET),
@@ -88,6 +88,7 @@ export function validateEnv(): { success: boolean; issues?: string[] } {
 
 export const config = {
   port: parsedEnv.PORT,
+  cabinetSecret: parsedEnv.CABINET_SECRET,
   masterPassword: resolveMasterPassword(),
   anthropicApiKey: parsedEnv.ANTHROPIC_API_KEY,
   openaiApiKey: parsedEnv.OPENAI_API_KEY,

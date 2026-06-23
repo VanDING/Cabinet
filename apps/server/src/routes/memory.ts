@@ -18,6 +18,7 @@ memoryRouter.get('/', async (c) => {
         metadata: { resourceId: t.resourceId, createdAt: t.createdAt, updatedAt: t.updatedAt },
         timestamp: t.updatedAt ?? t.createdAt,
       })),
+      layers: { thread: list.length },
       total: list.length,
     });
   } catch (err) {

@@ -1,6 +1,31 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, authHeaders } from '../utils/api.js';
 
+const TTL = 30 * 60 * 1000;
+
+function loadTTL<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const wrapped = JSON.parse(raw);
+    if (
+      !wrapped ||
+      typeof wrapped !== 'object' ||
+      !('data' in wrapped) ||
+      !('timestamp' in wrapped)
+    ) {
+      return wrapped as T;
+    }
+    if (Date.now() - wrapped.timestamp > TTL) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return wrapped.data as T;
+  } catch {
+    return null;
+  }
+}
+
 export const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: [
     'anthropic/claude-haiku-4-5',
@@ -32,13 +57,7 @@ export const PROVIDER_MODELS: Record<string, string[]> = {
 };
 
 function loadCachedProviders(): { provider: string; models: string[] }[] | null {
-  try {
-    const raw = localStorage.getItem('cabinet-available-models');
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  return null;
+  return loadTTL<{ provider: string; models: string[] }[]>('cabinet-available-models');
 }
 
 export function useAvailableModels(): { provider: string; models: string[] }[] {
@@ -70,7 +89,10 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
               models: models.size > 0 ? [...models] : (PROVIDER_MODELS[provider] ?? []),
             }));
             setAvailable(filtered);
-            localStorage.setItem('cabinet-available-models', JSON.stringify(filtered));
+            localStorage.setItem(
+              'cabinet-available-models',
+              JSON.stringify({ data: filtered, timestamp: Date.now() }),
+            );
           } else {
             // Clear stale cache when all keys are removed
             setAvailable([]);

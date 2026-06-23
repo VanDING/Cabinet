@@ -89,6 +89,7 @@ export function ChatPanel({
   const [selectedModel, setSelectedModel] = useState(() => {
     return localStorage.getItem('cabinet-selected-model') ?? 'anthropic/claude-sonnet-4-6';
   });
+
   const [delegationTier, setDelegationTier] = useState<string>('T2');
   const [tierMenuOpen, setTierMenuOpen] = useState(false);
   const tierBtnRef = useRef<HTMLButtonElement>(null);
@@ -122,6 +123,15 @@ export function ChatPanel({
   const availableModels = useAvailableModels();
   const active = activeSession;
   const attachedFiles = active?.attachedFiles ?? [];
+
+  useEffect(() => {
+    if (availableModels.length === 0) return;
+    const allModelIds = new Set(availableModels.flatMap((p) => p.models));
+    if (!allModelIds.has(selectedModel)) {
+      const first = availableModels[0]?.models[0];
+      if (first) setSelectedModel(first);
+    }
+  }, [availableModels]);
 
   const borderClass = 'border-border';
   const bgClass = 'bg-surface-sidebar';

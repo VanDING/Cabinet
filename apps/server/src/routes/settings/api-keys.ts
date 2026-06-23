@@ -49,15 +49,18 @@ async function testProviderApiKey(
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
+    const TEST_MODELS: Record<string, string> = {
+      anthropic: 'claude-haiku-4-5',
+      google: 'gemini-2.0-flash',
+      deepseek: 'deepseek-chat',
+      openai: 'gpt-4o-mini',
+      qwen: 'qwen-turbo',
+      moonshot: 'moonshot-v1-8k',
+      zhipu: 'glm-4-flash',
+      baichuan: 'baichuan3-turbo',
+    };
     const body = JSON.stringify({
-      model:
-        provider === 'anthropic'
-          ? 'claude-haiku-4-5'
-          : provider === 'google'
-            ? 'gemini-2.5-flash'
-            : provider === 'deepseek'
-              ? 'deepseek-chat'
-              : 'default',
+      model: TEST_MODELS[provider] ?? 'default',
       messages: [{ role: 'user', content: 'OK' }],
       max_tokens: 10,
       maxTokens: 10,

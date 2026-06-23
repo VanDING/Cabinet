@@ -153,8 +153,8 @@ try {
 }
 
 try {
-  // Resolve thread-stream via the store path, not from a consumer package
-  const tsDir = join(pnpmStore, 'thread-stream@4.2.0', 'node_modules', 'thread-stream');
+  const require = createRequire(import.meta.url);
+  const tsDir = dirname(require.resolve('thread-stream'));
   if (existsSync(tsDir)) {
     copyPackage('thread-stream', join(tsDir, 'index.js'));
   } else {

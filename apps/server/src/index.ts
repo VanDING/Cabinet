@@ -38,8 +38,6 @@ import { gcRouter } from './routes/gc.js';
 import { signalsRouter } from './routes/signals.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rate-limit.js';
-import { openapiRouter } from './openapi.js';
-
 export function createApp() {
   const app = new Hono();
 
@@ -133,8 +131,6 @@ export function createApp() {
       return c.json({ error: 'Weather API unavailable' }, 502);
     }
   });
-
-  app.route('/api', openapiRouter());
 
   return app;
 }

@@ -104,6 +104,38 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
     setModalOpen(true);
   };
 
+  const handleOpenCreateHuman = () => {
+    setEditingEmployee(null);
+    setModalOpen(true);
+  };
+
+  const handleRegisterA2A = () => {
+    const url = window.prompt('Enter A2A Agent URL:');
+    if (!url) return;
+    apiFetch('/api/agents/discover', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ url }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.discovered) {
+          window.dispatchEvent(
+            new CustomEvent('toast', {
+              detail: { type: 'success', message: 'A2A agent registered' },
+            }),
+          );
+        }
+      })
+      .catch(() => {
+        window.dispatchEvent(
+          new CustomEvent('toast', {
+            detail: { type: 'error', message: 'Failed to register A2A agent' },
+          }),
+        );
+      });
+  };
+
   const handleOpenEdit = (emp: EmployeeItem) => {
     setEditingEmployee(emp);
     setModalOpen(true);
@@ -185,7 +217,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                 className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setAddMenuOpen(false);
-                  handleOpenCreate();
+                  handleOpenCreateHuman();
                 }}
               >
                 Add Human Employee
@@ -203,7 +235,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
                 className="text-content-secondary hover:bg-surface-muted w-full px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setAddMenuOpen(false);
-                  handleOpenCreate();
+                  handleRegisterA2A();
                 }}
               >
                 Register A2A Agent

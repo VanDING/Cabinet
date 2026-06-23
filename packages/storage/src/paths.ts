@@ -2,8 +2,11 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, mkdirSync } from 'node:fs';
 
-/** Cabinet user data directory: ~/.cabinet (cross-platform). */
-export const CABINET_DIR = join(homedir(), '.cabinet');
+/** Cabinet user data directory: $CABINET_HOME or ~/.cabinet (cross-platform). */
+export const CABINET_DIR =
+  process.env.CABINET_HOME?.trim() || undefined
+    ? join(process.env.CABINET_HOME!.trim())
+    : join(homedir(), '.cabinet');
 
 /** All subdirectories created on first startup. */
 export const CABINET_SUBDIRS = [

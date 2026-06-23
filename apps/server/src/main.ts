@@ -30,7 +30,7 @@ async function start() {
     for (const k of keys) {
       try {
         const decrypted = decryptApiKey(k.encrypted_key, MASTER_PW);
-        process.env[`${k.provider}_API_KEY`] = decrypted;
+        process.env[`${k.provider.toUpperCase()}_API_KEY`] = decrypted;
         ctx.logger.info(`API key loaded for ${k.provider}`);
       } catch {
         /* skip key that can't be decrypted */
@@ -38,6 +38,24 @@ async function start() {
     }
   } catch (err) {
     ctx.logger.warn('Failed to load API keys', { error: String(err) });
+  }
+
+  const MASTRA_PROVIDERS = [
+    'DEEPSEEK',
+    'OPENAI',
+    'ANTHROPIC',
+    'GOOGLE',
+    'QWEN',
+    'MOONSHOT',
+    'ZHIPU',
+    'BAICHUAN',
+  ];
+  const availableProviders = MASTRA_PROVIDERS.filter((p) => process.env[`${p}_API_KEY`]);
+  if (availableProviders.length === 0) {
+    ctx.logger.warn('No API keys configured. Add keys in Settings → API Keys.');
+  } else {
+    ctx.logger.info(`API keys available for: ${availableProviders.join(', ')}`);
+    process.env.CABINET_PRIMARY_PROVIDER = availableProviders[0]!.toLowerCase();
   }
 
   // Integrate Mastra Hono Adapter (auto-registers agent/workflow/memory API routes)

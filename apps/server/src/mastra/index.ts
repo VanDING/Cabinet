@@ -9,10 +9,10 @@ import {
   SamplingStrategyType,
 } from '@mastra/observability';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { existsSync, mkdirSync } from 'node:fs';
 
-const CABINET_DATA = join(homedir(), '.cabinet');
+import { CABINET_DIR } from '@cabinet/storage';
+const CABINET_DATA = CABINET_DIR;
 if (!existsSync(CABINET_DATA)) mkdirSync(CABINET_DATA, { recursive: true });
 
 import { secretaryAgent } from './agents/secretary.js';

@@ -1,11 +1,17 @@
+import { join } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { CABINET_DIR } from '@cabinet/storage';
 import { Workspace, LocalFilesystem, LocalSandbox, WORKSPACE_TOOLS } from '@mastra/core/workspace';
+
+const WORKSPACE_PATH = join(CABINET_DIR, 'workspace');
+if (!existsSync(WORKSPACE_PATH)) mkdirSync(WORKSPACE_PATH, { recursive: true });
 
 export const cabinetWorkspace = new Workspace({
   filesystem: new LocalFilesystem({
-    basePath: '.',
+    basePath: WORKSPACE_PATH,
   }),
   sandbox: new LocalSandbox({
-    workingDirectory: '.',
+    workingDirectory: WORKSPACE_PATH,
   }),
   tools: {
     [WORKSPACE_TOOLS.FILESYSTEM.READ_FILE]: { name: 'readFile' },

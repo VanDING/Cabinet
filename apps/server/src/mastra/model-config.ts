@@ -5,15 +5,20 @@ const DEFAULT_TIERS = {
   default: 'openai/gpt-4o',
 };
 
-function detectProviderFromSettings(): string | null {
-  try {
-    const settings = loadSettings();
-    const providers = settings.providers as Record<string, unknown> | undefined;
-    const provider = providers ? Object.keys(providers)[0] : null;
-    return provider?.toLowerCase() ?? null;
-  } catch {
-    return null;
-  }
+function detectPrimaryProvider(): string | null {
+  const primary = process.env.CABINET_PRIMARY_PROVIDER;
+  if (primary) return primary;
+  const providers = [
+    'deepseek',
+    'openai',
+    'anthropic',
+    'google',
+    'qwen',
+    'moonshot',
+    'zhipu',
+    'baichuan',
+  ];
+  return providers.find((p) => process.env[`${p.toUpperCase()}_API_KEY`]) ?? null;
 }
 
 function defaultModelForProvider(provider: string): string {
@@ -22,6 +27,11 @@ function defaultModelForProvider(provider: string): string {
     openai: 'openai/gpt-4o',
     anthropic: 'anthropic/claude-sonnet-4-6',
     google: 'google/gemini-2.0-flash',
+    qwen: 'qwen/qwen-plus',
+    moonshot: 'moonshot/moonshot-v1-32k',
+    zhipu: 'zhipu/glm-4-flash',
+    baichuan: 'baichuan/baichuan4',
+    openrouter: 'openrouter/anthropic/claude-sonnet-4',
   };
   return models[provider] ?? `openai/gpt-4o`;
 }
@@ -36,7 +46,7 @@ export function resolveModel(tier: 'default' | 'reasoning' = 'default'): string 
   try {
     const settings = loadSettings();
     const mapping = settings.modelMapping as Record<string, string> | undefined;
-    const provider = detectProviderFromSettings();
+    const provider = detectPrimaryProvider();
 
     if (mapping) {
       const key = tier === 'reasoning' ? 'deep_reasoning' : tier;
@@ -52,11 +62,4 @@ export function resolveModel(tier: 'default' | 'reasoning' = 'default'): string 
     /* settings not available */
   }
   return DEFAULT_TIERS[tier];
-}
-
-export function resolveModelForAgent(agentId: string): string {
-  const tierMap: Record<string, 'default' | 'reasoning'> = {
-    planner: 'reasoning',
-  };
-  return resolveModel(tierMap[agentId] ?? 'default');
 }
