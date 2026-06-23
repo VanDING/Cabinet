@@ -161,11 +161,9 @@ secretaryRouter.post('/chat', async (c) => {
 secretaryRouter.post('/subagent/input', async (c) => {
   const { mastra } = getServerContext();
   const body = await c.req.json().catch(() => ({}));
-  const { sessionId, message, targetAgent } = body as {
-    sessionId?: string;
-    message?: string;
-    targetAgent?: string;
-  };
+  const sessionId = body.sessionId ?? body.subAgentSessionId;
+  const message = body.message ?? body.input;
+  const targetAgent = body.targetAgent;
 
   if (!sessionId || !message) {
     return c.json({ error: 'sessionId and message are required' }, 400);
@@ -207,9 +205,10 @@ secretaryRouter.get('/context', (c) => {
   return c.json({ context });
 });
 
-secretaryRouter.post('/compact', (c) => {
+secretaryRouter.post('/compact', async (c) => {
   const { sessionManager } = getServerContext();
-  const sessionId = c.req.query('sessionId');
+  const body = await c.req.json().catch(() => ({}));
+  const sessionId = body.sessionId ?? c.req.query('sessionId');
   if (!sessionId) return c.json({ error: 'sessionId is required' }, 400);
 
   const session = sessionManager.get(sessionId);

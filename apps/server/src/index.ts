@@ -80,8 +80,8 @@ export function createApp() {
   app.route('/api/rules', rulesRouter);
   app.route('/api/agents', agentsRouter);
   app.route('/api/projects', projectsRouter);
+  app.route('/api/projects', deliverablesRouter);
   app.route('/api/deliverables', deliverablesRouter);
-  app.route('/api/projects', documentsRouter);
   app.route('/api/slot', externalAgentRouter);
   app.route('/api/external', externalAgentRouter);
   app.route('/api/squads', squadRouter);

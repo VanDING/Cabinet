@@ -385,8 +385,6 @@ export function MemoryPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [consolidating, setConsolidating] = useState(false);
-  const [consolidateResult, setConsolidateResult] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'memory' | 'knowledge' | 'evaluation'>('memory');
   const fetchMemories = useCallback(async () => {
     setLoading(true);
@@ -419,24 +417,6 @@ export function MemoryPage() {
       fetchMemories();
     } catch {
       /* ignore */
-    }
-  };
-
-  const handleConsolidate = async () => {
-    setConsolidating(true);
-    setConsolidateResult(null);
-    try {
-      const res = await apiFetch('/api/memory/consolidate', {
-        method: 'POST',
-        headers: authJsonHeaders(),
-      });
-      const data = await res.json();
-      setConsolidateResult(`Migrated ${data.migrated ?? 0} entries`);
-      setTimeout(() => fetchMemories(), 500);
-    } catch (e: any) {
-      setConsolidateResult(`Failed: ${e.message}`);
-    } finally {
-      setConsolidating(false);
     }
   };
 
@@ -496,12 +476,6 @@ export function MemoryPage() {
             <Button variant="ghost" size="xs" onClick={fetchMemories}>
               Refresh
             </Button>
-            <Button size="xs" onClick={handleConsolidate} disabled={consolidating}>
-              {consolidating ? 'Consolidating...' : 'Consolidate Now'}
-            </Button>
-            {consolidateResult && (
-              <span className="text-content-tertiary text-xs">{consolidateResult}</span>
-            )}
           </div>
 
           {/* Stats */}

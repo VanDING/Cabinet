@@ -58,7 +58,12 @@ export function useAvailableModels(): { provider: string; models: string[] }[] {
             const providerModels = new Map<string, Set<string>>();
             for (const k of d.keys) {
               if (!providerModels.has(k.provider)) providerModels.set(k.provider, new Set());
-              if (k.model) providerModels.get(k.provider)!.add(`${k.provider}/${k.model}`);
+              if (k.model) {
+                const prefixed = k.model.startsWith(`${k.provider}/`)
+                  ? k.model
+                  : `${k.provider}/${k.model}`;
+                providerModels.get(k.provider)!.add(prefixed);
+              }
             }
             const filtered = [...providerModels.entries()].map(([provider, models]) => ({
               provider,

@@ -138,43 +138,14 @@ export function WorkflowsPage() {
         </div>
         <div className="flex items-center gap-2">
           {workflows.length > 0 && (
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                const val = e.target.value;
-                e.target.value = '';
-                if (val) handleExport(val);
-              }}
-              className="border-border bg-surface-input text-content-primary rounded-lg border px-3 py-2 text-sm"
+            <button
+              onClick={handleNewWorkflow}
+              className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
             >
-              <option value="">Export…</option>
-              {workflows.map((wf) => (
-                <option key={wf.id} value={wf.id}>
-                  {wf.name}
-                </option>
-              ))}
-            </select>
+              <Plus size={16} />
+              New Workflow
+            </button>
           )}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="border-border text-content-tertiary hover:text-content-primary rounded-lg border px-3 py-2 text-sm"
-          >
-            Import
-          </button>
-          <input
-            type="file"
-            accept=".json"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleImportFile}
-          />
-          <button
-            onClick={handleNewWorkflow}
-            className="bg-accent text-content-inverse hover:bg-accent-hover inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
-          >
-            <Plus size={16} />
-            New Workflow
-          </button>
         </div>
       </div>
 

@@ -23,7 +23,7 @@ export function InstallDialog({
     let buffer = '';
     const run = async () => {
       try {
-        const res = await fetch('/api/install/install', {
+        const res = await apiFetch('/api/install/install', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId: agent.id, method }),
