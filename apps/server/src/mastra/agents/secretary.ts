@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core/agent';
+import { TaskSignalProvider } from '@mastra/core/signals';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { secretaryIdentity } from '../prompts/identities.js';
 import { writerAgent } from './specialist-writer.js';
@@ -30,6 +31,7 @@ export const secretaryAgent = new Agent({
     analyst: analystAgent,
     researcher: researcherAgent,
   },
+  signals: [new TaskSignalProvider()],
   hooks: {
     beforeToolCall: ({ toolName, input }) => {
       if (toolName === 'executeCommand') {

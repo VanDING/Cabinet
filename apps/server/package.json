@@ -14,7 +14,8 @@
     "start": "node dist/main.js",
     "evals:list": "tsx src/evals-cli.ts list",
     "evals:run": "tsx src/evals-cli.ts run",
-    "evals:gate": "tsx src/evals-cli.ts run secretary && tsx src/evals-cli.ts run analyst"
+    "evals:gate": "tsx src/evals-cli.ts run secretary && tsx src/evals-cli.ts run analyst",
+    "studio": "mastra dev"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.35",
