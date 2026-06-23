@@ -677,34 +677,36 @@ npm install @ai-sdk/workflow workflow
 
 ## 实施总览
 
-| Phase    | 内容                      | 删除        | 新增     | 风险 |
-| -------- | ------------------------- | ----------- | -------- | ---- |
-| P1       | Agent Loop + LLM 调用替换 | ~1,500      | ~120     | 中   |
-| P2       | 工具迁移 + toolApproval   | ~200        | ~60      | 低   |
-| P3       | DAG → Subagent 编排       | ~3,000      | ~150     | 中   |
-| P4       | MCP Tools 集成 ✨         | 0           | ~80      | 低   |
-| P5       | Telemetry + Middleware ✨ | ~1,500      | ~100     | 低   |
-| P6       | 删除残留系统              | ~4,000      | ~10      | 低   |
-| P7       | 清理 types                | ~2,000      | ~30      | 低   |
-| **总计** |                           | **~12,200** | **~550** |      |
+| Phase    | 内容                      | 删除        | 新增      | 风险 | 状态        |
+| -------- | ------------------------- | ----------- | --------- | ---- | ----------- |
+| P1       | Agent Loop + LLM 调用替换 | 1,500 → 18  | 120 → 271 | 中   | ✅ 完成     |
+| P2       | 工具迁移 + toolApproval   | 200 → 0     | 60 → 21   | 低   | ✅ 完成     |
+| P3       | DAG → Subagent 编排       | 3,000 → 0   | 150 → 69  | 中   | ✅ 完成     |
+| P4       | MCP Tools 集成 ✨         | 0           | ~80       | 低   | ✅ 完成     |
+| P5       | Telemetry + Middleware ✨ | 1,500       | ~100      | 低   | ✅ 完成     |
+| P6       | 删除残留系统              | ~4,000      | ~10       | 低   | ⏳ 部分完成 |
+| P7       | 清理 types                | ~2,000      | ~30       | 低   | ⏳ 未开始   |
+| **总计** |                           | **~12,200** | **~550**  |      |             |
 
 > 标 ✨ 的 Phase 为 V4 计划未覆盖的 v7 新能力。
+>
+> 详细实施日志见 commit 历史：`git log --oneline` 从 aea8ec1 起。
 
 ---
 
 ## 保留不变
 
-| 组件                            | 原因                                     |
-| ------------------------------- | ---------------------------------------- |
-| Visual DAG Editor               | 独家价值，适配为 Subagent 执行           |
-| Memory (STM+LTM+Entity)         | SDK 不做结构化分层                       |
-| SessionManager                  | SDK 不做数据持久化                       |
-| Curator (consolidation + brief) | 作为 ToolLoopAgent 保留，不具备 SDK 替代 |
-| RulesLoader                     | 分层规则加载                             |
-| Safety (safety.ts)              | 4 层检查比 toolApproval 更深             |
-| Tauri Desktop UI                | 产品                                     |
-| Hono Server + WebSocket         | 基础设施                                 |
-| SHARED_PROMPT                   | 硬约束                                   |
+| 组件                            | 原因                             |
+| ------------------------------- | -------------------------------- |
+| Visual DAG Editor               | 独家价值，适配为 Subagent 执行   |
+| Memory (STM+LTM+Entity)         | SDK 不做结构化分层               |
+| SessionManager                  | SDK 不做数据持久化               |
+| Curator (consolidation + brief) | 已迁移为 ToolLoopAgent（SDK v7） |
+| RulesLoader                     | 分层规则加载                     |
+| Safety (safety.ts)              | 4 层检查比 toolApproval 更深     |
+| Tauri Desktop UI                | 产品                             |
+| Hono Server + WebSocket         | 基础设施                         |
+| SHARED_PROMPT                   | 硬约束                           |
 
 ---
 
@@ -712,8 +714,8 @@ npm install @ai-sdk/workflow workflow
 
 ```
 packages/
-  agent/          ← ToolLoopAgent + tools + context (~800 行)
-  secretary/      ← 精简 (~150 行)
+  agent/          ← ToolLoopAgent + tools + context + adapter (~1,000 行)
+  secretary/      ← 精简 + SdkAgent 接口 (~200 行)
   memory/         ← 精简 (~800 行)
   types/          ← 精简 (~300 行)
   storage/        ← 保留 (~5,000 行)
@@ -738,6 +740,74 @@ apps/
 ```
 
 ---
+
+---
+
+## 已完成工作 (2026-06)
+
+在 5 次连续会话中完成以下迁移：
+
+### 核心包改动
+
+| 新文件                                        | 说明                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `packages/agent/src/agents.ts`                | `createSecretaryAgent()` / `createCuratorAgent()` — ToolLoopAgent 工厂 |
+| `packages/agent/src/tools-wrapper.ts`         | 旧 `ToolDefinition[]` → SDK `tool()` 格式转换                          |
+| `packages/agent/src/context.ts`               | `buildInstructions()` + `prepareStep()`（上下文消息裁剪）              |
+| `packages/agent/src/subagent-orchestrator.ts` | DAG 节点 → Subagent tool 转换                                          |
+| `packages/agent/src/mcp-integration.ts`       | MCP Server 连接管理（HTTP/SSE）                                        |
+| `packages/agent/src/telemetry.ts`             | OpenTelemetry 初始化（`@ai-sdk/otel` 待版本对齐）                      |
+| `packages/agent/src/sdk-adapter.ts`           | `SdkAgentLoopAdapter` — 旧 AgentLoop 兼容层                            |
+
+### 改动文件
+
+| 文件                                        | 改动                                                |
+| ------------------------------------------- | --------------------------------------------------- |
+| `packages/agent/src/agent-loop.ts`          | **重写** — 内部代理到 SdkAgentLoopAdapter           |
+| `packages/agent/src/index.ts`               | 新增 SDK v7 导出                                    |
+| `packages/secretary/src/secretary-agent.ts` | 新增 `SdkAgent` 接口 + 双路径（ToolLoopAgent 优先） |
+| `packages/secretary/src/index.ts`           | 新增 `SdkAgent` 类型导出                            |
+| `apps/server/.../secretary.ts`              | SDK ToolLoopAgent 创建 + 传入 SecretaryAgent        |
+| `apps/server/.../chat/index.ts`             | SDK `generate()` 优先路径                           |
+| `apps/server/.../loops.ts`                  | 全部 role loops 改用 SdkAgentLoopAdapter            |
+| `apps/server/.../curator-loop.ts`           | 改用 SdkAgentLoopAdapter                            |
+| `apps/server/.../workflows/engine.ts`       | 改用 SdkAgentLoopAdapter                            |
+
+### 删除文件
+
+```
+execution/: context-assembler, execute-generator, observer-factory,
+           observer-presets, parse-output, session-reporter,
+           streaming-adapter, format-task, text-utils
+observers/:  subconscious-insight, content-guard (及其测试)
+tools/:      tool-variety-collector (及其测试)
+secretary/:  intent-constants
+```
+
+### 当前架构
+
+```
+LLM → ToolLoopAgent (secretary/curator/role)
+  → tool() + toolsContext (SDK tool format)
+  → lifecycle callbacks (onStepEnd/onToolExecutionStart/onEnd)
+  → toolApproval (execCommand/deleteFile/writeFile → user-approval)
+  → Subagents (dagToSubagentTools)
+  → MCP Tools (connectMCPServer)
+
+向后兼容:
+  AgentLoop class 保留 (delegates to SdkAgentLoopAdapter)
+  SecretaryAgent 双路径 (sdkAgent 优先, agentLoop fallback)
+```
+
+### 仍需清理（服务器深度耦合，待独立重构）
+
+```
+packages/workflow/  ← apps/server/src/routes/workflows/*
+packages/decision/  ← apps/server/src/context/decision.ts
+packages/harness/   ← apps/server/context/* (BrowserPool, SubconsciousLoop...)
+packages/events/    ← agent/gateway/harness/decision 广泛使用
+packages/gateway/   ← agent/secretary/harness 广泛使用 (ctx.gateway)
+```
 
 ## V4 → V5 修正清单
 
