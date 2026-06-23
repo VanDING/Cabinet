@@ -1,5 +1,6 @@
 import { Mastra } from '@mastra/core';
 import { Memory } from '@mastra/memory';
+import { Observability, MastraStorageExporter } from '@mastra/observability';
 import { secretaryAgent } from './agents/secretary.js';
 import { curatorAgent } from './agents/curator.js';
 import { processFilesWorkflow } from './workflows/process-files.js';
@@ -23,6 +24,14 @@ export const mastra = new Mastra({
   workflows: {
     processFiles: processFilesWorkflow,
   },
+  observability: new Observability({
+    configs: {
+      default: {
+        serviceName: 'cabinet',
+        exporters: [new MastraStorageExporter()],
+      },
+    },
+  }),
 });
 
 export { secretaryAgent, curatorAgent, processFilesWorkflow };
