@@ -9,7 +9,6 @@ export const getSystemStatusTool = createTool({
   execute: async () => {
     return {
       status: 'online',
-      memory: toolServices.memory.getProject('system') ? 'active' : 'available',
       agents: toolServices.agentRegistry.list().length,
     };
   },

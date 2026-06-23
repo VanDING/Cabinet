@@ -24,6 +24,15 @@ import { memoryRouter } from './routes/memory.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { meetingsRouter } from './routes/meetings.js';
 import { scheduledTasksRouter } from './routes/scheduled-tasks.js';
+import { secretaryRouter } from './routes/secretary.js';
+import { factoryRouter } from './routes/factory.js';
+import { daemonRouter } from './routes/daemon.js';
+import { evaluationsRouter } from './routes/evaluations.js';
+import { progressRouter } from './routes/progress.js';
+import { insightsRouter } from './routes/insights.js';
+import { harnessRouter } from './routes/harness.js';
+import { telemetryRouter } from './routes/telemetry.js';
+import { gcRouter } from './routes/gc.js';
 import { authMiddleware } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rate-limit.js';
 import { openapiRouter } from './openapi.js';
@@ -82,6 +91,15 @@ export function createApp() {
   app.route('/api/dashboard', dashboardRouter);
   app.route('/api/meetings', meetingsRouter);
   app.route('/api/scheduled-tasks', scheduledTasksRouter);
+  app.route('/api/secretary', secretaryRouter);
+  app.route('/api/factory', factoryRouter);
+  app.route('/api/daemon', daemonRouter);
+  app.route('/api/evaluations', evaluationsRouter);
+  app.route('/api/progress', progressRouter);
+  app.route('/api/insights', insightsRouter);
+  app.route('/api/harness', harnessRouter);
+  app.route('/api/telemetry', telemetryRouter);
+  app.route('/api/gc', gcRouter);
 
   // GeoIP proxy
   app.get('/api/geoip', async (c) => {

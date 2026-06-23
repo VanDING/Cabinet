@@ -102,32 +102,25 @@ Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI 交互核心
 Layer 1 (Infra):       graph, types, events, storage      ← 基础设施
 ```
 
-| 层  | 包                   | 职责                                                                 |
-| :-- | :------------------- | :------------------------------------------------------------------- |
-| 4   | `@cabinet/server`    | Hono REST + WebSocket API 服务器                                     |
-| 4   | `@cabinet/desktop`   | Tauri 2.0 桌面应用（React 19）                                       |
-| 4   | `@cabinet/ui`        | 共享 React 组件库                                                    |
-| 4   | `@cabinet/cli`       | CLI 入口（`cabinet start`）                                          |
-| 3   | `@cabinet/decision`  | 分级决策管理（L0–L3）                                                |
-| 3   | `@cabinet/secretary` | 自然语言入口，会话管理，多Agent路由                                  |
-| 3   | `@cabinet/workflow`  | 工作流引擎（18 种节点类型，含外部Agent）                             |
-| 3   | `@cabinet/harness`   | 质量闸门、评估器、自动调参、可观测性                                 |
-| 3   | `@cabinet/organize`  | 组织架构设计与系统规划                                               |
-| 2   | `@cabinet/gateway`   | 多提供商 LLM 网关（Vercel AI SDK）                                   |
-| 2   | `@cabinet/agent`     | ObserverPipeline Agent循环、适配器、Blackboard、ProcessIdentityScore |
-| 2   | `@cabinet/memory`    | 多层记忆（STM→WriteGate→CascadeBuffer→LTM+KG+Decay）                 |
-| 2   | `@cabinet/agent-sdk` | 外部Agent SDK（SlotClient、A2A助手）                                 |
-| 1   | `@cabinet/graph`     | StateGraph 引擎、Annotation、CheckpointStore、图验证                 |
-| 1   | `@cabinet/events`    | 事件总线，含因果链追踪                                               |
-| 1   | `@cabinet/storage`   | SQLite 持久化（better-sqlite3，AES-256 加密）                        |
-| 1   | `@cabinet/types`     | 共享 TypeScript 类型——全局基础依赖                                   |
+| 层  | 包                   | 职责                                                    |
+| :-- | :------------------- | :------------------------------------------------------ |
+| 4   | `@cabinet/server`    | Hono REST + WebSocket API 服务器 + Mastra agent runtime |
+| 4   | `@cabinet/desktop`   | Tauri 2.0 桌面应用（React 19）                          |
+| 4   | `@cabinet/ui`        | 共享 React 组件库                                       |
+| 4   | `@cabinet/cli`       | CLI 入口（`cabinet start`）                             |
+| 3   | `@cabinet/decision`  | 分级决策管理（L0–L3）                                   |
+| 3   | `@cabinet/secretary` | 会话管理、问候服务                                      |
+| 2   | `@cabinet/agent`     | 外部 Agent 投影、扫描器、技能加载器、角色注册表         |
+| 2   | `@cabinet/agent-sdk` | 外部 Agent SDK（SlotClient、A2A 助手）                  |
+| 1   | `@cabinet/storage`   | SQLite 持久化（better-sqlite3，AES-256 加密）           |
+| 1   | `@cabinet/types`     | 共享 TypeScript 类型——全局基础依赖                      |
 
 ---
 
 ## 核心能力
 
-- **流水线架构 · 从审议到决策到执行**
-  秘书（统一入口）→ 多智能体会议（审议 + 综合）→ 决策（L0–L3 分级裁决）→ 工作流（含人工节点的执行引擎）→ 记忆 + 驾驭层（学习 + 质量反馈）。一条连续流水线，而非隔离的房间。
+- **Mastra 驱动架构 · 从审议到决策到执行**
+  秘书（Mastra Agent，统一入口）→ 决策（L0–L3 分级裁决）→ Mastra Workflow（执行）→ 记忆 + 知识图谱。由 Mastra AI 框架驱动。
 
 - **秘书界面 · 唯一的自然语言入口**
   无需学习复杂指令。你只需要与你的秘书交谈，它代表你协调整个内阁。
@@ -307,7 +300,7 @@ curl -X POST http://localhost:3000/api/agents/scan
 
 ### 模型配置
 
-模型通过 LLM 网关（`@cabinet/gateway`）配置，基于 Vercel AI SDK 实现多提供商支持。网关特性：
+模型通过 Mastra agent model 配置，基于 AI SDK 实现多提供商支持。特性：
 
 - **按角色路由**：`deep_reasoning`、`fast_execution`、`default` 角色映射到合适的模型
 - **故障转移链**：超时（30s）或出错时自动切换

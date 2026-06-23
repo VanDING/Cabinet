@@ -1,5 +1,5 @@
 /**
- * Frontend-local mirror of AgentEvent from @cabinet/events.
+ * Frontend-local mirror of AgentEvent type.
  * Kept inline to avoid pulling Node-specific dependencies into the browser bundle.
  */
 export type AgentEvent =

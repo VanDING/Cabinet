@@ -1,11 +1,10 @@
 /**
  * Architectural Linter — enforces the 4-layer dependency rule.
  *
- * Layer 1 (Infra):    types, events, storage       → may only import Layer 1
- * Layer 2 (Agent):    gateway, agent, memory        → may import Layer 1–2
- * Layer 3 (Business): decision, secretary,            → may import Layer 1–3
- *                       workflow, harness
- * Layer 4 (Interface): ui, server, desktop           → may import Layer 1–4
+ * Layer 1 (Infra):    types, storage                → may only import Layer 1
+ * Layer 2 (Agent):    agent                      → may import Layer 1–2
+ * Layer 3 (Business): decision, secretary           → may import Layer 1–3
+ * Layer 4 (Interface): ui, server, desktop          → may import Layer 1–4
  *
  * Each error includes a FIX instruction telling the developer (or agent)
  * exactly how to resolve the violation.
@@ -23,9 +22,9 @@ const APPS_DIR = join(ROOT, 'apps');
 // ── Layer definitions ──────────────────────────────────────────
 
 const LAYERS: Record<number, string[]> = {
-  1: ['@cabinet/types', '@cabinet/events', '@cabinet/storage', '@cabinet/agent-sdk'],
-  2: ['@cabinet/gateway', '@cabinet/agent', '@cabinet/memory'],
-  3: ['@cabinet/decision', '@cabinet/secretary', '@cabinet/workflow', '@cabinet/harness'],
+  1: ['@cabinet/types', '@cabinet/storage', '@cabinet/agent-sdk'],
+  2: ['@cabinet/agent'],
+  3: ['@cabinet/decision', '@cabinet/secretary'],
   4: ['@cabinet/ui', '@cabinet/server', '@cabinet/desktop', '@cabinet/cli'],
 };
 
@@ -132,9 +131,9 @@ function checkFile(filePath: string, pkgName: string, pkgLayer: number): Violati
     // ── Layer violation ──
     if (impLayer !== -1 && impLayer > pkgLayer) {
       const layerNames: Record<number, string> = {
-        1: 'Infra (types/events/storage)',
-        2: 'Agent Core (gateway/agent/memory)',
-        3: 'Business (decision/secretary/workflow/harness)',
+        1: 'Infra (types/storage)',
+        2: 'Agent Core (agent)',
+        3: 'Business (decision/secretary)',
         4: 'Interface (ui/server/desktop)',
       };
       violations.push({

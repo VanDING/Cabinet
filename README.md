@@ -102,22 +102,17 @@ Layer 2 (Agent Core):  gateway, agent, memory, agent-sdk  ← AI interaction cor
 Layer 1 (Infra):       types, events, storage          ← infrastructure
 ```
 
-| Layer | Package              | Role                                                                                    |
-| :---- | :------------------- | :-------------------------------------------------------------------------------------- |
-| 4     | `@cabinet/server`    | Hono REST + WebSocket API server                                                        |
-| 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                                                        |
-| 4     | `@cabinet/ui`        | Shared React component library                                                          |
-| 4     | `@cabinet/cli`       | CLI entry point (`cabinet start`)                                                       |
-| 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                                                      |
-| 3     | `@cabinet/secretary` | Natural-language entry point, session management, multi-agent routing                   |
-| 3     | `@cabinet/workflow`  | Workflow engine (18 node types incl. Agent, LLM, Skill, Human, External)                |
-| 3     | `@cabinet/harness`   | Quality gates, evaluators, auto-adjustment, observability                               |
-| 2     | `@cabinet/gateway`   | Multi-provider LLM gateway (Vercel AI SDK)                                              |
-| 2     | `@cabinet/agent`     | ObserverPipeline agent loop, adapters, daemon runtime, Blackboard, ProcessIdentityScore |
-| 2     | `@cabinet/memory`    | Multi-tier memory (STM→WriteGate→CascadeBuffer→LTM+KG+Decay)                            |
-| 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)                                            |
+| Layer | Package              | Role                                                                 |
+| :---- | :------------------- | :------------------------------------------------------------------- |
+| 4     | `@cabinet/server`    | Hono REST + WebSocket API server + Mastra agent runtime              |
+| 4     | `@cabinet/desktop`   | Tauri 2.0 desktop app (React 19)                                     |
+| 4     | `@cabinet/ui`        | Shared React component library                                       |
+| 4     | `@cabinet/cli`       | CLI entry point (`cabinet start`)                                    |
+| 3     | `@cabinet/decision`  | Tiered decision management (L0–L3)                                   |
+| 3     | `@cabinet/secretary` | Session management, greeting service                                 |
+| 2     | `@cabinet/agent`     | External agent projector, scanner, skill loader, agent role registry |
+| 2     | `@cabinet/agent-sdk` | External agent SDK (SlotClient, A2A helpers)                         |
 
-| 1 | `@cabinet/events` | Event bus with causation-chain tracking |
 | 1 | `@cabinet/storage` | SQLite persistence (better-sqlite3, AES-256) |
 | 1 | `@cabinet/types` | Shared TypeScript types—universal dependency |
 
@@ -125,8 +120,8 @@ Layer 1 (Infra):       types, events, storage          ← infrastructure
 
 ## Core Capabilities
 
-- **Pipeline Architecture · Deliberation to Decision to Execution**
-  Secretary (unified entry) → Multi-Agent Meeting (deliberation + synthesis) → Decision (L0–L3 tiered adjudication) → Workflow (execution with Human Nodes) → Memory + Harness (learning + quality feedback). A continuous pipeline, not isolated rooms.
+- **Mastra-Powered Agent Pipeline · Deliberation to Decision to Execution**
+  Secretary (Mastra Agent, unified entry) → Decision (L0–L3 tiered adjudication) → Mastra Workflow (execution) → Memory + Knowledge Graph. Powered by the Mastra AI framework.
 
 - **Secretary Interface · Your Single Natural-Language Entry Point**
   No complex commands to learn. Simply talk to your Secretary, and it coordinates the entire Cabinet on your behalf.
@@ -321,7 +316,7 @@ curl -X POST http://localhost:3000/api/agents/scan
 
 ### Model Configuration
 
-Models are configured via the LLM gateway (`@cabinet/gateway`) with multi-provider support through Vercel AI SDK. The gateway supports:
+Models are configured via the Mastra agent model setting with multi-provider support through the AI SDK. Support includes:
 
 - **Role-based routing**: `deep_reasoning`, `fast_execution`, `default` roles mapped to appropriate models
 - **Fallback chains**: Automatic failover on timeout (30s) or error

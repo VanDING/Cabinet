@@ -81,7 +81,6 @@ interface IndexerOptions {
   projectId: string;
   rootPath: string;
   db: any;
-  gateway: any;
   logger: any;
   maxFiles?: number;
   force?: boolean;
@@ -104,21 +103,10 @@ function chunkText(text: string, maxChunkSize = 800, overlap = 100): string[] {
   return chunks.filter((c) => c.length > 20);
 }
 
-/** Generate embeddings via the LLM gateway's embedding endpoint. */
-async function generateEmbeddings(texts: string[], gateway: any): Promise<number[][] | null> {
-  if (!gateway || !gateway.generateEmbeddings) return null;
-  try {
-    const result = await gateway.generateEmbeddings({ texts });
-    return result.embeddings ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function indexProject(
   options: IndexerOptions,
 ): Promise<{ indexed: number; skipped: number; errors: number }> {
-  const { projectId, rootPath, db, gateway, logger, maxFiles = 200, force = false } = options;
+  const { projectId, rootPath, db, logger, maxFiles = 200, force = false } = options;
 
   if (!existsSync(rootPath)) {
     logger.warn('Project root not found for indexing', { rootPath, projectId });
@@ -196,8 +184,8 @@ export async function indexProject(
 
     if (batchTexts.length === 0) continue;
 
-    // Generate embeddings
-    const embeddings = await generateEmbeddings(batchTexts, gateway);
+    // Generate embeddings (Mastra embedder used separately)
+    const embeddings = null;
 
     // Store chunks in DB
     const chunksRepo = new DocumentChunkRepository(db);

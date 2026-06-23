@@ -242,125 +242,33 @@ agentsRouter.post('/discover', async (c) => {
   return c.json({ discovered: true, agentCard: card });
 });
 
-// ── A2A Inbound Task Routing ──
-const a2aTasks = new Map<
-  string,
-  {
-    status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
-    output?: unknown;
-    message?: string;
-    tokens_used?: number;
-    model?: string;
-    timestamp: string;
-  }
->();
+// ── A2A Inbound Task Routing (migrated to Mastra) ──
 
 agentsRouter.post('/message', async (c) => {
-  const { logger, agentRegistry } = getServerContext();
-  const body = await c.req.json().catch(() => ({}));
-  const task = body as {
-    task_id?: string;
-    session_id?: string;
-    capability?: string;
-    input?: unknown;
-  };
-
-  if (!task.task_id || !task.input) {
-    return c.json({ error: 'task_id and input are required' }, 400);
-  }
-
-  const taskId = task.task_id;
-  const capability = task.capability ?? 'default';
-
-  const agents = agentRegistry.list();
-  const target =
-    agents.find((a) => a.type === 'custom') ??
-    agents.find((a) => a.type === 'secretary' || a.type === 'curator' || a.type === 'organize');
-
-  if (!target) {
-    a2aTasks.set(taskId, {
-      status: 'failed',
-      message: 'No available agent',
-      timestamp: new Date().toISOString(),
-    });
-    return c.json({ task_id: taskId, status: 'rejected', error: 'No available agent' }, 503);
-  }
-
-  logger.info('A2A inbound task', { taskId, capability, targetAgent: target.name });
-  a2aTasks.set(taskId, { status: 'in_progress', timestamp: new Date().toISOString() });
-
-  // A2A dispatch migrated to Mastra agent execution
-  a2aTasks.set(taskId, {
-    status: 'failed',
-    message: 'A2A dispatch migrated to Mastra. Use Mastra agent API for task execution.',
-    timestamp: new Date().toISOString(),
-  });
   return c.json(
-    { task_id: taskId, status: 'rejected', error: 'A2A dispatch migrated to Mastra' },
+    { error: 'A2A dispatch migrated to Mastra. Use Mastra agent API for task execution.' },
     503,
   );
 });
 
 agentsRouter.post('/message/stream', async (c) => {
-  const { logger, agentRegistry } = getServerContext();
-  const body = await c.req.json().catch(() => ({}));
-  const task = body as { task_id?: string; input?: unknown; session_id?: string };
-
-  if (!task.task_id) {
-    return c.json({ error: 'task_id is required' }, 400);
-  }
-
-  const taskId = task.task_id;
-  const input = typeof task.input === 'string' ? task.input : JSON.stringify(task.input ?? '');
-
   c.header('Content-Type', 'text/event-stream');
   c.header('Cache-Control', 'no-cache');
   c.header('Connection', 'keep-alive');
 
   const stream = new ReadableStream({
-    async start(controller) {
+    start(controller) {
       const encoder = new TextEncoder();
-
-      try {
-        const agents = agentRegistry.list();
-        const target =
-          agents.find((a) => a.type === 'custom') ??
-          agents.find(
-            (a) => a.type === 'secretary' || a.type === 'curator' || a.type === 'organize',
-          );
-
-        if (!target) {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: 'No available agent' })}\n\n`),
-          );
-          controller.close();
-          return;
-        }
-
-        // A2A streaming dispatch migrated to Mastra
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: 'error', error: 'A2A streaming dispatch migrated to Mastra' })}\n\n`,
-          ),
-        );
-        controller.close();
-      } catch (err) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'error', error: String(err) })}\n\n`),
-        );
-        controller.close();
-      }
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: 'error', error: 'A2A streaming dispatch migrated to Mastra' })}\n\n`,
+        ),
+      );
+      controller.close();
     },
   });
 
   return c.newResponse(stream);
-});
-
-agentsRouter.get('/tasks/:taskId', (c) => {
-  const taskId = c.req.param('taskId');
-  const task = a2aTasks.get(taskId);
-  if (!task) return c.json({ error: 'Task not found' }, 404);
-  return c.json({ task_id: taskId, ...task });
 });
 
 // ── POST /api/agents/scan ──────────────────────────────────────

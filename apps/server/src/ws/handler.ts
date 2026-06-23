@@ -241,14 +241,17 @@ export function handleDaemonWSMessage(ws: WebSocket, msg: Record<string, unknown
     case 'task_progress': {
       // Forward to events WS for Dashboard display
       broadcast('task_progress', msg as Record<string, unknown>);
+      broadcast('task_updated', { status: 'running', ...msg } as Record<string, unknown>);
       return true;
     }
     case 'task_completed': {
       broadcast('task_completed', msg as Record<string, unknown>);
+      broadcast('task_updated', { status: 'completed', ...msg } as Record<string, unknown>);
       return true;
     }
     case 'task_failed': {
       broadcast('task_failed', msg as Record<string, unknown>);
+      broadcast('task_updated', { status: 'failed', ...msg } as Record<string, unknown>);
       return true;
     }
     case 'daemon_reconnect': {

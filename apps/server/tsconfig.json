@@ -10,7 +10,6 @@
     { "path": "../../packages/types" },
     { "path": "../../packages/storage" },
     { "path": "../../packages/agent" },
-    { "path": "../../packages/memory" },
     { "path": "../../packages/decision" },
     { "path": "../../packages/secretary" }
   ]

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../../context.js';
-import { Scanner, RECIPES, getProjector } from '@cabinet/agent';
+import { Scanner, RECIPES } from '@cabinet/agent';
 import type { McpServerRow } from '@cabinet/storage';
 import { decryptApiKey } from '../../crypto.js';
 import { MASTER_PW } from '../settings/persistence.js';
@@ -80,69 +80,7 @@ workbenchAgentsRouter.get('/:agentId/env', (c) => {
 });
 
 workbenchAgentsRouter.post('/:agentId/project', async (c) => {
-  const agentId = c.req.param('agentId');
-  const { agentRoleRepo, apiKeyRepo, mcpServerRepo, agentBindingRepo, skillRepo } =
-    getServerContext();
-  const row = agentRoleRepo.findByName(agentId);
-  if (!row) return c.json({ error: 'Not found' }, 404);
-  const external = row.external_config ? JSON.parse(row.external_config) : null;
-  if (!external?.command) return c.json({ error: 'No external config' }, 400);
-
-  const recipe = RECIPES.find(
-    (r) => r.id === external.command || `external_cli:${r.command}` === agentId,
-  );
-  if (!recipe) return c.json({ error: 'No recipe for agent' }, 400);
-  const projector = getProjector(recipe.projectorId);
-  if (!projector) return c.json({ error: `No projector for ${recipe.projectorId}` }, 400);
-
-  const isDryRun = c.req.query('dryRun') === '1';
-  const hasProjectedOnce = (external as Record<string, unknown>).projectedOnce === true;
-
-  if (!isDryRun && !hasProjectedOnce) {
-    const forcedDryRun = c.req.query('confirm') !== '1';
-    if (forcedDryRun) {
-      return c.json({
-        status: 'confirm_required',
-        message: 'This is the first projection for this agent. A dry-run is recommended.',
-      });
-    }
-  }
-
-  const apiKeys = apiKeyRepo.findAll().map((k) => ({
-    provider: k.provider,
-    key: (() => {
-      try {
-        return decryptApiKey(k.encrypted_key, MASTER_PW);
-      } catch {
-        return k.encrypted_key;
-      }
-    })(),
-  }));
-  const boundMcp = agentBindingRepo.getMcpBindingsForAgent(agentId).filter((b) => b.enabled);
-  const mcpServers = mcpServerRepo
-    .findAll()
-    .filter((s) => s.enabled && boundMcp.some((b) => b.mcp_server_name === s.name));
-  const boundSkills = agentBindingRepo.getSkillBindingsForAgent(agentId).filter((b) => b.enabled);
-  const skills = skillRepo
-    .findAll()
-    .filter((s) => boundSkills.some((b) => b.skill_name === s.name));
-
-  await projector.project(
-    {
-      apiKeys,
-      mcpServers: mcpServers.map(rowToMcpEntry),
-      skills: skills.map(rowToSkillEntry),
-      agentSpecific: {},
-    },
-    { dryRun: isDryRun },
-  );
-
-  if (!isDryRun && !hasProjectedOnce) {
-    const updatedExternal = { ...external, projectedOnce: true };
-    agentRoleRepo.upsert({ ...row, external_config: JSON.stringify(updatedExternal) });
-  }
-
-  return c.json({ status: 'projected', dryRun: isDryRun });
+  return c.json({ status: 'skipped', message: 'Projection not available in Mastra mode' });
 });
 
 workbenchAgentsRouter.delete('/:agentId', (c) => {

@@ -17,7 +17,6 @@ import type {
   SettingsRepository,
   SystemKnowledgeRepository,
   RouteFeedbackRepository,
-  TelemetryRepository,
   AgentTaskQueueRepository,
   AgentDaemonRepository,
   AutopilotRepository,
@@ -28,15 +27,6 @@ import type {
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import type { DecisionService } from '@cabinet/decision';
-import type {
-  ShortTermMemory,
-  LongTermMemory,
-  EntityMemory,
-  ProjectMemory,
-  MemoryFacade,
-  KnowledgeGraph,
-  MemoryDecayService,
-} from '@cabinet/memory';
 import type { SessionManager } from '@cabinet/secretary';
 import type { AgentRoleRegistry, SkillRegistry } from '@cabinet/agent';
 import type { TaskScheduler } from '../scheduler.js';
@@ -71,18 +61,11 @@ export interface ServerContext {
   mcpServerRepo: McpServerRepository;
   systemKnowledgeRepo: SystemKnowledgeRepository;
   routeFeedbackRepo: RouteFeedbackRepository;
-  telemetryRepo: TelemetryRepository;
   // Sub-agent interaction
   agentEventRepo: AgentEventRepository;
   agentEventBus: AgentEventBus;
   // Decision service
   decisionService: DecisionService;
-  // Memory
-  shortTerm: ShortTermMemory;
-  longTerm: LongTermMemory;
-  entity: EntityMemory;
-  project: ProjectMemory;
-  memoryFacade: MemoryFacade;
   // Session
   sessionManager: SessionManager;
   // File tracking
@@ -103,12 +86,6 @@ export interface ServerContext {
   autopilotRepo: AutopilotRepository;
   // Scheduler
   taskScheduler: TaskScheduler;
-  // Knowledge graph
-  knowledgeGraph: KnowledgeGraph;
-  // Memory decay
-  memoryDecay: MemoryDecayService;
-  // Intent parser
-  intentParser?: import('@cabinet/secretary').IntentParser;
   // Mastra instance
   mastra?: import('@mastra/core').Mastra;
   // Infrastructure
@@ -125,7 +102,4 @@ export interface BuildState extends Partial<ServerContext> {
   dataDir: string;
   dbPath: string;
   dbMode: 'file' | 'memory';
-  knowledgeGraph?: KnowledgeGraph;
-  memoryDecay?: MemoryDecayService;
-  memoryMaintenanceTimer?: ReturnType<typeof setInterval>;
 }

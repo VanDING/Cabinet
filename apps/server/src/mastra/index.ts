@@ -101,4 +101,5 @@ export {
   researcherAgent,
   processFilesWorkflow,
   codeReviewWorkflow,
+  memory,
 };

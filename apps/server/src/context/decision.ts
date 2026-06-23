@@ -10,9 +10,19 @@ import { EventBus } from './event-bus.js';
 import type { BuildState } from './types.js';
 import { getCurrentTier } from './state.js';
 
+const prefsStore = new Map<string, { name: string; preferences: Record<string, unknown> }>();
+
+function getPreferences(cid: string) {
+  return prefsStore.get(cid);
+}
+
+function setPreferences(cid: string, name: string, preferences: Record<string, unknown>) {
+  prefsStore.set(cid, { name, preferences });
+}
+
 export function initDecisionService(state: BuildState): void {
-  const { db, decisionRepo, auditLogRepo, eventRepo, workflowRepo, entity } = state;
-  if (!db || !decisionRepo || !auditLogRepo || !eventRepo || !workflowRepo || !entity) {
+  const { db, decisionRepo, auditLogRepo, eventRepo, workflowRepo } = state;
+  if (!db || !decisionRepo || !auditLogRepo || !eventRepo || !workflowRepo) {
     throw new Error('Missing required state for decision service');
   }
 
@@ -93,7 +103,7 @@ export function initDecisionService(state: BuildState): void {
           }
         }
 
-        const existing = entity.getPreferences(cid);
+        const existing = getPreferences(cid);
         const existingPrefs = existing?.preferences ?? {};
         const history = (existingPrefs.decisionHistory as any[]) ?? [];
 
@@ -109,7 +119,7 @@ export function initDecisionService(state: BuildState): void {
         const total = trimmed.length;
         const approvalRate = total > 0 ? approvals / total : 0;
 
-        entity.setPreferences(cid, existing?.name ?? DEFAULT_CAPTAIN_NAME, {
+        setPreferences(cid, existing?.name ?? DEFAULT_CAPTAIN_NAME, {
           ...existingPrefs,
           decisionHistory: trimmed,
           decisionStats: {

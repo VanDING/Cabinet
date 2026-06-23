@@ -214,9 +214,6 @@ importers:
       '@cabinet/decision':
         specifier: workspace:*
         version: link:../../packages/decision
-      '@cabinet/memory':
-        specifier: workspace:*
-        version: link:../../packages/memory
       '@cabinet/secretary':
         specifier: workspace:*
         version: link:../../packages/secretary
@@ -412,46 +409,21 @@ importers:
         specifier: ^4.0.0
         version: 4.1.7(@types/node@25.7.0)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@25.7.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
 
-  packages/memory:
-    dependencies:
-      '@cabinet/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@cabinet/types':
-        specifier: link:../types
-        version: link:../types
-      compromise:
-        specifier: ^14.15.1
-        version: 14.15.1
-      hnswlib-node:
-        specifier: ^3.0.0
-        version: 3.0.0
-    devDependencies:
-      '@types/better-sqlite3':
-        specifier: ^7.6.0
-        version: 7.6.13
-      typescript:
-        specifier: ^5.9.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.0
-        version: 4.1.7(@types/node@25.7.0)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@25.7.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
-
   packages/secretary:
     dependencies:
-      '@cabinet/agent':
-        specifier: workspace:*
-        version: link:../agent
       '@cabinet/types':
         specifier: link:../types
         version: link:../types
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
       vitest:
         specifier: ^4.0.0
-        version: 4.1.7(@types/node@25.7.0)(@vitest/coverage-istanbul@4.1.8)(@vitest/coverage-v8@4.1.8)(happy-dom@20.9.0)(vite@6.4.2(@types/node@25.7.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 4.1.7(@types/node@22.19.19)(@vitest/coverage-istanbul@4.1.8(vitest@4.1.7))(@vitest/coverage-v8@4.1.8(vitest@4.1.7))(happy-dom@20.9.0)(vite@6.4.2(@types/node@22.19.19)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/storage:
     dependencies:
@@ -4084,9 +4056,6 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
-  hnswlib-node@3.0.0:
-    resolution: {integrity: sha512-fypn21qvVORassppC8/qNfZ5KAOspZpm/IbUkAtlqvbtDNnF5VVk5RWF7O5V6qwr7z+T3s1ePej6wQt5wRQ4Cg==}
-
   hono@4.12.18:
     resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
     engines: {node: '>=16.9.0'}
@@ -4883,10 +4852,6 @@ packages:
   node-abi@3.92.0:
     resolution: {integrity: sha512-KdHvFWZjEKDf0cakgFjebl371GPsISX2oZHcuyKqM7DtogIsHrqKeLTo8wBHxaXRAQlY2PsPlZmfo+9ZCxEREQ==}
     engines: {node: '>=10'}
-
-  node-addon-api@8.8.0:
-    resolution: {integrity: sha512-c5Ko1fZJIJmzhFIkhRN76WTq+fC6tWnGy9CXA0fA+XygsWZmEwG8vmbkNqxMyoaa0Tin4djul49NzdVcJJcjeA==}
-    engines: {node: ^18 || ^20 || >= 21}
 
   node-cron@4.2.1:
     resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
@@ -9941,11 +9906,6 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
-  hnswlib-node@3.0.0:
-    dependencies:
-      bindings: 1.5.0
-      node-addon-api: 8.8.0
-
   hono@4.12.18: {}
 
   hookable@5.5.3: {}
@@ -10820,8 +10780,6 @@ snapshots:
   node-abi@3.92.0:
     dependencies:
       semver: 7.8.0
-
-  node-addon-api@8.8.0: {}
 
   node-cron@4.2.1: {}
 

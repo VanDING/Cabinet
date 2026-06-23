@@ -5,5 +5,5 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "references": [{ "path": "../types" }, { "path": "../agent" }, { "path": "../decision" }]
+  "references": [{ "path": "../types" }]
 }

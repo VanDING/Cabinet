@@ -410,7 +410,7 @@ PDF/DOCX/PPTX 仅提取文本，不支持表格解析、图片提取、样式保
 - \`browser_evaluate(sessionId, script)\` — 执行 JavaScript
 
 ### 架构
-- 基于 BrowserPool（@cabinet/harness），最大 3 个并发浏览器上下文
+- 基于 MCP Playwright，最大 3 个并发浏览器上下文
 - 使用 Playwright + Chromium
 - 空闲会话每 10 分钟自动清理
 

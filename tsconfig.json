@@ -2,15 +2,10 @@
   "files": [],
   "references": [
     { "path": "packages/types" },
-    { "path": "packages/events" },
     { "path": "packages/storage" },
-    { "path": "packages/gateway" },
-    { "path": "packages/memory" },
     { "path": "packages/decision" },
-    { "path": "packages/workflow" },
     { "path": "packages/secretary" },
     { "path": "packages/agent" },
-    { "path": "packages/harness" },
     { "path": "packages/cli" },
     { "path": "packages/ui" }
   ]

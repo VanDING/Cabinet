@@ -1,8 +1,7 @@
-import { RouteFeedbackRepository, TelemetryRepository } from '@cabinet/storage';
+import { RouteFeedbackRepository } from '@cabinet/storage';
 import type { BuildState } from './types.js';
 import type { ServerContext } from './types.js';
 import { broadcast } from '../ws/handler.js';
-import { IntentParser } from '@cabinet/secretary';
 import { FileAccessTracker, TaskTracker } from './trackers.js';
 import { AgentEventRepository, AgentEventBus } from './event-bus.js';
 
@@ -13,7 +12,6 @@ export function assembleContext(state: BuildState): ServerContext {
   }
 
   const routeFeedbackRepo = new RouteFeedbackRepository(db);
-  const telemetryRepo = new TelemetryRepository(db);
   const agentEventRepo = new AgentEventRepository(db);
   const agentEventBus = new AgentEventBus(
     broadcast,
@@ -56,15 +54,9 @@ export function assembleContext(state: BuildState): ServerContext {
     settingsRepo: state.settingsRepo!,
     systemKnowledgeRepo: state.systemKnowledgeRepo!,
     routeFeedbackRepo,
-    telemetryRepo,
     agentEventRepo,
     agentEventBus,
     decisionService: state.decisionService!,
-    shortTerm: state.shortTerm!,
-    longTerm: state.longTerm!,
-    entity: state.entity!,
-    project: state.project!,
-    memoryFacade: state.memoryFacade!,
     sessionManager: state.sessionManager!,
     fileTracker,
     taskTracker,
@@ -73,8 +65,6 @@ export function assembleContext(state: BuildState): ServerContext {
     skillRegistry: state.skillRegistry!,
     mcpManager: state.mcpManager!,
     taskScheduler: state.taskScheduler!,
-    knowledgeGraph: state.knowledgeGraph!,
-    memoryDecay: state.memoryDecay!,
     eventBus: state.eventBus!,
     metrics: state.metrics!,
     logger: state.logger!,
@@ -87,10 +77,6 @@ export function assembleContext(state: BuildState): ServerContext {
     mcpServerRepo: state.mcpServerRepo!,
     shutdown: state.shutdown!,
   };
-
-  const parser = new IntentParser();
-  ctx.intentParser = parser;
-  void parser.warmupEmbeddings();
 
   return ctx;
 }

@@ -189,6 +189,16 @@ const externalDecisionSchema = z.object({
   callback_url: z.string().optional(),
 });
 
+externalAgentRouter.get('/decisions', async (c) => {
+  const { decisionRepo } = getServerContext();
+  const status = c.req.query('status') ?? undefined;
+  const limit = parseInt(c.req.query('limit') ?? '20', 10);
+  const decisions = status
+    ? decisionRepo.listByStatus(status, { limit })
+    : decisionRepo.listAll({ limit });
+  return c.json({ decisions });
+});
+
 externalAgentRouter.post('/decisions', async (c) => {
   const token = extractAuthToken(c);
   if (!token) return c.json({ error: 'Missing Authorization header' }, 401);

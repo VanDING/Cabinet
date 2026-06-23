@@ -50,6 +50,8 @@ function getCachedSummary(factory: () => DashboardSummary): DashboardSummary {
   return data;
 }
 
+let budgetAlerted = false;
+
 export const dashboardRouter = new Hono();
 
 dashboardRouter.get('/summary', (c) => {
@@ -169,12 +171,24 @@ dashboardRouter.get('/cost-history', (c) => {
     /* cost_history table may be empty */
   }
 
+  const dailyCost = history.length > 0 ? history[history.length - 1]!.cost : 0;
   const result: DashboardCostHistory = {
     history,
-    dailyCost: 0,
-    budgetStatus: { daily: 0, weekly: 0, monthly: 0 },
+    dailyCost,
+    budgetStatus: { daily: dailyCost, weekly: 0, monthly: 0 },
     limits: { daily: DAILY_BUDGET, weekly: WEEKLY_BUDGET, monthly: MONTHLY_BUDGET },
   };
+
+  if (dailyCost > DAILY_BUDGET && !budgetAlerted) {
+    budgetAlerted = true;
+    broadcast('budget_alert', {
+      dailyCost,
+      budget: DAILY_BUDGET,
+      message: 'Daily budget exceeded',
+    });
+  } else if (dailyCost <= DAILY_BUDGET) {
+    budgetAlerted = false;
+  }
 
   return c.json(result);
 });
