@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { blockWriteOps } from '../hooks.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
@@ -24,7 +24,7 @@ export const analystAgent = new Agent({
   name: 'Analyst',
   description: '分析代码结构、数据、架构，产出结构化分析报告',
   instructions: [SHARED_PROMPT, '', analystIdentity].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
   hooks: {

@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { curatorIdentity } from '../prompts/identities.js';
 
@@ -16,5 +16,5 @@ export const curatorAgent = new Agent({
     'You are a background agent. Do not respond directly to users.',
     'Your observations are processed through observational memory.',
   ].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
 });

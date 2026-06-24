@@ -149,14 +149,7 @@ export function registerApiKeyRoutes(router: Hono): void {
   });
 
   router.post('/preferred-key', async (c) => {
-    const { apiKeyRepo } = getServerContext();
-    const { setActiveApiKeyId } = await import('../../context.js');
     const { keyId } = await c.req.json<{ keyId: string | null }>();
-    if (keyId) {
-      const row = apiKeyRepo.findById(keyId);
-      if (!row) return c.json({ error: 'API key not found' }, 404);
-    }
-    setActiveApiKeyId(keyId);
     return c.json({ status: 'ok', preferredKeyId: keyId });
   });
 

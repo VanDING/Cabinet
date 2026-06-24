@@ -42,6 +42,13 @@ export class CostHistoryRepository {
     return rows.map((r) => this.rowToCost(r));
   }
 
+  sumSince(timestamp: string): number {
+    const row = this.db
+      .prepare(`SELECT COALESCE(SUM(cost_usd), 0) as total FROM cost_history WHERE timestamp >= ?`)
+      .get(timestamp) as { total: number };
+    return row?.total ?? 0;
+  }
+
   private rowToCost(row: Record<string, unknown>): CostHistoryRow {
     return {
       timestamp: row.timestamp as string,

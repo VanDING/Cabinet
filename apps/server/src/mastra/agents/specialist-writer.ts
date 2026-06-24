@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
 
@@ -21,7 +21,7 @@ export const writerAgent = new Agent({
   name: 'Writer',
   description: '撰稿和编辑文档、报告、文章、代码注释、技术文档',
   instructions: [SHARED_PROMPT, '', writerIdentity].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
 });

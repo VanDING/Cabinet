@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { getServerContext } from '../context.js';
-import { resolveModel } from '../mastra/model-config.js';
 import { createSSEStream } from '../mastra/sse-encoder.js';
+import { createCostTracker } from '../mastra/cost-tracker.js';
+import { checkBudget } from '../mastra/budget-guard.js';
 
 const secretaryRouter = new Hono();
 
@@ -25,6 +26,11 @@ secretaryRouter.post('/chat', async (c) => {
     return c.json({ error: 'Mastra not initialized' }, 503);
   }
 
+  const budget = checkBudget();
+  if (!budget.allowed) {
+    return c.json({ error: budget.reason }, 429);
+  }
+
   const agent = mastra.getAgent('secretary');
   if (!agent) {
     return c.json({ error: 'Secretary agent not found' }, 503);
@@ -40,11 +46,22 @@ secretaryRouter.post('/chat', async (c) => {
 
   const input = fileContext ? `${message}\n\nAttached files:\n${fileContext}` : message;
 
+  const costTracker = createCostTracker();
+
+  const abortController = new AbortController();
+  c.req.raw.signal.addEventListener('abort', () => abortController.abort());
+  const timeoutId = setTimeout(() => abortController.abort(), 300_000);
+
   try {
     const result = await agent.stream(input, {
-      model: model ?? resolveModel('default'),
+      ...(model ? { model } : {}),
       memory: { thread: { id: sessionId } },
+      abortSignal: abortController.signal,
+      maxSteps: 50,
+      onStepFinish: costTracker.onStepFinish,
     });
+
+    clearTimeout(timeoutId);
 
     c.header('Content-Type', 'text/event-stream');
     c.header('Cache-Control', 'no-cache');
@@ -53,6 +70,7 @@ secretaryRouter.post('/chat', async (c) => {
     const stream = createSSEStream(result.fullStream.getReader());
     return c.newResponse(stream);
   } catch (err) {
+    clearTimeout(timeoutId);
     c.header('Content-Type', 'text/event-stream');
     c.header('Cache-Control', 'no-cache');
     c.header('Connection', 'keep-alive');

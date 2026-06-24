@@ -41,7 +41,7 @@ async function start() {
     ctx.logger.warn('Failed to load API keys', { error: String(err) });
   }
 
-  const MASTRA_PROVIDERS = [
+  const providerEnvs = [
     'DEEPSEEK',
     'OPENAI',
     'ANTHROPIC',
@@ -50,13 +50,13 @@ async function start() {
     'MOONSHOT',
     'ZHIPU',
     'BAICHUAN',
+    'OPENROUTER',
   ];
-  const availableProviders = MASTRA_PROVIDERS.filter((p) => process.env[`${p}_API_KEY`]);
+  const availableProviders = providerEnvs.filter((p) => process.env[`${p}_API_KEY`]);
   if (availableProviders.length === 0) {
     ctx.logger.warn('No API keys configured. Add keys in Settings → API Keys.');
   } else {
     ctx.logger.info(`API keys available for: ${availableProviders.join(', ')}`);
-    process.env.CABINET_PRIMARY_PROVIDER = availableProviders[0]!.toLowerCase();
   }
 
   // Integrate Mastra Hono Adapter (auto-registers agent/workflow/memory API routes)

@@ -10,5 +10,4 @@ export {
   setSystemMode,
   onSystemModeChange,
 } from './context/state.js';
-export { activeApiKeyId, setActiveApiKeyId, getActiveApiKeyId } from './context/api-keys.js';
 export { type RecentFileEntry, FileAccessTracker, TaskTracker } from './context/trackers.js';

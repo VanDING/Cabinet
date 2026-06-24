@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent';
 import { CabinetDecisionSignalProvider } from '../signals/decision-signal.js';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { secretaryIdentity } from '../prompts/identities.js';
 import { writerAgent } from './specialist-writer.js';
@@ -25,7 +25,7 @@ export const secretaryAgent = new Agent({
     'For complex tasks: first delegate to planner, then execute, then have reviewer verify the result.',
     'For simple tasks, handle directly using your tools.',
   ].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
   defaultOptions: {
     maxSteps: 50,
   },

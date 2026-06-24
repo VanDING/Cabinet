@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { blockWriteOps } from '../hooks.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
@@ -29,7 +29,7 @@ export const plannerAgent = new Agent({
   name: 'Planner',
   description: 'Read-only codebase explorer and feature architect',
   instructions: [SHARED_PROMPT, '', plannerIdentity].join('\n'),
-  model: resolveModel('reasoning'),
+  model: buildModelConfig('reasoning'),
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
   hooks: {

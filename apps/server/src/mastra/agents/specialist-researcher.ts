@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { blockWriteOps } from '../hooks.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
@@ -22,7 +22,7 @@ export const researcherAgent = new Agent({
   name: 'Researcher',
   description: '搜索网络、文档、知识库获取信息，产出研究总结',
   instructions: [SHARED_PROMPT, '', researcherIdentity].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
   hooks: {

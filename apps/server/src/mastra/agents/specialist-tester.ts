@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core/agent';
-import { resolveModel } from '../model-config.js';
+import { buildModelConfig } from '../model-gateway.js';
 import { SHARED_PROMPT } from '../prompts/shared.js';
 import { readOnlyTools } from '../tools/index.js';
 
@@ -29,7 +29,7 @@ export const testerAgent = new Agent({
   name: 'Tester',
   description: 'Generate and run tests, fix failing tests',
   instructions: [SHARED_PROMPT, '', testerIdentity].join('\n'),
-  model: resolveModel('default'),
+  model: buildModelConfig('default'),
   tools: { ...readOnlyTools },
   defaultOptions: { maxSteps: 25 },
 });
