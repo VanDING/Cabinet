@@ -3,14 +3,14 @@ import { getServerContext } from '../context.js';
 
 const harnessRouter = new Hono();
 
-harnessRouter.get('/overview', (c) => {
+harnessRouter.get('/overview', async (c) => {
   const { daemonRepo, taskQueueRepo, sessionManager, logger } = getServerContext();
   try {
     const agents = daemonRepo ? daemonRepo.findOnlineDaemons(300_000) : [];
     const tasks = taskQueueRepo
       ? taskQueueRepo.findByStatus(['pending', 'running', 'completed', 'failed'])
       : [];
-    const sessions = sessionManager.list();
+    const sessions = await sessionManager.list();
     const activeSessions = sessions.filter((s) => s.status === 'active' || !s.status).length;
 
     return c.json({

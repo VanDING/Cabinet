@@ -16,18 +16,8 @@ export function assembleContext(state: BuildState): ServerContext {
   const agentEventBus = new AgentEventBus(
     broadcast,
     agentEventRepo,
-    (parentSessionId: string, deliverable: unknown) => {
-      try {
-        const deliverableText =
-          typeof deliverable === 'string' ? deliverable : JSON.stringify(deliverable);
-        state.sessionManager!.addMessage(
-          parentSessionId,
-          'assistant',
-          `[Sub-agent completed]\n${deliverableText}`,
-        );
-      } catch {
-        /* parent session may be closed */
-      }
+    (_parentSessionId: string, _deliverable: unknown) => {
+      /* messages stored by Mastra memory — no-op for sub-agent completion */
     },
   );
 

@@ -27,7 +27,7 @@ import type {
 } from '@cabinet/storage';
 import type { Database } from '@cabinet/storage';
 import type { DecisionService } from '@cabinet/decision';
-import type { SessionManager } from '@cabinet/secretary';
+import type { SessionService } from '../mastra/session-service.js';
 import type { AgentRoleRegistry, SkillRegistry } from '@cabinet/agent';
 import type { TaskScheduler } from '../scheduler.js';
 import type { MCPIntegration } from '../mastra/mcp-integration.js';
@@ -67,7 +67,7 @@ export interface ServerContext {
   // Decision service
   decisionService: DecisionService;
   // Session
-  sessionManager: SessionManager;
+  sessionManager: SessionService;
   // File tracking
   fileTracker: import('./trackers.js').FileAccessTracker;
   // Task tracking

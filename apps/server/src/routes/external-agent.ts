@@ -90,11 +90,11 @@ externalAgentRouter.get('/:taskId/read', async (c) => {
 
   try {
     const { sessionManager } = getServerContext();
-    const session = sessionManager.getSessionByTaskId(taskId) ?? sessionManager.get(taskId);
+    const session = sessionManager.getSessionByTaskId(taskId) ?? (await sessionManager.get(taskId));
     if (!session) {
       return c.json({ error: 'Session not found' }, 404);
     }
-    const slot = session.contextSlot;
+    const slot = sessionManager.getContextSlot(session.id);
     if (!slot) {
       return c.json({ error: 'Context slot not initialized' }, 404);
     }
@@ -142,16 +142,18 @@ externalAgentRouter.post('/:taskId/write', async (c) => {
     }
 
     const { sessionManager, agentEventBus } = getServerContext();
-    const childSession = sessionManager.getSessionByTaskId(taskId) ?? sessionManager.get(taskId);
+    const childSession =
+      sessionManager.getSessionByTaskId(taskId) ?? (await sessionManager.get(taskId));
 
-    if (childSession?.contextSlot) {
+    const existingSlot = sessionManager.getContextSlot(childSession?.id ?? '');
+    if (childSession && existingSlot) {
       if (parsed.data.discoveries) {
-        childSession.contextSlot.discoveries.push(...parsed.data.discoveries);
+        existingSlot.discoveries.push(...parsed.data.discoveries);
       }
       if (parsed.data.previous_outputs) {
-        childSession.contextSlot.previous_outputs.push(...parsed.data.previous_outputs);
+        existingSlot.previous_outputs.push(...parsed.data.previous_outputs);
       }
-      sessionManager.setContextSlot(childSession.id, childSession.contextSlot);
+      sessionManager.setContextSlot(childSession.id, existingSlot);
 
       agentEventBus.publish(childSession.id, childSession.parentId ?? '', {
         type: 'tool_result',
@@ -309,9 +311,9 @@ externalAgentRouter.post('/deliverables', async (c) => {
     // Find child session and inject deliverable
     const childSession =
       sessionManager.getSessionByTaskId(parsed.data.task_id) ??
-      sessionManager.get(parsed.data.task_id);
+      (await sessionManager.get(parsed.data.task_id));
     if (childSession) {
-      childSession.deliverable = parsed.data.content;
+      sessionManager.setDeliverable(childSession.id, parsed.data.content);
       agentEventBus.publish(childSession.id, childSession.parentId ?? '', {
         type: 'completed',
         deliverable: { id: deliverableId, title: parsed.data.title, content: parsed.data.content },

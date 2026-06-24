@@ -1,7 +1,7 @@
 import { join } from 'node:path';
-import { SessionManager } from '@cabinet/secretary';
 import { MetricsCollector, BackupManager } from '@cabinet/storage';
 import { A2AClient } from '../a2a/a2a-client.js';
+import { SessionService } from '../mastra/session-service.js';
 import type { BuildState } from './types.js';
 
 export function initInfrastructure(state: BuildState): void {
@@ -10,7 +10,7 @@ export function initInfrastructure(state: BuildState): void {
     throw new Error('Missing required state for infrastructure');
   }
 
-  const sessionManager = new SessionManager();
+  const sessionManager = new SessionService();
 
   const metrics = new MetricsCollector({ repo: metricRepo });
   metrics.startPeriodicFlush();

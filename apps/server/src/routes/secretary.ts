@@ -36,8 +36,9 @@ secretaryRouter.post('/chat', async (c) => {
     return c.json({ error: 'Secretary agent not found' }, 503);
   }
 
-  if (!sessionManager.get(sessionId)) {
-    sessionManager.create(sessionId, undefined, body.projectId);
+  const existing = await sessionManager.get(sessionId);
+  if (!existing) {
+    await sessionManager.create(sessionId, undefined, body.projectId);
   }
 
   const fileContext = files?.length
@@ -123,33 +124,20 @@ secretaryRouter.post('/subagent/input', async (c) => {
 });
 
 secretaryRouter.get('/context', async (c) => {
-  const { sessionManager, mastra } = getServerContext();
+  const { mastra } = getServerContext();
   const sessionId = c.req.query('sessionId');
   if (!sessionId) return c.json({ error: 'sessionId is required' }, 400);
 
   const memory = (mastra as any)?.memory;
   const thread = memory ? await memory.getThreadById?.(sessionId) : null;
-  const source = thread?.messages ?? sessionManager.get(sessionId)?.messages ?? [];
+  const messages = thread?.messages ?? [];
 
-  const context = (source as Array<{ role: string; content: string }>)
+  const context = (messages as Array<{ role: string; content: string }>)
     .slice(-10)
     .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
     .join('\n');
 
   return c.json({ context });
-});
-
-secretaryRouter.post('/compact', async (c) => {
-  const { sessionManager } = getServerContext();
-  const body = await c.req.json().catch(() => ({}));
-  const sessionId = body.sessionId ?? c.req.query('sessionId');
-  if (!sessionId) return c.json({ error: 'sessionId is required' }, 400);
-
-  const session = sessionManager.get(sessionId);
-  if (!session) return c.json({ error: 'Session not found' }, 404);
-
-  sessionManager.compactMessages(sessionId, 'Manually compacted by user');
-  return c.json({ status: 'compacted' });
 });
 
 secretaryRouter.get('/sessions/:id/children', (c) => {
@@ -159,14 +147,55 @@ secretaryRouter.get('/sessions/:id/children', (c) => {
   return c.json({ children });
 });
 
-secretaryRouter.post('/sessions/:id/close', (c) => {
+secretaryRouter.post('/sessions/:id/close', async (c) => {
   const { sessionManager } = getServerContext();
   const sessionId = c.req.param('id');
-  const session = sessionManager.get(sessionId);
+  const session = await sessionManager.get(sessionId);
   if (!session) return c.json({ error: 'Session not found' }, 404);
 
-  sessionManager.close(sessionId);
+  await sessionManager.close(sessionId);
   return c.json({ status: 'closed' });
+});
+
+secretaryRouter.post('/fork', async (c) => {
+  const { sessionManager } = getServerContext();
+  const { sourceSessionId, newSessionId } = (await c.req.json()) as {
+    sourceSessionId: string;
+    newSessionId: string;
+  };
+  if (!sourceSessionId || !newSessionId) {
+    return c.json({ error: 'sourceSessionId and newSessionId are required' }, 400);
+  }
+  await sessionManager.fork(sourceSessionId, newSessionId);
+  return c.json({ sessionId: newSessionId });
+});
+
+secretaryRouter.get('/greeting', async (c) => {
+  const { sessionManager, costHistoryRepo, decisionRepo } = getServerContext();
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+  const hour = now.getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  const pendingDecisions = decisionRepo.listAllPending({ limit: 5 }).length;
+  const todayCost = costHistoryRepo.sumSince(todayStart);
+
+  const sessions = await sessionManager.list();
+
+  return c.json({
+    greeting: `${timeGreeting}, Captain`,
+    pendingDecisions,
+    todayCost: Math.round(todayCost * 100) / 100,
+    activeSessions: sessions.length,
+    suggestions: [
+      pendingDecisions > 0
+        ? `You have ${pendingDecisions} pending decision${pendingDecisions > 1 ? 's' : ''}`
+        : null,
+      todayCost > 0 ? `Today's cost: $${todayCost.toFixed(2)}` : null,
+      'What would you like to work on?',
+    ].filter(Boolean),
+  });
 });
 
 export { secretaryRouter };

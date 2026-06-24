@@ -54,7 +54,7 @@ const memory = new Memory({
   vector,
   ...(embedder ? { embedder } : {}),
   options: {
-    lastMessages: 20,
+    lastMessages: 50,
     observationalMemory: {
       model: 'deepseek/deepseek-chat',
       scope: 'thread',
