@@ -12,8 +12,12 @@ export const lintStep = createStep({
   }),
   execute: async ({ inputData }) => {
     try {
-      const cmd = `npx eslint "${inputData.filePath}" --format=compact 2>/dev/null || true`;
-      const out = execSync(cmd, { encoding: 'utf-8', maxBuffer: 1024 * 1024 });
+      const cmd = `npx eslint "${inputData.filePath}" --format=compact`;
+      const out = execSync(cmd, {
+        encoding: 'utf-8',
+        maxBuffer: 1024 * 1024,
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
       const errors = out.split('\n').filter((l) => l.includes('Error') || l.includes('Warning'));
       return {
         lintErrors: errors.slice(0, 20),

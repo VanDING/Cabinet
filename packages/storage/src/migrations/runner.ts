@@ -29,6 +29,7 @@ import { runMigration029 } from './029_step_events.js';
 import { runMigration030 } from './030_task_kanban_fields.js';
 import { runMigration031 } from './031_agent_bindings.js';
 import { runMigration032 } from './032_workbench_unified_config.js';
+import { runMigration033 } from './033_schema_gaps.js';
 export interface MigrationEntry {
   version: number;
   name: string;
@@ -61,12 +62,12 @@ export const MIGRATIONS: MigrationEntry[] = [
   { version: 25, name: '025_agent_daemon', up: runMigration025 },
   { version: 26, name: '026_autopilot_triggers', up: runMigration026 },
   { version: 27, name: '027_agent_squads', up: runMigration027 },
-  { version: 28, name: '028_task_kanban_fields', up: runMigration028 },
   { version: 28, name: '028_decision_comments', up: runMigration028 },
   { version: 29, name: '029_step_events', up: runMigration029 },
   { version: 30, name: '030_task_kanban_fields', up: runMigration030 },
   { version: 31, name: '031_agent_bindings', up: runMigration031 },
   { version: 32, name: '032_workbench_unified_config', up: runMigration032 },
+  { version: 33, name: '033_schema_gaps', up: runMigration033 },
 ];
 
 /**

@@ -55,23 +55,47 @@ fn is_port_3000_alive() -> bool {
     std::net::TcpStream::connect("127.0.0.1:3000").is_ok()
 }
 
+fn find_resource_dir(exe_dir: &std::path::Path) -> PathBuf {
+    // macOS .app bundle: executable is in Contents/MacOS/, resources are in Contents/Resources/
+    if let Some(parent) = exe_dir.parent() {
+        let macos_resources = parent.join("Resources").join("resources");
+        if macos_resources.exists() {
+            return macos_resources;
+        }
+    }
+    // Windows / dev builds: resources directly under exe_dir
+    exe_dir.join("resources")
+}
+
 fn find_node(exe_dir: &std::path::Path) -> Option<PathBuf> {
     // 1) Bundled portable Node.js (production)
-    let bundled = exe_dir.join("resources").join("node-portable.exe");
-    log(&format!("Checking bundled node: {}", bundled.display()));
-    if bundled.exists() {
-        log("Bundled node found!");
-        return Some(bundled);
+    let resource_dir = find_resource_dir(exe_dir);
+    // Check for both macOS (no extension) and Windows (.exe) names
+    for name in &["node-portable", "node-portable.exe"] {
+        let bundled = resource_dir.join(name);
+        log(&format!("Checking bundled node: {}", bundled.display()));
+        if bundled.exists() {
+            log("Bundled node found!");
+            return Some(bundled);
+        }
     }
 
     // 2) System Node.js (development fallback)
-    let candidates = [
-        "node.exe",
-        "C:\\Program Files\\nodejs\\node.exe",
-        "C:\\nvm4w\\nodejs\\node.exe",
-        &format!("{}\\nodejs\\node.exe", std::env::var("ProgramFiles").unwrap_or_default().replace(" (x86)", "")),
-    ];
-    for c in &candidates {
+    let candidates: &[&str] = if cfg!(windows) {
+        &[
+            "node.exe",
+            "C:\\Program Files\\nodejs\\node.exe",
+            "C:\\nvm4w\\nodejs\\node.exe",
+        ]
+    } else {
+        &[
+            "/usr/local/bin/node",
+            "/opt/homebrew/bin/node",
+            "/usr/bin/node",
+            "/usr/local/bin/node",
+        ]
+    };
+    for c in candidates {
         if let Ok(output) = Command::new(c).arg("--version").output() {
             if output.status.success() {
                 log(&format!("Found system node at: {}", c));
@@ -102,7 +126,8 @@ fn log(msg: &str) {
 
 fn find_server_script(exe_dir: &std::path::Path) -> Option<PathBuf> {
     // 1) Bundled server (production): {exe_dir}/resources/server-dist/main.cjs
-    let bundled = exe_dir.join("resources").join("server-dist").join("main.cjs");
+    let resource_dir = find_resource_dir(exe_dir);
+    let bundled = resource_dir.join("server-dist").join("main.cjs");
     log(&format!("Checking bundled server: {}", bundled.display()));
     if bundled.exists() {
         log("Bundled server found!");

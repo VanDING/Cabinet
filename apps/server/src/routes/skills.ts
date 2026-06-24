@@ -127,6 +127,7 @@ const createSchema = z.object({
   description: z.string().optional(),
   kind: z.enum(['tool', 'prompt', 'composite']).optional(),
   promptTemplate: z.string().optional(),
+  exposure: z.enum(['prompt', 'tool', 'both']).optional().default('both'),
 });
 
 skillsRouter.post('/', async (c) => {
@@ -156,6 +157,7 @@ skillsRouter.post('/', async (c) => {
     metadata: '{}',
     references_path: existsSync(refsDir) ? refsDir : '',
     scripts_path: existsSync(scriptsDir) ? scriptsDir : '',
+    exposure: d.exposure,
   });
 
   // Write SKILL.md to filesystem
@@ -178,7 +180,7 @@ skillsRouter.post('/', async (c) => {
     name: d.name,
     description: d.description ?? '',
     kind: (d.kind ?? 'tool') as SkillEntry['kind'],
-    exposure: 'prompt',
+    exposure: d.exposure as SkillEntry['exposure'],
     promptTemplate: d.promptTemplate ?? '',
     inputSchema: {},
     outputSchema: {},

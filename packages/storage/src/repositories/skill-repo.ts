@@ -54,8 +54,8 @@ export class SkillRepository {
   insert(skill: SkillRow): void {
     this.db
       .prepare(
-        `INSERT INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path, exposure)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         skill.id,
@@ -70,14 +70,15 @@ export class SkillRepository {
         skill.metadata,
         skill.references_path,
         skill.scripts_path,
+        skill.exposure ?? 'both',
       );
   }
 
   upsert(skill: SkillRow): void {
     this.db
       .prepare(
-        `INSERT OR REPLACE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO skills (id, name, description, kind, input_schema, output_schema, prompt_template, version, status, metadata, references_path, scripts_path, exposure)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         skill.id,
@@ -92,6 +93,7 @@ export class SkillRepository {
         skill.metadata,
         skill.references_path,
         skill.scripts_path,
+        skill.exposure ?? 'both',
       );
   }
 

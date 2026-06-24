@@ -44,9 +44,16 @@ bgTaskManager.registerStaticExecutor('search', {
     const query = (args as { query?: string }).query ?? '';
     if (!query) return { results: [] };
     try {
-      const cmd = `grep -rl --include="*.ts" --include="*.tsx" --include="*.js" "${query}" . 2>/dev/null | head -20`;
-      const out = execSync(cmd, { encoding: 'utf-8', maxBuffer: 1024 * 1024 });
-      return { results: out.split('\n').filter(Boolean) };
+      const isWindows = process.platform === 'win32';
+      const cmd = isWindows
+        ? `findstr /s /i /m /c:"${query}" *.ts *.tsx *.js`
+        : `grep -rl --include="*.ts" --include="*.tsx" --include="*.js" "${query}" .`;
+      const out = execSync(cmd, {
+        encoding: 'utf-8',
+        maxBuffer: 1024 * 1024,
+        stdio: ['pipe', 'pipe', 'ignore'],
+      });
+      return { results: out.split('\n').filter(Boolean).slice(0, 20) };
     } catch {
       return { results: [] };
     }

@@ -214,16 +214,25 @@ try {
 }
 
 // Copy libsql native binding (required by Mastra LibSQLStore at runtime)
+const libsqlPlatformMap = {
+  'win32-x64': '@libsql/win32-x64-msvc',
+  'darwin-x64': '@libsql/darwin-x64',
+  'darwin-arm64': '@libsql/darwin-arm64',
+  'linux-x64': '@libsql/linux-x64-gnu',
+  'linux-arm64': '@libsql/linux-arm64-gnu',
+};
+const libsqlPkg =
+  libsqlPlatformMap[`${process.platform}-${process.arch}`] || '@libsql/linux-x64-gnu';
 try {
   // libsql is a transitive dep of @mastra/libsql, find it in pnpm store
   const libsqlDirs = readdirSync(pnpmStore).filter((d) => d.startsWith('libsql@'));
   const libsqlRoot = join(pnpmStore, libsqlDirs[0], 'node_modules', 'libsql');
   if (!existsSync(libsqlRoot)) throw new Error('libsql not found in store');
   const libsqlRequire = createRequire(join(libsqlRoot, 'index.js'));
-  const nativeEntry = libsqlRequire.resolve('@libsql/win32-x64-msvc');
-  copyPackage('@libsql/win32-x64-msvc', nativeEntry);
+  const nativeEntry = libsqlRequire.resolve(libsqlPkg);
+  copyPackage(libsqlPkg, nativeEntry);
 } catch (e) {
-  console.warn('@libsql/win32-x64-msvc not found, skipping copy');
+  console.warn(`${libsqlPkg} not found, skipping copy`);
 }
 
 console.log('Standalone server ready');

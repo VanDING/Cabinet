@@ -42,6 +42,12 @@ export const toolServices = {
   get mcpManager() {
     return ctx().mcpManager;
   },
+  get mastra() {
+    return ctx().mastra;
+  },
+  get _skillRepo() {
+    return ctx().skillRepo;
+  },
   broadcast(event: string, data?: Record<string, unknown>) {
     broadcast(event, data);
   },

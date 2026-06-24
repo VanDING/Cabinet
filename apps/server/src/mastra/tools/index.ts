@@ -13,6 +13,7 @@ import {
 } from './git.js';
 import { webFetchTool, webSearchTool } from './web.js';
 import { npmInstallTool, npmListTool } from './npm.js';
+import { createSkillTool, updateSkillTool, useSkillTool } from './skill.js';
 
 const allGitTools = {
   gitStatus: gitStatusTool,
@@ -34,6 +35,9 @@ export const cabinetTools = {
   webSearch: webSearchTool,
   npmInstall: npmInstallTool,
   npmList: npmListTool,
+  create_skill: createSkillTool,
+  update_skill: updateSkillTool,
+  use_skill: useSkillTool,
 };
 
 export const readOnlyTools = {

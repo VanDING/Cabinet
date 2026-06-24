@@ -32,7 +32,7 @@ backups/
 # Tauri embedded resources (build artifacts, not source)
 apps/desktop/src-tauri/resources/server-dist/
 apps/desktop/src-tauri/resources/frontend/
-apps/desktop/src-tauri/resources/node-portable.exe
+apps/desktop/src-tauri/resources/node-portable*
 
 # Compiled JS in source directories (accidental tsc outputs)
 **/src/**/*.js

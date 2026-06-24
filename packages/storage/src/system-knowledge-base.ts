@@ -112,83 +112,42 @@ onStreamStart → onUserInput → [per-step: onToolCall → onToolResult → onS
     topic: '可用工具概览',
     category: 'capability',
     version: 3,
-    content: `## 完整工具目录（约 85 个）
+    content: `## 可用工具（实际 Mastra 工具集 ~25 个）
 
-### 文件操作（15 个）
-read_file, write_file, edit_file, apply_patch, move_file, copy_file, make_directory, file_info, list_directory, glob, grep, recent_files, watch_file, index_project, delete_file
+### 文件操作
+readFile, writeFile, deleteFile, listDirectory, grep, fileInfo, makeDirectory, executeCommand, search, lspInspect
 
-### 网络请求（4 个）
-web_fetch, http_request, fetch_github_repo, fetch_webpage_clean
+### 网络
+webFetch — 获取网页内容。webSearch — 搜索网络。
 
-### Shell 执行（1 个）
-execute_command — 执行 shell 命令，返回 { stdout, stderr, exitCode }。有安全拦截机制。
+### Git 操作
+gitStatus, gitDiff, gitDiffStaged, gitLog, gitShow, gitBranch, gitBlame, gitCheckoutBranch
 
-### 记忆管理（7 个）
-remember, recall, search_memory, list_memories, write_memory, update_memory, delete_memory
+### 决策（decision 表 CRUD）
+getDecision, createDecision, approveDecision, rejectDecision
 
-### 决策流程（6 个）
-create_decision, approve_decision, reject_decision, query_decisions, get_decision, get_decision_audit
+### Agent 管理
+listExternalAgents, registerExternalAgent, deleteExternalAgent
 
-### 工作流（8 个）
-create_workflow, update_workflow, delete_workflow, list_workflows, get_workflow, run_workflow, get_workflow_run, list_workflow_runs
+### 系统状态
+getSystemStatus, getDashboardStats, getMemoryStats
 
-### Agent 管理（5 个）
-register_agent, update_agent, delete_agent, list_agents, invoke_agent
+### 包管理
+npmInstall, npmList
 
-### 项目（5 个）
-create_project, list_projects, set_project_context, get_project_context, update_project_summary, add_milestone
+### Skill 管理
+create_skill, update_skill, use_skill — skill CRUD。Skills 注册后自动注入 \`use_skill__<skillName>\` 工具。
 
-### 调度（3 个）
-schedule_task, list_scheduled_tasks, cancel_scheduled_task
+### 其他操作（REST API，非 Mastra tool）
+- 员工 CRUD: GET/POST/PUT/DELETE /api/employees
+- 项目管理: /api/projects
+- Skill 导入: POST /api/skills/import
+- 会话管理: /api/secretary/*
+- 工作流执行: POST /api/factory/:id/run
+- Agent 扫描安装: /api/install/*
 
-### 系统操作（6 个）
-read_clipboard, write_clipboard, send_notification, start_process, kill_process, show_open_dialog
-
-### 文档处理（4 个）
-read_pdf, read_docx, read_xlsx, read_pptx
-
-### 归档（2 个）
-read_zip, extract_zip
-
-### 浏览器自动化（6 个）
-browser_navigate, browser_click, browser_type, browser_read, browser_screenshot, browser_evaluate
-
-### 通信工具（2 个）
-fetch_rss, send_email
-
-### 知识检索 RAG（3 个）
-index_document, search_documents, clear_index
-
-### 评估（1 个）
-evaluate
-
-### LSP 代码分析（4 个）
-workspace_symbol, go_to_definition, find_references, diagnostics
-
-### 系统知识查询（2 个）
-query_system_knowledge, get_system_knowledge
-
-### 任务委派（3 个）
-delegate_task, get_task_status, list_active_tasks
-
-### 状态/健康（3 个）
-get_status, get_dashboard_stats, get_memory_stats
-
-### 事件（2 个）
-get_recent_events, publish_notification
-
-### Skill（动态注入）
-Skills 注册后自动注入 \`use_skill__<skillName>\` 工具（如 \`use_skill__agentCreator\`、\`use_skill__workflowDesigner\`）。同时提供 \`update_skill(name, description?, promptTemplate?, kind?)\` 工具用于原地修改已注册 Skill。
-
-### Employee 管理（3 个）
-- \`create_employee\` — 创建 AI/Human 团队成员
-- \`update_employee\` — 更新员工配置（模型从用户配置的 API Keys 动态获取，不再硬编码）
-- \`delete_employee\` — 删除员工
-
-### 其他（4 个）
-create_employee, get_captain_preferences, set_captain_preferences, set_project_context
-
-**动态扩展**：MCP 服务器连接后自动注入更多工具（以 mcp__ 为前缀）。Skills 注册后注入 use_skill__<name> 工具。`,
+### 动态扩展
+MCP 服务器连接后注入更多工具（mcp__ 前缀）。Skills 注册后注入 use_skill__<name> 工具。`,
   },
   {
     id: 'workflow_node_types',

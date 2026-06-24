@@ -22,6 +22,9 @@ import {
   SystemKnowledgeRepository,
   AgentBindingRepository,
   McpServerRepository,
+  AgentTaskQueueRepository,
+  AgentDaemonRepository,
+  AutopilotRepository,
   syncSystemKnowledge,
   SYSTEM_KNOWLEDGE_BASE,
   getLogger,
@@ -107,6 +110,9 @@ export function initDatabase(state: BuildState): void {
   state.settingsRepo = new SettingsRepository(db);
   state.agentBindingRepo = new AgentBindingRepository(db);
   state.mcpServerRepo = new McpServerRepository(db);
+  state.taskQueueRepo = new AgentTaskQueueRepository(db);
+  state.daemonRepo = new AgentDaemonRepository(db);
+  state.autopilotRepo = new AutopilotRepository(db);
 
   const systemKnowledgeRepo = new SystemKnowledgeRepository(db);
   systemKnowledgeRepo.ensureTable();

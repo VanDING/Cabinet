@@ -18,7 +18,7 @@ function isLocalOrigin(origin: string | undefined): boolean {
 }
 
 export async function authMiddleware(c: Context, next: Next) {
-  const origin = c.req.header('origin') ?? c.req.header('referer');
+  const origin = c.req.header('origin');
   if (!isLocalOrigin(origin)) {
     return c.json({ error: 'Unauthorized origin' }, 403);
   }

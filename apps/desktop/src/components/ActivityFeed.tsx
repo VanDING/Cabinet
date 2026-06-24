@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../utils/api.js';
+import { useEventBus } from '../contexts/EventBusContext';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -26,73 +27,43 @@ interface ActivityEvent {
 
 export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 }) => {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [wsConnected, setWsConnected] = useState(false);
+  const { on } = useEventBus();
 
-  // ── WebSocket subscription ────────────────────────────────────
+  // ── Listen to shared EventBus for agent activity ──────────────
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host =
-      window.location.hostname === 'tauri.localhost' ? 'localhost:3000' : window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/events`;
-
-    let ws: WebSocket;
-    let reconnectTimer: ReturnType<typeof setTimeout>;
-    let retryCount = 0;
-    const maxRetries = 5;
-
-    const connect = () => {
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        setWsConnected(true);
-        retryCount = 0;
-        ws.send(JSON.stringify({ type: 'subscribe', channel: 'agent_event' }));
+    const handleAgentEvent = (type: string, data: Record<string, unknown>) => {
+      const event: ActivityEvent = {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        type: (data.type as ActivityEvent['type']) ?? 'task_completed',
+        timestamp: (data.timestamp as string) ?? new Date().toISOString(),
+        agentId: (data.agentId as string) ?? (data.agent_type as string) ?? 'unknown',
+        agentName: data.agentName as string | undefined,
+        taskId: data.taskId as string | undefined,
+        summary: (data.summary as string) ?? (data.message as string) ?? '',
+        detail: data.detail as string | undefined,
+        metadata: data.metadata as Record<string, unknown> | undefined,
       };
-
-      ws.onmessage = (msg) => {
-        try {
-          const data = JSON.parse(msg.data);
-          if (data.channel === 'agent_event' || data.type === 'agent_event') {
-            const event: ActivityEvent = {
-              id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-              type: data.event?.type ?? data.type ?? 'task_completed',
-              timestamp: data.timestamp ?? new Date().toISOString(),
-              agentId: data.agentId ?? data.event?.agentId ?? 'unknown',
-              agentName: data.agentName,
-              taskId: data.taskId,
-              summary: data.summary ?? data.event?.summary ?? '',
-              detail: data.detail,
-              metadata: data.metadata ?? data.event?.metadata,
-            };
-            setEvents((prev) => [event, ...prev].slice(0, maxItems));
-          }
-        } catch {
-          /* ignore malformed messages */
-        }
-      };
-
-      ws.onclose = () => {
-        setWsConnected(false);
-        if (retryCount < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-          retryCount++;
-          reconnectTimer = setTimeout(connect, delay);
-        }
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
+      setEvents((prev) => [event, ...prev].slice(0, maxItems));
     };
 
-    connect();
+    const activityEvents = [
+      'task_completed',
+      'task_failed',
+      'task_progress',
+      'decision_created',
+      'decision_updated',
+      'workflow_completed',
+      'deliverable_created',
+      'agent_heartbeat',
+      'agent_event',
+    ];
 
-    return () => {
-      clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, [maxItems]);
+    const unsubs = activityEvents.map((evt) =>
+      on(evt, (data) => handleAgentEvent(evt, data as Record<string, unknown>)),
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [on, maxItems]);
 
   // ── Also fetch initial events via REST ────────────────────────
 
@@ -160,7 +131,7 @@ export const ActivityFeed: React.FC<{ maxItems?: number }> = ({ maxItems = 50 })
       {/* Header */}
       <div className="border-divider flex items-center justify-between border-b px-3 py-2">
         <h3 className="text-content-primary text-sm font-semibold">Activity Feed</h3>
-        <span className={`h-2 w-2 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+        <span className="h-2 w-2 rounded-full bg-green-400" />
       </div>
 
       {/* Event list */}

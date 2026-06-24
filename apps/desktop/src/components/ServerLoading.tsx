@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { apiUrl } from '../utils/api';
 
 type ServerStatus =
   | 'connecting'
@@ -34,7 +35,7 @@ export function ServerLoading({ children }: { children: ReactNode }) {
     }
 
     // Quick health check — server may already be running
-    fetch('http://localhost:3000/health')
+    fetch(apiUrl('/health'))
       .then((r) => {
         if (r.ok) setStatus('ready');
       })
@@ -116,7 +117,7 @@ export function ServerLoading({ children }: { children: ReactNode }) {
               setStatus('starting');
               setMessage('Retrying...');
               const check = () => {
-                fetch('http://localhost:3000/health')
+                fetch(apiUrl('/health'))
                   .then((r) => {
                     if (r.ok) setStatus('ready');
                   })
