@@ -45,6 +45,7 @@ export interface MCPIntegrationConfig {
 export class MCPIntegration {
   private clients = new Map<string, MCPClient>();
   private configs: MCPServerConfig[] = [];
+  private toolsCache = new Map<string, Record<string, unknown>>();
   private logger: {
     info: (m: string, ctx?: Record<string, unknown>) => void;
     warn: (m: string, ctx?: Record<string, unknown>) => void;
@@ -89,6 +90,7 @@ export class MCPIntegration {
 
     const tools = await client.listTools();
     const count = Object.keys(tools).length;
+    this.toolsCache.set(cfg.name, tools);
     this.logger.info(`MCP server connected: ${cfg.name} (${count} tools)`);
   }
 
@@ -98,25 +100,24 @@ export class MCPIntegration {
       client.disconnect();
     }
     this.clients.clear();
+    this.toolsCache.clear();
     await this.initialize(configs);
   }
 
-  async listServerTools(): Promise<Record<string, Record<string, unknown>>> {
-    const allTools: Record<string, Record<string, unknown>> = {};
-    for (const [name, client] of this.clients) {
-      try {
-        const tools = await client.listTools();
-        Object.assign(allTools, tools);
-      } catch {
-        /* skip unreachable server */
+  listTools(): MCPTool[] {
+    const tools: MCPTool[] = [];
+    for (const [serverName, serverTools] of this.toolsCache) {
+      for (const [name, _tool] of Object.entries(serverTools)) {
+        tools.push({
+          serverName,
+          name,
+          description: '',
+          inputSchema: {},
+          sideEffectRisk: 'readonly',
+        });
       }
     }
-    return allTools;
-  }
-
-  listTools(): MCPTool[] {
-    /* synchronous stub — use listServerTools() for actual results */
-    return [];
+    return tools;
   }
 
   getStatus(): MCPServerStatus[] {

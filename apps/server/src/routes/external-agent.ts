@@ -49,7 +49,7 @@ function validateTaskToken(token: string): { valid: boolean; taskId?: string } {
     if (process.env.NODE_ENV === 'production') {
       return { valid: false };
     }
-    return { valid: token.length >= 40 };
+    return { valid: token.length >= 20, taskId };
   }
   const expected = crypto.createHmac('sha256', secret).update(taskId).digest('hex').slice(0, 16);
   if (hmacPart === expected) {

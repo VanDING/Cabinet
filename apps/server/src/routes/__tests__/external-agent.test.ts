@@ -21,33 +21,22 @@ afterAll(() => {
 
 // ── Mocks ────────────────────────────────────────────────────────
 
-const mockSession = {
-  id: 'test-session-1',
-  parentId: 'parent-session-1',
-  title: 'Test Session',
-  deliverable: undefined as string | undefined,
-  contextSlot: {
-    version: 1,
-    project: { name: 'test', goals: [] },
-    memories: [],
-    preferences: {},
-    files: [],
-    discoveries: [{ type: 'existing', summary: 'pre-existing discovery' }],
-    previous_outputs: ['prev-output'],
-    security: { level: 'low', maxRetries: 3 },
-  },
-  messages: [],
-  createdAt: new Date(),
-  updatedAt: new Date(),
+const mockContextSlot = {
+  version: 1,
+  project: { name: 'test', goals: [] },
+  memories: [],
+  preferences: {},
+  files: [],
+  discoveries: [{ type: 'existing', summary: 'pre-existing discovery' }],
+  previous_outputs: ['prev-output'],
+  security: { level: 'low', maxRetries: 3 },
 };
 
 let sessionManager: Record<string, any>;
 let eventBus: Record<string, any>;
 let decisionService: Record<string, any>;
 let deliverableRepo: Record<string, any>;
-let blackboard: Record<string, any>;
 let mockLogger: Record<string, any>;
-let savedCtx: any;
 
 function buildMockCtx() {
   return {
@@ -55,16 +44,23 @@ function buildMockCtx() {
     agentEventBus: eventBus,
     decisionService,
     deliverableRepo,
-    blackboard,
     logger: mockLogger,
   };
 }
 
 beforeEach(() => {
+  const localSlots: Record<string, any> = {
+    'test-session-1': JSON.parse(JSON.stringify(mockContextSlot)),
+  };
+
   sessionManager = {
     getSessionByTaskId: vi.fn().mockReturnValue(null),
-    get: vi.fn().mockReturnValue(null),
-    setContextSlot: vi.fn(),
+    get: vi.fn().mockResolvedValue(null),
+    setContextSlot: vi.fn((id: string, slot: any) => {
+      localSlots[id] = slot;
+    }),
+    setDeliverable: vi.fn(),
+    getContextSlot: vi.fn((id: string) => localSlots[id] ?? undefined),
   };
 
   eventBus = {
@@ -79,18 +75,11 @@ beforeEach(() => {
     insert: vi.fn(),
   };
 
-  blackboard = {
-    write: vi.fn().mockResolvedValue(undefined),
-  };
-
   mockLogger = {
     error: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
   };
-
-  // Save current ctx reference before replacing
-  savedCtx = undefined;
 });
 
 // ── Mock broadcast via vi.mock (path relative to this test file) ──
@@ -177,7 +166,8 @@ describe('GET /api/slot/:taskId/read', () => {
 
   it('returns 404 when session has no contextSlot', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue({ ...mockSession, contextSlot: undefined });
+    const sessionNoSlot = { id: 'test-session-no-slot', parentId: 'p1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(sessionNoSlot);
 
     const res = await app.request('/api/slot/task-1/read', {
       headers: { Authorization: `Bearer ${validToken()}` },
@@ -189,7 +179,8 @@ describe('GET /api/slot/:taskId/read', () => {
 
   it('returns 200 with slot data on success', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue(mockSession);
+    const sessionWithSlot = { id: 'test-session-1', parentId: 'parent-session-1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(sessionWithSlot);
 
     const res = await app.request('/api/slot/task-1/read', {
       headers: { Authorization: `Bearer ${validToken()}` },
@@ -203,7 +194,8 @@ describe('GET /api/slot/:taskId/read', () => {
 
   it('returns 200 using agent_key_ token', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue(mockSession);
+    const sessionWithSlot = { id: 'test-session-1', parentId: 'parent-session-1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(sessionWithSlot);
 
     const res = await app.request('/api/slot/task-1/read', {
       headers: { Authorization: `Bearer ${agentKeyToken()}` },
@@ -274,7 +266,8 @@ describe('POST /api/slot/:taskId/write', () => {
 
   it('returns 200 and updates slot with discoveries', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue(mockSession);
+    const session = { id: 'test-session-1', parentId: 'parent-session-1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(session);
 
     const res = await app.request('/api/slot/task-1/write', {
       method: 'POST',
@@ -290,20 +283,18 @@ describe('POST /api/slot/:taskId/write', () => {
     expect(body.taskId).toBe('task-1');
 
     expect(eventBus.publish).toHaveBeenCalled();
-    expect(blackboard.write).toHaveBeenCalledWith(
-      'discoveries',
-      { type: 'bug', summary: 'Found a bug' },
-      mockSession.id,
-    );
     expect(sessionManager.setContextSlot).toHaveBeenCalledWith(
-      mockSession.id,
-      mockSession.contextSlot,
+      'test-session-1',
+      expect.objectContaining({
+        discoveries: expect.arrayContaining([{ type: 'bug', summary: 'Found a bug' }]),
+      }),
     );
   });
 
   it('returns 200 and updates slot with previous_outputs', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue(mockSession);
+    const session = { id: 'test-session-1', parentId: 'parent-session-1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(session);
 
     const res = await app.request('/api/slot/task-1/write', {
       method: 'POST',
@@ -314,14 +305,13 @@ describe('POST /api/slot/:taskId/write', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(blackboard.write).toHaveBeenCalledTimes(2);
     expect(sessionManager.setContextSlot).toHaveBeenCalled();
   });
 
   it('returns 200 with no session (graceful no-op)', async () => {
     const app = createTestApp();
     sessionManager.getSessionByTaskId.mockReturnValue(null);
-    sessionManager.get.mockReturnValue(null);
+    sessionManager.get.mockResolvedValue(null);
 
     const res = await app.request('/api/slot/task-1/write', {
       method: 'POST',
@@ -546,7 +536,8 @@ describe('POST /api/external/deliverables', () => {
 
   it('publishes event when session is found', async () => {
     const app = createTestApp();
-    sessionManager.getSessionByTaskId.mockReturnValue(mockSession);
+    const session = { id: 'test-session-1', parentId: 'parent-session-1' };
+    sessionManager.getSessionByTaskId.mockReturnValue(session);
 
     const res = await app.request('/api/external/deliverables', {
       method: 'POST',
@@ -561,11 +552,11 @@ describe('POST /api/external/deliverables', () => {
 
     expect(res.status).toBe(200);
     expect(eventBus.publish).toHaveBeenCalledWith(
-      mockSession.id,
-      mockSession.parentId,
+      'test-session-1',
+      'parent-session-1',
       expect.objectContaining({ type: 'completed' }),
     );
-    expect(mockSession.deliverable).toBe('result data');
+    expect(sessionManager.setDeliverable).toHaveBeenCalledWith('test-session-1', 'result data');
   });
 
   it('defaults type to code when not provided', async () => {
