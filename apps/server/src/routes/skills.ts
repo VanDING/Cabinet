@@ -16,6 +16,7 @@ import { broadcast } from '../ws/handler.js';
 import { importSkillFromMarkdown, exportSkillToMarkdown } from '@cabinet/agent';
 import type { SkillEntry } from '@cabinet/agent';
 import { CABINET_DIR } from '@cabinet/storage';
+import { injectAgentSkillTools } from '../context/skills.js';
 
 const SKILLS_DIR = join(CABINET_DIR, 'skills');
 
@@ -190,6 +191,9 @@ skillsRouter.post('/', async (c) => {
 
   broadcast('skill_created', { id, name: d.name });
   logger.info('Skill registered', { id, name: d.name });
+  // Re-inject skill tools into agents
+  const { mastra } = getServerContext();
+  if (mastra) injectAgentSkillTools(mastra, skillRegistry);
   return c.json({ id, status: 'registered', name: d.name, path: join(dir, 'SKILL.md') }, 201);
 });
 
@@ -240,6 +244,9 @@ skillsRouter.put('/:id', async (c) => {
 
   broadcast('skill_updated', { id, name });
   logger.info('Skill updated', { id, name });
+  // Re-inject skill tools into agents
+  const { mastra } = getServerContext();
+  if (mastra) injectAgentSkillTools(mastra, skillRegistry);
   return c.json({ id, status: 'updated', version: newVersion });
 });
 
@@ -263,6 +270,9 @@ skillsRouter.delete('/:id', (c) => {
     skillRepo.delete(id);
     broadcast('skill_deleted', { id, name: row.name });
     logger.info('Skill deleted', { id, name: row.name });
+    // Re-inject skill tools into agents (remove deleted skill)
+    const { mastra } = getServerContext();
+    if (mastra) injectAgentSkillTools(mastra, skillRegistry);
   }
   return c.json({ status: 'deleted' });
 });
@@ -309,6 +319,9 @@ skillsRouter.post('/import', async (c) => {
 
   broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill imported', { id: result.id, name: result.name });
+  // Re-inject skill tools into agents
+  const { mastra } = getServerContext();
+  if (mastra) injectAgentSkillTools(mastra, skillRegistry);
   return c.json(
     {
       id: result.id,
@@ -402,6 +415,9 @@ skillsRouter.post('/import-zip', async (c) => {
 
   broadcast('skill_created', { id: result.id, name: result.name });
   logger.info('Skill zip imported', { id: result.id, name: result.name });
+  // Re-inject skill tools into agents
+  const { mastra } = getServerContext();
+  if (mastra) injectAgentSkillTools(mastra, skillRegistry);
   return c.json(
     {
       id: result.id,

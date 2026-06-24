@@ -8,6 +8,7 @@ import { createWSServers } from './ws/handler.js';
 import { getServerContext } from './context.js';
 import { decryptApiKey } from './crypto.js';
 import { MASTER_PW } from './routes/settings/persistence.js';
+import { injectAgentSkillTools } from './context/skills.js';
 
 const envCheck = validateEnv();
 if (!envCheck.success) {
@@ -24,6 +25,9 @@ async function start() {
   const ctx = getServerContext();
   ctx.mastra = mastra;
   ctx.logger.info('Server context initialized');
+
+  // Inject skill tools into the secretary agent (Bug 1 fix)
+  injectAgentSkillTools(mastra, ctx.skillRegistry);
 
   // Export API keys from settings to process.env for Mastra model routing
   try {

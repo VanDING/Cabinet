@@ -35,6 +35,19 @@ export function initSkills(state: BuildState): void {
   state.skillRegistry = skillRegistry;
 }
 
+export function injectAgentSkillTools(mastra: unknown, skillRegistry: SkillRegistry): void {
+  const agent = (mastra as any)?.getAgent?.('secretary');
+  if (!agent) return;
+  const skillTools = skillRegistry.getToolDefinitions();
+  const skillToolMap: Record<string, unknown> = {};
+  for (const tool of skillTools) {
+    skillToolMap[tool.name] = tool;
+  }
+  if (Object.keys(skillToolMap).length > 0) {
+    agent.__setTools(skillToolMap);
+  }
+}
+
 export function scanSkillDirectory(state: BuildState): void {
   const { dataDir, skillRegistry, skillRepo, agentRegistry, agentRoleRepo } = state;
   if (!dataDir || !skillRegistry || !skillRepo || !agentRegistry || !agentRoleRepo) return;

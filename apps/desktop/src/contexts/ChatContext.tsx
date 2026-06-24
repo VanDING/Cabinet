@@ -463,6 +463,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                       i === idx ? { ...tc, status: 'error' as const } : tc,
                     );
                   }
+                } else if (type === 'call_delta') {
+                  const idx = toolCallsAccumulated
+                    .map((tc) => tc.name === toolName && tc.status === 'running')
+                    .lastIndexOf(true);
+                  if (idx >= 0) {
+                    toolCallsAccumulated = toolCallsAccumulated.map((tc, i) =>
+                      i === idx
+                        ? {
+                            ...tc,
+                            args: {
+                              ...tc.args,
+                              ...((detail?.args as Record<string, unknown>) ?? {}),
+                            },
+                          }
+                        : tc,
+                    );
+                  }
                 } else {
                   toolCallsAccumulated = [
                     ...toolCallsAccumulated,

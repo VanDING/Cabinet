@@ -130,14 +130,46 @@ secretaryRouter.get('/context', async (c) => {
 
   const memory = (mastra as any)?.memory;
   const thread = memory ? await memory.getThreadById?.(sessionId) : null;
-  const messages = thread?.messages ?? [];
+  const messages = (thread?.messages ?? []) as Array<{ role: string; content: string }>;
 
-  const context = (messages as Array<{ role: string; content: string }>)
-    .slice(-10)
-    .map((m) => `${m.role}: ${m.content.slice(0, 200)}`)
-    .join('\n');
+  const messageCount = messages.length;
+  const estimatedTokens = messages.reduce((sum: number, m) => {
+    const text = `${m.role}: ${m.content}`;
+    return sum + Math.ceil(text.length / 4);
+  }, 0);
+  const maxContextTokens = 200000;
 
-  return c.json({ context });
+  return c.json({ messageCount, estimatedTokens, maxContextTokens });
+});
+
+secretaryRouter.post('/compact', async (c) => {
+  const { mastra } = getServerContext();
+  const { sessionId } = (await c.req.json()) as { sessionId?: string };
+  if (!sessionId) return c.json({ error: 'sessionId is required' }, 400);
+
+  const memory = (mastra as any)?.memory;
+  if (!memory) return c.json({ compacted: false, error: 'Memory not available' }, 503);
+
+  try {
+    const thread = await memory.getThreadById?.(sessionId);
+    if (!thread) return c.json({ compacted: false, error: 'Thread not found' }, 404);
+
+    const allMessages = (thread.messages ?? []) as Array<{ role: string; content: string }>;
+    if (allMessages.length <= 4) {
+      return c.json({ compacted: false, messageCount: allMessages.length });
+    }
+
+    const compacted = [...allMessages.slice(-3)];
+    await memory.updateThread?.(sessionId, { messages: compacted });
+
+    return c.json({
+      compacted: true,
+      originalCount: allMessages.length,
+      remainingCount: compacted.length,
+    });
+  } catch {
+    return c.json({ compacted: false, error: 'Compaction failed' }, 500);
+  }
 });
 
 secretaryRouter.get('/sessions/:id/children', (c) => {

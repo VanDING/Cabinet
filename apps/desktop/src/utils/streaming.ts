@@ -8,7 +8,7 @@ export interface SSEStreamCallbacks {
   onThinkingDone?: () => void;
   onToolStatus?: (
     message: string,
-    type: 'call' | 'result' | 'error',
+    type: 'call' | 'call_delta' | 'result' | 'error',
     detail?: { name: string; args?: unknown; result?: unknown },
   ) => void;
   onTaskUpdate?: (
