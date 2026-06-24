@@ -26,6 +26,7 @@ import { testerAgent } from './agents/specialist-tester.js';
 import { processFilesWorkflow } from './workflows/file-process.js';
 import { codeReviewWorkflow } from './workflows/code-review.js';
 import { parallelWorkflow } from './workflows/parallel-example.js';
+import { branchWorkflow } from './workflows/branch-example.js';
 import { cabinetWorkspace } from './workspace.js';
 import { bgTaskManager } from './background-tasks.js';
 
@@ -108,6 +109,7 @@ export const mastra = new Mastra({
     processFiles: processFilesWorkflow,
     codeReview: codeReviewWorkflow,
     parallelExample: parallelWorkflow,
+    branchExample: branchWorkflow,
   },
   observability: new Observability({
     configs: {
@@ -135,6 +137,7 @@ export {
   processFilesWorkflow,
   codeReviewWorkflow,
   parallelWorkflow,
+  branchWorkflow,
   memory,
   bgTaskManager,
 };
