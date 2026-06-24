@@ -207,4 +207,13 @@ try {
   console.warn('hnswlib-node native binary root copy failed:', e.message);
 }
 
+// Copy libsql native binding (required by Mastra LibSQLStore at runtime)
+try {
+  const libsqlRequire = createRequire(serverRequire.resolve('libsql'));
+  const nativeEntry = libsqlRequire.resolve('@libsql/win32-x64-msvc');
+  copyPackage('@libsql/win32-x64-msvc', nativeEntry);
+} catch (e) {
+  console.warn('@libsql/win32-x64-msvc not found, skipping copy');
+}
+
 console.log('Standalone server ready');
