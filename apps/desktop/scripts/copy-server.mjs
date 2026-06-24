@@ -209,7 +209,11 @@ try {
 
 // Copy libsql native binding (required by Mastra LibSQLStore at runtime)
 try {
-  const libsqlRequire = createRequire(serverRequire.resolve('libsql'));
+  // libsql is a transitive dep of @mastra/libsql, find it in pnpm store
+  const libsqlDirs = readdirSync(pnpmStore).filter((d) => d.startsWith('libsql@'));
+  const libsqlRoot = join(pnpmStore, libsqlDirs[0], 'node_modules', 'libsql');
+  if (!existsSync(libsqlRoot)) throw new Error('libsql not found in store');
+  const libsqlRequire = createRequire(join(libsqlRoot, 'index.js'));
   const nativeEntry = libsqlRequire.resolve('@libsql/win32-x64-msvc');
   copyPackage('@libsql/win32-x64-msvc', nativeEntry);
 } catch (e) {

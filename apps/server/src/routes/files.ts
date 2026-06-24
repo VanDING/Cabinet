@@ -6,7 +6,13 @@ import { getServerContext } from '../context.js';
 
 export const filesRouter = new Hono();
 
-const INFERRED_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+const INFERRED_ROOT = (() => {
+  try {
+    return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+  } catch {
+    return join(__dirname, '..', '..', '..', '..');
+  }
+})();
 const PROJECT_ROOT = process.env.CABINET_PROJECT_ROOT ?? INFERRED_ROOT;
 const VALID_DIRS = ['apps', 'packages', 'tools', 'tests'];
 
