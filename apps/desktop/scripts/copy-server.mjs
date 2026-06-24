@@ -48,11 +48,17 @@ if (!existsSync(bundlePath)) {
   process.exit(1);
 }
 
-// Prepend bundler overrides so pino/thread-stream worker threads find their files
-// inside node_modules instead of the flattened __dirname paths.
+// Prepend bundler overrides and fix import_meta.url for CJS compat
 const bundleContent = readFileSync(bundlePath, 'utf-8');
+const origCount = (bundleContent.match(/(\bimport_meta\d*) = \{\};/g) || []).length;
+const fixed = bundleContent.replace(
+  /(\bimport_meta\d*) = \{\};/g,
+  '$1 = { url: require("url").pathToFileURL(__filename).href };',
+);
+const newCount = (fixed.match(/(\bimport_meta\d*) = \{\};/g) || []).length;
+console.log('  import_meta fix: ' + origCount + ' -> ' + newCount);
 const banner = `const { join: __join } = require('path'); const __dir = __dirname; globalThis.__bundlerPathsOverrides = { 'pino-worker': __join(__dir, 'node_modules', 'pino', 'lib', 'worker.js'), 'thread-stream-worker': __join(__dir, 'node_modules', 'thread-stream', 'lib', 'worker.js') };\n`;
-writeFileSync(join(dest, 'main.cjs'), banner + bundleContent);
+writeFileSync(join(dest, 'main.cjs'), banner + fixed);
 console.log('  bundle/main.cjs copied (with bundler overrides)');
 
 // 2. Copy externalised packages and their transitive dependencies.
