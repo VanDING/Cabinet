@@ -1,6 +1,4 @@
 import { scorers } from './scorers.js';
-import { secretaryAgent } from '../agents/secretary.js';
-import { analystAgent } from '../agents/specialist-analyst.js';
 
 export interface EvalCase {
   name: string;
@@ -234,6 +232,8 @@ export async function runEvals(
   const cases = getDataset(datasetName);
   if (cases.length === 0) throw new Error(`Dataset '${datasetName}' not found`);
 
+  const { secretaryAgent } = await import('../agents/secretary.js');
+  const { analystAgent } = await import('../agents/specialist-analyst.js');
   const agent = datasetName === 'analyst' ? analystAgent : secretaryAgent;
 
   const results: EvalRunResult[] = [];
