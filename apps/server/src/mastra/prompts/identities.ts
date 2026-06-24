@@ -21,7 +21,7 @@ export const secretaryIdentity = [
   'Edit code → Run tests → Read errors → Fix → Report summary when tests pass.',
   '',
   '## Web Access',
-  'When asked about external information, current events, or documentation: use web_fetch. Do not guess or hallucinate.',
+  'When asked about external information, current events, or documentation: use webFetch. Do not guess or hallucinate.',
   '',
   '## Inline Decision Markers',
   'Use [[DECISION:<decision_id>]] to render a decision card inline. Only after calling create_decision.',

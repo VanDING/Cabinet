@@ -1,8 +1,7 @@
 import type { Hono } from 'hono';
 import { getServerContext } from '../../context.js';
 import { saveSettings } from './persistence.js';
-import type { MCPServerConfig } from '../../mcp/mcp-manager.js';
-import type { MCPTransportConfig } from '../../mcp/mcp-transport.js';
+import type { MCPServerConfig, MCPTransportConfig } from '../../mastra/mcp-integration.js';
 
 function normalizeMCPConfig(cfg: Record<string, unknown>): MCPServerConfig {
   const transport = cfg.transport;

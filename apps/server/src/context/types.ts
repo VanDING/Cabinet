@@ -30,7 +30,7 @@ import type { DecisionService } from '@cabinet/decision';
 import type { SessionManager } from '@cabinet/secretary';
 import type { AgentRoleRegistry, SkillRegistry } from '@cabinet/agent';
 import type { TaskScheduler } from '../scheduler.js';
-import type { MCPManager } from '../mcp/mcp-manager.js';
+import type { MCPIntegration } from '../mastra/mcp-integration.js';
 import type { DelegationTier } from '@cabinet/types';
 import type { getLogger } from '@cabinet/storage';
 import type { A2AClient } from '../a2a/a2a-client.js';
@@ -78,7 +78,7 @@ export interface ServerContext {
   agentRegistry: AgentRoleRegistry;
   // Skill registry
   skillRegistry: SkillRegistry;
-  mcpManager: MCPManager;
+  mcpManager: MCPIntegration;
   // Task queues
   taskQueueRepo: AgentTaskQueueRepository;
   daemonRepo: AgentDaemonRepository;

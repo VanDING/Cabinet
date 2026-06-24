@@ -1,6 +1,5 @@
 import * as decision from './decision.js';
 import * as agent from './agent.js';
-import * as scheduler from './scheduler.js';
 import * as status from './status.js';
 import {
   gitStatusTool,
@@ -12,6 +11,8 @@ import {
   gitBlameTool,
   gitCheckoutBranchTool,
 } from './git.js';
+import { webFetchTool, webSearchTool } from './web.js';
+import { npmInstallTool, npmListTool } from './npm.js';
 
 const allGitTools = {
   gitStatus: gitStatusTool,
@@ -27,9 +28,12 @@ const allGitTools = {
 export const cabinetTools = {
   ...decision,
   ...agent,
-  ...scheduler,
   ...status,
   ...allGitTools,
+  webFetch: webFetchTool,
+  webSearch: webSearchTool,
+  npmInstall: npmInstallTool,
+  npmList: npmListTool,
 };
 
 export const readOnlyTools = {
@@ -41,4 +45,6 @@ export const readOnlyTools = {
   gitShow: gitShowTool,
   gitBranch: gitBranchTool,
   gitBlame: gitBlameTool,
+  webFetch: webFetchTool,
+  webSearch: webSearchTool,
 };
