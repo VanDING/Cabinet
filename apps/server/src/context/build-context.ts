@@ -11,7 +11,6 @@ import { scanAgentDirectory, scanProjectDirectory } from './discovery.js';
 import { loadSettingsAndTemplate } from './settings.js';
 import { initScheduler } from './scheduler.js';
 import { assembleContext } from './assembly.js';
-import { mastra as mastraInstance } from '../mastra/index.js';
 
 function buildServerContextImpl(): ServerContext {
   const state: BuildState = {
@@ -33,7 +32,6 @@ function buildServerContextImpl(): ServerContext {
   initScheduler(state);
 
   const ctx = assembleContext(state);
-  ctx.mastra = mastraInstance;
 
   return ctx;
 }
