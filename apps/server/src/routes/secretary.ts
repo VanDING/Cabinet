@@ -67,7 +67,9 @@ secretaryRouter.post('/chat', async (c) => {
     c.header('Cache-Control', 'no-cache');
     c.header('Connection', 'keep-alive');
 
-    const stream = createSSEStream(result.fullStream.getReader());
+    const stream = createSSEStream(result.fullStream.getReader(), {
+      abortSignal: abortController.signal,
+    });
     return c.newResponse(stream);
   } catch (err) {
     clearTimeout(timeoutId);

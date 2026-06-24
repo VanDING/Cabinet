@@ -561,6 +561,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                   durationMs: Date.now() - streamStart,
                 });
               },
+              onUsage(usage) {
+                updateMessage(sessionId, streamId, {
+                  usage: { ...usage, model: streamAgent },
+                });
+              },
+              onStopped() {
+                flushSubAgents();
+                subAgentMap.clear();
+                const finalContent = lastContent || thinkingAccumulated || '';
+                updateMessage(sessionId, streamId, {
+                  isStreaming: false,
+                  content: finalContent,
+                  toolCalls: toolCallsAccumulated.length > 0 ? toolCallsAccumulated : undefined,
+                  thinking: thinkingAccumulated || undefined,
+                  durationMs: Date.now() - streamStart,
+                });
+              },
               onRouting(targetAgent) {
                 streamAgent = targetAgent;
               },
