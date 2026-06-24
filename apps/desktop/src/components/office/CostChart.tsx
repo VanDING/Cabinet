@@ -62,7 +62,7 @@ export function CostChart() {
         <div className="flex h-48 items-center justify-center">
           <div className="border-accent h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" />
         </div>
-      ) : history.length === 0 ? (
+      ) : history.length === 0 || chartData.length === 0 ? (
         <div className="text-content-tertiary flex h-48 items-center justify-center text-xs">
           No data yet
         </div>
