@@ -22,6 +22,7 @@ const port = config.port;
 async function start() {
   // Initialize shared server context (DB, repos, services, backup)
   const ctx = getServerContext();
+  ctx.mastra = mastra;
   ctx.logger.info('Server context initialized');
 
   // Export API keys from settings to process.env for Mastra model routing
