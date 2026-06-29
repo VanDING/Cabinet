@@ -1,39 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-export function ContextButton({
-  sessionId,
-  btnBaseClass,
-  hoverClass,
-  dropdownBgClass,
-}: {
-  sessionId: string;
-  btnBaseClass: string;
-  hoverClass: string;
-  dropdownBgClass: string;
-}) {
-  const [open, setOpen] = useState(false);
+export function ContextButton({ sessionId }: { sessionId: string }) {
   const [data, setData] = useState<{
     messageCount?: number;
     estimatedTokens?: number;
     maxContextTokens?: number;
   } | null>(null);
   const [compacting, setCompacting] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [open]);
-
-  const fetchContext = () => {
-    setOpen(!open);
-    if (!open) {
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
       apiFetch(`/api/secretary/context?sessionId=${sessionId}`, { headers: authHeaders() })
         .then((r) => r.json())
         .then(setData)
@@ -64,52 +47,46 @@ export function ContextButton({
   const pct = max > 0 ? Math.round((tokens / max) * 100) : 0;
 
   return (
-    <div className="relative">
-      <button
-        ref={btnRef}
-        onClick={fetchContext}
-        className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${btnBaseClass} ${hoverClass}`}
+    <DropdownMenu onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger
+        className="flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors text-content-tertiary hover:bg-surface-muted"
         title="View context usage"
       >
         <FileText size={12} />
         Context: {data ? `${pct}%` : '--'}
-      </button>
-      {open && (
-        <div
-          className={`border-border absolute right-0 bottom-full z-50 mb-1 w-56 rounded-lg border p-3 shadow-xl ${dropdownBgClass} text-xs`}
-        >
-          <div className="text-content-secondary mb-2 font-medium">Context Usage</div>
-          {data ? (
-            <div className="space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-content-tertiary">Messages</span>
-                <span className="text-content-secondary font-mono">{data.messageCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-content-tertiary">Est. Tokens</span>
-                <span className="text-content-secondary font-mono">
-                  {tokens.toLocaleString()} / {max.toLocaleString()}
-                </span>
-              </div>
-              <div className="bg-surface-muted mt-1 h-1.5 w-full rounded-full">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-intent-danger' : pct > 50 ? 'bg-intent-warning' : 'bg-accent'}`}
-                  style={{ width: `${Math.min(pct, 100)}%` }}
-                />
-              </div>
-              <button
-                onClick={handleCompact}
-                disabled={compacting}
-                className="bg-accent text-content-inverse hover:bg-accent-hover mt-2 w-full rounded-sm py-1 text-xs disabled:opacity-50"
-              >
-                {compacting ? 'Compacting...' : 'Compact Context'}
-              </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 p-3 text-xs">
+        <div className="text-content-secondary mb-2 font-medium">Context Usage</div>
+        {data ? (
+          <div className="space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-content-tertiary">Messages</span>
+              <span className="text-content-secondary font-mono">{data.messageCount}</span>
             </div>
-          ) : (
-            <p className="text-content-tertiary italic">Loading...</p>
-          )}
-        </div>
-      )}
-    </div>
+            <div className="flex justify-between">
+              <span className="text-content-tertiary">Est. Tokens</span>
+              <span className="text-content-secondary font-mono">
+                {tokens.toLocaleString()} / {max.toLocaleString()}
+              </span>
+            </div>
+            <div className="bg-surface-muted mt-1 h-1.5 w-full rounded-full">
+              <div
+                className={`h-1.5 rounded-full transition-all ${pct > 80 ? 'bg-intent-danger' : pct > 50 ? 'bg-intent-warning' : 'bg-accent'}`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+            <button
+              onClick={handleCompact}
+              disabled={compacting}
+              className="bg-accent text-content-inverse hover:bg-accent-hover mt-2 w-full rounded-sm py-1 text-xs disabled:opacity-50"
+            >
+              {compacting ? 'Compacting...' : 'Compact Context'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-content-tertiary italic">Loading...</p>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
