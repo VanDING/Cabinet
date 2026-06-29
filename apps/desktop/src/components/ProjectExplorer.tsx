@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+
 import type { MouseEvent as ReactMouseEvent } from 'react';
+
 import {
   Folder,
   File,
@@ -17,12 +19,14 @@ import {
   Paperclip,
 } from 'lucide-react';
 import type { AttachedFile } from '../hooks/useSessions';
-import { apiFetch, authHeaders } from '../utils/api.js';
-import { ContextMenu } from './ContextMenu';
-import type { ContextMenuEntry } from './ContextMenu';
-import { useToast } from './Toast';
 
-interface FileNode {
+import { apiFetch, authHeaders } from '../utils/api.js';
+
+import { ContextMenu } from './ContextMenu';
+
+import type { ContextMenuEntry } from './ContextMenu';
+
+import { toast } from 'sonner';interface FileNode {
   name: string;
   path: string;
   type: 'file' | 'directory';
@@ -57,8 +61,6 @@ export function ProjectExplorer({
   const [refreshKey, setRefreshKey] = useState(0);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const { addToast } = useToast();
-
   useEffect(() => {
     if (!projectId) {
       setFiles([]);
@@ -146,12 +148,12 @@ export function ProjectExplorer({
       })
         .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
         .then(() => {
-          addToast('success', `Renamed to ${newName}`);
+          toast.success(`Renamed to ${newName}`);
           refresh();
         })
-        .catch((e) => addToast('error', `Rename failed: ${e?.error ?? e}`));
+        .catch((e) => toast.error(`Rename failed: ${e?.error ?? e}`));
     },
-    [renameValue, projectId, addToast],
+    [renameValue, projectId],
   );
 
   const buildMenuEntries = useCallback(
@@ -190,7 +192,7 @@ export function ProjectExplorer({
                     path: node.path,
                     type: 'project',
                   });
-                  addToast('success', `Attached: ${node.name}`);
+                  toast.success(`Attached: ${node.name}`);
                 }
               },
               disabled: !activeSessionId,
@@ -223,10 +225,10 @@ export function ProjectExplorer({
                 })
                   .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
                   .then(() => {
-                    addToast('success', `Deleted ${node.name}`);
+                    toast.success(`Deleted ${node.name}`);
                     refresh();
                   })
-                  .catch((e) => addToast('error', `Delete failed: ${e?.error ?? e}`));
+                  .catch((e) => toast.error(`Delete failed: ${e?.error ?? e}`));
               },
             },
           },
@@ -238,8 +240,8 @@ export function ProjectExplorer({
               icon: <Copy size={13} />,
               onClick: () => {
                 navigator.clipboard.writeText(node.path).then(
-                  () => addToast('success', 'Path copied'),
-                  () => addToast('error', 'Failed to copy path'),
+                  () => toast.success('Path copied'),
+                  () => toast.error('Failed to copy path'),
                 );
               },
             },
@@ -251,12 +253,12 @@ export function ProjectExplorer({
               icon: <ExternalLink size={13} />,
               onClick: () => {
                 if (!rootPath) {
-                  addToast('error', 'Project path not available');
+                  toast.error('Project path not available');
                   return;
                 }
                 import('@tauri-apps/plugin-opener')
                   .then((m) => m.openPath(absolutePath))
-                  .catch(() => addToast('error', 'Failed to open file'));
+                  .catch(() => toast.error('Failed to open file'));
               },
             },
           },
@@ -280,10 +282,10 @@ export function ProjectExplorer({
               })
                 .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
                 .then(() => {
-                  addToast('success', `Created ${name}`);
+                  toast.success(`Created ${name}`);
                   refresh();
                 })
-                .catch((e) => addToast('error', `Create failed: ${e?.error ?? e}`));
+                .catch((e) => toast.error(`Create failed: ${e?.error ?? e}`));
             },
           },
         },
@@ -302,10 +304,10 @@ export function ProjectExplorer({
               })
                 .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
                 .then(() => {
-                  addToast('success', `Created ${name}/`);
+                  toast.success(`Created ${name}/`);
                   refresh();
                 })
-                .catch((e) => addToast('error', `Create failed: ${e?.error ?? e}`));
+                .catch((e) => toast.error(`Create failed: ${e?.error ?? e}`));
             },
           },
         },
@@ -336,10 +338,10 @@ export function ProjectExplorer({
               })
                 .then((r) => (r.ok ? r.json() : r.json().then((e) => Promise.reject(e))))
                 .then(() => {
-                  addToast('success', `Deleted ${node.name}`);
+                  toast.success(`Deleted ${node.name}`);
                   refresh();
                 })
-                .catch((e) => addToast('error', `Delete failed: ${e?.error ?? e}`));
+                .catch((e) => toast.error(`Delete failed: ${e?.error ?? e}`));
             },
           },
         },
@@ -351,8 +353,8 @@ export function ProjectExplorer({
             icon: <Copy size={13} />,
             onClick: () => {
               navigator.clipboard.writeText(node.path).then(
-                () => addToast('success', 'Path copied'),
-                () => addToast('error', 'Failed to copy path'),
+                () => toast.success('Path copied'),
+                () => toast.error('Failed to copy path'),
               );
             },
           },
@@ -364,18 +366,18 @@ export function ProjectExplorer({
             icon: <ExternalLink size={13} />,
             onClick: () => {
               if (!rootPath) {
-                addToast('error', 'Project path not available');
+                toast.error('Project path not available');
                 return;
               }
               import('@tauri-apps/plugin-opener')
                 .then((m) => m.openPath(absolutePath))
-                .catch(() => addToast('error', 'Failed to open folder'));
+                .catch(() => toast.error('Failed to open folder'));
             },
           },
         },
       ];
     },
-    [projectId, activeSessionId, rootPath, onAddFile, addToast],
+    [projectId, activeSessionId, rootPath, onAddFile],
   );
 
   const filteredFiles = useMemo(() => {

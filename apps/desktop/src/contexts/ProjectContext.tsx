@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { useToast } from '../components/Toast';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
+import { toast } from 'sonner';
 
 export interface ProjectInfo {
   id: string;
@@ -29,7 +30,6 @@ interface ProjectContextValue {
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const { addToast } = useToast();
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showProjectActionModal, setShowProjectActionModal] = useState(false);
@@ -84,10 +84,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           if (projectId === activeProjectId) setActiveProjectId(null);
         }
       } catch {
-        addToast('error', 'Failed to delete project');
+        toast.error('Failed to delete project');
       }
     },
-    [refreshProjects, activeProjectId, addToast],
+    [refreshProjects, activeProjectId],
   );
 
   const renameProject = useCallback(
@@ -100,10 +100,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         });
         if (r.ok) refreshProjects();
       } catch {
-        addToast('error', 'Failed to rename project');
+        toast.error('Failed to rename project');
       }
     },
-    [refreshProjects, addToast],
+    [refreshProjects],
   );
 
   const switchProject = useCallback((projectId: string | null) => {
@@ -119,9 +119,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setActiveProjectId(newProjectId);
       }
     } catch {
-      addToast('error', 'Failed to create project');
+      toast.error('Failed to create project');
     }
-  }, [createProject, addToast]);
+  }, [createProject]);
 
   const handleImportProject = useCallback(async () => {
     let name = '';
@@ -147,9 +147,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         setActiveProjectId(newProjectId);
       }
     } catch {
-      addToast('error', 'Failed to import project');
+      toast.error('Failed to import project');
     }
-  }, [createProject, addToast]);
+  }, [createProject]);
 
   const handleOpenProjectActionModal = useCallback(() => {
     setShowProjectActionModal(true);

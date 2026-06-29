@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
+
 import type { CanvasNode, CanvasNodeType } from './node-types';
+
 import { CANVAS_NODE_TYPES, NODE_LABELS } from './node-types';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
-import { useToast } from '../components/Toast';
+
+import { toast } from 'sonner';
 
 interface WorkflowMeta {
   id: string;
@@ -63,8 +67,6 @@ export function WorkflowPanel({
     else setNodeData({});
   }, [selectedNode?.id]);
 
-  const { addToast } = useToast();
-
   const handleSaveNode = () => {
     if (selectedNode && onNodeUpdate) {
       onNodeUpdate(selectedNode.id, nodeData);
@@ -78,15 +80,13 @@ export function WorkflowPanel({
 
   // Import/Export migrated to Mastra workflow system
   const handleExport = () => {
-    addToast(
-      'info',
+    toast(
       'Workflow export migrated to Mastra. Use Mastra Studio for workflow management.',
     );
   };
 
   const handleImport = () => {
-    addToast(
-      'info',
+    toast(
       'Workflow import migrated to Mastra. Use Mastra Studio for workflow management.',
     );
   };

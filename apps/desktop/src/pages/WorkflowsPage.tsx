@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+
 import { Plus } from 'lucide-react';
-import { useToast } from '../components/Toast';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
+
 import { WorkflowCard, type WorkflowItem } from '../components/WorkflowCard';
+
+
+import { toast } from 'sonner';
 
 interface RunItem {
   runId: string;
@@ -15,7 +21,6 @@ interface RunItem {
 
 export function WorkflowsPage() {
   const navigate = useNavigate();
-  const { addToast } = useToast();
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [runs, setRuns] = useState<Record<string, RunItem[]>>({});
   const [loading, setLoading] = useState(false);
@@ -28,9 +33,9 @@ export function WorkflowsPage() {
       .then((data) => {
         if (data.workflows) setWorkflows(data.workflows);
       })
-      .catch(() => addToast('error', 'Failed to load workflows'))
+      .catch(() => toast.error('Failed to load workflows'))
       .finally(() => setLoading(false));
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     fetchWorkflows();
@@ -59,14 +64,14 @@ export function WorkflowsPage() {
       });
       const data = await res.json();
       if (data.status === 'failed') {
-        addToast('error', `Workflow failed: ${data.error ?? 'Unknown error'}`);
+        toast.error(`Workflow failed: ${data.error ?? 'Unknown error'}`);
       } else {
-        addToast('success', `Workflow "${wf?.name ?? id}" ${data.status}`);
+        toast.success(`Workflow "${wf?.name ?? id}" ${data.status}`);
       }
       fetchWorkflows();
       fetchRuns(id);
     } catch {
-      addToast('error', 'Failed to run workflow');
+      toast.error('Failed to run workflow');
     }
   };
 
@@ -87,11 +92,11 @@ export function WorkflowsPage() {
         const projData = await projRes.json();
         pid = projData.projects?.[0]?.id as string | undefined;
         if (!pid) {
-          addToast('error', 'No project found. Create a project first.');
+          toast.error('No project found. Create a project first.');
           return;
         }
       } catch {
-        addToast('error', 'Failed to resolve project');
+        toast.error('Failed to resolve project');
         return;
       }
       const def = {
@@ -108,23 +113,21 @@ export function WorkflowsPage() {
       });
       if (res.ok) {
         fetchWorkflows();
-        addToast('success', 'New workflow created');
+        toast.success('New workflow created');
       }
     } catch {
-      addToast('error', 'Failed to create workflow');
+      toast.error('Failed to create workflow');
     }
   };
 
   const handleExport = (workflowId: string) => {
-    addToast(
-      'info',
+    toast(
       'Workflow export migrated to Mastra. Use Mastra Studio for workflow management.',
     );
   };
 
   const handleImportFile = () => {
-    addToast(
-      'info',
+    toast(
       'Workflow import migrated to Mastra. Use Mastra Studio for workflow management.',
     );
   };

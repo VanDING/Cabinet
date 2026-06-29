@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { apiFetch } from '../../utils/api.js';
-import { useToast } from '../../components/Toast.js';
+
 import { AgentDetailPanel } from './AgentDetailPanel.js';
+
 import { AgentMarketGrid } from './AgentMarketGrid.js';
 
-interface AgentEntry {
+
+import { toast } from 'sonner';interface AgentEntry {
   id: string;
   recipe: { id: string; name: string; icon: string; description: string };
   installed: boolean;
@@ -12,7 +15,6 @@ interface AgentEntry {
 }
 
 export function AgentsTab() {
-  const { addToast } = useToast();
   const [agents, setAgents] = useState<AgentEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'market'>('list');
@@ -38,13 +40,13 @@ export function AgentsTab() {
       const res = await apiFetch('/api/workbench/agents/scan', { method: 'POST' });
       const data = (await res.json()) as { results?: unknown[]; error?: string };
       if (!res.ok || data.error) {
-        addToast('error', data.error ?? `Scan failed (${res.status})`);
+        toast.error(data.error ?? `Scan failed (${res.status})`);
       } else {
-        addToast('success', 'Scan complete');
+        toast.success('Scan complete');
       }
       await fetchAgents();
     } catch {
-      addToast('error', 'Scan failed — network error');
+      toast.error('Scan failed — network error');
     } finally {
       setScanning(false);
     }

@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { ModalOverlay } from './ModalOverlay';
+
 import { Tabs } from '@cabinet/ui';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
-import { useToast } from './Toast.js';
+
 import { useAvailableModels } from '../hooks/useAvailableModels.js';
 
-// ── Types ──
+
+import { toast } from 'sonner';// ── Types ──
 interface EmployeeItem {
   id: string;
   name: string;
@@ -98,7 +102,6 @@ export function EmployeeEditModal({
   activeProjectId,
   onSaved,
 }: EmployeeEditModalProps) {
-  const { addToast } = useToast();
   const availableModels = useAvailableModels();
   const isCreate = !employee;
   const isAI = (form: any) => form.kind === 'ai';
@@ -284,11 +287,11 @@ export function EmployeeEditModal({
 
   const handleSave = useCallback(async () => {
     if (!form.name.trim()) {
-      addToast('warning', 'Name is required');
+      toast.warning('Name is required');
       return;
     }
     if (isCreate && !activeProjectId) {
-      addToast('warning', 'Please select a project first');
+      toast.warning('Please select a project first');
       return;
     }
 
@@ -332,15 +335,15 @@ export function EmployeeEditModal({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `HTTP ${res.status}`);
       }
-      addToast('success', isCreate ? 'Employee created' : 'Employee updated');
+      toast.success(isCreate ? 'Employee created' : 'Employee updated');
       onSaved();
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      addToast('error', isCreate ? `Failed to create: ${msg}` : `Failed to update: ${msg}`);
+      toast.error(isCreate ? `Failed to create: ${msg}` : `Failed to update: ${msg}`);
       console.error(err);
     }
-  }, [form, isCreate, activeProjectId, employee, onSaved, onClose, addToast]);
+  }, [form, isCreate, activeProjectId, employee, onSaved, onClose]);
 
   const tabs = form.kind === 'ai' ? aiTabs : humanTabs;
 

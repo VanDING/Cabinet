@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { apiFetch, authJsonHeaders } from '../../utils/api.js';
-import { useToast } from '../../components/Toast.js';
+
+import { toast } from 'sonner';
 
 interface AgentDetail {
   name: string;
@@ -31,7 +33,6 @@ interface SkillItem {
 }
 
 export function AgentDetailPanel({ agentId, onClose }: { agentId: string; onClose: () => void }) {
-  const { addToast } = useToast();
   const [detail, setDetail] = useState<AgentDetail | null>(null);
   const [mcpBindings, setMcpBindings] = useState<McpBinding[]>([]);
   const [skillBindings, setSkillBindings] = useState<SkillBinding[]>([]);
@@ -96,12 +97,13 @@ export function AgentDetailPanel({ agentId, onClose }: { agentId: string; onClos
         { method: 'POST' },
       );
       const data = (await res.json()) as { status: string };
-      addToast(
-        data.status === 'projected' ? 'success' : 'error',
-        data.status === 'projected' ? 'Config projected' : 'Project failed',
-      );
+      if (data.status === 'projected') {
+        toast.success('Config projected');
+      } else {
+        toast.error('Project failed');
+      }
     } catch {
-      addToast('error', 'Project failed');
+      toast.error('Project failed');
     }
   };
 

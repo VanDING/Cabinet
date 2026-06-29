@@ -1,12 +1,11 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider } from './components/Toast';
 import type { ReactElement } from 'react';
 
 function AllProviders({ children }: { children: React.ReactNode }) {
   return (
     <BrowserRouter>
-      <ToastProvider>{children}</ToastProvider>
+      {children}
     </BrowserRouter>
   );
 }

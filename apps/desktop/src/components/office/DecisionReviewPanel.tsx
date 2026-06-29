@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+
 import type { Decision, DecisionOption } from '@cabinet/types';
-import { useToast } from '../Toast';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
-interface AuditEntry {
+
+import { toast } from 'sonner';interface AuditEntry {
   action: string;
   actor: string;
   changes: Record<string, unknown>;
@@ -66,8 +68,6 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
-  const { addToast } = useToast();
-
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -89,9 +89,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
         }
         if (auditData.trail) setAudit(auditData.trail);
       })
-      .catch(() => addToast('error', 'Failed to load decision'))
+      .catch(() => toast.error('Failed to load decision'))
       .finally(() => setLoading(false));
-  }, [decisionId, addToast]);
+  }, [decisionId]);
 
   // Close on Escape
   useEffect(() => {
@@ -111,11 +111,11 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
         headers: authJsonHeaders(),
         body: JSON.stringify({ chosenOptionId: selectedOption, reason }),
       });
-      addToast('success', 'Decision approved');
+      toast.success('Decision approved');
       onResolved();
       onClose();
     } catch {
-      addToast('error', 'Failed to approve');
+      toast.error('Failed to approve');
     } finally {
       setSubmitting(false);
     }
@@ -129,11 +129,11 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
         headers: authJsonHeaders(),
         body: JSON.stringify({ reason }),
       });
-      addToast('info', 'Decision rejected');
+      toast('Decision rejected');
       onResolved();
       onClose();
     } catch {
-      addToast('error', 'Failed to reject');
+      toast.error('Failed to reject');
     } finally {
       setSubmitting(false);
     }
@@ -160,9 +160,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
         },
       ]);
       setCommentText('');
-      addToast('info', 'Comment added');
+      toast('Comment added');
     } catch {
-      addToast('error', 'Failed to add comment');
+      toast.error('Failed to add comment');
     }
   };
 
@@ -195,9 +195,9 @@ export function DecisionReviewPanel({ decisionId, onClose, onResolved }: Props) 
       );
       setReplyText('');
       setReplyTo(null);
-      addToast('info', 'Reply added');
+      toast('Reply added');
     } catch {
-      addToast('error', 'Failed to add reply');
+      toast.error('Failed to add reply');
     }
   };
 

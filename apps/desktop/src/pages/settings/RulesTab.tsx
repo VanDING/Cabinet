@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button, Tag } from '@cabinet/ui';
-import { ModalOverlay } from '../../components/ModalOverlay';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
-import { useToast } from '../../components/Toast.js';
 
-// ── Types ──
+import { Button, Tag } from '@cabinet/ui';
+
+import { ModalOverlay } from '../../components/ModalOverlay';
+
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
+
+import { toast } from 'sonner';// ── Types ──
 interface RuleItem {
   filename: string;
   path: string;
@@ -256,7 +258,6 @@ function RuleModal({
 
 // ── Rules Tab ──
 export function RulesTab() {
-  const { addToast } = useToast();
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -314,20 +315,20 @@ export function RulesTab() {
           headers: authJsonHeaders(),
           body: JSON.stringify(form),
         });
-        addToast('success', `Created ${form.filename}`);
+        toast.success(`Created ${form.filename}`);
       } else {
         await apiFetch(`/api/rules/${form.filename}`, {
           method: 'PUT',
           headers: authJsonHeaders(),
           body: JSON.stringify(form),
         });
-        addToast('success', `Updated ${form.filename}`);
+        toast.success(`Updated ${form.filename}`);
       }
       setModalOpen(false);
       fetchRules();
     } catch {
       setStatus('Save failed');
-      addToast('error', 'Failed to save rule');
+      toast.error('Failed to save rule');
     }
   };
 
@@ -340,9 +341,9 @@ export function RulesTab() {
       });
       setModalOpen(false);
       fetchRules();
-      addToast('success', `Deleted ${form.filename}`);
+      toast.success(`Deleted ${form.filename}`);
     } catch {
-      addToast('error', 'Failed to delete rule');
+      toast.error('Failed to delete rule');
     }
   };
 

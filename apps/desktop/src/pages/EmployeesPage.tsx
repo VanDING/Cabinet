@@ -1,12 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
+
 import { Search, Plus } from 'lucide-react';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
-import { useToast } from '../components/Toast.js';
+
 import { EmployeeEditModal } from '../components/EmployeeEditModal.js';
+
 import { ModalOverlay } from '../components/ModalOverlay.js';
+
 import { AgentBadge } from '../components/AgentBadge.js';
 
-interface EmployeeItem {
+
+import { toast } from 'sonner';interface EmployeeItem {
   id: string;
   name: string;
   role: string;
@@ -32,7 +37,6 @@ async function fetchEmployeesAPI(): Promise<EmployeeItem[]> {
 
 type KindFilter = 'all' | 'ai' | 'human';
 export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | null }) {
-  const { addToast } = useToast();
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +98,7 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       await apiFetch(`/api/employees/${id}`, { method: 'DELETE', headers: authHeaders() });
       refreshEmployees();
     } catch {
-      addToast('error', 'Failed to delete employee');
+      toast.error('Failed to delete employee');
     }
     if (detailEmployee?.id === id) setDetailEmployee(null);
   };
@@ -155,12 +159,12 @@ export function EmployeesPage({ activeProjectId }: { activeProjectId?: string | 
       });
       const data = await res.json();
       if (data.status === 'ok') {
-        addToast('success', `${name}: OK — ${data.latency_ms}ms · ${data.model}`);
+        toast.success(`${name}: OK — ${data.latency_ms}ms · ${data.model}`);
       } else {
-        addToast('error', `${name}: ${data.message ?? 'Connection failed'}`);
+        toast.error(`${name}: ${data.message ?? 'Connection failed'}`);
       }
     } catch (e) {
-      addToast('error', `${name}: ${(e as Error).message}`);
+      toast.error(`${name}: ${(e as Error).message}`);
     } finally {
       setTestingId(null);
     }

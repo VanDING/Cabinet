@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { useToast } from '../Toast';
+
 import { apiFetch, authHeaders } from '../../utils/api.js';
+
 import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
-interface Event {
+
+import { toast } from 'sonner';interface Event {
   message: string;
   type: string;
   time: Date;
@@ -15,7 +17,6 @@ interface Props {
 }
 
 export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }: Props) {
-  const { addToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,10 +42,10 @@ export const EventTimeline = memo(function EventTimeline({ projectId, onExpand }
         }
       })
       .catch(() => {
-        addToast('error', 'Failed to load events');
+        toast.error('Failed to load events');
       })
       .finally(() => setLoading(false));
-  }, [addToast, buildUrl]);
+  }, [buildUrl]);
 
   useEffect(() => {
     fetchEvents();

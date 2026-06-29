@@ -1,16 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useToast } from '../components/Toast';
+
 import { Button } from '@cabinet/ui';
+
 import { apiFetch, authHeaders, authJsonHeaders } from '../utils/api.js';
+
 import { WorkflowCanvas } from '../factory/WorkflowCanvas';
+
 import { WorkflowPanel } from '../factory/WorkflowPanel';
+
 import { WorkflowToolbar, StatusBadge } from '../factory/WorkflowToolbar';
+
 import { definitionToCanvas, canvasToDefinition } from '../factory/converter';
+
 import { useUndoRedo } from '../factory/useUndoRedo';
+
 import type { CanvasNode, CanvasEdge, CanvasNodeType } from '../factory/node-types';
 
-interface WorkflowItem {
+
+import { toast } from 'sonner';interface WorkflowItem {
   id: string;
   name: string;
   definition: Record<string, unknown>;
@@ -65,8 +74,6 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
 
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(editorWorkflowId ?? null);
-  const { addToast } = useToast();
-
   // Canvas state
   const [canvasNodes, setCanvasNodes] = useState<CanvasNode[]>([]);
   const [canvasEdges, setCanvasEdges] = useState<CanvasEdge[]>([]);
@@ -131,8 +138,8 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
           }
         }
       })
-      .catch(() => addToast('error', 'Failed to load workflows'));
-  }, [addToast, projectId, isEditorRoute, editorWorkflowId]);
+      .catch(() => toast.error('Failed to load workflows'));
+  }, [projectId, isEditorRoute, editorWorkflowId]);
 
   const fetchRuns = useCallback(async (wfId: string) => {
     try {
@@ -184,10 +191,10 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         body: JSON.stringify({ name: selected.name, definition: def }),
       });
       setDirty(false);
-      addToast('success', 'Workflow saved');
+      toast.success('Workflow saved');
       fetchWorkflows();
     } catch {
-      addToast('error', 'Failed to save workflow');
+      toast.error('Failed to save workflow');
     }
   };
 
@@ -204,10 +211,10 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         }),
       });
       setDirty(false);
-      addToast('success', 'Saved');
+      toast.success('Saved');
       fetchWorkflows();
     } catch {
-      addToast('error', 'Failed to save');
+      toast.error('Failed to save');
     }
   };
 
@@ -220,15 +227,15 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       });
       const data = await res.json();
       if (data.status === 'failed') {
-        addToast('error', `Workflow failed: ${data.error ?? 'Unknown error'}`);
+        toast.error(`Workflow failed: ${data.error ?? 'Unknown error'}`);
       } else {
-        addToast('success', `Workflow "${selected.name}" ${data.status}`);
+        toast.success(`Workflow "${selected.name}" ${data.status}`);
       }
       fetchWorkflows();
       fetchRuns(selected.id);
       setPanelTab('runs');
     } catch {
-      addToast('error', 'Failed to run workflow');
+      toast.error('Failed to run workflow');
     }
   };
 
@@ -239,9 +246,9 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
       await apiFetch(`/api/factory/${selected.id}`, { method: 'DELETE', headers: authHeaders() });
       setSelectedId(null);
       fetchWorkflows();
-      addToast('success', 'Workflow deleted');
+      toast.success('Workflow deleted');
     } catch {
-      addToast('error', 'Failed to delete workflow');
+      toast.error('Failed to delete workflow');
     }
   };
 
@@ -256,11 +263,11 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
           const projData = await projRes.json();
           pid = projData.projects?.[0]?.id as string | undefined;
           if (!pid) {
-            addToast('error', 'No project found. Create a project first.');
+            toast.error('No project found. Create a project first.');
             return;
           }
         } catch {
-          addToast('error', 'Failed to resolve project');
+          toast.error('Failed to resolve project');
           return;
         }
       }
@@ -282,10 +289,10 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
         setTimeout(() => {
           setSelectedId(id);
         }, 100);
-        addToast('success', 'New workflow created');
+        toast.success('New workflow created');
       }
     } catch {
-      addToast('error', 'Failed to create workflow');
+      toast.error('Failed to create workflow');
     }
   };
 
@@ -308,7 +315,7 @@ export function FactoryPage({ onCreateChatSession, onSwitchSession, onEnterChat 
     const sessionId = onCreateChatSession({ title: selected.name, initialContext });
     onSwitchSession(sessionId);
     onEnterChat();
-    addToast('info', `Editing "${selected.name}" in chat`);
+    toast(`Editing "${selected.name}" in chat`);
   };
 
   // Node handlers

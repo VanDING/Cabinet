@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Button, Input, Card, Tag } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
-import { useToast } from '../../components/Toast.js';
+import { toast } from 'sonner';
 
-// ── Skills Tab ──
+import { Button, Input, Card, Tag } from '@cabinet/ui';
+
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
+
 interface SkillItem {
   id: string;
   name: string;
@@ -14,7 +15,6 @@ interface SkillItem {
 }
 
 export function SkillsTab() {
-  const { addToast } = useToast();
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export function SkillsTab() {
                     });
                     if (!res.ok) {
                       const err = await res.json().catch(() => ({ error: 'Import failed' }));
-                      addToast('error', `Import failed: ${(err as any).error ?? res.statusText}`);
+                      toast.error(`Import failed: ${(err as any).error ?? res.statusText}`);
                       return;
                     }
                   } else {
@@ -121,13 +121,13 @@ export function SkillsTab() {
                     });
                     if (!res.ok) {
                       const err = await res.json().catch(() => ({ error: 'Import failed' }));
-                      addToast('error', `Import failed: ${(err as any).error ?? res.statusText}`);
+                      toast.error(`Import failed: ${(err as any).error ?? res.statusText}`);
                       return;
                     }
                   }
                   fetchSkills();
                 } catch {
-                  addToast('error', 'Failed to import skill. Check file format and try again.');
+                  toast.error('Failed to import skill. Check file format and try again.');
                 }
               };
               input.click();

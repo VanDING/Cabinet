@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button, Card, Tag } from '@cabinet/ui';
-import { ModalOverlay } from '../../components/ModalOverlay';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
-import { useToast } from '../../components/Toast.js';
 
-// ── Types ──
+import { Button, Card, Tag } from '@cabinet/ui';
+
+import { ModalOverlay } from '../../components/ModalOverlay';
+
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
+
+import { toast } from 'sonner';// ── Types ──
 interface MCPServer {
   name: string;
   transport: {
@@ -211,7 +213,6 @@ function InstallModal({
 
 // ── Main Component ──
 export function McpTab() {
-  const { addToast } = useToast();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -357,11 +358,11 @@ export function McpTab() {
         headers: authJsonHeaders(),
         body: JSON.stringify({ configs: updated }),
       });
-      addToast('success', `Installed ${installing.name}`);
+      toast.success(`Installed ${installing.name}`);
       setInstalling(null);
       fetchServers();
     } catch {
-      addToast('error', `Failed to install ${installing.name}`);
+      toast.error(`Failed to install ${installing.name}`);
     }
   };
 

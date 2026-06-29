@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button, Input, Card, Tag } from '@cabinet/ui';
-import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
-import { PROVIDER_MODELS } from '../../hooks/useAvailableModels.js';
-import { useToast } from '../../components/Toast.js';
 
-// ── API Keys Tab ──
+import { Button, Input, Card, Tag } from '@cabinet/ui';
+
+import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
+
+import { PROVIDER_MODELS } from '../../hooks/useAvailableModels.js';
+
+import { toast } from 'sonner';// ── API Keys Tab ──
 interface ApiKeyItem {
   id: string;
   provider: string;
@@ -15,7 +17,6 @@ interface ApiKeyItem {
 }
 
 export function ApiKeysTab() {
-  const { addToast } = useToast();
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,7 +48,7 @@ export function ApiKeysTab() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: 'Failed to add key' }));
-        addToast('error', err.message ?? 'Failed to add API key');
+        toast.error(err.message ?? 'Failed to add API key');
         return;
       }
       setShowForm(false);
@@ -55,7 +56,7 @@ export function ApiKeysTab() {
       fetchKeys();
       window.dispatchEvent(new CustomEvent('apikeys_changed'));
     } catch (e) {
-      addToast('error', `Failed to add API key: ${(e as Error).message}`);
+      toast.error(`Failed to add API key: ${(e as Error).message}`);
     }
   };
 
@@ -288,7 +289,6 @@ function ModelInput({
 }
 
 function ModelMappingSection() {
-  const { addToast } = useToast();
   const [mapping, setMapping] = useState({
     default: '',
     deep_reasoning: '',
@@ -327,13 +327,13 @@ function ModelMappingSection() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: 'Failed to save' }));
-        addToast('error', err.message ?? 'Failed to save model mapping');
+        toast.error(err.message ?? 'Failed to save model mapping');
         return;
       }
-      addToast('success', 'Model mapping saved');
+      toast.success('Model mapping saved');
       window.dispatchEvent(new CustomEvent('apikeys_changed'));
     } catch (e) {
-      addToast('error', `Failed to save model mapping: ${(e as Error).message}`);
+      toast.error(`Failed to save model mapping: ${(e as Error).message}`);
     }
   };
 

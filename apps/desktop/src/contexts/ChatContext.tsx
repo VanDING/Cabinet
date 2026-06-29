@@ -7,7 +7,6 @@ import React, {
   useMemo,
   useEffect,
 } from 'react';
-import { useToast } from '../components/Toast';
 import {
   useSessions,
   type ChatMessage,
@@ -15,14 +14,21 @@ import {
   type Session,
 } from '../hooks/useSessions';
 import type { AgentInfo } from '../hooks/useAgents.js';
+
 import { useProject } from './ProjectContext';
+
 import { readSSEStream } from '../utils/streaming.js';
+
 import { apiFetch, authJsonHeaders, authHeaders } from '../utils/api.js';
+
 import type { MeetingData } from '../hooks/useSessions';
+
 import type { SubAgentActivity } from '@cabinet/ui';
+
 import type { AgentEvent } from '../types/agent-events';
 
-export type InputTarget =
+
+import { toast } from 'sonner';export type InputTarget =
   | { type: 'secretary'; sessionId: string }
   | { type: 'subagent'; sessionId: string; agentId: string };
 
@@ -102,7 +108,6 @@ interface ChatContextValue {
 const ChatContext = createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const { addToast } = useToast();
   const {
     sessions,
     setSessions,
@@ -287,7 +292,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             }),
           });
         } catch {
-          addToast('error', 'Failed to send input to sub-agent.');
+          toast.error('Failed to send input to sub-agent.');
         } finally {
           setSessionActive(sessionId, false);
         }
@@ -616,7 +621,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch {
-        addToast('error', 'Failed to send message. Server may be offline.');
+        toast.error('Failed to send message. Server may be offline.');
         const session = sessions.find((s) => s.id === sessionId);
         const hasSkeleton = session?.messages.some((m) => m.id === streamId);
         if (hasSkeleton) {
@@ -647,7 +652,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     },
     [
       addMessage,
-      addToast,
       setSessionActive,
       activeProjectId,
       activeAgent,

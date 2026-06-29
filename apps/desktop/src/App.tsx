@@ -19,7 +19,7 @@ import { ModalOverlay } from './components/ModalOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ServerLoading } from './components/ServerLoading';
 import { useTheme } from './hooks/useTheme';
-import { useToast } from './components/Toast';
+import { toast } from 'sonner';
 import { useNotifications } from './components/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { MobileNav } from './components/MobileNav';
@@ -75,7 +75,6 @@ function PageLoader() {
 
 export function App() {
   const { theme, themes, setTheme } = useTheme();
-  const { addToast } = useToast();
   const { addNotification } = useNotifications();
   const prevWsConnected = useRef(false);
   const { emit } = useEventBus();
@@ -328,14 +327,14 @@ export function App() {
   const wasEverConnected = useRef(false);
   useEffect(() => {
     if (wasEverConnected.current && !wsConnected) {
-      addToast('warning', 'Real-time connection lost. Reconnecting...');
+      toast.warning('Real-time connection lost. Reconnecting...');
     }
     if (wasEverConnected.current && wsConnected && !prevWsConnected.current) {
-      addToast('success', 'Real-time connection restored.');
+      toast.success('Real-time connection restored.');
     }
     if (wsConnected) wasEverConnected.current = true;
     prevWsConnected.current = wsConnected;
-  }, [wsConnected, addToast]);
+    }, [wsConnected]);
 
   return (
     <ServerLoading>
@@ -475,7 +474,7 @@ export function App() {
                         onForkMessage={(msgId) => {
                           const forkedId = forkSession(activeSession.id, msgId);
                           if (forkedId) {
-                            addToast('success', 'Forked to new session');
+                            toast.success('Forked to new session');
                           }
                         }}
                         onContinue={(msgId) => {
@@ -512,7 +511,7 @@ export function App() {
                               }
                             })
                             .catch(() => {
-                              addToast('error', 'Failed to approve sub-agent');
+                              toast.error('Failed to approve sub-agent');
                             });
                         }}
                         onResetInputTarget={() => {
