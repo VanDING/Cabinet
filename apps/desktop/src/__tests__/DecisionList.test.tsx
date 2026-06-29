@@ -5,7 +5,6 @@
  */
 import { describe, it, expect, vi, beforeEach, test } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { ToastProvider } from '../components/Toast';
 
 const { mockApiFetch } = vi.hoisted(() => ({
   mockApiFetch: vi.fn(),
@@ -21,11 +20,7 @@ vi.mock('../utils/api.js', () => ({
 const { DecisionList } = await import('../components/office/DecisionList');
 
 function renderDecisionList(onSelectDecision?: (id: string) => void) {
-  return render(
-    <ToastProvider>
-      <DecisionList onSelectDecision={onSelectDecision} />
-    </ToastProvider>,
-  );
+  return render(<DecisionList onSelectDecision={onSelectDecision} />);
 }
 
 const mockDecisions = [

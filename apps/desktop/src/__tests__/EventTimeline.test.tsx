@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { ToastProvider } from '../components/Toast';
 
 const { mockApiFetch } = vi.hoisted(() => ({
   mockApiFetch: vi.fn(),
@@ -24,11 +23,7 @@ describe('EventTimeline', () => {
     mockApiFetch.mockResolvedValue({
       json: () => Promise.resolve({ recentEvents: [] }),
     });
-    render(
-      <ToastProvider>
-        <EventTimeline />
-      </ToastProvider>,
-    );
+    render(<EventTimeline />);
     await waitFor(() => {
       expect(screen.getByText('No recent events.')).toBeInTheDocument();
     });
@@ -44,11 +39,7 @@ describe('EventTimeline', () => {
           ],
         }),
     });
-    render(
-      <ToastProvider>
-        <EventTimeline />
-      </ToastProvider>,
-    );
+    render(<EventTimeline />);
     await waitFor(() => {
       expect(screen.getByText('Recent Events')).toBeInTheDocument();
     });
@@ -58,11 +49,7 @@ describe('EventTimeline', () => {
 
   it('renders heading always', () => {
     mockApiFetch.mockReturnValue(new Promise(() => {}));
-    render(
-      <ToastProvider>
-        <EventTimeline />
-      </ToastProvider>,
-    );
+    render(<EventTimeline />);
     expect(screen.getByText('Recent Events')).toBeInTheDocument();
   });
 });

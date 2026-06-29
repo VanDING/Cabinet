@@ -1,22 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider } from '../components/Toast';
 import { ChatView } from '../components/ChatView';
 import type { ChatMessage, AttachedFile } from '../hooks/useSessions';
 
 function renderChatView(props: Partial<Parameters<typeof ChatView>[0]> = {}) {
   return render(
     <BrowserRouter>
-      <ToastProvider>
-        <ChatView
-          messages={[]}
-          isProcessing={false}
-          attachedFiles={[]}
-          sessionTitle="Test Session"
-          {...props}
-        />
-      </ToastProvider>
+      <ChatView
+        messages={[]}
+        isProcessing={false}
+        attachedFiles={[]}
+        sessionTitle="Test Session"
+        agents={[]}
+        {...props}
+      />
     </BrowserRouter>,
   );
 }

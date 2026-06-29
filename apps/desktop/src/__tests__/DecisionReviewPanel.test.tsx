@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ToastProvider } from '../components/Toast';
 
 const { mockApiFetch } = vi.hoisted(() => ({
   mockApiFetch: vi.fn(),
@@ -58,9 +57,7 @@ function renderPanel() {
   const onClose = vi.fn();
   const onResolved = vi.fn();
   const result = render(
-    <ToastProvider>
-      <DecisionReviewPanel decisionId="dec-42" onClose={onClose} onResolved={onResolved} />
-    </ToastProvider>,
+    <DecisionReviewPanel decisionId="dec-42" onClose={onClose} onResolved={onResolved} />
   );
   return { ...result, onClose, onResolved };
 }

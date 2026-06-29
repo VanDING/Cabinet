@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider } from '../components/Toast';
 import { ChatPanel } from '../components/ChatPanel';
 import type { Session } from '../hooks/useSessions';
 
@@ -34,9 +33,7 @@ const defaultProps = {
 function renderChatPanel(overrides: Partial<typeof defaultProps> = {}) {
   return render(
     <BrowserRouter>
-      <ToastProvider>
-        <ChatPanel {...defaultProps} {...overrides} />
-      </ToastProvider>
+      <ChatPanel {...defaultProps} {...overrides} />
     </BrowserRouter>,
   );
 }

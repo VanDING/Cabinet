@@ -5,7 +5,9 @@ import type { Decision, DecisionOption } from '@cabinet/types';
 import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 
-import { toast } from 'sonner';interface AuditEntry {
+import { toast } from 'sonner';
+
+interface AuditEntry {
   action: string;
   actor: string;
   changes: Record<string, unknown>;
