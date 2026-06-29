@@ -61,7 +61,7 @@ export function FileSearchPanel({ isOpen, onClose, onSelect }: Props) {
     <ModalOverlay
       isOpen={true}
       onClose={onClose}
-      contentClassName="file-search-enter max-h-80 w-96 overflow-hidden rounded-lg border border-border bg-surface-primary shadow-xs shadow-xl"
+      contentClassName="max-h-80 w-96 overflow-hidden"
       backdropClassName="items-start justify-center pt-20"
     >
       <div className="border-hairline border-b p-3">
