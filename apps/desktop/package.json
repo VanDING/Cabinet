@@ -26,7 +26,11 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.10.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dagre": "^0.8.5",
     "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
@@ -38,8 +42,7 @@
     "react-grid-layout": "^2.2.3",
     "react-router-dom": "^7.0.0",
     "recharts": "^3.8.1",
-    "@xterm/xterm": "^5.5.0",
-    "@xterm/addon-fit": "^0.10.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@cabinet/server": "workspace:*",

@@ -1,0 +1,46 @@
+/* shadcn-vars.css
+   Bridges project CSS variable names to shadcn standard variable names.
+   This allows shadcn components (which use --primary, --background, etc.)
+   to inherit from the project's existing theme system (--accent, --surface-primary, etc.)
+   without modifying any existing code. */
+
+:root,
+[data-theme] {
+  --background: var(--surface-primary);
+  --foreground: var(--content-primary);
+  --card: var(--surface-primary);
+  --card-foreground: var(--content-primary);
+  --popover: var(--surface-overlay);
+  --popover-foreground: var(--content-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-foreground);
+  --secondary: var(--surface-elevated);
+  --secondary-foreground: var(--content-secondary);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--content-tertiary);
+  --accent: var(--accent);
+  --accent-foreground: var(--accent-foreground);
+  --destructive: var(--intent-danger);
+  --destructive-foreground: var(--intent-danger-foreground);
+  --border: var(--border-color);
+  --input: var(--surface-input);
+  --ring: var(--accent);
+  --radius: var(--radius-md);
+
+  /* Sidebar */
+  --sidebar-background: var(--surface-sidebar);
+  --sidebar-foreground: var(--content-primary);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-foreground);
+  --sidebar-accent: var(--surface-elevated);
+  --sidebar-accent-foreground: var(--content-secondary);
+  --sidebar-border: var(--border-color);
+  --sidebar-ring: var(--accent);
+
+  /* Chart (recharts compatibility for shadcn chart components) */
+  --chart-1: var(--chart-1);
+  --chart-2: var(--chart-2);
+  --chart-3: var(--chart-3);
+  --chart-4: var(--chart-4);
+  --chart-5: var(--chart-5);
+}

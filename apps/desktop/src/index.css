@@ -1,3 +1,4 @@
+@import './shadcn-vars.css';
 @import 'tailwindcss';
 @source '../../../packages/ui/';
 /* Generated theme CSS — all [data-theme="X"] blocks */
@@ -83,6 +84,27 @@
   --color-icon-primary: var(--icon-primary);
   --color-icon-secondary: var(--icon-secondary);
   --color-icon-accent: var(--icon-accent);
+
+  /* ── shadcn/ui 标准变量 ── */
+  --color-background: var(--surface-primary);
+  --color-foreground: var(--content-primary);
+  --color-card: var(--surface-primary);
+  --color-card-foreground: var(--content-primary);
+  --color-popover: var(--surface-overlay);
+  --color-popover-foreground: var(--content-primary);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-secondary: var(--surface-elevated);
+  --color-secondary-foreground: var(--content-secondary);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--content-tertiary);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--intent-danger);
+  --color-destructive-foreground: var(--intent-danger-foreground);
+  --color-border: var(--border-color);
+  --color-input: var(--surface-input);
+  --color-ring: var(--accent);
 
   --radius: var(--radius-md);
   --radius-xs: var(--radius-sm);
