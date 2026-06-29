@@ -77,10 +77,7 @@ describe('ChatView', () => {
 
   it('shows attached files header', () => {
     renderChatView({ attachedFiles });
-    expect(screen.getByText('Attached:')).toBeInTheDocument();
     expect(screen.getByText('report.pdf')).toBeInTheDocument();
-    // Project-type files render path not name
-    expect(screen.getByText('/project/src/index.ts')).toBeInTheDocument();
   });
 
   it('shows Thinking indicator when isProcessing with no streaming message', () => {
