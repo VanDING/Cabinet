@@ -34,7 +34,9 @@ export function Card({
       className={cn(onClick && 'cursor-pointer')}
     >
       <ShadcnCard
+        size="sm"
         className={cn(
+          'flex-row',
           paddingMap[padding],
           hoverable && 'transition-shadow hover:shadow-sm',
           className,

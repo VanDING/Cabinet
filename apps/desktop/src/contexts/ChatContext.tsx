@@ -28,7 +28,9 @@ import type { SubAgentActivity } from '@cabinet/ui';
 import type { AgentEvent } from '../types/agent-events';
 
 
-import { toast } from 'sonner';export type InputTarget =
+import { toast } from 'sonner';
+
+export type InputTarget =
   | { type: 'secretary'; sessionId: string }
   | { type: 'subagent'; sessionId: string; agentId: string };
 

@@ -26,7 +26,9 @@ import { ContextMenu } from './ContextMenu';
 
 import type { ContextMenuEntry } from './ContextMenu';
 
-import { toast } from 'sonner';interface FileNode {
+import { toast } from 'sonner';
+
+interface FileNode {
   name: string;
   path: string;
   type: 'file' | 'directory';

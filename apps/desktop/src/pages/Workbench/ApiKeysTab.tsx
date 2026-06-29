@@ -6,7 +6,9 @@ import { apiFetch, authHeaders, authJsonHeaders } from '../../utils/api.js';
 
 import { PROVIDER_MODELS } from '../../hooks/useAvailableModels.js';
 
-import { toast } from 'sonner';// ── API Keys Tab ──
+import { toast } from 'sonner';
+
+// ── API Keys Tab ──
 interface ApiKeyItem {
   id: string;
   provider: string;

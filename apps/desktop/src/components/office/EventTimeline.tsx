@@ -5,7 +5,9 @@ import { apiFetch, authHeaders } from '../../utils/api.js';
 import { getBufferedEvents } from '../../utils/eventBuffer.js';
 
 
-import { toast } from 'sonner';interface Event {
+import { toast } from 'sonner';
+
+interface Event {
   message: string;
   type: string;
   time: Date;

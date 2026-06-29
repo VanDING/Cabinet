@@ -11,7 +11,9 @@ import { ModalOverlay } from '../components/ModalOverlay.js';
 import { AgentBadge } from '../components/AgentBadge.js';
 
 
-import { toast } from 'sonner';interface EmployeeItem {
+import { toast } from 'sonner';
+
+interface EmployeeItem {
   id: string;
   name: string;
   role: string;

@@ -326,7 +326,7 @@ export const ChatView = memo(function ChatView({
           <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor" scrollPreviousItemPeek={64}>
             <MessageScroller className="flex-1">
               <MessageScrollerViewport>
-                <MessageScrollerContent>
+                <MessageScrollerContent className="px-5 py-4 pb-56">
                   {messages.length === 0 && !isProcessing ? (
                     <div className="flex h-full flex-col items-center justify-center gap-4">
                       <div className="text-content-tertiary text-center">
@@ -436,7 +436,7 @@ const MessageRow = memo(function MessageRow({
 
   return (
     <Message align={msg.role === 'user' ? 'end' : 'start'}>
-      <MessageAvatar>
+      <MessageAvatar className="self-start">
         <Avatar>
           <AvatarFallback className="text-[10px]">
             {msg.role === 'user' ? 'Y' : (msg.agentName?.[0] ?? 'S')}

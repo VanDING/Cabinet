@@ -7,7 +7,9 @@ import { AgentDetailPanel } from './AgentDetailPanel.js';
 import { AgentMarketGrid } from './AgentMarketGrid.js';
 
 
-import { toast } from 'sonner';interface AgentEntry {
+import { toast } from 'sonner';
+
+interface AgentEntry {
   id: string;
   recipe: { id: string; name: string; icon: string; description: string };
   installed: boolean;

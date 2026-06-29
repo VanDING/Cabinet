@@ -19,7 +19,9 @@ import { useUndoRedo } from '../factory/useUndoRedo';
 import type { CanvasNode, CanvasEdge, CanvasNodeType } from '../factory/node-types';
 
 
-import { toast } from 'sonner';interface WorkflowItem {
+import { toast } from 'sonner';
+
+interface WorkflowItem {
   id: string;
   name: string;
   definition: Record<string, unknown>;
