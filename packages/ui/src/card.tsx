@@ -1,10 +1,9 @@
+import { Card as ShadcnCard } from
+  '../../../apps/desktop/src/components/ui/card.js';
 import { cn } from './cn.js';
-import { GlareHover } from './animations/GlareHover';
-
-type CardPadding = 'none' | 'xs' | 'sm' | 'md' | 'lg';
 
 export interface CardProps {
-  padding?: CardPadding;
+  padding?: 'none' | 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
   children: React.ReactNode;
   onClick?: () => void;
@@ -12,8 +11,8 @@ export interface CardProps {
   as?: 'div' | 'section' | 'article';
 }
 
-const paddingClasses: Record<CardPadding, string> = {
-  none: '',
+const paddingMap: Record<string, string> = {
+  none: 'p-0',
   xs: 'p-2',
   sm: 'p-3',
   md: 'p-5',
@@ -28,20 +27,21 @@ export function Card({
   hoverable,
   as: Tag = 'div',
 }: CardProps) {
+  const Element = Tag as 'div';
   return (
-    <GlareHover className="rounded-lg" maxOpacity={0.03}>
-      <Tag
-        onClick={onClick}
+    <Element
+      onClick={onClick}
+      className={cn(onClick && 'cursor-pointer')}
+    >
+      <ShadcnCard
         className={cn(
-          'border-border bg-surface-primary rounded-xl border shadow-xs',
-          paddingClasses[padding],
-          onClick && 'cursor-pointer',
+          paddingMap[padding],
           hoverable && 'transition-shadow hover:shadow-sm',
           className,
         )}
       >
         {children}
-      </Tag>
-    </GlareHover>
+      </ShadcnCard>
+    </Element>
   );
 }

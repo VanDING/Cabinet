@@ -1,23 +1,24 @@
-import { forwardRef } from 'react';
+import { Input as ShadcnInput } from
+  '../../../apps/desktop/src/components/ui/input.js';
 import { cn } from './cn.js';
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps {
   fullWidth?: boolean;
+  className?: string;
+  placeholder?: string;
+  value?: string | number | readonly string[];
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  type?: string;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { fullWidth, className, ...rest },
-  ref,
-) {
+export function Input({ fullWidth = true, className, ...rest }: InputProps) {
   return (
-    <input
-      ref={ref}
-      className={cn(
-        'border-border bg-surface-input text-content-primary placeholder:text-content-tertiary focus:ring-accent disabled:bg-surface-elevated rounded-md border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-hidden',
-        fullWidth !== false && 'w-full',
-        className,
-      )}
-      {...rest}
+    <ShadcnInput
+      className={cn(!fullWidth && 'w-auto', className)}
+      {...(rest as any)}
     />
   );
-});
+}

@@ -1,6 +1,8 @@
+import { Badge } from
+  '../../../apps/desktop/src/components/ui/badge.js';
 import { cn } from './cn.js';
 
-type TagVariant = 'default' | 'success' | 'danger' | 'warning' | 'info' | 'purple' | 'amber';
+export type TagVariant = 'default' | 'success' | 'danger' | 'warning' | 'info' | 'purple' | 'amber';
 
 export interface TagProps {
   variant?: TagVariant;
@@ -8,26 +10,30 @@ export interface TagProps {
   children: React.ReactNode;
 }
 
-const variantClasses: Record<TagVariant, string> = {
-  default: 'bg-surface-muted text-content-secondary',
-  success: 'bg-intent-success-muted text-intent-success',
-  danger: 'bg-intent-danger-muted text-intent-danger',
-  warning: 'bg-intent-warning-muted text-intent-warning',
-  info: 'bg-accent-muted text-accent',
-  purple: 'bg-intent-purple-muted text-intent-purple',
-  amber: 'bg-intent-warning-muted text-intent-warning',
+const badgeVariantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  default: 'default',
+  success: 'default',
+  danger: 'destructive',
+  warning: 'outline',
+  info: 'default',
+  purple: 'default',
+  amber: 'outline',
+};
+
+const colorOverrides: Record<string, string> = {
+  success: 'border-transparent bg-[var(--intent-success-muted)] text-[var(--intent-success)]',
+  info: 'border-transparent bg-[var(--accent-muted)] text-[var(--accent)]',
+  purple: 'border-transparent bg-[var(--intent-purple-muted)] text-[var(--intent-purple)]',
+  amber: 'border-transparent bg-[var(--intent-warning-muted)] text-[var(--intent-warning)]',
 };
 
 export function Tag({ variant = 'default', className, children }: TagProps) {
   return (
-    <span
-      className={cn(
-        'border-border-subtle inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-        variantClasses[variant],
-        className,
-      )}
+    <Badge
+      variant={badgeVariantMap[variant] as any}
+      className={cn(colorOverrides[variant], className)}
     >
       {children}
-    </span>
+    </Badge>
   );
 }
