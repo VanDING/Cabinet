@@ -18,7 +18,6 @@
     "studio": "mastra dev"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "^2.0.35",
     "@cabinet/agent": "workspace:*",
     "@cabinet/decision": "workspace:*",
     "@cabinet/secretary": "workspace:*",
@@ -33,7 +32,6 @@
     "@mastra/observability": "^1.15.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.17",
-    "ai": "7.0.0-beta.182",
     "better-sqlite3": "^12.0.0",
     "clipboardy": "^5.3.1",
     "cron-parser": "^5.5.0",
